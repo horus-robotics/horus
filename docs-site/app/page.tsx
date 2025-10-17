@@ -120,7 +120,7 @@ export default function HomePage() {
               <div className="absolute inset-0 bg-gradient-to-r from-[var(--accent)] to-[var(--success)] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </Link>
             <a
-              href="https://github.com/horus-robotics/horus"
+              href="https://github.com/neos-builder/horus"
               target="_blank"
               rel="noopener noreferrer"
               className="px-8 py-3 border border-[var(--border)] rounded-lg font-semibold text-[var(--text-secondary)] hover:text-white hover:border-[var(--accent)] transition-all duration-300 hover:shadow-lg"

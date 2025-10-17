@@ -75,3 +75,21 @@ Thumbs.db
 # Cache
 .cache/
 *.cache
+
+# Build artifacts
+target/
+**/target/
+.next/
+out/
+
+# Runtime cache
+.horus/
+
+# Development files
+.claude/
+
+# IDE
+*.swp
+*.swo
+*~
+
