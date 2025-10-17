@@ -30,7 +30,6 @@ HORUS provides multiple IPC backends, each optimized for different use cases. Al
 
 - **Latency**: 366ns-2.8µs for production messages (with serde)
 - **Use case**: All robotics applications - control, sensing, perception
-- **Performance**: 100-270x faster than ROS2
 - **Message Types**: CmdVel (366ns), IMU (543ns), LaserScan (1.58µs), Odometry (774ns)
 
 ```rust
@@ -54,7 +53,7 @@ let mut sub2 = node4.create_subscriber::<SensorData>("sensors/imu")?;
 
 **Real Message Latencies** (with serde serialization):
 
-| Message Type | Size | Latency | Throughput | vs ROS2 |
+| Message Type | Size | Latency | Throughput | vs traditional frameworks |
 |--------------|------|---------|------------|---------|
 | **CmdVel** | 16 B | 366 ns | 2.7M msg/s | **137x faster** |
 | **IMU** | 304 B | 543 ns | 1.8M msg/s | **92x faster** |

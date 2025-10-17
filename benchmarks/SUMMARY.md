@@ -18,9 +18,9 @@
 | **PointCloud (10Kpt)** | 120 KB | 215-507μs | ~360 μs | 4.7K msg/s | 30 Hz | 155x |
 | **Mixed Loop** | - | 993ns-1.77μs | ~1.4 μs | 1M msg/s | 100 Hz | 10,000x |
 
-### vs ROS2 Comparison
+### vs traditional frameworks Comparison
 
-| Message Size | HORUS | ROS2 (DDS) | ROS2 (FastDDS) | Speedup |
+| Message Size | HORUS | traditional frameworks (DDS) | traditional frameworks (FastDDS) | Speedup |
 |--------------|-------|------------|----------------|---------|
 | 16 B | **~500 ns** | 50-100 μs | 20-50 μs | **100-200x** |
 | 304 B | **~940 ns** | 50-100 μs | 20-50 μs | **53-106x** |
@@ -29,7 +29,6 @@
 ## Key Findings
 
  **Sub-microsecond latency** for messages up to 1.5KB
- **100-270x faster than ROS2** for typical robotics messages
  **Linear scaling** with message size - predictable performance
  **Massive headroom** for all typical robotics frequencies
  **Production-ready** with serde serialization
@@ -70,7 +69,6 @@ cargo bench --bench production_messages
 
 - **Sub-microsecond** for control messages
 - **Low-microsecond** for sensor data
-- **100x+ faster than ROS2**
 - **Ready for production deployment**
 
 See `results/production_messages_benchmark.md` for complete analysis.

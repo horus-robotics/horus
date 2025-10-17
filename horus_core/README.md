@@ -251,7 +251,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 - **Hub (native)**: 85-167 nanoseconds
 - **Small messages (16-104B)**: Sub-microsecond latency
-- **100-270x faster than ROS2**
+- **Ultra-low latency IPC**: Optimized for real-time robotics
 
 ### Memory Layout
 

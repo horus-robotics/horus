@@ -6,7 +6,6 @@ order: 10
 
 # Performance Optimization
 
-HORUS achieves **366ns-2.8µs latency** and is **100-270x faster than ROS2**. This guide shows you how to maximize performance.
 
 ## Why HORUS is Fast
 
@@ -45,7 +44,7 @@ pub struct Hub<T> {
 
 ### Measured Latency
 
-| Message Type | Size | HORUS | ROS2 DDS | Speedup |
+| Message Type | Size | HORUS | traditional frameworks DDS | Speedup |
 |--------------|------|-------|----------|---------|
 | CmdVel | 16B | 366ns | 50-100µs | **270x** |
 | IMU | 304B | 543ns | 80-150µs | **180x** |

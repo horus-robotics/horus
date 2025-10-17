@@ -18,7 +18,6 @@ This document confirms that the HORUS documentation site has been audited and pr
 
 **After:**
 - Production: "366ns-2.8μs for real robotics messages"
-- Realistic: "100-270x faster than ROS2"
 - Context: Production benchmarks with serde serialization
 
 **Files Updated:**

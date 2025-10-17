@@ -18,7 +18,6 @@
 
  **Sub-microsecond latency** for control messages (CmdVel: 366-643ns)
  **Low-microsecond latency** for sensor data (LaserScan: 1.58-2.81μs)
- **100-270x faster than ROS2** for equivalent messages
  **Linear scaling** with message size
  **Massive headroom** for all typical robotics frequencies
 
@@ -41,13 +40,13 @@ See [`latest_run.txt`](latest_run.txt) for most recent benchmark output.
 ┗━━
 ```
 
-## Comparison with ROS2
+## Comparison with traditional frameworks
 
 | Framework | Small Msg | Medium Msg | Large Msg | Speedup |
 |-----------|-----------|------------|-----------|---------|
 | **HORUS** | **500 ns** | **940 ns** | **2.2 μs** | Baseline |
-| ROS2 (DDS) | 50-100 μs | 100-500 μs | 1-10 ms | **100-270x slower** |
-| ROS2 (FastDDS) | 20-50 μs | 50-200 μs | 500 μs-5 ms | **40-150x slower** |
+| traditional frameworks (DDS) | 50-100 μs | 100-500 μs | 1-10 ms | **100-270x slower** |
+| traditional frameworks (FastDDS) | 20-50 μs | 50-200 μs | 500 μs-5 ms | **40-150x slower** |
 
 ## Methodology
 
@@ -110,4 +109,3 @@ See [`../README.md`](../README.md) and [`../SUMMARY.md`](../SUMMARY.md) for:
  **774ns-1.43μs** - Odometry (localization)
  **215-507μs** - PointCloud (10K points)
 
-**100-270x faster than ROS2** - Ready for real-time robotics deployment.

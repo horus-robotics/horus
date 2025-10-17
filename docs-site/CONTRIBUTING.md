@@ -74,7 +74,6 @@ When documenting performance:
 
 - Use **production benchmark results** (366ns-2.8μs range)
 - Include **message types** (CmdVel, LaserScan, IMU)
-- Show **comparisons to ROS2** (100-270x faster)
 - Link to `/docs/benchmarks` for details
 
 ## Formatting

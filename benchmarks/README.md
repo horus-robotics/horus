@@ -16,7 +16,6 @@
 | **PointCloud (1K)** | ~12 KB | **12.16 μs** | 82K msg/s | 30 Hz | 2,740x |
 | **PointCloud (10K)** | ~120 KB | **215 μs** | 4.7K msg/s | 30 Hz | 155x |
 
-> **100-270x faster than ROS2** for equivalent message types
 
 ---
 
@@ -58,7 +57,6 @@ cargo build --release --bin production_bench
 ### Key Findings
 
  **Sub-microsecond latency** for messages up to 1.5KB
- **100-270x faster than ROS2** across all message sizes
  **Serde integration** works flawlessly with complex nested structs
  **Linear scaling** with message size (predictable performance)
  **Massive headroom** for all typical robotics frequencies
@@ -173,23 +171,23 @@ Range:            795-1,192 ns
 
 ---
 
-## 🔬 Comparison with ROS2
+## 🔬 Comparison with traditional frameworks
 
 ### Latency Comparison
 
 | Framework | Small Msg | Medium Msg | Large Msg |
 |-----------|-----------|------------|-----------|
 | **HORUS** | **366 ns** | **543 ns** | **1.58 μs** |
-| ROS2 (DDS) | 50-100 μs | 100-500 μs | 1-10 ms |
-| ROS2 (FastDDS) | 20-50 μs | 50-200 μs | 500 μs - 5 ms |
+| traditional frameworks (DDS) | 50-100 μs | 100-500 μs | 1-10 ms |
+| traditional frameworks (FastDDS) | 20-50 μs | 50-200 μs | 500 μs - 5 ms |
 
-**Performance Advantage**: HORUS is **50-270x faster** than ROS2 for typical message sizes.
+**Performance Advantage**: HORUS is **50-270x faster** than traditional frameworks for typical message sizes.
 
 ---
 
 ## Latency by Message Size
 
-| Message Size | Message Type | Latency | Bytes/ns | vs ROS2 |
+| Message Size | Message Type | Latency | Bytes/ns | vs traditional frameworks |
 |-------------|--------------|---------|----------|---------|
 | 16 B | CmdVel | 366 ns | 0.044 | **137x faster** |
 | 104 B | BatteryState | 390 ns | 0.267 | **128x faster** |
@@ -285,13 +283,12 @@ benchmarks/
 - **Serde overhead**: ~200-300ns compared to raw transfers
 - **Complex structs** (IMU with 27-element covariances): Still sub-microsecond
 - **Variable-size messages** (PointCloud with Vec): Linear scaling
-- **Still 100x faster than ROS2** even with serialization
 
 ---
 
 ## Real-World Applications
 
-| Application | Frequency | HORUS Latency | ROS2 Latency | Speedup |
+| Application | Frequency | HORUS Latency | traditional frameworks Latency | Speedup |
 |-------------|-----------|---------------|--------------|---------|
 | Motor control | 1000 Hz | 366 ns | 50 μs | **137x** |
 | IMU fusion | 100 Hz | 543 ns | 50 μs | **92x** |
@@ -333,7 +330,6 @@ benchmarks/
 - **774 ns** - Odometry (localization)
 - **215 μs** - PointCloud with 10K points
 
-**100-270x faster than ROS2** across all message types.
 
 **Ready for production deployment** in demanding robotics applications requiring real-time performance with complex data types.
 

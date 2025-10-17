@@ -8,7 +8,7 @@ HORUS is a modern Rust-based robotics framework designed for real-time performan
 
 ### **Real-Time Performance**
 - **Production Latency**: 366ns-2.8μs (16B-120KB messages)
-- **100-270x faster than ROS2**: Sub-microsecond messaging for robotics applications
+- **Sub-Microsecond Messaging**: Ultra-low latency for time-critical robotics applications
 - **Priority-Based Scheduling**: Deterministic execution order (0 = highest priority)
 - **Lock-Free Communication**: Atomic operations with cache-line alignment
 - **Built-in Ctrl+C Handling**: Reliable termination with proper cleanup
@@ -509,15 +509,15 @@ By contributing to HORUS, you agree to our [Contributor License Agreement](.gith
 
 ## Why HORUS?
 
-| Feature | HORUS | ROS2 |
-|---------|-------|------|
-| **Latency** | **366ns-2.8μs** | ~50-500 μs |
-| **Setup** | `register()` → `tick_all()` | Complex launch files |
-| **Communication** | Shared memory | DDS/FastDDS |
-| **Memory Safety** | Rust + fixed-size messages | C++ manual management |
-| **Debugging** | Built-in dashboard | External tools (rviz/rqt) |
-| **Learning Curve** | Simple `tick()` method | Complex lifecycles |
+**Key Advantages:**
 
-**HORUS: Real-time robotics made simple** 
+- **Ultra-Low Latency**: 366ns-2.8μs message passing with shared memory architecture
+- **Simple Setup**: `register()` → `tick_all()` - no complex configuration files
+- **Memory Safe**: Rust + fixed-size messages prevent corruption and race conditions
+- **Built-in Debugging**: Integrated dashboard for real-time system monitoring
+- **Easy to Learn**: Simple `tick()` method pattern with intuitive lifecycle
+- **Zero-Copy IPC**: Direct shared memory access for maximum performance
+
+**HORUS: Real-time robotics made simple**
 
 *Build faster. Debug easier. Deploy with confidence.*

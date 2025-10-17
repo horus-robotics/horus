@@ -114,7 +114,6 @@ We welcome contributions! To contribute to the documentation:
 The documentation emphasizes HORUS's production-grade performance:
 
 - **366ns-2.8μs** latency for real robotics messages
-- **100-270x faster than ROS2**
 - Production benchmarks with serde serialization
 - Real-world message types (CmdVel, LaserScan, IMU, etc.)
 
