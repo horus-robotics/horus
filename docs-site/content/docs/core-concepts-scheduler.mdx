@@ -263,7 +263,7 @@ Graceful shutdown on Ctrl+C:
 ```rust
 // Signal handler (set up in tick_all)
 ctrlc::set_handler(move || {
-    eprintln!("\n🛑 Ctrl+C received! Shutting down HORUS scheduler...");
+    eprintln!("\nCtrl+C received! Shutting down HORUS scheduler...");
     if let Ok(mut r) = running.lock() {
         *r = false;  // Stop the main loop
     }
@@ -384,7 +384,7 @@ The scheduler automatically handles Ctrl+C:
 ```rust
 // Automatically set up by tick_all()
 ctrlc::set_handler(move || {
-    eprintln!("\n🛑 Ctrl+C received! Shutting down HORUS scheduler...");
+    eprintln!("\nCtrl+C received! Shutting down HORUS scheduler...");
     if let Ok(mut r) = running.lock() {
         *r = false;
     }
@@ -394,7 +394,7 @@ ctrlc::set_handler(move || {
 **Output**:
 ```
 ^C
-🛑 Ctrl+C received! Shutting down HORUS scheduler...
+Ctrl+C received! Shutting down HORUS scheduler...
 [Nodes shutting down gracefully...]
 ```
 
