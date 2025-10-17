@@ -542,7 +542,7 @@ logging_level = "info"  # Log verbosity
 $ horus monitor system
 === HORUS System Monitor ===
 
-CPU Usage: 22.6%
+🔥 CPU Usage: 22.6%
 💾 Memory: 8129 MB / 64120 MB (12.7%)
 🔧 Active Nodes: 3
 📨 Message Rate: 1247 msg/s
@@ -580,12 +580,12 @@ horus dashboard -t        # Terminal UI (TUI)
 pub struct CmdVel {
     pub linear: f64,
     pub angular: f64,
-}  // Safe: No pointers, no heap
+}  // ✅ Safe: No pointers, no heap
 
 // Unsafe message (would cause corruption)
 pub struct BadMessage {
-    pub data: String,  // Heap-allocated pointer
-    pub items: Vec<f64>,  // Heap-allocated vector
+    pub data: String,  // ❌ Heap-allocated pointer
+    pub items: Vec<f64>,  // ❌ Heap-allocated vector
 }  // Won't compile with shared memory backend
 ```
 
@@ -729,4 +729,4 @@ Message Size    Latency     Example
 
 ---
 
-**HORUS Architecture: Fast, Safe, Simple** 
+**HORUS Architecture: Fast, Safe, Simple** 🤖
