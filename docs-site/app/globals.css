@@ -26,11 +26,46 @@
     box-sizing: border-box;
 }
 
+html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
 body {
     font-family: 'JetBrains Mono', monospace;
     background-color: var(--dark-bg);
     color: var(--text-primary);
     min-height: 100vh;
+    -webkit-tap-highlight-color: rgba(0, 212, 255, 0.1);
+}
+
+/* Touch-friendly interactions */
+.touch-manipulation {
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+    .prose h1 {
+        font-size: 2rem;
+    }
+
+    .prose h2 {
+        font-size: 1.5rem;
+        margin-top: 2rem;
+    }
+
+    .prose h3 {
+        font-size: 1.25rem;
+        margin-top: 1.5rem;
+    }
+
+    pre {
+        font-size: 0.875rem;
+        padding: 0.75rem !important;
+    }
 }
 
 @keyframes scan-bg {

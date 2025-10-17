@@ -1,11 +1,18 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { DocsNav } from "@/components/DocsNav";
 import { DocsFooter } from "@/components/DocsFooter";
 
 export const metadata: Metadata = {
   title: "HORUS Documentation - Ultra-Low Latency IPC for Robotics",
   description: "Official documentation for HORUS distributed computing framework. 29ns latency, real-time control, production-ready.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  themeColor: "#16181c",
 };
 
 export default function RootLayout({
@@ -15,8 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="font-mono">
-        <DocsNav />
+      <body className="font-mono antialiased">
         <main className="min-h-screen">
           {children}
         </main>

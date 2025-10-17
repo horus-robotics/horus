@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FiChevronDown, FiChevronRight } from "react-icons/fi";
-import { useState } from "react";
+import { FiChevronDown, FiChevronRight, FiX } from "react-icons/fi";
+import { useState, useEffect } from "react";
 
 interface DocLink {
   title: string;
@@ -65,7 +65,12 @@ const sections: SidebarSection[] = [
   },
 ];
 
-export function DocsSidebar() {
+interface DocsSidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export function DocsSidebar({ isOpen = true, onClose }: DocsSidebarProps) {
   const pathname = usePathname();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     "Getting Started": true,
@@ -78,54 +83,114 @@ export function DocsSidebar() {
     setExpandedSections((prev) => ({ ...prev, [title]: !prev[title] }));
   };
 
-  return (
-    <aside className="w-64 border-r border-[var(--border)] bg-[var(--surface)] h-[calc(100vh-4rem)] sticky top-16 overflow-y-auto">
-      <div className="p-6 space-y-6 pb-12">
-        {sections.map((section) => {
-          const isExpanded = expandedSections[section.title];
+  // Close sidebar on mobile when clicking a link
+  const handleLinkClick = () => {
+    if (onClose) {
+      onClose();
+    }
+  };
 
-          return (
-            <div key={section.title}>
-              <button
-                onClick={() => toggleSection(section.title)}
-                className="flex items-center gap-2 w-full text-left font-semibold text-[var(--text-primary)] hover:text-[var(--accent)] transition-colors mb-2"
-              >
-                {isExpanded ? (
-                  <FiChevronDown className="w-4 h-4" />
-                ) : (
-                  <FiChevronRight className="w-4 h-4" />
-                )}
-                {section.title}
-              </button>
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (isOpen && onClose) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen, onClose]);
 
-              {isExpanded && (
-                <ul className="space-y-1 ml-6">
-                  {section.links
-                    .sort((a, b) => (a.order || 999) - (b.order || 999))
-                    .map((link) => {
-                      const isActive = pathname === link.href;
+  const sidebarContent = (
+    <div className="p-6 space-y-6 pb-12">
+      {sections.map((section) => {
+        const isExpanded = expandedSections[section.title];
 
-                      return (
-                        <li key={link.href}>
-                          <Link
-                            href={link.href}
-                            className={`block px-3 py-1.5 rounded text-sm transition-colors ${
-                              isActive
-                                ? "bg-[var(--accent)]/10 text-[var(--accent)] font-medium border-l-2 border-[var(--accent)]"
-                                : "text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--border)]"
-                            }`}
-                          >
-                            {link.title}
-                          </Link>
-                        </li>
-                      );
-                    })}
-                </ul>
+        return (
+          <div key={section.title}>
+            <button
+              onClick={() => toggleSection(section.title)}
+              className="flex items-center gap-2 w-full text-left font-semibold text-[var(--text-primary)] hover:text-[var(--accent)] transition-colors mb-2 touch-manipulation"
+            >
+              {isExpanded ? (
+                <FiChevronDown className="w-4 h-4" />
+              ) : (
+                <FiChevronRight className="w-4 h-4" />
               )}
-            </div>
-          );
-        })}
-      </div>
-    </aside>
+              {section.title}
+            </button>
+
+            {isExpanded && (
+              <ul className="space-y-1 ml-6">
+                {section.links
+                  .sort((a, b) => (a.order || 999) - (b.order || 999))
+                  .map((link) => {
+                    const isActive = pathname === link.href;
+
+                    return (
+                      <li key={link.href}>
+                        <Link
+                          href={link.href}
+                          onClick={handleLinkClick}
+                          className={`block px-3 py-2 rounded text-sm transition-colors touch-manipulation ${
+                            isActive
+                              ? "bg-[var(--accent)]/10 text-[var(--accent)] font-medium border-l-2 border-[var(--accent)]"
+                              : "text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--border)]"
+                          }`}
+                        >
+                          {link.title}
+                        </Link>
+                      </li>
+                    );
+                  })}
+              </ul>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  // Desktop sidebar
+  if (!onClose) {
+    return (
+      <aside className="hidden lg:block w-64 border-r border-[var(--border)] bg-[var(--surface)] h-[calc(100vh-4rem)] sticky top-16 overflow-y-auto">
+        {sidebarContent}
+      </aside>
+    );
+  }
+
+  // Mobile sidebar (drawer)
+  return (
+    <>
+      {/* Backdrop */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm"
+          onClick={onClose}
+        />
+      )}
+
+      {/* Drawer */}
+      <aside
+        className={`fixed top-0 left-0 bottom-0 w-80 max-w-[85vw] bg-[var(--background)] border-r border-[var(--border)] z-50 lg:hidden transform transition-transform duration-300 ease-in-out overflow-y-auto ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        {/* Close button */}
+        <div className="sticky top-0 bg-[var(--background)] border-b border-[var(--border)] p-4 flex items-center justify-between">
+          <span className="font-semibold text-[var(--text-primary)]">Documentation</span>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-[var(--surface)] rounded-md transition-colors touch-manipulation"
+            aria-label="Close menu"
+          >
+            <FiX className="w-5 h-5" />
+          </button>
+        </div>
+        {sidebarContent}
+      </aside>
+    </>
   );
 }
