@@ -29,7 +29,7 @@ This document lists all files created for the `horus new` command test suite.
    - Summary of all created files
    - Quick reference guide
 
-### 🧪 Test Scripts
+### Test Scripts
 
 4. **test_python.sh** (2.9 KB)
    - **9 tests** for Python project creation
@@ -63,7 +63,7 @@ This document lists all files created for the `horus new` command test suite.
     - **7 tests** for edge cases and boundaries
     - Tests: hyphens, numbers, long names, existing dirs
 
-### 🚀 Master Test Runner
+### Master Test Runner
 
 12. **run_all.sh** (3.0 KB)
     - Runs all test suites in sequence
@@ -110,7 +110,7 @@ cd /home/lord-patpak/horus/HORUS/tests/horus_new
 
 ## Test Features
 
-### ✅ What's Tested
+### What's Tested
 
 - All language options (Python, Rust, C)
 - Macro vs non-macro Rust projects
@@ -123,7 +123,7 @@ cd /home/lord-patpak/horus/HORUS/tests/horus_new
 - Cargo.toml validation
 - horus.yaml field validation
 
-### ✅ Quality Assurance
+### Quality Assurance
 
 - Isolated test environments (temp dirs)
 - Automatic cleanup (trap EXIT)
@@ -150,12 +150,12 @@ Example usage in CI pipeline:
 ## Production Readiness
 
 All 68 tests must pass for production launch:
-- ✅ Language support complete
-- ✅ Flag handling correct
-- ✅ Project structure valid
-- ✅ Generated code valid
-- ✅ Edge cases handled
-- ✅ Conflicts detected
+- Language support complete
+- Flag handling correct
+- Project structure valid
+- Generated code valid
+- Edge cases handled
+- Conflicts detected
 
 ## Maintenance
 
@@ -184,4 +184,4 @@ October 3, 2025
 
 ---
 
-**Ready for production testing!** 🚀
+**Ready for production testing!** 

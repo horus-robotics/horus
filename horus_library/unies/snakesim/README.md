@@ -2,7 +2,7 @@
 
 **Demonstration of HORUS uni (multi-node) architecture** using a classic snake game.
 
-## 🎮 What is SnakeSim?
+## What is SnakeSim?
 
 SnakeSim is a **uni (multi-node application)** that demonstrates HORUS's pub/sub messaging and priority-based scheduling using a playable snake game.
 
@@ -26,7 +26,7 @@ SnakeSim is a **uni (multi-node application)** that demonstrates HORUS's pub/sub
 └─────────────────────┘
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Run with Scheduler (Recommended)
 
@@ -49,7 +49,7 @@ horus run horus_library/unies/snakesim/snake_scheduler/src/main.rs
 horus run -r horus_library/unies/snakesim/snake_scheduler/src/main.rs
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 snakesim/
@@ -68,7 +68,7 @@ snakesim/
         └── lib.rs         # Terminal UI rendering
 ```
 
-## 🏗️ How It Works
+## How It Works
 
 ### Node Communication
 
@@ -98,17 +98,17 @@ Each `tick()` executes nodes in priority order:
 2. Update snake position
 3. Render new state
 
-## 🎯 Learning Objectives
+## Learning Objectives
 
 SnakeSim demonstrates:
 
-✅ **Uni (multi-node) architecture** - Multiple nodes working together
-✅ **Pub/sub messaging** - Nodes communicate via topics
-✅ **Priority scheduling** - Deterministic execution order
-✅ **Built-in logging** - Automatic message tracking
-✅ **Clean separation** - Input/Logic/Display separated
+ **Uni (multi-node) architecture** - Multiple nodes working together
+ **Pub/sub messaging** - Nodes communicate via topics
+ **Priority scheduling** - Deterministic execution order
+ **Built-in logging** - Automatic message tracking
+ **Clean separation** - Input/Logic/Display separated
 
-## 🔧 Development
+## Development
 
 ### Build Individual Nodes
 
@@ -133,7 +133,7 @@ cd snake_scheduler
 RUST_LOG=debug cargo run --release
 ```
 
-## 🎮 Game Rules
+## Game Rules
 
 - 🟢 Green snake starts in center
 - 🔴 Red food appears randomly
@@ -141,7 +141,7 @@ RUST_LOG=debug cargo run --release
 - Don't hit walls or yourself
 - Score increases with each food
 
-## 📚 Code Examples
+## Code Examples
 
 ### Snake Control Node (Simplified)
 
@@ -186,7 +186,7 @@ fn main() {
 }
 ```
 
-## 🚀 Next Steps
+## Next Steps
 
 After trying SnakeSim:
 
@@ -195,7 +195,7 @@ After trying SnakeSim:
 3. **Create your own uni** - Use as template for multi-node apps
 4. **Deploy to robot** - Apply same patterns to real robotics
 
-## 🔍 Troubleshooting
+## Troubleshooting
 
 **"Failed to create Hub":**
 - Make sure no other instance is running
@@ -209,17 +209,17 @@ After trying SnakeSim:
 - Run `cargo clean` in each node directory
 - Ensure you're in the correct directory
 
-## 💡 Tips
+## Tips
 
 - Start simple: Read `snake_scheduler/src/main.rs` first
 - Enable logging to see message flow
 - Try modifying snake speed in `SnakeControlNode`
 - Experiment with different priorities
 
-## 📄 License
+## License
 
 Same as HORUS framework - MIT/Apache-2.0
 
 ---
 
-**Perfect introduction to HORUS unis (multi-node applications)!** 🐍🎮
+**Perfect introduction to HORUS unis (multi-node applications)!** 🐍

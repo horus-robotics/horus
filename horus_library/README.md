@@ -251,7 +251,7 @@ Registered node 'SnakeControlNode' with priority 2 (logging: true)
 
 All HORUS Library messages use fixed-size structures for shared memory safety:
 
-### ✅ Safe Message Design
+### Safe Message Design
 
 ```rust
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -262,7 +262,7 @@ pub struct SafeMessage {
 }
 ```
 
-### ❌ Unsafe Message Design
+### Unsafe Message Design
 
 ```rust
 // DON'T DO THIS - will cause segmentation faults in shared memory!

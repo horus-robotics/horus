@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing to HORUS! This document provides guidelines for contributing to the project.
 
-## 🚀 Getting Started
+## Getting Started
 
 1. **Fork the repository** on GitHub
 2. **Clone your fork** locally:
@@ -15,7 +15,7 @@ Thank you for your interest in contributing to HORUS! This document provides gui
    git checkout -b feature/your-feature-name
    ```
 
-## 🛠️ Development Setup
+## Development Setup
 
 ### Prerequisites
 
@@ -44,7 +44,7 @@ npm install
 npm run dev
 ```
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Rust tests
@@ -62,7 +62,7 @@ make test
 ./run_integration_tests.sh
 ```
 
-## 📝 Code Style
+## Code Style
 
 ### Rust
 
@@ -102,7 +102,7 @@ Follow standard C conventions:
 - Prefix all public APIs with `horus_`
 - Document APIs in header files
 
-## 🎯 What to Contribute
+## What to Contribute
 
 ### Good First Issues
 
@@ -128,14 +128,14 @@ When reporting bugs, include:
 - Expected vs actual behavior
 - Relevant logs or error messages
 
-## 📚 Documentation
+## Documentation
 
 - Update documentation when changing APIs
 - Add examples for new features
 - Keep README.md up to date
 - Update CHANGELOG.md
 
-## 🔄 Pull Request Process
+## Pull Request Process
 
 1. **Ensure tests pass**: `cargo test && pytest`
 2. **Update documentation**: Include docs for new features
@@ -153,7 +153,7 @@ When reporting bugs, include:
 
 5. **Address review feedback** promptly
 
-## 🏗️ Architecture Guidelines
+## Architecture Guidelines
 
 ### Core Principles
 
@@ -176,15 +176,15 @@ horus/
 └── docs-site/          # Documentation website
 ```
 
-## ⚠️ What Not to Do
+## What Not to Do
 
-- ❌ Break existing APIs without migration path
-- ❌ Add dependencies without discussion
-- ❌ Commit without running tests
-- ❌ Ignore clippy warnings
-- ❌ Submit PRs without description
+- Break existing APIs without migration path
+- Add dependencies without discussion
+- Commit without running tests
+- Ignore clippy warnings
+- Submit PRs without description
 
-## 🤝 Code Review
+## Code Review
 
 All contributions go through code review:
 - Be respectful and constructive
@@ -192,7 +192,7 @@ All contributions go through code review:
 - Ask questions if unclear
 - Maintainers have final say
 
-## 📜 License
+## License
 
 By contributing, you agree that your contributions will be licensed under the Apache License 2.0.
 
@@ -204,7 +204,7 @@ I have read and agree to the Contributor License Agreement.
 
 This ensures that the project can safely distribute your contributions and protects all parties involved.
 
-## 🙏 Thank You!
+## Thank You!
 
 Every contribution, no matter how small, helps make HORUS better. Thank you for being part of the community!
 

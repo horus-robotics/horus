@@ -23,7 +23,7 @@ Laptop (CLI)                    Robot (Daemon)
 
 ## Features
 
-### Core Functionality (Implemented ✅)
+### Core Functionality (Implemented )
 
 - **HTTP Server**: Axum-based server on port 8080
 - **Code Upload**: Accepts tar.gz archives via POST `/deploy`
@@ -71,7 +71,7 @@ horus run --remote <ROBOT> <file>
 ./target/debug/horus_daemon
 
 # Expected output:
-# 🚀 HORUS daemon listening on 0.0.0.0:8080
+#  HORUS daemon listening on 0.0.0.0:8080
 # 📡 Ready to receive deployments
 ```
 
@@ -262,7 +262,7 @@ cargo test
 
 ## Security Considerations
 
-**⚠️ Warning**: This daemon is intended for development/testing only.
+** Warning**: This daemon is intended for development/testing only.
 
 For production use, consider:
 - Adding API key authentication

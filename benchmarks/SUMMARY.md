@@ -28,11 +28,11 @@
 
 ## Key Findings
 
-✅ **Sub-microsecond latency** for messages up to 1.5KB
-✅ **100-270x faster than ROS2** for typical robotics messages
-✅ **Linear scaling** with message size - predictable performance
-✅ **Massive headroom** for all typical robotics frequencies
-✅ **Production-ready** with serde serialization
+ **Sub-microsecond latency** for messages up to 1.5KB
+ **100-270x faster than ROS2** for typical robotics messages
+ **Linear scaling** with message size - predictable performance
+ **Massive headroom** for all typical robotics frequencies
+ **Production-ready** with serde serialization
 
 ## Running Benchmarks
 
@@ -68,9 +68,9 @@ cargo bench --bench production_messages
 
 **HORUS delivers production-grade performance** for real robotics applications:
 
-- ⚡ **Sub-microsecond** for control messages
-- ⚡ **Low-microsecond** for sensor data
-- ⚡ **100x+ faster than ROS2**
-- ⚡ **Ready for production deployment**
+- **Sub-microsecond** for control messages
+- **Low-microsecond** for sensor data
+- **100x+ faster than ROS2**
+- **Ready for production deployment**
 
 See `results/production_messages_benchmark.md` for complete analysis.

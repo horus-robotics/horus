@@ -1,14 +1,14 @@
 # HORUS Core
 
-**⚠️ Internal Implementation Package - Use `horus` crate instead**
+** Internal Implementation Package - Use `horus` crate instead**
 
 This is the internal implementation package for HORUS. Application developers should use the main `horus` crate:
 
 ```rust
-// ✅ Correct - use the main horus crate
+//  Correct - use the main horus crate
 use horus::prelude::*;
 
-// ❌ Wrong - don't use horus_core directly
+//  Wrong - don't use horus_core directly
 use horus_core::prelude::*;
 ```
 
@@ -280,7 +280,7 @@ let hub = Hub::new_with_capacity("large_topic", 2048)?;
 All shared memory messages must use fixed-size structures:
 
 ```rust
-// ✅ Good: Fixed-size types
+//  Good: Fixed-size types
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 struct SafeMessage {
     data: [f32; 64],       // Fixed-size array
@@ -288,7 +288,7 @@ struct SafeMessage {
     counter: u32,          // Primitive type
 }
 
-// ❌ Bad: Dynamic allocation
+//  Bad: Dynamic allocation
 #[derive(Debug, Clone)]
 struct UnsafeMessage {
     data: String,          // Heap pointer - causes segfaults!
@@ -303,13 +303,13 @@ struct UnsafeMessage {
 ```rust
 impl Node for WellDesignedNode {
     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        // ✅ Good: Non-blocking message processing
+        //  Good: Non-blocking message processing
         while let Some(data) = self.input.recv(ctx) {
             let result = process_data(data);
             let _ = self.output.send(result, ctx);
         }
 
-        // ❌ Bad: Blocking operations in tick()
+        //  Bad: Blocking operations in tick()
         // std::thread::sleep(Duration::from_secs(1)); // Blocks other nodes!
     }
 }

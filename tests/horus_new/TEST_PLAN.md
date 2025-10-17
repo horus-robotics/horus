@@ -129,20 +129,20 @@ cd /home/lord-patpak/horus/HORUS/tests/horus_new
 ## Success Criteria
 
 For production launch, ALL tests must pass:
-- ✅ All basic creation tests succeed
-- ✅ All project structures are valid
-- ✅ All generated files have correct content
-- ✅ All conflicts are properly caught
-- ✅ Edge cases handled gracefully
-- ✅ Generated Rust code compiles
-- ✅ Generated Python code has valid syntax
+- All basic creation tests succeed
+- All project structures are valid
+- All generated files have correct content
+- All conflicts are properly caught
+- Edge cases handled gracefully
+- Generated Rust code compiles
+- Generated Python code has valid syntax
 
 ## Test Results Format
 
 Each test outputs:
 ```
-✅ PASS: Test description
-❌ FAIL: Test description - Error message
+ PASS: Test description
+ FAIL: Test description - Error message
 ```
 
 The `run_all.sh` script provides a summary:
@@ -153,7 +153,7 @@ Tests run: 45
 Passed: 45
 Failed: 0
 
-✅ ALL TESTS PASSED - Ready for production
+ ALL TESTS PASSED - Ready for production
 ```
 
 ## Coverage

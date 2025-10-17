@@ -67,16 +67,16 @@ rustc --version
 ## Test Output
 
 Each test outputs:
-- ✅ **PASS** - Test succeeded
-- ❌ **FAIL** - Test failed with error message
-- ⚠ **WARN** - Test passed with warnings
+- **PASS** - Test succeeded
+- **FAIL** - Test failed with error message
+- **WARN** - Test passed with warnings
 
 Example:
 ```bash
 === Testing Python Project Creation ===
-Test 1: Create Python project with -p flag... ✅ PASS
-Test 2: Project directory exists... ✅ PASS
-Test 3: main.py file exists... ✅ PASS
+Test 1: Create Python project with -p flag...  PASS
+Test 2: Project directory exists...  PASS
+Test 3: main.py file exists...  PASS
 ...
 All Python tests passed!
 ```
@@ -178,9 +178,9 @@ bash -x ./test_python.sh
 ## Success Criteria
 
 For production readiness:
-- ✅ All 68 tests must pass
-- ✅ Zero failures
-- ✅ No warnings (except documented edge cases)
+- All 68 tests must pass
+- Zero failures
+- No warnings (except documented edge cases)
 
 ## Maintenance
 

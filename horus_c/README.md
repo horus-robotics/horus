@@ -111,13 +111,13 @@ let scan: LaserScan = sub.recv()?;
 
 ## When to Use
 
-✅ **Use C API for:**
+ **Use C API for:**
 - Vendor SDKs (librealsense, rplidar)
 - Proprietary drivers
 - Legacy C libraries
 - Hardware interfaces
 
-❌ **Don't use C API for:**
+ **Don't use C API for:**
 - Business logic
 - Algorithm implementation
 - New development

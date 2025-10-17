@@ -6,7 +6,7 @@ A lightweight 2D robotics simulator built with Bevy and Rapier2D, designed for t
 
 ---
 
-## 🎯 What is sim2d?
+## What is sim2d?
 
 sim2d is a **2D top-down simulator** for testing robot control algorithms:
 - **Simple**: One binary, no complex setup
@@ -27,7 +27,7 @@ sim2d is a **2D top-down simulator** for testing robot control algorithms:
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Install System Dependencies
 ```bash
@@ -62,7 +62,7 @@ use std::time::Duration;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd_pub: Hub<CmdVel> = Hub::new("cmd_vel")?;
-    println!("🤖 Driving in circles...");
+    println!(" Driving in circles...");
 
     loop {
         cmd_pub.send(CmdVel::new(1.0, 0.5), None)?;
@@ -175,7 +175,7 @@ obstacles:
 
 ---
 
-## 🎮 Usage Examples
+## Usage Examples
 
 ### Basic Navigation Test
 ```bash
@@ -251,7 +251,7 @@ cargo run --release -- --world my_world.yaml
 
 ---
 
-## 🔧 Command-Line Options
+## Command-Line Options
 
 ```bash
 sim2d [OPTIONS]
@@ -274,7 +274,7 @@ Options:
 
 ---
 
-## 📊 Performance
+## Performance
 
 **Typical performance on modern desktop:**
 
@@ -287,7 +287,7 @@ Options:
 
 ---
 
-## 🛠️ Development
+## Development
 
 ### Project Structure
 ```
@@ -321,7 +321,7 @@ RUST_LOG=info cargo run --release
 
 ---
 
-## 🔍 How Visualization Works
+## How Visualization Works
 
 sim2d renders **simple 2D shapes**, not detailed 3D models:
 
@@ -344,12 +344,12 @@ sim2d renders **simple 2D shapes**, not detailed 3D models:
 ## 🚧 Current Limitations
 
 **What works:**
-- ✅ Single robot simulation
-- ✅ Differential drive kinematics
-- ✅ Physics simulation with collisions
-- ✅ Basic rectangular obstacles
-- ✅ HORUS topic integration
-- ✅ Real-time visualization
+- Single robot simulation
+- Differential drive kinematics
+- Physics simulation with collisions
+- Basic rectangular obstacles
+- HORUS topic integration
+- Real-time visualization
 
 **What's missing/planned:**
 - ⏳ LiDAR sensor simulation (code exists, needs integration)
@@ -363,7 +363,7 @@ sim2d renders **simple 2D shapes**, not detailed 3D models:
 
 ---
 
-## 🤝 Integration with HORUS Ecosystem
+## Integration with HORUS Ecosystem
 
 ### As a Development Tool
 ```bash
@@ -398,7 +398,7 @@ node! {
 
 ---
 
-## 💡 When to Use What
+## When to Use What
 
 **Use sim2d when:**
 - Testing navigation algorithms (A*, DWA, TEB, etc.)
@@ -423,7 +423,7 @@ node! {
 
 ---
 
-## 📚 Additional Resources
+## Additional Resources
 
 **HORUS Documentation:**
 - Main HORUS README: `../../README.md`
@@ -440,7 +440,7 @@ node! {
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 **Build fails with "cannot find -lasound":**
 ```bash
@@ -468,13 +468,13 @@ sudo apt install libx11-dev libxrandr-dev libxi-dev
 
 ---
 
-## 📄 License
+## License
 
 Licensed under MIT or Apache-2.0, same as HORUS framework.
 
 ---
 
-## 🎯 Summary
+## Summary
 
 **sim2d in one sentence:**
 A simple, fast 2D robot simulator with physics and visualization, perfect for testing HORUS control algorithms before deploying to real robots.
@@ -506,4 +506,4 @@ EOF
 horus run driver.rs
 ```
 
-**That's it! Simple, clean, functional.** 🤖
+**That's it! Simple, clean, functional.** 

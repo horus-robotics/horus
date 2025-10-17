@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing to the HORUS documentation! This guide will help you get started.
 
-## 🌟 How to Contribute
+## How to Contribute
 
 ### Documentation Improvements
 
@@ -39,7 +39,7 @@ Thank you for your interest in contributing to the HORUS documentation! This gui
    - Reference any related issues
    - Include screenshots if UI changes
 
-## 📝 Content Guidelines
+## Content Guidelines
 
 ### Writing Style
 
@@ -51,7 +51,7 @@ Thank you for your interest in contributing to the HORUS documentation! This gui
 ### Code Examples
 
 ```rust
-// ✅ Good: Complete, runnable example
+//  Good: Complete, runnable example
 use horus::prelude::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -63,7 +63,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```
 
 ```rust
-// ❌ Bad: Incomplete snippet
+//  Bad: Incomplete snippet
 let mut node = ...;
 // do something
 ```
@@ -77,7 +77,7 @@ When documenting performance:
 - Show **comparisons to ROS2** (100-270x faster)
 - Link to `/docs/benchmarks` for details
 
-## 🎨 Formatting
+## Formatting
 
 ### Markdown/MDX
 
@@ -98,7 +98,7 @@ order: 1  # For sidebar ordering
 ---
 ```
 
-## 🔍 What to Document
+## What to Document
 
 ### High Priority
 
@@ -124,7 +124,7 @@ order: 1  # For sidebar ordering
 - **No private APIs** - Only public, documented features
 - **No outdated performance** - Use current production benchmarks
 
-## 📦 Adding New Pages
+## Adding New Pages
 
 1. Create `.mdx` file in appropriate `content/` directory
 2. Add frontmatter with title, description, order
@@ -133,7 +133,7 @@ order: 1  # For sidebar ordering
 5. Add link in `app/page.tsx` if it's a major section
 6. Test that it renders correctly
 
-## 🐛 Reporting Issues
+## Reporting Issues
 
 Found a problem with the docs?
 
@@ -141,7 +141,7 @@ Found a problem with the docs?
 2. **Open a new issue** - Be specific about the problem
 3. **Suggest a fix** - Even better, submit a PR!
 
-## 💡 Ideas for Contribution
+## Ideas for Contribution
 
 ### Beginner-Friendly
 
@@ -164,7 +164,7 @@ Found a problem with the docs?
 - Create video tutorials
 - Integrate with CI/CD
 
-## ✅ Review Process
+## Review Process
 
 1. **Automated checks** - Build must pass
 2. **Content review** - Accuracy and clarity
@@ -173,11 +173,11 @@ Found a problem with the docs?
 
 Expect 1-3 days for review. We appreciate your patience!
 
-## 📄 License
+## License
 
 By contributing, you agree that your contributions will be dual-licensed under MIT/Apache-2.0, matching the HORUS framework license.
 
-## 🤝 Code of Conduct
+## Code of Conduct
 
 Be respectful, inclusive, and constructive. We're building this together!
 
@@ -188,4 +188,4 @@ Be respectful, inclusive, and constructive. We're building this together!
 
 ---
 
-**Thank you for contributing to HORUS!** 🚀
+**Thank you for contributing to HORUS!** 

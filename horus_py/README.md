@@ -2,7 +2,7 @@
 
 A user-friendly Python API for the HORUS robotics framework that makes creating distributed robotic systems as easy as writing a simple function.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Minimal Example (10 lines!)
 
@@ -18,7 +18,7 @@ horus.run(node, duration=3)
 
 That's it! No classes to inherit, no boilerplate, just pure logic.
 
-## 📦 Installation
+## Installation
 
 ### From Source
 
@@ -37,7 +37,7 @@ maturin develop --release
 - Rust 1.70+
 - Linux (for shared memory support)
 
-## 🎯 Core Concepts
+## Core Concepts
 
 HORUS Python uses just 3 simple concepts:
 
@@ -45,7 +45,7 @@ HORUS Python uses just 3 simple concepts:
 2. **Scheduler** - Manages and runs nodes
 3. **Topics** - Named channels for communication
 
-## 🔥 The Simple API
+## The Simple API
 
 ### Creating a Node
 
@@ -93,7 +93,7 @@ scheduler.add(node1, node2)
 scheduler.run(duration=5)
 ```
 
-## 📚 Examples
+## Examples
 
 ### 1. Simple Transform
 
@@ -196,7 +196,7 @@ node = horus.Node(
 )
 ```
 
-## 🛠️ Advanced Features
+## Advanced Features
 
 ### Broadcast (Fanout)
 ```python
@@ -216,7 +216,7 @@ scheduler.add(low_priority_node)
 scheduler.run()
 ```
 
-## 🎯 Design Philosophy
+## Design Philosophy
 
 The HORUS Python API follows these principles:
 
@@ -269,7 +269,7 @@ node = horus.Node(
 horus.run(node, duration=5)
 ```
 
-## 🏃 Running Examples
+## Running Examples
 
 Check out the examples directory:
 
@@ -294,14 +294,14 @@ The simple API addresses common pain points:
 - **Testable** - Functions can be tested independently
 - **Gradual complexity** - Start with 5 lines, scale as needed
 
-## ⚡ Performance Tips
+## Performance Tips
 
 1. **Use appropriate tick rates**: Higher rates increase CPU usage
 2. **Batch operations**: Process multiple messages per tick when possible
 3. **Keep tick() fast**: Avoid blocking operations
 4. **Use mock mode**: Test without Rust bindings using the built-in mock
 
-## 🔧 Development
+## Development
 
 ### Building from Source
 
@@ -335,7 +335,7 @@ The API includes a mock mode for testing without Rust bindings:
 # You'll see: "Warning: Rust bindings not available. Running in mock mode."
 ```
 
-## 📄 License
+## License
 
 Same as HORUS core - see main project LICENSE file.
 

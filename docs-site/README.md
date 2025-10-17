@@ -2,11 +2,11 @@
 
 Open-source documentation for the HORUS robotics framework.
 
-## 🌐 Overview
+## Overview
 
 This is the official documentation site for HORUS - a production-grade, open-source robotics framework built in Rust. The site provides comprehensive guides, API references, and performance benchmarks.
 
-## 🚀 Running Locally
+## Running Locally
 
 ```bash
 # Install dependencies
@@ -24,7 +24,7 @@ npm start
 
 Visit `http://localhost:3009` to view the documentation.
 
-## 📝 Content Structure
+## Content Structure
 
 ```
 content/
@@ -75,7 +75,7 @@ content/
 **API Reference**
 - Node, Hub, Scheduler APIs
 
-## 🎨 Tech Stack
+## Tech Stack
 
 - **Next.js 14** - React framework with App Router
 - **MDX** - Markdown with React components
@@ -83,7 +83,7 @@ content/
 - **Shiki** - Syntax highlighting
 - **TypeScript** - Type safety
 
-## 📦 Open Source
+## Open Source
 
 This documentation site is part of the HORUS open-source project:
 
@@ -91,7 +91,7 @@ This documentation site is part of the HORUS open-source project:
 - **Repository**: https://github.com/horus-robotics/horus
 - **Framework**: `/HORUS` directory in the main repository
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! To contribute to the documentation:
 
@@ -109,7 +109,7 @@ We welcome contributions! To contribute to the documentation:
 - Follow existing formatting
 - Update navigation if adding new pages
 
-## 📊 Performance Focus
+## Performance Focus
 
 The documentation emphasizes HORUS's production-grade performance:
 
@@ -118,14 +118,14 @@ The documentation emphasizes HORUS's production-grade performance:
 - Production benchmarks with serde serialization
 - Real-world message types (CmdVel, LaserScan, IMU, etc.)
 
-## 🔗 Links
+## Links
 
 - **Main Repository**: https://github.com/horus-robotics/horus
 - **Issues**: https://github.com/horus-robotics/horus/issues
 - **Discussions**: https://github.com/horus-robotics/horus/discussions
 - **Crates.io**: https://crates.io/search?q=horus
 
-## 📄 License
+## License
 
 Documentation content is dual-licensed under MIT/Apache-2.0, matching the HORUS framework license.
 

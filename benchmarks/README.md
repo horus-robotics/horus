@@ -2,7 +2,7 @@
 
 **Production-grade performance testing** with real robotics message types using serde serialization.
 
-## 🎯 Executive Summary
+## Executive Summary
 
 **HORUS delivers sub-microsecond to low-microsecond latency for production robotics applications:**
 
@@ -20,7 +20,7 @@
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
 # Run production benchmark (recommended)
@@ -53,22 +53,22 @@ cargo build --release --bin production_bench
 
 ---
 
-## 📊 Performance Highlights
+## Performance Highlights
 
 ### Key Findings
 
-✅ **Sub-microsecond latency** for messages up to 1.5KB
-✅ **100-270x faster than ROS2** across all message sizes
-✅ **Serde integration** works flawlessly with complex nested structs
-✅ **Linear scaling** with message size (predictable performance)
-✅ **Massive headroom** for all typical robotics frequencies
+ **Sub-microsecond latency** for messages up to 1.5KB
+ **100-270x faster than ROS2** across all message sizes
+ **Serde integration** works flawlessly with complex nested structs
+ **Linear scaling** with message size (predictable performance)
+ **Massive headroom** for all typical robotics frequencies
 
 ### Production Readiness
 
-- ✅ **Real-time control**: 366 ns latency supports 1000Hz+ control loops
-- ✅ **Sensor fusion**: Mixed workload maintains sub-microsecond performance (993 ns avg)
-- ✅ **Perception pipelines**: 10K point clouds @ 30Hz with 155x headroom
-- ✅ **Multi-robot systems**: Throughput supports 100+ robots on single node
+- **Real-time control**: 366 ns latency supports 1000Hz+ control loops
+- **Sensor fusion**: Mixed workload maintains sub-microsecond performance (993 ns avg)
+- **Perception pipelines**: 10K point clouds @ 30Hz with 155x headroom
+- **Multi-robot systems**: Throughput supports 100+ robots on single node
 
 ---
 
@@ -187,7 +187,7 @@ Range:            795-1,192 ns
 
 ---
 
-## 📈 Latency by Message Size
+## Latency by Message Size
 
 | Message Size | Message Type | Latency | Bytes/ns | vs ROS2 |
 |-------------|--------------|---------|----------|---------|
@@ -201,7 +201,7 @@ Range:            795-1,192 ns
 
 ---
 
-## 🛠️ Running Benchmarks
+## Running Benchmarks
 
 ### Quick Run
 ```bash
@@ -223,7 +223,7 @@ See detailed report: [`results/production_messages_benchmark.md`](results/produc
 
 ---
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 benchmarks/
@@ -241,45 +241,45 @@ benchmarks/
 
 ---
 
-## 🎯 Use Case Selection
+## Use Case Selection
 
 ### Message Type Guidelines
 
 **CmdVel (366 ns)**
-- ✅ Motor control @ 1000Hz
-- ✅ Real-time actuation commands
-- ✅ Safety-critical control loops
+- Motor control @ 1000Hz
+- Real-time actuation commands
+- Safety-critical control loops
 
 **IMU (543 ns)**
-- ✅ High-frequency sensor fusion @ 100Hz
-- ✅ State estimation pipelines
-- ✅ Orientation tracking
+- High-frequency sensor fusion @ 100Hz
+- State estimation pipelines
+- Orientation tracking
 
 **LaserScan (1.58 μs)**
-- ✅ 2D lidar @ 10Hz
-- ✅ Obstacle detection
-- ✅ SLAM front-end
+- 2D lidar @ 10Hz
+- Obstacle detection
+- SLAM front-end
 
 **Odometry (774 ns)**
-- ✅ Pose estimation @ 50Hz
-- ✅ Dead reckoning
-- ✅ Filter updates
+- Pose estimation @ 50Hz
+- Dead reckoning
+- Filter updates
 
 **PointCloud (215 μs for 10K pts)**
-- ✅ 3D perception @ 30Hz
-- ✅ Object detection pipelines
-- ✅ Dense mapping
+- 3D perception @ 30Hz
+- Object detection pipelines
+- Dense mapping
 
 ---
 
-## 📊 Performance Characteristics
+## Performance Characteristics
 
 ### Strengths
-1. ✅ **Sub-microsecond latency** for messages up to 1.5KB
-2. ✅ **Consistent performance** across message types (low variance)
-3. ✅ **Linear scaling** with message size
-4. ✅ **Production-ready** throughput with massive headroom
-5. ✅ **Serde integration** works seamlessly with complex nested structs
+1.  **Sub-microsecond latency** for messages up to 1.5KB
+2.  **Consistent performance** across message types (low variance)
+3.  **Linear scaling** with message size
+4.  **Production-ready** throughput with massive headroom
+5.  **Serde integration** works seamlessly with complex nested structs
 
 ### Technical Details
 - **Serde overhead**: ~200-300ns compared to raw transfers
@@ -289,7 +289,7 @@ benchmarks/
 
 ---
 
-## 🤖 Real-World Applications
+## Real-World Applications
 
 | Application | Frequency | HORUS Latency | ROS2 Latency | Speedup |
 |-------------|-----------|---------------|--------------|---------|
@@ -301,7 +301,7 @@ benchmarks/
 
 ---
 
-## 📚 Methodology
+## Methodology
 
 ### Test Environment
 - **Build**: `cargo build --release` with full optimizations
@@ -310,28 +310,28 @@ benchmarks/
 - **Warmup**: 100 iterations before measurement
 
 ### Message Realism
-- ✅ Actual HORUS library message types
-- ✅ Serde serialization (production path)
-- ✅ Realistic field values and sizes
-- ✅ Complex nested structures (IMU, Odometry)
+- Actual HORUS library message types
+- Serde serialization (production path)
+- Realistic field values and sizes
+- Complex nested structures (IMU, Odometry)
 
 ### Statistical Rigor
-- ✅ 10,000 iterations per test
-- ✅ Variance tracking (min/max ranges)
-- ✅ Multiple message sizes
-- ✅ Mixed workload testing
+- 10,000 iterations per test
+- Variance tracking (min/max ranges)
+- Multiple message sizes
+- Mixed workload testing
 
 ---
 
-## 🎯 Summary
+## Summary
 
 **HORUS provides production-grade performance for real robotics applications:**
 
-- ⚡ **366 ns** - CmdVel (motor control)
-- ⚡ **543 ns** - IMU (sensor fusion)
-- ⚡ **1.58 μs** - LaserScan (2D lidar)
-- ⚡ **774 ns** - Odometry (localization)
-- ⚡ **215 μs** - PointCloud with 10K points
+- **366 ns** - CmdVel (motor control)
+- **543 ns** - IMU (sensor fusion)
+- **1.58 μs** - LaserScan (2D lidar)
+- **774 ns** - Odometry (localization)
+- **215 μs** - PointCloud with 10K points
 
 **100-270x faster than ROS2** across all message types.
 
@@ -348,4 +348,4 @@ See [`results/production_messages_benchmark.md`](results/production_messages_ben
 - Technical implementation notes
 - Recommendations for optimization
 
-**Build faster. Debug easier. Deploy with confidence.** 🤖
+**Build faster. Debug easier. Deploy with confidence.** 

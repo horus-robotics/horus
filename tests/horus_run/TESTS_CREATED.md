@@ -31,7 +31,7 @@ This document lists all files created for the `horus run` command test suite.
    - Test statistics
    - Quick reference guide
 
-### 🧪 Test Scripts
+### Test Scripts
 
 4. **test_python_exec.sh** (3.2 KB)
    - **9 tests** for Python execution
@@ -61,7 +61,7 @@ This document lists all files created for the `horus run` command test suite.
     - **10 tests** for IPC and robotics applications
     - Tests: Node trait, pub/sub, sensors, control loops, threading, state machines
 
-### 🚀 Master Test Runner
+### Master Test Runner
 
 11. **run_all.sh** (3.4 KB)
     - Runs all test suites in logical order
@@ -69,7 +69,7 @@ This document lists all files created for the `horus run` command test suite.
     - Returns proper exit codes for CI/CD
     - Color-coded results
 
-### 📦 Fixture Files
+### Fixture Files
 
 12. **fixtures/simple_python.py** (0.2 KB)
     - Basic Python hello world for testing
@@ -151,7 +151,7 @@ cd /home/lord-patpak/horus/HORUS/tests/horus_run
 
 ## Test Features
 
-### ✅ What's Tested
+### What's Tested
 
 #### Language Support
 - Python: execution, imports, syntax validation, exit codes
@@ -183,7 +183,7 @@ cd /home/lord-patpak/horus/HORUS/tests/horus_run
 - Timing and scheduling
 - Error handling in robotics context
 
-### ✅ Quality Assurance
+### Quality Assurance
 
 - Isolated test environments (temp dirs)
 - Automatic cleanup (trap EXIT)
@@ -202,11 +202,11 @@ cd /home/lord-patpak/horus/HORUS/tests/horus_run
 - IPC patterns: 75%
 
 ### Error Scenarios
-- Compilation errors: ✅
-- Runtime errors: ✅
-- Missing files: ✅
-- Syntax errors: ✅
-- Missing dependencies: ✅
+- Compilation errors: 
+- Runtime errors: 
+- Missing files: 
+- Syntax errors: 
+- Missing dependencies: 
 
 ## CI/CD Integration
 
@@ -226,23 +226,23 @@ Example usage in CI pipeline:
 ## Production Readiness
 
 All 69 tests validate production-readiness:
-- ✅ Language support complete (Python, Rust, C)
-- ✅ Execution modes validated
-- ✅ Build caching functional
-- ✅ Dependency resolution working
-- ✅ Robotics patterns tested
-- ✅ Error handling comprehensive
+- Language support complete (Python, Rust, C)
+- Execution modes validated
+- Build caching functional
+- Dependency resolution working
+- Robotics patterns tested
+- Error handling comprehensive
 
 ## Comparison to TEST_PLAN.md
 
 | Category | Planned | Implemented | Coverage |
 |----------|---------|-------------|----------|
 | Language Execution | 4 suites | 3 suites | 75% |
-| Auto-Detection | 6 tests | 11 tests | 183% ✅ |
-| Build Modes | 4 tests | 10 tests | 250% ✅ |
-| Dependencies | 6 tests | 10 tests | 167% ✅ |
-| IPC/Robotics | 5 tests | 10 tests | 200% ✅ |
-| **Total** | **25 tests** | **69 tests** | **276% ✅** |
+| Auto-Detection | 6 tests | 11 tests | 183%  |
+| Build Modes | 4 tests | 10 tests | 250%  |
+| Dependencies | 6 tests | 10 tests | 167%  |
+| IPC/Robotics | 5 tests | 10 tests | 200%  |
+| **Total** | **25 tests** | **69 tests** | **276% ** |
 
 *Note: Implemented coverage exceeds plan by including more comprehensive test cases*
 
@@ -287,6 +287,6 @@ October 3, 2025
 
 ---
 
-**Production-ready test suite for `horus run` command!** 🚀
+**Production-ready test suite for `horus run` command!** 
 
 **Key Achievement**: 69 comprehensive tests covering all aspects of robotics application execution across Python, Rust, and C.

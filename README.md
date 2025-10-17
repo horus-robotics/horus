@@ -4,7 +4,7 @@
 
 HORUS is a modern Rust-based robotics framework designed for real-time performance, shared memory communication, and comprehensive system monitoring. Built for both research and production robotics applications.
 
-## 🚀 Key Features
+## Key Features
 
 ### **Real-Time Performance**
 - **Production Latency**: 366ns-2.8μs (16B-120KB messages)
@@ -26,7 +26,7 @@ HORUS is a modern Rust-based robotics framework designed for real-time performan
 - **Performance Benchmarks**: Comprehensive latency testing and optimization
 - **Dashboard Monitoring**: Web and terminal UI for real-time system monitoring
 
-## 🔧 Installation
+## Installation
 
 ### Prerequisites
 
@@ -53,10 +53,10 @@ cd horus
 ```
 
 **What happens during installation:**
-- ✅ Builds all packages in release mode (`cargo build --release`)
-- ✅ Installs `horus` CLI to `~/.cargo/bin/`
-- ✅ Installs runtime libraries to `~/.horus/cache/`
-- ✅ Verifies installation and tests `horus` command
+- Builds all packages in release mode (`cargo build --release`)
+- Installs `horus` CLI to `~/.cargo/bin/`
+- Installs runtime libraries to `~/.horus/cache/`
+- Verifies installation and tests `horus` command
 
 **After installation, you can create projects anywhere:**
 ```bash
@@ -117,7 +117,7 @@ The script will:
 - Ask before removing entire `~/.horus/` directory
 - Preserve project-local `.horus/` directories
 
-## 🏗️ Quick Start
+## Quick Start
 
 ### 1. Create a New Project
 ```bash
@@ -184,7 +184,7 @@ SensorNode initialized
 [12:34:56.223] [IPC: 370ns | Tick: 11µs] SensorNode --PUB--> 'sensor_data' = 0.1
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 HORUS/
@@ -208,7 +208,7 @@ HORUS/
 └── docs-site/                  # Documentation website
 ```
 
-## 🎮 CLI Commands
+## CLI Commands
 
 ### Project Management
 ```bash
@@ -270,7 +270,7 @@ horus dashboard 3001            # Custom port
 horus dashboard -t              # Terminal UI mode
 ```
 
-## 🏗️ Core API
+## Core API
 
 ### Scheduler
 ```rust
@@ -364,7 +364,7 @@ node! {
 }
 ```
 
-## 🎯 Example Applications
+## Example Applications
 
 ### SnakeSim (Uni - Multi-Node Game)
 ```bash
@@ -385,7 +385,7 @@ cargo run --release
 
 Complete 2D robotics simulator with Bevy visualization and Rapier2D physics.
 
-## 🔍 Monitoring
+## Monitoring
 
 HORUS provides automatic monitoring through NodeInfo:
 
@@ -409,7 +409,7 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 - `errors_count` - Error count
 - `uptime_seconds` - Node uptime
 
-## 🚀 Remote Deployment
+## Remote Deployment
 
 Deploy to physical robots via HTTP:
 
@@ -428,7 +428,7 @@ horus run --remote 192.168.1.100:8080
 cargo run --release -p horus_daemon
 ```
 
-## 📦 Shared Memory
+## Shared Memory
 
 HORUS uses `/dev/shm` for zero-copy IPC:
 
@@ -445,7 +445,7 @@ df -h /dev/shm
 - Custom: `Hub::new_with_capacity(topic, 2048)`
 - Location: `/dev/shm/horus/<topic_name>`
 
-## 🧪 Multi-Language Support
+## Multi-Language Support
 
 ### Python
 ```python
@@ -472,7 +472,7 @@ void tick(NodeInfo* ctx) {
 }
 ```
 
-## 🎯 Use Cases
+## Use Cases
 
 ### Research & Education
 - Clean API for learning robotics
@@ -489,7 +489,7 @@ void tick(NodeInfo* ctx) {
 - Comprehensive system monitoring
 - Memory-safe message passing for 24/7 operation
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create feature branch: `git checkout -b feature/amazing-feature`
@@ -497,17 +497,17 @@ void tick(NodeInfo* ctx) {
 4. Push to branch: `git push origin feature/amazing-feature`
 5. Open Pull Request
 
-## 📄 License
+## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
-## 🤝 Contributor License Agreement
+## Contributor License Agreement
 
 By contributing to HORUS, you agree to our [Contributor License Agreement](.github/CLA.md). This helps us maintain the project's licensing integrity while protecting both contributors and users.
 
 ---
 
-## 🌟 Why HORUS?
+## Why HORUS?
 
 | Feature | HORUS | ROS2 |
 |---------|-------|------|
@@ -518,6 +518,6 @@ By contributing to HORUS, you agree to our [Contributor License Agreement](.gith
 | **Debugging** | Built-in dashboard | External tools (rviz/rqt) |
 | **Learning Curve** | Simple `tick()` method | Complex lifecycles |
 
-**HORUS: Real-time robotics made simple** 🤖
+**HORUS: Real-time robotics made simple** 
 
 *Build faster. Debug easier. Deploy with confidence.*

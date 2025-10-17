@@ -74,15 +74,15 @@ bash -x ./test_python_exec.sh
 ## Test Output
 
 Each test outputs:
-- ✅ **PASS** - Test succeeded
-- ❌ **FAIL** - Test failed with error message
+- **PASS** - Test succeeded
+- **FAIL** - Test failed with error message
 
 Example:
 ```bash
 === Testing Python Execution with horus run ===
-Test 1: Run simple Python file... ✅ PASS
-Test 2: Python with shebang... ✅ PASS
-Test 3: Python file without extension... ✅ PASS
+Test 1: Run simple Python file...  PASS
+Test 2: Python with shebang...  PASS
+Test 3: Python file without extension...  PASS
 ...
 All Python execution tests passed!
 ```
@@ -252,13 +252,13 @@ gcc --version
 ## Success Criteria
 
 For production readiness:
-- ✅ All 69 tests must pass
-- ✅ All languages execute correctly
-- ✅ Auto-detection works reliably
-- ✅ Build caching functions properly
-- ✅ Dependencies resolve correctly
-- ✅ Robotics patterns work as expected
-- ✅ Error messages are helpful
+- All 69 tests must pass
+- All languages execute correctly
+- Auto-detection works reliably
+- Build caching functions properly
+- Dependencies resolve correctly
+- Robotics patterns work as expected
+- Error messages are helpful
 
 ## Production Launch Checklist
 
