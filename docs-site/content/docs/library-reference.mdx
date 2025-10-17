@@ -6,7 +6,7 @@ order: 13
 
 # Library Reference
 
-> **⚠️ Under Development**: The HORUS Standard Library is currently under active development. Some nodes and features described may be incomplete or subject to change.
+> **Under Development**: The HORUS Standard Library is currently under active development. Some nodes and features described may be incomplete or subject to change.
 
 The HORUS Standard Library (`horus_library`) provides ready-to-use message types, nodes, algorithms, and tools for robotics applications. Use these components to accelerate development and ensure compatibility across projects.
 
@@ -754,7 +754,7 @@ horus_library = { version = "0.1", features = [
 
 **Fixed-size types (recommended):**
 ```rust
-// ✅ Good - fixed size, safe for shared memory
+// Good - fixed size, safe for shared memory
 pub struct LaserScan {
     pub ranges: [f32; 360],  // Fixed array
 }
@@ -762,7 +762,7 @@ pub struct LaserScan {
 
 **Dynamic types (avoid in messages):**
 ```rust
-// ❌ Bad - heap allocation, not safe for shared memory
+// Bad - heap allocation, not safe for shared memory
 pub struct BadMessage {
     pub data: Vec<f32>,      // Heap-allocated
     pub name: String,        // Heap-allocated

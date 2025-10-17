@@ -253,7 +253,7 @@ impl Node for TemperatureDisplay {
 
     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         if let Some(temp) = self.subscriber.recv(ctx) {
-            println!("🌡️  Current temperature: {:.1}°C", temp);
+            println!("Current temperature: {:.1}°C", temp);
         }
     }
 }
@@ -275,9 +275,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 Run it:
 ```bash
 $ horus run temperature_monitor.rs
-🌡️  Current temperature: 20.1°C
-🌡️  Current temperature: 20.2°C
-🌡️  Current temperature: 20.3°C
+Current temperature: 20.1°C
+Current temperature: 20.2°C
+Current temperature: 20.3°C
 ```
 
 ## What Makes HORUS Different?
@@ -308,29 +308,29 @@ $ horus run temperature_monitor.rs
 
 ## Learning Path
 
-**🚀 Quick Start** (30 minutes)
+** Quick Start** (30 minutes)
 1. [Installation](/getting-started/installation) - Install HORUS
 2. [Quick Start](/getting-started/quick-start) - Build your first app
 3. [CLI Reference](/docs/cli-reference) - Learn the commands
 
-**📚 Core Concepts** (2 hours)
+**Core Concepts** (2 hours)
 4. [Nodes](/docs/core-concepts-nodes) - Build components
 5. [Hub](/docs/core-concepts-hub) - Send and receive messages
 6. [Scheduler](/docs/core-concepts-scheduler) - Run your application
 
-**🎯 Practical Features** (3 hours)
+**Practical Features** (3 hours)
 7. [node! Macro](/docs/node-macro) - Eliminate boilerplate
 8. [Message Types](/docs/message-types) - Work with data safely
 9. [Dashboard](/docs/dashboard) - Monitor and debug
 
-**🌟 Advanced** (When you need it)
+**Advanced** (When you need it)
 10. [Multi-Language](/docs/multi-language) - Python and C
 11. [Performance](/docs/performance) - Optimize for speed
 12. [Examples](/docs/examples) - Real projects
 
 ## When to Use HORUS
 
-**✅ Great for:**
+**Great for:**
 - Multi-component applications
 - Real-time data processing
 - Sensor data fusion
@@ -338,7 +338,7 @@ $ horus run temperature_monitor.rs
 - Parallel processing pipelines
 - Distributed applications on one machine
 
-**❌ Not ideal for:**
+**Not ideal for:**
 - Single-script programs (use plain Rust/Python instead)
 - Over-the-internet communication (use gRPC/HTTP instead)
 - Simple CRUD apps (use web frameworks instead)
@@ -381,4 +381,4 @@ Ready to build with HORUS?
 
 **Questions?** Check out the [CLI Reference](/docs/cli-reference) or [Architecture](/docs/architecture) pages.
 
-Let's build something amazing! 🚀
+Let's build something amazing! 

@@ -220,7 +220,7 @@ pub enum NodeState {
 Must implement: `Clone + Debug + Send + Sync`
 
 ```rust
-// ✅ Valid
+// Valid
 Hub::<f32>::new("topic")?;
 Hub::<String>::new("topic")?;
 Hub::<[f32; 3]>::new("topic")?;
@@ -232,7 +232,7 @@ struct MyMessage {
 }
 Hub::<MyMessage>::new("topic")?;
 
-// ❌ Invalid
+// Invalid
 struct NoClone { data: f32 }  // Missing Clone
 Hub::<NoClone>::new("topic")?;  // Won't compile
 ```
@@ -316,14 +316,14 @@ fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
 ### Keep tick() Fast
 
 ```rust
-// ✅ Good - completes quickly
+// Good - completes quickly
 fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
     if let Some(data) = self.sub.recv(ctx) {
         self.pub.send(data * 2.0, ctx).ok();
     }
 }
 
-// ❌ Bad - blocks tick loop
+// Bad - blocks tick loop
 fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
     std::thread::sleep(Duration::from_secs(1));  // Don't do this!
     self.pub.send(42.0, ctx).ok();
@@ -333,12 +333,12 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 ### Use Meaningful Topic Names
 
 ```rust
-// ✅ Good
+// Good
 Hub::new("cmd_vel")?;
 Hub::new("sensor/temperature")?;
 Hub::new("robot1/pose")?;
 
-// ❌ Bad
+// Bad
 Hub::new("data")?;
 Hub::new("x")?;
 ```
@@ -346,13 +346,13 @@ Hub::new("x")?;
 ### Handle Errors Appropriately
 
 ```rust
-// ✅ Good
+// Good
 if let Err(data) = hub.send(data, ctx) {
     ctx.log_warning("Failed to send");
     // Handle error
 }
 
-// ❌ Bad - silently ignores errors
+// Bad - silently ignores errors
 hub.send(data, ctx);  // .ok() or .unwrap() without handling
 ```
 

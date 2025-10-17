@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { FiGithub, FiMenu } from "react-icons/fi";
 
 interface DocsNavProps {
   onMenuClick?: () => void;
@@ -17,10 +16,10 @@ export function DocsNav({ onMenuClick }: DocsNavProps) {
             {onMenuClick && (
               <button
                 onClick={onMenuClick}
-                className="lg:hidden p-2 hover:bg-[var(--surface)] rounded-md transition-colors touch-manipulation"
+                className="lg:hidden px-3 py-2 hover:bg-[var(--surface)] rounded-md transition-colors touch-manipulation text-sm font-medium"
                 aria-label="Open menu"
               >
-                <FiMenu className="w-5 h-5" />
+                Menu
               </button>
             )}
 
@@ -57,11 +56,11 @@ export function DocsNav({ onMenuClick }: DocsNavProps) {
               href="https://github.com/neos-builder/horus"
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2 text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors touch-manipulation"
+              className="text-sm px-3 py-1.5 bg-[var(--surface)] border border-[var(--border)] rounded-md text-[var(--text-secondary)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors touch-manipulation"
               title="GitHub Repository"
               aria-label="GitHub Repository"
             >
-              <FiGithub className="w-5 h-5" />
+              GitHub
             </a>
           </div>
         </div>

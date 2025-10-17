@@ -505,7 +505,7 @@ node! {
 
 **Use hierarchical structure:**
 ```yaml
-# ✅ Good
+# Good
 motion:
   max_linear_velocity: 1.5
   max_angular_velocity: 2.0
@@ -514,7 +514,7 @@ control:
     kp: 1.0
     ki: 0.1
 
-# ❌ Bad
+# Bad
 max_linear_velocity: 1.5
 max_angular_velocity: 2.0
 pid_kp: 1.0
@@ -523,12 +523,12 @@ pid_ki: 0.1
 
 **Use descriptive names:**
 ```yaml
-# ✅ Good
+# Good
 sensors:
   lidar_scan_rate_hz: 10
   camera_resolution_width: 1920
 
-# ❌ Bad
+# Bad
 sensors:
   rate: 10
   w: 1920
@@ -536,12 +536,12 @@ sensors:
 
 **Use consistent casing:**
 ```yaml
-# ✅ Good (snake_case)
+# Good (snake_case)
 motion:
   max_speed: 1.5
   acceleration_limit: 0.5
 
-# ❌ Bad (mixed casing)
+# Bad (mixed casing)
 motion:
   maxSpeed: 1.5
   acceleration_limit: 0.5
@@ -552,20 +552,20 @@ motion:
 **Never crash on missing parameters:**
 
 ```rust
-// ✅ Good - provides fallback
+// Good - provides fallback
 let speed = ctx.params.get_f64("motion.max_speed", 1.5);
 
-// ❌ Bad - panics if missing
+// Bad - panics if missing
 let speed = ctx.params.get::<f64>("motion.max_speed").unwrap();
 ```
 
 **Use sensible defaults:**
 ```rust
-// ✅ Good - safe defaults
+// Good - safe defaults
 let emergency_stop = ctx.params.get_bool("safety.emergency_stop", true);  // Default to safe state
 let max_speed = ctx.params.get_f64("motion.max_speed", 1.0);  // Default to slow
 
-// ❌ Bad - unsafe defaults
+// Bad - unsafe defaults
 let emergency_stop = ctx.params.get_bool("safety.emergency_stop", false);  // Unsafe!
 let max_speed = ctx.params.get_f64("motion.max_speed", 100.0);  // Too fast!
 ```
@@ -693,10 +693,10 @@ Parameter 'motion.max_speed' expected f64, got String
 
 Check YAML format:
 ```yaml
-# ❌ Wrong - string
+# Wrong - string
 max_speed: "1.5"
 
-# ✅ Correct - number
+# Correct - number
 max_speed: 1.5
 ```
 
@@ -734,13 +734,13 @@ Parameters use `Arc<RwLock<BTreeMap>>`:
 - **Thread-safe**: Multiple nodes can read simultaneously
 
 **Fast enough for:**
-- ✅ Loading parameters in `init()` (one-time)
-- ✅ Checking parameters every tick (60 Hz)
-- ✅ Checking parameters every 100 ticks (~1 second)
+- Loading parameters in `init()` (one-time)
+- Checking parameters every tick (60 Hz)
+- Checking parameters every 100 ticks (~1 second)
 
 **Too slow for:**
-- ❌ Reading hundreds of parameters every tick
-- ❌ Using as real-time message passing (use `Hub` instead)
+- Reading hundreds of parameters every tick
+- Using as real-time message passing (use `Hub` instead)
 
 ### Caching Strategy
 

@@ -131,9 +131,9 @@ Nodes transition through well-defined states during their lifetime:
 
 ```
 Uninitialized → Initializing → Running → Stopping → Stopped
-                                  ↓
+                                  ->
                                Error → Running
-                                  ↓
+                                  ->
                               Crashed (terminal)
 ```
 

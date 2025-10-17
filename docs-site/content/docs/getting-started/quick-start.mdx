@@ -123,7 +123,7 @@ impl Node for TemperatureMonitor {
     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         // Check for new temperature readings
         if let Some(temp) = self.subscriber.recv(ctx) {
-            println!("🌡️  Temperature: {:.1}°C", temp);
+            println!("Temperature: {:.1}°C", temp);
         }
     }
 }
@@ -171,10 +171,10 @@ You'll see:
 ```
 Starting temperature monitoring system...
 
-🌡️  Temperature: 20.1°C
-🌡️  Temperature: 20.2°C
-🌡️  Temperature: 20.3°C
-🌡️  Temperature: 20.4°C
+Temperature: 20.1°C
+Temperature: 20.2°C
+Temperature: 20.3°C
+Temperature: 20.4°C
 ...
 ```
 
@@ -240,11 +240,11 @@ Try modifying the code:
 impl Node for TemperatureMonitor {
     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         if let Some(temp) = self.subscriber.recv(ctx) {
-            println!("🌡️  Temperature: {:.1}°C", temp);
+            println!("Temperature: {:.1}°C", temp);
 
             // Alert if too hot!
             if temp > 25.0 {
-                println!("⚠️  WARNING: Temperature too high!");
+                println!(" WARNING: Temperature too high!");
             }
         }
     }
@@ -267,7 +267,7 @@ impl Node for TemperatureMonitor {
     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         if let Some(temp) = self.subscriber.recv(ctx) {
             // Display
-            println!("🌡️  Temperature: {:.1}°C", temp);
+            println!("Temperature: {:.1}°C", temp);
 
             // Save to file
             let mut file = OpenOptions::new()
@@ -361,11 +361,11 @@ scheduler.register(Box::new(Monitor::new()?), 1, Some(true));
 
 ## What You've Learned
 
-✅ How to create a HORUS project
-✅ The Node trait pattern
-✅ Using Hub for communication
-✅ Running multiple nodes with a Scheduler
-✅ Sending and receiving messages
+How to create a HORUS project
+The Node trait pattern
+Using Hub for communication
+Running multiple nodes with a Scheduler
+Sending and receiving messages
 
 ## Ready for More?
 
@@ -375,4 +375,4 @@ Your next steps:
 2. **[Run the examples](/docs/examples)** to see real applications
 3. **[Open the dashboard](/docs/dashboard)** to monitor your system
 
-**Keep building!** 🚀
+**Keep building!** 

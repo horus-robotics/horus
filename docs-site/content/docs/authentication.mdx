@@ -6,7 +6,7 @@ order: 11
 
 # Authentication
 
-> **⚠️ Under Development**: The authentication and registry features described in this guide are currently under active development. Some functionality may be incomplete or subject to change.
+> **Under Development**: The authentication and registry features described in this guide are currently under active development. Some functionality may be incomplete or subject to change.
 
 Authentication is required for publishing packages, sharing environments, and accessing private registry resources. HORUS uses GitHub OAuth for interactive login and API keys for automated systems.
 
@@ -175,7 +175,7 @@ Description (optional): GitHub Actions deployment
 Generated API key:
   horus_live_abc123def456ghi789jkl012mno345pqr678stu901
 
-⚠ WARNING: Copy this key now. It won't be shown again.
+WARNING: WARNING: Copy this key now. It won't be shown again.
 
 Save to environment variable:
   export HORUS_API_KEY=horus_live_abc123def456ghi789jkl012mno345pqr678stu901
@@ -448,19 +448,19 @@ horus publish
 ### Token Security
 
 **Do's:**
-- ✅ Use API keys for CI/CD (not OAuth tokens)
-- ✅ Rotate keys every 90 days
-- ✅ Use different keys for different environments
-- ✅ Store keys in CI/CD secrets management
-- ✅ Revoke unused keys immediately
-- ✅ Use environment variables (not command-line flags)
+- Use API keys for CI/CD (not OAuth tokens)
+- Rotate keys every 90 days
+- Use different keys for different environments
+- Store keys in CI/CD secrets management
+- Revoke unused keys immediately
+- Use environment variables (not command-line flags)
 
 **Don'ts:**
-- ❌ Never commit credentials to git
-- ❌ Never share API keys between team members
-- ❌ Never log API keys
-- ❌ Never use same key for prod and dev
-- ❌ Never hardcode keys in source code
+- Never commit credentials to git
+- Never share API keys between team members
+- Never log API keys
+- Never use same key for prod and dev
+- Never hardcode keys in source code
 
 ### Credentials File Security
 

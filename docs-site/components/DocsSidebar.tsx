@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FiChevronDown, FiChevronRight, FiX } from "react-icons/fi";
 import { useState, useEffect } from "react";
 
 interface DocLink {
@@ -113,11 +112,7 @@ export function DocsSidebar({ isOpen = true, onClose }: DocsSidebarProps) {
               onClick={() => toggleSection(section.title)}
               className="flex items-center gap-2 w-full text-left font-semibold text-[var(--text-primary)] hover:text-[var(--accent)] transition-colors mb-2 touch-manipulation"
             >
-              {isExpanded ? (
-                <FiChevronDown className="w-4 h-4" />
-              ) : (
-                <FiChevronRight className="w-4 h-4" />
-              )}
+              <span className="text-xs">{isExpanded ? '▼' : '▶'}</span>
               {section.title}
             </button>
 
@@ -183,10 +178,10 @@ export function DocsSidebar({ isOpen = true, onClose }: DocsSidebarProps) {
           <span className="font-semibold text-[var(--text-primary)]">Documentation</span>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-[var(--surface)] rounded-md transition-colors touch-manipulation"
+            className="px-3 py-1 hover:bg-[var(--surface)] rounded-md transition-colors touch-manipulation text-sm font-medium"
             aria-label="Close menu"
           >
-            <FiX className="w-5 h-5" />
+            Close
           </button>
         </div>
         {sidebarContent}
