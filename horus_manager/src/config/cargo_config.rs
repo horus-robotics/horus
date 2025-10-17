@@ -114,7 +114,7 @@ impl CargoConfig {
             .with_context(|| format!("Failed to read {:?}", path))?;
 
         // Parse as raw TOML first
-        let mut cargo_toml: toml::Value = toml::from_str(&contents)
+        let cargo_toml: toml::Value = toml::from_str(&contents)
             .with_context(|| format!("Failed to parse {:?} as TOML", path))?;
 
         // Extract package.metadata.horus if it exists

@@ -2,7 +2,7 @@ use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 use std::path::Path;
 use std::thread;
-use horus_core::error::{HorusResult, HorusError};
+use horus_core::error::HorusResult;
 use horus_core::core::{NodeState, NodeHeartbeat, HealthStatus};
 
 // Data structures for comprehensive monitoring

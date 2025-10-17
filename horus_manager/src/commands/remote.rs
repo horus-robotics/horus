@@ -3,8 +3,6 @@ use colored::Colorize;
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use serde::{Deserialize, Serialize};
-use std::fs::File;
-use std::io::Write;
 use std::path::PathBuf;
 use tar::Builder;
 

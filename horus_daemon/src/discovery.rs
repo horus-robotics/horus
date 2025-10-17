@@ -1,7 +1,6 @@
 use mdns_sd::{ServiceDaemon, ServiceInfo};
 use std::net::IpAddr;
 use std::sync::Arc;
-use std::time::Duration;
 
 const SERVICE_TYPE: &str = "_horus._tcp.local.";
 const SERVICE_PORT: u16 = 8080;

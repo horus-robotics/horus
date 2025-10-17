@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::ffi::{CStr, c_char, c_void};
 use std::sync::{Mutex, atomic::{AtomicU32, Ordering}};
 use std::time::{SystemTime, UNIX_EPOCH};
-use horus_core::{Hub, Node, NodeInfo, Scheduler};
+use horus_core::Hub;
 
 // Handle management
 static NEXT_HANDLE: AtomicU32 = AtomicU32::new(1);

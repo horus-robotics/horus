@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
-use crate::{AppConfig, RobotConfig, WorldConfig};
+use crate::AppConfig;
 use std::path::PathBuf;
 
 /// UI state resource

@@ -15,7 +15,7 @@ use sha2::{Sha256, Digest};
 use chrono::{DateTime, Utc};
 use colored::*;
 use semver::Version;
-use crate::dependency_resolver::{PackageProvider, DependencySpec, DependencyResolver};
+use crate::dependency_resolver::{PackageProvider, DependencySpec};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Package {

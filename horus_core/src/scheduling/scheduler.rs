@@ -1,4 +1,4 @@
-use crate::core::{Node, NodeInfo, NodeState, NodeHeartbeat};
+use crate::core::{Node, NodeInfo, NodeHeartbeat};
 use crate::error::HorusResult;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
