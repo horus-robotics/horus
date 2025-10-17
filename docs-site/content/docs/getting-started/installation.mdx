@@ -30,17 +30,23 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source $HOME/.cargo/env
 
 # 2. Clone HORUS
-git clone https://github.com/your-org/HORUS
-cd HORUS
+git clone https://github.com/neos-builder/horus.git
+cd horus/HORUS
 
-# 3. Install the horus CLI (takes ~5 minutes)
-cargo install --path horus_manager
+# 3. Run automated installer (takes ~5 minutes)
+./install.sh
 
 # 4. Verify it works
 horus --version
 ```
 
 If you see `horus 0.3.0` (or similar), you're all set! Skip to [Next Steps](#next-steps).
+
+**What the installer does:**
+- ✅ Builds the `horus` CLI tool
+- ✅ Installs core libraries (`horus`, `horus_library`) to `~/.horus/cache/`
+- ✅ Tracks the installed version for automatic updates
+- ✅ Verifies installation with built-in tests
 
 ## Step-by-Step Installation
 
@@ -101,22 +107,28 @@ sudo dnf install git
 Download the HORUS source code:
 
 ```bash
-git clone https://github.com/your-org/HORUS
-cd HORUS
+git clone https://github.com/neos-builder/horus.git
+cd horus/HORUS
 ```
 
-This creates a `HORUS` directory with all the code.
+This creates a `horus/HORUS` directory with all the code.
 
-### Step 4: Build and Install
+### Step 4: Run the Installer
 
-Build everything and install the `horus` command globally:
+Use the automated installer to build and install everything:
 
 ```bash
-# This takes ~5 minutes the first time
-cargo install --path horus_manager
+./install.sh
 ```
 
-You'll see a lot of output - that's normal! Rust is compiling everything.
+This script:
+1. Builds all HORUS packages (takes ~5 minutes)
+2. Installs the `horus` CLI to `~/.cargo/bin/`
+3. Installs core libraries to `~/.horus/cache/`
+4. Saves version information for updates
+5. Runs verification tests
+
+You'll see colored output showing progress - green checkmarks ✅ mean success!
 
 ### Step 5: Verify Installation
 
@@ -234,29 +246,55 @@ sudo mount -o remount,size=2G /dev/shm
 To update to the latest version:
 
 ```bash
+# Navigate to HORUS directory
+cd horus/HORUS
+
 # Pull latest changes
-cd HORUS
 git pull
 
-# Rebuild and reinstall
-cargo install --path horus_manager --force
+# Run installer again (auto-detects version changes)
+./install.sh
 ```
 
-The `--force` flag replaces the old version.
+The installer automatically:
+- Detects version changes
+- Removes old library versions
+- Rebuilds and reinstalls everything
+- Updates the CLI tool
+
+You'll see a message like: `⚠ Version changed: 0.3.0 → 0.3.1`
 
 ## Uninstalling
 
 To completely remove HORUS:
 
 ```bash
-# Remove the horus command
-cargo uninstall horus_manager
+# Navigate to HORUS directory
+cd horus/HORUS
+
+# Run the uninstaller
+./uninstall.sh
+```
+
+This removes:
+- ✅ The `horus` CLI command
+- ✅ All cached libraries (`~/.horus/cache/`)
+- ✅ Version tracking files
+- ✅ Shared memory files (`/dev/shm/horus/`)
+
+**Manual uninstall (if needed):**
+```bash
+# Remove CLI tool
+cargo uninstall horus
+
+# Remove global cache
+rm -rf ~/.horus/
 
 # Remove source code
-rm -rf ~/HORUS  # or wherever you cloned it
+rm -rf ~/horus/  # or wherever you cloned it
 
-# Clean up shared memory files (optional)
-rm -f /dev/shm/horus/*
+# Clean up shared memory
+rm -rf /dev/shm/horus/
 ```
 
 ## Troubleshooting
