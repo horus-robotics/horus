@@ -43,10 +43,10 @@ horus --version
 If you see `horus 0.3.0` (or similar), you're all set! Skip to [Next Steps](#next-steps).
 
 **What the installer does:**
-- ✅ Builds the `horus` CLI tool
-- ✅ Installs core libraries (`horus`, `horus_library`) to `~/.horus/cache/`
-- ✅ Tracks the installed version for automatic updates
-- ✅ Verifies installation with built-in tests
+- Builds the `horus` CLI tool
+- Installs core libraries (`horus`, `horus_library`) to `~/.horus/cache/`
+- Tracks the installed version for automatic updates
+- Verifies installation with built-in tests
 
 ## Step-by-Step Installation
 
@@ -128,7 +128,7 @@ This script:
 4. Saves version information for updates
 5. Runs verification tests
 
-You'll see colored output showing progress - green checkmarks ✅ mean success!
+You'll see colored output showing progress - green checkmarks mean success!
 
 ### Step 5: Verify Installation
 
@@ -165,7 +165,7 @@ cd horus_py
 maturin develop --release
 
 # 4. Test it works
-python -c "import horus; print('✅ Python bindings work!')"
+python -c "import horus; print('Python bindings work!')"
 ```
 
 See [Multi-Language](/docs/multi-language) for Python examples.
@@ -262,7 +262,7 @@ The installer automatically:
 - Rebuilds and reinstalls everything
 - Updates the CLI tool
 
-You'll see a message like: `⚠️ Version changed: 0.3.0 → 0.3.1`
+You'll see a message like: `WARNING: Version changed: 0.3.0 → 0.3.1`
 
 ## Uninstalling
 
@@ -278,9 +278,9 @@ cd horus/HORUS
 
 This removes:
 - The `horus` CLI command
-- ✅ All cached libraries (`~/.horus/cache/`)
-- ✅ Version tracking files
-- ✅ Shared memory files (`/dev/shm/horus/`)
+- All cached libraries (`~/.horus/cache/`)
+- Version tracking files
+- Shared memory files (`/dev/shm/horus/`)
 
 **Manual uninstall (if needed):**
 ```bash
