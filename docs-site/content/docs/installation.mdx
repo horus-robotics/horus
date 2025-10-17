@@ -1,0 +1,271 @@
+---
+title: Installation
+description: How to install and set up HORUS on your system
+order: 2
+---
+
+# Installation
+
+This guide will walk you through installing HORUS on your system and getting it ready for development.
+
+## Prerequisites
+
+Before installing HORUS, ensure you have the following installed:
+
+**Required:**
+- **Rust** (version 1.70 or later)
+- **Cargo** (comes with Rust)
+- **Git**
+
+**Optional but Recommended:**
+- **Python 3.8+** (for Python bindings)
+- **C Compiler** (GCC or Clang, for C bindings)
+
+## Quick Install
+
+The fastest way to get started with HORUS:
+
+```bash
+# Clone the repository
+git clone https://github.com/your-org/HORUS
+cd HORUS
+
+# Install the global CLI tool
+cargo install --path horus_manager
+
+# Verify installation
+horus --version
+```
+
+## Detailed Installation Steps
+
+### Step 1: Install Rust
+
+If you don't have Rust installed:
+
+```bash
+# On Linux/macOS
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Follow the prompts and restart your terminal
+source $HOME/.cargo/env
+
+# Verify installation
+rustc --version
+cargo --version
+```
+
+### Step 2: Clone HORUS
+
+```bash
+git clone https://github.com/your-org/HORUS
+cd HORUS
+```
+
+### Step 3: Build the Framework
+
+Build all HORUS components:
+
+```bash
+# Build everything (takes a few minutes first time)
+cargo build --release
+
+# Optional: Run tests to verify build
+cargo test
+```
+
+### Step 4: Install Global CLI
+
+Install the `horus` command globally:
+
+```bash
+cargo install --path horus_manager
+```
+
+This makes `horus` available system-wide in your terminal.
+
+### Step 5: Verify Installation
+
+Check that everything works:
+
+```bash
+# Check version
+horus --version
+
+# List available commands
+horus --help
+```
+
+## Platform-Specific Notes
+
+### Linux
+
+HORUS uses shared memory (`/dev/shm`) which is available on all modern Linux distributions. No special configuration needed.
+
+**Ubuntu/Debian:**
+```bash
+# Install build essentials if needed
+sudo apt-get update
+sudo apt-get install build-essential pkg-config
+```
+
+**Fedora/RHEL:**
+```bash
+# Install development tools
+sudo dnf groupinstall "Development Tools"
+```
+
+### macOS
+
+HORUS works on macOS with some limitations:
+
+- Shared memory is available but may have size limitations
+- Performance may vary compared to Linux
+
+```bash
+# Install Xcode Command Line Tools
+xcode-select --install
+```
+
+### Windows (WSL Recommended)
+
+For Windows, we recommend using **Windows Subsystem for Linux (WSL)**:
+
+```bash
+# Install WSL2 (PowerShell as Administrator)
+wsl --install
+
+# Then follow Linux installation instructions inside WSL
+```
+
+## Python Bindings (Optional)
+
+To use HORUS with Python:
+
+```bash
+# Navigate to Python bindings
+cd horus_py
+
+# Build and install
+maturin develop --release
+
+# Verify Python bindings
+python -c "import horus; print(horus.__version__)"
+```
+
+## C Bindings (Optional)
+
+To use HORUS with C:
+
+```bash
+# Build C bindings
+cd horus_c
+cargo build --release
+
+# The shared library will be in target/release/
+# libhorus_c.so (Linux) or libhorus_c.dylib (macOS)
+```
+
+## Environment Setup
+
+### Shell Configuration
+
+Add HORUS binaries to your PATH (if not already added by cargo install):
+
+```bash
+# Add to ~/.bashrc or ~/.zshrc
+export PATH="$HOME/.cargo/bin:$PATH"
+```
+
+### Shared Memory Configuration
+
+HORUS uses `/dev/shm` for shared memory IPC. Check available space:
+
+```bash
+df -h /dev/shm
+```
+
+If you need more space (Linux):
+
+```bash
+# Increase to 2GB (requires sudo)
+sudo mount -o remount,size=2G /dev/shm
+```
+
+## Updating HORUS
+
+To update to the latest version:
+
+```bash
+# Pull latest changes
+cd HORUS
+git pull
+
+# Rebuild and reinstall
+cargo build --release
+cargo install --path horus_manager --force
+```
+
+## Uninstalling
+
+To remove HORUS:
+
+```bash
+# Remove global CLI
+cargo uninstall horus_manager
+
+# Remove source directory
+rm -rf HORUS
+
+# Clean shared memory (optional)
+rm -f /dev/shm/horus_*
+```
+
+## Troubleshooting
+
+### "command not found: horus"
+
+Solution: Make sure `~/.cargo/bin` is in your PATH:
+
+```bash
+export PATH="$HOME/.cargo/bin:$PATH"
+source ~/.bashrc  # or ~/.zshrc
+```
+
+### Build fails with "linker not found"
+
+Solution: Install a C compiler:
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install build-essential
+
+# macOS
+xcode-select --install
+```
+
+### Shared memory errors
+
+Solution: Check `/dev/shm` permissions and space:
+
+```bash
+ls -la /dev/shm
+df -h /dev/shm
+```
+
+### Python bindings fail to build
+
+Solution: Install maturin:
+
+```bash
+pip install maturin
+```
+
+## Next Steps
+
+Now that HORUS is installed, you're ready to:
+
+- Follow the [Quick Start](/docs/quick-start) guide to build your first node
+- Explore [Core Concepts](/docs/core-concepts) to understand the framework
+- Check out [Examples](/docs/examples) to see HORUS in action
+

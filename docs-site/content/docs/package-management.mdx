@@ -1,0 +1,966 @@
+---
+title: Package Management
+description: Install, publish, and manage reusable HORUS components
+order: 8
+---
+
+# Package Management
+
+> **⚠️ Under Development**: The package management and registry features described in this guide are currently under active development. Some functionality may be incomplete or subject to change.
+
+HORUS provides a comprehensive package management system for sharing and discovering robotics components. Create reusable nodes, message types, and algorithms that the community can use.
+
+## Overview
+
+The package system allows you to:
+
+- **Install packages** from the registry
+- **Publish your work** for others to use
+- **Manage dependencies** automatically
+- **Version control** with semantic versioning
+- **Search and discover** community packages
+
+## Quick Start
+
+### Installing a Package
+
+```bash
+# Install latest version
+horus pkg install pid-controller
+
+# Install specific version
+horus pkg install pid-controller -v 1.2.0
+
+# Install globally (share across all projects)
+horus pkg install sensor-drivers -g
+```
+
+**What happens during installation:**
+1. Downloads package from registry
+2. Resolves dependencies automatically
+3. Caches locally in `~/.horus/cache/` or `.horus/packages/`
+4. Makes package available via `use` statements
+
+### Using an Installed Package
+
+```rust
+// In your main.rs or any file
+use pid_controller::PIDNode;
+use horus::prelude::*;
+
+fn main() {
+    let mut scheduler = Scheduler::new();
+
+    // Use the installed package
+    let pid = PIDNode::new(1.0, 0.1, 0.01);
+    scheduler.register(Box::new(pid), 5, Some(true));
+
+    scheduler.tick_all().expect("Scheduler failed");
+}
+```
+
+### Publishing Your Package
+
+```bash
+# 1. Authenticate first (one-time)
+horus auth login --github
+
+# 2. Navigate to your project
+cd my-awesome-controller
+
+# 3. Publish
+horus publish
+```
+
+## Package Locations
+
+### Local Packages
+
+**Project-local** (default):
+```
+my_project/
+├── .horus/
+│   └── packages/
+│       ├── pid-controller@1.0.0/
+│       └── sensor-drivers@2.1.3/
+└── src/
+    └── main.rs
+```
+
+**Why use local:**
+- Different projects can use different versions
+- Clean separation per project
+- Easy to delete with project
+
+### Global Packages
+
+**System-wide** (installed with `-g` flag):
+```
+~/.horus/
+└── cache/
+    ├── pid-controller@1.0.0/
+    ├── pid-controller@1.2.0/
+    └── sensor-drivers@2.1.3/
+```
+
+**Why use global:**
+- Share common packages across all projects
+- Save disk space (one copy for everything)
+- Faster install after first download
+
+### Priority Order
+
+When resolving packages, HORUS checks:
+1. Project-local `.horus/packages/` (highest priority)
+2. Global cache `~/.horus/cache/`
+3. System install `/usr/local/lib/horus/` (if available)
+
+## Package Commands
+
+### `horus pkg install`
+
+Install packages from the registry.
+
+**Usage:**
+```bash
+horus pkg install <package> [OPTIONS]
+```
+
+**Options:**
+- `-v, --version <VERSION>` - Install specific version (default: latest)
+- `-g, --global` - Install to global cache
+- `--no-deps` - Skip dependency installation
+- `--force` - Reinstall even if already present
+
+**Examples:**
+
+```bash
+# Latest version
+horus pkg install motion-planner
+
+# Specific version
+horus pkg install motion-planner -v 2.0.1
+
+# Global installation
+horus pkg install common-utils -g
+
+# Force reinstall
+horus pkg install pid-controller --force
+```
+
+**Output:**
+```
+Installing pid-controller@1.2.0...
+✓ Downloaded (245 KB)
+✓ Extracted to .horus/packages/pid-controller@1.2.0/
+✓ Installed dependencies: control-utils@1.0.0
+✓ Build successful
+
+Package installed: pid-controller@1.2.0
+Location: .horus/packages/pid-controller@1.2.0/
+
+Usage:
+  use pid_controller::PIDNode;
+```
+
+### `horus pkg remove`
+
+Uninstall a package.
+
+**Usage:**
+```bash
+horus pkg remove <package>
+```
+
+**Options:**
+- `-g, --global` - Remove from global cache
+- `--all-versions` - Remove all versions
+
+**Examples:**
+
+```bash
+# Remove local package
+horus pkg remove motion-planner
+
+# Remove from global cache
+horus pkg remove common-utils -g
+
+# Remove all versions
+horus pkg remove pid-controller --all-versions
+```
+
+**Output:**
+```
+Removing pid-controller@1.2.0...
+✓ Removed from .horus/packages/
+✓ Freed 892 KB
+
+Package removed: pid-controller@1.2.0
+```
+
+### `horus pkg list`
+
+List installed packages or search the registry.
+
+**List Local Packages:**
+```bash
+horus pkg list
+```
+
+**Output:**
+```
+Installed Packages (local):
+  pid-controller          1.2.0      PID controller node
+  motion-planner          2.0.1      A* path planning
+  sensor-drivers          1.5.0      LIDAR/IMU drivers
+
+Total: 3 packages
+```
+
+**List Global Cache:**
+```bash
+horus pkg list -g
+```
+
+**Search Registry:**
+```bash
+# Search all packages
+horus pkg list
+
+# Search by keyword
+horus pkg list sensor
+
+# Filter by author
+horus pkg list --author robotics-lab
+```
+
+**Output:**
+```
+Registry Packages (matching 'sensor'):
+  sensor-fusion           2.1.0      Kalman filter fusion         1,234 downloads
+  sensor-drivers          1.5.0      LIDAR/IMU/camera drivers    5,678 downloads
+  sensor-calibration      1.0.0      Calibration tools              432 downloads
+
+Total: 3 matches
+```
+
+### `horus pkg info`
+
+Show detailed information about a package.
+
+**Usage:**
+```bash
+horus pkg info <package>
+```
+
+**Example:**
+```bash
+horus pkg info pid-controller
+```
+
+**Output:**
+```
+Package: pid-controller
+Version: 1.2.0
+Author: robotics-lab
+License: MIT
+Description: Production-ready PID controller with anti-windup and derivative filtering
+
+Dependencies:
+  - control-utils ^1.0.0
+
+Features:
+  - Anti-windup protection
+  - Derivative filtering
+  - Setpoint ramping
+  - Output clamping
+
+Downloads: 5,234
+Published: 2025-09-15
+Repository: https://github.com/robotics-lab/pid-controller
+
+Installation:
+  horus pkg install pid-controller
+```
+
+## Publishing Packages
+
+### Prerequisites
+
+Before publishing:
+
+1. **Authenticate** with the registry:
+   ```bash
+   horus auth login --github
+   ```
+
+2. **Complete Cargo.toml** metadata:
+   ```toml
+   [package]
+   name = "my-awesome-package"
+   version = "1.0.0"
+   authors = ["Your Name <you@example.com>"]
+   description = "Brief description of your package"
+   license = "MIT"
+   repository = "https://github.com/username/my-awesome-package"
+
+   [package.metadata.horus]
+   category = "control"  # control, planning, perception, drivers, utils
+   keywords = ["pid", "controller", "motion"]
+   ```
+
+3. **Test your package** locally:
+   ```bash
+   horus run --release
+   ```
+
+### Publishing Workflow
+
+```bash
+# 1. Navigate to package directory
+cd my-awesome-package
+
+# 2. Verify everything builds
+horus run --build-only --release
+
+# 3. Publish
+horus publish
+```
+
+**Interactive prompts:**
+```
+Publishing my-awesome-package v1.0.0...
+
+✓ Package metadata validated
+✓ Build successful
+✓ Tests passed
+✓ Documentation generated
+
+Package size: 245 KB (compressed)
+
+Publish to registry? [y/N]: y
+
+Uploading...
+✓ Uploaded to registry
+
+Published: my-awesome-package@1.0.0
+Registry URL: https://registry.horus.dev/packages/my-awesome-package
+
+Others can now install with:
+  horus pkg install my-awesome-package
+```
+
+### Adding Documentation and Source Links
+
+After publishing, you'll be prompted to add optional metadata to help users discover and use your package:
+
+#### Documentation Options
+
+**External Documentation URL:**
+Link to your hosted documentation website (e.g., GitHub Pages, ReadTheDocs, custom site):
+
+```
+Documentation
+   Add documentation? (y/n): y
+
+   Documentation options:
+     1. External URL - Link to online documentation
+     2. Local /docs - Bundle markdown files in a /docs folder
+
+   Choose option (1/2/skip): 1
+   Enter documentation URL: https://my-package-docs.example.com
+   ✓ Documentation URL: https://my-package-docs.example.com
+```
+
+**Local Documentation (Bundled Markdown):**
+Include markdown files directly in your package for built-in documentation viewing:
+
+```
+Documentation
+   ✓ Found local /docs folder with markdown files
+   Add documentation? (y/n): y
+
+   Documentation options:
+     1. External URL - Link to online documentation
+     2. Local /docs - Bundle markdown files in a /docs folder
+
+   ℹ Your /docs folder should contain .md files organized as:
+      /docs/README.md          (main documentation)
+      /docs/getting-started.md (guides)
+      /docs/api.md             (API reference)
+
+   Choose option (1/2/skip): 2
+   ✓ Will bundle local /docs folder with package
+```
+
+**Local Docs Structure:**
+```
+my-package/
+├── docs/
+│   ├── README.md           # Main documentation page
+│   ├── getting-started.md  # Installation and setup guide
+│   ├── api.md              # API reference
+│   └── examples.md         # Usage examples
+├── src/
+│   └── lib.rs
+└── Cargo.toml
+```
+
+**Benefits of Local Docs:**
+- Users can view docs directly from the marketplace
+- Works offline
+- Version-specific documentation
+- Automatic rendering with syntax highlighting
+- No external hosting required
+
+#### Source Repository
+
+Link to your GitHub, GitLab, or other repository:
+
+```
+Source Repository
+   ✓ Auto-detected: https://github.com/username/my-package
+   Add source repository? (y/n): y
+   Use detected URL? (y/n): y
+   ✓ Source repository: https://github.com/username/my-package
+```
+
+**Manual Entry:**
+If auto-detection doesn't work or you want to use a different URL:
+
+```
+Source Repository
+   Add source repository? (y/n): y
+
+   ℹ Enter the URL where your code is hosted:
+      • GitHub: https://github.com/username/repo
+      • GitLab: https://gitlab.com/username/repo
+      • Other: Any public repository URL
+
+   Enter source repository URL: https://gitlab.com/robotics/my-package
+   ✓ Source repository: https://gitlab.com/robotics/my-package
+```
+
+#### Complete Publishing Example
+
+```bash
+$ cd my-sensor-package
+$ horus publish
+
+📦 Publishing my-sensor-package v1.0.0...
+✓ Uploaded to registry
+
+Published: my-sensor-package@1.0.0
+   View at: http://localhost:3001/packages/my-sensor-package
+
+📚 Package Metadata (optional)
+   Help users discover and use your package by adding:
+
+Documentation
+   ✓ Found local /docs folder with markdown files
+   Add documentation? (y/n): y
+
+   Documentation options:
+     1. External URL - Link to online documentation
+     2. Local /docs - Bundle markdown files in a /docs folder
+
+   ℹ Your /docs folder should contain .md files organized as:
+      /docs/README.md          (main documentation)
+      /docs/getting-started.md (guides)
+      /docs/api.md             (API reference)
+
+   Choose option (1/2/skip): 2
+   ✓ Will bundle local /docs folder with package
+
+Source Repository
+   ✓ Auto-detected: https://github.com/robotics-lab/my-sensor-package
+   Add source repository? (y/n): y
+   Use detected URL? (y/n): y
+   ✓ Source repository: https://github.com/robotics-lab/my-sensor-package
+
+→ Updating package metadata...
+✅ Package metadata updated!
+```
+
+#### How Users See Your Links
+
+On the marketplace, your package will display:
+
+```
+┌─────────────────────────────────────────┐
+│  📦 my-sensor-package      v1.0.0       │
+│                                         │
+│  High-performance sensor fusion         │
+│                                         │
+│  [View Details] [Docs] [Source]        │
+│                   ↓        ↓            │
+│         Markdown Viewer  GitHub Repo   │
+└─────────────────────────────────────────┘
+```
+
+- **Docs Button**: Only appears if you added documentation
+  - External URL: Opens in new tab
+  - Local docs: Opens built-in markdown viewer
+- **Source Button**: Only appears if you added source URL
+  - Opens repository in new tab
+
+### Version Management
+
+**Semantic Versioning:**
+- `1.0.0` - Major.Minor.Patch
+- `1.0.0` → `1.0.1` - Patch: Bug fixes only
+- `1.0.0` → `1.1.0` - Minor: New features (backward compatible)
+- `1.0.0` → `2.0.0` - Major: Breaking changes
+
+**Publishing new version:**
+```bash
+# 1. Update version in Cargo.toml
+[package]
+version = "1.1.0"
+
+# 2. Publish
+horus publish
+```
+
+**Version constraints in dependencies:**
+```toml
+[dependencies]
+pid-controller = "1.2.0"       # Exact version
+motion-planner = "^2.0"        # Compatible (2.x.x, not 3.0.0)
+sensor-drivers = "~1.5.0"      # Patch updates (1.5.x)
+```
+
+## Dependency Management
+
+### Automatic Resolution
+
+HORUS automatically resolves and installs dependencies:
+
+```bash
+horus pkg install robot-controller
+```
+
+**Output:**
+```
+Resolving dependencies...
+  robot-controller@1.0.0
+  ├── motion-planner@2.0.1
+  │   └── pathfinding-utils@1.2.0
+  └── pid-controller@1.2.0
+      └── control-utils@1.0.0
+
+Installing 5 packages...
+✓ All dependencies installed
+```
+
+### Specifying Dependencies
+
+In your `Cargo.toml`:
+
+```toml
+[dependencies]
+horus = "0.1"
+pid-controller = { version = "1.2", registry = "horus" }
+motion-planner = "2.0"
+
+# Optional dependencies
+[dependencies]
+advanced-planning = { version = "3.0", optional = true }
+
+[features]
+planning = ["advanced-planning"]
+```
+
+**Using optional features:**
+```bash
+horus pkg install your-package --features planning
+```
+
+## Package Structure
+
+### Minimal Package
+
+```
+my-package/
+├── Cargo.toml          # Package metadata
+├── src/
+│   ├── lib.rs          # Library entry point
+│   └── nodes/
+│       └── my_node.rs  # Your node implementation
+├── examples/
+│   └── demo.rs         # Usage example
+└── README.md           # Documentation
+```
+
+### Library Package (`lib.rs`)
+
+```rust
+// src/lib.rs
+pub mod nodes;
+pub mod messages;
+pub mod utils;
+
+// Re-export commonly used items
+pub use nodes::MyControllerNode;
+pub use messages::MyMessage;
+```
+
+### Node Implementation
+
+```rust
+// src/nodes/my_node.rs
+use horus::prelude::*;
+
+pub struct MyControllerNode {
+    pub input: Hub<f64>,
+    pub output: Hub<f64>,
+    gain: f64,
+}
+
+impl MyControllerNode {
+    pub fn new(gain: f64) -> Self {
+        Self {
+            input: Hub::new("input").expect("Failed to create input hub"),
+            output: Hub::new("output").expect("Failed to create output hub"),
+            gain,
+        }
+    }
+}
+
+impl Node for MyControllerNode {
+    fn name(&self) -> &'static str {
+        "MyController"
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        if let Some(value) = self.input.recv(ctx) {
+            let result = value * self.gain;
+            self.output.send(result, ctx).ok();
+        }
+    }
+}
+```
+
+### Example Usage
+
+```rust
+// examples/demo.rs
+use my_package::MyControllerNode;
+use horus::prelude::*;
+
+fn main() {
+    let mut scheduler = Scheduler::new();
+
+    let controller = MyControllerNode::new(2.5);
+    scheduler.register(Box::new(controller), 5, Some(true));
+
+    scheduler.tick_all().expect("Scheduler failed");
+}
+```
+
+**Test the example:**
+```bash
+horus run examples/demo.rs --release
+```
+
+## Best Practices
+
+### Package Design
+
+**Single Responsibility:**
+```bash
+# Good: Focused packages
+pid-controller          # Just PID control
+motion-planner          # Just path planning
+sensor-fusion           # Just sensor fusion
+
+# Bad: Kitchen sink package
+robotics-everything     # Too broad, hard to maintain
+```
+
+**Clear Interfaces:**
+```rust
+// Good: Simple, clear API
+pub struct PIDController {
+    pub fn new(kp: f64, ki: f64, kd: f64) -> Self { ... }
+    pub fn update(&mut self, error: f64) -> f64 { ... }
+}
+
+// Bad: Complex, unclear API
+pub struct Controller {
+    pub fn do_stuff(&mut self, x: f64, y: Option<f64>, z: &str) -> Result<Vec<f64>, Box<dyn Error>> { ... }
+}
+```
+
+### Documentation
+
+**Include comprehensive README:**
+```markdown
+# PID Controller
+
+Production-ready PID controller for HORUS robotics framework.
+
+## Features
+- Anti-windup protection
+- Derivative filtering
+- Output clamping
+
+## Installation
+```bash
+horus pkg install pid-controller
+```
+
+## Usage
+```rust
+use pid_controller::PIDController;
+
+let mut pid = PIDController::new(1.0, 0.1, 0.01);
+let output = pid.update(error);
+```
+
+## Examples
+See `examples/` directory for complete examples.
+
+## License
+MIT
+```
+
+### Testing
+
+**Always test before publishing:**
+```bash
+# Run tests
+cargo test
+
+# Run examples
+horus run examples/demo.rs --release
+
+# Build in release mode
+horus run --build-only --release
+```
+
+### Versioning Strategy
+
+**Semantic Versioning:**
+- `0.x.x` - Development (expect breaking changes)
+- `1.0.0` - First stable release
+- `1.x.x` - Stable with backward compatibility
+- `2.0.0` - Major rewrite or breaking changes
+
+**Changelog:**
+```markdown
+# Changelog
+
+## [1.2.0] - 2025-10-09
+### Added
+- Anti-windup protection
+- Configurable output limits
+
+### Fixed
+- Derivative kick on setpoint change
+
+## [1.1.0] - 2025-09-15
+### Added
+- Derivative filtering
+
+## [1.0.0] - 2025-08-01
+- Initial stable release
+```
+
+## Common Workflows
+
+### Creating a Package Library
+
+```bash
+# 1. Create new project as library
+horus new my-sensor-lib --rust
+
+# 2. Update Cargo.toml
+[package]
+name = "my-sensor-lib"
+version = "0.1.0"
+
+[lib]
+name = "my_sensor_lib"
+path = "src/lib.rs"
+
+# 3. Implement in src/lib.rs
+pub mod drivers;
+pub mod calibration;
+
+# 4. Add examples
+mkdir examples
+# Create examples/demo.rs
+
+# 5. Test
+horus run examples/demo.rs
+
+# 6. Publish
+horus auth login --github
+horus publish
+```
+
+### Using Multiple Packages
+
+```bash
+# Install packages
+horus pkg install pid-controller
+horus pkg install motion-planner
+horus pkg install sensor-fusion
+
+# Use in your project
+```
+
+```rust
+use pid_controller::PIDController;
+use motion_planner::AStarPlanner;
+use sensor_fusion::KalmanFilter;
+use horus::prelude::*;
+
+fn main() {
+    let mut scheduler = Scheduler::new();
+
+    // Combine multiple packages
+    let pid = PIDController::new(1.0, 0.1, 0.01);
+    let planner = AStarPlanner::new();
+    let filter = KalmanFilter::new();
+
+    // Register nodes...
+}
+```
+
+### Updating Dependencies
+
+```bash
+# Check for updates
+horus pkg list --outdated
+
+# Update specific package
+horus pkg install pid-controller -v 1.3.0
+
+# Update all packages (future feature)
+horus pkg update
+```
+
+## Troubleshooting
+
+### Package Not Found
+
+**Error:**
+```
+Error: Package 'nonexistent-package' not found in registry
+```
+
+**Solutions:**
+```bash
+# Check spelling
+horus pkg list nonexistent
+
+# Search registry
+horus pkg list
+
+# Verify package name
+horus pkg info correct-package-name
+```
+
+### Version Conflict
+
+**Error:**
+```
+Error: Version conflict
+  robot-controller requires motion-planner ^2.0
+  sensor-fusion requires motion-planner ^1.5
+```
+
+**Solutions:**
+```bash
+# Option 1: Update conflicting package
+horus pkg install sensor-fusion --force  # Gets latest compatible version
+
+# Option 2: Pin version manually
+# Edit Cargo.toml:
+[dependencies]
+motion-planner = "2.0"  # Force version 2.0
+```
+
+### Build Failures
+
+**Error:**
+```
+Error: Failed to build package 'my-package'
+```
+
+**Solutions:**
+```bash
+# Clean and rebuild
+horus pkg remove my-package
+horus pkg install my-package --force
+
+# Check dependencies
+horus pkg info my-package
+
+# Install dependencies manually
+horus pkg install dependency-name
+```
+
+### Authentication Required
+
+**Error:**
+```
+Error: Authentication required to publish packages
+Run: horus auth login --github
+```
+
+**Solution:**
+```bash
+horus auth login --github
+# Opens browser for GitHub OAuth
+```
+
+### Registry Unavailable
+
+**Error:**
+```
+Error: Failed to connect to registry
+```
+
+**Solutions:**
+```bash
+# Check internet connection
+ping registry.horus.dev
+
+# Try again later (registry might be down)
+horus pkg install my-package --retry
+
+# Use cached packages
+ls ~/.horus/cache/
+```
+
+## Registry API
+
+### Direct API Access
+
+You can interact with the registry programmatically:
+
+**Search packages:**
+```bash
+curl https://registry.horus.dev/api/packages?q=sensor
+```
+
+**Get package info:**
+```bash
+curl https://registry.horus.dev/api/packages/pid-controller
+```
+
+**Download package:**
+```bash
+curl -o pkg.tar.gz https://registry.horus.dev/api/packages/pid-controller/1.2.0/download
+```
+
+## Next Steps
+
+- **[Environment Management](/docs/environment-management)** - Freeze and restore package sets
+- **[Authentication](/docs/authentication)** - Manage registry credentials
+- **[Marketplace](/docs/marketplace)** - Discover and publish packages
+- **[CLI Reference](/docs/cli-reference)** - Complete command documentation
+- **[Publishing Guide](/docs/publishing)** - Detailed publishing workflow

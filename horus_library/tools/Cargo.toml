@@ -1,0 +1,7 @@
+[package]
+name = "horus_library_tools"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sim2d = { path = "sim2d" }

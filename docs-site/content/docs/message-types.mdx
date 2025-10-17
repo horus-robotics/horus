@@ -1,0 +1,659 @@
+---
+title: Message Types
+description: Standard HORUS message types for robotics applications
+order: 7
+---
+
+# Message Types
+
+HORUS provides a comprehensive library of standard message types for robotics applications. All messages are designed for **shared memory efficiency** with fixed-size structures and zero-copy semantics.
+
+## Message Requirements
+
+All HORUS messages must implement:
+
+```rust
+use serde::{Serialize, Deserialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MyMessage {
+    // Your fields here
+}
+```
+
+**Required traits**:
+- `Clone`: For shared memory operations
+- `Debug`: For logging and debugging
+- `Serialize/Deserialize`: For optional serialization
+
+**Best practices**:
+- Use fixed-size arrays instead of `Vec`
+- Prefer `f32`/`f64` over variable-length types
+- Include timestamp fields for all time-sensitive data
+- Use `#[repr(C)]` for C interop
+
+## Geometry Messages
+
+Spatial primitives for representing position, orientation, and motion.
+
+### Twist
+
+3D velocity command with linear and angular components:
+
+```rust
+use horus_library::messages::Twist;
+
+// Create 2D twist (common for mobile robots)
+let cmd = Twist::new_2d(1.0, 0.5);  // 1.0 m/s forward, 0.5 rad/s rotation
+
+// Create 3D twist
+let cmd_3d = Twist::new(
+    [1.0, 0.5, 0.0],      // Linear velocity [x, y, z] m/s
+    [0.0, 0.0, 0.5]       // Angular velocity [roll, pitch, yaw] rad/s
+);
+
+// Stop command
+let stop = Twist::stop();
+
+// Check validity
+assert!(cmd.is_valid());
+```
+
+**Fields**:
+- `linear: [f64; 3]` - Linear velocity in m/s
+- `angular: [f64; 3]` - Angular velocity in rad/s
+- `timestamp: u64` - Nanoseconds since epoch
+
+### Pose2D
+
+2D position and orientation for planar robots:
+
+```rust
+use horus_library::messages::Pose2D;
+
+// Create pose
+let pose = Pose2D::new(1.0, 2.0, 0.5);  // x=1m, y=2m, theta=0.5rad
+
+// Start at origin
+let origin = Pose2D::origin();
+
+// Calculate distance between poses
+let distance = pose.distance_to(&origin);
+
+// Normalize angle to [-π, π]
+let mut pose = Pose2D::new(1.0, 2.0, 3.5);
+pose.normalize_angle();
+```
+
+**Fields**:
+- `x: f64` - X position in meters
+- `y: f64` - Y position in meters
+- `theta: f64` - Orientation in radians
+- `timestamp: u64` - Nanoseconds since epoch
+
+### Transform
+
+3D transformation with translation and rotation:
+
+```rust
+use horus_library::messages::Transform;
+
+// Identity transform
+let identity = Transform::identity();
+
+// From 2D pose
+let pose2d = Pose2D::new(1.0, 2.0, 0.5);
+let transform = Transform::from_pose_2d(&pose2d);
+
+// Custom transform
+let tf = Transform::new(
+    [1.0, 2.0, 3.0],           // Translation [x, y, z]
+    [0.0, 0.0, 0.0, 1.0]       // Rotation quaternion [x, y, z, w]
+);
+
+// Normalize quaternion
+let mut tf = transform;
+tf.normalize_rotation();
+```
+
+**Fields**:
+- `translation: [f64; 3]` - Position in meters
+- `rotation: [f64; 4]` - Quaternion [x, y, z, w]
+- `timestamp: u64` - Nanoseconds since epoch
+
+### Point3 and Vector3
+
+3D points and vectors:
+
+```rust
+use horus_library::messages::{Point3, Vector3};
+
+// Create point
+let point = Point3::new(1.0, 2.0, 3.0);
+let distance = point.distance_to(&Point3::origin());
+
+// Create vector
+let mut vec = Vector3::new(1.0, 0.0, 0.0);
+let magnitude = vec.magnitude();
+vec.normalize();
+
+// Vector operations
+let dot_product = vec.dot(&Vector3::new(0.0, 1.0, 0.0));
+let cross_product = vec.cross(&Vector3::new(0.0, 1.0, 0.0));
+```
+
+### Quaternion
+
+3D rotation representation:
+
+```rust
+use horus_library::messages::Quaternion;
+
+// Identity quaternion (no rotation)
+let q = Quaternion::identity();
+
+// From Euler angles
+let q = Quaternion::from_euler(0.0, 0.0, std::f64::consts::PI / 2.0);
+
+// Normalize
+let mut q = Quaternion::new(1.0, 0.0, 0.0, 1.0);
+q.normalize();
+```
+
+## Sensor Messages
+
+Standard sensor data formats for common robotics sensors.
+
+### LaserScan
+
+2D lidar scan data (up to 360 points):
+
+```rust
+use horus_library::messages::LaserScan;
+
+let mut scan = LaserScan::new();
+
+// Set range readings (360-element array)
+scan.ranges[0] = 5.2;   // Distance in meters
+scan.ranges[1] = 3.8;
+
+// Configure scan parameters
+scan.angle_min = -std::f32::consts::PI;       // -180 degrees
+scan.angle_max = std::f32::consts::PI;        // +180 degrees
+scan.range_min = 0.1;                         // Minimum valid range
+scan.range_max = 30.0;                        // Maximum valid range
+scan.angle_increment = std::f32::consts::PI / 180.0;  // 1 degree
+
+// Get angle for specific reading
+let angle = scan.angle_at(45);  // Angle at index 45
+
+// Check if reading is valid
+if scan.is_range_valid(0) {
+    println!("Range at index 0: {}m", scan.ranges[0]);
+}
+
+// Count valid readings
+let valid_count = scan.valid_count();
+
+// Find minimum range
+if let Some(min) = scan.min_range() {
+    println!("Closest obstacle: {}m", min);
+}
+```
+
+**Fields**:
+- `ranges: [f32; 360]` - Range readings in meters (0 = invalid)
+- `angle_min/max: f32` - Scan angle range in radians
+- `range_min/max: f32` - Valid range limits in meters
+- `angle_increment: f32` - Angular resolution in radians
+- `scan_time: f32` - Time to complete scan in seconds
+- `timestamp: u64` - Nanoseconds since epoch
+
+### IMU
+
+Inertial Measurement Unit data:
+
+```rust
+use horus_library::messages::Imu;
+
+let mut imu = Imu::new();
+
+// Set orientation from Euler angles
+imu.set_orientation_from_euler(
+    0.1,  // Roll in radians
+    0.2,  // Pitch in radians
+    1.5   // Yaw in radians
+);
+
+// Set angular velocity
+imu.angular_velocity = [0.1, 0.2, 0.3];  // rad/s
+
+// Set linear acceleration
+imu.linear_acceleration = [0.0, 0.0, 9.81];  // m/s²
+
+// Check if orientation is available
+if imu.has_orientation() {
+    let quat = imu.orientation;
+}
+
+// Validate data
+assert!(imu.is_valid());
+
+// Get vectors
+let angular_vel = imu.angular_velocity_vec();
+let linear_accel = imu.linear_acceleration_vec();
+```
+
+**Fields**:
+- `orientation: [f64; 4]` - Quaternion [x, y, z, w]
+- `orientation_covariance: [f64; 9]` - Covariance matrix (-1 = no data)
+- `angular_velocity: [f64; 3]` - Gyroscope data in rad/s
+- `angular_velocity_covariance: [f64; 9]` - Covariance matrix
+- `linear_acceleration: [f64; 3]` - Accelerometer data in m/s²
+- `linear_acceleration_covariance: [f64; 9]` - Covariance matrix
+- `timestamp: u64` - Nanoseconds since epoch
+
+### Odometry
+
+Combined pose and velocity from wheel encoders or visual odometry:
+
+```rust
+use horus_library::messages::{Odometry, Pose2D, Twist};
+
+let mut odom = Odometry::new();
+
+// Set frames
+odom.set_frames("odom", "base_link");
+
+// Update pose and velocity
+let pose = Pose2D::new(1.0, 2.0, 0.5);
+let twist = Twist::new_2d(0.5, 0.2);
+odom.update(pose, twist);
+
+// Access data
+println!("Position: ({}, {})", odom.pose.x, odom.pose.y);
+println!("Velocity: {}m/s", odom.twist.linear[0]);
+
+// Validate
+assert!(odom.is_valid());
+```
+
+**Fields**:
+- `pose: Pose2D` - Current position and orientation
+- `twist: Twist` - Current velocity
+- `pose_covariance: [f64; 36]` - 6x6 covariance matrix
+- `twist_covariance: [f64; 36]` - 6x6 covariance matrix
+- `frame_id: [u8; 32]` - Reference frame (e.g., "odom")
+- `child_frame_id: [u8; 32]` - Child frame (e.g., "base_link")
+- `timestamp: u64` - Nanoseconds since epoch
+
+### Range
+
+Single-point distance sensor (ultrasonic, infrared):
+
+```rust
+use horus_library::messages::Range;
+
+// Create ultrasonic range reading
+let range = Range::new(Range::ULTRASONIC, 1.5);  // 1.5 meters
+
+// Configure sensor parameters
+let mut range = Range::new(Range::INFRARED, 0.8);
+range.min_range = 0.02;  // 2cm minimum
+range.max_range = 4.0;   // 4m maximum
+range.field_of_view = 0.1;  // ~6 degrees
+
+// Check validity
+if range.is_valid() {
+    println!("Distance: {}m", range.range);
+}
+```
+
+**Fields**:
+- `sensor_type: u8` - Sensor type (0=ultrasonic, 1=infrared)
+- `field_of_view: f32` - Sensor FOV in radians
+- `min_range: f32` - Minimum valid range in meters
+- `max_range: f32` - Maximum valid range in meters
+- `range: f32` - Distance reading in meters
+- `timestamp: u64` - Nanoseconds since epoch
+
+### BatteryState
+
+Battery status and charge information:
+
+```rust
+use horus_library::messages::BatteryState;
+
+let mut battery = BatteryState::new(12.6, 75.0);  // 12.6V, 75% charge
+
+// Set additional parameters
+battery.current = -2.5;  // -2.5A (discharging)
+battery.charge = 5.0;    // 5 Ah remaining
+battery.capacity = 10.0; // 10 Ah total
+battery.temperature = 28.5;  // 28.5°C
+battery.power_supply_status = BatteryState::STATUS_DISCHARGING;
+
+// Check battery level
+if battery.is_low(20.0) {
+    println!("Battery low!");
+}
+
+if battery.is_critical() {  // Below 10%
+    println!("Battery critical!");
+}
+
+// Estimate remaining time
+if let Some(time_left) = battery.time_remaining() {
+    println!("Time remaining: {}s", time_left);
+}
+```
+
+**Fields**:
+- `voltage: f32` - Battery voltage in volts
+- `current: f32` - Current in amperes (negative = discharging)
+- `charge: f32` - Remaining charge in Ah
+- `capacity: f32` - Total capacity in Ah
+- `percentage: f32` - Charge percentage (0-100)
+- `power_supply_status: u8` - Status (0=unknown, 1=charging, 2=discharging, 3=full)
+- `temperature: f32` - Temperature in °C
+- `cell_voltages: [f32; 16]` - Individual cell voltages
+- `cell_count: u8` - Number of cells
+- `timestamp: u64` - Nanoseconds since epoch
+
+## Control Messages
+
+Actuator commands and control parameters (from horus_library).
+
+### CmdVel
+
+Basic velocity command for robot control:
+
+```rust
+use horus_library::messages::CmdVel;
+
+// Create command
+let cmd = CmdVel::new(1.0, 0.5);  // 1.0 m/s forward, 0.5 rad/s rotation
+
+// Stop command
+let stop = CmdVel::zero();
+
+// With explicit timestamp
+let cmd = CmdVel::with_timestamp(1.0, 0.5, 123456789);
+```
+
+**Fields**:
+- `stamp_nanos: u64` - Timestamp in nanoseconds
+- `linear: f32` - Forward velocity in m/s
+- `angular: f32` - Rotation velocity in rad/s
+
+### Other Control Messages
+
+Available from `horus_library::messages::control`:
+
+**MotorCommand**: Direct motor control
+
+**DifferentialDriveCommand**: Differential drive (left/right wheels)
+
+**ServoCommand**: Servo position/velocity control
+
+**PidConfig**: PID controller parameters
+
+**TrajectoryPoint**: Single point in a trajectory
+
+**JointCommand**: Multi-joint position/velocity/effort
+
+## Vision Messages
+
+Available from `horus_library::messages::vision`:
+
+**Image**: Raw image data
+
+**CompressedImage**: JPEG/PNG compressed images
+
+**CameraInfo**: Camera calibration parameters
+
+**Detection**: Object detection result
+
+**DetectionArray**: Multiple detections
+
+## Navigation Messages
+
+Available from `horus_library::messages::navigation`:
+
+**Goal**: Navigation goal pose
+
+**Path**: Sequence of waypoints
+
+**OccupancyGrid**: 2D occupancy map
+
+**CostMap**: Cost map for path planning
+
+**PathPlan**: Complete path with metadata
+
+## Diagnostics Messages
+
+Available from `horus_library::messages::diagnostics`:
+
+**Heartbeat**: Node health ping
+
+**Status**: Node status with level
+
+**StatusLevel**: Error severity (OK, Warn, Error, Fatal)
+
+**EmergencyStop**: Emergency stop signal
+
+**ResourceUsage**: CPU/memory usage
+
+**DiagnosticValue**: Key-value diagnostic pair
+
+**DiagnosticReport**: Full diagnostic report
+
+**SafetyStatus**: Safety system status
+
+## Custom Messages
+
+### Creating Custom Messages
+
+```rust
+use serde::{Serialize, Deserialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RobotStatus {
+    pub battery_level: f32,
+    pub temperature: f32,
+    pub error_code: u32,
+    pub timestamp: u64,
+}
+
+impl RobotStatus {
+    pub fn new(battery: f32, temp: f32) -> Self {
+        Self {
+            battery_level: battery,
+            temperature: temp,
+            error_code: 0,
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos() as u64,
+        }
+    }
+
+    pub fn is_healthy(&self) -> bool {
+        self.battery_level > 20.0 && self.temperature < 60.0
+    }
+}
+
+// Use with Hub
+use horus::prelude::*;
+let status_pub: Hub<RobotStatus> = Hub::new("robot_status");
+status_pub.send(RobotStatus::new(75.0, 42.0), None).ok();
+```
+
+### Best Practices for Custom Messages
+
+**Use fixed-size types**:
+
+```rust
+// GOOD: Fixed-size array
+pub struct LaserData {
+    pub ranges: [f32; 360],  // Fixed size
+}
+
+// BAD: Variable-size Vec
+pub struct LaserData {
+    pub ranges: Vec<f32>,  // Requires heap allocation
+}
+```
+
+**Include timestamps**:
+
+```rust
+pub struct MyMessage {
+    pub data: f32,
+    pub timestamp: u64,  // Always include timestamp
+}
+```
+
+**Implement helper methods**:
+
+```rust
+impl MyMessage {
+    pub fn new() -> Self { /* ... */ }
+    pub fn is_valid(&self) -> bool { /* ... */ }
+    pub fn from_other(other: &OtherMsg) -> Self { /* ... */ }
+}
+```
+
+**Use repr(C) for C interop**:
+
+```rust
+#[repr(C)]  // C-compatible layout
+#[derive(Debug, Clone, Copy)]
+pub struct CInteropMessage {
+    pub x: f32,
+    pub y: f32,
+}
+```
+
+## Message Sizes and Performance
+
+### Typical Message Sizes
+
+| Message Type | Size | Latency (measured) |
+|--------------|------|-------------------|
+| CmdVel | 16B | 366ns |
+| Pose2D | 32B | ~400ns |
+| IMU | 304B | 543ns |
+| LaserScan | 1.5KB | 1.58µs |
+| Image (640x480 RGB) | ~1MB | Variable |
+
+**Key insight**: Latency scales linearly with message size.
+
+### Optimization Tips
+
+**Minimize message size**:
+
+```rust
+// Instead of sending full image every frame
+pub struct CompressedImage {
+    pub data: Vec<u8>,  // JPEG compressed
+    pub format: u8,
+}
+
+// Or send only regions of interest
+pub struct ImageROI {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+    pub data: [u8; 4096],  // Fixed-size ROI
+}
+```
+
+**Use appropriate precision**:
+
+```rust
+// For high precision (scientific)
+pub struct HighPrecisionPose {
+    pub x: f64,  // Double precision
+    pub y: f64,
+}
+
+// For most robotics (faster)
+pub struct FastPose {
+    pub x: f32,  // Single precision - sufficient for most cases
+    pub y: f32,
+}
+```
+
+**Avoid unnecessary fields**:
+
+```rust
+// GOOD: Only what you need
+pub struct SimpleCmdVel {
+    pub linear: f32,
+    pub angular: f32,
+}
+
+// BAD: Extra unused fields
+pub struct VerboseCmdVel {
+    pub linear: f32,
+    pub angular: f32,
+    pub metadata: [u8; 256],  // Unused
+    pub debug_info: [u8; 512],  // Unused
+}
+```
+
+## Working with Messages in Nodes
+
+### Publishing Messages
+
+```rust
+use horus::prelude::*;
+use horus_library::messages::LaserScan;
+
+struct LidarNode {
+    scan_pub: Hub<LaserScan>,
+}
+
+impl Node for LidarNode {
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        let mut scan = LaserScan::new();
+        // Fill in scan data...
+        scan.ranges[0] = 5.2;
+
+        self.scan_pub.send(scan, ctx).ok();
+    }
+}
+```
+
+### Subscribing to Messages
+
+```rust
+use horus::prelude::*;
+use horus_library::messages::LaserScan;
+
+struct ObstacleDetector {
+    scan_sub: Hub<LaserScan>,
+}
+
+impl Node for ObstacleDetector {
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        if let Some(scan) = self.scan_sub.recv(ctx) {
+            // Find closest obstacle
+            if let Some(min_range) = scan.min_range() {
+                if min_range < 0.5 {
+                    // Obstacle too close!
+                }
+            }
+        }
+    }
+}
+```
+
+## Next Steps
+
+- Explore [Examples](/docs/examples) showing message usage patterns
+- Read the [API Reference](/docs/api) for detailed documentation
+- Learn about [Performance Optimization](/docs/performance) for large messages
+- Check out the [Multi-Language Guide](/docs/multi-language) for using messages in Python/C

@@ -1,0 +1,69 @@
+[workspace]
+resolver = "2"
+members = [
+    "horus",  # Main unified crate
+    "horus_core",
+    "horus_macros",
+    "horus_manager",
+    "horus_daemon",
+    "horus_library",
+    "horus_c",  # C API bindings
+    # Unies (multi-node applications)
+
+    "horus_library/unies/snakesim",
+    "horus_library/unies/snakesim/snake_scheduler",
+    "horus_library/unies/snakesim/snakesim_gui",
+    "horus_library/unies/tanksim",
+   # Tools
+    "horus_library/tools/sim2d",
+    "benchmarks",
+    "horus_py",
+    # Tests
+    "tests/dashboard",
+]
+
+[workspace.dependencies]
+# HORUS dependencies
+horus = { path = "horus" }
+horus_core = { path = "horus_core" }
+horus_library = { path = "horus_library" }
+horus_macros = { path = "horus_macros" }
+
+# Physics and math
+rapier2d = "0.22"
+nalgebra = "0.33"
+
+# Rendering (optional, for sim2d visualization)
+bevy = { version = "0.15", default-features = false, features = ["bevy_winit", "bevy_render", "bevy_core_pipeline", "bevy_sprite", "bevy_ui", "bevy_text", "bevy_gizmos", "png"] }
+
+# Serialization and config
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+ron = "0.8"
+
+# URDF parsing
+urdf-rs = "0.9"
+
+# Utilities
+anyhow = "1.0"
+thiserror = "1.0"
+rand = { version = "0.8", features = ["std_rng"] }
+rand_chacha = "0.3"
+uuid = { version = "1.0", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4.0", features = ["derive"] }
+
+# Async and concurrency
+tokio = { version = "1.0", features = ["full"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# System utilities
+memmap2 = "0.9"
+parking_lot = "0.12"
+bytemuck = { version = "1.0", features = ["derive"] }
+
+# Testing
+approx = "0.5"

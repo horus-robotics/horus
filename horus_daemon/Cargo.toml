@@ -1,0 +1,29 @@
+[package]
+name = "horus_daemon"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "horus_daemon"
+path = "src/main.rs"
+
+[dependencies]
+horus_core = { path = "../horus_core" }
+axum = { version = "0.7", features = ["ws"] }
+tokio = { version = "1.0", features = ["full"] }
+tower-http = { version = "0.5", features = ["fs", "trace", "cors"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tar = "0.4"
+flate2 = "1.0"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+chrono = "0.4"
+sysinfo = "0.30"
+nix = { version = "0.27", features = ["signal", "net"] }
+futures = "0.3"
+axum-tungstenite = "0.1"
+hostname = "0.4"
+mdns-sd = "0.11"

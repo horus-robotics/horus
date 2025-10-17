@@ -1,0 +1,307 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --primary: #0F172A;
+    --accent: #00D4FF;
+    --success: #00FF88;
+    --gray: #64748B;
+    --dark-bg: #0A0B0D;
+    --card-bg: #16181C;
+    --surface: #16181C;
+    --surface-hover: #1F2229;
+    --border: rgba(0, 212, 255, 0.1);
+    --text-primary: #E2E8F0;
+    --text-secondary: #94A3B8;
+    --text-tertiary: #64748B;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'JetBrains Mono', monospace;
+    background-color: var(--dark-bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+}
+
+@keyframes scan-bg {
+    0% { background-position: 0 0; }
+    100% { background-position: 0 10px; }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.6; }
+}
+
+@keyframes scan {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+}
+
+@keyframes fade-in {
+    0% { opacity: 0; transform: translateY(20px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes particle-float {
+    0% {
+        transform: translateY(100vh) translateX(0);
+        opacity: 0;
+    }
+    10% {
+        opacity: 1;
+    }
+    90% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(-100vh) translateX(100px);
+        opacity: 0;
+    }
+}
+
+@keyframes node-pulse {
+    0%, 100% {
+        r: 4;
+        opacity: 0.6;
+    }
+    50% {
+        r: 6;
+        opacity: 1;
+    }
+}
+
+@keyframes data-flow {
+    0% {
+        stroke-dashoffset: 100;
+    }
+    100% {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes rotate-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Code blocks */
+pre {
+    background: var(--surface) !important;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem !important;
+    overflow-x: auto;
+    margin: 1.5rem 0;
+}
+
+code {
+    font-family: 'JetBrains Mono', monospace !important;
+}
+
+/* Inline code */
+:not(pre) > code {
+    background: var(--surface);
+    color: var(--accent);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+/* Markdown content styling */
+.prose h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(135deg, var(--accent), var(--success));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.prose h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-top: 3rem;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0.5rem;
+}
+
+.prose h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    color: var(--accent);
+}
+
+.prose p {
+    line-height: 1.8;
+    margin-bottom: 1.25rem;
+    color: var(--text-secondary);
+}
+
+.prose ul, .prose ol {
+    margin-left: 1.5rem;
+    margin-bottom: 1.25rem;
+    color: var(--text-secondary);
+}
+
+.prose li {
+    margin-bottom: 0.5rem;
+}
+
+.prose a {
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.3s;
+}
+
+.prose a:hover {
+    border-bottom-color: var(--accent);
+}
+
+.prose strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.prose table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 2rem 0;
+}
+
+.prose th {
+    background: var(--surface);
+    color: var(--text-primary);
+    font-weight: 600;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    text-align: left;
+}
+
+.prose td {
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+}
+
+.prose tr:hover {
+    background: var(--surface-hover);
+}
+
+/* Glowing effects */
+.hero-glow::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.03) 0%, transparent 70%);
+    transform: translate(-50%, -50%);
+    animation: pulse 4s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.text-glow {
+    text-shadow: 0 0 20px rgba(0, 212, 255, 0.6);
+}
+
+.stat-glow {
+    text-shadow: 0 0 6px rgba(255, 255, 255, 0.25);
+}
+
+.card-scan::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #00D4FF, transparent);
+    animation: scan 3s linear infinite;
+}
+
+.hover-glow {
+    transition: all 0.3s;
+}
+
+.hover-glow:hover {
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+    border-color: var(--accent) !important;
+}
+
+/* Animation Classes */
+.animate-float {
+    animation: float 6s ease-in-out infinite;
+}
+
+.animate-fade-in {
+    animation: fade-in 1s ease-out;
+}
+
+.animate-fade-in-delay {
+    animation: fade-in 1s ease-out 0.3s both;
+}
+
+.animate-pulse-slow {
+    animation: pulse 3s ease-in-out infinite;
+}
+
+/* Particles */
+.particles-container {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.particle {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 50%;
+    box-shadow: 0 0 4px rgba(255, 255, 255, 0.3);
+    animation: particle-float linear infinite;
+}
+
+/* Node Network */
+.node-pulse {
+    animation: node-pulse 2s ease-in-out infinite;
+}
+
+.node-core {
+    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.4));
+}
+
+/* Robotics Animation Elements */
+.robot-arm {
+    position: relative;
+    animation: rotate-slow 20s linear infinite;
+}
+
+.data-stream {
+    stroke-dasharray: 10 5;
+    animation: data-flow 2s linear infinite;
+}

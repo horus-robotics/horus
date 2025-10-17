@@ -1,0 +1,774 @@
+---
+title: Marketplace & Registry
+description: Discover, publish, and share HORUS packages with the community
+order: 10
+---
+
+# Marketplace & Registry
+
+> **⚠️ Under Development**: The marketplace and registry features described in this guide are currently under active development. Some functionality may be incomplete or subject to change.
+
+The HORUS Marketplace is a centralized registry for discovering, sharing, and managing robotics packages. Publish your work, find solutions built by the community, and accelerate your robotics development.
+
+## Overview
+
+The marketplace provides:
+
+- **Package Discovery** - Search thousands of community packages
+- **Version Management** - Semantic versioning with dependency resolution
+- **GitHub Authentication** - Secure publishing with GitHub OAuth
+- **Environment Sharing** - Publish and restore complete environments
+- **Analytics** - Download counts, trending packages
+- **Quality Metrics** - Community ratings and documentation quality
+
+**Registry URL:** https://registry.horus.dev
+
+## Quick Start
+
+### Discovering Packages
+
+**Web Interface:**
+```bash
+# Open marketplace in browser
+open https://registry.horus.dev
+```
+
+**CLI Search:**
+```bash
+# Search all packages
+horus pkg list
+
+# Search by keyword
+horus pkg list sensor
+
+# Search by category
+horus pkg list --category control
+
+# Search by author
+horus pkg list --author robotics-lab
+```
+
+### Installing from Registry
+
+```bash
+# Install latest version
+horus pkg install pid-controller
+
+# Install specific version
+horus pkg install pid-controller -v 1.2.0
+
+# View package details first
+horus pkg info pid-controller
+```
+
+### Publishing to Registry
+
+```bash
+# 1. Authenticate
+horus auth login --github
+
+# 2. Publish
+horus publish
+```
+
+## Package Discovery
+
+### Web Interface
+
+**Features:**
+- Visual package browsing
+- Filtering by category, author, license
+- Trending and featured packages
+- Detailed package pages with README
+- Code examples and documentation
+
+**Navigation:**
+```
+https://registry.horus.dev/
+├── /packages              # Browse all packages
+├── /packages/trending     # Trending this week
+├── /packages/featured     # Staff picks
+├── /categories            # Browse by category
+│   ├── /control
+│   ├── /planning
+│   ├── /perception
+│   └── /drivers
+└── /environments          # Shared environments
+```
+
+### CLI Search
+
+**Basic search:**
+```bash
+horus pkg list sensor
+```
+
+**Output:**
+```
+Registry Packages (10 matches):
+
+  sensor-fusion          2.1.0    Kalman filter sensor fusion       ⭐ 234   📥 5,234
+  sensor-drivers         1.5.0    LIDAR/IMU/camera drivers          ⭐ 187   📥 8,901
+  sensor-calibration     1.0.0    Calibration tools                 ⭐ 92    📥 1,432
+  sensor-simulator       0.9.0    Simulate sensor data              ⭐ 156   📥 2,314
+  lidar-sensor           2.0.0    LIDAR driver for common devices   ⭐ 203   📥 6,789
+  imu-sensor             1.3.0    IMU driver and processing         ⭐ 145   📥 4,567
+  camera-sensor          1.2.1    Camera capture and processing     ⭐ 178   📥 5,432
+  sensor-utils           0.8.0    Common sensor utilities           ⭐ 89    📥 2,109
+  multi-sensor-fusion    1.1.0    Multi-modal sensor fusion         ⭐ 112   📥 3,456
+  sensor-diagnostics     0.7.0    Sensor health monitoring          ⭐ 67    📥 1,234
+
+Legend: ⭐ Stars  📥 Downloads
+```
+
+**Advanced search:**
+```bash
+# Filter by category
+horus pkg list --category perception
+
+# Filter by minimum stars
+horus pkg list sensor --min-stars 100
+
+# Sort by downloads
+horus pkg list --sort downloads
+
+# Show detailed results
+horus pkg list sensor --detailed
+```
+
+### Package Information
+
+**View detailed info:**
+```bash
+horus pkg info sensor-fusion
+```
+
+**Output:**
+```
+═══════════════════════════════════════════════════════════════
+Package: sensor-fusion
+═══════════════════════════════════════════════════════════════
+
+Version: 2.1.0
+Author: robotics-lab
+License: MIT
+Category: perception
+Repository: https://github.com/robotics-lab/sensor-fusion
+
+Description:
+  Advanced sensor fusion using Extended Kalman Filter (EKF) and
+  Unscented Kalman Filter (UKF). Supports LIDAR, IMU, GPS, and
+  camera inputs for robust state estimation.
+
+Features:
+  ✓ Extended Kalman Filter (EKF)
+  ✓ Unscented Kalman Filter (UKF)
+  ✓ Multi-sensor support (LIDAR, IMU, GPS, camera)
+  ✓ Outlier rejection
+  ✓ Adaptive noise estimation
+  ✓ Real-time performance (&lt;1ms per update)
+
+Dependencies:
+  - nalgebra ^0.32 (matrix operations)
+  - horus_library ^0.1 (standard messages)
+
+Stats:
+  ⭐ Stars: 234
+  📥 Downloads: 5,234 (last 30 days)
+  🔄 Last updated: 2025-09-28
+  📝 Documentation: 98% coverage
+
+Installation:
+  horus pkg install sensor-fusion
+
+Example Usage:
+  use sensor_fusion::EKFNode;
+  use horus::prelude::*;
+
+  let filter = EKFNode::new();
+  scheduler.register(Box::new(filter), 5, Some(true));
+
+Repository: https://github.com/robotics-lab/sensor-fusion
+Documentation: https://docs.horus.dev/packages/sensor-fusion
+Issues: https://github.com/robotics-lab/sensor-fusion/issues
+```
+
+## Publishing Packages
+
+### Prerequisites
+
+1. **GitHub Account** - Required for authentication
+2. **Complete Package** - With Cargo.toml, README.md, examples
+3. **Testing** - Package must build successfully
+4. **Documentation** - Clear README with usage instructions
+
+### Authentication
+
+**First-time setup:**
+```bash
+horus auth login --github
+```
+
+**What happens:**
+1. Opens browser to GitHub OAuth page
+2. You authorize HORUS Registry
+3. Token saved to `~/.horus/credentials`
+4. Ready to publish!
+
+**Check authentication:**
+```bash
+horus auth whoami
+```
+
+**Output:**
+```
+Authenticated as: your-username
+Email: you@example.com
+GitHub: https://github.com/your-username
+API Token: ****...****
+```
+
+### Package Metadata
+
+**Required in Cargo.toml:**
+```toml
+[package]
+name = "my-awesome-package"
+version = "1.0.0"
+authors = ["Your Name <you@example.com>"]
+description = "Brief description of your package (max 100 chars)"
+license = "MIT"
+repository = "https://github.com/username/my-awesome-package"
+documentation = "https://docs.rs/my-awesome-package"
+readme = "README.md"
+keywords = ["robotics", "control", "pid"]
+categories = ["robotics", "control"]
+
+[package.metadata.horus]
+category = "control"  # control, planning, perception, drivers, utils, simulation
+featured = false
+```
+
+**Package categories:**
+- `control` - Controllers (PID, MPC, etc.)
+- `planning` - Path planning, motion planning
+- `perception` - Sensors, computer vision, SLAM
+- `drivers` - Hardware drivers (motors, sensors)
+- `utils` - Utilities and helpers
+- `simulation` - Simulators and testing tools
+- `algorithms` - General robotics algorithms
+- `messages` - Message type definitions
+
+### Publishing Workflow
+
+**Step-by-step:**
+```bash
+# 1. Ensure you're in package directory
+cd my-awesome-package
+
+# 2. Verify package builds
+horus run --build-only --release
+
+# 3. Run tests
+cargo test
+
+# 4. Check package metadata
+cargo metadata --format-version 1 | jq '.packages[0]'
+
+# 5. Publish
+horus publish
+```
+
+**Interactive prompts:**
+```
+Publishing my-awesome-package v1.0.0...
+
+Pre-flight checks:
+  ✓ Package metadata complete
+  ✓ README.md present
+  ✓ License specified (MIT)
+  ✓ Build successful (release mode)
+  ✓ Tests passed (5/5)
+  ✓ Examples present (2 found)
+  ✓ Documentation generated
+
+Package analysis:
+  Name: my-awesome-package
+  Version: 1.0.0
+  Category: control
+  Size: 245 KB (compressed)
+  Dependencies: 3
+  Examples: 2
+
+Ready to publish? [y/N]: y
+
+Uploading...
+  ⬆ Uploading package archive (245 KB)
+  ✓ Package uploaded
+  ✓ Metadata indexed
+  ✓ README parsed
+  ✓ Examples extracted
+
+Published successfully! 🎉
+
+Package URL: https://registry.horus.dev/packages/my-awesome-package
+Install command: horus pkg install my-awesome-package
+
+Share your package:
+  https://registry.horus.dev/packages/my-awesome-package
+```
+
+### Updating Packages
+
+**Publishing new version:**
+```bash
+# 1. Update version in Cargo.toml
+[package]
+version = "1.1.0"  # Was 1.0.0
+
+# 2. Update CHANGELOG.md
+## [1.1.0] - 2025-10-09
+### Added
+- New feature X
+### Fixed
+- Bug Y
+
+# 3. Commit changes
+git add .
+git commit -m "Release v1.1.0"
+git tag v1.1.0
+
+# 4. Publish
+horus publish
+```
+
+### Yanking Versions
+
+**Remove broken version:**
+```bash
+# Yank version (prevents new installs, doesn't delete)
+horus pkg yank my-awesome-package -v 1.0.1 --reason "Critical bug in controller"
+
+# Un-yank version
+horus pkg unyank my-awesome-package -v 1.0.1
+```
+
+**Note:** Yanked versions are hidden in search but remain downloadable for projects already using them.
+
+## Environment Marketplace
+
+### Publishing Environments
+
+**Create shareable environment:**
+```bash
+horus env freeze --publish \
+  --name "Mobile Robot Production Setup" \
+  --description "Tested configuration for warehouse robots"
+```
+
+**Output:**
+```
+Publishing environment...
+
+Environment Details:
+  Name: Mobile Robot Production Setup
+  Packages: 5 (3 direct, 2 transitive)
+  HORUS Version: 0.1.0
+  Size: 2.3 MB
+
+Uploading...
+  ✓ Manifest uploaded
+  ✓ Verified all packages available
+  ✓ Generated shareable ID
+
+Published: env_abc123def456
+
+Share this environment:
+  horus env restore env_abc123def456
+
+View online:
+  https://registry.horus.dev/environments/env_abc123def456
+```
+
+### Discovering Environments
+
+**Browse environments:**
+```bash
+# List public environments
+horus env list --public
+
+# Search by keyword
+horus env list mobile robot
+
+# Filter by author
+horus env list --author robotics-lab
+```
+
+**Output:**
+```
+Public Environments:
+
+  env_abc123
+  Mobile Robot Production Setup
+  Author: robotics-lab
+  Packages: 5
+  Downloads: 234
+  Published: 2025-10-09
+
+  env_xyz789
+  Autonomous Vehicle Stack
+  Author: self-driving-team
+  Packages: 12
+  Downloads: 567
+  Published: 2025-09-28
+
+Total: 2 matching environments
+```
+
+### Installing Environments
+
+```bash
+# Install by ID
+horus env restore env_abc123def456
+
+# Install and verify
+horus env restore env_abc123def456 --verify
+```
+
+## Registry API
+
+### Direct API Access
+
+The registry provides a REST API for programmatic access:
+
+**Base URL:** `https://registry.horus.dev/api/v1`
+
+### Search Packages
+
+**Endpoint:** `GET /packages`
+
+**Parameters:**
+- `q` - Search query
+- `category` - Filter by category
+- `author` - Filter by author
+- `limit` - Results per page (default: 20)
+- `offset` - Pagination offset
+
+**Example:**
+```bash
+curl "https://registry.horus.dev/api/v1/packages?q=sensor&category=perception&limit=10"
+```
+
+**Response:**
+```json
+{
+  "packages": [
+    {
+      "name": "sensor-fusion",
+      "version": "2.1.0",
+      "author": "robotics-lab",
+      "description": "Advanced sensor fusion using EKF and UKF",
+      "category": "perception",
+      "license": "MIT",
+      "downloads": 5234,
+      "stars": 234,
+      "updated_at": "2025-09-28T10:30:00Z",
+      "repository": "https://github.com/robotics-lab/sensor-fusion"
+    }
+  ],
+  "total": 10,
+  "page": 1,
+  "limit": 10
+}
+```
+
+### Get Package Info
+
+**Endpoint:** `GET /packages/:name`
+
+**Example:**
+```bash
+curl "https://registry.horus.dev/api/v1/packages/sensor-fusion"
+```
+
+**Response:**
+```json
+{
+  "name": "sensor-fusion",
+  "version": "2.1.0",
+  "author": "robotics-lab",
+  "description": "Advanced sensor fusion using EKF and UKF",
+  "category": "perception",
+  "license": "MIT",
+  "keywords": ["kalman", "fusion", "ekf", "ukf"],
+  "dependencies": {
+    "nalgebra": "^0.32",
+    "horus_library": "^0.1"
+  },
+  "downloads": 5234,
+  "stars": 234,
+  "readme": "# Sensor Fusion\n\nAdvanced sensor fusion...",
+  "repository": "https://github.com/robotics-lab/sensor-fusion",
+  "documentation": "https://docs.rs/sensor-fusion",
+  "created_at": "2025-06-15T08:00:00Z",
+  "updated_at": "2025-09-28T10:30:00Z",
+  "versions": ["2.1.0", "2.0.0", "1.5.0", "1.0.0"]
+}
+```
+
+### Download Package
+
+**Endpoint:** `GET /packages/:name/:version/download`
+
+**Example:**
+```bash
+curl -o sensor-fusion.tar.gz \
+  "https://registry.horus.dev/api/v1/packages/sensor-fusion/2.1.0/download"
+```
+
+### Publish Package
+
+**Endpoint:** `POST /packages`
+
+**Headers:**
+- `Authorization: Bearer <token>`
+- `Content-Type: application/octet-stream`
+
+**Example:**
+```bash
+# Get auth token
+TOKEN=$(cat ~/.horus/credentials | jq -r '.token')
+
+# Package project
+tar czf package.tar.gz .
+
+# Upload
+curl -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/octet-stream" \
+  --data-binary @package.tar.gz \
+  "https://registry.horus.dev/api/v1/packages"
+```
+
+## Quality & Trust
+
+### Package Quality Metrics
+
+The registry tracks quality metrics for each package:
+
+**Documentation Coverage:**
+- ✅ 90-100% - Excellent
+- ⚠️ 70-89% - Good
+- ❌ &lt;70% - Needs improvement
+
+**Build Status:**
+- ✅ Builds successfully
+- ❌ Build failures
+
+**Test Coverage:**
+- Number of tests
+- Test pass rate
+
+**Example Presence:**
+- ✅ Has examples
+- ❌ No examples
+
+**Update Frequency:**
+- 🔥 Active (updated in last month)
+- ⏰ Maintained (updated in last 6 months)
+- 💤 Stale (no updates in 6+ months)
+
+### Community Metrics
+
+**Downloads:**
+- Total downloads
+- Downloads last 30 days
+- Trending packages
+
+**Stars:**
+- GitHub stars
+- Registry favorites
+
+**Issues:**
+- Open issues count
+- Issue response time
+- Issue resolution rate
+
+### Trust Indicators
+
+**Verified Authors:**
+- ✅ Verified - Identity confirmed
+- 🏢 Organization - Official organization account
+
+**Featured Packages:**
+- ⭐ Featured - Staff-picked quality packages
+
+**Security Audits:**
+- 🔒 Audited - Passed security review
+
+## Package Management Best Practices
+
+### Choosing Packages
+
+**Evaluation checklist:**
+- ✅ Clear documentation
+- ✅ Recent updates (last 6 months)
+- ✅ Good download/star count
+- ✅ Active issue responses
+- ✅ Compatible license
+- ✅ Minimal dependencies
+
+**Red flags:**
+- ❌ No documentation or examples
+- ❌ No updates in 12+ months
+- ❌ Many open issues with no responses
+- ❌ Excessive dependencies
+- ❌ Unclear license
+
+### Publishing Best Practices
+
+**Before publishing:**
+1. Complete README with examples
+2. Add usage examples in `examples/`
+3. Write tests
+4. Add CHANGELOG.md
+5. Specify clear license
+6. Add repository URL
+7. Test on clean install
+
+**Versioning strategy:**
+- `0.x.x` - Experimental, expect breaking changes
+- `1.0.0` - First stable release
+- `1.x.x` - Stable with backward compatibility
+- `2.0.0` - Breaking changes
+
+**Maintenance:**
+- Respond to issues promptly
+- Keep dependencies updated
+- Publish regular updates
+- Maintain CHANGELOG
+- Add CI/CD for testing
+
+## Registry Administration
+
+### User Management
+
+**View your profile:**
+```bash
+horus auth whoami
+```
+
+**Update profile:**
+```bash
+horus auth profile --name "Your Name" --email "you@example.com"
+```
+
+### Package Management
+
+**List your packages:**
+```bash
+horus pkg list --author your-username
+```
+
+**Update package metadata:**
+```bash
+# Edit Cargo.toml, then republish with same version
+horus publish --update-metadata
+```
+
+**Delete package:**
+```bash
+# Requires confirmation and reason
+horus pkg delete my-package --reason "No longer maintained"
+```
+
+**Transfer ownership:**
+```bash
+horus pkg transfer my-package --to new-owner
+```
+
+## Troubleshooting
+
+### Authentication Failed
+
+**Error:**
+```
+Error: Authentication failed
+  Not logged in or token expired
+```
+
+**Solution:**
+```bash
+# Re-authenticate
+horus auth login --github
+
+# Check status
+horus auth whoami
+```
+
+### Publishing Failed
+
+**Error:**
+```
+Error: Package validation failed
+  - Missing README.md
+  - No license specified
+```
+
+**Solution:**
+```bash
+# Add README
+echo "# My Package" > README.md
+
+# Add license to Cargo.toml
+[package]
+license = "MIT"
+
+# Retry
+horus publish
+```
+
+### Package Not Found
+
+**Error:**
+```
+Error: Package 'nonexistent-package' not found
+```
+
+**Solutions:**
+```bash
+# Check spelling
+horus pkg list nonexistent
+
+# Search registry
+horus pkg list --detailed
+
+# Verify availability
+curl "https://registry.horus.dev/api/v1/packages/package-name"
+```
+
+### Version Already Published
+
+**Error:**
+```
+Error: Version 1.0.0 already published
+  Cannot republish same version
+```
+
+**Solution:**
+```bash
+# Bump version in Cargo.toml
+[package]
+version = "1.0.1"
+
+# Publish new version
+horus publish
+```
+
+## Next Steps
+
+- **[Package Management](/docs/package-management)** - Detailed package commands
+- **[Authentication](/docs/authentication)** - Manage credentials
+- **[Environment Management](/docs/environment-management)** - Share environments
+- **[Publishing Guide](/docs/publishing)** - Comprehensive publishing workflow
+- **[API Reference](/docs/api-registry)** - Full registry API documentation

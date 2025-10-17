@@ -1,0 +1,76 @@
+
+═══════════════════════════════════════════════════════════════
+  HORUS Production Message Benchmark Suite
+  Testing with real robotics message types
+═══════════════════════════════════════════════════════════════
+
+Configuration:
+  • Iterations: 10000
+  • Warmup: 100
+  • Process ID: 591892
+
+
+┏━━  CmdVel (Motor Control Command)
+┃    Size: 16 bytes | Typical rate: 1000Hz
+┃    Latency (avg): 642.97 ns
+┃    Throughput: 1555280.58 msg/s
+┃    Min/Max range: ~514-772 ns
+┗━━
+
+┏━━  LaserScan (2D Lidar Data)
+┃    Size: 1480 bytes | Typical rate: 10Hz
+┃    Latency (avg): 2.81 μs
+┃    Throughput: 356478.18 msg/s
+┃    Min/Max range: ~2244-3366 ns
+┗━━
+
+┏━━  IMU (Inertial Measurement Unit)
+┃    Size: 304 bytes | Typical rate: 100Hz
+┃    Latency (avg): 1.37 μs
+┃    Throughput: 728746.70 msg/s
+┃    Min/Max range: ~1098-1647 ns
+┗━━
+
+┏━━  Odometry (Pose + Velocity)
+┃    Size: 736 bytes | Typical rate: 50Hz
+┃    Latency (avg): 1.43 μs
+┃    Throughput: 698392.64 msg/s
+┃    Min/Max range: ~1145-1718 ns
+┗━━
+
+┏━━  BatteryState (Status Monitoring)
+┃    Size: 104 bytes | Typical rate: 1Hz
+┃    Latency (avg): 699.99 ns
+┃    Throughput: 1428583.88 msg/s
+┃    Min/Max range: ~560-840 ns
+┗━━
+
+┏━━  PointCloud Small (100 points)
+┃    Latency (avg): 3.79 μs
+┃    Throughput: 263633.70 msg/s
+┃    Min/Max range: ~3035-4552 ns
+┗━━
+
+┏━━  PointCloud Medium (1000 points)
+┃    Latency (avg): 17.61 μs
+┃    Throughput: 56772.50 msg/s
+┃    Min/Max range: ~14091-21137 ns
+┗━━
+
+┏━━  PointCloud Large (10000 points)
+┃    Latency (avg): 506.54 μs
+┃    Throughput: 1974.16 msg/s
+┃    Min/Max range: ~405235-607852 ns
+┗━━
+
+┏━━  Mixed Messages (Realistic Robot Loop)
+┃    Simulates: CmdVel@100Hz + IMU@100Hz + Battery@1Hz
+┃    Total messages: 20100 operations
+┃    Latency (avg): 1.77 μs
+┃    Throughput: 566120.14 msg/s
+┃    Min/Max range: ~1413-2120 ns
+┗━━
+
+═══════════════════════════════════════════════════════════════
+  Benchmark Complete
+═══════════════════════════════════════════════════════════════

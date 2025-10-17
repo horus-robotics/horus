@@ -1,0 +1,707 @@
+---
+title: Environment Management
+description: Save, share, and restore exact package environments
+order: 9
+---
+
+# Environment Management
+
+> **⚠️ Under Development**: The environment management features described in this guide are currently under active development. Some functionality may be incomplete or subject to change.
+
+Environment management in HORUS allows you to capture, save, and restore the exact set of packages and versions used in your project. Perfect for reproducible builds, team collaboration, and deployment.
+
+## Overview
+
+Think of environments like Python's `requirements.txt` or Node's `package-lock.json`:
+
+- **Freeze** your current environment to a file
+- **Restore** environments on different machines
+- **Share** setups with teammates
+- **Deploy** exact versions to production robots
+- **Track** environment history in version control
+
+## Quick Start
+
+### Save Your Environment
+
+```bash
+# Freeze to default file (horus-freeze.yaml)
+horus env freeze
+
+# Freeze to custom file
+horus env freeze -o production.yaml
+
+# Freeze and publish to registry
+horus env freeze --publish
+```
+
+### Restore an Environment
+
+```bash
+# Restore from local file
+horus env restore horus-freeze.yaml
+
+# Restore from registry
+horus env restore env_abc123
+```
+
+## Environment Files
+
+### Format
+
+Environment files use YAML format with complete package information:
+
+**horus-freeze.yaml:**
+```yaml
+# HORUS Environment
+# Generated: 2025-10-09T14:32:15Z
+# System: Linux 6.14.0-33-generic
+
+metadata:
+  name: "Mobile Robot Production Environment"
+  description: "Stable release for lab robots"
+  author: "robotics-team"
+  created_at: "2025-10-09T14:32:15Z"
+  horus_version: "0.1.0"
+
+packages:
+  # Direct dependencies
+  - name: pid-controller
+    version: 1.2.0
+    source: registry
+    checksum: sha256:a3b2c1...
+    features: ["anti-windup"]
+
+  - name: motion-planner
+    version: 2.0.1
+    source: registry
+    checksum: sha256:d4e5f6...
+    dependencies:
+      - pathfinding-utils: 1.2.0
+
+  - name: sensor-drivers
+    version: 1.5.0
+    source: registry
+    checksum: sha256:g7h8i9...
+
+# Total: 3 packages (+ 1 transitive dependency)
+```
+
+### File Locations
+
+**Default locations:**
+```
+my_project/
+├── horus-freeze.yaml       # Default freeze file
+├── production.yaml         # Custom freeze file
+└── .horus/
+    └── environments/
+        ├── dev.yaml
+        ├── staging.yaml
+        └── production.yaml
+```
+
+## Freezing Environments
+
+### `horus env freeze`
+
+Captures the current state of all installed packages.
+
+**Usage:**
+```bash
+horus env freeze [OPTIONS]
+```
+
+**Options:**
+- `-o, --output <FILE>` - Output file (default: `horus-freeze.yaml`)
+- `--publish` - Upload to registry and generate ID
+- `--name <NAME>` - Environment name
+- `--description <DESC>` - Environment description
+
+### Basic Freeze
+
+```bash
+horus env freeze
+```
+
+**Output:**
+```
+Analyzing environment...
+  ✓ Found 5 packages (3 direct, 2 transitive)
+  ✓ Verified checksums
+  ✓ Generated metadata
+
+Saved to: horus-freeze.yaml
+
+Packages frozen:
+  pid-controller@1.2.0
+  motion-planner@2.0.1
+  sensor-drivers@1.5.0
+  pathfinding-utils@1.2.0 (transitive)
+  control-utils@1.0.0 (transitive)
+
+To restore this environment:
+  horus env restore horus-freeze.yaml
+```
+
+### Custom Output File
+
+```bash
+# Save to specific file
+horus env freeze -o environments/production.yaml
+
+# Timestamp-based filename
+horus env freeze -o "backup-$(date +%Y%m%d).yaml"
+```
+
+### Named Environments
+
+```bash
+horus env freeze \
+  --name "Production v2.1" \
+  --description "Stable release for warehouse robots" \
+  -o production-v2.1.yaml
+```
+
+**Generated file includes metadata:**
+```yaml
+metadata:
+  name: "Production v2.1"
+  description: "Stable release for warehouse robots"
+  author: "robotics-team"
+  created_at: "2025-10-09T14:45:00Z"
+  # ...
+```
+
+### Publish to Registry
+
+```bash
+# Freeze and upload to registry
+horus env freeze --publish
+```
+
+**Output:**
+```
+Freezing environment...
+  ✓ Captured 5 packages
+  ✓ Generated manifest
+
+Uploading to registry...
+  ✓ Uploaded
+
+Environment published:
+  ID: env_abc123def456
+  URL: https://registry.horus.dev/environments/env_abc123def456
+
+Share this environment:
+  horus env restore env_abc123def456
+
+Or save locally:
+  horus env freeze -o local-copy.yaml
+```
+
+**Benefits of publishing:**
+- **No file transfer** - Just share the environment ID
+- **Version tracking** - Registry keeps history
+- **Team access** - Anyone authenticated can restore
+- **Immutable** - Can't be changed after publishing
+
+## Restoring Environments
+
+### `horus env restore`
+
+Installs the exact packages from a frozen environment.
+
+**Usage:**
+```bash
+horus env restore <FILE_OR_ID>
+```
+
+**Options:**
+- `-g, --global` - Install packages globally
+- `--force` - Reinstall even if already present
+- `--verify` - Verify checksums after installation
+
+### Restore from File
+
+```bash
+# Restore from local file
+horus env restore horus-freeze.yaml
+```
+
+**Output:**
+```
+Reading environment: horus-freeze.yaml
+  Name: Mobile Robot Production Environment
+  Packages: 5 (3 direct, 2 transitive)
+  Created: 2025-10-09
+
+Restoring environment...
+  ✓ pid-controller@1.2.0
+  ✓ motion-planner@2.0.1
+  ✓ sensor-drivers@1.5.0
+  ✓ pathfinding-utils@1.2.0 (dependency)
+  ✓ control-utils@1.0.0 (dependency)
+
+Environment restored successfully!
+  Location: .horus/packages/
+  Total size: 2.3 MB
+```
+
+### Restore from Registry
+
+```bash
+# Restore using environment ID
+horus env restore env_abc123def456
+```
+
+**Output:**
+```
+Fetching environment from registry...
+  ✓ Downloaded env_abc123def456
+
+Name: Production v2.1
+Description: Stable release for warehouse robots
+Author: robotics-team
+Packages: 5
+
+Restoring...
+  ✓ All packages installed
+
+Environment ready!
+```
+
+### Global Installation
+
+```bash
+# Install to global cache (shared across projects)
+horus env restore production.yaml --global
+```
+
+### Force Reinstall
+
+```bash
+# Reinstall even if already present
+horus env restore horus-freeze.yaml --force
+```
+
+### Verify Integrity
+
+```bash
+# Verify checksums after installation
+horus env restore production.yaml --verify
+```
+
+**Output:**
+```
+Restoring and verifying...
+  ✓ pid-controller@1.2.0 (checksum OK)
+  ✓ motion-planner@2.0.1 (checksum OK)
+  ✓ sensor-drivers@1.5.0 (checksum OK)
+
+All packages verified successfully!
+```
+
+## Common Workflows
+
+### Development Workflow
+
+**Setup for new developer:**
+```bash
+# 1. Clone project
+git clone https://github.com/team/robot-controller
+cd robot-controller
+
+# 2. Restore environment
+horus env restore horus-freeze.yaml
+
+# 3. Run project
+horus run --release
+```
+
+**Update dependencies:**
+```bash
+# 1. Install new package
+horus pkg install new-feature
+
+# 2. Test
+horus run --release
+
+# 3. Freeze updated environment
+horus env freeze
+
+# 4. Commit changes
+git add horus-freeze.yaml
+git commit -m "Add new-feature package"
+```
+
+### Production Deployment
+
+**Prepare for deployment:**
+```bash
+# 1. Test locally
+horus run --release
+
+# 2. Freeze environment
+horus env freeze -o production.yaml \
+  --name "Production v2.1" \
+  --description "Release for warehouse robots"
+
+# 3. Publish to registry
+horus env freeze --publish
+# Output: env_abc123def456
+
+# 4. Deploy to robot
+ssh robot@192.168.1.100
+horus env restore env_abc123def456
+horus run --release --remote
+```
+
+### Team Collaboration
+
+**Share exact setup:**
+```bash
+# Team lead freezes environment
+horus env freeze --publish \
+  --name "Team Development Environment" \
+  --description "Standard setup for all team members"
+
+# Output: env_team_dev_001
+
+# Team members restore
+horus env restore env_team_dev_001
+```
+
+### Multiple Environments
+
+**Maintain separate environments:**
+```bash
+# Development
+horus env freeze -o .horus/environments/dev.yaml
+
+# Staging
+horus env freeze -o .horus/environments/staging.yaml
+
+# Production
+horus env freeze -o .horus/environments/production.yaml
+```
+
+**Switch environments:**
+```bash
+# Switch to staging
+horus env restore .horus/environments/staging.yaml
+
+# Switch to production
+horus env restore .horus/environments/production.yaml
+```
+
+### Rollback
+
+**If deployment fails, rollback:**
+```bash
+# Restore previous working environment
+horus env restore backup-20251008.yaml
+
+# Or restore from registry
+horus env restore env_previous_stable
+```
+
+## Environment Comparison
+
+### Compare Two Environments
+
+```bash
+# Show differences between environments
+horus env diff horus-freeze.yaml production.yaml
+```
+
+**Output:**
+```
+Comparing environments:
+  Local: horus-freeze.yaml (5 packages)
+  Remote: production.yaml (4 packages)
+
+Differences:
+  + sensor-fusion@1.0.0 (only in horus-freeze.yaml)
+  ! pid-controller: 1.2.0 → 1.3.0 (version changed)
+  - legacy-driver@0.5.0 (removed in horus-freeze.yaml)
+
+Summary:
+  1 added
+  1 version changed
+  1 removed
+```
+
+### Check Environment Status
+
+```bash
+# Show current vs frozen state
+horus env status
+```
+
+**Output:**
+```
+Current environment vs horus-freeze.yaml:
+
+Matching:
+  ✓ motion-planner@2.0.1
+  ✓ sensor-drivers@1.5.0
+
+Outdated:
+  ⚠ pid-controller: 1.2.0 (frozen) → 1.3.0 (installed)
+
+Missing:
+  ✗ control-utils@1.0.0 (in freeze file, not installed)
+
+Status: Out of sync
+Run 'horus env restore horus-freeze.yaml' to synchronize
+```
+
+## Best Practices
+
+### Version Control
+
+**Always commit environment files:**
+```bash
+# Add to git
+git add horus-freeze.yaml
+git commit -m "Update environment: add sensor-fusion package"
+
+# .gitignore
+.horus/packages/      # Don't commit downloaded packages
+.horus/cache/         # Don't commit cache
+```
+
+### Environment Naming
+
+**Use descriptive names:**
+```yaml
+# Good
+name: "Production v2.1 - Warehouse Robots"
+name: "Development - Feature Branch XYZ"
+name: "Staging - Pre-release Testing"
+
+# Bad
+name: "env1"
+name: "test"
+name: "final_final_v2"
+```
+
+### Documentation
+
+**Document environment purpose:**
+```yaml
+metadata:
+  name: "Production v2.1"
+  description: |
+    Stable production environment for warehouse robots.
+
+    Features:
+    - PID controller with anti-windup
+    - Motion planner with obstacle avoidance
+    - Sensor drivers for LIDAR and IMU
+
+    Tested on:
+    - Robot A (192.168.1.100)
+    - Robot B (192.168.1.101)
+    - Robot C (192.168.1.102)
+
+    Last updated: 2025-10-09
+    Contact: robotics-team@company.com
+```
+
+### Periodic Freezes
+
+**Freeze regularly:**
+```bash
+# Before major changes
+horus env freeze -o backup-before-upgrade.yaml
+
+# After successful testing
+horus env freeze -o stable-$(date +%Y%m%d).yaml
+
+# Before deployment
+horus env freeze -o production-v$(git describe --tags).yaml
+```
+
+### Environment Hygiene
+
+**Keep environments clean:**
+```bash
+# Remove unused packages
+horus pkg list
+horus pkg remove unused-package
+
+# Refreeze
+horus env freeze
+
+# Verify
+horus env restore horus-freeze.yaml --verify
+```
+
+## Troubleshooting
+
+### Package Not Available
+
+**Error:**
+```
+Error: Package 'legacy-driver@0.5.0' not found in registry
+```
+
+**Causes:**
+- Package was unpublished
+- Version no longer available
+- Registry connection issue
+
+**Solutions:**
+```bash
+# Option 1: Update environment file
+# Remove or replace unavailable package
+
+# Option 2: Install alternative
+horus pkg install modern-driver
+horus env freeze  # Update freeze file
+
+# Option 3: Use cached version
+ls ~/.horus/cache/legacy-driver@0.5.0/
+```
+
+### Checksum Mismatch
+
+**Error:**
+```
+Error: Checksum mismatch for 'pid-controller@1.2.0'
+  Expected: sha256:a3b2c1...
+  Got:      sha256:x9y8z7...
+```
+
+**Causes:**
+- Package was modified on registry
+- Corrupted download
+- Network issue
+
+**Solutions:**
+```bash
+# Force reinstall
+horus pkg remove pid-controller
+horus pkg install pid-controller -v 1.2.0 --force
+
+# Skip verification (not recommended)
+horus env restore horus-freeze.yaml --no-verify
+```
+
+### Version Conflicts
+
+**Error:**
+```
+Error: Cannot satisfy version constraints
+  motion-planner requires pathfinding-utils ^1.2
+  sensor-fusion requires pathfinding-utils ^1.0
+```
+
+**Solutions:**
+```bash
+# Option 1: Update conflicting package
+horus pkg install sensor-fusion --force  # Gets compatible version
+
+# Option 2: Edit environment file manually
+# Change pathfinding-utils version to compatible one
+
+# Option 3: Remove conflicting package
+horus pkg remove sensor-fusion
+horus env freeze  # Update freeze file
+```
+
+### Registry Unavailable
+
+**Error:**
+```
+Error: Failed to fetch environment from registry
+```
+
+**Solutions:**
+```bash
+# Use local file instead
+horus env restore horus-freeze.yaml
+
+# Export from registry when available
+horus env export env_abc123def456 -o local-copy.yaml
+horus env restore local-copy.yaml
+```
+
+## Environment Registry
+
+### List Published Environments
+
+```bash
+# List your published environments
+horus env list
+
+# List all public environments
+horus env list --public
+
+# Search by keyword
+horus env list mobile robot
+```
+
+**Output:**
+```
+Your Published Environments:
+
+  env_abc123def456
+  Production v2.1 - Warehouse Robots
+  Author: robotics-team
+  Packages: 5
+  Published: 2025-10-09
+
+  env_xyz789ghi012
+  Development - Feature Testing
+  Author: robotics-team
+  Packages: 7
+  Published: 2025-10-08
+
+Total: 2 environments
+```
+
+### View Environment Details
+
+```bash
+# Show details
+horus env info env_abc123def456
+```
+
+**Output:**
+```
+Environment: env_abc123def456
+
+Name: Production v2.1
+Description: Stable release for warehouse robots
+Author: robotics-team
+Created: 2025-10-09T14:45:00Z
+HORUS Version: 0.1.0
+
+Packages (5):
+  pid-controller@1.2.0
+  motion-planner@2.0.1
+  sensor-drivers@1.5.0
+  pathfinding-utils@1.2.0
+  control-utils@1.0.0
+
+To restore:
+  horus env restore env_abc123def456
+```
+
+### Delete Environment
+
+```bash
+# Delete from registry
+horus env delete env_xyz789ghi012
+```
+
+## Next Steps
+
+- **[Package Management](/docs/package-management)** - Install and manage packages
+- **[Authentication](/docs/authentication)** - Login to registry
+- **[Marketplace](/docs/marketplace)** - Discover environments
+- **[CI/CD Integration](/docs/ci-cd)** - Automate deployments
+- **[CLI Reference](/docs/cli-reference)** - Complete command documentation

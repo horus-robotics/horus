@@ -1,0 +1,15 @@
+[package]
+name = "tanksim"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "tanksim"
+path = "src/main.rs"
+
+[dependencies]
+horus = { path = "../../../horus" }
+horus_core = { path = "../../../horus_core" }
+horus_library = { path = "../.." }
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.0", features = ["full"] }

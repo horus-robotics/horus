@@ -1,0 +1,101 @@
+---
+title: Core Concepts
+description: Understanding HORUS architecture and IPC backends
+order: 1
+---
+
+# Core Concepts
+
+HORUS provides multiple IPC backends, each optimized for different use cases. All backends share the same API for seamless switching.
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────┐
+│           HORUS Application             │
+├─────────────────────────────────────────┤
+│      Publisher/Subscriber API           │
+├─────────────────────────────────────────┤
+│   Link (SPSC)  │  Hub (MPMC)  │ iceoryx2│
+├─────────────────────────────────────────┤
+│        Shared Memory (/dev/shm)         │
+└─────────────────────────────────────────┘
+```
+
+## Communication System
+
+### Hub (Topic-Based Pub/Sub)
+
+**Production-Grade Message Passing**
+
+- **Latency**: 366ns-2.8µs for production messages (with serde)
+- **Use case**: All robotics applications - control, sensing, perception
+- **Performance**: 100-270x faster than ROS2
+- **Message Types**: CmdVel (366ns), IMU (543ns), LaserScan (1.58µs), Odometry (774ns)
+
+```rust
+use horus::prelude::*;
+
+// Create publisher/subscriber for any message type
+let mut pub = node.create_publisher::<CmdVel>("motor/cmd_vel")?;
+let mut sub = node.create_subscriber::<CmdVel>("motor/cmd_vel")?;
+
+```rust
+// Multiple publishers can send to same topic
+let mut pub1 = node1.create_publisher::<SensorData>("sensors/imu")?;
+let mut pub2 = node2.create_publisher::<SensorData>("sensors/imu")?;
+
+// Multiple subscribers receive all messages
+let mut sub1 = node3.create_subscriber::<SensorData>("sensors/imu")?;
+let mut sub2 = node4.create_subscriber::<SensorData>("sensors/imu")?;
+```
+
+## Production Performance
+
+**Real Message Latencies** (with serde serialization):
+
+| Message Type | Size | Latency | Throughput | vs ROS2 |
+|--------------|------|---------|------------|---------|
+| **CmdVel** | 16 B | 366 ns | 2.7M msg/s | **137x faster** |
+| **IMU** | 304 B | 543 ns | 1.8M msg/s | **92x faster** |
+| **LaserScan** | 1.5 KB | 1.58 µs | 633K msg/s | **63x faster** |
+| **Odometry** | 736 B | 774 ns | 1.3M msg/s | **65x faster** |
+| **PointCloud (10K)** | 120 KB | 215 µs | 4.7K msg/s | **23x faster** |
+
+See [Benchmarks](/docs/benchmarks) for complete performance analysis.
+
+## Efficient Shared Memory
+
+HORUS uses **shared memory** for fast IPC:
+
+1. Efficient serialization with serde + bincode
+2. Shared memory ring buffers for message passing
+3. Lock-free operations where possible
+4. Fixed-size message structures for safety
+
+```rust
+use horus::prelude::*;
+
+// Send complex message types
+let cmd = CmdVel::new(1.5, 0.8);  // 366ns latency
+pub.send(cmd, Some(&mut node))?;
+
+if let Some(cmd) = sub.recv() {
+    println!("Linear: {}, Angular: {}", cmd.linear, cmd.angular);
+}
+```
+
+## Message Safety
+
+HORUS messages are **memory-safe** by design:
+
+- Fixed-size arrays instead of `Vec` for shared memory
+- `#[repr(C)]` for consistent memory layout
+- Serde for safe serialization
+- No heap allocation in hot paths
+
+## Next Steps
+
+- [Getting Started](/getting-started) - Build your first HORUS node
+- [Benchmarks](/docs/benchmarks) - Production performance analysis
+- [Examples](/docs/examples) - Real-world robotics applications

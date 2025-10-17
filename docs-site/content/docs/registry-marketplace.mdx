@@ -1,0 +1,588 @@
+---
+title: Registry & Marketplace
+description: Browse, discover, and publish packages on the HORUS Registry
+order: 9
+---
+
+# Registry & Marketplace
+
+The HORUS Registry and Marketplace provide a centralized platform for discovering, publishing, and managing robotics packages. Whether you're looking for existing components or sharing your work with the community, the marketplace makes it easy.
+
+## Overview
+
+### What is the Registry?
+
+The **Registry** is the backend infrastructure that:
+- Stores and distributes packages
+- Manages package metadata and versions
+- Handles authentication and authorization
+- Provides API endpoints for package operations
+- Tracks downloads and usage statistics
+
+### What is the Marketplace?
+
+The **Marketplace** is the web interface that:
+- Displays available packages with rich metadata
+- Provides search and discovery features
+- Shows package documentation (external or built-in)
+- Links to source repositories
+- Offers package details and version history
+
+## Accessing the Marketplace
+
+### Web Interface
+
+Browse packages at the marketplace URL:
+
+```
+http://localhost:3003      # Local development
+https://marketplace.horus.dev  # Production (when available)
+```
+
+**Features:**
+- **Search Bar**: Find packages by name or description
+- **Filter Tabs**: Browse by category (Navigation, Vision, Control)
+- **Package Cards**: Quick overview with stats
+- **Details Page**: Comprehensive package information
+
+### CLI Access
+
+Access registry features directly from the command line:
+
+```bash
+# Search packages
+horus pkg list sensor
+
+# Get package info
+horus pkg info pid-controller
+
+# Install packages
+horus pkg install motion-planner
+```
+
+## Package Discovery
+
+### Browsing Packages
+
+The marketplace home page displays:
+
+```
+┌─────────────────────────────────────────────────────┐
+│              HORUS Package Registry                 │
+│    High-performance robotics packages built for    │
+│                      speed                          │
+└─────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────┐
+│  Search: [$ _________________________________]      │
+└─────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────┐
+│  📦 10 Packages  |  ↓ 15,432 Downloads  |  👥 8 Publishers │
+└─────────────────────────────────────────────────────┘
+
+┌────────────────────┐ ┌────────────────────┐
+│ 📦 pid-controller  │ │ 📦 motion-planner  │
+│ v1.2.0             │ │ v2.0.1             │
+│                    │ │                    │
+│ PID controller     │ │ A* path planning   │
+│                    │ │                    │
+│ ↓ 5,234  ★ 45      │ │ ↓ 3,421  ★ 32     │
+│                    │ │                    │
+│ [View] [Docs]      │ │ [View] [Docs]      │
+│        [Source]    │ │        [Source]    │
+└────────────────────┘ └────────────────────┘
+```
+
+### Search Functionality
+
+**By Name or Description:**
+```bash
+# In the web interface
+Search: "sensor fusion"
+
+# Results show packages matching "sensor" or "fusion"
+```
+
+**Filter by Category:**
+- All
+- Navigation
+- Vision
+- Control
+- Perception
+- Drivers
+- Utilities
+
+### Package Information
+
+Each package card shows:
+- **Name and Version**: Current published version
+- **Description**: Brief overview
+- **Stats**: Downloads, stars, license
+- **Action Buttons**:
+  - **View Details**: Full package information
+  - **Docs**: Documentation (if available)
+  - **Source**: Repository link (if available)
+
+## Package Details
+
+### Viewing Package Details
+
+Click "View Details" on any package to see:
+
+**Package Information:**
+```
+Name: pid-controller
+Version: 1.2.0
+Publisher: robotics-lab
+License: MIT
+Downloads: 5,234
+Stars: 45
+
+Description:
+Production-ready PID controller with anti-windup and
+derivative filtering for robotics applications.
+
+Installation:
+$ horus pkg install pid-controller
+```
+
+**Available Versions:**
+- 1.2.0 (latest)
+- 1.1.0
+- 1.0.0
+
+**Dependencies:**
+- control-utils ^1.0.0
+
+## Documentation Features
+
+### Types of Documentation
+
+HORUS packages support two types of documentation:
+
+#### 1. External Documentation
+
+Link to external documentation hosted elsewhere:
+
+**Examples:**
+- GitHub Pages: `https://username.github.io/package-docs`
+- ReadTheDocs: `https://package-name.readthedocs.io`
+- Custom site: `https://docs.example.com/package`
+
+**How it works:**
+- Publisher provides URL during publish
+- "Docs" button opens URL in new tab
+- Users visit external site for documentation
+
+**Best for:**
+- Large documentation sites
+- Interactive documentation
+- Already hosted documentation
+
+#### 2. Local Documentation (Bundled Markdown)
+
+Include documentation directly in the package:
+
+**Structure:**
+```
+my-package/
+├── docs/
+│   ├── README.md           # Main page
+│   ├── getting-started.md  # Installation guide
+│   ├── api.md              # API reference
+│   ├── examples.md         # Usage examples
+│   └── troubleshooting.md  # Common issues
+├── src/
+└── Cargo.toml
+```
+
+**How it works:**
+- Markdown files bundled with package
+- Registry extracts and serves .md files
+- Built-in viewer renders markdown
+- Supports GitHub Flavored Markdown
+
+**Features:**
+- Syntax highlighting
+- Navigation sidebar
+- Version-specific docs
+- Works offline
+- No external hosting needed
+
+**Best for:**
+- Simple documentation
+- Version-specific docs
+- Offline-first packages
+- Quick setup
+
+### Viewing Documentation
+
+**From Package Card:**
+```
+┌────────────────────┐
+│ 📦 my-package      │
+│ v1.0.0             │
+│                    │
+│ [View] [Docs]      │ ← Click here
+└────────────────────┘
+```
+
+**Local Docs Viewer:**
+```
+┌─────────────────────────────────────────────────────┐
+│  my-package Documentation                     v1.0.0│
+│  ← Back to package details                          │
+├──────────────┬──────────────────────────────────────┤
+│ Documentation│  # Getting Started                   │
+│              │                                       │
+│ • README.md  │  Install the package:                │
+│ • getting-   │  ```bash                             │
+│   started.md │  horus pkg install my-package        │
+│ • api.md     │  ```                                 │
+│ • examples.md│                                       │
+│              │  ## Usage                            │
+│              │                                       │
+│              │  Import and use in your code:        │
+│              │  ```rust                             │
+│              │  use my_package::MyNode;             │
+│              │  ```                                 │
+└──────────────┴──────────────────────────────────────┘
+```
+
+### Writing Good Documentation
+
+**README.md (Required):**
+```markdown
+# Package Name
+
+Brief description of what your package does.
+
+## Features
+
+- Feature 1
+- Feature 2
+- Feature 3
+
+## Installation
+
+```bash
+horus pkg install my-package
+```
+
+## Quick Start
+
+```rust
+use my_package::MyNode;
+use horus::prelude::*;
+
+fn main() {
+    let node = MyNode::new();
+    // Use your node...
+}
+```
+
+## License
+
+MIT
+```
+
+**getting-started.md (Recommended):**
+```markdown
+# Getting Started
+
+## Prerequisites
+
+- HORUS 0.1.0 or higher
+- Rust 1.70+
+
+## Installation
+
+Install via HORUS package manager:
+
+```bash
+horus pkg install my-package
+```
+
+## Basic Usage
+
+1. Import the package
+2. Create a node instance
+3. Register with scheduler
+4. Run your application
+
+[... detailed steps ...]
+```
+
+**api.md (Recommended):**
+```markdown
+# API Reference
+
+## Structs
+
+### `MyNode`
+
+Main node structure for processing.
+
+```rust
+pub struct MyNode {
+    pub input: Hub<f64>,
+    pub output: Hub<f64>,
+}
+```
+
+#### Methods
+
+##### `new()`
+
+Creates a new instance.
+
+```rust
+pub fn new() -> Self
+```
+
+[... more API docs ...]
+```
+
+## Source Repository Links
+
+### Why Link Your Repository?
+
+Linking your source repository helps users:
+- View source code
+- Report issues
+- Contribute to development
+- Check recent activity
+- Star/fork the project
+
+### Supported Platforms
+
+- **GitHub**: `https://github.com/username/repo`
+- **GitLab**: `https://gitlab.com/username/repo`
+- **Bitbucket**: `https://bitbucket.org/username/repo`
+- **Self-hosted Git**: Any public Git URL
+
+### Auto-Detection
+
+The CLI automatically detects your Git remote:
+
+```bash
+$ cd my-package
+$ git remote -v
+origin  git@github.com:username/my-package.git
+
+$ horus publish
+# ...
+Source Repository
+   ✓ Auto-detected: https://github.com/username/my-package
+   Add source repository? (y/n): y
+```
+
+### Manual Configuration
+
+If auto-detection doesn't work:
+
+```bash
+Source Repository
+   Add source repository? (y/n): y
+   Enter source repository URL: https://github.com/username/repo
+   ✓ Source repository: https://github.com/username/repo
+```
+
+## Publishing with Documentation
+
+### Complete Publishing Flow
+
+```bash
+$ cd my-sensor-package
+$ tree
+.
+├── Cargo.toml
+├── docs/
+│   ├── README.md
+│   ├── getting-started.md
+│   ├── api.md
+│   └── examples.md
+└── src/
+    └── lib.rs
+
+$ horus publish
+
+📦 Publishing my-sensor-package v1.0.0...
+✓ Uploaded to registry
+
+📚 Package Metadata (optional)
+
+Documentation
+   ✓ Found local /docs folder with markdown files
+   Add documentation? (y/n): y
+
+   Options:
+     1. External URL
+     2. Local /docs folder
+
+   Choose (1/2/skip): 2
+   ✓ Will bundle local /docs folder
+
+Source Repository
+   ✓ Auto-detected: https://github.com/robotics/my-sensor-package
+   Add source repository? (y/n): y
+   Use detected URL? (y/n): y
+   ✓ Source repository: https://github.com/robotics/my-sensor-package
+
+✅ Package metadata updated!
+```
+
+### Updating Metadata Later
+
+You can't currently update documentation/source URLs after publishing. To update:
+
+1. Publish a new version with updated metadata
+2. Or contact registry administrators
+
+## Registry API
+
+### Direct API Access
+
+For programmatic access:
+
+**List all packages:**
+```bash
+curl http://localhost:3001/api/packages
+```
+
+**Search packages:**
+```bash
+curl "http://localhost:3001/api/packages/search?q=sensor"
+```
+
+**Get package info:**
+```bash
+curl http://localhost:3001/api/packages/pid-controller
+```
+
+**Download package:**
+```bash
+curl -o pkg.tar.gz \
+  http://localhost:3001/api/packages/pid-controller/1.2.0/download
+```
+
+**Get local documentation:**
+```bash
+curl http://localhost:3001/api/packages/my-package/1.0.0/docs/README.md
+```
+
+### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/packages` | GET | List all packages |
+| `/api/packages/search?q={query}` | GET | Search packages |
+| `/api/packages/{name}` | GET | Get package info |
+| `/api/packages/{name}/versions` | GET | List versions |
+| `/api/packages/{name}/{version}/download` | GET | Download package |
+| `/api/packages/{name}/{version}/docs/{path}` | GET | Get documentation file |
+| `/api/packages/{name}/{version}` | DELETE | Unpublish package |
+| `/api/packages/{name}/{version}/metadata` | POST | Update metadata |
+
+## Best Practices
+
+### For Package Publishers
+
+**Documentation:**
+- Include comprehensive README
+- Provide usage examples
+- Document all public APIs
+- Add troubleshooting section
+- Keep docs version-specific
+
+**Source Repository:**
+- Always link your repository
+- Keep repository public
+- Use meaningful commit messages
+- Tag releases properly
+- Respond to issues
+
+**Package Quality:**
+- Write tests
+- Add examples
+- Use semantic versioning
+- Include license file
+- Document dependencies
+
+### For Package Users
+
+**Discovery:**
+- Browse by category
+- Read documentation first
+- Check download count
+- View source repository
+- Look at recent updates
+
+**Installation:**
+- Pin specific versions
+- Review dependencies
+- Test in development first
+- Read changelog
+- Report issues
+
+## Security & Privacy
+
+### Package Ownership
+
+- Only package owners can unpublish
+- Authentication required for publishing
+- API keys stored securely
+- GitHub OAuth for authentication
+
+### Content Security
+
+- External docs open in new tab with `noopener noreferrer`
+- Local docs sandboxed in viewer
+- No executable code in markdown
+- XSS protection enabled
+
+### Privacy
+
+- Downloads counted anonymously
+- No personal data collected
+- GitHub username visible on packages
+- API keys never exposed
+
+## Troubleshooting
+
+### Documentation Not Showing
+
+**Problem:** "Docs" button doesn't appear
+
+**Solutions:**
+1. Check if docs were added during publish
+2. Verify docs_url is set in database
+3. For local docs, check /docs folder exists
+4. Republish package with documentation
+
+### Source Link Broken
+
+**Problem:** Source button links to wrong URL
+
+**Solutions:**
+1. Verify Git remote URL: `git remote -v`
+2. Ensure URL is publicly accessible
+3. Republish with correct URL
+
+### Local Docs Not Rendering
+
+**Problem:** Markdown files show errors
+
+**Solutions:**
+1. Ensure files are valid markdown (.md)
+2. Check files are in /docs folder
+3. Verify markdown syntax
+4. Try viewing raw content via API
+
+## Next Steps
+
+- **[Package Management](/docs/package-management)** - Install and manage packages
+- **[Publishing Guide](/docs/publishing)** - Detailed publishing workflow
+- **[Authentication](/docs/authentication)** - Set up registry credentials
+- **[CLI Reference](/docs/cli-reference)** - Complete command documentation

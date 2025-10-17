@@ -1,0 +1,31 @@
+[package]
+name = "horus"
+version = "0.1.0"
+edition = "2021"
+authors = ["HORUS Team"]
+description = "HORUS - Hybrid Optimized Robotics Unified System framework for Rust"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/horus/HORUS"
+keywords = ["robotics", "ros", "ipc", "real-time", "framework"]
+categories = ["science::robotics", "embedded", "network-programming"]
+
+[dependencies]
+# Core HORUS components
+horus_core = { path = "../horus_core" }
+horus_macros = { path = "../horus_macros" }
+horus_library = { path = "../horus_library" }
+
+# Re-export commonly used dependencies
+serde = { workspace = true }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+[features]
+default = []
+iceoryx2 = ["horus_core/iceoryx2"]
+zenoh = ["horus_core/zenoh"]
+
+[lib]
+name = "horus"
+path = "src/lib.rs"

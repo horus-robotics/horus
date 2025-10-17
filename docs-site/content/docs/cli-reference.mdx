@@ -1,0 +1,494 @@
+---
+title: CLI Reference
+description: Complete guide to all HORUS commands
+order: 7
+---
+
+# CLI Reference
+
+The `horus` command gives you everything you need to build, run, and manage your applications. This page covers all 7 commands.
+
+## Quick Reference
+
+```bash
+horus new <name>           # Create a new project
+horus run [file]           # Build and run your app
+horus dashboard [port]     # Monitor your system
+horus pkg <command>        # Manage packages
+horus env <command>        # Save/restore environments
+horus publish              # Share your package
+horus auth <command>       # Login to registry
+```
+
+---
+
+## `horus new` - Create Projects
+
+**What it does**: Creates a new HORUS project with all the boilerplate set up for you.
+
+**Why it's useful**: No need to remember dependencies or configuration - just pick a language and start coding.
+
+### Basic Usage
+
+```bash
+# Interactive mode (asks you questions)
+horus new my_project
+
+# Rust with helpful macros (recommended!)
+horus new my_project --macro
+
+# Python project
+horus new my_project --python
+
+# C project
+horus new my_project --c
+```
+
+### All Options
+
+```bash
+horus new <NAME> [OPTIONS]
+
+Options:
+  -m, --macro              Rust with node! macro (less boilerplate)
+  -r, --rust               Plain Rust project
+  -p, --python             Python project
+  -c, --c                  C project
+  -o, --output <PATH>      Where to create it (default: current directory)
+```
+
+### Examples
+
+**Start with Rust + macros** (easiest):
+```bash
+horus new temperature_monitor --macro
+cd temperature_monitor
+horus run
+```
+
+**Python for prototyping**:
+```bash
+horus new sensor_test --python
+cd sensor_test
+python main.py
+```
+
+**Put it somewhere specific**:
+```bash
+horus new robot_controller --output ~/projects/robots
+```
+
+---
+
+## `horus run` - Build and Run
+
+**What it does**: Compiles your code and runs it. Handles all the build tools for you.
+
+**Why it's useful**: One command works for Rust, Python, and C. No need to remember `cargo run`, `python3`, or `gcc` commands.
+
+### Basic Usage
+
+```bash
+# Run current directory (finds main.rs, main.py, or main.c)
+horus run
+
+# Run specific file
+horus run src/controller.rs
+
+# Run optimized (100x faster!)
+horus run --release
+```
+
+### All Options
+
+```bash
+horus run [FILE] [OPTIONS] [-- ARGS]
+
+Options:
+  -r, --release            Optimize for speed (use for real testing!)
+  -b, --build-only         Just compile, don't run
+  -c, --clean              Remove old build files first
+  -R, --remote <ROBOT>     Run on a remote robot
+  -- <ARGS>                Arguments for your program
+```
+
+### Why --release Matters
+
+**Debug mode** (default): Fast to compile, slow to run
+- Good for: Trying things quickly
+- Speed: Messages take ~5-50μs
+
+**Release mode** (`--release`): Slow to compile, fast to run
+- Good for: Real testing, benchmarks, production
+- Speed: Messages take ~366ns-1.58μs (100x faster!)
+
+**Always use `--release` when measuring performance!**
+
+### Examples
+
+**Daily development**:
+```bash
+horus run
+# Fast iteration, slower execution
+```
+
+**Testing performance**:
+```bash
+horus run --release
+# See real speed
+```
+
+**Build for CI without running**:
+```bash
+horus run --build-only --release
+```
+
+**Fresh build** (when things act weird):
+```bash
+horus run --clean --release
+```
+
+**Run on your robot**:
+```bash
+horus run --remote 192.168.1.100
+# Builds here, runs there
+```
+
+**Pass arguments to your program**:
+```bash
+horus run -- --config robot.yaml --verbose
+```
+
+---
+
+## `horus dashboard` - Monitor Everything
+
+**What it does**: Opens a visual dashboard showing all your running nodes, messages, and performance.
+
+**Why it's useful**: Debug problems visually. See message flow in real-time. Monitor performance.
+
+### Basic Usage
+
+```bash
+# Web dashboard (opens in browser)
+horus dashboard
+
+# Different port
+horus dashboard 8080
+
+# Text-based (for SSH)
+horus dashboard --tui
+```
+
+### What You See
+
+The dashboard shows:
+- **All running nodes** - Names, status, tick rates
+- **Message flow** - What's talking to what
+- **Performance** - CPU, memory, latency per node
+- **Topics** - All active communication channels
+- **Graph view** - Visual network of your system
+
+### Examples
+
+**Start monitoring** (in a second terminal):
+```bash
+# Terminal 1: Run your app
+horus run --release
+
+# Terminal 2: Watch it
+horus dashboard
+```
+
+**Access from your phone**:
+```bash
+horus dashboard
+# Visit http://your-computer-ip:3000 from phone
+```
+
+**Monitor over SSH**:
+```bash
+ssh robot@192.168.1.100
+horus dashboard --tui
+```
+
+See [Dashboard Guide](/docs/dashboard) for detailed features.
+
+---
+
+## `horus pkg` - Package Management
+
+**What it does**: Install and manage reusable components.
+
+**Why it's useful**: Don't reinvent the wheel. Use components others have built and tested.
+
+### Commands
+
+```bash
+# Install a package
+horus pkg install <package>
+
+# Remove a package
+horus pkg remove <package>
+
+# List packages
+horus pkg list
+```
+
+### Examples
+
+**Install a package**:
+```bash
+horus pkg install pid-controller
+```
+
+**Install globally** (share across projects):
+```bash
+horus pkg install common-utils --global
+```
+
+**See what's installed**:
+```bash
+horus pkg list
+```
+
+**Search for packages**:
+```bash
+horus pkg list sensor
+```
+
+---
+
+## `horus env` - Environment Management
+
+**What it does**: Save and restore your exact setup (all package versions).
+
+**Why it's useful**: Share your setup with teammates. Deploy the same version to production. Time-travel to old configurations.
+
+### Commands
+
+```bash
+# Save current environment
+horus env freeze
+
+# Load saved environment
+horus env restore <file>
+```
+
+### Examples
+
+**Save your setup**:
+```bash
+horus env freeze
+# Creates horus-freeze.yaml
+```
+
+**Load teammate's setup**:
+```bash
+horus env restore teammate-setup.yaml
+```
+
+**Deploy exact production environment**:
+```bash
+# On production machine
+horus env restore production.yaml
+```
+
+---
+
+## `horus publish` - Share Your Package
+
+**What it does**: Upload your package so others can use it.
+
+**Why it's useful**: Share your work with the community or your team.
+
+### Usage
+
+```bash
+horus publish
+```
+
+### Requirements
+
+- Must be in a project directory
+- Must be logged in (`horus auth login`)
+
+### Example
+
+```bash
+# Create and publish
+horus new my_awesome_controller --macro
+cd my_awesome_controller
+# ... build and test it ...
+horus auth login --github
+horus publish
+```
+
+---
+
+## `horus auth` - Login to Registry
+
+**What it does**: Authenticate so you can publish packages.
+
+**Why it's useful**: Secure access to the package registry.
+
+### Commands
+
+```bash
+# Login with GitHub
+horus auth login --github
+
+# Check who you are
+horus auth whoami
+
+# Logout
+horus auth logout
+
+# Generate API key (for CI/CD)
+horus auth generate-key --name ci-server
+```
+
+### Examples
+
+**First time setup**:
+```bash
+horus auth login --github
+# Opens browser for GitHub login
+```
+
+**Check you're logged in**:
+```bash
+horus auth whoami
+```
+
+**Setup CI/CD**:
+```bash
+horus auth generate-key --name github-actions --environment ci-cd
+# Use the key in your CI secrets
+```
+
+---
+
+## Common Workflows
+
+### First Time Using HORUS
+
+```bash
+# Create a project
+horus new my_first_app --macro
+cd my_first_app
+
+# Run it
+horus run --release
+
+# Monitor it (new terminal)
+horus dashboard
+```
+
+### Daily Development
+
+```bash
+# Make changes to code
+vim src/main.rs
+
+# Test quickly
+horus run
+
+# Test for real
+horus run --release
+```
+
+### Deploy to Production
+
+```bash
+# Clean build
+horus run --clean --release
+
+# Save the environment
+horus env freeze --output production.yaml
+
+# Deploy to robot
+horus run --remote production-robot --release
+```
+
+### Share Your Work
+
+```bash
+# Login once
+horus auth login --github
+
+# Publish
+horus publish
+
+# Others can now:
+horus pkg install your-package-name
+```
+
+---
+
+## Troubleshooting
+
+### "command not found: horus"
+
+Add cargo to your PATH:
+
+```bash
+export PATH="$HOME/.cargo/bin:$PATH"
+echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### "Port already in use"
+
+```bash
+# Use different port
+horus dashboard 3001
+
+# Or kill the old process
+lsof -ti:3000 | xargs kill -9
+```
+
+### Build is slow
+
+First build is always slow (5-10 min). After that it's fast (seconds).
+
+Use `--release` only when you need speed, not during development.
+
+### "Failed to create Hub"
+
+Topic name conflict. Try a unique name or clean up:
+
+```bash
+rm -rf /dev/shm/horus/*
+```
+
+---
+
+## Environment Variables
+
+Optional configuration:
+
+```bash
+# Custom registry (for companies)
+export HORUS_REGISTRY_URL=https://your-company-registry.com
+
+# Debug mode (see what's happening)
+export RUST_LOG=debug
+horus run
+
+# CI/CD authentication
+export HORUS_API_KEY=your-key-here
+```
+
+---
+
+## Next Steps
+
+Now that you know the commands:
+
+1. **[Quick Start](/getting-started/quick-start)** - Build your first app
+2. **[node! Macro](/docs/node-macro)** - Write less code
+3. **[Dashboard Guide](/docs/dashboard)** - Master monitoring
+4. **[Examples](/docs/examples)** - See real applications
+
+**Questions?** Check the [Getting Started](/docs/getting-started) guide or [Core Concepts](/docs/core-concepts-nodes).

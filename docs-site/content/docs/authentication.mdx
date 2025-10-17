@@ -1,0 +1,714 @@
+---
+title: Authentication
+description: Manage credentials for the HORUS registry and marketplace
+order: 11
+---
+
+# Authentication
+
+> **⚠️ Under Development**: The authentication and registry features described in this guide are currently under active development. Some functionality may be incomplete or subject to change.
+
+Authentication is required for publishing packages, sharing environments, and accessing private registry resources. HORUS uses GitHub OAuth for interactive login and API keys for automated systems.
+
+## Overview
+
+**Authentication methods:**
+- **GitHub OAuth** - Interactive login via browser (recommended for development)
+- **API Keys** - Long-lived tokens for CI/CD and automation
+- **Environment Variables** - For containerized deployments
+
+**What requires authentication:**
+- Publishing packages (`horus publish`)
+- Publishing environments (`horus env freeze --publish`)
+- Accessing private packages
+- Managing your published packages
+
+**What doesn't require authentication:**
+- Installing public packages (`horus pkg install`)
+- Searching registry (`horus pkg list`)
+- Restoring public environments (`horus env restore`)
+- Using installed packages
+
+## Quick Start
+
+### Interactive Login
+
+```bash
+# Login with GitHub
+horus auth login --github
+```
+
+**What happens:**
+1. Opens browser to GitHub OAuth page
+2. You authorize HORUS Registry
+3. Token saved to `~/.horus/credentials`
+4. Ready to publish!
+
+### Check Authentication
+
+```bash
+# Verify you're logged in
+horus auth whoami
+```
+
+**Output:**
+```
+Authenticated as: your-username
+Email: you@example.com
+GitHub: https://github.com/your-username
+Provider: GitHub OAuth
+Token: ****...****abcd
+Expires: Never (refresh handled automatically)
+```
+
+### Logout
+
+```bash
+# Remove credentials
+horus auth logout
+```
+
+## GitHub OAuth Login
+
+### First-Time Setup
+
+**Step-by-step:**
+```bash
+# 1. Run login command
+horus auth login --github
+```
+
+**Output:**
+```
+Opening GitHub OAuth page in browser...
+
+If browser doesn't open automatically, visit:
+  https://github.com/login/oauth/authorize?client_id=...
+
+Waiting for authorization...
+```
+
+**In browser:**
+1. See "Authorize HORUS Registry" page
+2. Review permissions requested:
+   - Read user profile
+   - Read email address
+3. Click "Authorize horus-registry"
+4. Redirected to success page
+
+**Back in terminal:**
+```
+✓ Authorization successful!
+✓ Token saved to ~/.horus/credentials
+
+Authenticated as: your-username
+Email: you@example.com
+
+You can now publish packages with:
+  horus publish
+```
+
+### What Gets Stored
+
+**Credentials file:** `~/.horus/credentials`
+
+```json
+{
+  "provider": "github",
+  "username": "your-username",
+  "email": "you@example.com",
+  "token": "gho_abc123def456...",
+  "refresh_token": "gho_xyz789...",
+  "expires_at": null,
+  "created_at": "2025-10-09T14:30:00Z"
+}
+```
+
+**Security:**
+- File permissions: `0600` (read/write owner only)
+- Tokens encrypted at rest
+- Auto-refresh before expiration
+- Revocable via GitHub settings
+
+### Token Permissions
+
+**Required scopes:**
+- `read:user` - Read your GitHub profile
+- `user:email` - Read your email address
+
+**Not requested:**
+- No write access to repositories
+- No access to private repositories
+- No access to organizations
+
+### Revoking Access
+
+**Via GitHub:**
+1. Go to https://github.com/settings/applications
+2. Find "HORUS Registry" under "Authorized OAuth Apps"
+3. Click "Revoke"
+
+**Via CLI:**
+```bash
+horus auth logout
+```
+
+## API Keys
+
+API keys are long-lived tokens for automated systems like CI/CD pipelines.
+
+### Generating API Keys
+
+**Interactive generation:**
+```bash
+horus auth generate-key
+```
+
+**Interactive prompts:**
+```
+Generating API key...
+
+Key name (for identification): CI/CD Pipeline
+Environment (optional): production
+Description (optional): GitHub Actions deployment
+
+Generated API key:
+  horus_live_abc123def456ghi789jkl012mno345pqr678stu901
+
+⚠ WARNING: Copy this key now. It won't be shown again.
+
+Save to environment variable:
+  export HORUS_API_KEY=horus_live_abc123def456ghi789jkl012mno345pqr678stu901
+
+Or use in CI:
+  # GitHub Actions
+  - name: Publish
+    env:
+      HORUS_API_KEY: ${{ secrets.HORUS_API_KEY }}
+    run: horus publish
+```
+
+**With flags:**
+```bash
+horus auth generate-key \
+  --name "GitHub Actions" \
+  --environment "production" \
+  --description "Automated deployment"
+```
+
+### Using API Keys
+
+**Environment variable (recommended):**
+```bash
+# Set for session
+export HORUS_API_KEY=horus_live_abc123...
+
+# Use horus commands
+horus publish
+```
+
+**Credentials file:**
+```bash
+# Save to file
+echo '{"api_key":"horus_live_abc123..."}' > ~/.horus/credentials
+
+# Or via CLI
+horus auth set-key horus_live_abc123...
+```
+
+**Command-line flag:**
+```bash
+horus publish --api-key horus_live_abc123...
+```
+
+### Listing API Keys
+
+```bash
+horus auth list-keys
+```
+
+**Output:**
+```
+Your API Keys:
+
+  horus_live_abc123...
+  Name: GitHub Actions
+  Environment: production
+  Created: 2025-10-09
+  Last used: 2025-10-15 (6 days ago)
+  Status: Active
+
+  horus_live_xyz789...
+  Name: CI/CD Pipeline
+  Environment: staging
+  Created: 2025-09-01
+  Last used: 2025-10-01 (15 days ago)
+  Status: Active
+
+Total: 2 keys
+```
+
+### Revoking API Keys
+
+**Revoke specific key:**
+```bash
+horus auth revoke-key horus_live_abc123...
+```
+
+**Revoke all keys:**
+```bash
+horus auth revoke-all-keys
+```
+
+**Interactive confirmation:**
+```
+Revoking API key: horus_live_abc123...
+  Name: GitHub Actions
+  Environment: production
+  Created: 2025-10-09
+
+This action cannot be undone.
+Any systems using this key will lose access.
+
+Confirm revocation? [y/N]: y
+
+✓ Key revoked successfully
+
+Systems using this key will now get 401 Unauthorized errors.
+Generate a new key with:
+  horus auth generate-key
+```
+
+## CI/CD Integration
+
+### GitHub Actions
+
+**Workflow file (`.github/workflows/publish.yml`):**
+```yaml
+name: Publish to HORUS Registry
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install HORUS
+        run: |
+          cargo install horus_manager
+
+      - name: Publish Package
+        env:
+          HORUS_API_KEY: ${{ secrets.HORUS_API_KEY }}
+        run: |
+          horus publish --yes
+
+      - name: Publish Environment
+        env:
+          HORUS_API_KEY: ${{ secrets.HORUS_API_KEY }}
+        run: |
+          horus env freeze --publish \
+            --name "Release ${{ github.ref_name }}"
+```
+
+**Setup:**
+1. Generate API key: `horus auth generate-key --name "GitHub Actions"`
+2. Copy key: `horus_live_abc123...`
+3. Add to GitHub secrets:
+   - Go to repository Settings → Secrets → Actions
+   - New repository secret: `HORUS_API_KEY`
+   - Paste key value
+4. Push tag: `git tag v1.0.0 && git push origin v1.0.0`
+
+### GitLab CI
+
+**`.gitlab-ci.yml`:**
+```yaml
+publish:
+  stage: deploy
+  image: rust:latest
+  before_script:
+    - cargo install horus_manager
+  script:
+    - horus publish --yes
+  only:
+    - tags
+  variables:
+    HORUS_API_KEY: $CI_HORUS_API_KEY
+```
+
+**Setup:**
+1. Generate key: `horus auth generate-key --name "GitLab CI"`
+2. Add to GitLab:
+   - Settings → CI/CD → Variables
+   - Key: `CI_HORUS_API_KEY`
+   - Value: `horus_live_abc123...`
+   - Type: Masked
+
+### Docker
+
+**Dockerfile:**
+```dockerfile
+FROM rust:1.70
+
+# Install HORUS
+RUN cargo install horus_manager
+
+# Copy project
+COPY . /app
+WORKDIR /app
+
+# Build and publish
+ARG HORUS_API_KEY
+ENV HORUS_API_KEY=${HORUS_API_KEY}
+
+RUN horus publish --yes
+```
+
+**Build:**
+```bash
+docker build \
+  --build-arg HORUS_API_KEY=$HORUS_API_KEY \
+  -t my-horus-app .
+```
+
+### Jenkins
+
+**Jenkinsfile:**
+```groovy
+pipeline {
+    agent any
+
+    environment {
+        HORUS_API_KEY = credentials('horus-api-key')
+    }
+
+    stages {
+        stage('Build') {
+            steps {
+                sh 'cargo build --release'
+            }
+        }
+
+        stage('Publish') {
+            when {
+                buildingTag()
+            }
+            steps {
+                sh 'horus publish --yes'
+            }
+        }
+    }
+}
+```
+
+**Setup:**
+1. Generate key: `horus auth generate-key --name "Jenkins"`
+2. Jenkins dashboard → Manage Jenkins → Credentials
+3. Add secret text credential: `horus-api-key`
+
+## Environment Variables
+
+### Available Variables
+
+**`HORUS_API_KEY`**
+- API key for authentication
+- Overrides credentials file
+- Required for CI/CD
+
+**`HORUS_REGISTRY_URL`**
+- Custom registry URL
+- Default: `https://registry.horus.dev`
+- For self-hosted registries
+
+**`HORUS_TOKEN`**
+- OAuth token (alternative to API key)
+- Not recommended for CI/CD
+
+**Example usage:**
+```bash
+export HORUS_API_KEY=horus_live_abc123...
+export HORUS_REGISTRY_URL=https://custom-registry.company.com
+
+horus publish
+```
+
+## Security Best Practices
+
+### Token Security
+
+**Do's:**
+- ✅ Use API keys for CI/CD (not OAuth tokens)
+- ✅ Rotate keys every 90 days
+- ✅ Use different keys for different environments
+- ✅ Store keys in CI/CD secrets management
+- ✅ Revoke unused keys immediately
+- ✅ Use environment variables (not command-line flags)
+
+**Don'ts:**
+- ❌ Never commit credentials to git
+- ❌ Never share API keys between team members
+- ❌ Never log API keys
+- ❌ Never use same key for prod and dev
+- ❌ Never hardcode keys in source code
+
+### Credentials File Security
+
+**File permissions:**
+```bash
+# Verify permissions
+ls -la ~/.horus/credentials
+# Should show: -rw------- (600)
+
+# Fix if needed
+chmod 600 ~/.horus/credentials
+```
+
+**Backup:**
+```bash
+# Backup credentials (encrypted)
+gpg -c ~/.horus/credentials
+# Creates ~/.horus/credentials.gpg
+
+# Restore
+gpg -d ~/.horus/credentials.gpg > ~/.horus/credentials
+chmod 600 ~/.horus/credentials
+```
+
+### Key Rotation
+
+**Regular rotation schedule:**
+```bash
+# 1. Generate new key
+NEW_KEY=$(horus auth generate-key --name "Production 2025-Q4" --quiet)
+
+# 2. Update CI/CD secrets
+# (Do this manually in CI/CD platform)
+
+# 3. Test new key
+export HORUS_API_KEY=$NEW_KEY
+horus auth whoami
+
+# 4. Revoke old key
+horus auth revoke-key horus_live_old_key...
+```
+
+### Monitoring
+
+**Check key usage:**
+```bash
+horus auth list-keys --show-usage
+```
+
+**Output:**
+```
+API Key: horus_live_abc123...
+  Name: Production Deployment
+  Last used: 2025-10-15 14:30:00
+  Total uses: 45
+  Recent activity:
+    2025-10-15 14:30 - Published package sensor-fusion@2.1.0
+    2025-10-14 10:15 - Published environment env_xyz789
+    2025-10-13 16:45 - Published package motion-planner@2.0.1
+```
+
+**Alerts:**
+```bash
+# Get email alerts for key usage
+horus auth set-alerts --email you@example.com \
+  --on-use --on-unauthorized
+```
+
+## Troubleshooting
+
+### Authentication Failed
+
+**Error:**
+```
+Error: Authentication required
+  Run: horus auth login --github
+```
+
+**Solutions:**
+```bash
+# Check current status
+horus auth whoami
+
+# Re-authenticate
+horus auth login --github
+
+# Verify credentials file exists
+ls -la ~/.horus/credentials
+```
+
+### Token Expired
+
+**Error:**
+```
+Error: Token expired
+  Please re-authenticate
+```
+
+**Solutions:**
+```bash
+# Re-login (auto-refreshes token)
+horus auth login --github
+
+# Or use API key instead
+horus auth generate-key
+export HORUS_API_KEY=horus_live_abc123...
+```
+
+### Invalid API Key
+
+**Error:**
+```
+Error: Invalid API key
+  Status: 401 Unauthorized
+```
+
+**Causes:**
+- Key was revoked
+- Key expired
+- Typo in key value
+- Wrong registry URL
+
+**Solutions:**
+```bash
+# Verify key format
+echo $HORUS_API_KEY
+# Should start with: horus_live_
+
+# Check key status
+horus auth list-keys
+
+# Generate new key
+horus auth generate-key
+```
+
+### Permission Denied
+
+**Error:**
+```
+Error: Permission denied
+  You don't have permission to publish to this package
+```
+
+**Causes:**
+- Package owned by another user
+- Not logged in
+- Insufficient permissions
+
+**Solutions:**
+```bash
+# Verify authentication
+horus auth whoami
+
+# Check package ownership
+horus pkg info package-name
+
+# Transfer ownership if needed
+horus pkg transfer package-name --to your-username
+```
+
+### GitHub OAuth Failed
+
+**Error:**
+```
+Error: OAuth authorization failed
+  Could not complete GitHub authentication
+```
+
+**Solutions:**
+```bash
+# Try manual flow
+horus auth login --github --no-browser
+
+# Output:
+Visit this URL: https://github.com/login/oauth/authorize?client_id=...
+
+# Check browser popup blockers
+
+# Verify GitHub account
+curl https://api.github.com/user \
+  -H "Authorization: Bearer <your-github-token>"
+```
+
+## Advanced Topics
+
+### Self-Hosted Registry
+
+**Configure custom registry:**
+```bash
+# Set registry URL
+export HORUS_REGISTRY_URL=https://registry.company.internal
+
+# Authenticate
+horus auth login --registry https://registry.company.internal
+
+# Use as normal
+horus publish
+```
+
+### Multiple Accounts
+
+**Switch between accounts:**
+```bash
+# Save current credentials
+mv ~/.horus/credentials ~/.horus/credentials.account1
+
+# Login with second account
+horus auth login --github
+
+# Switch back
+mv ~/.horus/credentials ~/.horus/credentials.account2
+mv ~/.horus/credentials.account1 ~/.horus/credentials
+```
+
+### Programmatic Authentication
+
+**Using Rust:**
+```rust
+use horus_client::auth::AuthClient;
+
+let client = AuthClient::new();
+
+// With API key
+client.authenticate_with_key("horus_live_abc123...")?;
+
+// Check auth
+let user = client.whoami()?;
+println!("Authenticated as: {}", user.username);
+```
+
+**Using Python:**
+```python
+from horus import AuthClient
+
+client = AuthClient()
+
+# With API key
+client.authenticate(api_key="horus_live_abc123...")
+
+# Check auth
+user = client.whoami()
+print(f"Authenticated as: {user['username']}")
+```
+
+## Next Steps
+
+- **[Marketplace](/docs/marketplace)** - Publish and discover packages
+- **[Package Management](/docs/package-management)** - Install and manage packages
+- **[CI/CD Integration](/docs/ci-cd)** - Automate publishing
+- **[Security Guide](/docs/security)** - Advanced security practices
+- **[API Reference](/docs/api-auth)** - Authentication API documentation

@@ -1,0 +1,582 @@
+---
+title: Quick Start
+description: Build your first HORUS node in 5 minutes
+order: 1
+---
+
+# Quick Start
+
+This guide walks you through creating your first HORUS node and running it in under 5 minutes.
+
+## Prerequisites
+
+Make sure you have [installed HORUS](/docs/installation) before continuing.
+
+## Your First Node
+
+Let's create a simple publisher node that sends messages at regular intervals.
+
+### Step 1: Create a New Project
+
+```bash
+# Create a new Rust project
+cargo new my_first_node
+cd my_first_node
+
+# Add HORUS dependency
+cargo add horus_core
+```
+
+### Step 2: Implement the Publisher Node
+
+Edit `src/main.rs`:
+
+```rust
+use horus::prelude::*;
+
+struct PublisherNode {
+    counter: u32,
+    cmd_vel_pub: Hub<f32>,
+}
+
+impl PublisherNode {
+    fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(Self {
+            counter: 0,
+            cmd_vel_pub: Hub::new("cmd_vel")?,
+        })
+    }
+}
+
+impl Node for PublisherNode {
+    fn name(&self) -> &'static str {
+        "PublisherNode"
+    }
+
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        ctx.log_info("Publisher node initialized");
+        Ok(())
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        // Publish velocity command
+        let velocity = (self.counter as f32) * 0.1;
+        self.cmd_vel_pub.send(velocity, ctx).ok();
+
+        self.counter += 1;
+    }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        ctx.log_info("Publisher node shutting down");
+        Ok(())
+    }
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    use horus::prelude::*;
+
+    let mut scheduler = Scheduler::new();
+    let publisher = PublisherNode::new()?;
+
+    scheduler.register(Box::new(publisher), 0, Some(true));
+    scheduler.tick_all()?;
+    Ok(())
+}
+```
+
+### Step 3: Run Your Node
+
+```bash
+cargo run --release
+```
+
+You should see output like:
+
+```
+[12:34:56.789] [IPC: 366ns | Tick: 12μs] PublisherNode --PUB--> 'cmd_vel' = 0.0
+[12:34:56.805] [IPC: 374ns | Tick: 11μs] PublisherNode --PUB--> 'cmd_vel' = 0.1
+[12:34:56.821] [IPC: 368ns | Tick: 13μs] PublisherNode --PUB--> 'cmd_vel' = 0.2
+```
+
+Press `Ctrl+C` to stop the node gracefully.
+
+## Adding a Subscriber
+
+Now let's add a subscriber node that receives these messages.
+
+### Create a Subscriber Node
+
+Create `src/subscriber.rs`:
+
+```rust
+use horus::prelude::*;
+
+pub struct SubscriberNode {
+    cmd_vel_sub: Hub<f32>,
+}
+
+impl SubscriberNode {
+    pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(Self {
+            cmd_vel_sub: Hub::new("cmd_vel")?,
+        })
+    }
+}
+
+impl Node for SubscriberNode {
+    fn name(&self) -> &'static str {
+        "SubscriberNode"
+    }
+
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        ctx.log_info("Subscriber node initialized");
+        Ok(())
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        if let Some(velocity) = self.cmd_vel_sub.recv(ctx) {
+            // Process received velocity
+            if let Some(ctx) = ctx {
+                ctx.log_debug(&format!("Received velocity: {:.2}", velocity));
+            }
+        }
+    }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        ctx.log_info("Subscriber node shutting down");
+        Ok(())
+    }
+}
+```
+
+### Update Main to Run Both Nodes
+
+Update `src/main.rs`:
+
+```rust
+mod subscriber;
+
+use horus::prelude::*;
+use subscriber::SubscriberNode;
+
+struct PublisherNode {
+    counter: u32,
+    cmd_vel_pub: Hub<f32>,
+}
+
+impl PublisherNode {
+    fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(Self {
+            counter: 0,
+            cmd_vel_pub: Hub::new("cmd_vel")?,
+        })
+    }
+}
+
+impl Node for PublisherNode {
+    fn name(&self) -> &'static str {
+        "PublisherNode"
+    }
+
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        ctx.log_info("Publisher node initialized");
+        Ok(())
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        let velocity = (self.counter as f32) * 0.1;
+        self.cmd_vel_pub.send(velocity, ctx).ok();
+        self.counter += 1;
+    }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        ctx.log_info("Publisher node shutting down");
+        Ok(())
+    }
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut scheduler = Scheduler::new();
+
+    // Register publisher with priority 0 (highest)
+    scheduler.register(Box::new(PublisherNode::new()?), 0, Some(true));
+
+    // Register subscriber with priority 1
+    scheduler.register(Box::new(SubscriberNode::new()?), 1, Some(true));
+
+    // Run both nodes
+    scheduler.tick_all()?;
+    Ok(())
+}
+```
+
+### Run Uni (Multi-Node System)
+
+```bash
+cargo run --release
+```
+
+You'll now see both nodes communicating:
+
+```
+[12:34:56.789] [IPC: 366ns | Tick: 12μs] PublisherNode --PUB--> 'cmd_vel' = 0.0
+[12:34:56.789] [IPC: 142ns | Tick: 8μs] SubscriberNode --SUB--> 'cmd_vel' = 0.0
+[12:34:56.805] [IPC: 374ns | Tick: 11μs] PublisherNode --PUB--> 'cmd_vel' = 0.1
+[12:34:56.805] [IPC: 138ns | Tick: 7μs] SubscriberNode --SUB--> 'cmd_vel' = 0.1
+```
+
+## Understanding the Code
+
+### Node Lifecycle
+
+Every HORUS node follows a three-phase lifecycle:
+
+**init()**: Called once when the node is registered with the scheduler. Use this for setup tasks.
+
+**tick()**: Called repeatedly in the main loop (default ~60 FPS). This is where your main logic goes.
+
+**shutdown()**: Called once when the scheduler is stopping. Use this for cleanup.
+
+### Hub Communication
+
+The `Hub<T>` provides zero-copy pub/sub communication:
+
+```rust
+let hub = Hub::new("topic_name")?;
+
+// Publishing
+hub.send(data, ctx).ok();
+
+// Subscribing
+if let Some(data) = hub.recv(ctx) {
+    // Process data
+}
+```
+
+Hub achieves **366ns latency** for small messages through shared memory IPC.
+
+### Scheduler
+
+The `Scheduler` orchestrates node execution:
+
+```rust
+let mut scheduler = Scheduler::new();
+scheduler.register(Box::new(my_node), 0, Some(true));
+scheduler.tick_all()?;
+```
+
+Nodes execute in **priority order** each tick:
+- `Critical = 0` (highest priority)
+- `High = 1`
+- `Normal = 2` (default)
+- `Low = 3`
+- `Background = 4` (lowest priority)
+
+### NodeInfo Context
+
+The `NodeInfo` context provides logging and metrics:
+
+```rust
+ctx.log_info("Information message");
+ctx.log_warning("Warning message");
+ctx.log_error("Error message");
+ctx.log_debug("Debug message");
+```
+
+Logging automatically includes IPC timing and tick duration.
+
+## Working with Message Types
+
+HORUS provides standard robotics message types in `horus_library`:
+
+```bash
+cargo add horus_library
+```
+
+### Using Predefined Messages
+
+```rust
+use horus::prelude::*;
+use horus_library::messages::CmdVel;
+
+struct VelocityPublisher {
+    cmd_pub: Hub<CmdVel>,
+}
+
+impl Node for VelocityPublisher {
+    fn name(&self) -> &'static str {
+        "VelocityPublisher"
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        let cmd = CmdVel {
+            linear_x: 1.0,
+            linear_y: 0.0,
+            angular_z: 0.5,
+        };
+
+        self.cmd_pub.send(cmd, ctx).ok();
+    }
+}
+```
+
+### Creating Custom Messages
+
+Messages must implement `Clone` and `Debug`:
+
+```rust
+#[derive(Clone, Debug)]
+struct RobotStatus {
+    battery_level: f32,
+    temperature: f32,
+    error_code: u32,
+}
+
+// Use with Hub
+let status_pub: Hub<RobotStatus> = Hub::new("robot_status")?;
+```
+
+## Priority-Based Execution
+
+Control execution order with priorities:
+
+```rust
+use horus::prelude::*;
+
+let mut scheduler = Scheduler::new();
+
+// Safety-critical node runs first (priority 0)
+scheduler.register(Box::new(safety_monitor), 0, Some(true));
+
+// Control loop runs next (priority 1)
+scheduler.register(Box::new(controller), 1, Some(true));
+
+// Logging runs last (priority 4)
+scheduler.register(Box::new(logger), 4, Some(true));
+
+scheduler.tick_all()?;
+```
+
+## Node States
+
+Nodes transition through these states:
+
+- **Uninitialized**: Node created but not yet initialized
+- **Initializing**: Running init() method
+- **Running**: Normal operation in tick() loop
+- **Paused**: Temporarily suspended (future feature)
+- **Stopping**: Running shutdown() method
+- **Stopped**: Clean shutdown complete
+- **Error**: Recoverable error state
+- **Crashed**: Unrecoverable error
+
+## Common Patterns
+
+### Publish Only
+
+```rust
+impl Node for SensorNode {
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        let sensor_data = self.read_sensor();
+        self.data_pub.send(sensor_data, ctx).ok();
+    }
+}
+```
+
+### Subscribe Only
+
+```rust
+impl Node for ActuatorNode {
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        if let Some(command) = self.cmd_sub.recv(ctx) {
+            self.execute_command(command);
+        }
+    }
+}
+```
+
+### Pub-Sub Pipeline
+
+```rust
+impl Node for ProcessingNode {
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        // Receive input
+        if let Some(input) = self.input_sub.recv(ctx) {
+            // Process data
+            let output = self.process(input);
+
+            // Publish result
+            self.output_pub.send(output, ctx).ok();
+        }
+    }
+}
+```
+
+### Conditional Publishing
+
+```rust
+impl Node for ThresholdNode {
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        if let Some(value) = self.sensor_sub.recv(ctx) {
+            if value > self.threshold {
+                self.alert_pub.send(true, ctx).ok();
+            }
+        }
+    }
+}
+```
+
+## Performance Tips
+
+**Use --release builds**: Debug builds are 10-100x slower
+
+```bash
+cargo build --release
+cargo run --release
+```
+
+**Minimize allocations in tick()**: Avoid creating heap-allocated data structures every tick
+
+**Pre-allocate in init()**: Set up buffers and data structures during initialization
+
+**Use fixed-size messages**: Prefer `[f32; 100]` over `Vec<f32>` for predictable performance
+
+**Check shared memory space**: HORUS uses `/dev/shm` which has limited space
+
+```bash
+df -h /dev/shm
+```
+
+## Using the Node Library
+
+HORUS has a package registry - install nodes just like npm/cargo:
+
+```bash
+# Search for packages
+horus search camera
+
+# Install from registry
+horus install camera-node
+
+# Or use built-in library
+cargo add horus_library
+```
+
+### Example: Keyboard-Controlled Robot
+
+```rust
+use horus::prelude::*;
+use horus_library::{KeyboardInputNode, DifferentialDriveNode};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut scheduler = Scheduler::new();
+
+    // Nodes auto-connect through topics - zero config!
+    let keyboard = KeyboardInputNode::new();  // Publishes "keyboard_input"
+    let drive = DifferentialDriveNode::new(); // Subscribes "cmd_vel"
+
+    scheduler.register(Box::new(keyboard), 0, Some(true));
+    scheduler.register(Box::new(drive), 1, Some(true));
+
+    scheduler.tick_all()?;
+    Ok(())
+}
+```
+
+**7 lines for a complete keyboard-controlled robot!**
+
+### Package Management
+
+```bash
+# Install packages
+horus install lidar-driver        # From registry
+horus install camera-node@1.2.0   # Specific version
+
+# Publish your own
+horus publish                     # Auto-detects Cargo.toml/package.json
+
+# Share environments
+horus env freeze > environment.json   # Capture current setup
+horus env push                        # Upload to registry
+horus env restore env-abc123          # Restore on another machine
+```
+
+Packages install to:
+- **Global**: `~/.horus/cache/` (shared across projects)
+- **Local**: `.horus/packages/` (project-specific)
+
+Auto-resolves transitive dependencies, pre-compiles Rust/C packages!
+
+### Environment Variables
+
+```bash
+# Select IPC backend
+export HORUS_BACKEND=horus      # Native (fastest)
+export HORUS_BACKEND=iceoryx2   # Zero-copy IPC
+export HORUS_BACKEND=zenoh      # Network-capable
+
+# Package registry
+export HORUS_REGISTRY_URL=https://your-company.com
+export HORUS_API_KEY=your-key-here
+```
+
+### Available Nodes
+
+**Input**: `KeyboardInputNode`, `JoystickInputNode`
+**Sensors**: `CameraNode`, `LidarNode`, `ImuNode`
+**Control**: `DifferentialDriveNode`, `PidControllerNode`
+**Safety**: `EmergencyStopNode`, `SafetyMonitorNode`
+
+Browse registry: `horus search` or `horus_library/nodes/`
+
+## Next Steps
+
+Now that you have a working HORUS system:
+
+- Learn about [Core Concepts](/docs/core-concepts) to understand the architecture
+- Explore [Message Types](/docs/message-types) for standard robotics messages
+- Check out [Examples](/docs/examples) for more complex scenarios
+- Read the [API Reference](/docs/api) for detailed documentation
+- Optimize performance with the [Performance Guide](/docs/performance)
+
+## Troubleshooting
+
+### Node not receiving messages
+
+Make sure both publisher and subscriber use the same topic name:
+
+```rust
+// Publisher
+let pub_hub: Hub<f32> = Hub::new("cmd_vel")?;
+
+// Subscriber
+let sub_hub: Hub<f32> = Hub::new("cmd_vel")?;  // Must match
+```
+
+### High latency
+
+Run in release mode:
+
+```bash
+cargo run --release
+```
+
+Debug builds add significant overhead.
+
+### Shared memory full
+
+Check available space:
+
+```bash
+df -h /dev/shm
+```
+
+Clean up old shared memory segments:
+
+```bash
+rm -f /dev/shm/horus_*
+```
+
+### Ctrl+C not working
+
+The scheduler has built-in signal handling. If it's not responding, the node may be blocking in tick(). Ensure tick() returns quickly.

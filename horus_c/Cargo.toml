@@ -1,0 +1,21 @@
+[package]
+name = "horus_c"
+version = "0.1.0"
+edition = "2021"
+description = "C API for HORUS - Hardware driver integration"
+authors = ["HORUS Team"]
+
+[lib]
+name = "horus_c"
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+horus_core = { path = "../horus_core" }
+lazy_static = "1.4"
+libc = "0.2"
+
+[build-dependencies]
+cbindgen = "0.26"
+
+[features]
+default = []

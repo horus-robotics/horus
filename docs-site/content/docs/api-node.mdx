@@ -1,0 +1,379 @@
+---
+title: Node API Reference
+description: Complete API reference for the Node trait
+order: 20
+---
+
+# Node API Reference
+
+The `Node` trait is the core abstraction in HORUS. Implement this trait to create custom nodes.
+
+## The Node Trait
+
+```rust
+pub trait Node: Send {
+    fn name(&self) -> &'static str;
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String>;
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>);
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String>;
+}
+```
+
+## Required Methods
+
+### `name()`
+
+Returns the unique name of the node.
+
+```rust
+fn name(&self) -> &'static str;
+```
+
+**Returns**: A static string slice containing the node's name.
+
+**Example**:
+```rust
+impl Node for MyNode {
+    fn name(&self) -> &'static str {
+        "MyNode"
+    }
+}
+```
+
+### `tick()`
+
+Main execution loop called repeatedly by the scheduler (default ~60 FPS).
+
+```rust
+fn tick(&mut self, ctx: Option<&mut NodeInfo>);
+```
+
+**Parameters**:
+- `ctx`: Optional mutable reference to `NodeInfo` for logging and metrics
+
+**Example**:
+```rust
+fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    let data = self.read_sensor();
+    self.publisher.send(data, ctx).ok();
+}
+```
+
+**Best Practices**:
+- Keep tick() fast - it runs 60 times per second
+- Avoid blocking operations
+- Use non-blocking I/O when possible
+- Don't allocate large objects every tick
+
+## Optional Methods
+
+### `init()`
+
+Called once when the node is registered. Use for setup and initialization.
+
+```rust
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    ctx.log_info("Node initialized");
+    Ok(())
+}
+```
+
+**Parameters**:
+- `ctx`: Mutable reference to `NodeInfo` for logging
+
+**Returns**: `Ok(())` on success, `Err(String)` with error message on failure
+
+**Example**:
+```rust
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    self.connection = Some(connect_to_device()?);
+    ctx.log_info("Connected to device");
+    Ok(())
+}
+```
+
+### `shutdown()`
+
+Called once when the scheduler stops. Use for cleanup.
+
+```rust
+fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    ctx.log_info("Node shutdown");
+    Ok(())
+}
+```
+
+**Parameters**:
+- `ctx`: Mutable reference to `NodeInfo` for logging
+
+**Returns**: `Ok(())` on success, `Err(String)` with error message on failure
+
+**Example**:
+```rust
+fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    if let Some(conn) = self.connection.take() {
+        conn.disconnect()?;
+    }
+    ctx.log_info("Disconnected from device");
+    Ok(())
+}
+```
+
+### `get_publishers()`
+
+Returns list of topics this node publishes to.
+
+```rust
+fn get_publishers(&self) -> Vec<TopicMetadata> {
+    Vec::new()
+}
+```
+
+**Returns**: Vector of `TopicMetadata` describing published topics
+
+**Example**:
+```rust
+fn get_publishers(&self) -> Vec<TopicMetadata> {
+    vec![
+        TopicMetadata {
+            topic_name: "cmd_vel".to_string(),
+            type_name: "f32".to_string(),
+        }
+    ]
+}
+```
+
+### `get_subscribers()`
+
+Returns list of topics this node subscribes to.
+
+```rust
+fn get_subscribers(&self) -> Vec<TopicMetadata> {
+    Vec::new()
+}
+```
+
+**Returns**: Vector of `TopicMetadata` describing subscribed topics
+
+**Example**:
+```rust
+fn get_subscribers(&self) -> Vec<TopicMetadata> {
+    vec![
+        TopicMetadata {
+            topic_name: "sensor_data".to_string(),
+            type_name: "f32".to_string(),
+        }
+    ]
+}
+```
+
+### `on_error()`
+
+Called when an error occurs. Override for custom error handling.
+
+```rust
+fn on_error(&mut self, error: &str, ctx: &mut NodeInfo) {
+    ctx.log_error(&format!("Node error: {}", error));
+}
+```
+
+**Parameters**:
+- `error`: Error message string
+- `ctx`: Mutable reference to `NodeInfo` for logging
+
+### `priority()`
+
+Returns the execution priority for this node.
+
+```rust
+fn priority(&self) -> NodePriority {
+    NodePriority::Normal
+}
+```
+
+**Returns**: `NodePriority` enum value (Critical=0, High=1, Normal=2, Low=3, Background=4)
+
+### `is_healthy()`
+
+Health check called by monitoring systems.
+
+```rust
+fn is_healthy(&self) -> bool {
+    true
+}
+```
+
+**Returns**: `true` if node is healthy, `false` otherwise
+
+## NodeInfo Context
+
+The `NodeInfo` context provides logging and metrics tracking.
+
+### Logging Methods
+
+```rust
+ctx.log_info("Informational message");
+ctx.log_warning("Warning message");
+ctx.log_error("Error message");
+ctx.log_debug("Debug message");
+```
+
+### Pub/Sub Logging
+
+**Do not call these directly** - they are called automatically by `Hub::send()` and `Hub::recv()`:
+
+```rust
+// Called automatically by Hub::send()
+ctx.log_pub(&topic, &data, ipc_ns);
+
+// Called automatically by Hub::recv()
+ctx.log_sub(&topic, &data, ipc_ns);
+```
+
+### Accessing Metrics
+
+```rust
+let metrics = ctx.metrics();
+println!("Total ticks: {}", metrics.total_ticks);
+println!("Average tick duration: {}ms", metrics.avg_tick_duration_ms);
+```
+
+## Complete Example
+
+```rust
+use horus::prelude::*;
+
+struct TemperatureSensor {
+    temperature_pub: Hub<f32>,
+    reading: f32,
+}
+
+impl TemperatureSensor {
+    fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(Self {
+            temperature_pub: Hub::new("temperature")?,
+            reading: 20.0,
+        })
+    }
+}
+
+impl Node for TemperatureSensor {
+    fn name(&self) -> &'static str {
+        "TemperatureSensor"
+    }
+
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        ctx.log_info("Temperature sensor initialized");
+        Ok(())
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        // Simulate reading
+        self.reading += 0.1;
+
+        // Publish temperature
+        self.temperature_pub.send(self.reading, ctx).ok();
+    }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        ctx.log_info("Temperature sensor shutdown");
+        Ok(())
+    }
+}
+```
+
+## Advanced: Handling Context in Loops
+
+When you need to pass `ctx` to multiple Hub calls (especially in loops), use `ctx.as_deref_mut()`:
+
+```rust
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    // Process multiple messages in a loop
+    while let Some(input) = self.input_sub.recv(ctx.as_deref_mut()) {
+        // Process the input
+        let output = self.process(input);
+
+        // Send result (ctx.as_deref_mut() allows reuse)
+        self.output_pub.send(output, ctx.as_deref_mut()).ok();
+    }
+}
+```
+
+**Why `as_deref_mut()`?**
+- `ctx` is `Option<&mut NodeInfo>`
+- Rust's borrow checker prevents moving `&mut` references
+- `as_deref_mut()` safely creates a new borrow without moving the original
+
+**Common Pattern** (from production code):
+```rust
+use horus::prelude::*;
+
+struct ProcessorNode {
+    input_sub: Hub<f32>,
+    output_pub: Hub<f32>,
+}
+
+impl Node for ProcessorNode {
+    fn name(&self) -> &'static str { "ProcessorNode" }
+
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+        // Receive and process all available messages
+        while let Some(data) = self.input_sub.recv(ctx.as_deref_mut()) {
+            let processed = data * 2.0;
+            self.output_pub.send(processed, ctx.as_deref_mut()).ok();
+        }
+    }
+}
+```
+
+**Simple Case** (single Hub call):
+```rust
+fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    // No need for as_deref_mut() with single call
+    self.publisher.send(42.0, ctx).ok();
+}
+```
+
+## Node Lifecycle
+
+Every node follows this lifecycle:
+
+1. **Created** - Node struct is instantiated
+2. **Registered** - Added to scheduler via `scheduler.register()`
+3. **Initialized** - `init()` called once
+4. **Running** - `tick()` called repeatedly (~60 FPS)
+5. **Stopping** - `shutdown()` called once
+6. **Stopped** - Node removed from scheduler
+
+## Node States
+
+Nodes can be in these states (managed automatically by scheduler):
+
+- `Uninitialized` - Just created, not yet initialized
+- `Initializing` - Running init()
+- `Running` - Normal operation in tick() loop
+- `Paused` - Temporarily suspended (future feature)
+- `Stopping` - Running shutdown()
+- `Stopped` - Clean shutdown complete
+- `Error(msg)` - Recoverable error state
+- `Crashed(msg)` - Unrecoverable error
+
+## Priority Levels
+
+```rust
+pub enum NodePriority {
+    Critical = 0,    // Highest priority
+    High = 1,
+    Normal = 2,      // Default
+    Low = 3,
+    Background = 4,  // Lowest priority
+}
+```
+
+Nodes execute in priority order each tick. Use priorities to ensure critical nodes run first.
+
+## See Also
+
+- [Hub API Reference](/docs/api-hub) - Pub/sub communication
+- [Scheduler API Reference](/docs/api-scheduler) - Node orchestration
+- [Core Concepts: Nodes](/docs/core-concepts-nodes) - Detailed guide

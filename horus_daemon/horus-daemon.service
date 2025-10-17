@@ -1,0 +1,32 @@
+[Unit]
+Description=HORUS Remote Execution Daemon
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=horus
+Group=horus
+WorkingDirectory=/opt/horus
+ExecStart=/usr/local/bin/horus_daemon
+Restart=on-failure
+RestartSec=5s
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/tmp/horus /dev/shm
+
+# Environment
+Environment="HORUS_AUTH_ENABLED=true"
+Environment="HORUS_API_KEY=change-me-in-production"
+Environment="RUST_LOG=info"
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,37 @@
+# sim2d - Simple 2D robotics simulator  
+# One command, physics + visualization, simple control
+
+[package]
+name = "sim2d"
+version = "0.1.0"
+edition = "2021"
+description = "Simple 2D robotics simulator with physics"
+
+[[bin]]
+name = "sim2d"
+path = "src/main.rs"
+
+[dependencies]
+# HORUS
+horus_core = { workspace = true }
+horus_library = { workspace = true }
+
+# Physics
+rapier2d = { workspace = true }
+nalgebra = { workspace = true }
+
+# Visualization
+bevy = { version = "0.15" }
+bevy_egui = "0.31"
+rfd = "0.15"  # File picker dialog
+
+# Utilities
+anyhow = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_yaml = "0.9"
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+bytemuck = { version = "1.0", features = ["derive"] }
+
+# CLI
+clap = { workspace = true, features = ["derive"] }

@@ -1,0 +1,378 @@
+---
+title: Quick Start
+description: Build your first HORUS application in 10 minutes
+order: 3
+---
+
+# Quick Start
+
+Let's build a simple temperature monitoring system to see HORUS in action. This will take about 10 minutes.
+
+## What We're Building
+
+A system with two components:
+1. **Sensor** - Generates temperature readings
+2. **Monitor** - Displays the readings
+
+They'll communicate using HORUS's ultra-fast shared memory.
+
+## Option 1: Using the CLI (Easiest)
+
+The fastest way to get started:
+
+```bash
+# Create a new project
+horus new temperature-monitor
+
+# Select options:
+# Language: Rust
+# Use macros: No (we'll learn the basics first)
+
+cd temperature-monitor
+```
+
+This creates a working template. Now let's build something custom!
+
+## Option 2: From Scratch
+
+### Step 1: Create a New Rust Project
+
+```bash
+cargo new temperature-monitor
+cd temperature-monitor
+```
+
+### Step 2: Add HORUS to Your Project
+
+Edit `Cargo.toml`:
+
+```toml
+[package]
+name = "temperature-monitor"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+horus = "0.3"
+```
+
+### Step 3: Write the Code
+
+Replace `src/main.rs` with this complete example:
+
+```rust
+use horus::prelude::*;
+use std::time::Duration;
+
+//===========================================
+// SENSOR NODE - Generates temperature data
+//===========================================
+
+struct TemperatureSensor {
+    publisher: Hub<f32>,
+    temperature: f32,
+}
+
+impl TemperatureSensor {
+    fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(Self {
+            publisher: Hub::new("temperature")?,
+            temperature: 20.0,
+        })
+    }
+}
+
+impl Node for TemperatureSensor {
+    fn name(&self) -> &'static str {
+        "TemperatureSensor"
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        // Simulate temperature change
+        self.temperature += 0.1;
+
+        // Send the reading
+        self.publisher.send(self.temperature, ctx).ok();
+
+        // Wait 1 second before next reading
+        std::thread::sleep(Duration::from_secs(1));
+    }
+}
+
+//============================================
+// MONITOR NODE - Displays temperature data
+//============================================
+
+struct TemperatureMonitor {
+    subscriber: Hub<f32>,
+}
+
+impl TemperatureMonitor {
+    fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(Self {
+            subscriber: Hub::new("temperature")?,
+        })
+    }
+}
+
+impl Node for TemperatureMonitor {
+    fn name(&self) -> &'static str {
+        "TemperatureMonitor"
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        // Check for new temperature readings
+        if let Some(temp) = self.subscriber.recv(ctx) {
+            println!("🌡️  Temperature: {:.1}°C", temp);
+        }
+    }
+}
+
+//============================================
+// MAIN - Run both nodes
+//============================================
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("Starting temperature monitoring system...\n");
+
+    // Create the scheduler
+    let mut scheduler = Scheduler::new();
+
+    // Register both nodes
+    // Priority 0 = sensor runs first
+    // Priority 1 = monitor runs second
+    // Logging enabled (Some(true)) to see message flow
+    scheduler.register(
+        Box::new(TemperatureSensor::new()?),
+        0,
+        Some(true)
+    );
+    scheduler.register(
+        Box::new(TemperatureMonitor::new()?),
+        1,
+        Some(true)
+    );
+
+    // Run forever (press Ctrl+C to stop)
+    scheduler.tick_all()?;
+
+    Ok(())
+}
+```
+
+### Step 4: Run It!
+
+```bash
+cargo run --release
+```
+
+You'll see:
+
+```
+Starting temperature monitoring system...
+
+🌡️  Temperature: 20.1°C
+🌡️  Temperature: 20.2°C
+🌡️  Temperature: 20.3°C
+🌡️  Temperature: 20.4°C
+...
+```
+
+Press **Ctrl+C** to stop.
+
+## Understanding the Code
+
+### The Hub - Communication Channel
+
+```rust
+// Create a publisher (sends data)
+publisher: Hub::new("temperature")?
+
+// Create a subscriber (receives data)
+subscriber: Hub::new("temperature")?
+```
+
+Both use the same topic name (`"temperature"`). The `Hub` handles all the shared memory magic automatically!
+
+### The Node Trait - Component Lifecycle
+
+Each component implements the `Node` trait:
+
+```rust
+impl Node for TemperatureSensor {
+    // Give your node a name
+    fn name(&self) -> &'static str {
+        "TemperatureSensor"
+    }
+
+    // This runs repeatedly
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        // Your logic here
+    }
+}
+```
+
+### The Scheduler - Running Everything
+
+The scheduler runs your nodes in priority order:
+
+```rust
+let mut scheduler = Scheduler::new();
+
+// Priority 0 = highest (runs first)
+scheduler.register(Box::new(SensorNode::new()?), 0, Some(true));
+
+// Priority 1 = lower (runs after priority 0)
+scheduler.register(Box::new(MonitorNode::new()?), 1, Some(true));
+
+// Run forever
+scheduler.tick_all()?;
+```
+
+## Next Steps
+
+### Add More Features
+
+Try modifying the code:
+
+**1. Add a temperature alert:**
+```rust
+impl Node for TemperatureMonitor {
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        if let Some(temp) = self.subscriber.recv(ctx) {
+            println!("🌡️  Temperature: {:.1}°C", temp);
+
+            // Alert if too hot!
+            if temp > 25.0 {
+                println!("⚠️  WARNING: Temperature too high!");
+            }
+        }
+    }
+}
+```
+
+**2. Add a second sensor:**
+```rust
+// In main():
+scheduler.register(Box::new(HumiditySensor::new()?), 0, Some(true));
+scheduler.register(Box::new(HumidityMonitor::new()?), 1, Some(true));
+```
+
+**3. Save data to a file:**
+```rust
+use std::fs::OpenOptions;
+use std::io::Write;
+
+impl Node for TemperatureMonitor {
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        if let Some(temp) = self.subscriber.recv(ctx) {
+            // Display
+            println!("🌡️  Temperature: {:.1}°C", temp);
+
+            // Save to file
+            let mut file = OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open("temperature.log")
+                .unwrap();
+            writeln!(file, "{:.1}", temp).ok();
+        }
+    }
+}
+```
+
+### Learn More Concepts
+
+Now that you've built your first app, learn the details:
+
+**Core Concepts:**
+- **[Nodes](/docs/core-concepts-nodes)** - Deep dive into the Node pattern
+- **[Hub](/docs/core-concepts-hub)** - How ultra-fast communication works
+- **[Scheduler](/docs/core-concepts-scheduler)** - Priority-based execution
+
+**Make Development Easier:**
+- **[node! Macro](/docs/node-macro)** - Eliminate boilerplate code
+- **[CLI Reference](/docs/cli-reference)** - All the `horus` commands
+- **[Dashboard](/docs/dashboard)** - Monitor your application visually
+
+**See More Examples:**
+- **[Examples](/docs/examples)** - Real applications you can run
+- **[Multi-Language](/docs/multi-language)** - Use Python or C instead
+
+## Common Questions
+
+### Why do I need `Box::new()`?
+
+Nodes are stored polymorphically (different types in one collection). `Box::new()` puts them on the heap so they can be stored together.
+
+### What's `Option<&mut NodeInfo>`?
+
+It's an optional context that provides:
+- Logging functions
+- Timing information
+- Node metadata
+
+Pass it along to `send()` and `recv()` for automatic logging.
+
+### Can I use async/await?
+
+The scheduler uses tokio internally, but nodes use simple sync code. This keeps things simple and predictable.
+
+### How do I stop the application?
+
+Press **Ctrl+C**. The scheduler handles graceful shutdown automatically.
+
+### Where does the data go?
+
+Data is stored in shared memory at `/dev/shm/horus/`. Check it out:
+
+```bash
+ls -lh /dev/shm/horus/
+```
+
+## Troubleshooting
+
+### "Failed to create Hub"
+
+Another program might be using the same topic name. Pick a unique name:
+
+```rust
+Hub::new("temperature_sensor_1")?
+```
+
+### "Address already in use"
+
+The shared memory file exists from a previous run. Remove it:
+
+```bash
+rm -f /dev/shm/horus/topic_temperature
+```
+
+Or use a different topic name.
+
+### Nothing prints
+
+Make sure both nodes are registered:
+
+```rust
+scheduler.register(Box::new(Sensor::new()?), 0, Some(true));
+scheduler.register(Box::new(Monitor::new()?), 1, Some(true));
+```
+
+## What You've Learned
+
+✅ How to create a HORUS project
+✅ The Node trait pattern
+✅ Using Hub for communication
+✅ Running multiple nodes with a Scheduler
+✅ Sending and receiving messages
+
+## Ready for More?
+
+Your next steps:
+
+1. **[Use the node! macro](/docs/node-macro)** to eliminate boilerplate
+2. **[Run the examples](/docs/examples)** to see real applications
+3. **[Open the dashboard](/docs/dashboard)** to monitor your system
+
+**Keep building!** 🚀

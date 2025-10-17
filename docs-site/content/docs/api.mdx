@@ -1,0 +1,365 @@
+---
+title: API Reference
+description: Complete API documentation for HORUS
+order: 19
+---
+
+# API Reference
+
+Complete API documentation for the HORUS framework.
+
+## Core APIs
+
+HORUS provides three main APIs for building distributed systems:
+
+### [Node API](/docs/api-node)
+
+The `Node` trait is the fundamental building block. Implement this trait to create custom nodes.
+
+**Key Methods**:
+- `name()` - Return node name
+- `tick()` - Main execution loop
+- `init()` - Optional initialization
+- `shutdown()` - Optional cleanup
+
+```rust
+use horus::prelude::*;
+
+impl Node for MyNode {
+    fn name(&self) -> &'static str { "MyNode" }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        // Your code here
+    }
+}
+```
+
+[→ Full Node API Reference](/docs/api-node)
+
+### [Hub API](/docs/api-hub)
+
+The `Hub<T>` provides ultra-low latency pub/sub communication through shared memory.
+
+**Key Methods**:
+- `Hub::new(topic)` - Create a hub
+- `send(msg, ctx)` - Publish a message (366ns latency)
+- `recv(ctx)` - Receive a message (non-blocking)
+
+```rust
+use horus::prelude::*;
+
+let hub: Hub<f32> = Hub::new("velocity")?;
+
+// Publish
+hub.send(42.0, ctx).ok();
+
+// Subscribe
+if let Some(value) = hub.recv(ctx) {
+    println!("Received: {}", value);
+}
+```
+
+[→ Full Hub API Reference](/docs/api-hub)
+
+### [Scheduler API](/docs/api-scheduler)
+
+The `Scheduler` orchestrates node execution, managing priorities and lifecycle.
+
+**Key Methods**:
+- `Scheduler::new()` - Create a scheduler
+- `register(node, priority, logging)` - Register a node
+- `tick_all()` - Run all nodes continuously
+
+```rust
+use horus::prelude::*;
+
+let mut scheduler = Scheduler::new();
+
+scheduler.register(Box::new(my_node), 0, Some(true));
+scheduler.tick_all()?;
+```
+
+[→ Full Scheduler API Reference](/docs/api-scheduler)
+
+## Quick Example
+
+Here's a complete example using all three APIs:
+
+```rust
+use horus::prelude::*;
+
+// 1. Define a node
+struct TemperatureSensor {
+    temperature_pub: Hub<f32>,
+}
+
+impl TemperatureSensor {
+    fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(Self {
+            temperature_pub: Hub::new("temperature")?,
+        })
+    }
+}
+
+// 2. Implement Node trait
+impl Node for TemperatureSensor {
+    fn name(&self) -> &'static str {
+        "TemperatureSensor"
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        let temp = 25.0; // Read from sensor
+        self.temperature_pub.send(temp, ctx).ok();
+    }
+}
+
+// 3. Create and run with Scheduler
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut scheduler = Scheduler::new();
+
+    scheduler.register(
+        Box::new(TemperatureSensor::new()?),
+        0,
+        Some(true)
+    );
+
+    scheduler.tick_all()?;
+    Ok(())
+}
+```
+
+## Additional APIs
+
+### NodeInfo
+
+Context object passed to nodes for logging and metrics:
+
+```rust
+// Logging
+ctx.log_info("Info message");
+ctx.log_warning("Warning message");
+ctx.log_error("Error message");
+ctx.log_debug("Debug message");
+
+// Metrics
+let metrics = ctx.metrics();
+println!("Total ticks: {}", metrics.total_ticks);
+```
+
+**Note**: `log_pub()` and `log_sub()` are called automatically by `Hub::send()` and `Hub::recv()`.
+
+### TopicMetadata
+
+Describes published and subscribed topics:
+
+```rust
+use horus::prelude::*;
+
+fn get_publishers(&self) -> Vec<TopicMetadata> {
+    vec![
+        TopicMetadata {
+            topic_name: "cmd_vel".to_string(),
+            type_name: "f32".to_string(),
+        }
+    ]
+}
+```
+
+### NodePriority
+
+Execution priority levels:
+
+```rust
+pub enum NodePriority {
+    Critical = 0,    // Highest
+    High = 1,
+    Normal = 2,      // Default
+    Low = 3,
+    Background = 4,  // Lowest
+}
+```
+
+### NodeState
+
+Node lifecycle states:
+
+```rust
+pub enum NodeState {
+    Uninitialized,
+    Initializing,
+    Running,
+    Paused,
+    Stopping,
+    Stopped,
+    Error(String),
+    Crashed(String),
+}
+```
+
+## Performance Characteristics
+
+### Hub Latency
+
+| Message Size | Latency |
+|--------------|---------|
+| 16B | 366ns |
+| 304B | 543ns |
+| 1.5KB | 1.58µs |
+| 120KB | 2.8µs |
+
+### Scheduler Performance
+
+- **Tick rate**: ~60 FPS (16ms per tick)
+- **Priority execution**: Nodes run in priority order
+- **Overhead**: Minimal (<100µs per tick for orchestration)
+
+## Type Constraints
+
+### Hub Message Types
+
+Must implement: `Clone + Debug + Send + Sync`
+
+```rust
+// ✅ Valid
+Hub::<f32>::new("topic")?;
+Hub::<String>::new("topic")?;
+Hub::<[f32; 3]>::new("topic")?;
+
+#[derive(Clone, Debug)]
+struct MyMessage {
+    x: f32,
+    y: f32,
+}
+Hub::<MyMessage>::new("topic")?;
+
+// ❌ Invalid
+struct NoClone { data: f32 }  // Missing Clone
+Hub::<NoClone>::new("topic")?;  // Won't compile
+```
+
+### Node Types
+
+Must implement: `Send` (for thread safety)
+
+```rust
+impl Node for MyNode {
+    // Required methods...
+}
+```
+
+## Common Patterns
+
+### Publisher-Only Node
+
+```rust
+impl Node for Publisher {
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        let data = self.read_sensor();
+        self.pub_hub.send(data, ctx).ok();
+    }
+}
+```
+
+### Subscriber-Only Node
+
+```rust
+impl Node for Subscriber {
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        if let Some(data) = self.sub_hub.recv(ctx) {
+            self.process(data);
+        }
+    }
+}
+```
+
+### Processing Pipeline
+
+```rust
+impl Node for Processor {
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        if let Some(input) = self.input_sub.recv(ctx) {
+            let output = self.process(input);
+            self.output_pub.send(output, ctx).ok();
+        }
+    }
+}
+```
+
+## Error Handling
+
+### Hub Errors
+
+```rust
+match hub.send(data, ctx) {
+    Ok(()) => {
+        // Success
+    }
+    Err(original_data) => {
+        // Failed - shared memory full
+        ctx.log_warning("Send failed");
+    }
+}
+```
+
+### Node Errors
+
+```rust
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    self.device.connect()
+        .map_err(|e| format!("Connection failed: {}", e))?;
+    Ok(())
+}
+```
+
+## Best Practices
+
+### Keep tick() Fast
+
+```rust
+// ✅ Good - completes quickly
+fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    if let Some(data) = self.sub.recv(ctx) {
+        self.pub.send(data * 2.0, ctx).ok();
+    }
+}
+
+// ❌ Bad - blocks tick loop
+fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    std::thread::sleep(Duration::from_secs(1));  // Don't do this!
+    self.pub.send(42.0, ctx).ok();
+}
+```
+
+### Use Meaningful Topic Names
+
+```rust
+// ✅ Good
+Hub::new("cmd_vel")?;
+Hub::new("sensor/temperature")?;
+Hub::new("robot1/pose")?;
+
+// ❌ Bad
+Hub::new("data")?;
+Hub::new("x")?;
+```
+
+### Handle Errors Appropriately
+
+```rust
+// ✅ Good
+if let Err(data) = hub.send(data, ctx) {
+    ctx.log_warning("Failed to send");
+    // Handle error
+}
+
+// ❌ Bad - silently ignores errors
+hub.send(data, ctx);  // .ok() or .unwrap() without handling
+```
+
+## Next Steps
+
+- **Getting Started**: [Quick Start Guide](/docs/quick-start)
+- **Tutorials**: [Examples](/docs/examples)
+- **Concepts**: [Core Concepts](/docs/core-concepts-nodes)
+- **Tools**: [CLI Reference](/docs/cli-reference)
+- **Performance**: [Performance Guide](/docs/performance)
