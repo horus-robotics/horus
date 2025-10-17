@@ -499,7 +499,11 @@ void tick(NodeInfo* ctx) {
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+
+## 🤝 Contributor License Agreement
+
+By contributing to HORUS, you agree to our [Contributor License Agreement](.github/CLA.md). This helps us maintain the project's licensing integrity while protecting both contributors and users.
 
 ---
 

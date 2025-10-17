@@ -194,7 +194,15 @@ All contributions go through code review:
 
 ## 📜 License
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+By contributing, you agree that your contributions will be licensed under the Apache License 2.0.
+
+All contributors must agree to the [Contributor License Agreement (CLA)](.github/CLA.md). When submitting your first pull request, please add a comment stating:
+
+```
+I have read and agree to the Contributor License Agreement.
+```
+
+This ensures that the project can safely distribute your contributions and protects all parties involved.
 
 ## 🙏 Thank You!
 
