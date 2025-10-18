@@ -30,7 +30,7 @@ export function DocsFooter() {
               <h4 className="font-semibold text-[var(--text-primary)] mb-3 text-sm uppercase tracking-wider">Resources</h4>
               <ul className="space-y-2.5 text-sm text-[var(--text-secondary)]">
                 <li><a href="https://github.com/neos-builder/horus" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">GitHub Repository</a></li>
-                <li><a href="http://localhost:3001" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Package Marketplace</a></li>
+                <li><a href="/horus-marketplace/" className="hover:text-[var(--accent)] transition-colors">Package Marketplace</a></li>
                 <li><a href="/benchmarks" className="hover:text-[var(--accent)] transition-colors">Benchmarks</a></li>
                 <li><a href="/examples" className="hover:text-[var(--accent)] transition-colors">Examples</a></li>
               </ul>
