@@ -1,14 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { FiGithub, FiMenu } from "react-icons/fi";
+import { FiGithub, FiMenu, FiSearch } from "react-icons/fi";
 import { ThemeToggle } from "./ThemeToggle";
+import { SearchModal } from "./SearchModal";
+import { useState, useEffect } from "react";
 
 interface DocsNavProps {
   onMenuClick?: () => void;
 }
 
 export function DocsNav({ onMenuClick }: DocsNavProps) {
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Keyboard shortcut for search (Cmd+K / Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-[var(--border)] bg-[var(--card-bg)] bg-opacity-95 backdrop-blur-lg">
       <div className="w-full px-4 sm:px-6 lg:px-8">
@@ -48,6 +65,19 @@ export function DocsNav({ onMenuClick }: DocsNavProps) {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
+            {/* Search Button */}
+            <button
+              onClick={() => setIsSearchOpen(true)}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm bg-[var(--surface)] border border-[var(--border)] rounded-md text-[var(--text-secondary)] hover:border-[var(--accent)] transition-colors touch-manipulation"
+              aria-label="Search documentation"
+            >
+              <FiSearch className="w-4 h-4" />
+              <span className="hidden sm:inline">Search</span>
+              <kbd className="hidden lg:inline-block ml-2 px-1.5 py-0.5 text-xs bg-[var(--card-bg)] border border-[var(--border)] rounded">
+                ⌘K
+              </kbd>
+            </button>
+
             <a
               href="https://marketplace.horus-registry.dev/"
               target="_blank"
@@ -58,7 +88,7 @@ export function DocsNav({ onMenuClick }: DocsNavProps) {
             </a>
             <Link
               href="/benchmarks"
-              className="hidden sm:block text-sm px-3 py-1.5 bg-[var(--surface)] border border-[var(--border)] rounded-md text-[var(--text-secondary)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors touch-manipulation"
+              className="hidden md:block text-sm px-3 py-1.5 bg-[var(--surface)] border border-[var(--border)] rounded-md text-[var(--text-secondary)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors touch-manipulation"
             >
               Benchmarks
             </Link>
@@ -76,6 +106,9 @@ export function DocsNav({ onMenuClick }: DocsNavProps) {
           </div>
         </div>
       </div>
+
+      {/* Search Modal */}
+      <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </nav>
   );
 }
