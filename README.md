@@ -26,6 +26,65 @@ HORUS is a modern Rust-based robotics framework designed for real-time performan
 - **Performance Benchmarks**: Comprehensive latency testing and optimization
 - **Dashboard Monitoring**: Web and terminal UI for real-time system monitoring
 
+## Alpha Release Status
+
+HORUS is currently in **alpha development** (v0.1.0-alpha). The core framework is production-grade with proven sub-microsecond latency, but some ecosystem tools are still incomplete.
+
+### What Works
+
+**Core Framework (Production-Ready)**
+- Hub pub/sub messaging with 366ns-2.8us latency
+- Priority-based scheduler with deterministic execution
+- Multi-language support (Rust, Python, C)
+- Shared memory IPC with zero-copy performance
+- Built-in logging and metrics
+
+**CLI and Tools (Functional)**
+- Project creation and management
+- Build and execution workflows
+- Package installation and search
+- Basic monitoring dashboard
+- GitHub OAuth authentication
+
+**Package Registry and Marketplace (Production-Ready)**
+- Full package registry backend with SQLite
+- Package upload, download, and versioning
+- GitHub OAuth authentication for publishing
+- Package search and metadata management
+- Documentation serving (local and external)
+- Web-based marketplace at marketplace.horus-registry.dev
+
+### What's Incomplete
+
+**Dashboard**
+- Web dashboard works
+- TUI mode is incomplete (in development)
+
+**Remote Deployment**
+- Basic HTTP deployment works
+- Versioning and rollback features not yet implemented
+
+**Language Bindings**
+- Python bindings functional but missing type hints
+- C bindings support minimal operations only
+
+### Recommendations
+
+**Safe to Use For:**
+- Research and education projects
+- Prototyping robotics applications
+- Learning real-time systems
+- Performance-critical local IPC
+- Publishing and sharing packages via the registry
+
+**Wait for v0.1.5+ For:**
+- Advanced remote deployment features (versioning, rollback)
+- Complete dashboard TUI experience
+
+### Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for detailed development plans and timelines.
+
 ## Installation
 
 ### Prerequisites
