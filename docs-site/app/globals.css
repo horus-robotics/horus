@@ -435,3 +435,18 @@ code {
     background-color: #FFFFFF;
     color: #0F172A;
 }
+
+/* Light theme hero section fixes */
+[data-theme="light"] .glowing-title {
+    background: linear-gradient(135deg, #0284C7, #059669, #0284C7) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+    text-shadow: none !important;
+    animation: none !important;
+}
+
+/* Remove glow animation in light mode */
+[data-theme="light"] .glow-pulse {
+    animation: none !important;
+}
