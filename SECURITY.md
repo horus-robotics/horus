@@ -17,11 +17,8 @@ We take the security of HORUS seriously. If you discover a security issue, pleas
 
 **DO NOT** open a public GitHub issue for security vulnerabilities.
 
-Instead, please report security issues via email to:
+Instead, please open a private security advisory via GitHub:
 
-**security@horus-framework.org**
-
-If this email is not yet active, please open a private security advisory via GitHub:
 1. Go to the repository's Security tab
 2. Click "Report a vulnerability"
 3. Fill out the private advisory form
