@@ -29,20 +29,20 @@ export function DocsFooter() {
             <div>
               <h4 className="font-semibold text-[var(--text-primary)] mb-3 text-sm uppercase tracking-wider">Resources</h4>
               <ul className="space-y-2.5 text-sm text-[var(--text-secondary)]">
-                <li><a href="https://github.com/lord-patpak/horus" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">GitHub Repository</a></li>
-                <li><a href="https://marketplace.horus-registry.dev" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Package Marketplace</a></li>
-                <li><a href="https://crates.io/crates/horus" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Crates.io</a></li>
-                <li><a href="https://github.com/lord-patpak/horus/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Changelog</a></li>
+                <li><a href="https://github.com/neos-builder/horus" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">GitHub Repository</a></li>
+                <li><a href="http://localhost:3001" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Package Marketplace</a></li>
+                <li><a href="/benchmarks" className="hover:text-[var(--accent)] transition-colors">Benchmarks</a></li>
+                <li><a href="/examples" className="hover:text-[var(--accent)] transition-colors">Examples</a></li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-semibold text-[var(--text-primary)] mb-3 text-sm uppercase tracking-wider">Community</h4>
               <ul className="space-y-2.5 text-sm text-[var(--text-secondary)]">
-                <li><a href="https://github.com/lord-patpak/horus/discussions" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Discussions</a></li>
-                <li><a href="https://github.com/lord-patpak/horus/issues" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Issues</a></li>
-                <li><a href="https://github.com/lord-patpak/horus/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Contributing</a></li>
-                <li><a href="https://github.com/lord-patpak/horus/blob/main/CODE_OF_CONDUCT.md" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Code of Conduct</a></li>
+                <li><a href="https://github.com/neos-builder/horus/discussions" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Discussions</a></li>
+                <li><a href="https://github.com/neos-builder/horus/issues" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Issues</a></li>
+                <li><a href="/goals" className="hover:text-[var(--accent)] transition-colors">Goals & Vision</a></li>
+                <li><a href="/architecture" className="hover:text-[var(--accent)] transition-colors">Architecture</a></li>
               </ul>
             </div>
           </div>
@@ -53,9 +53,9 @@ export function DocsFooter() {
             Copyright {new Date().getFullYear()} HORUS Contributors. Apache-2.0 License.
           </div>
           <div className="flex gap-6 text-sm text-[var(--text-secondary)]">
-            <a href="https://github.com/lord-patpak/horus/blob/main/ROADMAP.md" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Roadmap</a>
-            <a href="https://github.com/lord-patpak/horus/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Security</a>
-            <a href="https://github.com/lord-patpak/horus/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">License</a>
+            <a href="https://github.com/neos-builder/horus" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">GitHub</a>
+            <a href="/performance" className="hover:text-[var(--accent)] transition-colors">Performance</a>
+            <a href="https://github.com/neos-builder/horus/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">License</a>
           </div>
         </div>
       </div>

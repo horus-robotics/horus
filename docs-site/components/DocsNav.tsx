@@ -48,6 +48,14 @@ export function DocsNav({ onMenuClick }: DocsNavProps) {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
+            <a
+              href="http://localhost:3001"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden sm:block text-sm px-3 py-1.5 bg-gradient-to-r from-[var(--accent)] to-[var(--success)] text-white font-medium rounded-md hover:opacity-90 transition-opacity touch-manipulation"
+            >
+              Marketplace
+            </a>
             <Link
               href="/benchmarks"
               className="hidden sm:block text-sm px-3 py-1.5 bg-[var(--surface)] border border-[var(--border)] rounded-md text-[var(--text-secondary)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors touch-manipulation"
