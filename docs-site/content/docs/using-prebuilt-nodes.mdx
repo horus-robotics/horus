@@ -1,0 +1,530 @@
+---
+title: Using Pre-Built Nodes
+description: The idiomatic way to build HORUS applications with ready-made components
+order: 3
+---
+
+# Using Pre-Built Nodes
+
+**The HORUS Philosophy:** Don't reinvent the wheel. Use comprehensive, battle-tested nodes from the marketplace and `horus_library`, then configure them to work together.
+
+## Why Use Pre-Built Nodes?
+
+**Build systems in minutes, not days:**
+- Pre-built nodes are production-ready and tested
+- Configure instead of coding
+- Focus on your application logic, not infrastructure
+- Nodes are designed to work together seamlessly
+
+## Quick Example
+
+Instead of writing a PID controller from scratch, just install and configure:
+
+```bash
+# Install from marketplace
+horus pkg install pid-controller
+```
+
+```rust
+use pid_controller::PIDNode;
+use horus::prelude::*;
+
+fn main() {
+    let mut scheduler = Scheduler::new();
+
+    // Configure the pre-built node
+    let pid = PIDNode::new(1.0, 0.1, 0.01);  // kp, ki, kd
+    scheduler.register(Box::new(pid), 5, Some(true));
+
+    scheduler.tick_all().expect("Scheduler failed");
+}
+```
+
+That's it! Production-ready PID control in 3 lines.
+
+---
+
+## Discovering Pre-Built Nodes
+
+### From the Marketplace
+
+**Web Interface:**
+```bash
+# Visit the marketplace in your browser
+http://localhost:3001
+```
+
+Browse by category:
+- **Control** - PID controllers, motion planners
+- **Perception** - Camera, LIDAR, sensor fusion
+- **Drivers** - Motor controllers, sensor interfaces
+- **Safety** - Emergency stop, watchdogs
+- **Utilities** - Loggers, data recorders
+
+**CLI Search:**
+```bash
+# Search for specific functionality
+horus pkg list sensor
+horus pkg list controller
+horus pkg list motor
+
+# View details before installing
+horus pkg info pid-controller
+```
+
+### From Standard Library
+
+The `horus_library` crate includes common nodes:
+
+```rust
+use horus_library::prelude::*;
+
+// Sensor nodes
+CameraNode, LidarNode, ImuNode
+
+// Control nodes
+PidControllerNode, DifferentialDriveNode
+
+// Input nodes
+KeyboardInputNode, JoystickInputNode
+
+// Safety nodes
+EmergencyStopNode, SafetyMonitorNode
+
+// And many more...
+```
+
+---
+
+## Installation Patterns
+
+### Installing from Marketplace
+
+```bash
+# Latest version
+horus pkg install motion-planner
+
+# Specific version
+horus pkg install sensor-fusion -v 2.1.0
+
+# Multiple packages
+horus pkg install pid-controller motion-planner sensor-drivers
+```
+
+### Using Standard Library
+
+Add to your `Cargo.toml`:
+
+```toml
+[dependencies]
+horus = "0.1"
+horus_library = "0.1"
+```
+
+No installation needed - just import and use!
+
+---
+
+## The Idiomatic Pattern
+
+### 1. Discover What You Need
+
+**Example Goal:** Build a mobile robot with keyboard control
+
+**Required Nodes:**
+- Input: Keyboard control
+- Control: Velocity command processing
+- Output: Motor driver
+
+### 2. Search and Install
+
+```bash
+# Check what's available
+horus pkg list keyboard
+horus pkg list motor
+
+# Install what you need
+horus pkg install keyboard-input
+horus pkg install differential-drive
+```
+
+### 3. Configure and Compose
+
+```rust
+use keyboard_input::KeyboardNode;
+use differential_drive::DiffDriveNode;
+use horus::prelude::*;
+
+fn main() {
+    let mut scheduler = Scheduler::new();
+
+    // Keyboard input node (priority 0 - runs first)
+    let keyboard = KeyboardNode::new("keyboard/input")?;
+    scheduler.register(Box::new(keyboard), 0, Some(true));
+
+    // Differential drive controller (priority 5)
+    let drive = DiffDriveNode::new(
+        "keyboard/input",   // Input topic
+        "motor/left",       // Left motor output
+        "motor/right",      // Right motor output
+        0.5                 // Wheel separation (meters)
+    )?;
+    scheduler.register(Box::new(drive), 5, Some(true));
+
+    scheduler.tick_all()?;
+}
+```
+
+**That's it!** A functional robot in ~20 lines, no custom nodes needed.
+
+---
+
+## Common Workflows
+
+### Mobile Robot Base
+
+```bash
+# Install components
+horus pkg install keyboard-input
+horus pkg install differential-drive
+horus pkg install emergency-stop
+```
+
+```rust
+use keyboard_input::KeyboardNode;
+use differential_drive::DiffDriveNode;
+use emergency_stop::EStopNode;
+use horus::prelude::*;
+
+fn main() {
+    let mut scheduler = Scheduler::new();
+
+    // Input
+    scheduler.register(
+        Box::new(KeyboardNode::new("keyboard")?),
+        0, Some(true)
+    );
+
+    // Safety (runs first!)
+    scheduler.register(
+        Box::new(EStopNode::new("estop", "cmd_vel")?),
+        0, Some(true)
+    );
+
+    // Drive control
+    scheduler.register(
+        Box::new(DiffDriveNode::new("cmd_vel", "motor/left", "motor/right", 0.5)?),
+        1, Some(true)
+    );
+
+    scheduler.tick_all()?;
+}
+```
+
+### Sensor Fusion System
+
+```bash
+horus pkg install lidar-driver
+horus pkg install imu-driver
+horus pkg install kalman-filter
+```
+
+```rust
+use lidar_driver::LidarNode;
+use imu_driver::ImuNode;
+use kalman_filter::EKFNode;
+use horus::prelude::*;
+
+fn main() {
+    let mut scheduler = Scheduler::new();
+
+    // Sensors (priority 2)
+    scheduler.register(
+        Box::new(LidarNode::new("/dev/ttyUSB0", "scan")?),
+        2, Some(true)
+    );
+    scheduler.register(
+        Box::new(ImuNode::new("/dev/i2c-1", "imu")?),
+        2, Some(true)
+    );
+
+    // Fusion (priority 3 - runs after sensors)
+    scheduler.register(
+        Box::new(EKFNode::new("scan", "imu", "pose")?),
+        3, Some(true)
+    );
+
+    scheduler.tick_all()?;
+}
+```
+
+### Vision Processing Pipeline
+
+```rust
+use horus_library::prelude::*;
+
+fn main() {
+    let mut scheduler = Scheduler::new();
+
+    // Using standard library nodes
+    let camera = CameraNode::new("/dev/video0", "camera/raw", 30)?;
+    let processor = ImageProcessorNode::new("camera/raw", "camera/processed")?;
+    let detector = ObjectDetectorNode::new("camera/processed", "objects")?;
+
+    scheduler.register(Box::new(camera), 2, Some(true));
+    scheduler.register(Box::new(processor), 3, Some(true));
+    scheduler.register(Box::new(detector), 3, Some(true));
+
+    scheduler.tick_all()?;
+}
+```
+
+---
+
+## Configuration Best Practices
+
+### Use Builder Patterns
+
+Many nodes support fluent configuration:
+
+```rust
+let camera = CameraNode::new("/dev/video0")?
+    .with_resolution(1920, 1080)
+    .with_fps(60)
+    .with_format(ImageFormat::RGB8);
+
+scheduler.register(Box::new(camera), 2, Some(true));
+```
+
+### Parameter-Based Configuration
+
+Configure nodes via the parameter system:
+
+```rust
+use horus::params::*;
+
+// Set parameters
+set_param("motor.max_speed", 2.0)?;
+set_param("motor.acceleration", 0.5)?;
+
+// Node reads from parameters
+let motor = MotorNode::from_params()?;
+scheduler.register(Box::new(motor), 1, Some(true));
+```
+
+**Adjust at runtime via dashboard!**
+
+### Environment-Based Setup
+
+```bash
+# Save your configuration
+horus env freeze -o robot-config.yaml
+
+# Deploy to another robot
+horus env restore robot-config.yaml
+```
+
+---
+
+## Composing Complex Systems
+
+### Pipeline Pattern
+
+Chain nodes together via topics:
+
+```
+[Sensor] --topic--> [Filter] --topic--> [Controller] --topic--> [Actuator]
+```
+
+```rust
+// Each node subscribes to previous, publishes to next
+scheduler.register(Box::new(sensor), 2, Some(true));    // Publishes "raw"
+scheduler.register(Box::new(filter), 3, Some(true));    // Subscribes "raw", publishes "filtered"
+scheduler.register(Box::new(controller), 4, Some(true)); // Subscribes "filtered", publishes "cmd"
+scheduler.register(Box::new(actuator), 5, Some(true));   // Subscribes "cmd"
+```
+
+### Parallel Processing
+
+Multiple nodes at same priority run concurrently:
+
+```rust
+// All run in parallel (priority 2)
+scheduler.register(Box::new(lidar), 2, Some(true));
+scheduler.register(Box::new(camera), 2, Some(true));
+scheduler.register(Box::new(imu), 2, Some(true));
+```
+
+### Safety Layering
+
+Critical nodes run first:
+
+```rust
+// Priority 0 - Safety checks (runs first)
+scheduler.register(Box::new(watchdog), 0, Some(true));
+scheduler.register(Box::new(estop), 0, Some(true));
+
+// Priority 1 - Control
+scheduler.register(Box::new(controller), 1, Some(true));
+
+// Priority 2 - Sensors
+scheduler.register(Box::new(lidar), 2, Some(true));
+
+// Priority 4 - Logging (runs last)
+scheduler.register(Box::new(logger), 4, Some(true));
+```
+
+---
+
+## When to Build Custom Nodes
+
+**Use pre-built nodes when:**
+- ✅ Functionality exists in marketplace or `horus_library`
+- ✅ Node can be configured to your needs
+- ✅ Performance is acceptable
+
+**Build custom nodes when:**
+- ⚠️ No existing node matches your hardware
+- ⚠️ Unique algorithm or business logic
+- ⚠️ Extreme performance requirements
+
+**Pro tip:** Even then, consider:
+1. Starting with a similar pre-built node
+2. Forking and modifying it
+3. Publishing your improved version back to the marketplace
+
+---
+
+## Finding the Right Node
+
+### By Use Case
+
+**I need to...**
+- Control a motor → `motor-driver`, `differential-drive`, `servo-controller`
+- Read a sensor → `lidar-driver`, `camera-node`, `imu-driver`
+- Process data → `kalman-filter`, `pid-controller`, `image-processor`
+- Handle safety → `emergency-stop`, `safety-monitor`, `watchdog`
+- Log data → `data-logger`, `rosbag-writer`, `csv-logger`
+
+### By Hardware
+
+```bash
+# Search by device type
+horus pkg list lidar
+horus pkg list camera
+horus pkg list imu
+
+# Check compatibility in package info
+horus pkg info lidar-driver
+# Shows: "Supports RPLidar A1/A2/A3, Hokuyo URG-04LX"
+```
+
+### By Category
+
+Browse marketplace by category:
+- **control** - Motion control, PID, path following
+- **perception** - Sensors, computer vision, SLAM
+- **planning** - Path planning, motion planning
+- **drivers** - Hardware interfaces
+- **safety** - Safety systems, fault tolerance
+- **utils** - Logging, visualization, debugging
+
+---
+
+## Package Quality Indicators
+
+When choosing packages, look for:
+
+**High Download Count**
+```
+Downloads: 5,234 (last 30 days)
+```
+
+**Recent Updates**
+```
+Last updated: 2025-09-28
+```
+
+**Good Documentation**
+```
+Documentation: 98% coverage
+```
+
+**Active Maintenance**
+```
+Issues: 2 open, 45 closed (96% resolution rate)
+```
+
+---
+
+## Complete Example: Autonomous Robot
+
+**Goal:** Build an autonomous mobile robot that avoids obstacles
+
+**1. Install Components:**
+```bash
+horus pkg install lidar-driver
+horus pkg install obstacle-detector
+horus pkg install path-planner
+horus pkg install differential-drive
+horus pkg install emergency-stop
+```
+
+**2. Compose System:**
+```rust
+use lidar_driver::LidarNode;
+use obstacle_detector::ObstacleDetectorNode;
+use path_planner::LocalPlannerNode;
+use differential_drive::DiffDriveNode;
+use emergency_stop::EStopNode;
+use horus::prelude::*;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut scheduler = Scheduler::new();
+
+    // Safety (Priority 0 - runs first)
+    scheduler.register(
+        Box::new(EStopNode::new("estop", "cmd_vel")?),
+        0, Some(true)
+    );
+
+    // Sensors (Priority 2)
+    scheduler.register(
+        Box::new(LidarNode::new("/dev/ttyUSB0", "scan")?),
+        2, Some(true)
+    );
+
+    // Perception (Priority 3)
+    scheduler.register(
+        Box::new(ObstacleDetectorNode::new("scan", "obstacles")?),
+        3, Some(true)
+    );
+
+    // Planning (Priority 4)
+    scheduler.register(
+        Box::new(LocalPlannerNode::new("obstacles", "cmd_vel")?),
+        4, Some(true)
+    );
+
+    // Control (Priority 5)
+    scheduler.register(
+        Box::new(DiffDriveNode::new("cmd_vel", "motor/left", "motor/right", 0.5)?),
+        5, Some(true)
+    );
+
+    scheduler.tick_all()?;
+    Ok(())
+}
+```
+
+**That's a full autonomous robot in ~40 lines of configuration!**
+
+---
+
+## Next Steps
+
+- **[Library Reference](/docs/library-reference)** - Browse all standard library nodes
+- **[Marketplace](http://localhost:3001)** - Discover community packages
+- **[Package Management](/docs/package-management)** - Install and manage packages
+- **[Writing Nodes](/docs/node-macro)** - When you need custom functionality
+- **[Examples](/docs/examples)** - See complete working systems
