@@ -506,30 +506,28 @@ df -h /dev/shm
 
 ## Multi-Language Support
 
+HORUS supports Python and C in addition to Rust. Language bindings are currently in alpha and under active development.
+
 ### Python
+
+See [horus_py/README.md](horus_py/README.md) for the complete Python API documentation and examples.
+
+**Quick Example:**
 ```python
 import horus
 
-class SensorNode(horus.Node):
-    def __init__(self):
-        self.pub = horus.Hub("sensor_data")
+def process(node):
+    node.send("output", 42.0)
 
-    def name(self):
-        return "PySensor"
-
-    def tick(self, ctx):
-        self.pub.send(42.0, ctx)
+node = horus.Node(pubs="output", tick=process, rate=30)
+horus.run(node, duration=5)
 ```
 
 ### C
-```c
-#include "horus.h"
 
-void tick(NodeInfo* ctx) {
-    Hub* hub = hub_new("sensor_data");
-    hub_send_f64(hub, 42.0, ctx);
-}
-```
+See [horus_c/README.md](horus_c/README.md) for C bindings documentation.
+
+**Note:** C bindings currently support minimal operations. Full API coverage is planned for future releases.
 
 ## Use Cases
 
