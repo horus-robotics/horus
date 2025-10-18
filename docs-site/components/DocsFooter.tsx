@@ -18,30 +18,31 @@ export function DocsFooter() {
             <div>
               <h4 className="font-semibold text-[var(--text-primary)] mb-3 text-sm uppercase tracking-wider">Documentation</h4>
               <ul className="space-y-2.5 text-sm text-[var(--text-secondary)]">
-                <li><a href="/goals" className="hover:text-[var(--accent)] transition-colors">Goals & Vision</a></li>
-                <li><a href="/architecture" className="hover:text-[var(--accent)] transition-colors">Architecture</a></li>
                 <li><a href="/getting-started" className="hover:text-[var(--accent)] transition-colors">Getting Started</a></li>
-                <li><a href="/core" className="hover:text-[var(--accent)] transition-colors">Core Concepts</a></li>
-                <li><a href="/api" className="hover:text-[var(--accent)] transition-colors">API Reference</a></li>
+                <li><a href="/cli-reference" className="hover:text-[var(--accent)] transition-colors">CLI Reference</a></li>
+                <li><a href="/node-macro" className="hover:text-[var(--accent)] transition-colors">Node Macro</a></li>
+                <li><a href="/parameters" className="hover:text-[var(--accent)] transition-colors">Parameters</a></li>
+                <li><a href="/dashboard" className="hover:text-[var(--accent)] transition-colors">Dashboard</a></li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-semibold text-[var(--text-primary)] mb-3 text-sm uppercase tracking-wider">Resources</h4>
               <ul className="space-y-2.5 text-sm text-[var(--text-secondary)]">
-                <li><a href="/docs/examples" className="hover:text-[var(--accent)] transition-colors">Examples</a></li>
-                <li><a href="/docs/benchmarks" className="hover:text-[var(--accent)] transition-colors">Benchmarks</a></li>
-                <li><a href="https://github.com" className="hover:text-[var(--accent)] transition-colors">GitHub</a></li>
-                <li><a href="https://crates.io" className="hover:text-[var(--accent)] transition-colors">Crates.io</a></li>
+                <li><a href="https://github.com/lord-patpak/horus" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">GitHub Repository</a></li>
+                <li><a href="https://marketplace.horus-registry.dev" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Package Marketplace</a></li>
+                <li><a href="https://crates.io/crates/horus" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Crates.io</a></li>
+                <li><a href="https://github.com/lord-patpak/horus/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Changelog</a></li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-semibold text-[var(--text-primary)] mb-3 text-sm uppercase tracking-wider">Community</h4>
               <ul className="space-y-2.5 text-sm text-[var(--text-secondary)]">
-                <li><a href="https://github.com/discussions" className="hover:text-[var(--accent)] transition-colors">Discussions</a></li>
-                <li><a href="https://github.com/issues" className="hover:text-[var(--accent)] transition-colors">Issues</a></li>
-                <li><a href="/docs/contributing" className="hover:text-[var(--accent)] transition-colors">Contributing</a></li>
+                <li><a href="https://github.com/lord-patpak/horus/discussions" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Discussions</a></li>
+                <li><a href="https://github.com/lord-patpak/horus/issues" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Issues</a></li>
+                <li><a href="https://github.com/lord-patpak/horus/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Contributing</a></li>
+                <li><a href="https://github.com/lord-patpak/horus/blob/main/CODE_OF_CONDUCT.md" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Code of Conduct</a></li>
               </ul>
             </div>
           </div>
@@ -49,12 +50,12 @@ export function DocsFooter() {
 
         <div className="mt-12 pt-8 border-t border-[var(--border)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="text-sm text-[var(--text-tertiary)]">
-            © {new Date().getFullYear()} HORUS Contributors. MIT/Apache-2.0 License.
+            Copyright {new Date().getFullYear()} HORUS Contributors. Apache-2.0 License.
           </div>
           <div className="flex gap-6 text-sm text-[var(--text-secondary)]">
-            <a href="/privacy" className="hover:text-[var(--accent)] transition-colors">Privacy</a>
-            <a href="/terms" className="hover:text-[var(--accent)] transition-colors">Terms</a>
-            <a href="/security" className="hover:text-[var(--accent)] transition-colors">Security</a>
+            <a href="https://github.com/lord-patpak/horus/blob/main/ROADMAP.md" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Roadmap</a>
+            <a href="https://github.com/lord-patpak/horus/blob/main/SECURITY.md" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Security</a>
+            <a href="https://github.com/lord-patpak/horus/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">License</a>
           </div>
         </div>
       </div>
