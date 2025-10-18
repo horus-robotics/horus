@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FiGithub, FiMenu } from "react-icons/fi";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface DocsNavProps {
   onMenuClick?: () => void;
@@ -9,7 +10,7 @@ interface DocsNavProps {
 
 export function DocsNav({ onMenuClick }: DocsNavProps) {
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-[var(--border)] bg-[rgba(22,24,28,0.95)] backdrop-blur-lg">
+    <nav className="sticky top-0 z-50 w-full border-b border-[var(--border)] bg-[var(--card-bg)] bg-opacity-95 backdrop-blur-lg">
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between relative">
           <div className="flex items-center gap-3 sm:gap-6">
@@ -53,6 +54,7 @@ export function DocsNav({ onMenuClick }: DocsNavProps) {
             >
               Benchmarks
             </Link>
+            <ThemeToggle />
             <a
               href="https://github.com/neos-builder/horus"
               target="_blank"

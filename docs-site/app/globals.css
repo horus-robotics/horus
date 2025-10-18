@@ -5,6 +5,7 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Dark theme (default) */
 :root {
     --primary: #0F172A;
     --accent: #00D4FF;
@@ -17,6 +18,22 @@
     --border: rgba(0, 212, 255, 0.1);
     --text-primary: #E2E8F0;
     --text-secondary: #94A3B8;
+    --text-tertiary: #64748B;
+}
+
+/* Light theme */
+[data-theme="light"] {
+    --primary: #F8FAFC;
+    --accent: #0EA5E9;
+    --success: #10B981;
+    --gray: #64748B;
+    --dark-bg: #FFFFFF;
+    --card-bg: #F8FAFC;
+    --surface: #F1F5F9;
+    --surface-hover: #E2E8F0;
+    --border: rgba(14, 165, 233, 0.15);
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
     --text-tertiary: #64748B;
 }
 
