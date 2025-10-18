@@ -1,107 +1,108 @@
 # HORUS Roadmap
 
-This document outlines the planned development roadmap for HORUS. Priorities and timelines may change based on community feedback and contributions.
+This document outlines what HORUS aims to achieve. Priorities may change based on community feedback and contributions.
 
-## Current Version: v0.1.0-alpha
+## Current Status: v0.1.0-alpha
 
-The core framework is production-ready with proven sub-microsecond latency. Ecosystem tools are functional but incomplete.
-
----
-
-## Short-Term (v0.1.x - Next 3 Months)
-
-### Priority 1: Complete Ecosystem Tools
-
-**Package Registry Backend**
-- Status: COMPLETE (100%)
-- Deployed at api.horus-registry.dev
-- Features:
-  - Full registry backend with Axum and SQLite
-  - Package upload/download with authentication
-  - Version management and search
-  - Metadata and documentation APIs
-  - Environment freeze/restore
-  - Import resolution system
-  - Deployed marketplace at marketplace.horus-registry.dev
-
-**Dashboard Improvements**
-- Status: 70% complete (web works, TUI incomplete)
-- Goal: Production-ready monitoring solution
-- Tasks:
-  - Complete TUI mode implementation
-  - Stabilize real-time updates
-  - Add historical metrics visualization
-  - Implement node pause/resume controls
-  - Add export functionality for metrics
-
-**Remote Deployment**
-- Status: 70% complete (HTTP + authentication works)
-- Goal: Production-ready remote deployment with versioning
-- Tasks:
-  - Implement versioning and rollback
-  - Add deployment status tracking
-  - Support multi-robot deployments
-  - Add health checks and monitoring
-
-### Priority 2: Developer Experience
-
-**Python Bindings Enhancement**
-- Add type hints for all APIs
-- Improve error messages
-- Add Python-specific examples
-- Create pip installable package
-
-**C Bindings Extension**
-- Expand API beyond minimal operations
-- Add comprehensive examples
-- Improve documentation
-- Add CMake integration
-
-**Documentation**
-- Add video tutorials
-- Create interactive examples
-- Expand API reference
-- Add troubleshooting guide
+The core framework is production-ready with proven sub-microsecond latency. Ecosystem tools are functional but continue to evolve.
 
 ---
 
-## Mid-Term (v0.2.0 - 6 Months)
+## Ecosystem Tools
 
-### Core Framework Enhancements
+### Package Registry
+- Full registry backend with package management
+- Package upload/download with authentication
+- Version management and search
+- Metadata and documentation APIs
+- Environment freeze/restore
+- Import resolution system
+- Web-based marketplace interface
 
-**Performance**
+### Dashboard
+- Production-ready monitoring solution
+- Real-time visualization of node performance
+- Terminal UI mode
+- Historical metrics visualization
+- Node pause/resume controls
+- Metrics export functionality
+
+### Remote Deployment
+- Production-ready remote deployment
+- Deployment versioning and rollback
+- Deployment status tracking
+- Multi-robot deployment support
+- Health checks and monitoring integration
+
+---
+
+## Developer Experience
+
+### Python Bindings
+- Type hints for all APIs
+- Improved error messages
+- Python-specific examples
+- pip installable package
+
+### C Bindings
+- Comprehensive API coverage
+- Extensive examples
+- Complete documentation
+- CMake integration
+
+### Documentation
+- Video tutorials
+- Interactive examples
+- Comprehensive API reference
+- Troubleshooting guides
+
+---
+
+## Core Framework Enhancements
+
+### Performance
 - Sub-100ns latency for small messages
 - Multi-producer, multi-consumer support
 - Lock-free ring buffer optimization
-- Benchmark suite expansion
+- Expanded benchmark suite
+- Zero-allocation hot paths
+- SIMD optimizations
+- Custom allocators
+- Real-time guarantees
 
-**Reliability**
+### Reliability
 - Automatic node restart on failure
-- Health check system
+- Comprehensive health check system
 - Graceful degradation
 - Fault tolerance testing
+- 100% test coverage for core
+- Extensive integration testing
+- Security fuzzing
+- Long-running stability tests
 
-**Observability**
+### Observability
 - OpenTelemetry integration
 - Distributed tracing
 - Metrics export (Prometheus format)
 - Structured logging
 
-### Advanced Features
+---
 
-**Distributed Systems**
+## Advanced Features
+
+### Distributed Systems
 - Multi-machine pub/sub over network
 - Remote node execution
 - Distributed scheduling
 - Clock synchronization
 
-**Quality of Service**
+### Quality of Service
 - Message priority levels
 - Guaranteed delivery modes
 - Bandwidth management
 - Latency budgets
 
-**Resource Management**
+### Resource Management
 - Memory usage limits
 - CPU affinity controls
 - Process isolation
@@ -109,67 +110,65 @@ The core framework is production-ready with proven sub-microsecond latency. Ecos
 
 ---
 
-## Long-Term (v1.0.0 - 12+ Months)
+## Platform Support
 
-### Production Hardening
-
-**Stability**
-- 100% test coverage for core
-- Extensive integration testing
-- Fuzzing for security
-- Long-running stability tests
-
-**Performance**
-- Zero-allocation hot paths
-- SIMD optimizations
-- Custom allocators
-- Real-time guarantees
-
-**Compatibility**
+### Operating Systems
 - Windows native support
 - macOS support
+- Enhanced Linux support
+
+### Architectures
 - ARM architecture optimization
 - RTOS integration
+- Cross-platform compatibility
 
-### Ecosystem Growth
+---
 
-**Language Bindings**
+## Language Bindings
+
 - JavaScript/TypeScript bindings
 - Go bindings
 - Java bindings
 - Official ROS2 bridge
 
-**Tools**
+---
+
+## Development Tools
+
 - Visual node editor
 - Performance profiler
 - Package IDE plugin
 - Configuration management UI
 
-**Community**
+---
+
+## Community & Ecosystem
+
 - Official package repository
 - Package certification program
 - Training materials
 - Commercial support options
+- Growing package ecosystem
 
 ---
 
 ## Research & Experimental
 
-These features are under investigation and may or may not be implemented:
+These features are under investigation:
 
-**Advanced Scheduling**
+### Advanced Scheduling
 - Real-time scheduling with WCET analysis
 - GPU-accelerated nodes
 - FPGA integration
 - Heterogeneous computing
 
-**Communication**
+### Communication
 - RDMA support for ultra-low latency
 - Kernel bypass networking
 - Custom hardware acceleration
 - Zero-copy network transmission
 
-**AI/ML Integration**
+### AI/ML Integration
 - Neural network node templates
 - Model serving infrastructure
 - Training pipeline integration
@@ -177,23 +176,11 @@ These features are under investigation and may or may not be implemented:
 
 ---
 
-## Version Timeline
-
-| Version | Target Date | Focus |
-|---------|-------------|-------|
-| v0.1.0-alpha | October 2024 | Initial release |
-| v0.1.5 | January 2025 | Complete ecosystem tools |
-| v0.2.0 | April 2025 | Core enhancements, distributed systems |
-| v0.3.0 | July 2025 | Advanced features, QoS |
-| v1.0.0 | October 2025 | Production hardening, stable API |
-
----
-
 ## How to Contribute
 
 Want to help with the roadmap?
 
-1. Check the [GitHub Issues](https://github.com/lord-patpak/horus/issues) for open tasks
+1. Check the [GitHub Issues](https://github.com/neos-builder/horus/issues) for open tasks
 2. Look for issues labeled `help wanted` or `good first issue`
 3. Comment on roadmap items you're interested in
 4. Submit proposals for new features via feature request template
@@ -259,4 +246,4 @@ This roadmap is a living document. Feedback and suggestions are welcome:
 - Feature requests for specific proposals
 - Email for strategic partnerships
 
-Last updated: October 18, 2024
+Last updated: October 18, 2025
