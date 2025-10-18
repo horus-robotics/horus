@@ -6,7 +6,7 @@ order: 7
 
 # CLI Reference
 
-The `horus` command gives you everything you need to build, run, and manage your applications. This page covers all 7 commands.
+The `horus` command gives you everything you need to build, run, and manage your applications. This page covers all 8 commands.
 
 ## Quick Reference
 
@@ -18,6 +18,7 @@ horus pkg <command>        # Manage packages
 horus env <command>        # Save/restore environments
 horus publish              # Share your package
 horus auth <command>       # Login to registry
+horus version              # Show version information
 ```
 
 ---
@@ -233,6 +234,9 @@ horus pkg remove <package>
 
 # List packages
 horus pkg list
+
+# Unpublish a package from registry
+horus pkg unpublish <package>
 ```
 
 ### Examples
@@ -240,6 +244,11 @@ horus pkg list
 **Install a package**:
 ```bash
 horus pkg install pid-controller
+```
+
+**Install specific version**:
+```bash
+horus pkg install pid-controller -v 1.2.0
 ```
 
 **Install globally** (share across projects):
@@ -255,6 +264,16 @@ horus pkg list
 **Search for packages**:
 ```bash
 horus pkg list sensor
+```
+
+**Remove a package**:
+```bash
+horus pkg remove pid-controller
+```
+
+**Unpublish from registry** (irreversible!):
+```bash
+horus pkg unpublish my-package -v 1.0.0
 ```
 
 ---
@@ -338,14 +357,14 @@ horus publish
 # Login with GitHub
 horus auth login --github
 
+# Generate API key (for CI/CD)
+horus auth generate-key
+
 # Check who you are
 horus auth whoami
 
 # Logout
 horus auth logout
-
-# Generate API key (for CI/CD)
-horus auth generate-key --name ci-server
 ```
 
 ### Examples
@@ -361,11 +380,47 @@ horus auth login --github
 horus auth whoami
 ```
 
-**Setup CI/CD**:
+**Generate API key for CI/CD**:
 ```bash
 horus auth generate-key --name github-actions --environment ci-cd
-# Use the key in your CI secrets
+# Save the generated key in your CI secrets
 ```
+
+**Logout**:
+```bash
+horus auth logout
+```
+
+---
+
+## `horus version` - Show Version Information
+
+**What it does**: Display version information about your HORUS installation.
+
+**Why it's useful**: Check what version you're running, verify installation, and get system information.
+
+### Usage
+
+```bash
+horus version
+```
+
+### Example Output
+
+```
+HORUS - Hybrid Optimized Robotics Unified System
+Version: 0.1.0
+Build: release
+Commit: abc123def456
+Platform: linux-x86_64
+Rust: 1.70.0
+```
+
+**Common uses**:
+- Verify HORUS is installed correctly
+- Check which version you're running
+- Report version when filing bugs
+- Confirm you have the latest version
 
 ---
 

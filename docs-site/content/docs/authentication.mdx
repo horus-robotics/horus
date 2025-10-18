@@ -192,8 +192,7 @@ Or use in CI:
 ```bash
 horus auth generate-key \
   --name "GitHub Actions" \
-  --environment "production" \
-  --description "Automated deployment"
+  --environment "production"
 ```
 
 ### Using API Keys
@@ -209,75 +208,11 @@ horus publish
 
 **Credentials file:**
 ```bash
-# Save to file
+# Save to file manually
 echo '{"api_key":"horus_live_abc123..."}' > ~/.horus/credentials
-
-# Or via CLI
-horus auth set-key horus_live_abc123...
 ```
 
-**Command-line flag:**
-```bash
-horus publish --api-key horus_live_abc123...
-```
-
-### Listing API Keys
-
-```bash
-horus auth list-keys
-```
-
-**Output:**
-```
-Your API Keys:
-
-  horus_live_abc123...
-  Name: GitHub Actions
-  Environment: production
-  Created: 2025-10-09
-  Last used: 2025-10-15 (6 days ago)
-  Status: Active
-
-  horus_live_xyz789...
-  Name: CI/CD Pipeline
-  Environment: staging
-  Created: 2025-09-01
-  Last used: 2025-10-01 (15 days ago)
-  Status: Active
-
-Total: 2 keys
-```
-
-### Revoking API Keys
-
-**Revoke specific key:**
-```bash
-horus auth revoke-key horus_live_abc123...
-```
-
-**Revoke all keys:**
-```bash
-horus auth revoke-all-keys
-```
-
-**Interactive confirmation:**
-```
-Revoking API key: horus_live_abc123...
-  Name: GitHub Actions
-  Environment: production
-  Created: 2025-10-09
-
-This action cannot be undone.
-Any systems using this key will lose access.
-
-Confirm revocation? [y/N]: y
-
-✓ Key revoked successfully
-
-Systems using this key will now get 401 Unauthorized errors.
-Generate a new key with:
-  horus auth generate-key
-```
+> **Note**: Managing API keys (listing, revoking, etc.) is currently done through the registry web interface at https://registry.horus.dev
 
 ## CI/CD Integration
 
@@ -490,44 +425,22 @@ chmod 600 ~/.horus/credentials
 **Regular rotation schedule:**
 ```bash
 # 1. Generate new key
-NEW_KEY=$(horus auth generate-key --name "Production 2025-Q4" --quiet)
+horus auth generate-key --name "Production 2025-Q4"
 
-# 2. Update CI/CD secrets
-# (Do this manually in CI/CD platform)
+# 2. Update CI/CD secrets with the new key
+# (Do this manually in your CI/CD platform)
 
 # 3. Test new key
-export HORUS_API_KEY=$NEW_KEY
+export HORUS_API_KEY=horus_live_new_key...
 horus auth whoami
 
-# 4. Revoke old key
-horus auth revoke-key horus_live_old_key...
+# 4. Revoke old key via registry web interface
+# Visit https://registry.horus.dev to manage keys
 ```
 
 ### Monitoring
 
-**Check key usage:**
-```bash
-horus auth list-keys --show-usage
-```
-
-**Output:**
-```
-API Key: horus_live_abc123...
-  Name: Production Deployment
-  Last used: 2025-10-15 14:30:00
-  Total uses: 45
-  Recent activity:
-    2025-10-15 14:30 - Published package sensor-fusion@2.1.0
-    2025-10-14 10:15 - Published environment env_xyz789
-    2025-10-13 16:45 - Published package motion-planner@2.0.1
-```
-
-**Alerts:**
-```bash
-# Get email alerts for key usage
-horus auth set-alerts --email you@example.com \
-  --on-use --on-unauthorized
-```
+> **Note**: API key usage monitoring and alerts are managed through the registry web interface at https://registry.horus.dev
 
 ## Troubleshooting
 
@@ -589,8 +502,8 @@ Error: Invalid API key
 echo $HORUS_API_KEY
 # Should start with: horus_live_
 
-# Check key status
-horus auth list-keys
+# Check key status via registry web interface
+# Visit https://registry.horus.dev
 
 # Generate new key
 horus auth generate-key
@@ -614,11 +527,10 @@ Error: Permission denied
 # Verify authentication
 horus auth whoami
 
-# Check package ownership
-horus pkg info package-name
+# Check package ownership via registry web interface
+# Visit https://registry.horus.dev
 
-# Transfer ownership if needed
-horus pkg transfer package-name --to your-username
+# For package ownership transfer, contact registry support
 ```
 
 ### GitHub OAuth Failed
@@ -709,6 +621,6 @@ print(f"Authenticated as: {user['username']}")
 
 - **[Marketplace](/docs/marketplace)** - Publish and discover packages
 - **[Package Management](/docs/package-management)** - Install and manage packages
-- **[CI/CD Integration](/docs/ci-cd)** - Automate publishing
-- **[Security Guide](/docs/security)** - Advanced security practices
-- **[API Reference](/docs/api-auth)** - Authentication API documentation
+- **[Remote Deployment](/docs/remote-deployment)** - Deploy to remote robots
+- **[Registry & Marketplace](/docs/registry-marketplace)** - Explore the registry
+- **[CLI Reference](/docs/cli-reference)** - Complete command documentation

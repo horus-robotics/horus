@@ -115,8 +115,6 @@ horus env freeze [OPTIONS]
 **Options:**
 - `-o, --output <FILE>` - Output file (default: `horus-freeze.yaml`)
 - `--publish` - Upload to registry and generate ID
-- `--name <NAME>` - Environment name
-- `--description <DESC>` - Environment description
 
 ### Basic Freeze
 
@@ -152,25 +150,6 @@ horus env freeze -o environments/production.yaml
 
 # Timestamp-based filename
 horus env freeze -o "backup-$(date +%Y%m%d).yaml"
-```
-
-### Named Environments
-
-```bash
-horus env freeze \
-  --name "Production v2.1" \
-  --description "Stable release for warehouse robots" \
-  -o production-v2.1.yaml
-```
-
-**Generated file includes metadata:**
-```yaml
-metadata:
-  name: "Production v2.1"
-  description: "Stable release for warehouse robots"
-  author: "robotics-team"
-  created_at: "2025-10-09T14:45:00Z"
-  # ...
 ```
 
 ### Publish to Registry
@@ -218,9 +197,7 @@ horus env restore <FILE_OR_ID>
 ```
 
 **Options:**
-- `-g, --global` - Install packages globally
-- `--force` - Reinstall even if already present
-- `--verify` - Verify checksums after installation
+> **Note**: Additional options for restore are planned for future releases.
 
 ### Restore from File
 
@@ -271,36 +248,6 @@ Restoring...
 Environment ready!
 ```
 
-### Global Installation
-
-```bash
-# Install to global cache (shared across projects)
-horus env restore production.yaml --global
-```
-
-### Force Reinstall
-
-```bash
-# Reinstall even if already present
-horus env restore horus-freeze.yaml --force
-```
-
-### Verify Integrity
-
-```bash
-# Verify checksums after installation
-horus env restore production.yaml --verify
-```
-
-**Output:**
-```
-Restoring and verifying...
-  ✓ pid-controller@1.2.0 (checksum OK)
-  ✓ motion-planner@2.0.1 (checksum OK)
-  ✓ sensor-drivers@1.5.0 (checksum OK)
-
-All packages verified successfully!
-```
 
 ## Common Workflows
 
@@ -408,54 +355,7 @@ horus env restore env_previous_stable
 
 ## Environment Comparison
 
-### Compare Two Environments
-
-```bash
-# Show differences between environments
-horus env diff horus-freeze.yaml production.yaml
-```
-
-**Output:**
-```
-Comparing environments:
-  Local: horus-freeze.yaml (5 packages)
-  Remote: production.yaml (4 packages)
-
-Differences:
-  + sensor-fusion@1.0.0 (only in horus-freeze.yaml)
-  ! pid-controller: 1.2.0 → 1.3.0 (version changed)
-  - legacy-driver@0.5.0 (removed in horus-freeze.yaml)
-
-Summary:
-  1 added
-  1 version changed
-  1 removed
-```
-
-### Check Environment Status
-
-```bash
-# Show current vs frozen state
-horus env status
-```
-
-**Output:**
-```
-Current environment vs horus-freeze.yaml:
-
-Matching:
-  ✓ motion-planner@2.0.1
-  ✓ sensor-drivers@1.5.0
-
-Outdated:
-  WARNING: pid-controller: 1.2.0 (frozen) → 1.3.0 (installed)
-
-Missing:
-  ✗ control-utils@1.0.0 (in freeze file, not installed)
-
-Status: Out of sync
-Run 'horus env restore horus-freeze.yaml' to synchronize
-```
+> **Note**: Environment comparison commands (`env diff`, `env status`) are planned for future releases. For now, you can manually compare freeze files or use standard diff tools.
 
 ## Best Practices
 
@@ -534,9 +434,6 @@ horus pkg remove unused-package
 
 # Refreeze
 horus env freeze
-
-# Verify
-horus env restore horus-freeze.yaml --verify
 ```
 
 ## Troubleshooting
@@ -582,12 +479,9 @@ Error: Checksum mismatch for 'pid-controller@1.2.0'
 
 **Solutions:**
 ```bash
-# Force reinstall
+# Reinstall the package
 horus pkg remove pid-controller
-horus pkg install pid-controller -v 1.2.0 --force
-
-# Skip verification (not recommended)
-horus env restore horus-freeze.yaml --no-verify
+horus pkg install pid-controller -v 1.2.0
 ```
 
 ### Version Conflicts
@@ -601,8 +495,8 @@ Error: Cannot satisfy version constraints
 
 **Solutions:**
 ```bash
-# Option 1: Update conflicting package
-horus pkg install sensor-fusion --force  # Gets compatible version
+# Option 1: Install compatible version
+horus pkg install sensor-fusion -v 2.0.0
 
 # Option 2: Edit environment file manually
 # Change pathfinding-utils version to compatible one
@@ -623,85 +517,14 @@ Error: Failed to fetch environment from registry
 ```bash
 # Use local file instead
 horus env restore horus-freeze.yaml
-
-# Export from registry when available
-horus env export env_abc123def456 -o local-copy.yaml
-horus env restore local-copy.yaml
 ```
 
-## Environment Registry
-
-### List Published Environments
-
-```bash
-# List your published environments
-horus env list
-
-# List all public environments
-horus env list --public
-
-# Search by keyword
-horus env list mobile robot
-```
-
-**Output:**
-```
-Your Published Environments:
-
-  env_abc123def456
-  Production v2.1 - Warehouse Robots
-  Author: robotics-team
-  Packages: 5
-  Published: 2025-10-09
-
-  env_xyz789ghi012
-  Development - Feature Testing
-  Author: robotics-team
-  Packages: 7
-  Published: 2025-10-08
-
-Total: 2 environments
-```
-
-### View Environment Details
-
-```bash
-# Show details
-horus env info env_abc123def456
-```
-
-**Output:**
-```
-Environment: env_abc123def456
-
-Name: Production v2.1
-Description: Stable release for warehouse robots
-Author: robotics-team
-Created: 2025-10-09T14:45:00Z
-HORUS Version: 0.1.0
-
-Packages (5):
-  pid-controller@1.2.0
-  motion-planner@2.0.1
-  sensor-drivers@1.5.0
-  pathfinding-utils@1.2.0
-  control-utils@1.0.0
-
-To restore:
-  horus env restore env_abc123def456
-```
-
-### Delete Environment
-
-```bash
-# Delete from registry
-horus env delete env_xyz789ghi012
-```
+> **Note**: Environment registry management commands (`env list`, `env info`, `env delete`, `env export`) are planned for future releases. For now, manage published environments through the registry web interface at https://registry.horus.dev
 
 ## Next Steps
 
 - **[Package Management](/docs/package-management)** - Install and manage packages
 - **[Authentication](/docs/authentication)** - Login to registry
-- **[Marketplace](/docs/marketplace)** - Discover environments
-- **[CI/CD Integration](/docs/ci-cd)** - Automate deployments
+- **[Marketplace](/docs/marketplace)** - Discover packages and environments
+- **[Remote Deployment](/docs/remote-deployment)** - Deploy to remote robots
 - **[CLI Reference](/docs/cli-reference)** - Complete command documentation

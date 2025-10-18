@@ -127,10 +127,10 @@ horus pkg install <package> [OPTIONS]
 ```
 
 **Options:**
-- `-v, --version <VERSION>` - Install specific version (default: latest)
+- `-v, --ver <VERSION>` - Install specific version (default: latest)
 - `-g, --global` - Install to global cache
-- `--no-deps` - Skip dependency installation
-- `--force` - Reinstall even if already present
+- `-t, --target <NAME>` - Target workspace/project name
+- `-d, --dev` - Install as development dependency (not yet supported)
 
 **Examples:**
 
@@ -144,8 +144,8 @@ horus pkg install motion-planner -v 2.0.1
 # Global installation
 horus pkg install common-utils -g
 
-# Force reinstall
-horus pkg install pid-controller --force
+# Install to specific workspace
+horus pkg install pid-controller -t my-project
 ```
 
 **Output:**
@@ -174,7 +174,7 @@ horus pkg remove <package>
 
 **Options:**
 - `-g, --global` - Remove from global cache
-- `--all-versions` - Remove all versions
+- `-t, --target <NAME>` - Target workspace/project name
 
 **Examples:**
 
@@ -185,8 +185,8 @@ horus pkg remove motion-planner
 # Remove from global cache
 horus pkg remove common-utils -g
 
-# Remove all versions
-horus pkg remove pid-controller --all-versions
+# Remove from specific workspace
+horus pkg remove pid-controller -t my-project
 ```
 
 **Output:**
@@ -202,6 +202,15 @@ Package removed: pid-controller@1.2.0
 
 List installed packages or search the registry.
 
+**Usage:**
+```bash
+horus pkg list [QUERY] [OPTIONS]
+```
+
+**Options:**
+- `-g, --global` - List global cache packages
+- `-a, --all` - List all (local + global)
+
 **List Local Packages:**
 ```bash
 horus pkg list
@@ -209,12 +218,10 @@ horus pkg list
 
 **Output:**
 ```
-Installed Packages (local):
-  pid-controller          1.2.0      PID controller node
-  motion-planner          2.0.1      A* path planning
-  sensor-drivers          1.5.0      LIDAR/IMU drivers
-
-Total: 3 packages
+Local packages:
+  pid-controller 1.2.0
+  motion-planner 2.0.1
+  sensor-drivers 1.5.0
 ```
 
 **List Global Cache:**
@@ -224,64 +231,52 @@ horus pkg list -g
 
 **Search Registry:**
 ```bash
-# Search all packages
-horus pkg list
-
 # Search by keyword
 horus pkg list sensor
-
-# Filter by author
-horus pkg list --author robotics-lab
 ```
 
 **Output:**
 ```
-Registry Packages (matching 'sensor'):
-  sensor-fusion           2.1.0      Kalman filter fusion         1,234 downloads
-  sensor-drivers          1.5.0      LIDAR/IMU/camera drivers    5,678 downloads
-  sensor-calibration      1.0.0      Calibration tools              432 downloads
-
-Total: 3 matches
+Found 3 package(s):
+  sensor-fusion 2.1.0 - Kalman filter fusion
+  sensor-drivers 1.5.0 - LIDAR/IMU/camera drivers
+  sensor-calibration 1.0.0 - Calibration tools
 ```
 
-### `horus pkg info`
+### `horus pkg unpublish`
 
-Show detailed information about a package.
+Remove a package version from the registry (irreversible!).
 
 **Usage:**
 ```bash
-horus pkg info <package>
+horus pkg unpublish <package> -v <version> [OPTIONS]
 ```
+
+**Options:**
+- `-v, --version <VERSION>` - Package version to unpublish (required)
+- `-y, --yes` - Skip confirmation prompt
 
 **Example:**
 ```bash
-horus pkg info pid-controller
+horus pkg unpublish my-package -v 1.0.0
 ```
 
 **Output:**
 ```
-Package: pid-controller
-Version: 1.2.0
-Author: robotics-lab
-License: MIT
-Description: Production-ready PID controller with anti-windup and derivative filtering
+Unpublishing my-package v1.0.0...
 
-Dependencies:
-  - control-utils ^1.0.0
+Warning: This action is IRREVERSIBLE and will:
+  • Delete my-package v1.0.0 from the registry
+  • Make this version unavailable for download
+  • Cannot be undone
 
-Features:
-  - Anti-windup protection
-  - Derivative filtering
-  - Setpoint ramping
-  - Output clamping
+Type the package name 'my-package' to confirm: my-package
 
-Downloads: 5,234
-Published: 2025-09-15
-Repository: https://github.com/robotics-lab/pid-controller
-
-Installation:
-  horus pkg install pid-controller
+✅ Successfully unpublished my-package v1.0.0
+   The package is no longer available on the registry
 ```
+
+> **Note**: Detailed package information can be viewed on the registry web interface at https://registry.horus.dev
 
 ## Publishing Packages
 
@@ -571,10 +566,7 @@ advanced-planning = { version = "3.0", optional = true }
 planning = ["advanced-planning"]
 ```
 
-**Using optional features:**
-```bash
-horus pkg install your-package --features planning
-```
+> **Note**: Feature flag support for package installation via CLI is planned for future releases. Currently, features are managed via Cargo.toml dependencies.
 
 ## Package Structure
 
@@ -832,15 +824,14 @@ fn main() {
 ### Updating Dependencies
 
 ```bash
-# Check for updates
-horus pkg list --outdated
-
-# Update specific package
+# Update specific package to newer version
 horus pkg install pid-controller -v 1.3.0
 
-# Update all packages (future feature)
-horus pkg update
+# Check available versions on registry
+horus pkg list pid-controller
 ```
+
+> **Note**: Automatic update checking is planned for future releases.
 
 ## Troubleshooting
 
@@ -875,7 +866,7 @@ Error: Version conflict
 **Solutions:**
 ```bash
 # Option 1: Update conflicting package
-horus pkg install sensor-fusion --force  # Gets latest compatible version
+horus pkg install sensor-fusion -v 2.0.0  # Install compatible version
 
 # Option 2: Pin version manually
 # Edit Cargo.toml:
@@ -894,12 +885,12 @@ Error: Failed to build package 'my-package'
 ```bash
 # Clean and rebuild
 horus pkg remove my-package
-horus pkg install my-package --force
+horus pkg install my-package
 
-# Check dependencies
-horus pkg info my-package
+# Check dependencies via registry web interface
+# Visit https://registry.horus.dev
 
-# Install dependencies manually
+# Install dependencies manually if needed
 horus pkg install dependency-name
 ```
 
@@ -930,9 +921,8 @@ Error: Failed to connect to registry
 ping registry.horus.dev
 
 # Try again later (registry might be down)
-horus pkg install my-package --retry
 
-# Use cached packages
+# Use cached packages if available
 ls ~/.horus/cache/
 ```
 
@@ -962,5 +952,5 @@ curl -o pkg.tar.gz https://registry.horus.dev/api/packages/pid-controller/1.2.0/
 - **[Environment Management](/docs/environment-management)** - Freeze and restore package sets
 - **[Authentication](/docs/authentication)** - Manage registry credentials
 - **[Marketplace](/docs/marketplace)** - Discover and publish packages
+- **[Registry & Marketplace](/docs/registry-marketplace)** - Publishing workflow
 - **[CLI Reference](/docs/cli-reference)** - Complete command documentation
-- **[Publishing Guide](/docs/publishing)** - Detailed publishing workflow
