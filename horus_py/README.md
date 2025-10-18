@@ -226,49 +226,6 @@ The HORUS Python API follows these principles:
 4. **Progressive complexity** - Start simple, add features as needed
 5. **Pythonic** - Feels like native Python, not wrapped C++
 
-## 🚦 Migration from Old API
-
-### Old Way (Complex)
-```python
-from horus import Node, Hub, NodeInfo, Scheduler
-
-class MyNode(Node):
-    def __init__(self):
-        super().__init__("my_node")
-        self.output = Hub("data")
-
-    def init(self, info: NodeInfo):
-        info.log_info("Initialized")
-
-    def tick(self, info: NodeInfo):
-        self.output.send({"value": 42})
-
-    def shutdown(self, info: NodeInfo):
-        info.log_info("Shutting down")
-
-scheduler = Scheduler()
-scheduler.add_node(MyNode())
-scheduler.set_tick_rate(10)
-scheduler.run_for(5.0)
-```
-
-### New Way (Simple)
-```python
-import horus
-
-def tick(node):
-    node.send("data", {"value": 42})
-
-node = horus.Node(
-    name="my_node",
-    pubs="data",
-    tick=tick,
-    rate=10
-)
-
-horus.run(node, duration=5)
-```
-
 ## Running Examples
 
 Check out the examples directory:
@@ -284,13 +241,13 @@ python examples/simple_api_demo.py
 python examples/robot_example.py
 ```
 
-## 🤔 Why Simple API?
+## 🤔 Why This Design?
 
-The simple API addresses common pain points:
+The HORUS Python API is designed for simplicity and productivity:
 
-- **No more inheritance** - Just pass functions
-- **No more boilerplate** - Node creation in one line
-- **Clear data flow** - Explicit `get`/`send` instead of callbacks
+- **Function-based** - No class inheritance required
+- **Minimal boilerplate** - Node creation in one line
+- **Clear data flow** - Explicit `get`/`send` operations
 - **Testable** - Functions can be tested independently
 - **Gradual complexity** - Start with 5 lines, scale as needed
 
