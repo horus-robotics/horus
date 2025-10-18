@@ -12,7 +12,7 @@ Complete API documentation for the HORUS framework.
 
 HORUS provides three main APIs for building distributed systems:
 
-### [Node API](/docs/api-node)
+### [Node API](https://docs.horus-registry.dev/docs/api-node)
 
 The `Node` trait is the fundamental building block. Implement this trait to create custom nodes.
 
@@ -34,9 +34,9 @@ impl Node for MyNode {
 }
 ```
 
-[→ Full Node API Reference](/docs/api-node)
+[→ Full Node API Reference](https://docs.horus-registry.dev/docs/api-node)
 
-### [Hub API](/docs/api-hub)
+### [Hub API](https://docs.horus-registry.dev/docs/api-hub)
 
 The `Hub<T>` provides ultra-low latency pub/sub communication through shared memory.
 
@@ -59,9 +59,9 @@ if let Some(value) = hub.recv(ctx) {
 }
 ```
 
-[→ Full Hub API Reference](/docs/api-hub)
+[→ Full Hub API Reference](https://docs.horus-registry.dev/docs/api-hub)
 
-### [Scheduler API](/docs/api-scheduler)
+### [Scheduler API](https://docs.horus-registry.dev/docs/api-scheduler)
 
 The `Scheduler` orchestrates node execution, managing priorities and lifecycle.
 
@@ -79,7 +79,7 @@ scheduler.register(Box::new(my_node), 0, Some(true));
 scheduler.tick_all()?;
 ```
 
-[→ Full Scheduler API Reference](/docs/api-scheduler)
+[→ Full Scheduler API Reference](https://docs.horus-registry.dev/docs/api-scheduler)
 
 ## Quick Example
 
@@ -358,8 +358,8 @@ hub.send(data, ctx);  // .ok() or .unwrap() without handling
 
 ## Next Steps
 
-- **Getting Started**: [Quick Start Guide](/docs/quick-start)
-- **Tutorials**: [Examples](/docs/examples)
-- **Concepts**: [Core Concepts](/docs/core-concepts-nodes)
-- **Tools**: [CLI Reference](/docs/cli-reference)
-- **Performance**: [Performance Guide](/docs/performance)
+- **Getting Started**: [Quick Start Guide](https://docs.horus-registry.dev/docs/quick-start)
+- **Tutorials**: [Examples](https://docs.horus-registry.dev/docs/examples)
+- **Concepts**: [Core Concepts](https://docs.horus-registry.dev/docs/core-concepts-nodes)
+- **Tools**: [CLI Reference](https://docs.horus-registry.dev/docs/cli-reference)
+- **Performance**: [Performance Guide](https://docs.horus-registry.dev/docs/performance)
