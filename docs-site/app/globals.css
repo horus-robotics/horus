@@ -24,16 +24,16 @@
 /* Light theme */
 [data-theme="light"] {
     --primary: #F8FAFC;
-    --accent: #0EA5E9;
-    --success: #10B981;
+    --accent: #0284C7;
+    --success: #059669;
     --gray: #64748B;
     --dark-bg: #FFFFFF;
-    --card-bg: #F8FAFC;
+    --card-bg: #FAFAFA;
     --surface: #F1F5F9;
     --surface-hover: #E2E8F0;
-    --border: rgba(14, 165, 233, 0.15);
+    --border: rgba(100, 116, 139, 0.2);
     --text-primary: #0F172A;
-    --text-secondary: #475569;
+    --text-secondary: #334155;
     --text-tertiary: #64748B;
 }
 
@@ -173,6 +173,58 @@ code {
     padding: 0.2rem 0.4rem;
     border-radius: 4px;
     font-size: 0.9em;
+    border: 1px solid var(--border);
+}
+
+/* Light theme specific adjustments */
+[data-theme="light"] pre {
+    background: #F8FAFC !important;
+    border-color: rgba(100, 116, 139, 0.25);
+}
+
+[data-theme="light"] :not(pre) > code {
+    background: #F1F5F9;
+    color: #0284C7;
+    border-color: rgba(100, 116, 139, 0.2);
+}
+
+[data-theme="light"] .prose h1 {
+    background: linear-gradient(135deg, #0284C7, #059669);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+[data-theme="light"] .prose h2 {
+    color: #0F172A;
+    border-bottom-color: rgba(100, 116, 139, 0.25);
+}
+
+[data-theme="light"] .prose h3 {
+    color: #0284C7;
+}
+
+[data-theme="light"] .prose a {
+    color: #0284C7;
+}
+
+[data-theme="light"] .prose a:hover {
+    border-bottom-color: #0284C7;
+}
+
+[data-theme="light"] .prose th {
+    background: #F8FAFC;
+    color: #0F172A;
+    border-color: rgba(100, 116, 139, 0.2);
+}
+
+[data-theme="light"] .prose td {
+    color: #334155;
+    border-color: rgba(100, 116, 139, 0.2);
+}
+
+[data-theme="light"] .prose tr:hover {
+    background: #F8FAFC;
 }
 
 /* Markdown content styling */
@@ -356,4 +408,30 @@ code {
 .data-stream {
     stroke-dasharray: 10 5;
     animation: data-flow 2s linear infinite;
+}
+
+/* Light theme button and card adjustments */
+[data-theme="light"] .hover-glow:hover {
+    box-shadow: 0 0 15px rgba(2, 132, 199, 0.15);
+    border-color: var(--accent) !important;
+}
+
+[data-theme="light"] .text-glow {
+    text-shadow: 0 0 20px rgba(2, 132, 199, 0.3);
+}
+
+[data-theme="light"] .stat-glow {
+    text-shadow: none;
+}
+
+/* Light theme navigation adjustments */
+[data-theme="light"] nav {
+    background: rgba(250, 250, 250, 0.95) !important;
+    backdrop-filter: blur(12px);
+}
+
+/* Ensure text remains visible in light mode */
+[data-theme="light"] body {
+    background-color: #FFFFFF;
+    color: #0F172A;
 }
