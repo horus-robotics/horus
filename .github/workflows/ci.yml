@@ -24,7 +24,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libclang-dev llvm-dev libudev-dev
+          sudo apt-get install -y libclang-dev llvm-dev libudev-dev libopencv-dev libasound2-dev
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -65,7 +65,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libclang-dev llvm-dev libudev-dev
+          sudo apt-get install -y libclang-dev llvm-dev libudev-dev libopencv-dev libasound2-dev
 
       - name: Run clippy
         run: cargo clippy --all-features --workspace -- -D warnings -A dead_code -A unused_variables -A clippy::approx_constant -A clippy::manual_clamp -A clippy::not_unsafe_ptr_arg_deref -A clippy::manual_strip -A clippy::type_complexity -A clippy::field_reassign_with_default -A clippy::explicit_counter_loop -A clippy::explicit_iter_loop -A clippy::upper_case_acronyms -A clippy::needless_range_loop
@@ -104,7 +104,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libclang-dev llvm-dev libudev-dev
+          sudo apt-get install -y libclang-dev llvm-dev libudev-dev libopencv-dev libasound2-dev
 
       - name: Build (debug)
         run: cargo build --workspace
@@ -125,7 +125,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libclang-dev llvm-dev libudev-dev
+          sudo apt-get install -y libclang-dev llvm-dev libudev-dev libopencv-dev libasound2-dev
 
       - name: Check documentation
         run: cargo doc --no-deps --all-features --workspace
@@ -145,7 +145,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libclang-dev llvm-dev libudev-dev
+          sudo apt-get install -y libclang-dev llvm-dev libudev-dev libopencv-dev libasound2-dev
 
       - name: Set up Python
         uses: actions/setup-python@v4
