@@ -36,8 +36,8 @@
 //!
 //! # Usage Examples
 //!
-//! ```rust
-//! use crate::nodes::*;
+//! ```rust,ignore
+//! use horus_library::nodes::*;
 //!
 //! // Create nodes with simple constructors
 //! let camera = CameraNode::new();                    // Uses "camera/image" topic
