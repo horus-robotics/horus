@@ -100,17 +100,19 @@ impl Parse for NodeDef {
         while !content.is_empty() {
             let lookahead = content.lookahead1();
 
-            if lookahead.peek(Ident) {
+            if lookahead.peek(Token![pub]) {
+                let pub_token: Token![pub] = content.parse()?;
+                if pub_section.is_some() {
+                    return Err(Error::new(pub_token.span, "Duplicate 'pub' section"));
+                }
+                // Create a fake ident for the parse function
+                let section_name = Ident::new("pub", pub_token.span);
+                pub_section = Some(parse_pub_section(&content, section_name)?);
+            } else if lookahead.peek(Ident) {
                 let section_name: Ident = content.parse()?;
                 let section_str = section_name.to_string();
 
                 match section_str.as_str() {
-                    "pub" => {
-                        if pub_section.is_some() {
-                            return Err(Error::new(section_name.span(), "Duplicate 'pub' section"));
-                        }
-                        pub_section = Some(parse_pub_section(&content, section_name)?);
-                    }
                     "sub" => {
                         if sub_section.is_some() {
                             return Err(Error::new(section_name.span(), "Duplicate 'sub' section"));

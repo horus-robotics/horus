@@ -474,6 +474,11 @@ impl DiagnosticReport {
         self.add_value(DiagnosticValue::float(key, value))
     }
 
+    /// Add a boolean value
+    pub fn add_bool(&mut self, key: &str, value: bool) -> Result<(), &'static str> {
+        self.add_value(DiagnosticValue::bool(key, value))
+    }
+
     /// Set the overall status level
     pub fn set_level(&mut self, level: StatusLevel) {
         self.level = level;

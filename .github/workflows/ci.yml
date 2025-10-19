@@ -45,7 +45,7 @@ jobs:
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Run tests
-        run: cargo test --workspace --features horus_library/basic-sensors --exclude horus_py
+        run: cargo test --workspace --exclude horus_py
 
       - name: Run tests (release mode)
         run: cargo test --workspace --release --exclude horus_py

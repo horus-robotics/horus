@@ -22,7 +22,7 @@ mod tests {
 
                         pub fn try_recv(
                             &self,
-                            _ctx: Option<&mut crate::mock::horus_core::core::NodeInfo>,
+                            _ctx: Option<&mut crate::tests::mock::horus_core::core::NodeInfo>,
                         ) -> Option<T> {
                             None
                         }
@@ -30,7 +30,7 @@ mod tests {
                         pub fn send(
                             &self,
                             _data: T,
-                            _ctx: Option<&mut crate::mock::horus_core::core::NodeInfo>,
+                            _ctx: Option<&mut crate::tests::mock::horus_core::core::NodeInfo>,
                         ) -> Result<(), Box<dyn std::error::Error>> {
                             Ok(())
                         }
