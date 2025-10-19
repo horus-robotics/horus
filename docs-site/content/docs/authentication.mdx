@@ -212,7 +212,7 @@ horus publish
 echo '{"api_key":"horus_live_abc123..."}' > ~/.horus/credentials
 ```
 
-> **Note**: Managing API keys (listing, revoking, etc.) is currently done through the registry web interface at https://registry.horus.dev
+> **Note**: Managing API keys (listing, revoking, etc.) is currently done through the registry web interface at https://marketplace.horus-registry.dev
 
 ## CI/CD Integration
 
@@ -363,8 +363,8 @@ pipeline {
 
 **`HORUS_REGISTRY_URL`**
 - Custom registry URL
-- Default: `https://registry.horus.dev`
-- For self-hosted registries
+- Default: `https://marketplace.horus-registry.dev`
+- For self-hosted or custom registries
 
 **`HORUS_TOKEN`**
 - OAuth token (alternative to API key)
@@ -435,12 +435,12 @@ export HORUS_API_KEY=horus_live_new_key...
 horus auth whoami
 
 # 4. Revoke old key via registry web interface
-# Visit https://registry.horus.dev to manage keys
+# Visit https://marketplace.horus-registry.dev to manage keys
 ```
 
 ### Monitoring
 
-> **Note**: API key usage monitoring and alerts are managed through the registry web interface at https://registry.horus.dev
+> **Note**: API key usage monitoring and alerts are managed through the registry web interface at http://localhost:3001 (local) or https://marketplace.horus-registry.dev (public)
 
 ## Troubleshooting
 
@@ -503,7 +503,7 @@ echo $HORUS_API_KEY
 # Should start with: horus_live_
 
 # Check key status via registry web interface
-# Visit https://registry.horus.dev
+# Visit http://localhost:3001 or https://marketplace.horus-registry.dev
 
 # Generate new key
 horus auth generate-key
@@ -528,7 +528,7 @@ Error: Permission denied
 horus auth whoami
 
 # Check package ownership via registry web interface
-# Visit https://registry.horus.dev
+# Visit http://localhost:3001 or https://marketplace.horus-registry.dev
 
 # For package ownership transfer, contact registry support
 ```

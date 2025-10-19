@@ -27,15 +27,21 @@ The fastest way to get started with HORUS:
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/HORUS
-cd HORUS
+git clone https://github.com/neos-builder/horus
+cd horus
 
-# Install the global CLI tool
-cargo install --path horus_manager
+# Run the installation script (recommended)
+./install.sh
 
 # Verify installation
 horus --version
 ```
+
+**What the installer does:**
+- Builds all packages in release mode
+- Installs `horus` CLI to `~/.cargo/bin/`
+- Sets up library cache in `~/.horus/cache/`
+- Creates package metadata and handles versions automatically
 
 ## Detailed Installation Steps
 
@@ -58,33 +64,47 @@ cargo --version
 ### Step 2: Clone HORUS
 
 ```bash
-git clone https://github.com/your-org/HORUS
-cd HORUS
+git clone https://github.com/neos-builder/horus
+cd horus
 ```
 
-### Step 3: Build the Framework
+### Step 3: Run Installation Script
 
-Build all HORUS components:
+The installation script handles everything automatically:
 
 ```bash
-# Build everything (takes a few minutes first time)
+# Run the installer
+./install.sh
+```
+
+**The script will:**
+1. Check that Rust is installed
+2. Build all packages in release mode (`cargo build --release`)
+3. Install the `horus` CLI to `~/.cargo/bin/`
+4. Set up `~/.horus/cache/` with versioned libraries:
+   - `horus_core@0.1.0`
+   - `horus@0.1.0`
+   - `horus_macros@0.1.0`
+   - `horus_library@0.1.0`
+5. Create `metadata.json` for each package
+6. Verify the installation
+7. Display next steps
+
+**Manual Installation (Alternative):**
+
+If you prefer manual control:
+
+```bash
+# Build everything
 cargo build --release
 
-# Optional: Run tests to verify build
-cargo test
-```
-
-### Step 4: Install Global CLI
-
-Install the `horus` command globally:
-
-```bash
+# Install CLI only
 cargo install --path horus_manager
+
+# Note: You'll need to manually set up ~/.horus/cache/
 ```
 
-This makes `horus` available system-wide in your terminal.
-
-### Step 5: Verify Installation
+### Step 4: Verify Installation
 
 Check that everything works:
 
@@ -92,8 +112,20 @@ Check that everything works:
 # Check version
 horus --version
 
+# Check library cache
+ls ~/.horus/cache/
+
 # List available commands
 horus --help
+```
+
+**Expected output:**
+```
+~/.horus/cache/
+├── horus@0.1.0/
+├── horus_core@0.1.0/
+├── horus_macros@0.1.0/
+└── horus_library@0.1.0/
 ```
 
 ## Platform-Specific Notes
@@ -198,27 +230,64 @@ To update to the latest version:
 
 ```bash
 # Pull latest changes
-cd HORUS
+cd horus
 git pull
 
-# Rebuild and reinstall
+# Re-run installer (handles version upgrades automatically)
+./install.sh
+```
+
+**What happens during update:**
+- Detects version changes
+- Removes old library versions if needed
+- Installs new versions to `~/.horus/cache/`
+- Preserves your existing configuration
+
+**Manual Update (Alternative):**
+```bash
+# Pull changes
+git pull
+
+# Rebuild
 cargo build --release
+
+# Force reinstall CLI
 cargo install --path horus_manager --force
 ```
 
 ## Uninstalling
 
-To remove HORUS:
+To remove HORUS completely:
 
 ```bash
-# Remove global CLI
-cargo uninstall horus_manager
+# Use the uninstall script (recommended)
+cd horus
+./uninstall.sh
+```
+
+**What the uninstaller does:**
+- Removes CLI binary from `~/.cargo/bin/horus`
+- Removes global library cache from `~/.horus/cache/`
+- Optionally removes entire `~/.horus/` directory (asks first)
+- Cleans shared memory files in `/dev/shm/horus/`
+- Preserves project-local `.horus/` directories
+
+**Manual Uninstall (Alternative):**
+```bash
+# Remove CLI
+cargo uninstall horus
+
+# Remove cache
+rm -rf ~/.horus/cache/
+
+# Optionally remove all HORUS config
+rm -rf ~/.horus/
 
 # Remove source directory
-rm -rf HORUS
+rm -rf horus
 
-# Clean shared memory (optional)
-rm -f /dev/shm/horus_*
+# Clean shared memory
+rm -rf /dev/shm/horus/
 ```
 
 ## Troubleshooting

@@ -276,7 +276,7 @@ Type the package name 'my-package' to confirm: my-package
    The package is no longer available on the registry
 ```
 
-> **Note**: Detailed package information can be viewed on the registry web interface at https://registry.horus.dev
+> **Note**: Detailed package information can be viewed on the registry web interface at https://marketplace.horus-registry.dev
 
 ## Publishing Packages
 
@@ -339,7 +339,7 @@ Uploading...
 ✓ Uploaded to registry
 
 Published: my-awesome-package@1.0.0
-Registry URL: https://registry.horus.dev/packages/my-awesome-package
+Registry URL: https://marketplace.horus-registry.dev/packages/my-awesome-package
 
 Others can now install with:
   horus pkg install my-awesome-package
@@ -446,7 +446,7 @@ Publishing my-sensor-package v1.0.0...
 ✓ Uploaded to registry
 
 Published: my-sensor-package@1.0.0
-   View at: http://localhost:3001/packages/my-sensor-package
+   View at: https://marketplace.horus-registry.dev/packages/my-sensor-package
 
 Package Metadata (optional)
    Help users discover and use your package by adding:
@@ -888,7 +888,7 @@ horus pkg remove my-package
 horus pkg install my-package
 
 # Check dependencies via registry web interface
-# Visit https://registry.horus.dev
+# Visit https://marketplace.horus-registry.dev
 
 # Install dependencies manually if needed
 horus pkg install dependency-name
@@ -918,7 +918,7 @@ Error: Failed to connect to registry
 **Solutions:**
 ```bash
 # Check internet connection
-ping registry.horus.dev
+ping marketplace.horus-registry.dev
 
 # Try again later (registry might be down)
 
@@ -934,17 +934,17 @@ You can interact with the registry programmatically:
 
 **Search packages:**
 ```bash
-curl https://registry.horus.dev/api/packages?q=sensor
+curl https://marketplace.horus-registry.dev/api/packages?q=sensor
 ```
 
 **Get package info:**
 ```bash
-curl https://registry.horus.dev/api/packages/pid-controller
+curl https://marketplace.horus-registry.dev/api/packages/pid-controller
 ```
 
 **Download package:**
 ```bash
-curl -o pkg.tar.gz https://registry.horus.dev/api/packages/pid-controller/1.2.0/download
+curl -o pkg.tar.gz https://marketplace.horus-registry.dev/api/packages/pid-controller/1.2.0/download
 ```
 
 ## Next Steps
