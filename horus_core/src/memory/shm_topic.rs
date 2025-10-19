@@ -198,7 +198,7 @@ impl<T> ShmTopic<T> {
         if header_ptr.is_null() {
             return Err("Null pointer for shared memory header".into());
         }
-        if (header_ptr as usize) % std::mem::align_of::<RingBufferHeader>() != 0 {
+        if !(header_ptr as usize).is_multiple_of(std::mem::align_of::<RingBufferHeader>()) {
             return Err("Header pointer not properly aligned".into());
         }
 
@@ -263,7 +263,7 @@ impl<T> ShmTopic<T> {
             }
 
             // Verify alignment
-            if (raw_ptr as usize) % element_align != 0 {
+            if !(raw_ptr as usize).is_multiple_of(element_align) {
                 return Err("Data pointer not properly aligned".into());
             }
 
@@ -311,7 +311,7 @@ impl<T> ShmTopic<T> {
         if header_ptr.is_null() {
             return Err("Null pointer for existing shared memory header".into());
         }
-        if (header_ptr as usize) % std::mem::align_of::<RingBufferHeader>() != 0 {
+        if !(header_ptr as usize).is_multiple_of(std::mem::align_of::<RingBufferHeader>()) {
             return Err("Existing header pointer not properly aligned".into());
         }
 
@@ -386,7 +386,7 @@ impl<T> ShmTopic<T> {
             }
 
             // Verify alignment
-            if (raw_ptr as usize) % element_align != 0 {
+            if !(raw_ptr as usize).is_multiple_of(element_align) {
                 return Err("Existing data pointer not properly aligned".into());
             }
 

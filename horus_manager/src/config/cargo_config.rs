@@ -16,7 +16,7 @@ pub struct CargoConfig {
     pub metadata: Option<PackageMetadata>,
 }
 
-/// [package] section of Cargo.toml
+/// `[package]` section of Cargo.toml
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PackageSection {
     pub name: String,
