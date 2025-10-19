@@ -168,16 +168,34 @@ struct ControllerNode {
 ### 2. Sensor Data Flow
 
 ```rust
-// High-frequency sensor feeding control algorithm
-let sensor_link: Link<LidarScan> = Link::producer("lidar")?;
-let control_input: Link<LidarScan> = Link::consumer("lidar")?;
+use horus::prelude::*;
 
-// Sensor node runs at 100Hz
-loop {
-    let scan = read_lidar();
-    sensor_link.send(scan, ctx)?;
-    thread::sleep(Duration::from_millis(10));
+struct SensorNode {
+    output: Link<LidarScan>,
 }
+
+impl SensorNode {
+    fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        Ok(Self {
+            output: Link::producer("lidar")?,
+        })
+    }
+}
+
+impl Node for SensorNode {
+    fn name(&self) -> &'static str { "SensorNode" }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        let scan = self.read_lidar();
+        self.output.send(scan, ctx).ok();
+        thread::sleep(Duration::from_millis(10)); // 100Hz
+    }
+}
+
+// Run with scheduler
+let mut scheduler = Scheduler::new();
+scheduler.register(Box::new(SensorNode::new()?), 0, Some(true));
+scheduler.tick_all()?;
 ```
 
 ### 3. Metrics and Monitoring
