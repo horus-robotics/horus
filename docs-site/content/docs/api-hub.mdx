@@ -245,11 +245,11 @@ HORUS provides pre-defined message types:
 
 ```rust
 use horus::prelude::*;
-use horus_library::messages::{CmdVel, LaserScan, IMU};
+use horus_library::messages::{CmdVel, LaserScan, Imu};
 
 let cmd_hub: Hub<CmdVel> = Hub::new("cmd_vel")?;
 let scan_hub: Hub<LaserScan> = Hub::new("scan")?;
-let imu_hub: Hub<IMU> = Hub::new("imu")?;
+let imu_hub: Hub<Imu> = Hub::new("imu")?;
 ```
 
 ## Communication Patterns

@@ -85,8 +85,8 @@ fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
 fn get_publishers(&self) -> Vec<TopicMetadata> {
     vec![
         TopicMetadata {
-            topic: "cmd_vel".to_string(),
-            msg_type: "CmdVel".to_string(),
+            topic_name: "cmd_vel".to_string(),
+            type_name: "CmdVel".to_string(),
         }
     ]
 }
@@ -98,8 +98,8 @@ fn get_publishers(&self) -> Vec<TopicMetadata> {
 fn get_subscribers(&self) -> Vec<TopicMetadata> {
     vec![
         TopicMetadata {
-            topic: "laser_scan".to_string(),
-            msg_type: "LaserScan".to_string(),
+            topic_name: "laser_scan".to_string(),
+            type_name: "LaserScan".to_string(),
         }
     ]
 }
