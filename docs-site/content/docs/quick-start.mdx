@@ -309,11 +309,7 @@ impl Node for VelocityPublisher {
     }
 
     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        let cmd = CmdVel {
-            linear_x: 1.0,
-            linear_y: 0.0,
-            angular_z: 0.5,
-        };
+        let cmd = CmdVel::new(1.0, 0.5);  // 1.0 m/s forward, 0.5 rad/s rotation
 
         self.cmd_pub.send(cmd, ctx).ok();
     }
