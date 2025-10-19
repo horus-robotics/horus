@@ -57,11 +57,6 @@ fn main() -> Result<()> {
 }
 ```
 
-## Features
-
-- `iceoryx2` - Enable iceoryx2 backend for zero-copy IPC
-- `zenoh` - Enable zenoh backend for distributed communication
-
 ## Benefits
 
 1. **Cleaner imports** - Single `use horus::prelude::*` statement

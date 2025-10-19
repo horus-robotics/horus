@@ -23,8 +23,6 @@ thiserror = { workspace = true }
 
 [features]
 default = []
-iceoryx2 = ["horus_core/iceoryx2"]
-zenoh = ["horus_core/zenoh"]
 
 [lib]
 name = "horus"

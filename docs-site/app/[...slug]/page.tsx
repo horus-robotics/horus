@@ -55,7 +55,6 @@ export async function generateStaticParams() {
     { slug: ['core'] },
     { slug: ['core', 'link'] },
     { slug: ['core', 'hub'] },
-    { slug: ['core', 'iceoryx2'] },
     { slug: ['core-concepts-nodes'] },
     { slug: ['core-concepts-hub'] },
     { slug: ['core-concepts-scheduler'] },

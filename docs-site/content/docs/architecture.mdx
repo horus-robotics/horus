@@ -387,21 +387,19 @@ Total: 366ns (CmdVel 16B)
 
 ---
 
-### Backend System
+### Communication System
 
-HORUS supports **pluggable backends** for different use cases:
+HORUS uses native shared memory IPC for ultra-low latency communication:
 
-| Backend | Latency | Use Case |
-|---------|---------|----------|
-| **horus** | 366ns-215μs | Production (default, with serde) |
-| **iceoryx2** | ~500ns | Safety-critical, automotive |
-| **zenoh** | ~5-50μs | Distributed systems, networking |
+| Component | Latency | Use Case |
+|-----------|---------|----------|
+| **Link** (SPSC) | 85-167ns | Ultra-low latency point-to-point |
+| **Hub** (MPMC) | 167-6994ns | General purpose pub/sub |
 
-**Switching Backends:**
-```toml
-[package.metadata.horus]
-backend = "horus"  # or "iceoryx2", "zenoh"
-```
+**Performance:**
+- Zero-copy shared memory
+- Lock-free algorithms
+- Cache-optimized data structures
 
 ---
 

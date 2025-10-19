@@ -239,8 +239,8 @@ mod tests {
         let config_err = HorusError::config("invalid setting");
         assert!(config_err.to_string().contains("Configuration error"));
 
-        let backend_err = HorusError::backend("iceoryx2", "connection failed");
-        assert!(backend_err.to_string().contains("Backend 'iceoryx2' error"));
+        let backend_err = HorusError::backend("horus", "connection failed");
+        assert!(backend_err.to_string().contains("Backend 'horus' error"));
     }
 
     #[test]

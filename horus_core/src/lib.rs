@@ -45,4 +45,4 @@ pub use params::RuntimeParams;
 pub use scheduling::Scheduler;
 
 // Re-export communication traits for backend-agnostic usage
-pub use communication::traits::{Channel, IpcBackend, Publisher, Subscriber};
+pub use communication::traits::{Channel, Publisher, Subscriber};
