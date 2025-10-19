@@ -57,6 +57,7 @@ export async function generateStaticParams() {
     { slug: ['core', 'hub'] },
     { slug: ['core-concepts-nodes'] },
     { slug: ['core-concepts-hub'] },
+    { slug: ['core-concepts-link'] },
     { slug: ['core-concepts-scheduler'] },
     { slug: ['core-concepts-shared-memory'] },
     { slug: ['message-types'] },

@@ -32,8 +32,9 @@ const sections: SidebarSection[] = [
       { title: "Overview", href: "/core", order: 1 },
       { title: "Nodes", href: "/core-concepts-nodes", order: 2 },
       { title: "Hub (MPMC)", href: "/core-concepts-hub", order: 3 },
-      { title: "Scheduler", href: "/core-concepts-scheduler", order: 4 },
-      { title: "Shared Memory", href: "/core-concepts-shared-memory", order: 5 },
+      { title: "Link (SPSC)", href: "/core-concepts-link", order: 4 },
+      { title: "Scheduler", href: "/core-concepts-scheduler", order: 5 },
+      { title: "Shared Memory", href: "/core-concepts-shared-memory", order: 6 },
     ],
   },
   {
