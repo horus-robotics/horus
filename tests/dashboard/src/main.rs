@@ -473,7 +473,7 @@ fn main() -> AnyResult<()> {
     println!("🚀 Starting scheduler... (Press Ctrl+C to stop)\n");
 
     // Run the scheduler
-    scheduler.tick_all();
+    let _ = scheduler.tick_all();
 
     Ok(())
 }
