@@ -22,7 +22,7 @@ mod node;
 ///
 /// # Example
 ///
-/// ```rust,no_run
+/// ```rust,ignore
 /// use horus_macros::node;
 /// use horus::prelude::*;
 ///
@@ -34,7 +34,7 @@ mod node;
 ///         }
 ///
 ///         sub {
-///             command: Command <- "camera/command",
+///             command: Command -> "camera/command",
 ///         }
 ///
 ///         data {

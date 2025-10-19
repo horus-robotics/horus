@@ -230,15 +230,14 @@ fn parse_sub_section(input: ParseStream, sub_token: Ident) -> Result<SubSection>
         let name: Ident = content.parse()?;
         let colon: Token![:] = content.parse()?;
         let ty: Type = content.parse()?;
-        content.parse::<Token![<]>()?;
-        content.parse::<Token![-]>()?; // <- as two tokens
+        let arrow: Token![->] = content.parse()?;
         let topic: Expr = content.parse()?;
 
         fields.push(TopicDef {
             name,
             _colon: colon,
             ty,
-            _arrow: Default::default(), // We use -> for both in the struct
+            _arrow: arrow,
             topic,
         });
 
@@ -370,7 +369,7 @@ pub fn impl_node_macro(input: TokenStream) -> TokenStream {
             let name = &topic.name;
             let ty = &topic.ty;
             struct_fields.push(quote! {
-                #name: ::horus_core::communication::horus::Hub<#ty>
+                #name: horus_core::communication::horus::Hub<#ty>
             });
         }
     }
@@ -381,7 +380,7 @@ pub fn impl_node_macro(input: TokenStream) -> TokenStream {
             let name = &topic.name;
             let ty = &topic.ty;
             struct_fields.push(quote! {
-                #name: ::horus_core::communication::horus::Hub<#ty>
+                #name: horus_core::communication::horus::Hub<#ty>
             });
         }
     }
@@ -406,7 +405,7 @@ pub fn impl_node_macro(input: TokenStream) -> TokenStream {
             let name = &topic.name;
             let topic_expr = &topic.topic;
             constructor_fields.push(quote! {
-                #name: ::horus_core::communication::horus::Hub::new(#topic_expr)
+                #name: horus_core::communication::horus::Hub::new(#topic_expr)
                     .expect(&format!("Failed to create publisher '{}'", stringify!(#name)))
             });
         }
@@ -418,7 +417,7 @@ pub fn impl_node_macro(input: TokenStream) -> TokenStream {
             let name = &topic.name;
             let topic_expr = &topic.topic;
             constructor_fields.push(quote! {
-                #name: ::horus_core::communication::horus::Hub::new(#topic_expr)
+                #name: horus_core::communication::horus::Hub::new(#topic_expr)
                     .expect(&format!("Failed to create subscriber '{}'", stringify!(#name)))
             });
         }
@@ -444,13 +443,13 @@ pub fn impl_node_macro(input: TokenStream) -> TokenStream {
     let tick_body = &node_def.tick_section.body;
     let tick_impl = if node_def.tick_section.ctx_arg.is_some() {
         quote! {
-            fn tick(&mut self, ctx: Option<&mut ::horus_core::core::NodeInfo>) {
+            fn tick(&mut self, mut ctx: Option<&mut horus_core::core::NodeInfo>) {
                 #tick_body
             }
         }
     } else {
         quote! {
-            fn tick(&mut self, _ctx: Option<&mut ::horus_core::core::NodeInfo>) {
+            fn tick(&mut self, _ctx: Option<&mut horus_core::core::NodeInfo>) {
                 #tick_body
             }
         }
@@ -461,13 +460,13 @@ pub fn impl_node_macro(input: TokenStream) -> TokenStream {
         let init_body = &init_section.body;
         if init_section.ctx_arg.is_some() {
             quote! {
-                fn init(&mut self, ctx: &mut ::horus_core::core::NodeInfo) -> ::std::result::Result<(), String> {
+                fn init(&mut self, ctx: &mut horus_core::core::NodeInfo) -> ::std::result::Result<(), String> {
                     #init_body
                 }
             }
         } else {
             quote! {
-                fn init(&mut self, _ctx: &mut ::horus_core::core::NodeInfo) -> ::std::result::Result<(), String> {
+                fn init(&mut self, _ctx: &mut horus_core::core::NodeInfo) -> ::std::result::Result<(), String> {
                     #init_body
                 }
             }
@@ -516,7 +515,7 @@ pub fn impl_node_macro(input: TokenStream) -> TokenStream {
                 let topic_expr = &topic.topic;
                 let ty = &topic.ty;
                 quote! {
-                    ::horus_core::core::node::TopicMetadata {
+                    horus_core::core::node::TopicMetadata {
                         topic_name: #topic_expr.to_string(),
                         type_name: ::std::any::type_name::<#ty>().to_string(),
                     }
@@ -524,7 +523,7 @@ pub fn impl_node_macro(input: TokenStream) -> TokenStream {
             })
             .collect();
         quote! {
-            fn get_publishers(&self) -> Vec<::horus_core::core::node::TopicMetadata> {
+            fn get_publishers(&self) -> Vec<horus_core::core::node::TopicMetadata> {
                 vec![#(#publishers),*]
             }
         }
@@ -541,7 +540,7 @@ pub fn impl_node_macro(input: TokenStream) -> TokenStream {
                 let topic_expr = &topic.topic;
                 let ty = &topic.ty;
                 quote! {
-                    ::horus_core::core::node::TopicMetadata {
+                    horus_core::core::node::TopicMetadata {
                         topic_name: #topic_expr.to_string(),
                         type_name: ::std::any::type_name::<#ty>().to_string(),
                     }
@@ -549,7 +548,7 @@ pub fn impl_node_macro(input: TokenStream) -> TokenStream {
             })
             .collect();
         quote! {
-            fn get_subscribers(&self) -> Vec<::horus_core::core::node::TopicMetadata> {
+            fn get_subscribers(&self) -> Vec<horus_core::core::node::TopicMetadata> {
                 vec![#(#subscribers),*]
             }
         }
@@ -571,7 +570,7 @@ pub fn impl_node_macro(input: TokenStream) -> TokenStream {
             }
         }
 
-        impl ::horus_core::core::node::Node for #struct_name {
+        impl horus_core::core::node::Node for #struct_name {
             fn name(&self) -> &'static str {
                 #node_name_str
             }

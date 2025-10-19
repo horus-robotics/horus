@@ -20,7 +20,7 @@ mod tests {
                             })
                         }
 
-                        pub fn try_recv(
+                        pub fn recv(
                             &self,
                             _ctx: Option<&mut crate::tests::mock::horus_core::core::NodeInfo>,
                         ) -> Option<T> {
@@ -47,14 +47,26 @@ mod tests {
                 }
 
                 pub mod node {
+                    #[derive(Debug, Clone)]
+                    pub struct TopicMetadata {
+                        pub topic_name: String,
+                        pub type_name: String,
+                    }
+
                     pub trait Node {
                         fn name(&self) -> &'static str;
                         fn tick(&mut self, ctx: Option<&mut super::NodeInfo>);
                         fn init(&mut self, _ctx: &mut super::NodeInfo) -> Result<(), String> {
                             Ok(())
                         }
-                        fn shutdown(&mut self) -> Result<(), String> {
+                        fn shutdown(&mut self, _ctx: &mut super::NodeInfo) -> Result<(), String> {
                             Ok(())
+                        }
+                        fn get_publishers(&self) -> Vec<TopicMetadata> {
+                            Vec::new()
+                        }
+                        fn get_subscribers(&self) -> Vec<TopicMetadata> {
+                            Vec::new()
                         }
                     }
                 }
@@ -79,7 +91,7 @@ mod tests {
                 }
 
                 sub {
-                    input: TestData <- "test/input",
+                    input: TestData -> "test/input",
                 }
 
                 data {
@@ -135,7 +147,7 @@ mod tests {
                 }
 
                 sub {
-                    input: Message <- "input",
+                    input: Message -> "input",
                 }
 
                 tick {
