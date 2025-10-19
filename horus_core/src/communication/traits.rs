@@ -35,10 +35,7 @@ pub trait Channel<T>: Publisher<T> + Subscriber<T> {
 }
 
 /// Type alias for the default Hub implementation
-pub type DefaultHub<T> = crate::communication::horus::Hub<T>;
+pub type DefaultHub<T> = crate::communication::Hub<T>;
 
 /// Type alias for the default Link implementation
-pub type DefaultLink<T> = crate::communication::horus::Link<T>;
-
-// Re-export commonly used types
-pub use crate::communication::horus::{Hub as HorusHub, Link as HorusLink};
+pub type DefaultLink<T> = crate::communication::Link<T>;

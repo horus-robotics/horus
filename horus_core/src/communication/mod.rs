@@ -27,13 +27,76 @@
 //! }
 //! ```
 
-pub mod horus;
+pub mod hub;
+pub mod link;
 pub mod traits;
 
 // Re-export commonly used types for convenience
-pub use horus::{Hub, Link};
+pub use hub::Hub;
+pub use link::Link;
 pub use traits::{Channel, Publisher, Subscriber};
 
-// Type aliases for backward compatibility
-pub use horus::Hub as HorusHub;
-pub use horus::Link as HorusLink;
+use crate::communication::traits::{Publisher as PublisherTrait, Subscriber as SubscriberTrait};
+
+// Implement common traits for Hub
+impl<T> PublisherTrait<T> for Hub<T>
+where
+    T: Send
+        + Sync
+        + Clone
+        + std::fmt::Debug
+        + serde::Serialize
+        + serde::de::DeserializeOwned
+        + 'static,
+{
+    fn send(&self, msg: T) -> crate::error::HorusResult<()> {
+        // Call the Hub's actual send method
+        Hub::send(self, msg, None).map(|_| ()).map_err(|_| {
+            crate::error::HorusError::Communication("Failed to send message".to_string())
+        })
+    }
+}
+
+impl<T> SubscriberTrait<T> for Hub<T>
+where
+    T: Send
+        + Sync
+        + Clone
+        + std::fmt::Debug
+        + serde::Serialize
+        + serde::de::DeserializeOwned
+        + 'static,
+{
+    fn recv(&self) -> Option<T> {
+        Hub::recv(self, None)
+    }
+}
+
+// Implement common traits for Link
+impl<T> PublisherTrait<T> for Link<T>
+where
+    T: Send + Sync + Clone + std::fmt::Debug + 'static,
+{
+    fn send(&self, msg: T) -> crate::error::HorusResult<()> {
+        Link::send(self, msg, None).map_err(|_| {
+            crate::error::HorusError::Communication("Failed to send message".to_string())
+        })
+    }
+
+    fn try_send(&self, msg: T) -> bool {
+        Link::send(self, msg, None).is_ok()
+    }
+}
+
+impl<T> SubscriberTrait<T> for Link<T>
+where
+    T: Send + Sync + Clone + std::fmt::Debug + 'static,
+{
+    fn recv(&self) -> Option<T> {
+        Link::recv(self, None)
+    }
+
+    fn has_messages(&self) -> bool {
+        Link::has_messages(self)
+    }
+}
