@@ -8,7 +8,7 @@
 //! - PointCloud (variable) - 3D perception @ 30Hz
 
 use colored::Colorize;
-use horus::communication::horus::Hub;
+use horus::prelude::Hub;
 use horus_library::messages::{
     cmd_vel::CmdVel,
     geometry::Point3,

@@ -21,6 +21,7 @@ members = [
     "horus_py",
     # Tests
     "tests/dashboard",
+    "tests/link_drone_app",
 ]
 
 [workspace.dependencies]

@@ -73,6 +73,14 @@ impl<'a, T> Drop for LinkSample<'a, T> {
     }
 }
 
+/// Metrics for Link monitoring
+#[derive(Debug, Clone, Default)]
+pub struct LinkMetrics {
+    pub messages_sent: u64,
+    pub messages_received: u64,
+    pub send_failures: u64,
+}
+
 /// Header for Link shared memory ring buffer
 #[repr(C, align(64))]
 struct LinkHeader {
@@ -80,7 +88,11 @@ struct LinkHeader {
     tail: AtomicUsize, // Consumer reads here
     capacity: AtomicUsize,
     element_size: AtomicUsize,
-    _padding: [u8; 32],
+    // Metrics (shared between producer and consumer)
+    messages_sent: AtomicUsize,
+    messages_received: AtomicUsize,
+    send_failures: AtomicUsize,
+    _padding: [u8; 8],
 }
 
 /// SPSC (Single Producer Single Consumer) direct link with shared memory IPC
@@ -101,25 +113,71 @@ pub struct Link<T> {
 }
 
 impl<T> Link<T> {
-    /// Create new Link with default capacity (1024)
-    pub fn new(
-        topic_name: &str,
-        producer_node: &str,
-        consumer_node: &str,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
-        Self::new_with_capacity(topic_name, producer_node, consumer_node, 1024)
+    // ====== PRIMARY API (recommended) ======
+
+    /// Create a Link as a producer (sender)
+    ///
+    /// The producer can send messages but cannot receive.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let output: Link<f32> = Link::producer("sensor_data")?;
+    /// output.send(42.0, None)?;
+    /// ```
+    pub fn producer(topic: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::with_role(topic, LinkRole::Producer, 1024)
     }
 
-    /// Create new Link with custom capacity
-    pub fn new_with_capacity(
-        topic_name: &str,
-        producer_node: &str,
-        consumer_node: &str,
+    /// Create a Link as a consumer (receiver)
+    ///
+    /// The consumer can receive messages but cannot send.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let input: Link<f32> = Link::consumer("sensor_data")?;
+    /// if let Some(value) = input.recv(None) {
+    ///     println!("Received: {}", value);
+    /// }
+    /// ```
+    pub fn consumer(topic: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::with_role(topic, LinkRole::Consumer, 1024)
+    }
+
+    /// Create a producer with custom capacity
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let output: Link<f32> = Link::producer_with_capacity("fast_data", 4096)?;
+    /// ```
+    pub fn producer_with_capacity(
+        topic: &str,
         capacity: usize,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        // Ensure capacity is power of 2 for efficient modulo operations
-        let capacity = capacity.next_power_of_two();
+        Self::with_role(topic, LinkRole::Producer, capacity)
+    }
 
+    /// Create a consumer with custom capacity
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let input: Link<f32> = Link::consumer_with_capacity("fast_data", 4096)?;
+    /// ```
+    pub fn consumer_with_capacity(
+        topic: &str,
+        capacity: usize,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        Self::with_role(topic, LinkRole::Consumer, capacity)
+    }
+
+    // ====== INTERNAL IMPLEMENTATION ======
+
+    /// Internal method to create Link with explicit role
+    fn with_role(
+        topic: &str,
+        role: LinkRole,
+        capacity: usize,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let capacity = capacity.next_power_of_two();
         let element_size = mem::size_of::<T>();
         let element_align = mem::align_of::<T>();
         let header_size = mem::size_of::<LinkHeader>();
@@ -128,22 +186,42 @@ impl<T> Link<T> {
             return Err("Cannot create Link for zero-sized types".into());
         }
 
-        // Calculate sizes
         let aligned_header_size = header_size.div_ceil(element_align) * element_align;
         let data_size = capacity * element_size;
         let total_size = aligned_header_size + data_size;
 
-        // Use separate path for Links
-        let link_name = format!("links/{}", topic_name);
+        let link_name = format!("links/{}", topic);
         let shm_region = Arc::new(ShmRegion::new(&link_name, total_size)?);
 
-        // Detect role based on current process/node name
-        // For now, we'll use a simple approach: first caller is producer
-        let role = if shm_region.is_owner() {
-            LinkRole::Producer
-        } else {
-            LinkRole::Consumer
+        // Use role names for logging
+        let (producer_node, consumer_node) = match role {
+            LinkRole::Producer => ("producer", "consumer"),
+            LinkRole::Consumer => ("consumer", "producer"),
         };
+
+        Self::create_link(
+            topic,
+            producer_node,
+            consumer_node,
+            role,
+            capacity,
+            shm_region,
+        )
+    }
+
+    /// Common link creation logic
+    fn create_link(
+        topic_name: &str,
+        producer_node: &str,
+        consumer_node: &str,
+        role: LinkRole,
+        capacity: usize,
+        shm_region: Arc<ShmRegion>,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let element_size = mem::size_of::<T>();
+        let element_align = mem::align_of::<T>();
+        let header_size = mem::size_of::<LinkHeader>();
+        let aligned_header_size = header_size.div_ceil(element_align) * element_align;
 
         // Initialize header
         let header_ptr = shm_region.as_ptr() as *mut LinkHeader;
@@ -164,7 +242,11 @@ impl<T> Link<T> {
                 (*header.as_ptr())
                     .element_size
                     .store(element_size, Ordering::Relaxed);
-                (*header.as_ptr())._padding = [0; 32];
+                // Initialize metrics
+                (*header.as_ptr()).messages_sent.store(0, Ordering::Relaxed);
+                (*header.as_ptr()).messages_received.store(0, Ordering::Relaxed);
+                (*header.as_ptr()).send_failures.store(0, Ordering::Relaxed);
+                (*header.as_ptr())._padding = [0; 8];
             }
         } else {
             // Validate existing header
@@ -271,6 +353,8 @@ impl<T> Link<T> {
         // Likely prediction: not full (optimize for fast path)
         let tail = header.tail.load(Ordering::Acquire);
         if unlikely(next_head == tail) {
+            // Buffer full - increment failure counter
+            header.send_failures.fetch_add(1, Ordering::Relaxed);
             return Err(msg); // Buffer full
         }
 
@@ -298,6 +382,9 @@ impl<T> Link<T> {
         header.head.store(next_head, Ordering::Release);
 
         let ipc_ns = ipc_start.elapsed().as_nanos() as u64;
+
+        // Increment successful send counter
+        header.messages_sent.fetch_add(1, Ordering::Relaxed);
 
         // Optional logging with IPC timing (optimized out when ctx is None)
         if let Some(ctx) = ctx {
@@ -357,6 +444,9 @@ impl<T> Link<T> {
 
         let ipc_ns = ipc_start.elapsed().as_nanos() as u64;
 
+        // Increment successful receive counter
+        header.messages_received.fetch_add(1, Ordering::Relaxed);
+
         // Optional logging with IPC timing (optimized out when ctx is None)
         if let Some(ctx) = ctx {
             ctx.log_sub(&self.topic_name, &msg, ipc_ns);
@@ -374,6 +464,39 @@ impl<T> Link<T> {
     /// Get the role of this Link end
     pub fn role(&self) -> LinkRole {
         self.role
+    }
+
+    /// Check if this Link end is a producer
+    pub fn is_producer(&self) -> bool {
+        matches!(self.role, LinkRole::Producer)
+    }
+
+    /// Check if this Link end is a consumer
+    pub fn is_consumer(&self) -> bool {
+        matches!(self.role, LinkRole::Consumer)
+    }
+
+    /// Get the topic name
+    pub fn get_topic_name(&self) -> &str {
+        &self.topic_name
+    }
+
+    /// Get the buffer capacity (power of 2)
+    pub fn capacity(&self) -> usize {
+        self.capacity
+    }
+
+    /// Get performance metrics snapshot (lock-free)
+    ///
+    /// Returns current counts of messages sent, received, and send failures.
+    /// These metrics are shared between producer and consumer in shared memory.
+    pub fn get_metrics(&self) -> LinkMetrics {
+        let header = unsafe { self.header.as_ref() };
+        LinkMetrics {
+            messages_sent: header.messages_sent.load(Ordering::Relaxed) as u64,
+            messages_received: header.messages_received.load(Ordering::Relaxed) as u64,
+            send_failures: header.send_failures.load(Ordering::Relaxed) as u64,
+        }
     }
 }
 
@@ -407,19 +530,73 @@ mod tests {
     }
 
     #[test]
+    fn test_link_producer_consumer() {
+        // Clean up before test
+        let _ = std::fs::remove_file("/dev/shm/horus/topics/horus_links_test_prod_cons");
+
+        // Create explicit producer and consumer
+        let producer = Link::<i32>::producer("test_prod_cons").unwrap();
+        let consumer = Link::<i32>::consumer("test_prod_cons").unwrap();
+
+        assert_eq!(producer.role(), LinkRole::Producer);
+        assert_eq!(consumer.role(), LinkRole::Consumer);
+        assert!(producer.is_producer());
+        assert!(consumer.is_consumer());
+
+        // Producer sends
+        assert!(producer.send(42, None).is_ok());
+        assert!(producer.send(43, None).is_ok());
+
+        // Consumer receives
+        assert_eq!(consumer.recv(None), Some(42));
+        assert_eq!(consumer.recv(None), Some(43));
+        assert_eq!(consumer.recv(None), None);
+
+        // Cleanup
+        let _ = std::fs::remove_file("/dev/shm/horus/topics/horus_links_test_prod_cons");
+    }
+
+    #[test]
+    fn test_link_with_capacity() {
+        // Clean up before test
+        let _ = std::fs::remove_file("/dev/shm/horus/topics/horus_links_test_capacity");
+
+        let producer = Link::<i32>::producer_with_capacity("test_capacity", 2048).unwrap();
+        let consumer = Link::<i32>::consumer_with_capacity("test_capacity", 2048).unwrap();
+
+        assert_eq!(producer.capacity(), 2048);
+        assert_eq!(consumer.capacity(), 2048);
+
+        // Can send up to capacity-1
+        for i in 0..2047 {
+            assert!(producer.send(i, None).is_ok(), "Failed to send {}", i);
+        }
+
+        // Buffer should be full now
+        assert!(producer.send(9999, None).is_err());
+
+        // Consumer can read
+        assert_eq!(consumer.recv(None), Some(0));
+
+        // Cleanup
+        let _ = std::fs::remove_file("/dev/shm/horus/topics/horus_links_test_capacity");
+    }
+
+    #[test]
     fn test_link_ipc() {
+        // Test basic IPC functionality with new API
         // Clean up before test
         let _ = std::fs::remove_file("/dev/shm/horus/topics/horus_links_test_link_ipc");
 
-        let link_producer = Link::<i32>::new("test_link_ipc", "producer", "consumer").unwrap();
+        let link_producer = Link::<i32>::producer("test_link_ipc").unwrap();
 
-        // First creation should be Producer
+        // Verify producer role
         assert_eq!(link_producer.role(), LinkRole::Producer);
         assert!(link_producer.send(42, None).is_ok());
         assert!(link_producer.send(43, None).is_ok());
 
-        // Second creation should be Consumer
-        let link_consumer = Link::<i32>::new("test_link_ipc", "producer", "consumer").unwrap();
+        // Create consumer
+        let link_consumer = Link::<i32>::consumer("test_link_ipc").unwrap();
         assert_eq!(link_consumer.role(), LinkRole::Consumer);
 
         // Consumer should be able to receive
@@ -432,28 +609,52 @@ mod tests {
     }
 
     #[test]
-    fn test_link_full() {
-        // Clean up before test
-        let _ = std::fs::remove_file("/dev/shm/horus/topics/horus_links_test_link_full");
+    fn test_link_metrics() {
+        // Test metrics tracking
+        let _ = std::fs::remove_file("/dev/shm/horus/topics/horus_links_test_metrics");
 
-        let producer = Link::<i32>::new("test_link_full", "p", "c").unwrap();
-        assert_eq!(producer.role(), LinkRole::Producer);
+        let producer = Link::<i32>::producer("test_metrics").unwrap();
+        let consumer = Link::<i32>::consumer("test_metrics").unwrap();
 
-        let consumer = Link::<i32>::new("test_link_full", "p", "c").unwrap();
-        assert_eq!(consumer.role(), LinkRole::Consumer);
+        // Check initial metrics
+        let metrics = producer.get_metrics();
+        assert_eq!(metrics.messages_sent, 0);
+        assert_eq!(metrics.messages_received, 0);
+        assert_eq!(metrics.send_failures, 0);
 
-        // Fill the buffer (capacity - 1 due to ring buffer design)
-        for i in 0..1023 {
-            assert!(producer.send(i, None).is_ok(), "Failed to send {}", i);
+        // Send 10 messages
+        for i in 0..10 {
+            producer.send(i, None).unwrap();
         }
 
-        // Buffer should be full now
+        // Check producer metrics
+        let metrics = producer.get_metrics();
+        assert_eq!(metrics.messages_sent, 10);
+
+        // Receive 5 messages
+        for _ in 0..5 {
+            consumer.recv(None);
+        }
+
+        // Check consumer metrics (both can see shared metrics)
+        let metrics = consumer.get_metrics();
+        assert_eq!(metrics.messages_sent, 10);
+        assert_eq!(metrics.messages_received, 5);
+        assert_eq!(metrics.send_failures, 0);
+
+        // Fill buffer to cause send failure
+        for i in 0..1023 {
+            producer.send(i, None).ok();
+        }
+
+        // This should fail (buffer full)
         assert!(producer.send(9999, None).is_err());
 
-        // Consumer should be able to read
-        assert_eq!(consumer.recv(None), Some(0));
+        // Check failure counter
+        let metrics = producer.get_metrics();
+        assert!(metrics.send_failures > 0, "Should have at least one send failure");
 
         // Cleanup
-        cleanup_test_links();
+        let _ = std::fs::remove_file("/dev/shm/horus/topics/horus_links_test_metrics");
     }
 }

@@ -33,7 +33,7 @@ pub mod traits;
 
 // Re-export commonly used types for convenience
 pub use hub::Hub;
-pub use link::Link;
+pub use link::{Link, LinkMetrics};
 pub use traits::{Channel, Publisher, Subscriber};
 
 use crate::communication::traits::{Publisher as PublisherTrait, Subscriber as SubscriberTrait};
