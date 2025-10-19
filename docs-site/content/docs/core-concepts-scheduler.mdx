@@ -299,43 +299,20 @@ The scheduler runs at **60 FPS** (16ms per tick) by default:
 
 ```rust
 let scheduler = Scheduler::new();
-// Runs at 60 FPS
+// Runs at ~60 FPS (16ms per tick)
 ```
 
-### Custom Tick Rate
-
-```rust
-let mut scheduler = Scheduler::new();
-scheduler.set_tick_rate(100);  // 100 FPS (10ms per tick)
-```
+**Note**: The tick rate is currently hardcoded at approximately 60 FPS. The scheduler sleeps for 16ms between tick cycles to maintain this target rate. If your nodes take longer than 16ms to execute, the actual FPS will be lower.
 
 ### Tick Rate Considerations
 
-**60 FPS (16ms)**: Good default for most robotics applications
+**60 FPS (16ms)**: Default tick rate for most robotics applications
+- Suitable for sensor reading, control loops, and general robotics tasks
+- Provides good balance between responsiveness and CPU usage
 
-```rust
-scheduler.set_tick_rate(60);
-```
+**Custom tick rates**: If you need a different tick rate for your application, you can modify the sleep duration in the scheduler's main loop. However, this is not currently exposed as a public API.
 
-**100-200 FPS (5-10ms)**: High-frequency control loops
-
-```rust
-scheduler.set_tick_rate(100);  // Drones, fast manipulation
-```
-
-**30 FPS (33ms)**: Low-frequency or computationally expensive tasks
-
-```rust
-scheduler.set_tick_rate(30);  // Vision processing, planning
-```
-
-**1000+ FPS (&lt;1ms)**: Ultra-high-frequency real-time systems
-
-```rust
-scheduler.set_tick_rate(1000);  // Specialized applications
-```
-
-**Key Point**: If your nodes take longer than the tick period to execute, you won't hit the target FPS.
+**Key Point**: If your nodes take longer than the tick period to execute, you won't hit the target FPS. Monitor your node metrics to ensure tick durations stay within acceptable bounds.
 
 ## Running Modes
 
@@ -347,33 +324,21 @@ Run until Ctrl+C:
 scheduler.tick_all()?;
 ```
 
-This is the most common mode for robotics applications.
-
-### Single Tick Mode
-
-Run one tick cycle:
-
-```rust
-scheduler.tick_once()?;
-```
-
-Useful for:
-- Testing individual ticks
-- Manual stepping through execution
-- Integration with external event loops
+This is the most common mode for robotics applications. The scheduler will continuously execute all registered nodes in priority order until a shutdown signal is received.
 
 ### Node-Specific Execution
 
-Execute specific nodes:
+Execute specific nodes by name:
 
 ```rust
-scheduler.tick_node(&["SensorNode"])?;
+scheduler.tick_node(&["SensorNode", "MotorNode"])?;
 ```
 
 Useful for:
-- Debugging specific nodes
+- Debugging specific nodes in isolation
 - Profiling individual nodes
-- Testing in isolation
+- Testing node behavior independently
+- Running only a subset of your system
 
 ## Signal Handling
 
@@ -483,7 +448,7 @@ let metrics = scheduler.get_metrics();
 
 for node_metrics in metrics {
     println!("Node: {}", node_metrics.name);
-    println!("  Avg tick: {}μs", node_metrics.avg_tick_duration_us);
+    println!("  Avg tick: {:.2}ms", node_metrics.avg_tick_duration_ms);
     println!("  Total ticks: {}", node_metrics.total_ticks);
     println!("  CPU usage: {:.2}%", node_metrics.cpu_usage_percent);
 }
@@ -642,7 +607,7 @@ Track your node metrics:
 ```rust
 fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
     if let Some(ctx) = ctx {
-        if ctx.metrics.avg_tick_duration_us > 1000 {
+        if ctx.metrics.avg_tick_duration_ms > 1.0 {
             ctx.log_warning("Tick duration exceeding 1ms");
         }
     }
@@ -750,9 +715,9 @@ Profile your nodes:
 ```rust
 fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
     if let Some(ctx) = ctx {
-        let avg_us = ctx.metrics.avg_tick_duration_us;
-        if avg_us > 1000 {
-            ctx.log_warning(&format!("Slow tick: {}μs", avg_us));
+        let avg_ms = ctx.metrics.avg_tick_duration_ms;
+        if avg_ms > 1.0 {
+            ctx.log_warning(&format!("Slow tick: {:.2}ms", avg_ms));
         }
     }
 }

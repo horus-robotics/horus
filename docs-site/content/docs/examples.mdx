@@ -652,7 +652,7 @@ mod tests {
     #[test]
     fn test_sensor_node() {
         let mut node = SensorNode::new();
-        let mut ctx = NodeInfo::new("TestSensor");
+        let mut ctx = NodeInfo::new("TestSensor".to_string(), true);
 
         // Initialize
         assert!(node.init(&mut ctx).is_ok());
@@ -674,9 +674,9 @@ mod tests {
         scheduler.register(Box::new(SensorNode::new()?), 0, Some(true));
         scheduler.register(Box::new(ProcessorNode::new()?), 1, Some(true));
 
-        // Note: Scheduler::tick_all() runs infinitely
-        // For testing, you'd implement a Scheduler::tick_once() method
-        // or use integration tests with timeouts
+        // Note: Scheduler::tick_all() runs infinitely until Ctrl+C
+        // For testing, you can use tick_node() to run specific nodes
+        // or use integration tests with timeouts and stop() method
 
         Ok(())
     }

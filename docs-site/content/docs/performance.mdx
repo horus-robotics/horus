@@ -268,17 +268,18 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 
 ## Scheduler Optimization
 
-### Set Appropriate Tick Rate
+### Understanding Tick Rate
+
+The scheduler runs at a fixed rate of approximately 60 FPS (16ms per tick):
 
 ```rust
-let mut scheduler = Scheduler::new();
-scheduler.set_tick_rate(1000);  // 1000 FPS = 1ms per tick
-
-// For 10kHz control
-scheduler.set_tick_rate(10000);  // 100µs per tick
+let scheduler = Scheduler::new();
+// Runs at ~60 FPS (16ms per tick)
 ```
 
-**Higher FPS = more overhead**. Match your control requirements.
+**Note**: The tick rate is currently hardcoded. If you need different timing for your application, ensure your nodes complete execution well within the 16ms window. Monitor node metrics to verify performance.
+
+**Key Point**: Keep individual node tick() methods fast (ideally <1ms) to maintain the target frame rate.
 
 ### Use Priority Levels
 
@@ -355,7 +356,7 @@ Every node tracks performance automatically:
 ```rust
 fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
     if let Some(ctx) = ctx {
-        if ctx.metrics.avg_tick_duration_us > 1000 {
+        if ctx.metrics.avg_tick_duration_ms > 1.0 {
             ctx.log_warning("Tick taking too long");
         }
     }
@@ -364,10 +365,10 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 
 **Available metrics**:
 - `total_ticks`: Total number of ticks
-- `avg_tick_duration_us`: Average tick time
-- `max_tick_duration_us`: Worst-case tick time
-- `total_messages_sent`: Messages published
-- `cpu_usage_percent`: CPU utilization
+- `avg_tick_duration_ms`: Average tick time in milliseconds
+- `max_tick_duration_ms`: Worst-case tick time in milliseconds
+- `messages_sent`: Messages published
+- `cpu_usage_percent`: CPU utilization (f64)
 
 ### IPC Latency Logging
 

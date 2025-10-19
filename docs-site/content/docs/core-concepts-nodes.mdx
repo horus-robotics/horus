@@ -244,14 +244,19 @@ NodeInfo tracks detailed performance metrics:
 ```rust
 pub struct NodeMetrics {
     pub total_ticks: u64,
-    pub avg_tick_duration_us: u64,
-    pub last_tick_duration_us: u64,
-    pub max_tick_duration_us: u64,
-    pub min_tick_duration_us: u64,
-    pub total_messages_sent: u64,
-    pub total_messages_received: u64,
-    pub cpu_usage_percent: f32,
-    pub memory_usage_kb: u64,
+    pub successful_ticks: u64,
+    pub failed_ticks: u64,
+    pub avg_tick_duration_ms: f64,
+    pub max_tick_duration_ms: f64,
+    pub min_tick_duration_ms: f64,
+    pub last_tick_duration_ms: f64,
+    pub cpu_usage_percent: f64,
+    pub memory_usage_bytes: u64,
+    pub messages_sent: u64,
+    pub messages_received: u64,
+    pub errors_count: u64,
+    pub warnings_count: u64,
+    pub uptime_seconds: f64,
 }
 ```
 
@@ -260,8 +265,8 @@ Access metrics in your node:
 ```rust
 fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
     if let Some(ctx) = ctx {
-        let avg_duration = ctx.metrics.avg_tick_duration_us;
-        if avg_duration > 1000 {
+        let avg_duration = ctx.metrics.avg_tick_duration_ms;
+        if avg_duration > 1.0 {
             ctx.log_warning("Tick duration exceeding 1ms");
         }
     }
