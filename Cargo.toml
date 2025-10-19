@@ -11,6 +11,7 @@ members = [
     # Unies (multi-node applications)
 
     "horus_library/unies/snakesim",
+    "horus_library/unies/snakesim/snake_control_node",
     "horus_library/unies/snakesim/snake_scheduler",
     "horus_library/unies/snakesim/snakesim_gui",
     "horus_library/unies/tanksim",
