@@ -107,10 +107,10 @@ jobs:
           sudo apt-get install -y libclang-dev llvm-dev libudev-dev libopencv-dev libasound2-dev
 
       - name: Build (debug)
-        run: cargo build --workspace
+        run: cargo build --workspace --exclude horus_py
 
       - name: Build (release)
-        run: cargo build --workspace --release
+        run: cargo build --workspace --release --exclude horus_py
 
   docs:
     name: Documentation

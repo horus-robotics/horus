@@ -19,6 +19,7 @@
 mod tank_controller_node;
 
 use horus::prelude::*;
+use horus_core::{HorusError, Scheduler};
 use horus_library::nodes::KeyboardInputNode;
 use tank_controller_node::TankControllerNode;
 
