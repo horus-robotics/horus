@@ -2,9 +2,9 @@
 //!
 //! Package configuration from Cargo.toml
 
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use anyhow::{Result, Context};
 
 pub mod cargo_config;
 
@@ -42,7 +42,9 @@ impl PackageConfig {
     /// Check if this package is publishable to registry
     pub fn is_publishable(&self) -> bool {
         // Must have proper metadata for publishing
-        self.cargo.metadata.as_ref()
+        self.cargo
+            .metadata
+            .as_ref()
             .and_then(|m| m.horus.as_ref())
             .map(|h| h.publishable)
             .unwrap_or(false)
@@ -50,7 +52,9 @@ impl PackageConfig {
 
     /// Get registry metadata for publishing
     pub fn registry_metadata(&self) -> Option<RegistryMetadata> {
-        self.cargo.metadata.as_ref()
+        self.cargo
+            .metadata
+            .as_ref()
             .and_then(|m| m.horus.as_ref())
             .map(|h| RegistryMetadata {
                 name: self.name.clone(),
@@ -92,7 +96,9 @@ pub fn find_package_root() -> Result<PathBuf> {
         }
 
         if !current.pop() {
-            return Err(anyhow::anyhow!("No Cargo.toml found in current or parent directories"));
+            return Err(anyhow::anyhow!(
+                "No Cargo.toml found in current or parent directories"
+            ));
         }
     }
 }
@@ -101,14 +107,8 @@ pub fn find_package_root() -> Result<PathBuf> {
 /// 1. Environment variables (highest)
 /// 2. Cargo.toml metadata
 /// 3. Built-in defaults (lowest)
-pub fn resolve_runtime_value<T>(
-    env_var: Option<T>,
-    cargo_metadata: Option<T>,
-    default: T,
-) -> T {
-    env_var
-        .or(cargo_metadata)
-        .unwrap_or(default)
+pub fn resolve_runtime_value<T>(env_var: Option<T>, cargo_metadata: Option<T>, default: T) -> T {
+    env_var.or(cargo_metadata).unwrap_or(default)
 }
 
 #[cfg(test)]

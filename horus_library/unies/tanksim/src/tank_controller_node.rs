@@ -2,8 +2,8 @@
 //!
 //! Subscribes to keyboard input and publishes CmdVel for a single tank.
 
-use horus_core::{Node, NodeInfo, Hub};
-use horus_library::messages::{KeyboardInput, CmdVel};
+use horus_core::{Hub, Node, NodeInfo};
+use horus_library::messages::{CmdVel, KeyboardInput};
 
 pub struct TankControllerNode {
     keyboard_sub: Hub<KeyboardInput>,
@@ -76,7 +76,9 @@ impl TankControllerNode {
             } else {
                 self.current_linear -= self.acceleration;
             }
-            self.current_linear = self.current_linear.clamp(-self.max_linear_speed, self.max_linear_speed);
+            self.current_linear = self
+                .current_linear
+                .clamp(-self.max_linear_speed, self.max_linear_speed);
         }
 
         if (target_angular - self.current_angular).abs() > 0.01 {
@@ -85,7 +87,9 @@ impl TankControllerNode {
             } else {
                 self.current_angular -= self.acceleration;
             }
-            self.current_angular = self.current_angular.clamp(-self.max_angular_speed, self.max_angular_speed);
+            self.current_angular = self
+                .current_angular
+                .clamp(-self.max_angular_speed, self.max_angular_speed);
         }
 
         // If no input, gradually stop
@@ -111,7 +115,10 @@ impl Node for TankControllerNode {
     }
 
     fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
-        ctx.log_info(&format!("TankControllerNode initialized - controlling {}", self.tank_id));
+        ctx.log_info(&format!(
+            "TankControllerNode initialized - controlling {}",
+            self.tank_id
+        ));
         Ok(())
     }
 
@@ -132,7 +139,7 @@ impl Node for TankControllerNode {
             angular: self.current_angular,
         };
 
-        let _ = self.cmd_vel_pub.send(cmd, ctx.as_deref_mut());
+        let _ = self.cmd_vel_pub.send(cmd, ctx);
     }
 
     fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {

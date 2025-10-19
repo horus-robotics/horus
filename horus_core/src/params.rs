@@ -2,11 +2,11 @@
 //!
 //! Provides a straightforward key-value store for runtime configuration
 
-use std::collections::BTreeMap;
-use std::sync::{Arc, RwLock};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, RwLock};
 
 /// Simple runtime parameter store
 pub struct RuntimeParams {
@@ -124,7 +124,11 @@ impl RuntimeParams {
     }
 
     /// Set a parameter value
-    pub fn set<T: Serialize>(&self, key: &str, value: T) -> Result<(), Box<dyn std::error::Error + '_>> {
+    pub fn set<T: Serialize>(
+        &self,
+        key: &str,
+        value: T,
+    ) -> Result<(), Box<dyn std::error::Error + '_>> {
         let json_value = serde_json::to_value(value)?;
         let mut params = self.params.write()?;
         params.insert(key.to_string(), json_value);
@@ -162,8 +166,8 @@ impl RuntimeParams {
 
     /// Save parameters to YAML file
     pub fn save_to_disk(&self) -> Result<(), Box<dyn std::error::Error + '_>> {
-        let path = self.persist_path.as_ref()
-            .map(|p| p.clone())
+        let path = self
+            .persist_path.clone()
             .unwrap_or_else(|| PathBuf::from(".horus/config/params.yaml"));
 
         // Create .horus directory if it doesn't exist

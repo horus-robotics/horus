@@ -1,5 +1,5 @@
+use horus::library::nodes::{JoystickInputNode, KeyboardInputNode};
 use horus::prelude::*;
-use horus::library::nodes::{KeyboardInputNode, JoystickInputNode};
 use snake_control_node::SnakeControlNode;
 
 fn main() {
@@ -20,7 +20,8 @@ fn main() {
     let joystick_input_node = JoystickInputNode::new_with_topic("snakeinput");
 
     // Snake control node subscribes to snakeinput topic for both keyboard and joystick messages
-    let snake_control_node = SnakeControlNode::new_with_topics("snakeinput", "snakeinput", "snakestate");
+    let snake_control_node =
+        SnakeControlNode::new_with_topics("snakeinput", "snakeinput", "snakestate");
 
     sched.register(Box::new(keyboard_input_node), 0, Some(true));
     sched.register(Box::new(joystick_input_node), 1, None);
@@ -29,4 +30,3 @@ fn main() {
     // Run the scheduler loop - this will continuously tick all nodes
     let _ = sched.tick_node(&["KeyboardInputNode", "JoystickInputNode", "SnakeControlNode"]);
 }
-

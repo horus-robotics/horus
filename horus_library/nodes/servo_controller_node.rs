@@ -1,5 +1,5 @@
-use horus_core::{Node, NodeInfo, Hub};
-use crate::{ServoCommand, JointCommand};
+use crate::{JointCommand, ServoCommand};
+use horus_core::{Hub, Node, NodeInfo};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -71,8 +71,8 @@ impl ServoControllerNode {
 
             // Set default limits
             self.position_limits.insert(i, (-3.14, 3.14)); // ±π radians
-            self.velocity_limits.insert(i, 2.0);            // 2 rad/s
-            self.torque_limits.insert(i, 10.0);             // 10 Nm
+            self.velocity_limits.insert(i, 2.0); // 2 rad/s
+            self.torque_limits.insert(i, 10.0); // 10 Nm
         }
     }
 
@@ -131,7 +131,8 @@ impl ServoControllerNode {
             let clamped_position = self.clamp_position(command.servo_id, command.position as f64);
 
             if self.is_position_valid(command.servo_id, clamped_position) {
-                self.target_positions.insert(command.servo_id, clamped_position);
+                self.target_positions
+                    .insert(command.servo_id, clamped_position);
             }
         }
     }
@@ -159,7 +160,11 @@ impl ServoControllerNode {
                 let position_error = target - current;
 
                 if position_error.abs() > self.position_tolerance {
-                    let max_velocity = self.velocity_limits.get(&servo_id).copied().unwrap_or(self.default_velocity);
+                    let max_velocity = self
+                        .velocity_limits
+                        .get(&servo_id)
+                        .copied()
+                        .unwrap_or(self.default_velocity);
                     let max_step = max_velocity * dt;
 
                     let position_step = if self.interpolation_enabled {

@@ -1,5 +1,5 @@
-use horus_core::{Node, NodeInfo, Hub};
-use crate::{Odometry, Imu, LaserScan};
+use crate::{Imu, LaserScan, Odometry};
+use horus_core::{Hub, Node, NodeInfo};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Localization Node - Robot position estimation using sensor fusion
@@ -43,7 +43,12 @@ impl LocalizationNode {
     }
 
     /// Create a new localization node with custom topics
-    pub fn new_with_topics(pose_topic: &str, odom_topic: &str, imu_topic: &str, lidar_topic: &str) -> Self {
+    pub fn new_with_topics(
+        pose_topic: &str,
+        odom_topic: &str,
+        imu_topic: &str,
+        lidar_topic: &str,
+    ) -> Self {
         let mut node = Self {
             pose_publisher: Hub::new(pose_topic).expect("Failed to create pose publisher"),
             odometry_subscriber: Hub::new(odom_topic).expect("Failed to subscribe to odometry"),
@@ -97,12 +102,12 @@ impl LocalizationNode {
 
     /// Set initial pose estimate
     pub fn set_initial_pose(&mut self, x: f64, y: f64, theta: f64) {
-        self.state[0] = x;      // x position
-        self.state[1] = y;      // y position
-        self.state[2] = theta;  // orientation
-        self.state[3] = 0.0;    // vx
-        self.state[4] = 0.0;    // vy
-        self.state[5] = 0.0;    // omega
+        self.state[0] = x; // x position
+        self.state[1] = y; // y position
+        self.state[2] = theta; // orientation
+        self.state[3] = 0.0; // vx
+        self.state[4] = 0.0; // vy
+        self.state[5] = 0.0; // omega
 
         // Reset covariance to moderate uncertainty
         for i in 0..6 {
@@ -173,19 +178,11 @@ impl LocalizationNode {
     fn update_with_odometry(&mut self, odom: &Odometry) {
         if !self.initial_pose_set {
             // Initialize pose from first odometry reading
-            self.set_initial_pose(
-                odom.pose.x,
-                odom.pose.y,
-                odom.pose.theta,
-            );
+            self.set_initial_pose(odom.pose.x, odom.pose.y, odom.pose.theta);
         }
 
         // Measurement vector: [x, y, theta]
-        let measurement = [
-            odom.pose.x,
-            odom.pose.y,
-            odom.pose.theta,
-        ];
+        let measurement = [odom.pose.x, odom.pose.y, odom.pose.theta];
 
         // Expected measurement (predicted state)
         let predicted = [self.state[0], self.state[1], self.state[2]];
@@ -208,8 +205,8 @@ impl LocalizationNode {
         }
 
         // Update velocities from odometry twist
-        self.state[3] = odom.twist.linear[0];  // vx
-        self.state[4] = odom.twist.linear[1];  // vy
+        self.state[3] = odom.twist.linear[0]; // vx
+        self.state[4] = odom.twist.linear[1]; // vy
         self.state[5] = odom.twist.angular[2]; // omega
 
         // Normalize orientation
@@ -256,7 +253,8 @@ impl LocalizationNode {
         // Extract potential landmark observations from lidar
         for (i, &range) in lidar.ranges.iter().enumerate() {
             if range > 0.5 && range < self.landmark_detection_range as f32 {
-                let angle = lidar.angle_min as f64 + i as f64 * lidar.angle_increment as f64 + robot_theta;
+                let angle =
+                    lidar.angle_min as f64 + i as f64 * lidar.angle_increment as f64 + robot_theta;
 
                 let observed_x = robot_x + range as f64 * angle.cos();
                 let observed_y = robot_y + range as f64 * angle.sin();
@@ -266,8 +264,10 @@ impl LocalizationNode {
                 let mut closest_landmark = None;
 
                 for &(lm_x, lm_y) in &self.landmarks {
-                    let distance = ((observed_x - lm_x).powi(2) + (observed_y - lm_y).powi(2)).sqrt();
-                    if distance < min_distance && distance < 1.0 { // 1m association threshold
+                    let distance =
+                        ((observed_x - lm_x).powi(2) + (observed_y - lm_y).powi(2)).sqrt();
+                    if distance < min_distance && distance < 1.0 {
+                        // 1m association threshold
                         min_distance = distance;
                         closest_landmark = Some((lm_x, lm_y));
                     }
@@ -307,8 +307,18 @@ impl LocalizationNode {
         let mut localized_pose = Odometry::new();
 
         // Set frame information
-        localized_pose.frame_id = self.frame_id.clone().into_bytes().try_into().unwrap_or([0; 32]);
-        localized_pose.child_frame_id = self.child_frame_id.clone().into_bytes().try_into().unwrap_or([0; 32]);
+        localized_pose.frame_id = self
+            .frame_id
+            .clone()
+            .into_bytes()
+            .try_into()
+            .unwrap_or([0; 32]);
+        localized_pose.child_frame_id = self
+            .child_frame_id
+            .clone()
+            .into_bytes()
+            .try_into()
+            .unwrap_or([0; 32]);
 
         // Set pose
         localized_pose.pose.x = self.state[0];
@@ -365,7 +375,8 @@ impl Node for LocalizationNode {
             0.01 // 10ms default
         };
 
-        if dt > 0.001 { // Minimum 1ms update interval
+        if dt > 0.001 {
+            // Minimum 1ms update interval
             // Prediction step
             self.predict_step(dt);
             self.last_update_time = current_time;

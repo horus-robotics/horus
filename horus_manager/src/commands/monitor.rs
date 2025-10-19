@@ -1,9 +1,9 @@
-use std::sync::{Arc, RwLock};
-use std::time::{Duration, Instant};
-use std::path::Path;
-use std::thread;
+use horus_core::core::{HealthStatus, NodeHeartbeat, NodeState};
 use horus_core::error::HorusResult;
-use horus_core::core::{NodeState, NodeHeartbeat, HealthStatus};
+use std::path::Path;
+use std::sync::{Arc, RwLock};
+use std::thread;
+use std::time::{Duration, Instant};
 
 // Data structures for comprehensive monitoring
 #[derive(Debug, Clone)]
@@ -29,9 +29,9 @@ pub struct NodeStatus {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ProcessCategory {
-    Node,    // Runtime scheduler nodes
-    Tool,    // GUI applications  
-    CLI,     // Command line tools
+    Node, // Runtime scheduler nodes
+    Tool, // GUI applications
+    CLI,  // Command line tools
 }
 
 #[derive(Debug, Clone)]
@@ -46,7 +46,6 @@ pub struct SharedMemoryInfo {
     pub subscribers: Vec<String>,
     pub message_rate_hz: f32,
 }
-
 
 // Fast discovery cache to avoid expensive filesystem operations
 #[derive(Clone)]
@@ -98,7 +97,6 @@ struct ProcessInfo {
     start_time: String,
 }
 
-
 pub fn discover_nodes() -> HorusResult<Vec<NodeStatus>> {
     // Check cache first
     if let Ok(cache) = DISCOVERY_CACHE.read() {
@@ -137,7 +135,10 @@ fn discover_nodes_uncached() -> HorusResult<Vec<NodeStatus>> {
     if let Ok(process_nodes) = discover_horus_processes() {
         // Merge with registry data, avoiding duplicates based on PID
         for process_node in process_nodes {
-            if !nodes.iter().any(|n| n.process_id == process_node.process_id) {
+            if !nodes
+                .iter()
+                .any(|n| n.process_id == process_node.process_id)
+            {
                 nodes.push(process_node);
             }
         }
@@ -171,10 +172,7 @@ fn read_registry_file() -> anyhow::Result<Vec<NodeStatus>> {
             .as_str()
             .unwrap_or("Unknown")
             .to_string();
-        let working_dir = registry["working_dir"]
-            .as_str()
-            .unwrap_or("/")
-            .to_string();
+        let working_dir = registry["working_dir"].as_str().unwrap_or("/").to_string();
 
         // Smart filter: Only include if scheduler process actually exists
         if process_exists(scheduler_pid) {
@@ -189,7 +187,8 @@ fn read_registry_file() -> anyhow::Result<Vec<NodeStatus>> {
                     if let Some(pubs) = node["publishers"].as_array() {
                         for pub_info in pubs {
                             if let (Some(topic), Some(type_name)) =
-                                (pub_info["topic"].as_str(), pub_info["type"].as_str()) {
+                                (pub_info["topic"].as_str(), pub_info["type"].as_str())
+                            {
                                 publishers.push(TopicInfo {
                                     topic: topic.to_string(),
                                     type_name: type_name.to_string(),
@@ -202,7 +201,8 @@ fn read_registry_file() -> anyhow::Result<Vec<NodeStatus>> {
                     if let Some(subs) = node["subscribers"].as_array() {
                         for sub_info in subs {
                             if let (Some(topic), Some(type_name)) =
-                                (sub_info["topic"].as_str(), sub_info["type"].as_str()) {
+                                (sub_info["topic"].as_str(), sub_info["type"].as_str())
+                            {
                                 subscribers.push(TopicInfo {
                                     topic: topic.to_string(),
                                     type_name: type_name.to_string(),
@@ -245,11 +245,11 @@ fn read_registry_file() -> anyhow::Result<Vec<NodeStatus>> {
 fn discover_horus_processes() -> anyhow::Result<Vec<NodeStatus>> {
     let mut nodes = Vec::new();
     let proc_dir = Path::new("/proc");
-    
+
     if !proc_dir.exists() {
         return Ok(nodes);
     }
-    
+
     for entry in std::fs::read_dir(proc_dir)? {
         let entry = entry?;
         let path = entry.path();
@@ -267,12 +267,12 @@ fn discover_horus_processes() -> anyhow::Result<Vec<NodeStatus>> {
                 let cmdline_path = path.join("cmdline");
                 if let Ok(cmdline) = std::fs::read_to_string(cmdline_path) {
                     let cmdline_str = cmdline.replace('\0', " ").trim().to_string();
-                    
+
                     // Look for HORUS-related patterns (generic, not hardcoded)
                     if should_track_process(&cmdline_str) {
                         let name = extract_process_name(&cmdline_str);
                         let category = categorize_process(&name, &cmdline_str);
-                        
+
                         // Get detailed process info
                         let proc_info = get_process_info(pid).unwrap_or_default();
 
@@ -304,7 +304,7 @@ fn discover_horus_processes() -> anyhow::Result<Vec<NodeStatus>> {
             }
         }
     }
-    
+
     Ok(nodes)
 }
 
@@ -313,34 +313,42 @@ fn should_track_process(cmdline: &str) -> bool {
     if cmdline.trim().is_empty() {
         return false;
     }
-    
+
     // Skip build/development tools, system processes, and monitoring tools
-    if cmdline.contains("/bin/bash") || cmdline.contains("/bin/sh") ||
-       cmdline.starts_with("timeout ") ||
-       cmdline.contains("cargo build") || cmdline.contains("cargo install") ||
-       cmdline.contains("cargo run") || cmdline.contains("cargo test") ||
-       cmdline.contains("rustc") || cmdline.contains("rustup") ||
-       cmdline.contains("dashboard") || cmdline.contains("monitor") {
+    if cmdline.contains("/bin/bash")
+        || cmdline.contains("/bin/sh")
+        || cmdline.starts_with("timeout ")
+        || cmdline.contains("cargo build")
+        || cmdline.contains("cargo install")
+        || cmdline.contains("cargo run")
+        || cmdline.contains("cargo test")
+        || cmdline.contains("rustc")
+        || cmdline.contains("rustup")
+        || cmdline.contains("dashboard")
+        || cmdline.contains("monitor")
+    {
         return false;
     }
-    
+
     // Only track processes that:
     // 1. Are the horus CLI binary itself (in target/debug or target/release)
     // 2. Are registered in the HORUS registry (handled by read_registry_file)
     // 3. Are explicitly HORUS project binaries
-    
+
     // Check if it's a real HORUS node (not dashboard/monitor CLI tools)
     if (cmdline.contains("target/debug/horus") ||
         cmdline.contains("target/release/horus") ||
         cmdline.contains("/bin/horus") ||  // Covers ~/.cargo/bin/horus, /usr/bin/horus, etc.
         cmdline.ends_with("/horus ") ||
         cmdline == "horus" ||
-        (cmdline.starts_with("horus ") && !cmdline.contains("cargo"))) &&
-       !cmdline.contains("dashboard") && !cmdline.contains("monitor") &&
-       (cmdline.contains("run ") || cmdline.contains("node") || cmdline.contains("scheduler")) {
+        (cmdline.starts_with("horus ") && !cmdline.contains("cargo")))
+        && !cmdline.contains("dashboard")
+        && !cmdline.contains("monitor")
+        && (cmdline.contains("run ") || cmdline.contains("node") || cmdline.contains("scheduler"))
+    {
         return true;
     }
-    
+
     // For now, only track the horus binary itself
     // Any other HORUS nodes should be registered through the registry system
     false
@@ -348,27 +356,33 @@ fn should_track_process(cmdline: &str) -> bool {
 
 fn categorize_process(name: &str, cmdline: &str) -> ProcessCategory {
     // GUI tools (including GUI executables)
-    if name.contains("gui") || name.contains("GUI") || 
-       name.contains("viewer") || name.contains("viz") ||
-       cmdline.contains("--view") || cmdline.contains("--gui") ||
-       name.ends_with("_gui") {
+    if name.contains("gui")
+        || name.contains("GUI")
+        || name.contains("viewer")
+        || name.contains("viz")
+        || cmdline.contains("--view")
+        || cmdline.contains("--gui")
+        || name.ends_with("_gui")
+    {
         return ProcessCategory::Tool;
     }
-    
+
     // CLI commands - horus CLI tool usage
-    if name == "horus" || name.starts_with("horus ") ||
-       cmdline.contains("/bin/horus") || 
-       cmdline.contains("target/debug/horus") ||
-       cmdline.contains("target/release/horus") ||
-       (cmdline.contains("horus ") && !cmdline.contains("cargo")) {
+    if name == "horus"
+        || name.starts_with("horus ")
+        || cmdline.contains("/bin/horus")
+        || cmdline.contains("target/debug/horus")
+        || cmdline.contains("target/release/horus")
+        || (cmdline.contains("horus ") && !cmdline.contains("cargo"))
+    {
         return ProcessCategory::CLI;
     }
-    
+
     // Schedulers and other runtime components
     if name.contains("scheduler") || cmdline.contains("scheduler") {
         return ProcessCategory::Node;
     }
-    
+
     // Default to Node for other HORUS components
     ProcessCategory::Node
 }
@@ -378,7 +392,7 @@ fn extract_process_name(cmdline: &str) -> String {
     if let Some(first) = parts.first() {
         if let Some(name) = Path::new(first).file_name() {
             let base_name = name.to_string_lossy().to_string();
-            
+
             // For horus CLI commands, include the subcommand and package name
             if base_name == "horus" && parts.len() > 1 {
                 if parts.len() > 2 && parts[1] == "monitor" {
@@ -390,7 +404,7 @@ fn extract_process_name(cmdline: &str) -> String {
                     return format!("horus {}", parts[1]);
                 }
             }
-            
+
             return base_name;
         }
     }
@@ -497,7 +511,7 @@ fn parse_memory_from_stat(stat: &str) -> u64 {
     // Parse RSS (Resident Set Size) from /proc/[pid]/stat
     // RSS is the 24th field (0-indexed: 23)
     let fields: Vec<&str> = stat.split_whitespace().collect();
-    
+
     if fields.len() > 23 {
         if let Ok(rss_pages) = fields[23].parse::<u64>() {
             // Convert pages to KB (usually 4KB per page)
@@ -578,7 +592,7 @@ fn discover_shared_memory_uncached() -> HorusResult<Vec<SharedMemoryInfo>> {
 
     if !shm_path.exists() {
         // Try to create HORUS directories if they don't exist
-        let _ = std::fs::create_dir_all(&shm_path);
+        let _ = std::fs::create_dir_all(shm_path);
         return Ok(topics);
     }
 
@@ -603,7 +617,9 @@ fn discover_shared_memory_uncached() -> HorusResult<Vec<SharedMemoryInfo>> {
                 // All files in HORUS directory are valid topics
                 // Extract topic name from filename (remove "horus_" prefix and convert underscores)
                 let topic_name = if name.starts_with("horus_") {
-                    name.strip_prefix("horus_").unwrap_or(name).replace('_', "/")
+                    name.strip_prefix("horus_")
+                        .unwrap_or(name)
+                        .replace('_', "/")
                 } else {
                     name.replace('_', "/")
                 };
@@ -622,7 +638,9 @@ fn discover_shared_memory_uncached() -> HorusResult<Vec<SharedMemoryInfo>> {
                 // Auto-cleanup: Remove inactive topics older than 10 seconds
                 if !active {
                     if let Some(mod_time) = modified {
-                        if mod_time.elapsed().unwrap_or(Duration::from_secs(0)) > Duration::from_secs(10) {
+                        if mod_time.elapsed().unwrap_or(Duration::from_secs(0))
+                            > Duration::from_secs(10)
+                        {
                             let _ = std::fs::remove_file(&path);
                             continue; // Skip adding to topics list
                         }
@@ -633,16 +651,17 @@ fn discover_shared_memory_uncached() -> HorusResult<Vec<SharedMemoryInfo>> {
                 let message_rate = calculate_topic_rate(&topic_name, modified);
 
                 // Get metadata from registry
-                let (message_type, publishers, subscribers) =
-                    registry_topics.get(&topic_name)
-                        .map(|(t, p, s)| (Some(t.clone()), p.clone(), s.clone()))
-                        .unwrap_or((None, Vec::new(), Vec::new()));
+                let (message_type, publishers, subscribers) = registry_topics
+                    .get(&topic_name)
+                    .map(|(t, p, s)| (Some(t.clone()), p.clone(), s.clone()))
+                    .unwrap_or((None, Vec::new(), Vec::new()));
 
                 topics.push(SharedMemoryInfo {
                     topic_name,
                     size_bytes: size,
                     active,
-                    accessing_processes: accessing_procs.iter()
+                    accessing_processes: accessing_procs
+                        .iter()
                         .filter(|pid| process_exists(**pid))
                         .copied()
                         .collect(),
@@ -665,7 +684,8 @@ fn calculate_topic_rate(topic_name: &str, modified: Option<std::time::SystemTime
     if let Some(mod_time) = modified {
         if let Ok(mut cache) = TOPIC_RATE_CACHE.write() {
             // Convert SystemTime to a simple counter for change detection
-            let mod_counter = mod_time.duration_since(std::time::UNIX_EPOCH)
+            let mod_counter = mod_time
+                .duration_since(std::time::UNIX_EPOCH)
                 .map(|d| d.as_millis() as u64)
                 .unwrap_or(0);
 
@@ -703,9 +723,13 @@ fn load_topic_metadata_from_registry() -> StdHashMap<String, (String, Vec<String
                     if let Some(pubs) = node["publishers"].as_array() {
                         for pub_info in pubs {
                             if let (Some(topic), Some(type_name)) =
-                                (pub_info["topic"].as_str(), pub_info["type"].as_str()) {
-                                let entry = topic_map.entry(topic.to_string())
-                                    .or_insert((type_name.to_string(), Vec::new(), Vec::new()));
+                                (pub_info["topic"].as_str(), pub_info["type"].as_str())
+                            {
+                                let entry = topic_map.entry(topic.to_string()).or_insert((
+                                    type_name.to_string(),
+                                    Vec::new(),
+                                    Vec::new(),
+                                ));
                                 entry.1.push(node_name.to_string());
                             }
                         }
@@ -715,9 +739,13 @@ fn load_topic_metadata_from_registry() -> StdHashMap<String, (String, Vec<String
                     if let Some(subs) = node["subscribers"].as_array() {
                         for sub_info in subs {
                             if let (Some(topic), Some(type_name)) =
-                                (sub_info["topic"].as_str(), sub_info["type"].as_str()) {
-                                let entry = topic_map.entry(topic.to_string())
-                                    .or_insert((type_name.to_string(), Vec::new(), Vec::new()));
+                                (sub_info["topic"].as_str(), sub_info["type"].as_str())
+                            {
+                                let entry = topic_map.entry(topic.to_string()).or_insert((
+                                    type_name.to_string(),
+                                    Vec::new(),
+                                    Vec::new(),
+                                ));
                                 entry.2.push(node_name.to_string());
                             }
                         }
@@ -736,7 +764,11 @@ fn find_accessing_processes(shm_path: &Path) -> Vec<u32> {
     // Use lsof-like approach: check /proc/*/fd/* for references
     if let Ok(proc_entries) = std::fs::read_dir("/proc") {
         for entry in proc_entries.flatten() {
-            if let Some(pid) = entry.file_name().to_str().and_then(|s| s.parse::<u32>().ok()) {
+            if let Some(pid) = entry
+                .file_name()
+                .to_str()
+                .and_then(|s| s.parse::<u32>().ok())
+            {
                 let fd_path = entry.path().join("fd");
                 if let Ok(fd_entries) = std::fs::read_dir(fd_path) {
                     for fd_entry in fd_entries.flatten() {
@@ -760,8 +792,10 @@ fn find_accessing_processes_fast(shm_path: &Path, shm_name: &str) -> Vec<u32> {
     let mut processes = Vec::new();
 
     // For HORUS-like shared memory, only check HORUS processes first (much faster)
-    let is_horus_shm = shm_name.contains("horus") || shm_name.contains("topic") ||
-                      shm_name.starts_with("ros") || shm_name.starts_with("shm_");
+    let is_horus_shm = shm_name.contains("horus")
+        || shm_name.contains("topic")
+        || shm_name.starts_with("ros")
+        || shm_name.starts_with("shm_");
 
     if is_horus_shm {
         // Fast path: Only check processes with HORUS in their name
@@ -777,7 +811,8 @@ fn find_accessing_processes_fast(shm_path: &Path, shm_name: &str) -> Vec<u32> {
                                 let fd_path = entry.path().join("fd");
                                 if let Ok(fd_entries) = std::fs::read_dir(fd_path) {
                                     for fd_entry in fd_entries.flatten() {
-                                        if let Ok(link_target) = std::fs::read_link(fd_entry.path()) {
+                                        if let Ok(link_target) = std::fs::read_link(fd_entry.path())
+                                        {
                                             if link_target == shm_path {
                                                 processes.push(pid);
                                                 break;
@@ -802,9 +837,15 @@ fn find_accessing_processes_fast(shm_path: &Path, shm_name: &str) -> Vec<u32> {
     if let Ok(proc_entries) = std::fs::read_dir("/proc") {
         let mut checked = 0;
         for entry in proc_entries.flatten() {
-            if checked >= 20 { break; } // Limit to avoid UI blocking
+            if checked >= 20 {
+                break;
+            } // Limit to avoid UI blocking
 
-            if let Some(pid) = entry.file_name().to_str().and_then(|s| s.parse::<u32>().ok()) {
+            if let Some(pid) = entry
+                .file_name()
+                .to_str()
+                .and_then(|s| s.parse::<u32>().ok())
+            {
                 let fd_path = entry.path().join("fd");
                 if let Ok(fd_entries) = std::fs::read_dir(fd_path) {
                     for fd_entry in fd_entries.flatten() {
@@ -917,4 +958,3 @@ fn check_registry_snapshot(node_name: &str) -> Option<(String, HealthStatus, u64
 }
 
 // Enhanced monitoring functions
-

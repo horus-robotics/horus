@@ -1,5 +1,5 @@
-use horus_core::{Node, NodeInfo, Hub};
 use crate::DigitalIO;
+use horus_core::{Hub, Node, NodeInfo};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -44,7 +44,8 @@ impl DigitalIONode {
     pub fn new_with_topics(input_topic: &str, output_topic: &str, status_topic: &str) -> Self {
         Self {
             input_publisher: Hub::new(input_topic).expect("Failed to create digital input hub"),
-            output_subscriber: Hub::new(output_topic).expect("Failed to subscribe to digital output"),
+            output_subscriber: Hub::new(output_topic)
+                .expect("Failed to subscribe to digital output"),
             status_publisher: Hub::new(status_topic).expect("Failed to create status hub"),
 
             input_pin_count: 8,  // Default 8 input pins
@@ -184,7 +185,12 @@ impl DigitalIONode {
     fn handle_output_command(&mut self, command: DigitalIO) {
         // Extract pin number and state from command
         if command.pin_count > 0 && (command.pin_count as usize) <= command.pins.len() {
-            for (i, &state) in command.pins.iter().take(command.pin_count as usize).enumerate() {
+            for (i, &state) in command
+                .pins
+                .iter()
+                .take(command.pin_count as usize)
+                .enumerate()
+            {
                 let pin = i as u8;
                 if pin < self.output_pin_count {
                     self.output_states.insert(pin, state);
@@ -209,7 +215,8 @@ impl DigitalIONode {
         // Create pin labels
         let mut pin_labels = [[0u8; 16]; 32];
         for i in 0..self.input_pin_count {
-            let label = self.input_pin_names
+            let label = self
+                .input_pin_names
                 .get(&i)
                 .cloned()
                 .unwrap_or_else(|| format!("DI{}", i));
@@ -243,7 +250,8 @@ impl DigitalIONode {
         // Add input states
         for i in 0..self.input_pin_count {
             all_pins[i as usize] = self.input_states.get(&i).copied().unwrap_or(false);
-            let label = self.input_pin_names
+            let label = self
+                .input_pin_names
                 .get(&i)
                 .cloned()
                 .unwrap_or_else(|| format!("DI{}", i));
@@ -256,7 +264,8 @@ impl DigitalIONode {
         for i in 0..self.output_pin_count {
             let idx = (self.input_pin_count + i) as usize;
             all_pins[idx] = self.output_states.get(&i).copied().unwrap_or(false);
-            let label = self.output_pin_names
+            let label = self
+                .output_pin_names
                 .get(&i)
                 .cloned()
                 .unwrap_or_else(|| format!("DO{}", i));

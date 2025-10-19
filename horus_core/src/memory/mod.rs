@@ -24,4 +24,3 @@ pub use shm_region::ShmRegion;
 pub use shm_topic::ShmTopic;
 
 // Tests are in the tests/ directory
-

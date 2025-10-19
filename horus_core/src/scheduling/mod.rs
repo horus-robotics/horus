@@ -10,7 +10,7 @@
 //!
 //! ```rust
 //! use horus_core::Scheduler;
-//! 
+//!
 //! let mut scheduler = Scheduler::new();
 //! scheduler.register(Box::new(sensor_node), 10, Some(true));  // Enable logging
 //! scheduler.register(Box::new(control_node), 20, Some(false)); // Disable logging

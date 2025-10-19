@@ -1,17 +1,24 @@
-use std::fs;
-use std::path::{Path, PathBuf};
-use colored::*;
-use anyhow::{Result, Context};
-use std::io::{self, Write};
 use crate::version;
+use anyhow::{Context, Result};
+use colored::*;
+use std::fs;
+use std::io::{self, Write};
+use std::path::{Path, PathBuf};
 
-pub fn create_new_project(name: String, path: Option<PathBuf>, language: String, use_macro: bool) -> Result<()> {
+pub fn create_new_project(
+    name: String,
+    path: Option<PathBuf>,
+    language: String,
+    use_macro: bool,
+) -> Result<()> {
     // Check version compatibility before creating project
-    if let Err(e) = version::check_and_prompt_update() {
-        return Err(e);
-    }
+    version::check_and_prompt_update()?;
 
-    println!("{} Creating new HORUS project '{}'", "✨".cyan(), name.green().bold());
+    println!(
+        "{} Creating new HORUS project '{}'",
+        "✨".cyan(),
+        name.green().bold()
+    );
 
     // Determine project path
     let project_path = if let Some(p) = path {
@@ -41,20 +48,26 @@ pub fn create_new_project(name: String, path: Option<PathBuf>, language: String,
     let author = get_author()?;
 
     // Create project directory
-    fs::create_dir_all(&project_path)
-        .context("Failed to create project directory")?;
+    fs::create_dir_all(&project_path).context("Failed to create project directory")?;
 
     // Create .horus/ directory structure
     create_horus_directory(&project_path)?;
 
     // Generate horus.yaml with dependencies
-    create_horus_yaml(&project_path, &name, &description, &author, &language, use_macro)?;
+    create_horus_yaml(
+        &project_path,
+        &name,
+        &description,
+        &author,
+        &language,
+        use_macro,
+    )?;
 
     // Generate main file based on language
     match language.as_str() {
         "rust" => {
             create_main_rs(&project_path, use_macro)?;
-        },
+        }
         "python" => create_main_py(&project_path)?,
         "c" => create_main_c(&project_path)?,
         _ => unreachable!(),
@@ -63,7 +76,10 @@ pub fn create_new_project(name: String, path: Option<PathBuf>, language: String,
     println!("\n{} Project created successfully!", "✅".green().bold());
     println!("\nTo get started:");
     println!("  {} {}", "cd".cyan(), name);
-    println!("  {} {}", "horus run".cyan(), "(auto-installs dependencies)");
+    println!(
+        "  {} (auto-installs dependencies)",
+        "horus run".cyan()
+    );
 
     Ok(())
 }
@@ -97,7 +113,10 @@ fn prompt_language() -> Result<String> {
 }
 
 fn prompt_use_macro() -> Result<bool> {
-    print!("\n{} Use HORUS macros for simpler syntax? [y/N]: ", "?".yellow().bold());
+    print!(
+        "\n{} Use HORUS macros for simpler syntax? [y/N]: ",
+        "?".yellow().bold()
+    );
     io::stdout().flush()?;
 
     let mut input = String::new();
@@ -125,7 +144,7 @@ fn prompt_description() -> Result<String> {
 fn get_author() -> Result<String> {
     // Try to get from git config
     if let Ok(output) = std::process::Command::new("git")
-        .args(&["config", "user.name"])
+        .args(["config", "user.name"])
         .output()
     {
         if output.status.success() {
@@ -166,7 +185,14 @@ created = "auto-generated on first run"
     Ok(())
 }
 
-fn create_horus_yaml(project_path: &Path, name: &str, description: &str, author: &str, language: &str, use_macro: bool) -> Result<()> {
+fn create_horus_yaml(
+    project_path: &Path,
+    name: &str,
+    description: &str,
+    author: &str,
+    language: &str,
+    use_macro: bool,
+) -> Result<()> {
     // Determine dependencies based on language
     let dependencies = match language {
         "rust" => {
@@ -182,24 +208,24 @@ fn create_horus_yaml(project_path: &Path, name: &str, description: &str, author:
   # - horus_library@0.1.0  # Uncomment for standard robotics messages
 "#
             }
-        },
+        }
         "python" => {
-r#"dependencies:
+            r#"dependencies:
   - horus_py@0.1.0
   # Add Python packages as needed
 "#
-        },
+        }
         "c" => {
-r#"dependencies:
+            r#"dependencies:
   - horus_c@0.1.0
   # Add C libraries as needed
 "#
-        },
+        }
         _ => "",
     };
 
     let content = format!(
-r#"name: {}
+        r#"name: {}
 version: 0.1.0
 description: {}
 author: {}
@@ -216,7 +242,6 @@ horus_id: null  # Auto-generated on first dependency resolution
 
     Ok(())
 }
-
 
 fn create_main_rs(project_path: &Path, use_macro: bool) -> Result<()> {
     let content = if use_macro {

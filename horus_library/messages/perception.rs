@@ -3,9 +3,9 @@
 //! This module provides messages for 3D sensors, point clouds,
 //! object detection, and spatial understanding systems.
 
+use crate::messages::geometry::{Point3, Quaternion, Vector3};
 use serde::{Deserialize, Serialize};
 use serde_arrays;
-use crate::messages::geometry::{Point3, Vector3, Quaternion};
 
 /// Point field description for flexible point cloud data
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -89,6 +89,7 @@ impl PointField {
 /// Represents a collection of 3D points with optional color, intensity,
 /// and other attributes. Uses flexible field structure like ROS PointCloud2.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct PointCloud {
     /// Point cloud dimensions
     pub width: u32,
@@ -111,22 +112,6 @@ pub struct PointCloud {
     pub timestamp: u64,
 }
 
-impl Default for PointCloud {
-    fn default() -> Self {
-        Self {
-            width: 0,
-            height: 0,
-            fields: [PointField::default(); 16],
-            field_count: 0,
-            is_dense: false,
-            point_step: 0,
-            row_step: 0,
-            data: Vec::new(),
-            frame_id: [0; 32],
-            timestamp: 0,
-        }
-    }
-}
 
 impl PointCloud {
     /// Create a new empty point cloud
@@ -192,7 +177,8 @@ impl PointCloud {
             data.extend_from_slice(&(point.y as f32).to_le_bytes());
             data.extend_from_slice(&(point.z as f32).to_le_bytes());
             // Pack RGB into single u32 (0x00RRGGBB)
-            let rgb_packed = ((color[0] as u32) << 16) | ((color[1] as u32) << 8) | (color[2] as u32);
+            let rgb_packed =
+                ((color[0] as u32) << 16) | ((color[1] as u32) << 8) | (color[2] as u32);
             data.extend_from_slice(&rgb_packed.to_le_bytes());
         }
         cloud.data = data;
@@ -218,11 +204,11 @@ impl PointCloud {
 
     /// Check if point cloud is valid
     pub fn is_valid(&self) -> bool {
-        self.width > 0 &&
-        self.height > 0 &&
-        self.field_count > 0 &&
-        self.point_step > 0 &&
-        self.data.len() >= (self.point_step * self.point_count()) as usize
+        self.width > 0
+            && self.height > 0
+            && self.field_count > 0
+            && self.point_step > 0
+            && self.data.len() >= (self.point_step * self.point_count()) as usize
     }
 
     /// Extract XYZ coordinates (if available)
@@ -244,9 +230,10 @@ impl PointCloud {
 
         if let (Some(x), Some(y), Some(z)) = (x_field, y_field, z_field) {
             // Verify all are float32
-            if x.datatype != PointFieldType::Float32 ||
-               y.datatype != PointFieldType::Float32 ||
-               z.datatype != PointFieldType::Float32 {
+            if x.datatype != PointFieldType::Float32
+                || y.datatype != PointFieldType::Float32
+                || z.datatype != PointFieldType::Float32
+            {
                 return None;
             }
 
@@ -257,13 +244,19 @@ impl PointCloud {
                 let point_offset = i * self.point_step as usize;
 
                 if point_offset + 12 <= self.data.len() {
-                    let x_bytes = &self.data[point_offset + x.offset as usize..point_offset + x.offset as usize + 4];
-                    let y_bytes = &self.data[point_offset + y.offset as usize..point_offset + y.offset as usize + 4];
-                    let z_bytes = &self.data[point_offset + z.offset as usize..point_offset + z.offset as usize + 4];
+                    let x_bytes = &self.data
+                        [point_offset + x.offset as usize..point_offset + x.offset as usize + 4];
+                    let y_bytes = &self.data
+                        [point_offset + y.offset as usize..point_offset + y.offset as usize + 4];
+                    let z_bytes = &self.data
+                        [point_offset + z.offset as usize..point_offset + z.offset as usize + 4];
 
-                    let x_val = f32::from_le_bytes([x_bytes[0], x_bytes[1], x_bytes[2], x_bytes[3]]) as f64;
-                    let y_val = f32::from_le_bytes([y_bytes[0], y_bytes[1], y_bytes[2], y_bytes[3]]) as f64;
-                    let z_val = f32::from_le_bytes([z_bytes[0], z_bytes[1], z_bytes[2], z_bytes[3]]) as f64;
+                    let x_val =
+                        f32::from_le_bytes([x_bytes[0], x_bytes[1], x_bytes[2], x_bytes[3]]) as f64;
+                    let y_val =
+                        f32::from_le_bytes([y_bytes[0], y_bytes[1], y_bytes[2], y_bytes[3]]) as f64;
+                    let z_val =
+                        f32::from_le_bytes([z_bytes[0], z_bytes[1], z_bytes[2], z_bytes[3]]) as f64;
 
                     points.push(Point3::new(x_val, y_val, z_val));
                 }
@@ -343,9 +336,7 @@ impl BoundingBox3D {
         let dy = (point.y - self.center.y).abs();
         let dz = (point.z - self.center.z).abs();
 
-        dx <= self.size.x / 2.0 &&
-        dy <= self.size.y / 2.0 &&
-        dz <= self.size.z / 2.0
+        dx <= self.size.x / 2.0 && dy <= self.size.y / 2.0 && dz <= self.size.z / 2.0
     }
 
     /// Get volume of the bounding box
@@ -374,6 +365,7 @@ impl BoundingBox3D {
 
 /// Array of 3D bounding boxes
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct BoundingBoxArray3D {
     /// Array of bounding boxes (max 32)
     #[serde(with = "serde_arrays")]
@@ -386,16 +378,6 @@ pub struct BoundingBoxArray3D {
     pub timestamp: u64,
 }
 
-impl Default for BoundingBoxArray3D {
-    fn default() -> Self {
-        Self {
-            boxes: [BoundingBox3D::default(); 32],
-            count: 0,
-            frame_id: [0; 32],
-            timestamp: 0,
-        }
-    }
-}
 
 impl BoundingBoxArray3D {
     /// Create a new bounding box array
@@ -471,9 +453,9 @@ impl Default for DepthImage {
             width: 0,
             height: 0,
             depths: Vec::new(),
-            min_depth: 200,      // 20cm minimum
-            max_depth: 10000,    // 10m maximum
-            depth_scale: 1.0,    // 1mm per unit
+            min_depth: 200,   // 20cm minimum
+            max_depth: 10000, // 10m maximum
+            depth_scale: 1.0, // 1mm per unit
             frame_id: [0; 32],
             timestamp: 0,
         }
@@ -547,8 +529,11 @@ impl DepthImage {
     }
 
     /// Calculate statistics
-    pub fn depth_statistics(&self) -> (f32, f32, f32) { // min, max, mean
-        let valid_depths: Vec<u16> = self.depths.iter()
+    pub fn depth_statistics(&self) -> (f32, f32, f32) {
+        // min, max, mean
+        let valid_depths: Vec<u16> = self
+            .depths
+            .iter()
             .filter(|&&d| self.is_valid_depth(d))
             .cloned()
             .collect();
@@ -607,8 +592,7 @@ impl PlaneDetection {
     /// Calculate distance from point to plane
     pub fn distance_to_point(&self, point: &Point3) -> f64 {
         let [a, b, c, d] = self.coefficients;
-        (a * point.x + b * point.y + c * point.z + d).abs() /
-        (a * a + b * b + c * c).sqrt()
+        (a * point.x + b * point.y + c * point.z + d).abs() / (a * a + b * b + c * c).sqrt()
     }
 
     /// Check if point is on the plane (within tolerance)
@@ -634,6 +618,7 @@ impl PlaneDetection {
 
 /// Array of plane detections
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct PlaneArray {
     /// Array of plane detections (max 16)
     #[serde(with = "serde_arrays")]
@@ -648,17 +633,6 @@ pub struct PlaneArray {
     pub timestamp: u64,
 }
 
-impl Default for PlaneArray {
-    fn default() -> Self {
-        Self {
-            planes: [PlaneDetection::default(); 16],
-            count: 0,
-            frame_id: [0; 32],
-            algorithm: [0; 32],
-            timestamp: 0,
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -677,10 +651,7 @@ mod tests {
 
     #[test]
     fn test_point_cloud_xyz() {
-        let points = vec![
-            Point3::new(1.0, 2.0, 3.0),
-            Point3::new(4.0, 5.0, 6.0),
-        ];
+        let points = vec![Point3::new(1.0, 2.0, 3.0), Point3::new(4.0, 5.0, 6.0)];
 
         let cloud = PointCloud::xyz(&points);
         assert_eq!(cloud.width, 2);

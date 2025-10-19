@@ -3,9 +3,9 @@
 //! This module provides messages for autonomous navigation, path planning,
 //! mapping, and localization systems.
 
+use crate::messages::geometry::{Pose2D, Twist};
 use serde::{Deserialize, Serialize};
 use serde_arrays;
-use crate::messages::geometry::{Pose2D, Twist};
 
 /// Navigation goal specification
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
@@ -375,8 +375,7 @@ impl OccupancyGrid {
         let grid_x = ((x - self.origin.x) / self.resolution as f64) as i32;
         let grid_y = ((y - self.origin.y) / self.resolution as f64) as i32;
 
-        if grid_x >= 0 && grid_x < self.width as i32 &&
-           grid_y >= 0 && grid_y < self.height as i32 {
+        if grid_x >= 0 && grid_x < self.width as i32 && grid_y >= 0 && grid_y < self.height as i32 {
             Some((grid_x as u32, grid_y as u32))
         } else {
             None
@@ -420,7 +419,7 @@ impl OccupancyGrid {
     pub fn is_free(&self, x: f64, y: f64) -> bool {
         if let Some((gx, gy)) = self.world_to_grid(x, y) {
             if let Some(occupancy) = self.get_occupancy(gx, gy) {
-                return occupancy >= 0 && occupancy < 50;
+                return (0..50).contains(&occupancy);
             }
         }
         false
@@ -487,9 +486,9 @@ impl CostMap {
         // Convert occupancy to basic costs
         for (i, &occupancy) in self.occupancy_grid.data.iter().enumerate() {
             self.costs[i] = match occupancy {
-                -1 => 255, // Unknown = lethal
+                -1 => 255,                            // Unknown = lethal
                 occ if occ >= 65 => self.lethal_cost, // Occupied = lethal
-                occ => (occ * 2).max(0) as u8, // Free space = low cost
+                occ => (occ * 2).max(0) as u8,        // Free space = low cost
             };
         }
 
@@ -524,6 +523,7 @@ pub struct VelocityObstacle {
 
 /// Array of velocity obstacles
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct VelocityObstacles {
     /// Array of obstacles (max 32)
     #[serde(with = "serde_arrays")]
@@ -534,15 +534,6 @@ pub struct VelocityObstacles {
     pub timestamp: u64,
 }
 
-impl Default for VelocityObstacles {
-    fn default() -> Self {
-        Self {
-            obstacles: [VelocityObstacle::default(); 32],
-            count: 0,
-            timestamp: 0,
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {

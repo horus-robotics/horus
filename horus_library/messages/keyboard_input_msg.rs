@@ -2,7 +2,7 @@
 //!
 //! Provides a standardized way to represent keyboard events across all HORUS components.
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// Standardized keyboard input message for cross-platform keyboard events.
 ///
@@ -36,12 +36,12 @@ use serde::{Serialize, Deserialize};
 /// ```
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct KeyboardInput {
-    pub key_name: [u8; 32],       // Fixed-size key name buffer (null-terminated)
-    pub code: u32,                // Raw key code
-    pub modifier_flags: u32,      // Bit flags for modifiers instead of Vec<String>
-    pub pressed: bool,            // True for press, false for release
-    pub timestamp: u64,           // Unix timestamp in milliseconds
-    pub _padding: [u8; 16],       // Padding to match JoystickInput size (72 bytes)
+    pub key_name: [u8; 32],  // Fixed-size key name buffer (null-terminated)
+    pub code: u32,           // Raw key code
+    pub modifier_flags: u32, // Bit flags for modifiers instead of Vec<String>
+    pub pressed: bool,       // True for press, false for release
+    pub timestamp: u64,      // Unix timestamp in milliseconds
+    pub _padding: [u8; 16],  // Padding to match JoystickInput size (72 bytes)
 }
 
 // Modifier bit flags
@@ -59,7 +59,7 @@ impl KeyboardInput {
         let key_bytes = key.as_bytes();
         let copy_len = key_bytes.len().min(31); // Leave room for null terminator
         key_name[..copy_len].copy_from_slice(&key_bytes[..copy_len]);
-        
+
         // Convert modifiers to bit flags
         let mut modifier_flags = 0u32;
         for modifier in modifiers {
@@ -73,7 +73,7 @@ impl KeyboardInput {
                 _ => {} // Ignore unknown modifiers
             }
         }
-        
+
         Self {
             key_name,
             code,
@@ -86,7 +86,7 @@ impl KeyboardInput {
             _padding: [0; 16],
         }
     }
-    
+
     pub fn has_modifier(&self, modifier: &str) -> bool {
         match modifier {
             "Ctrl" => (self.modifier_flags & MODIFIER_CTRL) != 0,
@@ -98,34 +98,52 @@ impl KeyboardInput {
             _ => false,
         }
     }
-    
+
     /// Get the key name as a String
     pub fn get_key_name(&self) -> String {
         // Find null terminator or use full buffer
-        let end = self.key_name.iter().position(|&b| b == 0).unwrap_or(self.key_name.len());
-        String::from_utf8_lossy(&self.key_name[..end]).into_owned().to_string()
+        let end = self
+            .key_name
+            .iter()
+            .position(|&b| b == 0)
+            .unwrap_or(self.key_name.len());
+        String::from_utf8_lossy(&self.key_name[..end])
+            .into_owned()
+            .to_string()
     }
-    
+
     /// Get modifier names as Vec<String> (for compatibility)
     pub fn get_modifiers(&self) -> Vec<String> {
         let mut modifiers = Vec::new();
-        if (self.modifier_flags & MODIFIER_CTRL) != 0 { modifiers.push("Ctrl".to_string()); }
-        if (self.modifier_flags & MODIFIER_ALT) != 0 { modifiers.push("Alt".to_string()); }
-        if (self.modifier_flags & MODIFIER_SHIFT) != 0 { modifiers.push("Shift".to_string()); }
-        if (self.modifier_flags & MODIFIER_SUPER) != 0 { modifiers.push("Super".to_string()); }
-        if (self.modifier_flags & MODIFIER_HYPER) != 0 { modifiers.push("Hyper".to_string()); }
-        if (self.modifier_flags & MODIFIER_META) != 0 { modifiers.push("Meta".to_string()); }
+        if (self.modifier_flags & MODIFIER_CTRL) != 0 {
+            modifiers.push("Ctrl".to_string());
+        }
+        if (self.modifier_flags & MODIFIER_ALT) != 0 {
+            modifiers.push("Alt".to_string());
+        }
+        if (self.modifier_flags & MODIFIER_SHIFT) != 0 {
+            modifiers.push("Shift".to_string());
+        }
+        if (self.modifier_flags & MODIFIER_SUPER) != 0 {
+            modifiers.push("Super".to_string());
+        }
+        if (self.modifier_flags & MODIFIER_HYPER) != 0 {
+            modifiers.push("Hyper".to_string());
+        }
+        if (self.modifier_flags & MODIFIER_META) != 0 {
+            modifiers.push("Meta".to_string());
+        }
         modifiers
     }
-    
+
     pub fn is_ctrl(&self) -> bool {
         self.has_modifier("Ctrl")
     }
-    
+
     pub fn is_shift(&self) -> bool {
         self.has_modifier("Shift")
     }
-    
+
     pub fn is_alt(&self) -> bool {
         self.has_modifier("Alt")
     }

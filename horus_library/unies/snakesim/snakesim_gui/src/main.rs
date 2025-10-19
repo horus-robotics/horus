@@ -1,7 +1,7 @@
 use eframe::{egui, App, CreationContext};
 use egui::{Color32, Pos2, Vec2};
-use std::time::{Duration, Instant};
 use horus::prelude::*;
+use std::time::{Duration, Instant};
 
 const GRID_WIDTH: usize = 20;
 const GRID_HEIGHT: usize = 20;
@@ -39,27 +39,28 @@ impl SnakesimNode {
             snake: vec![(5, 5), (4, 5), (3, 5)],
             last_update: Instant::now(),
             direction: (1, 0),
-            snake_state_subscriber: Hub::new("snakestate").expect("failed to create snake state subscriber"),
+            snake_state_subscriber: Hub::new("snakestate")
+                .expect("failed to create snake state subscriber"),
         }
     }
-    pub fn control(&mut self){
+    pub fn control(&mut self) {
         // Consume ALL available messages, keep only the latest direction
         while let Some(snake_state) = self.snake_state_subscriber.recv(None) {
             match snake_state.direction {
-                1 => self.direction = (0, -1),  // Up
-                2 => self.direction = (0, 1),   // Down  
-                3 => self.direction = (-1, 0),  // Left
-                4 => self.direction = (1, 0),   // Right
-                _ => {} // Ignore unknown directions
+                1 => self.direction = (0, -1), // Up
+                2 => self.direction = (0, 1),  // Down
+                3 => self.direction = (-1, 0), // Left
+                4 => self.direction = (1, 0),  // Right
+                _ => {}                        // Ignore unknown directions
             }
         }
     }
 }
-impl Node for SnakesimNode{
-    fn name(&self) -> &'static str{
+impl Node for SnakesimNode {
+    fn name(&self) -> &'static str {
         "keyboardInputNode"
     }
-    fn tick(&mut self,_: Option<&mut NodeInfo>) {
+    fn tick(&mut self, _: Option<&mut NodeInfo>) {
         self.control();
         let (dx, dy) = self.direction;
         dbg!(&self.direction);
@@ -75,7 +76,7 @@ impl Node for SnakesimNode{
 
 impl App for SnakesimNode {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-               // Move every 200ms
+        // Move every 200ms
         if self.last_update.elapsed() > Duration::from_millis(200) {
             self.last_update = Instant::now();
             self.tick(None);
@@ -113,7 +114,11 @@ impl App for SnakesimNode {
                     rect.top() + y as f32 * cell_height,
                 );
                 let square = egui::Rect::from_min_size(pos, Vec2::new(cell_width, cell_height));
-                let color = if i == 0 { SNAKE_HEAD_COLOR } else { SNAKE_BODY_COLOR };
+                let color = if i == 0 {
+                    SNAKE_HEAD_COLOR
+                } else {
+                    SNAKE_BODY_COLOR
+                };
                 painter.rect_filled(square, 6.0, color);
 
                 // Eyes for head
@@ -136,4 +141,3 @@ impl App for SnakesimNode {
         ctx.request_repaint(); // Continually redraw
     }
 }
-

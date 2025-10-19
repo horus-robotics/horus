@@ -1,10 +1,10 @@
+use chrono::{DateTime, Utc};
+use nix::sys::signal::{self, Signal};
+use nix::unistd::Pid as NixPid;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use sysinfo::{Pid, System};
-use chrono::{DateTime, Utc};
-use nix::sys::signal::{self, Signal};
-use nix::unistd::Pid as NixPid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ProcessStatus {
@@ -129,15 +129,13 @@ impl ProcessRegistry {
         let mut processes = self.processes.lock().unwrap();
         let cutoff = Utc::now() - chrono::Duration::hours(max_age_hours);
 
-        processes.retain(|_, info| {
-            match info.status {
-                ProcessStatus::Running => true,
-                _ => {
-                    if let Some(end_time) = info.end_time {
-                        end_time > cutoff
-                    } else {
-                        true
-                    }
+        processes.retain(|_, info| match info.status {
+            ProcessStatus::Running => true,
+            _ => {
+                if let Some(end_time) = info.end_time {
+                    end_time > cutoff
+                } else {
+                    true
                 }
             }
         });

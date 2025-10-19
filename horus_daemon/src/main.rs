@@ -1,11 +1,11 @@
-mod deploy;
-mod process;
-mod executor;
-mod stream;
-mod hardware;
-mod discovery;
 mod auth;
+mod deploy;
+mod discovery;
+mod executor;
+mod hardware;
+mod process;
 mod ratelimit;
+mod stream;
 
 use axum::{
     extract::{Path, State},
@@ -14,13 +14,13 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use executor::ProcessExecutor;
+use horus_core::core::log_buffer::{LogEntry, GLOBAL_LOG_BUFFER};
+use process::{ProcessInfo, ProcessRegistry};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use horus_core::core::log_buffer::{GLOBAL_LOG_BUFFER, LogEntry};
-use process::{ProcessRegistry, ProcessInfo};
-use executor::ProcessExecutor;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -71,7 +71,10 @@ async fn main() -> anyhow::Result<()> {
         .route("/deployments", get(list_deployments))
         .route("/deployments/:deployment_id", get(get_deployment))
         .route("/deployments/:deployment_id/stop", post(stop_deployment))
-        .route("/stream/:deployment_id", get(stream::stream_deployment_logs))
+        .route(
+            "/stream/:deployment_id",
+            get(stream::stream_deployment_logs),
+        )
         .route("/hardware", get(get_hardware))
         .with_state(state);
 
@@ -118,9 +121,7 @@ async fn handle_deploy(
     deploy::handle_deploy(body, state.registry).await
 }
 
-async fn list_deployments(
-    State(state): State<AppState>,
-) -> (StatusCode, Json<Vec<ProcessInfo>>) {
+async fn list_deployments(State(state): State<AppState>) -> (StatusCode, Json<Vec<ProcessInfo>>) {
     let deployments = state.registry.list();
     (StatusCode::OK, Json(deployments))
 }
@@ -138,7 +139,10 @@ async fn stop_deployment(
     Path(deployment_id): Path<String>,
 ) -> (StatusCode, String) {
     match state.registry.stop(&deployment_id) {
-        Ok(_) => (StatusCode::OK, format!("Deployment {} stopped", deployment_id)),
+        Ok(_) => (
+            StatusCode::OK,
+            format!("Deployment {} stopped", deployment_id),
+        ),
         Err(e) => (StatusCode::BAD_REQUEST, e),
     }
 }

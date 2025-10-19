@@ -88,10 +88,10 @@ impl MotorCommand {
 
     /// Check if values are valid
     pub fn is_valid(&self) -> bool {
-        self.target.is_finite() &&
-        self.max_velocity.is_finite() &&
-        self.max_acceleration.is_finite() &&
-        self.feed_forward.is_finite()
+        self.target.is_finite()
+            && self.max_velocity.is_finite()
+            && self.max_acceleration.is_finite()
+            && self.feed_forward.is_finite()
     }
 }
 
@@ -150,9 +150,9 @@ impl DifferentialDriveCommand {
 
     /// Check if values are valid
     pub fn is_valid(&self) -> bool {
-        self.left_velocity.is_finite() &&
-        self.right_velocity.is_finite() &&
-        self.max_acceleration.is_finite()
+        self.left_velocity.is_finite()
+            && self.right_velocity.is_finite()
+            && self.max_acceleration.is_finite()
     }
 }
 
@@ -283,14 +283,14 @@ impl PidConfig {
 
     /// Check if gains are valid
     pub fn is_valid(&self) -> bool {
-        self.kp.is_finite() &&
-        self.ki.is_finite() &&
-        self.kd.is_finite() &&
-        self.integral_limit.is_finite() &&
-        self.output_limit.is_finite() &&
-        self.kp >= 0.0 &&
-        self.ki >= 0.0 &&
-        self.kd >= 0.0
+        self.kp.is_finite()
+            && self.ki.is_finite()
+            && self.kd.is_finite()
+            && self.integral_limit.is_finite()
+            && self.output_limit.is_finite()
+            && self.kp >= 0.0
+            && self.ki >= 0.0
+            && self.kd >= 0.0
     }
 }
 

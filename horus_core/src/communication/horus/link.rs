@@ -1,10 +1,10 @@
-use crate::memory::shm_region::ShmRegion;
 use crate::core::node::NodeInfo;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use crate::memory::shm_region::ShmRegion;
 use std::marker::PhantomData;
 use std::mem::{self, MaybeUninit};
 use std::ptr::NonNull;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::time::Instant;
 
 /// Branch prediction hint: this condition is unlikely
@@ -76,8 +76,8 @@ impl<'a, T> Drop for LinkSample<'a, T> {
 /// Header for Link shared memory ring buffer
 #[repr(C, align(64))]
 struct LinkHeader {
-    head: AtomicUsize,  // Producer writes here
-    tail: AtomicUsize,  // Consumer reads here
+    head: AtomicUsize, // Producer writes here
+    tail: AtomicUsize, // Consumer reads here
     capacity: AtomicUsize,
     element_size: AtomicUsize,
     _padding: [u8; 32],
@@ -129,7 +129,7 @@ impl<T> Link<T> {
         }
 
         // Calculate sizes
-        let aligned_header_size = (header_size + element_align - 1) / element_align * element_align;
+        let aligned_header_size = header_size.div_ceil(element_align) * element_align;
         let data_size = capacity * element_size;
         let total_size = aligned_header_size + data_size;
 
@@ -158,20 +158,33 @@ impl<T> Link<T> {
             unsafe {
                 (*header.as_ptr()).head.store(0, Ordering::Relaxed);
                 (*header.as_ptr()).tail.store(0, Ordering::Relaxed);
-                (*header.as_ptr()).capacity.store(capacity, Ordering::Relaxed);
-                (*header.as_ptr()).element_size.store(element_size, Ordering::Relaxed);
+                (*header.as_ptr())
+                    .capacity
+                    .store(capacity, Ordering::Relaxed);
+                (*header.as_ptr())
+                    .element_size
+                    .store(element_size, Ordering::Relaxed);
                 (*header.as_ptr())._padding = [0; 32];
             }
         } else {
             // Validate existing header
             let stored_capacity = unsafe { (*header.as_ptr()).capacity.load(Ordering::Relaxed) };
-            let stored_element_size = unsafe { (*header.as_ptr()).element_size.load(Ordering::Relaxed) };
+            let stored_element_size =
+                unsafe { (*header.as_ptr()).element_size.load(Ordering::Relaxed) };
 
             if stored_capacity != capacity {
-                return Err(format!("Capacity mismatch: expected {}, got {}", capacity, stored_capacity).into());
+                return Err(format!(
+                    "Capacity mismatch: expected {}, got {}",
+                    capacity, stored_capacity
+                )
+                .into());
             }
             if stored_element_size != element_size {
-                return Err(format!("Element size mismatch: expected {}, got {}", element_size, stored_element_size).into());
+                return Err(format!(
+                    "Element size mismatch: expected {}, got {}",
+                    element_size, stored_element_size
+                )
+                .into());
             }
         }
 
@@ -186,7 +199,10 @@ impl<T> Link<T> {
 
         log::info!(
             "Link '{}': Created as {:?} ({} -> {})",
-            topic_name, role, producer_node, consumer_node
+            topic_name,
+            role,
+            producer_node,
+            consumer_node
         );
 
         Ok(Link {
@@ -219,9 +235,7 @@ impl<T> Link<T> {
             return Err("Buffer full");
         }
 
-        let slot_ptr = unsafe {
-            self.data_ptr.as_ptr().add(head * mem::size_of::<T>()) as *mut T
-        };
+        let slot_ptr = unsafe { self.data_ptr.as_ptr().add(head * mem::size_of::<T>()) as *mut T };
 
         Ok(LinkSample {
             link: self,
@@ -241,7 +255,7 @@ impl<T> Link<T> {
     #[inline(always)]
     pub fn send(&self, msg: T, ctx: Option<&mut NodeInfo>) -> Result<(), T>
     where
-        T: std::fmt::Debug + Clone
+        T: std::fmt::Debug + Clone,
     {
         // Clone message first (application overhead, not IPC)
         let msg_clone = msg.clone();
@@ -303,7 +317,7 @@ impl<T> Link<T> {
     #[inline(always)]
     pub fn recv(&self, ctx: Option<&mut NodeInfo>) -> Option<T>
     where
-        T: std::fmt::Debug + Clone
+        T: std::fmt::Debug + Clone,
     {
         // Inline fast path - compiler optimizes this completely
         let header = unsafe { self.header.as_ref() };
@@ -334,12 +348,12 @@ impl<T> Link<T> {
         let ipc_start = Instant::now();
 
         // Direct read from shared memory
-        let msg = unsafe {
-            std::ptr::read(slot)
-        };
+        let msg = unsafe { std::ptr::read(slot) };
 
         // Update tail with Release ordering for producer visibility
-        header.tail.store((tail + 1) & (self.capacity - 1), Ordering::Release);
+        header
+            .tail
+            .store((tail + 1) & (self.capacity - 1), Ordering::Release);
 
         let ipc_ns = ipc_start.elapsed().as_nanos() as u64;
 

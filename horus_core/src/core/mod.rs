@@ -15,8 +15,10 @@
 //! 3. **Execution** - `tick()` is called repeatedly by the scheduler
 //! 4. **Shutdown** - `shutdown()` is called to clean up resources
 
-pub mod node;
 pub mod log_buffer;
+pub mod node;
 
-pub use node::{Node, NodeInfo, NodeState, NodePriority, NodeConfig, HealthStatus, NodeHeartbeat, NodeMetrics};
-pub use log_buffer::{SharedLogBuffer, LogEntry, LogType, GLOBAL_LOG_BUFFER};
+pub use log_buffer::{LogEntry, LogType, SharedLogBuffer, GLOBAL_LOG_BUFFER};
+pub use node::{
+    HealthStatus, Node, NodeConfig, NodeHeartbeat, NodeInfo, NodeMetrics, NodePriority, NodeState,
+};

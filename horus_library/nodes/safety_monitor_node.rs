@@ -1,10 +1,10 @@
-use horus_core::{Node, NodeInfo, Hub};
-use crate::{SafetyStatus, StatusLevel, ResourceUsage, EmergencyStop, BatteryState};
-use std::sync::{Arc, Mutex};
+use crate::{BatteryState, EmergencyStop, ResourceUsage, SafetyStatus, StatusLevel};
+use horus_core::{Hub, Node, NodeInfo};
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 #[cfg(feature = "sysinfo")]
-use sysinfo::{System, SystemExt, ProcessorExt};
+use sysinfo::{ProcessorExt, System, SystemExt};
 
 /// Safety Monitor Node - Monitors critical safety systems and conditions
 ///
@@ -54,20 +54,22 @@ impl SafetyMonitorNode {
     pub fn new_with_topic(topic: &str) -> Self {
         Self {
             publisher: Hub::new(topic).expect("Failed to create safety monitor hub"),
-            emergency_subscriber: Hub::new("emergency_stop").expect("Failed to subscribe to emergency"),
+            emergency_subscriber: Hub::new("emergency_stop")
+                .expect("Failed to subscribe to emergency"),
             battery_subscriber: Hub::new("battery_state").expect("Failed to subscribe to battery"),
-            resource_subscriber: Hub::new("resource_usage").expect("Failed to subscribe to resources"),
+            resource_subscriber: Hub::new("resource_usage")
+                .expect("Failed to subscribe to resources"),
 
             #[cfg(feature = "sysinfo")]
             system: System::new_all(),
             safety_checks: Arc::new(Mutex::new(HashMap::new())),
 
             // Default thresholds
-            cpu_threshold: 90.0,        // 90% CPU usage
-            memory_threshold: 85.0,     // 85% memory usage
-            disk_threshold: 95.0,       // 95% disk usage
-            temperature_threshold: 80.0, // 80°C
-            battery_threshold: 15.0,    // 15% battery
+            cpu_threshold: 90.0,            // 90% CPU usage
+            memory_threshold: 85.0,         // 85% memory usage
+            disk_threshold: 95.0,           // 95% disk usage
+            temperature_threshold: 80.0,    // 80°C
+            battery_threshold: 15.0,        // 15% battery
             communication_timeout_ms: 5000, // 5 second timeout
 
             // State
@@ -111,13 +113,16 @@ impl SafetyMonitorNode {
     /// Add a custom safety check
     pub fn add_safety_check(&mut self, name: &str, timeout_ms: u64) {
         if let Ok(mut checks) = self.safety_checks.lock() {
-            checks.insert(name.to_string(), SafetyCheck {
-                name: name.to_string(),
-                status: StatusLevel::Ok,
-                message: "Not initialized".to_string(),
-                last_update: 0,
-                timeout_ms,
-            });
+            checks.insert(
+                name.to_string(),
+                SafetyCheck {
+                    name: name.to_string(),
+                    status: StatusLevel::Ok,
+                    message: "Not initialized".to_string(),
+                    last_update: 0,
+                    timeout_ms,
+                },
+            );
         }
     }
 
@@ -228,20 +233,20 @@ impl SafetyMonitorNode {
         match self.current_safety_level {
             StatusLevel::Ok => {
                 // Default SafetyStatus::new() is already configured for normal operation
-            },
+            }
             StatusLevel::Warn => {
                 status.mode = SafetyStatus::MODE_REDUCED;
                 status.set_fault(1); // Warning fault code
-            },
+            }
             StatusLevel::Error => {
                 status.mode = SafetyStatus::MODE_REDUCED;
                 status.set_fault(2); // Error fault code
-            },
+            }
             StatusLevel::Fatal => {
                 status.estop_engaged = true;
                 status.mode = SafetyStatus::MODE_SAFE_STOP;
                 status.set_fault(999); // Critical fault code
-            },
+            }
         }
 
         let _ = self.publisher.send(status, None);

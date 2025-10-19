@@ -3,9 +3,9 @@
 //! This module provides messages for force sensors, tactile arrays,
 //! impedance control, and haptic feedback systems.
 
+use crate::messages::geometry::{Point3, Vector3};
 use serde::{Deserialize, Serialize};
 use serde_arrays;
-use crate::messages::geometry::{Vector3, Point3};
 
 /// Force and torque measurement (wrench)
 ///
@@ -210,7 +210,9 @@ impl TactileArray {
 
     /// Detect contact (any sensor above threshold)
     pub fn detect_contact(&self, threshold: f32) -> bool {
-        self.get_active_sensors().iter().any(|&reading| reading > threshold)
+        self.get_active_sensors()
+            .iter()
+            .any(|&reading| reading > threshold)
     }
 
     /// Get contact pattern as boolean array
@@ -462,10 +464,9 @@ impl ContactInfo {
 
     /// Check if currently in contact
     pub fn is_in_contact(&self) -> bool {
-        matches!(self.state,
-            ContactState::InitialContact |
-            ContactState::StableContact |
-            ContactState::Sliding
+        matches!(
+            self.state,
+            ContactState::InitialContact | ContactState::StableContact | ContactState::Sliding
         )
     }
 

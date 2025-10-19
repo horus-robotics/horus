@@ -1,11 +1,11 @@
 use anyhow::{anyhow, Result};
 use colored::*;
 use dirs::home_dir;
+use horus_core::error::{HorusError, HorusResult};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::{self, Write};
 use std::path::PathBuf;
-use horus_core::error::{HorusError, HorusResult};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct AuthConfig {
@@ -43,19 +43,25 @@ pub fn login(github: bool) -> HorusResult<()> {
         // GitHub OAuth flow
         println!("{} Logging in to HORUS registry with GitHub...", "→".cyan());
         println!();
-        println!("{} Opening browser for GitHub authentication...", "→".cyan());
+        println!(
+            "{} Opening browser for GitHub authentication...",
+            "→".cyan()
+        );
         println!("  {} {}/auth/github", "URL:".dimmed(), registry_url);
         println!();
 
         // Open browser for GitHub OAuth
         let auth_url = format!("{}/auth/github", registry_url);
-        if let Err(_) = open::that(&auth_url) {
+        if open::that(&auth_url).is_err() {
             println!("{} Could not open browser automatically.", "!".yellow());
             println!("Please visit: {}", auth_url.cyan());
         }
 
         println!();
-        println!("{} After authenticating with GitHub:", "Next steps:".green());
+        println!(
+            "{} After authenticating with GitHub:",
+            "Next steps:".green()
+        );
         println!("  1. You'll be redirected back to the registry");
         println!("  2. Copy the displayed instructions");
         println!("  3. Run: {}", "horus auth generate-key".cyan());
@@ -84,8 +90,14 @@ pub fn generate_key(name: Option<String>, environment: Option<String>) -> HorusR
     });
 
     println!();
-    println!("{} This requires you to be logged in via GitHub first.", "Note:".yellow());
-    println!("  If you haven't logged in yet, run: {}", "horus auth login --github".cyan());
+    println!(
+        "{} This requires you to be logged in via GitHub first.",
+        "Note:".yellow()
+    );
+    println!(
+        "  If you haven't logged in yet, run: {}",
+        "horus auth login --github".cyan()
+    );
     println!();
 
     // Prompt for manual key entry (since we need the GitHub session)
@@ -103,16 +115,16 @@ pub fn generate_key(name: Option<String>, environment: Option<String>) -> HorusR
     io::stdout().flush().unwrap();
 
     let mut api_key = String::new();
-    io::stdin().read_line(&mut api_key).map_err(|e| {
-        HorusError::Config(format!("Failed to read input: {}", e))
-    })?;
+    io::stdin()
+        .read_line(&mut api_key)
+        .map_err(|e| HorusError::Config(format!("Failed to read input: {}", e)))?;
 
     let api_key = api_key.trim().to_string();
 
     // Validate token format
     if !api_key.starts_with("horus_key_") {
         return Err(HorusError::Config(
-            "Invalid token format. Token should start with 'horus_key_'".to_string()
+            "Invalid token format. Token should start with 'horus_key_'".to_string(),
         ));
     }
 
@@ -123,24 +135,28 @@ pub fn generate_key(name: Option<String>, environment: Option<String>) -> HorusR
         github_username: None, // Will be populated on first use
     };
 
-    let config_path = auth_config_path().map_err(|e| {
-        HorusError::Config(e.to_string())
-    })?;
+    let config_path = auth_config_path().map_err(|e| HorusError::Config(e.to_string()))?;
 
-    let config_json = serde_json::to_string_pretty(&config).map_err(|e| {
-        HorusError::Config(format!("Failed to serialize config: {}", e))
-    })?;
+    let config_json = serde_json::to_string_pretty(&config)
+        .map_err(|e| HorusError::Config(format!("Failed to serialize config: {}", e)))?;
 
-    fs::write(&config_path, config_json).map_err(|e| {
-        HorusError::Config(format!("Failed to save auth config: {}", e))
-    })?;
+    fs::write(&config_path, config_json)
+        .map_err(|e| HorusError::Config(format!("Failed to save auth config: {}", e)))?;
 
     println!();
     println!("{} API key saved successfully!", "✓".green());
     println!("  {} {}", "Registry:".dimmed(), registry_url);
-    println!("  {} {}", "Config saved to:".dimmed(), config_path.display());
+    println!(
+        "  {} {}",
+        "Config saved to:".dimmed(),
+        config_path.display()
+    );
     println!();
-    println!("{} You can now publish packages with: {}", "Tip:".yellow(), "horus publish".cyan());
+    println!(
+        "{} You can now publish packages with: {}",
+        "Tip:".yellow(),
+        "horus publish".cyan()
+    );
 
     Ok(())
 }
@@ -149,14 +165,11 @@ pub fn generate_key(name: Option<String>, environment: Option<String>) -> HorusR
 pub fn logout() -> HorusResult<()> {
     println!("{} Logging out from HORUS registry...", "→".cyan());
 
-    let config_path = auth_config_path().map_err(|e| {
-        HorusError::Config(e.to_string())
-    })?;
+    let config_path = auth_config_path().map_err(|e| HorusError::Config(e.to_string()))?;
 
     if config_path.exists() {
-        fs::remove_file(&config_path).map_err(|e| {
-            HorusError::Config(format!("Failed to remove auth config: {}", e))
-        })?;
+        fs::remove_file(&config_path)
+            .map_err(|e| HorusError::Config(format!("Failed to remove auth config: {}", e)))?;
 
         println!("{} Successfully logged out!", "✓".green());
         println!("  {} API key removed from local storage", "•".dimmed());
@@ -169,9 +182,7 @@ pub fn logout() -> HorusResult<()> {
 
 /// Show current authenticated user
 pub fn whoami() -> HorusResult<()> {
-    let config_path = auth_config_path().map_err(|e| {
-        HorusError::Config(e.to_string())
-    })?;
+    let config_path = auth_config_path().map_err(|e| HorusError::Config(e.to_string()))?;
 
     if !config_path.exists() {
         println!("{} Not logged in", "!".yellow());
@@ -182,13 +193,11 @@ pub fn whoami() -> HorusResult<()> {
         return Ok(());
     }
 
-    let config_content = fs::read_to_string(&config_path).map_err(|e| {
-        HorusError::Config(format!("Failed to read auth config: {}", e))
-    })?;
+    let config_content = fs::read_to_string(&config_path)
+        .map_err(|e| HorusError::Config(format!("Failed to read auth config: {}", e)))?;
 
-    let config: AuthConfig = serde_json::from_str(&config_content).map_err(|e| {
-        HorusError::Config(format!("Failed to parse auth config: {}", e))
-    })?;
+    let config: AuthConfig = serde_json::from_str(&config_content)
+        .map_err(|e| HorusError::Config(format!("Failed to parse auth config: {}", e)))?;
 
     // Try to fetch user info from registry
     let registry_url = config.registry_url.clone();
@@ -219,7 +228,8 @@ pub fn whoami() -> HorusResult<()> {
                     println!("  {} ({} active)", "API Keys:".dimmed(), keys.len());
                     for key in keys {
                         if let (Some(name), Some(prefix)) =
-                            (key["name"].as_str(), key["prefix"].as_str()) {
+                            (key["name"].as_str(), key["prefix"].as_str())
+                        {
                             println!("    • {} ({})", name, prefix.dimmed());
                         }
                     }
@@ -235,12 +245,19 @@ pub fn whoami() -> HorusResult<()> {
             let token_prefix = config.api_key.chars().take(15).collect::<String>() + "...";
             println!("  {} {}", "API Token:".dimmed(), token_prefix.green());
             println!();
-            println!("  {} Could not fetch user details from registry", "Note:".yellow());
+            println!(
+                "  {} Could not fetch user details from registry",
+                "Note:".yellow()
+            );
         }
     }
 
     println!();
-    println!("{} To manage API keys, visit: {}/dashboard/keys", "Tip:".yellow(), registry_url);
+    println!(
+        "{} To manage API keys, visit: {}/dashboard/keys",
+        "Tip:".yellow(),
+        registry_url
+    );
 
     Ok(())
 }

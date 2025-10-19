@@ -16,89 +16,69 @@
 //! All message types are re-exported at the crate root for convenience.
 
 // Core message modules
-pub mod geometry;
-pub mod sensor;
 pub mod control;
-pub mod diagnostics;
-pub mod vision;
-pub mod navigation;
-pub mod force;
-pub mod io;
-pub mod perception;
 pub mod coordination;
+pub mod diagnostics;
+pub mod force;
+pub mod geometry;
+pub mod io;
+pub mod navigation;
+pub mod perception;
+pub mod sensor;
 pub mod timing;
+pub mod vision;
 
 // Input messages
-pub mod keyboard_input_msg;
 pub mod joystick_msg;
+pub mod keyboard_input_msg;
 
 // Application-specific messages
-pub mod snake_state;
 pub mod cmd_vel;
+pub mod snake_state;
 
 // Re-export all message types for convenience
 // Geometry
-pub use geometry::{
-    Twist, Pose2D, Transform, Point3, Vector3, Quaternion
-};
+pub use geometry::{Point3, Pose2D, Quaternion, Transform, Twist, Vector3};
 
 // Sensor
-pub use sensor::{
-    LaserScan, Imu, Odometry, Range, BatteryState
-};
+pub use sensor::{BatteryState, Imu, LaserScan, Odometry, Range};
 
 // Control
 pub use control::{
-    MotorCommand, DifferentialDriveCommand, ServoCommand,
-    PidConfig, TrajectoryPoint, JointCommand
+    DifferentialDriveCommand, JointCommand, MotorCommand, PidConfig, ServoCommand, TrajectoryPoint,
 };
 
 // Diagnostics
 pub use diagnostics::{
-    Heartbeat, Status, StatusLevel, EmergencyStop,
-    ResourceUsage, DiagnosticValue, DiagnosticReport, SafetyStatus,
-    NodeState, HealthStatus, NodeHeartbeat
+    DiagnosticReport, DiagnosticValue, EmergencyStop, HealthStatus, Heartbeat, NodeHeartbeat,
+    NodeState, ResourceUsage, SafetyStatus, Status, StatusLevel,
 };
 
 // Vision
-pub use vision::{
-    Image, CompressedImage, CameraInfo, Detection, DetectionArray
-};
+pub use vision::{CameraInfo, CompressedImage, Detection, DetectionArray, Image};
 
 // Navigation
-pub use navigation::{
-    Goal, Path, OccupancyGrid, CostMap, PathPlan
-};
+pub use navigation::{CostMap, Goal, OccupancyGrid, Path, PathPlan};
 
 // Force
-pub use force::{
-    WrenchStamped, TactileArray, ImpedanceParameters, ForceCommand
-};
+pub use force::{ForceCommand, ImpedanceParameters, TactileArray, WrenchStamped};
 
 // Industrial I/O
-pub use io::{
-    DigitalIO, AnalogIO, ModbusMessage, EtherNetIPMessage, NetworkStatus
-};
+pub use io::{AnalogIO, DigitalIO, EtherNetIPMessage, ModbusMessage, NetworkStatus};
 
 // Perception
-pub use perception::{
-    PointCloud, BoundingBox3D, DepthImage, PlaneDetection
-};
+pub use perception::{BoundingBox3D, DepthImage, PlaneDetection, PointCloud};
 
 // Coordination
-pub use coordination::{
-    RobotState, FleetStatus, TaskAssignment, FormationControl
-};
+pub use coordination::{FleetStatus, FormationControl, RobotState, TaskAssignment};
 
 // Timing
-pub use timing::{
-    TimeSync, ScheduledEvent, Timeline, ClockStats
-};
+pub use timing::{ClockStats, ScheduledEvent, TimeSync, Timeline};
 
 // Input (existing)
-pub use keyboard_input_msg::KeyboardInput;
 pub use joystick_msg::JoystickInput;
+pub use keyboard_input_msg::KeyboardInput;
 
 // Application (existing)
-pub use snake_state::{Direction, SnakeState};
 pub use cmd_vel::CmdVel;
+pub use snake_state::{Direction, SnakeState};

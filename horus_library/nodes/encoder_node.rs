@@ -1,5 +1,5 @@
-use horus_core::{Node, NodeInfo, Hub};
 use crate::Odometry;
+use horus_core::{Hub, Node, NodeInfo};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Encoder Node - Wheel/joint position feedback for odometry and control
@@ -17,7 +17,7 @@ pub struct EncoderNode {
     gear_ratio: f64,         // gear ratio
 
     // State
-    last_position: f64,      // last encoder position
+    last_position: f64, // last encoder position
     last_time: u64,
     velocity: f64,
     total_distance: f64,
@@ -40,8 +40,8 @@ impl EncoderNode {
             frame_id: "odom".to_string(),
             child_frame_id: "base_link".to_string(),
             encoder_resolution: 1024.0, // 1024 pulses per revolution default
-            wheel_radius: 0.1,           // 10cm wheel radius default
-            gear_ratio: 1.0,             // Direct drive default
+            wheel_radius: 0.1,          // 10cm wheel radius default
+            gear_ratio: 1.0,            // Direct drive default
             last_position: 0.0,
             last_time: 0,
             velocity: 0.0,
@@ -87,7 +87,8 @@ impl EncoderNode {
         let current_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
-            .as_millis() as f64 / 1000.0;
+            .as_millis() as f64
+            / 1000.0;
 
         // Simulate encoder position based on synthetic velocity
         current_time * self.sim_velocity
@@ -116,8 +117,18 @@ impl EncoderNode {
         let mut odom = Odometry::new();
 
         // Set frame information
-        odom.frame_id = self.frame_id.clone().into_bytes().try_into().unwrap_or([0; 32]);
-        odom.child_frame_id = self.child_frame_id.clone().into_bytes().try_into().unwrap_or([0; 32]);
+        odom.frame_id = self
+            .frame_id
+            .clone()
+            .into_bytes()
+            .try_into()
+            .unwrap_or([0; 32]);
+        odom.child_frame_id = self
+            .child_frame_id
+            .clone()
+            .into_bytes()
+            .try_into()
+            .unwrap_or([0; 32]);
 
         // Set velocities
         odom.twist.linear[0] = linear_velocity;

@@ -1,17 +1,17 @@
 use pyo3::prelude::*;
 
-mod node;
 mod hub;
+mod node;
 mod scheduler;
 mod types;
 
+use hub::PyHub;
 use node::{PyNode, PyNodeInfo, PyNodeState};
-use hub::{PyHub};
 use scheduler::PyScheduler;
-use types::{PyMessage, PyNodePriority, PyNodeConfig};
+use types::{PyMessage, PyNodeConfig, PyNodePriority};
 
 /// HORUS Python Bindings
-/// 
+///
 /// This module provides Python bindings for the HORUS robotics framework,
 /// allowing Python developers to create and run distributed robotic systems.
 #[pymodule]
@@ -21,19 +21,19 @@ fn _horus(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyNodeInfo>()?;
     m.add_class::<PyHub>()?;
     m.add_class::<PyScheduler>()?;
-    
+
     // Type classes
     m.add_class::<PyMessage>()?;
     m.add_class::<PyNodeState>()?;
     m.add_class::<PyNodePriority>()?;
     m.add_class::<PyNodeConfig>()?;
-    
+
     // Module-level functions
     m.add_function(wrap_pyfunction!(create_node, m)?)?;
     m.add_function(wrap_pyfunction!(create_hub, m)?)?;
     m.add_function(wrap_pyfunction!(create_scheduler, m)?)?;
     m.add_function(wrap_pyfunction!(get_version, m)?)?;
-    
+
     Ok(())
 }
 

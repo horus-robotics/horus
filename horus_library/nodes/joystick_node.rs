@@ -1,5 +1,5 @@
-use horus_core::{Node, NodeInfo, Hub};
 use crate::JoystickInput;
+use horus_core::{Hub, Node, NodeInfo};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Joystick Input Node - Gamepad/joystick input capture (placeholder implementation)
@@ -39,7 +39,8 @@ impl Node for JoystickInputNode {
             .as_millis() as u64;
 
         // Only send periodic test messages
-        if current_time - self.last_input_time > 3000 { // Every 3 seconds
+        if current_time - self.last_input_time > 3000 {
+            // Every 3 seconds
             let joystick_input = JoystickInput::new_button(
                 1, // joystick_id
                 0, // button_id

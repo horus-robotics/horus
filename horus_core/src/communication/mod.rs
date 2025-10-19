@@ -54,13 +54,13 @@
 pub mod horus;
 #[cfg(feature = "iceoryx2")]
 pub mod iceoryx2;
+pub mod traits;
 #[cfg(feature = "zenoh")]
 pub mod zenoh;
-pub mod traits;
 
 // Re-export commonly used types for convenience
 pub use horus::{Hub, Link};
-pub use traits::{Publisher, Subscriber, Channel, IpcBackend};
+pub use traits::{Channel, IpcBackend, Publisher, Subscriber};
 
 // Type aliases for backward compatibility
 pub use horus::Hub as HorusHub;
@@ -68,14 +68,14 @@ pub use horus::Link as HorusLink;
 
 #[cfg(feature = "iceoryx2")]
 pub use iceoryx2::Publisher as IceoryxPublisher;
-#[cfg(feature = "iceoryx2")]  
-pub use iceoryx2::Subscriber as IceoryxSubscriber;
 #[cfg(feature = "iceoryx2")]
 pub use iceoryx2::Service as IceoryxService;
+#[cfg(feature = "iceoryx2")]
+pub use iceoryx2::Subscriber as IceoryxSubscriber;
 
 #[cfg(feature = "zenoh")]
 pub use zenoh::Publisher as ZenohPublisher;
 #[cfg(feature = "zenoh")]
-pub use zenoh::Subscriber as ZenohSubscriber;
-#[cfg(feature = "zenoh")]
 pub use zenoh::Session as ZenohSession;
+#[cfg(feature = "zenoh")]
+pub use zenoh::Subscriber as ZenohSubscriber;

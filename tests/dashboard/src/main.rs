@@ -1,5 +1,5 @@
-use horus::prelude::*;
 use horus::core::node::TopicMetadata;
+use horus::prelude::*;
 use std::time::Duration;
 
 // ============= MESSAGE TYPES =============
@@ -49,7 +49,8 @@ pub struct SensorNode {
 impl SensorNode {
     pub fn new() -> Result<Self> {
         Ok(Self {
-            publisher: Hub::new("sensors/lidar").map_err(|e| HorusError::Communication(e.to_string()))?,
+            publisher: Hub::new("sensors/lidar")
+                .map_err(|e| HorusError::Communication(e.to_string()))?,
             angle: 0.0,
             counter: 0,
         })
@@ -62,12 +63,10 @@ impl Node for SensorNode {
     }
 
     fn get_publishers(&self) -> Vec<TopicMetadata> {
-        vec![
-            TopicMetadata {
-                topic_name: "sensors/lidar".to_string(),
-                type_name: "SensorReading".to_string(),
-            }
-        ]
+        vec![TopicMetadata {
+            topic_name: "sensors/lidar".to_string(),
+            type_name: "SensorReading".to_string(),
+        }]
     }
 
     fn init(&mut self, _ctx: &mut NodeInfo) -> std::result::Result<(), String> {
@@ -75,7 +74,7 @@ impl Node for SensorNode {
         Ok(())
     }
 
-    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         // Simulate rotating LIDAR with varying distances
         let distance = 5.0 + (self.angle.sin() * 2.0).abs(); // 3-7 meters
 
@@ -85,7 +84,7 @@ impl Node for SensorNode {
             timestamp: self.counter,
         };
 
-        let _ = self.publisher.send(reading, ctx.as_deref_mut());
+        let _ = self.publisher.send(reading, ctx);
 
         self.angle += 15.0; // Rotate 15 degrees per tick
         if self.angle >= 360.0 {
@@ -97,7 +96,10 @@ impl Node for SensorNode {
     }
 
     fn shutdown(&mut self, _ctx: &mut NodeInfo) -> std::result::Result<(), String> {
-        println!("🔵 SensorNode shutdown - {} readings published", self.counter);
+        println!(
+            "🔵 SensorNode shutdown - {} readings published",
+            self.counter
+        );
         Ok(())
     }
 }
@@ -114,8 +116,10 @@ pub struct ObstacleDetector {
 impl ObstacleDetector {
     pub fn new() -> Result<Self> {
         Ok(Self {
-            sensor_sub: Hub::new("sensors/lidar").map_err(|e| HorusError::Communication(e.to_string()))?,
-            obstacle_pub: Hub::new("perception/obstacles").map_err(|e| HorusError::Communication(e.to_string()))?,
+            sensor_sub: Hub::new("sensors/lidar")
+                .map_err(|e| HorusError::Communication(e.to_string()))?,
+            obstacle_pub: Hub::new("perception/obstacles")
+                .map_err(|e| HorusError::Communication(e.to_string()))?,
             detection_count: 0,
         })
     }
@@ -127,21 +131,17 @@ impl Node for ObstacleDetector {
     }
 
     fn get_publishers(&self) -> Vec<TopicMetadata> {
-        vec![
-            TopicMetadata {
-                topic_name: "perception/obstacles".to_string(),
-                type_name: "ObstacleData".to_string(),
-            }
-        ]
+        vec![TopicMetadata {
+            topic_name: "perception/obstacles".to_string(),
+            type_name: "ObstacleData".to_string(),
+        }]
     }
 
     fn get_subscribers(&self) -> Vec<TopicMetadata> {
-        vec![
-            TopicMetadata {
-                topic_name: "sensors/lidar".to_string(),
-                type_name: "SensorReading".to_string(),
-            }
-        ]
+        vec![TopicMetadata {
+            topic_name: "sensors/lidar".to_string(),
+            type_name: "SensorReading".to_string(),
+        }]
     }
 
     fn init(&mut self, _ctx: &mut NodeInfo) -> std::result::Result<(), String> {
@@ -183,7 +183,10 @@ impl Node for ObstacleDetector {
     }
 
     fn shutdown(&mut self, _ctx: &mut NodeInfo) -> std::result::Result<(), String> {
-        println!("🟡 ObstacleDetector shutdown - {} obstacles detected", self.detection_count);
+        println!(
+            "🟡 ObstacleDetector shutdown - {} obstacles detected",
+            self.detection_count
+        );
         Ok(())
     }
 }
@@ -200,8 +203,10 @@ pub struct PathPlanner {
 impl PathPlanner {
     pub fn new() -> Result<Self> {
         Ok(Self {
-            obstacle_sub: Hub::new("perception/obstacles").map_err(|e| HorusError::Communication(e.to_string()))?,
-            path_pub: Hub::new("planning/path").map_err(|e| HorusError::Communication(e.to_string()))?,
+            obstacle_sub: Hub::new("perception/obstacles")
+                .map_err(|e| HorusError::Communication(e.to_string()))?,
+            path_pub: Hub::new("planning/path")
+                .map_err(|e| HorusError::Communication(e.to_string()))?,
             adjustments: 0,
         })
     }
@@ -213,21 +218,17 @@ impl Node for PathPlanner {
     }
 
     fn get_publishers(&self) -> Vec<TopicMetadata> {
-        vec![
-            TopicMetadata {
-                topic_name: "planning/path".to_string(),
-                type_name: "PathCommand".to_string(),
-            }
-        ]
+        vec![TopicMetadata {
+            topic_name: "planning/path".to_string(),
+            type_name: "PathCommand".to_string(),
+        }]
     }
 
     fn get_subscribers(&self) -> Vec<TopicMetadata> {
-        vec![
-            TopicMetadata {
-                topic_name: "perception/obstacles".to_string(),
-                type_name: "ObstacleData".to_string(),
-            }
-        ]
+        vec![TopicMetadata {
+            topic_name: "perception/obstacles".to_string(),
+            type_name: "ObstacleData".to_string(),
+        }]
     }
 
     fn init(&mut self, _ctx: &mut NodeInfo) -> std::result::Result<(), String> {
@@ -264,13 +265,16 @@ impl Node for PathPlanner {
                 }
             };
 
-            let _ = self.path_pub.send(command, ctx.as_deref_mut());
+            let _ = self.path_pub.send(command, ctx);
             std::thread::sleep(Duration::from_millis(20));
         }
     }
 
     fn shutdown(&mut self, _ctx: &mut NodeInfo) -> std::result::Result<(), String> {
-        println!("🟢 PathPlanner shutdown - {} path adjustments made", self.adjustments);
+        println!(
+            "🟢 PathPlanner shutdown - {} path adjustments made",
+            self.adjustments
+        );
         Ok(())
     }
 }
@@ -287,8 +291,10 @@ pub struct MotorController {
 impl MotorController {
     pub fn new() -> Result<Self> {
         Ok(Self {
-            path_sub: Hub::new("planning/path").map_err(|e| HorusError::Communication(e.to_string()))?,
-            motor_pub: Hub::new("actuators/motors").map_err(|e| HorusError::Communication(e.to_string()))?,
+            path_sub: Hub::new("planning/path")
+                .map_err(|e| HorusError::Communication(e.to_string()))?,
+            motor_pub: Hub::new("actuators/motors")
+                .map_err(|e| HorusError::Communication(e.to_string()))?,
             commands_sent: 0,
         })
     }
@@ -300,21 +306,17 @@ impl Node for MotorController {
     }
 
     fn get_publishers(&self) -> Vec<TopicMetadata> {
-        vec![
-            TopicMetadata {
-                topic_name: "actuators/motors".to_string(),
-                type_name: "MotorCommand".to_string(),
-            }
-        ]
+        vec![TopicMetadata {
+            topic_name: "actuators/motors".to_string(),
+            type_name: "MotorCommand".to_string(),
+        }]
     }
 
     fn get_subscribers(&self) -> Vec<TopicMetadata> {
-        vec![
-            TopicMetadata {
-                topic_name: "planning/path".to_string(),
-                type_name: "PathCommand".to_string(),
-            }
-        ]
+        vec![TopicMetadata {
+            topic_name: "planning/path".to_string(),
+            type_name: "PathCommand".to_string(),
+        }]
     }
 
     fn init(&mut self, _ctx: &mut NodeInfo) -> std::result::Result<(), String> {
@@ -339,7 +341,10 @@ impl Node for MotorController {
     }
 
     fn shutdown(&mut self, _ctx: &mut NodeInfo) -> std::result::Result<(), String> {
-        println!("🟣 MotorController shutdown - {} motor commands sent", self.commands_sent);
+        println!(
+            "🟣 MotorController shutdown - {} motor commands sent",
+            self.commands_sent
+        );
         Ok(())
     }
 }
@@ -356,8 +361,10 @@ pub struct StatusMonitor {
 impl StatusMonitor {
     pub fn new() -> Result<Self> {
         Ok(Self {
-            motor_sub: Hub::new("actuators/motors").map_err(|e| HorusError::Communication(e.to_string()))?,
-            status_pub: Hub::new("system/status").map_err(|e| HorusError::Communication(e.to_string()))?,
+            motor_sub: Hub::new("actuators/motors")
+                .map_err(|e| HorusError::Communication(e.to_string()))?,
+            status_pub: Hub::new("system/status")
+                .map_err(|e| HorusError::Communication(e.to_string()))?,
             message_count: 0,
         })
     }
@@ -369,21 +376,17 @@ impl Node for StatusMonitor {
     }
 
     fn get_publishers(&self) -> Vec<TopicMetadata> {
-        vec![
-            TopicMetadata {
-                topic_name: "system/status".to_string(),
-                type_name: "SystemStatus".to_string(),
-            }
-        ]
+        vec![TopicMetadata {
+            topic_name: "system/status".to_string(),
+            type_name: "SystemStatus".to_string(),
+        }]
     }
 
     fn get_subscribers(&self) -> Vec<TopicMetadata> {
-        vec![
-            TopicMetadata {
-                topic_name: "actuators/motors".to_string(),
-                type_name: "MotorCommand".to_string(),
-            }
-        ]
+        vec![TopicMetadata {
+            topic_name: "actuators/motors".to_string(),
+            type_name: "MotorCommand".to_string(),
+        }]
     }
 
     fn init(&mut self, _ctx: &mut NodeInfo) -> std::result::Result<(), String> {
@@ -404,14 +407,17 @@ impl Node for StatusMonitor {
                 message_count: self.message_count,
             };
 
-            let _ = self.status_pub.send(status, ctx.as_deref_mut());
+            let _ = self.status_pub.send(status, ctx);
         }
 
         std::thread::sleep(Duration::from_millis(100));
     }
 
     fn shutdown(&mut self, _ctx: &mut NodeInfo) -> std::result::Result<(), String> {
-        println!("⚪ StatusMonitor shutdown - {} total messages monitored", self.message_count);
+        println!(
+            "⚪ StatusMonitor shutdown - {} total messages monitored",
+            self.message_count
+        );
         Ok(())
     }
 }
@@ -435,32 +441,32 @@ fn main() -> AnyResult<()> {
     println!("📋 Registering nodes...");
     scheduler.register(
         Box::new(SensorNode::new()?),
-        0,  // Highest priority - input layer
-        Some(true)  // Enable logging
+        0,          // Highest priority - input layer
+        Some(true), // Enable logging
     );
 
     scheduler.register(
         Box::new(ObstacleDetector::new()?),
-        5,  // Processing layer
-        Some(true)
+        5, // Processing layer
+        Some(true),
     );
 
     scheduler.register(
         Box::new(PathPlanner::new()?),
-        6,  // Planning layer
-        Some(true)
+        6, // Planning layer
+        Some(true),
     );
 
     scheduler.register(
         Box::new(MotorController::new()?),
-        10,  // Actuation layer
-        Some(true)
+        10, // Actuation layer
+        Some(true),
     );
 
     scheduler.register(
         Box::new(StatusMonitor::new()?),
-        15,  // Monitoring layer (lowest priority)
-        Some(true)
+        15, // Monitoring layer (lowest priority)
+        Some(true),
     );
 
     println!("✅ All nodes registered\n");

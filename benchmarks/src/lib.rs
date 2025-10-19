@@ -8,21 +8,21 @@ use std::time::Duration;
 
 /// Standard message sizes used in robotics applications
 pub const MESSAGE_SIZES: &[(&str, usize)] = &[
-    ("control_command", 64),        // Motor commands, setpoints
-    ("sensor_reading", 128),        // IMU, encoders, basic sensors
-    ("lidar_scan", 4096),          // 2D lidar scan (1024 points)
-    ("pointcloud", 65536),         // 3D point cloud segment
-    ("camera_frame", 1_000_000),   // 1MB compressed image
-    ("map_update", 10_000_000),    // 10MB map chunk
+    ("control_command", 64),     // Motor commands, setpoints
+    ("sensor_reading", 128),     // IMU, encoders, basic sensors
+    ("lidar_scan", 4096),        // 2D lidar scan (1024 points)
+    ("pointcloud", 65536),       // 3D point cloud segment
+    ("camera_frame", 1_000_000), // 1MB compressed image
+    ("map_update", 10_000_000),  // 10MB map chunk
 ];
 
 /// Common frequencies in robotics systems
 pub const FREQUENCIES: &[(&str, u32)] = &[
-    ("control_loop", 1000),    // 1kHz control
-    ("planning", 100),         // 100Hz trajectory planning
-    ("perception", 30),        // 30Hz vision processing
-    ("lidar", 10),            // 10Hz lidar updates
-    ("localization", 50),     // 50Hz pose estimation
+    ("control_loop", 1000), // 1kHz control
+    ("planning", 100),      // 100Hz trajectory planning
+    ("perception", 30),     // 30Hz vision processing
+    ("lidar", 10),          // 10Hz lidar updates
+    ("localization", 50),   // 50Hz pose estimation
 ];
 
 /// Benchmark result structure
@@ -42,10 +42,8 @@ pub struct BenchmarkResult {
 impl BenchmarkResult {
     /// Calculate statistical metrics
     pub fn statistics(&self) -> Statistics {
-        let mut latencies_ns: Vec<f64> = self.latencies
-            .iter()
-            .map(|d| d.as_nanos() as f64)
-            .collect();
+        let mut latencies_ns: Vec<f64> =
+            self.latencies.iter().map(|d| d.as_nanos() as f64).collect();
         latencies_ns.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
         let len = latencies_ns.len();
@@ -108,9 +106,7 @@ impl Statistics {
 
 /// Calculate standard deviation
 fn calculate_std_dev(values: &[f64], mean: f64) -> f64 {
-    let variance = values.iter()
-        .map(|v| (v - mean).powi(2))
-        .sum::<f64>() / values.len() as f64;
+    let variance = values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64;
     variance.sqrt()
 }
 
@@ -141,7 +137,7 @@ pub fn set_performance_governor() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(target_os = "linux")]
     {
         std::process::Command::new("sudo")
-            .args(&["cpupower", "frequency-set", "-g", "performance"])
+            .args(["cpupower", "frequency-set", "-g", "performance"])
             .output()?;
     }
     Ok(())

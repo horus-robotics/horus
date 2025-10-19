@@ -9,5 +9,5 @@ pub mod dashboard_tui;
 pub mod dependency_resolver;
 pub mod graph;
 pub mod registry;
-pub mod workspace;
 pub mod version;
+pub mod workspace;

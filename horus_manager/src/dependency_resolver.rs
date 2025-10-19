@@ -1,11 +1,11 @@
 // Dependency resolution with version conflict detection
 // Solves dependency hell by finding compatible versions
 
-use anyhow::{Result, anyhow, bail};
+use anyhow::{anyhow, bail, Result};
+use colored::*;
 use semver::{Version, VersionReq};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt;
-use colored::*;
 
 pub type PackageName = String;
 
@@ -89,7 +89,12 @@ impl<'a> DependencyResolver<'a> {
         let mut queue: VecDeque<(String, DependencySpec)> = VecDeque::new();
 
         for dep in root_deps {
-            println!("  {} Root dependency: {} {}", "→".cyan(), dep.name, dep.requirement);
+            println!(
+                "  {} Root dependency: {} {}",
+                "→".cyan(),
+                dep.name,
+                dep.requirement
+            );
             queue.push_back(("root".to_string(), dep));
         }
 
@@ -106,14 +111,15 @@ impl<'a> DependencyResolver<'a> {
             // Add requirement
             self.requirements
                 .entry(dep.name.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(dep.requirement.clone());
 
             // Temporarily resolve to latest matching version to fetch its dependencies
             if let Ok(versions) = self.provider.get_available_versions(&dep.name) {
                 if let Some(version) = self.find_best_version(&dep.name, &versions) {
                     // Get transitive dependencies
-                    if let Ok(transitive_deps) = self.provider.get_dependencies(&dep.name, &version) {
+                    if let Ok(transitive_deps) = self.provider.get_dependencies(&dep.name, &version)
+                    {
                         for trans_dep in transitive_deps {
                             queue.push_back((dep.name.clone(), trans_dep));
                         }
@@ -123,10 +129,15 @@ impl<'a> DependencyResolver<'a> {
         }
 
         // Now resolve all packages
-        println!("  {} Found {} unique packages", "→".cyan(), self.requirements.len());
+        println!(
+            "  {} Found {} unique packages",
+            "→".cyan(),
+            self.requirements.len()
+        );
 
         // Clone requirements to avoid borrow checker issues
-        let requirements_snapshot: Vec<(String, Vec<_>)> = self.requirements
+        let requirements_snapshot: Vec<(String, Vec<_>)> = self
+            .requirements
             .iter()
             .map(|(k, v)| (k.clone(), v.clone()))
             .collect();
@@ -136,7 +147,8 @@ impl<'a> DependencyResolver<'a> {
         }
 
         // Convert to result format
-        let mut result: Vec<ResolvedDependency> = self.resolved
+        let mut result: Vec<ResolvedDependency> = self
+            .resolved
             .iter()
             .map(|(name, version)| ResolvedDependency {
                 name: name.clone(),
@@ -146,7 +158,11 @@ impl<'a> DependencyResolver<'a> {
 
         result.sort_by(|a, b| a.name.cmp(&b.name));
 
-        println!("  {} Successfully resolved {} packages!", "✓".green(), result.len());
+        println!(
+            "  {} Successfully resolved {} packages!",
+            "✓".green(),
+            result.len()
+        );
         for dep in &result {
             println!("    • {} v{}", dep.name.cyan(), dep.version);
         }
@@ -160,15 +176,21 @@ impl<'a> DependencyResolver<'a> {
             // Verify it satisfies all requirements
             for req in requirements {
                 if !req.matches(version) {
-                    bail!("Version conflict for {}: resolved v{} doesn't satisfy requirement {}",
-                        package, version, req);
+                    bail!(
+                        "Version conflict for {}: resolved v{} doesn't satisfy requirement {}",
+                        package,
+                        version,
+                        req
+                    );
                 }
             }
             return Ok(version.clone());
         }
 
         // Get available versions
-        let versions = self.provider.get_available_versions(package)
+        let versions = self
+            .provider
+            .get_available_versions(package)
             .map_err(|e| anyhow!("Cannot fetch versions for {}: {}", package, e))?;
 
         if versions.is_empty() {
@@ -183,8 +205,13 @@ impl<'a> DependencyResolver<'a> {
                     package, req_strs, versions)
             })?;
 
-        println!("    {} {} v{} (satisfies {} constraints)",
-            "✓".green(), package, version, requirements.len());
+        println!(
+            "    {} {} v{} (satisfies {} constraints)",
+            "✓".green(),
+            package,
+            version,
+            requirements.len()
+        );
 
         self.resolved.insert(package.to_string(), version.clone());
         Ok(version)
@@ -235,19 +262,27 @@ mod tests {
         }
 
         fn add_deps(&mut self, package: &str, version: Version, deps: Vec<DependencySpec>) {
-            self.dependencies.insert((package.to_string(), version), deps);
+            self.dependencies
+                .insert((package.to_string(), version), deps);
         }
     }
 
     impl PackageProvider for MockProvider {
         fn get_available_versions(&self, package: &str) -> Result<Vec<Version>> {
-            self.versions.get(package)
+            self.versions
+                .get(package)
                 .cloned()
                 .ok_or_else(|| anyhow!("Package not found: {}", package))
         }
 
-        fn get_dependencies(&self, package: &str, version: &Version) -> Result<Vec<DependencySpec>> {
-            Ok(self.dependencies.get(&(package.to_string(), version.clone()))
+        fn get_dependencies(
+            &self,
+            package: &str,
+            version: &Version,
+        ) -> Result<Vec<DependencySpec>> {
+            Ok(self
+                .dependencies
+                .get(&(package.to_string(), version.clone()))
                 .cloned()
                 .unwrap_or_default())
         }
@@ -270,14 +305,8 @@ mod tests {
     fn test_simple_resolution() {
         let mut provider = MockProvider::new();
 
-        provider.add_versions("pkg_a", vec![
-            Version::new(1, 0, 0),
-            Version::new(1, 1, 0),
-        ]);
-        provider.add_versions("pkg_b", vec![
-            Version::new(2, 0, 0),
-            Version::new(2, 1, 0),
-        ]);
+        provider.add_versions("pkg_a", vec![Version::new(1, 0, 0), Version::new(1, 1, 0)]);
+        provider.add_versions("pkg_b", vec![Version::new(2, 0, 0), Version::new(2, 1, 0)]);
 
         provider.add_deps(
             "pkg_a",
@@ -289,12 +318,10 @@ mod tests {
         );
 
         let mut resolver = DependencyResolver::new(&provider);
-        let root_deps = vec![
-            DependencySpec {
-                name: "pkg_a".to_string(),
-                requirement: VersionReq::parse("^1.0.0").unwrap(),
-            },
-        ];
+        let root_deps = vec![DependencySpec {
+            name: "pkg_a".to_string(),
+            requirement: VersionReq::parse("^1.0.0").unwrap(),
+        }];
 
         let resolved = resolver.resolve(root_deps).unwrap();
         assert_eq!(resolved.len(), 2);

@@ -67,3 +67,7 @@ bytemuck = { version = "1.0", features = ["derive"] }
 
 # Testing
 approx = "0.5"
+
+[patch.crates-io]
+# Patch rplidar_drv to fix packed field alignment error
+rplidar_drv = { path = ".cargo-patches/rplidar_drv" }

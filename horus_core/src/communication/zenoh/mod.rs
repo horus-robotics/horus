@@ -1,20 +1,20 @@
 //! Zenoh integration for HORUS
-//! 
+//!
 //! Distributed IPC using Zenoh for network-based and cross-platform scenarios:
 //! - Publisher: Network-aware message publishing with automatic discovery
 //! - Subscriber: Network-aware message consumption with filtering
 //! - Session: Zenoh session management and configuration
 
+use std::sync::Arc;
 #[cfg(feature = "zenoh")]
 use zenoh::*;
-use std::sync::Arc;
 
-pub mod session;
 pub mod publisher;
+pub mod session;
 pub mod subscriber;
 
-pub use session::Session;
 pub use publisher::Publisher;
+pub use session::Session;
 pub use subscriber::Subscriber;
 
 use crate::communication::traits::{Publisher as PublisherTrait, Subscriber as SubscriberTrait};
@@ -41,24 +41,25 @@ pub enum ZenohError {
 #[cfg(feature = "zenoh")]
 mod implementations {
     use super::*;
-    
+
     // Implement common traits for Zenoh Publisher
     impl<T> PublisherTrait<T> for Publisher<T>
     where
-        T: Send + Sync + Clone + std::fmt::Debug + serde::Serialize + 'static
+        T: Send + Sync + Clone + std::fmt::Debug + serde::Serialize + 'static,
     {
         fn send(&self, msg: T) -> crate::error::HorusResult<()> {
-            self.send(msg).map_err(|e| crate::error::HorusError::Backend {
-                backend: "zenoh".to_string(),
-                message: e.to_string()
-            })
+            self.send(msg)
+                .map_err(|e| crate::error::HorusError::Backend {
+                    backend: "zenoh".to_string(),
+                    message: e.to_string(),
+                })
         }
     }
 
-    // Implement common traits for Zenoh Subscriber  
+    // Implement common traits for Zenoh Subscriber
     impl<T> SubscriberTrait<T> for Subscriber<T>
     where
-        T: Send + Sync + Clone + std::fmt::Debug + serde::de::DeserializeOwned + 'static
+        T: Send + Sync + Clone + std::fmt::Debug + serde::de::DeserializeOwned + 'static,
     {
         fn try_recv(&self) -> Option<T> {
             self.recv()

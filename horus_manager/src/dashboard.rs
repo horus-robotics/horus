@@ -1,5 +1,8 @@
 use axum::{
-    extract::{Path, Query, State, ws::{Message, WebSocket, WebSocketUpgrade}},
+    extract::{
+        ws::{Message, WebSocket, WebSocketUpgrade},
+        Path, Query, State,
+    },
     http::StatusCode,
     response::{Html, IntoResponse, Response},
     routing::{get, post},
@@ -30,13 +33,11 @@ fn get_local_ip() -> Option<String> {
 pub async fn run(port: u16) -> anyhow::Result<()> {
     eprintln!("📋 Dashboard will read logs from shared memory ring buffer at /dev/shm/horus_logs");
 
-    let params = Arc::new(horus_core::RuntimeParams::init()
-        .unwrap_or_else(|_| horus_core::RuntimeParams::default()));
+    let params = Arc::new(
+        horus_core::RuntimeParams::init().unwrap_or_else(|_| horus_core::RuntimeParams::default()),
+    );
 
-    let state = Arc::new(AppState {
-        port,
-        params,
-    });
+    let state = Arc::new(AppState { port, params });
 
     let app = Router::new()
         .route("/", get(index_handler))
@@ -48,7 +49,10 @@ pub async fn run(port: u16) -> anyhow::Result<()> {
         .route("/api/logs/node/:name", get(logs_node_handler))
         .route("/api/logs/topic/:name", get(logs_topic_handler))
         .route("/api/packages/registry", get(packages_registry_handler))
-        .route("/api/packages/environments", get(packages_environments_handler))
+        .route(
+            "/api/packages/environments",
+            get(packages_environments_handler),
+        )
         .route("/api/packages/install", post(packages_install_handler))
         .route("/api/packages/publish", post(packages_publish_handler))
         .route("/api/remote/deploy", post(remote_deploy_handler))
@@ -58,7 +62,10 @@ pub async fn run(port: u16) -> anyhow::Result<()> {
         .route("/api/params", get(params_list_handler))
         .route("/api/params/:key", get(params_get_handler))
         .route("/api/params/:key", post(params_set_handler))
-        .route("/api/params/:key", axum::routing::delete(params_delete_handler))
+        .route(
+            "/api/params/:key",
+            axum::routing::delete(params_delete_handler),
+        )
         .route("/api/params/export", post(params_export_handler))
         .route("/api/params/import", post(params_import_handler))
         .route("/api/ws", get(websocket_handler))
@@ -140,11 +147,21 @@ async fn status_handler() -> impl IntoResponse {
 
         // Build detailed health summary
         let mut details = Vec::new();
-        if critical > 0 { details.push(format!("{} critical", critical)); }
-        if error > 0 { details.push(format!("{} error", error)); }
-        if warning > 0 { details.push(format!("{} warning", warning)); }
-        if healthy > 0 { details.push(format!("{} healthy", healthy)); }
-        if unknown > 0 { details.push(format!("{} unknown", unknown)); }
+        if critical > 0 {
+            details.push(format!("{} critical", critical));
+        }
+        if error > 0 {
+            details.push(format!("{} error", error));
+        }
+        if warning > 0 {
+            details.push(format!("{} warning", warning));
+        }
+        if healthy > 0 {
+            details.push(format!("{} healthy", healthy));
+        }
+        if unknown > 0 {
+            details.push(format!("{} unknown", unknown));
+        }
 
         let health_summary = if details.is_empty() {
             format!("{} nodes", nodes_count)
@@ -174,18 +191,20 @@ async fn nodes_handler() -> impl IntoResponse {
     let nodes = crate::commands::monitor::discover_nodes()
         .unwrap_or_default()
         .into_iter()
-        .map(|n| serde_json::json!({
-            "name": n.name,
-            "pid": n.process_id,
-            "status": n.status,
-            "health": n.health.as_str(),
-            "health_color": n.health.color(),
-            "cpu": format!("{:.1}%", n.cpu_usage),
-            "memory": format!("{} MB", n.memory_usage / 1024 / 1024),
-            "tick_count": n.tick_count,
-            "error_count": n.error_count,
-            "tick_rate": n.actual_rate_hz,
-        }))
+        .map(|n| {
+            serde_json::json!({
+                "name": n.name,
+                "pid": n.process_id,
+                "status": n.status,
+                "health": n.health.as_str(),
+                "health_color": n.health.color(),
+                "cpu": format!("{:.1}%", n.cpu_usage),
+                "memory": format!("{} MB", n.memory_usage / 1024 / 1024),
+                "tick_count": n.tick_count,
+                "error_count": n.error_count,
+                "tick_rate": n.actual_rate_hz,
+            })
+        })
         .collect::<Vec<_>>();
 
     (
@@ -205,7 +224,8 @@ async fn topics_handler() -> impl IntoResponse {
         .map(|t| {
             // Convert IPC name to original format for display
             // horus_sensors_lidar -> sensors/lidar
-            let display_name = t.topic_name
+            let display_name = t
+                .topic_name
                 .strip_prefix("horus_")
                 .unwrap_or(&t.topic_name)
                 .replace("_", "/");
@@ -232,26 +252,36 @@ async fn graph_handler() -> impl IntoResponse {
     // Use graph module to get nodes and edges
     let (nodes, edges) = crate::graph::discover_graph_data();
 
-    let graph_nodes = nodes.into_iter().map(|n| serde_json::json!({
-        "id": n.id,
-        "label": n.label,
-        "type": match n.node_type {
-            crate::graph::NodeType::Process => "process",
-            crate::graph::NodeType::Topic => "topic",
-        },
-        "pid": n.pid,
-        "active": n.active,
-    })).collect::<Vec<_>>();
+    let graph_nodes = nodes
+        .into_iter()
+        .map(|n| {
+            serde_json::json!({
+                "id": n.id,
+                "label": n.label,
+                "type": match n.node_type {
+                    crate::graph::NodeType::Process => "process",
+                    crate::graph::NodeType::Topic => "topic",
+                },
+                "pid": n.pid,
+                "active": n.active,
+            })
+        })
+        .collect::<Vec<_>>();
 
-    let graph_edges = edges.into_iter().map(|e| serde_json::json!({
-        "from": e.from,
-        "to": e.to,
-        "type": match e.edge_type {
-            crate::graph::EdgeType::Publish => "publish",
-            crate::graph::EdgeType::Subscribe => "subscribe",
-        },
-        "active": e.active,
-    })).collect::<Vec<_>>();
+    let graph_edges = edges
+        .into_iter()
+        .map(|e| {
+            serde_json::json!({
+                "from": e.from,
+                "to": e.to,
+                "type": match e.edge_type {
+                    crate::graph::EdgeType::Publish => "publish",
+                    crate::graph::EdgeType::Subscribe => "subscribe",
+                },
+                "active": e.active,
+            })
+        })
+        .collect::<Vec<_>>();
 
     (
         StatusCode::OK,
@@ -277,9 +307,7 @@ async fn logs_all_handler() -> impl IntoResponse {
     )
 }
 
-async fn logs_node_handler(
-    Path(node_name): Path<String>
-) -> impl IntoResponse {
+async fn logs_node_handler(Path(node_name): Path<String>) -> impl IntoResponse {
     use horus_core::core::log_buffer::GLOBAL_LOG_BUFFER;
 
     eprintln!("🔍 API: Fetching logs for node '{}'", node_name);
@@ -296,9 +324,7 @@ async fn logs_node_handler(
     )
 }
 
-async fn logs_topic_handler(
-    Path(topic_name): Path<String>
-) -> impl IntoResponse {
+async fn logs_topic_handler(Path(topic_name): Path<String>) -> impl IntoResponse {
     use horus_core::core::log_buffer::GLOBAL_LOG_BUFFER;
 
     // Convert IPC topic name back to original format
@@ -308,7 +334,10 @@ async fn logs_topic_handler(
         .unwrap_or(&topic_name)
         .replace("_", "/");
 
-    eprintln!("🔍 API: Fetching logs for topic '{}' (original: '{}')", topic_name, original_topic);
+    eprintln!(
+        "🔍 API: Fetching logs for topic '{}' (original: '{}')",
+        topic_name, original_topic
+    );
     let logs = GLOBAL_LOG_BUFFER.get_for_topic(&original_topic);
     eprintln!("📊 API: Found {} logs for '{}'", logs.len(), original_topic);
 
@@ -335,36 +364,44 @@ async fn packages_registry_handler(Query(query): Query<SearchQuery>) -> impl Int
     let result = tokio::task::spawn_blocking(move || {
         let client = RegistryClient::new();
         client.search(&query.q)
-    }).await;
+    })
+    .await;
 
     match result {
         Ok(Ok(packages)) => {
-            let pkgs = packages.into_iter().map(|p| serde_json::json!({
-                "name": p.name,
-                "version": p.version,
-                "description": p.description.unwrap_or_default(),
-            })).collect::<Vec<_>>();
+            let pkgs = packages
+                .into_iter()
+                .map(|p| {
+                    serde_json::json!({
+                        "name": p.name,
+                        "version": p.version,
+                        "description": p.description.unwrap_or_default(),
+                    })
+                })
+                .collect::<Vec<_>>();
 
             (
                 StatusCode::OK,
                 serde_json::json!({
                     "packages": pkgs
-                }).to_string(),
+                })
+                .to_string(),
             )
         }
         _ => (
             StatusCode::INTERNAL_SERVER_ERROR,
             serde_json::json!({
                 "error": "Failed to search packages"
-            }).to_string(),
-        )
+            })
+            .to_string(),
+        ),
     }
 }
 
 // Environments: Show global packages and local environments
 async fn packages_environments_handler() -> impl IntoResponse {
-    use std::path::PathBuf;
     use std::fs;
+    use std::path::PathBuf;
 
     let result = tokio::task::spawn_blocking(move || {
         let mut global_packages = Vec::new();
@@ -384,8 +421,14 @@ async fn packages_environments_handler() -> impl IntoResponse {
                             let version = if metadata_path.exists() {
                                 fs::read_to_string(&metadata_path)
                                     .ok()
-                                    .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
-                                    .and_then(|j| j.get("version").and_then(|v| v.as_str()).map(|s| s.to_string()))
+                                    .and_then(|s| {
+                                        serde_json::from_str::<serde_json::Value>(&s).ok()
+                                    })
+                                    .and_then(|j| {
+                                        j.get("version")
+                                            .and_then(|v| v.as_str())
+                                            .map(|s| s.to_string())
+                                    })
                                     .unwrap_or_else(|| "unknown".to_string())
                             } else {
                                 "unknown".to_string()
@@ -403,10 +446,7 @@ async fn packages_environments_handler() -> impl IntoResponse {
 
         // 2. Local Environments: Find all directories with .horus/ subdirectory
         // Search in current dir and home dir
-        let search_paths = vec![
-            PathBuf::from("."),
-            dirs::home_dir().unwrap_or_default(),
-        ];
+        let search_paths = vec![PathBuf::from("."), dirs::home_dir().unwrap_or_default()];
 
         for base_path in search_paths {
             if !base_path.exists() {
@@ -433,15 +473,23 @@ async fn packages_environments_handler() -> impl IntoResponse {
                             if let Ok(pkg_entries) = fs::read_dir(&packages_dir) {
                                 for pkg_entry in pkg_entries.flatten() {
                                     if pkg_entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                                        let pkg_name = pkg_entry.file_name().to_string_lossy().to_string();
+                                        let pkg_name =
+                                            pkg_entry.file_name().to_string_lossy().to_string();
 
                                         // Try to get version
                                         let metadata_path = pkg_entry.path().join("metadata.json");
                                         let version = if metadata_path.exists() {
                                             fs::read_to_string(&metadata_path)
                                                 .ok()
-                                                .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
-                                                .and_then(|j| j.get("version").and_then(|v| v.as_str()).map(|s| s.to_string()))
+                                                .and_then(|s| {
+                                                    serde_json::from_str::<serde_json::Value>(&s)
+                                                        .ok()
+                                                })
+                                                .and_then(|j| {
+                                                    j.get("version")
+                                                        .and_then(|v| v.as_str())
+                                                        .map(|s| s.to_string())
+                                                })
                                                 .unwrap_or_else(|| "unknown".to_string())
                                         } else {
                                             "unknown".to_string()
@@ -471,19 +519,18 @@ async fn packages_environments_handler() -> impl IntoResponse {
             "global": global_packages,
             "local": local_envs
         })
-    }).await;
+    })
+    .await;
 
     match result {
-        Ok(data) => (
-            StatusCode::OK,
-            data.to_string(),
-        ),
+        Ok(data) => (StatusCode::OK, data.to_string()),
         Err(_) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             serde_json::json!({
                 "error": "Failed to list environments"
-            }).to_string(),
-        )
+            })
+            .to_string(),
+        ),
     }
 }
 
@@ -500,7 +547,8 @@ async fn packages_install_handler(Json(req): Json<InstallRequest>) -> impl IntoR
     let result = tokio::task::spawn_blocking(move || {
         let client = RegistryClient::new();
         client.install(&req.package, None)
-    }).await;
+    })
+    .await;
 
     match result {
         Ok(Ok(_)) => (
@@ -508,22 +556,25 @@ async fn packages_install_handler(Json(req): Json<InstallRequest>) -> impl IntoR
             serde_json::json!({
                 "success": true,
                 "message": format!("Successfully installed {}", package_name)
-            }).to_string(),
+            })
+            .to_string(),
         ),
         Ok(Err(e)) => (
             StatusCode::BAD_REQUEST,
             serde_json::json!({
                 "success": false,
                 "error": e.to_string()
-            }).to_string(),
+            })
+            .to_string(),
         ),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             serde_json::json!({
                 "success": false,
                 "error": format!("Task failed: {}", e)
-            }).to_string(),
-        )
+            })
+            .to_string(),
+        ),
     }
 }
 
@@ -533,7 +584,8 @@ async fn packages_publish_handler() -> impl IntoResponse {
     let result = tokio::task::spawn_blocking(move || {
         let client = RegistryClient::new();
         client.publish(None)
-    }).await;
+    })
+    .await;
 
     match result {
         Ok(Ok(_)) => (
@@ -541,22 +593,25 @@ async fn packages_publish_handler() -> impl IntoResponse {
             serde_json::json!({
                 "success": true,
                 "message": "Package published successfully"
-            }).to_string(),
+            })
+            .to_string(),
         ),
         Ok(Err(e)) => (
             StatusCode::BAD_REQUEST,
             serde_json::json!({
                 "success": false,
                 "error": e.to_string()
-            }).to_string(),
+            })
+            .to_string(),
         ),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             serde_json::json!({
                 "success": false,
                 "error": format!("Task failed: {}", e)
-            }).to_string(),
-        )
+            })
+            .to_string(),
+        ),
     }
 }
 
@@ -574,9 +629,7 @@ async fn remote_deploy_handler(Json(req): Json<DeployRequest>) -> impl IntoRespo
     let file = req.file.map(PathBuf::from);
     let robot_addr = req.robot_addr.clone();
 
-    let result = tokio::task::spawn_blocking(move || {
-        execute_remote(&robot_addr, file)
-    }).await;
+    let result = tokio::task::spawn_blocking(move || execute_remote(&robot_addr, file)).await;
 
     match result {
         Ok(Ok(_)) => (
@@ -584,22 +637,25 @@ async fn remote_deploy_handler(Json(req): Json<DeployRequest>) -> impl IntoRespo
             serde_json::json!({
                 "success": true,
                 "message": format!("Successfully deployed to {}", req.robot_addr)
-            }).to_string(),
+            })
+            .to_string(),
         ),
         Ok(Err(e)) => (
             StatusCode::BAD_REQUEST,
             serde_json::json!({
                 "success": false,
                 "error": e.to_string()
-            }).to_string(),
+            })
+            .to_string(),
         ),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             serde_json::json!({
                 "success": false,
                 "error": format!("Task failed: {}", e)
-            }).to_string(),
-        )
+            })
+            .to_string(),
+        ),
     }
 }
 
@@ -613,28 +669,25 @@ async fn remote_deployments_handler(Json(req): Json<RobotRequest>) -> impl IntoR
     let url = normalize_daemon_url(&req.robot_addr, "/deployments");
 
     match reqwest::get(&url).await {
-        Ok(response) => {
-            match response.json::<serde_json::Value>().await {
-                Ok(data) => (
-                    StatusCode::OK,
-                    serde_json::to_string(&data).unwrap()
-                ),
-                Err(e) => (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    serde_json::json!({
-                        "success": false,
-                        "error": format!("Failed to parse response: {}", e)
-                    }).to_string()
-                )
-            }
+        Ok(response) => match response.json::<serde_json::Value>().await {
+            Ok(data) => (StatusCode::OK, serde_json::to_string(&data).unwrap()),
+            Err(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                serde_json::json!({
+                    "success": false,
+                    "error": format!("Failed to parse response: {}", e)
+                })
+                .to_string(),
+            ),
         },
         Err(e) => (
             StatusCode::BAD_REQUEST,
             serde_json::json!({
                 "success": false,
                 "error": format!("Failed to connect to robot: {}", e)
-            }).to_string()
-        )
+            })
+            .to_string(),
+        ),
     }
 }
 
@@ -643,28 +696,25 @@ async fn remote_hardware_handler(Json(req): Json<RobotRequest>) -> impl IntoResp
     let url = normalize_daemon_url(&req.robot_addr, "/hardware");
 
     match reqwest::get(&url).await {
-        Ok(response) => {
-            match response.json::<serde_json::Value>().await {
-                Ok(data) => (
-                    StatusCode::OK,
-                    serde_json::to_string(&data).unwrap()
-                ),
-                Err(e) => (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    serde_json::json!({
-                        "success": false,
-                        "error": format!("Failed to parse response: {}", e)
-                    }).to_string()
-                )
-            }
+        Ok(response) => match response.json::<serde_json::Value>().await {
+            Ok(data) => (StatusCode::OK, serde_json::to_string(&data).unwrap()),
+            Err(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                serde_json::json!({
+                    "success": false,
+                    "error": format!("Failed to parse response: {}", e)
+                })
+                .to_string(),
+            ),
         },
         Err(e) => (
             StatusCode::BAD_REQUEST,
             serde_json::json!({
                 "success": false,
                 "error": format!("Failed to connect to robot: {}", e)
-            }).to_string()
-        )
+            })
+            .to_string(),
+        ),
     }
 }
 
@@ -676,32 +726,32 @@ struct StopRequest {
 }
 
 async fn remote_stop_handler(Json(req): Json<StopRequest>) -> impl IntoResponse {
-    let url = normalize_daemon_url(&req.robot_addr, &format!("/deployments/{}/stop", req.deployment_id));
+    let url = normalize_daemon_url(
+        &req.robot_addr,
+        &format!("/deployments/{}/stop", req.deployment_id),
+    );
 
     let client = reqwest::Client::new();
     match client.post(&url).send().await {
-        Ok(response) => {
-            match response.json::<serde_json::Value>().await {
-                Ok(data) => (
-                    StatusCode::OK,
-                    serde_json::to_string(&data).unwrap()
-                ),
-                Err(e) => (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    serde_json::json!({
-                        "success": false,
-                        "error": format!("Failed to parse response: {}", e)
-                    }).to_string()
-                )
-            }
+        Ok(response) => match response.json::<serde_json::Value>().await {
+            Ok(data) => (StatusCode::OK, serde_json::to_string(&data).unwrap()),
+            Err(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                serde_json::json!({
+                    "success": false,
+                    "error": format!("Failed to parse response: {}", e)
+                })
+                .to_string(),
+            ),
         },
         Err(e) => (
             StatusCode::BAD_REQUEST,
             serde_json::json!({
                 "success": false,
                 "error": format!("Failed to stop deployment: {}", e)
-            }).to_string()
-        )
+            })
+            .to_string(),
+        ),
     }
 }
 
@@ -728,19 +778,22 @@ fn normalize_daemon_url(addr: &str, path: &str) -> String {
 async fn params_list_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let params_map = state.params.get_all();
 
-    let params_list: Vec<_> = params_map.iter()
-        .map(|(key, value)| serde_json::json!({
-            "key": key,
-            "value": value,
-            "type": match value {
-                serde_json::Value::Number(_) => "number",
-                serde_json::Value::String(_) => "string",
-                serde_json::Value::Bool(_) => "boolean",
-                serde_json::Value::Array(_) => "array",
-                serde_json::Value::Object(_) => "object",
-                serde_json::Value::Null => "null",
-            }
-        }))
+    let params_list: Vec<_> = params_map
+        .iter()
+        .map(|(key, value)| {
+            serde_json::json!({
+                "key": key,
+                "value": value,
+                "type": match value {
+                    serde_json::Value::Number(_) => "number",
+                    serde_json::Value::String(_) => "string",
+                    serde_json::Value::Bool(_) => "boolean",
+                    serde_json::Value::Array(_) => "array",
+                    serde_json::Value::Object(_) => "object",
+                    serde_json::Value::Null => "null",
+                }
+            })
+        })
         .collect();
 
     (
@@ -749,14 +802,15 @@ async fn params_list_handler(State(state): State<Arc<AppState>>) -> impl IntoRes
             "success": true,
             "params": params_list,
             "count": params_list.len()
-        }).to_string()
+        })
+        .to_string(),
     )
 }
 
 /// Get a specific parameter
 async fn params_get_handler(
     State(state): State<Arc<AppState>>,
-    Path(key): Path<String>
+    Path(key): Path<String>,
 ) -> impl IntoResponse {
     match state.params.get::<serde_json::Value>(&key) {
         Some(value) => (
@@ -765,15 +819,17 @@ async fn params_get_handler(
                 "success": true,
                 "key": key,
                 "value": value
-            }).to_string()
+            })
+            .to_string(),
         ),
         None => (
             StatusCode::NOT_FOUND,
             serde_json::json!({
                 "success": false,
                 "error": format!("Parameter '{}' not found", key)
-            }).to_string()
-        )
+            })
+            .to_string(),
+        ),
     }
 }
 
@@ -786,7 +842,7 @@ struct SetParamRequest {
 async fn params_set_handler(
     State(state): State<Arc<AppState>>,
     Path(key): Path<String>,
-    Json(req): Json<SetParamRequest>
+    Json(req): Json<SetParamRequest>,
 ) -> impl IntoResponse {
     match state.params.set(&key, req.value.clone()) {
         Ok(_) => {
@@ -800,23 +856,25 @@ async fn params_set_handler(
                     "message": format!("Parameter '{}' updated", key),
                     "key": key,
                     "value": req.value
-                }).to_string()
+                })
+                .to_string(),
             )
-        },
+        }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             serde_json::json!({
                 "success": false,
                 "error": e.to_string()
-            }).to_string()
-        )
+            })
+            .to_string(),
+        ),
     }
 }
 
 /// Delete a parameter
 async fn params_delete_handler(
     State(state): State<Arc<AppState>>,
-    Path(key): Path<String>
+    Path(key): Path<String>,
 ) -> impl IntoResponse {
     match state.params.remove(&key) {
         Some(old_value) => {
@@ -830,16 +888,18 @@ async fn params_delete_handler(
                     "message": format!("Parameter '{}' deleted", key),
                     "key": key,
                     "old_value": old_value
-                }).to_string()
+                })
+                .to_string(),
             )
-        },
+        }
         None => (
             StatusCode::NOT_FOUND,
             serde_json::json!({
                 "success": false,
                 "error": format!("Parameter '{}' not found", key)
-            }).to_string()
-        )
+            })
+            .to_string(),
+        ),
     }
 }
 
@@ -854,15 +914,17 @@ async fn params_export_handler(State(state): State<Arc<AppState>>) -> impl IntoR
                 "success": true,
                 "format": "yaml",
                 "data": yaml
-            }).to_string()
+            })
+            .to_string(),
         ),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             serde_json::json!({
                 "success": false,
                 "error": e.to_string()
-            }).to_string()
-        )
+            })
+            .to_string(),
+        ),
     }
 }
 
@@ -875,9 +937,12 @@ struct ImportParamsRequest {
 /// Import parameters
 async fn params_import_handler(
     State(state): State<Arc<AppState>>,
-    Json(req): Json<ImportParamsRequest>
+    Json(req): Json<ImportParamsRequest>,
 ) -> impl IntoResponse {
-    let import_result: Result<std::collections::BTreeMap<String, serde_json::Value>, Box<dyn std::error::Error>> =
+    let import_result: Result<
+        std::collections::BTreeMap<String, serde_json::Value>,
+        Box<dyn std::error::Error>,
+    > =
         match req.format.as_str() {
             "yaml" => serde_yaml::from_str(&req.data)
                 .map_err(|e| Box::new(e) as Box<dyn std::error::Error>),
@@ -889,7 +954,8 @@ async fn params_import_handler(
                     serde_json::json!({
                         "success": false,
                         "error": "Invalid format. Use 'yaml' or 'json'"
-                    }).to_string()
+                    })
+                    .to_string(),
                 );
             }
         };
@@ -912,23 +978,23 @@ async fn params_import_handler(
                     "success": true,
                     "message": format!("Imported {} parameters", count),
                     "count": count
-                }).to_string()
+                })
+                .to_string(),
             )
-        },
+        }
         Err(e) => (
             StatusCode::BAD_REQUEST,
             serde_json::json!({
                 "success": false,
                 "error": format!("Failed to parse {}: {}", req.format, e)
-            }).to_string()
-        )
+            })
+            .to_string(),
+        ),
     }
 }
 
 // WebSocket handler for real-time updates
-async fn websocket_handler(
-    ws: WebSocketUpgrade,
-) -> impl IntoResponse {
+async fn websocket_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
     ws.on_upgrade(handle_websocket)
 }
 
@@ -947,27 +1013,31 @@ async fn handle_websocket(socket: WebSocket) {
                 crate::commands::monitor::discover_nodes()
                     .unwrap_or_default()
                     .into_iter()
-                    .map(|n| serde_json::json!({
-                        "name": n.name,
-                        "pid": n.process_id,
-                        "status": n.status,
-                        "health": n.health.as_str(),
-                        "health_color": n.health.color(),
-                        "cpu": format!("{:.1}%", n.cpu_usage),
-                        "memory": format!("{} MB", n.memory_usage / 1024 / 1024),
-                    }))
+                    .map(|n| {
+                        serde_json::json!({
+                            "name": n.name,
+                            "pid": n.process_id,
+                            "status": n.status,
+                            "health": n.health.as_str(),
+                            "health_color": n.health.color(),
+                            "cpu": format!("{:.1}%", n.cpu_usage),
+                            "memory": format!("{} MB", n.memory_usage / 1024 / 1024),
+                        })
+                    })
                     .collect::<Vec<_>>()
             }),
             tokio::task::spawn_blocking(|| {
                 crate::commands::monitor::discover_shared_memory()
                     .unwrap_or_default()
                     .into_iter()
-                    .map(|t| serde_json::json!({
-                        "name": t.topic_name,
-                        "size": format!("{} KB", t.size_bytes / 1024),
-                        "active": t.active,
-                        "processes": t.accessing_processes.len(),
-                    }))
+                    .map(|t| {
+                        serde_json::json!({
+                            "name": t.topic_name,
+                            "size": format!("{} KB", t.size_bytes / 1024),
+                            "active": t.active,
+                            "processes": t.accessing_processes.len(),
+                        })
+                    })
                     .collect::<Vec<_>>()
             }),
             tokio::task::spawn_blocking(|| {
@@ -982,26 +1052,36 @@ async fn handle_websocket(socket: WebSocket) {
         let (graph_nodes, graph_edges) = graph_result.unwrap_or_default();
 
         // Convert graph data
-        let graph_nodes_json = graph_nodes.into_iter().map(|n| serde_json::json!({
-            "id": n.id,
-            "label": n.label,
-            "type": match n.node_type {
-                crate::graph::NodeType::Process => "process",
-                crate::graph::NodeType::Topic => "topic",
-            },
-            "pid": n.pid,
-            "active": n.active,
-        })).collect::<Vec<_>>();
+        let graph_nodes_json = graph_nodes
+            .into_iter()
+            .map(|n| {
+                serde_json::json!({
+                    "id": n.id,
+                    "label": n.label,
+                    "type": match n.node_type {
+                        crate::graph::NodeType::Process => "process",
+                        crate::graph::NodeType::Topic => "topic",
+                    },
+                    "pid": n.pid,
+                    "active": n.active,
+                })
+            })
+            .collect::<Vec<_>>();
 
-        let graph_edges_json = graph_edges.into_iter().map(|e| serde_json::json!({
-            "from": e.from,
-            "to": e.to,
-            "type": match e.edge_type {
-                crate::graph::EdgeType::Publish => "publish",
-                crate::graph::EdgeType::Subscribe => "subscribe",
-            },
-            "active": e.active,
-        })).collect::<Vec<_>>();
+        let graph_edges_json = graph_edges
+            .into_iter()
+            .map(|e| {
+                serde_json::json!({
+                    "from": e.from,
+                    "to": e.to,
+                    "type": match e.edge_type {
+                        crate::graph::EdgeType::Publish => "publish",
+                        crate::graph::EdgeType::Subscribe => "subscribe",
+                    },
+                    "active": e.active,
+                })
+            })
+            .collect::<Vec<_>>();
 
         // Build update message
         let update = serde_json::json!({
@@ -1018,7 +1098,11 @@ async fn handle_websocket(socket: WebSocket) {
         });
 
         // Send to client
-        if sender.send(Message::Text(update.to_string())).await.is_err() {
+        if sender
+            .send(Message::Text(update.to_string()))
+            .await
+            .is_err()
+        {
             break; // Client disconnected
         }
     }

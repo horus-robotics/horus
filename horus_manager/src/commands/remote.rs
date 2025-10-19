@@ -15,7 +15,11 @@ struct DeployResponse {
 }
 
 pub fn execute_remote(robot_addr: &str, file: Option<PathBuf>) -> Result<()> {
-    println!("{} Deploying to remote robot: {}", "→".cyan(), robot_addr.yellow());
+    println!(
+        "{} Deploying to remote robot: {}",
+        "→".cyan(),
+        robot_addr.yellow()
+    );
 
     let project_dir = std::env::current_dir()?;
 
@@ -71,9 +75,11 @@ fn detect_entry_file(dir: &PathBuf) -> Result<PathBuf> {
         return Ok(first_file.clone());
     }
 
-    anyhow::bail!("No source files found in current directory.\n\n\
+    anyhow::bail!(
+        "No source files found in current directory.\n\n\
         Supported files: .rs (Rust), .py (Python), .c (C)\n\
-        Tip: Create a main.rs, main.py, or main.c file")
+        Tip: Create a main.rs, main.py, or main.c file"
+    )
 }
 
 fn package_project(entry_file: &PathBuf) -> Result<Vec<u8>> {

@@ -1,7 +1,7 @@
-use horus_core::{Node, NodeInfo, Hub};
-use crate::{LaserScan, Odometry, EmergencyStop, DigitalIO};
-use std::time::{SystemTime, UNIX_EPOCH};
+use crate::{DigitalIO, EmergencyStop, LaserScan, Odometry};
+use horus_core::{Hub, Node, NodeInfo};
 use std::collections::VecDeque;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Collision Detector Node - Safety system for obstacle avoidance and collision prevention
 ///
@@ -14,8 +14,8 @@ pub struct CollisionDetectorNode {
     digital_io_subscriber: Hub<DigitalIO>, // For safety sensors
 
     // Safety zones (distances in meters)
-    critical_zone: f64,  // Immediate stop zone
-    warning_zone: f64,   // Slow down zone
+    critical_zone: f64,   // Immediate stop zone
+    warning_zone: f64,    // Slow down zone
     monitoring_zone: f64, // Track obstacles zone
 
     // Robot geometry
@@ -58,9 +58,15 @@ impl CollisionDetectorNode {
     }
 
     /// Create a new collision detector node with custom topics
-    pub fn new_with_topics(emergency_topic: &str, lidar_topic: &str, odom_topic: &str, io_topic: &str) -> Self {
+    pub fn new_with_topics(
+        emergency_topic: &str,
+        lidar_topic: &str,
+        odom_topic: &str,
+        io_topic: &str,
+    ) -> Self {
         Self {
-            emergency_publisher: Hub::new(emergency_topic).expect("Failed to create emergency stop publisher"),
+            emergency_publisher: Hub::new(emergency_topic)
+                .expect("Failed to create emergency stop publisher"),
             lidar_subscriber: Hub::new(lidar_topic).expect("Failed to subscribe to lidar"),
             odometry_subscriber: Hub::new(odom_topic).expect("Failed to subscribe to odometry"),
             digital_io_subscriber: Hub::new(io_topic).expect("Failed to subscribe to digital I/O"),
@@ -68,12 +74,12 @@ impl CollisionDetectorNode {
             // Default safety zones
             critical_zone: 0.3,   // 30cm immediate stop
             warning_zone: 0.8,    // 80cm slow down
-            monitoring_zone: 2.0,  // 2m obstacle tracking
+            monitoring_zone: 2.0, // 2m obstacle tracking
 
             // Default robot geometry
-            robot_width: 0.6,     // 60cm wide robot
-            robot_length: 0.8,    // 80cm long robot
-            safety_margin: 0.1,   // 10cm additional margin
+            robot_width: 0.6,   // 60cm wide robot
+            robot_length: 0.8,  // 80cm long robot
+            safety_margin: 0.1, // 10cm additional margin
 
             current_velocity: (0.0, 0.0, 0.0),
             current_pose: (0.0, 0.0, 0.0),
@@ -85,7 +91,7 @@ impl CollisionDetectorNode {
 
             velocity_dependent_zones: true,
             min_stopping_distance: 0.2, // 20cm minimum
-            max_deceleration: 2.0,       // 2 m/s² max braking
+            max_deceleration: 2.0,      // 2 m/s² max braking
 
             collision_history: VecDeque::new(),
             history_length: 5, // Track last 5 readings
@@ -145,7 +151,8 @@ impl CollisionDetectorNode {
         let speed = (self.current_velocity.0.powi(2) + self.current_velocity.1.powi(2)).sqrt();
 
         // Calculate stopping distance: v²/(2*a) + safety margin
-        let stopping_distance = (speed * speed) / (2.0 * self.max_deceleration) + self.min_stopping_distance;
+        let stopping_distance =
+            (speed * speed) / (2.0 * self.max_deceleration) + self.min_stopping_distance;
 
         let dynamic_critical = stopping_distance.max(self.critical_zone);
         let dynamic_warning = (stopping_distance * 2.0).max(self.warning_zone);
@@ -193,7 +200,13 @@ impl CollisionDetectorNode {
         (critical_collision, warning_collision)
     }
 
-    fn is_in_collision_path(&self, obstacle_x: f64, obstacle_y: f64, range: f64, beam_angle: f64) -> bool {
+    fn is_in_collision_path(
+        &self,
+        obstacle_x: f64,
+        obstacle_y: f64,
+        range: f64,
+        beam_angle: f64,
+    ) -> bool {
         // Simple rectangular collision envelope around robot
         let robot_half_width = (self.robot_width + self.safety_margin) / 2.0;
         let robot_half_length = (self.robot_length + self.safety_margin) / 2.0;
@@ -295,7 +308,8 @@ impl CollisionDetectorNode {
         }
 
         // Log state changes for debugging
-        if self.collision_imminent != previous_collision || self.warning_active != previous_warning {
+        if self.collision_imminent != previous_collision || self.warning_active != previous_warning
+        {
             // In a real implementation, this would log to a proper logging system
         }
     }
@@ -318,7 +332,8 @@ impl CollisionDetectorNode {
     /// Get collision detection statistics
     pub fn get_detection_stats(&self) -> (usize, f64) {
         let total_obstacles = self.obstacles_detected.len();
-        let min_distance = self.obstacles_detected
+        let min_distance = self
+            .obstacles_detected
             .iter()
             .map(|&(x, y)| {
                 let dx = x - self.current_pose.0;
@@ -327,7 +342,14 @@ impl CollisionDetectorNode {
             })
             .fold(f64::INFINITY, f64::min);
 
-        (total_obstacles, if min_distance.is_finite() { min_distance } else { 0.0 })
+        (
+            total_obstacles,
+            if min_distance.is_finite() {
+                min_distance
+            } else {
+                0.0
+            },
+        )
     }
 }
 
@@ -339,11 +361,7 @@ impl Node for CollisionDetectorNode {
     fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
         // Update current pose and velocity
         if let Some(odom) = self.odometry_subscriber.recv(None) {
-            self.current_pose = (
-                odom.pose.x,
-                odom.pose.y,
-                odom.pose.theta,
-            );
+            self.current_pose = (odom.pose.x, odom.pose.y, odom.pose.theta);
 
             self.current_velocity = (
                 odom.twist.linear[0],
@@ -372,7 +390,11 @@ impl Node for CollisionDetectorNode {
         }
 
         // Update collision state and trigger emergency stops if necessary
-        self.update_collision_state(critical_collision, warning_collision, safety_sensors_triggered);
+        self.update_collision_state(
+            critical_collision,
+            warning_collision,
+            safety_sensors_triggered,
+        );
     }
 }
 

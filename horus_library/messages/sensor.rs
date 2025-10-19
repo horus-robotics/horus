@@ -3,9 +3,9 @@
 //! This module provides standard sensor data formats for common
 //! robotics sensors including lidar, IMU, cameras, and odometry.
 
+use crate::messages::geometry::{Pose2D, Quaternion, Twist, Vector3};
 use serde::{Deserialize, Serialize};
 use serde_arrays;
-use crate::messages::geometry::{Pose2D, Twist, Quaternion, Vector3};
 
 /// Laser scan data from a 2D lidar sensor
 ///
@@ -80,14 +80,16 @@ impl LaserScan {
 
     /// Count valid range readings
     pub fn valid_count(&self) -> usize {
-        self.ranges.iter()
+        self.ranges
+            .iter()
             .filter(|&&r| r >= self.range_min && r <= self.range_max && r.is_finite())
             .count()
     }
 
     /// Get minimum valid range reading
     pub fn min_range(&self) -> Option<f32> {
-        self.ranges.iter()
+        self.ranges
+            .iter()
             .filter(|&&r| r >= self.range_min && r <= self.range_max && r.is_finite())
             .min_by(|a, b| a.partial_cmp(b).unwrap())
             .copied()
@@ -146,9 +148,9 @@ impl Imu {
 
     /// Check if all values are finite
     pub fn is_valid(&self) -> bool {
-        self.orientation.iter().all(|v| v.is_finite()) &&
-        self.angular_velocity.iter().all(|v| v.is_finite()) &&
-        self.linear_acceleration.iter().all(|v| v.is_finite())
+        self.orientation.iter().all(|v| v.is_finite())
+            && self.angular_velocity.iter().all(|v| v.is_finite())
+            && self.linear_acceleration.iter().all(|v| v.is_finite())
     }
 
     /// Get angular velocity as Vector3
@@ -297,9 +299,7 @@ impl Range {
 
     /// Check if the range reading is valid
     pub fn is_valid(&self) -> bool {
-        self.range >= self.min_range &&
-        self.range <= self.max_range &&
-        self.range.is_finite()
+        self.range >= self.min_range && self.range <= self.max_range && self.range.is_finite()
     }
 }
 

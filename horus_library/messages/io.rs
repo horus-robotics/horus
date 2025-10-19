@@ -11,6 +11,7 @@ use serde_arrays;
 /// Represents the state of digital input/output pins, typically used
 /// for interfacing with sensors, actuators, and industrial equipment.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct DigitalIO {
     /// Pin states (true = high/on, false = low/off)
     #[serde(with = "serde_arrays")]
@@ -31,19 +32,6 @@ pub struct DigitalIO {
     pub timestamp: u64,
 }
 
-impl Default for DigitalIO {
-    fn default() -> Self {
-        Self {
-            pins: [false; 32],
-            pin_count: 0,
-            pin_directions: [false; 32], // Default to inputs
-            pullup_enable: [false; 32],
-            pin_labels: [[0; 16]; 32],
-            board_id: [0; 32],
-            timestamp: 0,
-        }
-    }
-}
 
 impl DigitalIO {
     /// Create a new digital I/O message
@@ -664,13 +652,19 @@ mod tests {
     fn test_modbus_message() {
         let msg = ModbusMessage::read_holding_registers(1, 100, 10);
         assert_eq!(msg.unit_id, 1);
-        assert_eq!(msg.function_code, ModbusMessage::FUNC_READ_HOLDING_REGISTERS);
+        assert_eq!(
+            msg.function_code,
+            ModbusMessage::FUNC_READ_HOLDING_REGISTERS
+        );
         assert_eq!(msg.start_address, 100);
         assert_eq!(msg.quantity, 10);
         assert!(msg.is_request);
 
         let write_msg = ModbusMessage::write_single_register(1, 200, 1234);
-        assert_eq!(write_msg.function_code, ModbusMessage::FUNC_WRITE_SINGLE_REGISTER);
+        assert_eq!(
+            write_msg.function_code,
+            ModbusMessage::FUNC_WRITE_SINGLE_REGISTER
+        );
         assert_eq!(write_msg.data[0], 1234);
     }
 

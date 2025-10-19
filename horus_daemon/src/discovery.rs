@@ -34,7 +34,7 @@ impl DiscoveryService {
             SERVICE_TYPE,
             &hostname,
             &service_hostname,
-            &local_ips[0],
+            local_ips[0],
             SERVICE_PORT,
             None,
         )?;
@@ -42,7 +42,11 @@ impl DiscoveryService {
         // Register the service
         self.daemon.register(service_info)?;
 
-        tracing::info!("🔍 Broadcasting HORUS robot '{}' via mDNS on {}", hostname, local_ips[0]);
+        tracing::info!(
+            "🔍 Broadcasting HORUS robot '{}' via mDNS on {}",
+            hostname,
+            local_ips[0]
+        );
 
         Ok(())
     }
@@ -72,7 +76,9 @@ impl DiscoveryService {
         if ips.is_empty() {
             if let Ok(hostname) = hostname::get() {
                 if let Ok(hostname_str) = hostname.into_string() {
-                    if let Ok(addrs) = std::net::ToSocketAddrs::to_socket_addrs(&(hostname_str.as_str(), 0)) {
+                    if let Ok(addrs) =
+                        std::net::ToSocketAddrs::to_socket_addrs(&(hostname_str.as_str(), 0))
+                    {
                         for addr in addrs {
                             ips.push(addr.ip());
                         }

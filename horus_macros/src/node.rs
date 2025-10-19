@@ -1,9 +1,9 @@
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
-    parse::{Parse, ParseStream},
-    parse_macro_input, Ident, Token, Type, Expr, Block, Result, Error,
     braced, parenthesized,
+    parse::{Parse, ParseStream},
+    parse_macro_input, Block, Error, Expr, Ident, Result, Token, Type,
 };
 
 /// Represents a topic definition in pub/sub sections
@@ -11,7 +11,7 @@ struct TopicDef {
     name: Ident,
     _colon: Token![:],
     ty: Type,
-    _arrow: Token![->],  // or Token![<-] for subscribers
+    _arrow: Token![->], // or Token![<-] for subscribers
     topic: Expr,        // The topic string
 }
 
@@ -25,39 +25,39 @@ struct DataField {
 
 /// Publisher section
 struct PubSection {
-    _pub_token: Ident,  // "pub" keyword
+    _pub_token: Ident, // "pub" keyword
     fields: Vec<TopicDef>,
 }
 
 /// Subscriber section
 struct SubSection {
-    _sub_token: Ident,  // "sub" keyword
+    _sub_token: Ident, // "sub" keyword
     fields: Vec<TopicDef>,
 }
 
 /// Data section for internal state
 struct DataSection {
-    _data_token: Ident,  // "data" keyword
+    _data_token: Ident, // "data" keyword
     fields: Vec<DataField>,
 }
 
 /// Tick implementation
 struct TickSection {
-    _tick_token: Ident,  // "tick" keyword
+    _tick_token: Ident, // "tick" keyword
     ctx_arg: Option<Ident>,
     body: Block,
 }
 
 /// Optional init implementation
 struct InitSection {
-    _init_token: Ident,  // "init" keyword
+    _init_token: Ident, // "init" keyword
     ctx_arg: Option<Ident>,
     body: Block,
 }
 
 /// Optional shutdown implementation
 struct ShutdownSection {
-    _shutdown_token: Ident,  // "shutdown" keyword
+    _shutdown_token: Ident, // "shutdown" keyword
     ctx_arg: Option<Ident>,
     body: Block,
 }
@@ -74,7 +74,7 @@ struct NodeDef {
     pub_section: Option<PubSection>,
     sub_section: Option<SubSection>,
     data_section: Option<DataSection>,
-    tick_section: TickSection,  // Required
+    tick_section: TickSection, // Required
     init_section: Option<InitSection>,
     shutdown_section: Option<ShutdownSection>,
     impl_section: Option<ImplSection>,
@@ -119,25 +119,37 @@ impl Parse for NodeDef {
                     }
                     "data" => {
                         if data_section.is_some() {
-                            return Err(Error::new(section_name.span(), "Duplicate 'data' section"));
+                            return Err(Error::new(
+                                section_name.span(),
+                                "Duplicate 'data' section",
+                            ));
                         }
                         data_section = Some(parse_data_section(&content, section_name)?);
                     }
                     "tick" => {
                         if tick_section.is_some() {
-                            return Err(Error::new(section_name.span(), "Duplicate 'tick' section"));
+                            return Err(Error::new(
+                                section_name.span(),
+                                "Duplicate 'tick' section",
+                            ));
                         }
                         tick_section = Some(parse_tick_section(&content, section_name)?);
                     }
                     "init" => {
                         if init_section.is_some() {
-                            return Err(Error::new(section_name.span(), "Duplicate 'init' section"));
+                            return Err(Error::new(
+                                section_name.span(),
+                                "Duplicate 'init' section",
+                            ));
                         }
                         init_section = Some(parse_init_section(&content, section_name)?);
                     }
                     "shutdown" => {
                         if shutdown_section.is_some() {
-                            return Err(Error::new(section_name.span(), "Duplicate 'shutdown' section"));
+                            return Err(Error::new(
+                                section_name.span(),
+                                "Duplicate 'shutdown' section",
+                            ));
                         }
                         shutdown_section = Some(parse_shutdown_section(&content, section_name)?);
                     }
@@ -187,14 +199,23 @@ fn parse_pub_section(input: ParseStream, pub_token: Ident) -> Result<PubSection>
         let arrow: Token![->] = content.parse()?;
         let topic: Expr = content.parse()?;
 
-        fields.push(TopicDef { name, _colon: colon, ty, _arrow: arrow, topic });
+        fields.push(TopicDef {
+            name,
+            _colon: colon,
+            ty,
+            _arrow: arrow,
+            topic,
+        });
 
         if content.peek(Token![,]) {
             content.parse::<Token![,]>()?;
         }
     }
 
-    Ok(PubSection { _pub_token: pub_token, fields })
+    Ok(PubSection {
+        _pub_token: pub_token,
+        fields,
+    })
 }
 
 fn parse_sub_section(input: ParseStream, sub_token: Ident) -> Result<SubSection> {
@@ -208,14 +229,14 @@ fn parse_sub_section(input: ParseStream, sub_token: Ident) -> Result<SubSection>
         let colon: Token![:] = content.parse()?;
         let ty: Type = content.parse()?;
         content.parse::<Token![<]>()?;
-        content.parse::<Token![-]>()?;  // <- as two tokens
+        content.parse::<Token![-]>()?; // <- as two tokens
         let topic: Expr = content.parse()?;
 
         fields.push(TopicDef {
             name,
             _colon: colon,
             ty,
-            _arrow: Default::default(),  // We use -> for both in the struct
+            _arrow: Default::default(), // We use -> for both in the struct
             topic,
         });
 
@@ -224,7 +245,10 @@ fn parse_sub_section(input: ParseStream, sub_token: Ident) -> Result<SubSection>
         }
     }
 
-    Ok(SubSection { _sub_token: sub_token, fields })
+    Ok(SubSection {
+        _sub_token: sub_token,
+        fields,
+    })
 }
 
 fn parse_data_section(input: ParseStream, data_token: Ident) -> Result<DataSection> {
@@ -246,14 +270,22 @@ fn parse_data_section(input: ParseStream, data_token: Ident) -> Result<DataSecti
             None
         };
 
-        fields.push(DataField { name, _colon: colon, ty, default });
+        fields.push(DataField {
+            name,
+            _colon: colon,
+            ty,
+            default,
+        });
 
         if content.peek(Token![,]) {
             content.parse::<Token![,]>()?;
         }
     }
 
-    Ok(DataSection { _data_token: data_token, fields })
+    Ok(DataSection {
+        _data_token: data_token,
+        fields,
+    })
 }
 
 fn parse_tick_section(input: ParseStream, tick_token: Ident) -> Result<TickSection> {
@@ -268,7 +300,11 @@ fn parse_tick_section(input: ParseStream, tick_token: Ident) -> Result<TickSecti
 
     let body: Block = input.parse()?;
 
-    Ok(TickSection { _tick_token: tick_token, ctx_arg, body })
+    Ok(TickSection {
+        _tick_token: tick_token,
+        ctx_arg,
+        body,
+    })
 }
 
 fn parse_init_section(input: ParseStream, init_token: Ident) -> Result<InitSection> {
@@ -282,7 +318,11 @@ fn parse_init_section(input: ParseStream, init_token: Ident) -> Result<InitSecti
 
     let body: Block = input.parse()?;
 
-    Ok(InitSection { _init_token: init_token, ctx_arg, body })
+    Ok(InitSection {
+        _init_token: init_token,
+        ctx_arg,
+        body,
+    })
 }
 
 fn parse_shutdown_section(input: ParseStream, shutdown_token: Ident) -> Result<ShutdownSection> {
@@ -296,14 +336,21 @@ fn parse_shutdown_section(input: ParseStream, shutdown_token: Ident) -> Result<S
 
     let body: Block = input.parse()?;
 
-    Ok(ShutdownSection { _shutdown_token: shutdown_token, ctx_arg, body })
+    Ok(ShutdownSection {
+        _shutdown_token: shutdown_token,
+        ctx_arg,
+        body,
+    })
 }
 
 fn parse_impl_section(input: ParseStream) -> Result<ImplSection> {
     let impl_token: Token![impl] = input.parse()?;
     let body: Block = input.parse()?;
 
-    Ok(ImplSection { _impl_token: impl_token, body })
+    Ok(ImplSection {
+        _impl_token: impl_token,
+        body,
+    })
 }
 
 pub fn impl_node_macro(input: TokenStream) -> TokenStream {
@@ -460,16 +507,20 @@ pub fn impl_node_macro(input: TokenStream) -> TokenStream {
 
     // Generate get_publishers() implementation
     let publishers_impl = if let Some(ref pub_section) = node_def.pub_section {
-        let publishers: Vec<_> = pub_section.fields.iter().map(|topic| {
-            let topic_expr = &topic.topic;
-            let ty = &topic.ty;
-            quote! {
-                ::horus_core::core::node::TopicMetadata {
-                    topic_name: #topic_expr.to_string(),
-                    type_name: ::std::any::type_name::<#ty>().to_string(),
+        let publishers: Vec<_> = pub_section
+            .fields
+            .iter()
+            .map(|topic| {
+                let topic_expr = &topic.topic;
+                let ty = &topic.ty;
+                quote! {
+                    ::horus_core::core::node::TopicMetadata {
+                        topic_name: #topic_expr.to_string(),
+                        type_name: ::std::any::type_name::<#ty>().to_string(),
+                    }
                 }
-            }
-        }).collect();
+            })
+            .collect();
         quote! {
             fn get_publishers(&self) -> Vec<::horus_core::core::node::TopicMetadata> {
                 vec![#(#publishers),*]
@@ -481,16 +532,20 @@ pub fn impl_node_macro(input: TokenStream) -> TokenStream {
 
     // Generate get_subscribers() implementation
     let subscribers_impl = if let Some(ref sub_section) = node_def.sub_section {
-        let subscribers: Vec<_> = sub_section.fields.iter().map(|topic| {
-            let topic_expr = &topic.topic;
-            let ty = &topic.ty;
-            quote! {
-                ::horus_core::core::node::TopicMetadata {
-                    topic_name: #topic_expr.to_string(),
-                    type_name: ::std::any::type_name::<#ty>().to_string(),
+        let subscribers: Vec<_> = sub_section
+            .fields
+            .iter()
+            .map(|topic| {
+                let topic_expr = &topic.topic;
+                let ty = &topic.ty;
+                quote! {
+                    ::horus_core::core::node::TopicMetadata {
+                        topic_name: #topic_expr.to_string(),
+                        type_name: ::std::any::type_name::<#ty>().to_string(),
+                    }
                 }
-            }
-        }).collect();
+            })
+            .collect();
         quote! {
             fn get_subscribers(&self) -> Vec<::horus_core::core::node::TopicMetadata> {
                 vec![#(#subscribers),*]

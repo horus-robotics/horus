@@ -1,15 +1,15 @@
-use horus_core::{Node, NodeInfo, Hub};
 use crate::KeyboardInput;
+use horus_core::{Hub, Node, NodeInfo};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 #[cfg(not(feature = "crossterm"))]
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::sync::{Arc, Mutex};
-use std::collections::HashMap;
 
 #[cfg(feature = "crossterm")]
 use crossterm::{
     event::{self, Event, KeyCode, KeyEvent, KeyModifiers},
-    terminal::{enable_raw_mode, disable_raw_mode},
+    terminal::{disable_raw_mode, enable_raw_mode},
 };
 
 /// Standard keyboard keycodes
@@ -126,7 +126,7 @@ pub mod keycodes {
     pub const KEY_APOSTROPHE: u32 = 222;
 
     // OS keys
-    pub const KEY_LEFT_SUPER: u32 = 91;  // Windows/Command key
+    pub const KEY_LEFT_SUPER: u32 = 91; // Windows/Command key
     pub const KEY_RIGHT_SUPER: u32 = 92;
     pub const KEY_CONTEXT_MENU: u32 = 93;
 }
@@ -184,14 +184,38 @@ impl KeyboardInputNode {
         let mut mappings = self.custom_mapping.lock().unwrap();
 
         // Arrow keys - multiple input options
-        mappings.insert("up".to_string(), ("ArrowUp".to_string(), keycodes::KEY_ARROW_UP));
-        mappings.insert("arrowup".to_string(), ("ArrowUp".to_string(), keycodes::KEY_ARROW_UP));
-        mappings.insert("down".to_string(), ("ArrowDown".to_string(), keycodes::KEY_ARROW_DOWN));
-        mappings.insert("arrowdown".to_string(), ("ArrowDown".to_string(), keycodes::KEY_ARROW_DOWN));
-        mappings.insert("left".to_string(), ("ArrowLeft".to_string(), keycodes::KEY_ARROW_LEFT));
-        mappings.insert("arrowleft".to_string(), ("ArrowLeft".to_string(), keycodes::KEY_ARROW_LEFT));
-        mappings.insert("right".to_string(), ("ArrowRight".to_string(), keycodes::KEY_ARROW_RIGHT));
-        mappings.insert("arrowright".to_string(), ("ArrowRight".to_string(), keycodes::KEY_ARROW_RIGHT));
+        mappings.insert(
+            "up".to_string(),
+            ("ArrowUp".to_string(), keycodes::KEY_ARROW_UP),
+        );
+        mappings.insert(
+            "arrowup".to_string(),
+            ("ArrowUp".to_string(), keycodes::KEY_ARROW_UP),
+        );
+        mappings.insert(
+            "down".to_string(),
+            ("ArrowDown".to_string(), keycodes::KEY_ARROW_DOWN),
+        );
+        mappings.insert(
+            "arrowdown".to_string(),
+            ("ArrowDown".to_string(), keycodes::KEY_ARROW_DOWN),
+        );
+        mappings.insert(
+            "left".to_string(),
+            ("ArrowLeft".to_string(), keycodes::KEY_ARROW_LEFT),
+        );
+        mappings.insert(
+            "arrowleft".to_string(),
+            ("ArrowLeft".to_string(), keycodes::KEY_ARROW_LEFT),
+        );
+        mappings.insert(
+            "right".to_string(),
+            ("ArrowRight".to_string(), keycodes::KEY_ARROW_RIGHT),
+        );
+        mappings.insert(
+            "arrowright".to_string(),
+            ("ArrowRight".to_string(), keycodes::KEY_ARROW_RIGHT),
+        );
 
         // WASD keys for gaming
         mappings.insert("w".to_string(), ("W".to_string(), keycodes::KEY_W));
@@ -219,24 +243,63 @@ impl KeyboardInputNode {
         }
 
         // Special keys
-        mappings.insert("space".to_string(), ("Space".to_string(), keycodes::KEY_SPACE));
+        mappings.insert(
+            "space".to_string(),
+            ("Space".to_string(), keycodes::KEY_SPACE),
+        );
         mappings.insert(" ".to_string(), ("Space".to_string(), keycodes::KEY_SPACE));
-        mappings.insert("enter".to_string(), ("Enter".to_string(), keycodes::KEY_ENTER));
-        mappings.insert("return".to_string(), ("Enter".to_string(), keycodes::KEY_ENTER));
+        mappings.insert(
+            "enter".to_string(),
+            ("Enter".to_string(), keycodes::KEY_ENTER),
+        );
+        mappings.insert(
+            "return".to_string(),
+            ("Enter".to_string(), keycodes::KEY_ENTER),
+        );
         mappings.insert("tab".to_string(), ("Tab".to_string(), keycodes::KEY_TAB));
-        mappings.insert("escape".to_string(), ("Escape".to_string(), keycodes::KEY_ESCAPE));
-        mappings.insert("esc".to_string(), ("Escape".to_string(), keycodes::KEY_ESCAPE));
-        mappings.insert("backspace".to_string(), ("Backspace".to_string(), keycodes::KEY_BACKSPACE));
-        mappings.insert("delete".to_string(), ("Delete".to_string(), keycodes::KEY_DELETE));
-        mappings.insert("shift".to_string(), ("Shift".to_string(), keycodes::KEY_SHIFT));
-        mappings.insert("control".to_string(), ("Control".to_string(), keycodes::KEY_CONTROL));
-        mappings.insert("ctrl".to_string(), ("Control".to_string(), keycodes::KEY_CONTROL));
+        mappings.insert(
+            "escape".to_string(),
+            ("Escape".to_string(), keycodes::KEY_ESCAPE),
+        );
+        mappings.insert(
+            "esc".to_string(),
+            ("Escape".to_string(), keycodes::KEY_ESCAPE),
+        );
+        mappings.insert(
+            "backspace".to_string(),
+            ("Backspace".to_string(), keycodes::KEY_BACKSPACE),
+        );
+        mappings.insert(
+            "delete".to_string(),
+            ("Delete".to_string(), keycodes::KEY_DELETE),
+        );
+        mappings.insert(
+            "shift".to_string(),
+            ("Shift".to_string(), keycodes::KEY_SHIFT),
+        );
+        mappings.insert(
+            "control".to_string(),
+            ("Control".to_string(), keycodes::KEY_CONTROL),
+        );
+        mappings.insert(
+            "ctrl".to_string(),
+            ("Control".to_string(), keycodes::KEY_CONTROL),
+        );
         mappings.insert("alt".to_string(), ("Alt".to_string(), keycodes::KEY_ALT));
         mappings.insert("home".to_string(), ("Home".to_string(), keycodes::KEY_HOME));
         mappings.insert("end".to_string(), ("End".to_string(), keycodes::KEY_END));
-        mappings.insert("pageup".to_string(), ("PageUp".to_string(), keycodes::KEY_PAGEUP));
-        mappings.insert("pagedown".to_string(), ("PageDown".to_string(), keycodes::KEY_PAGEDOWN));
-        mappings.insert("insert".to_string(), ("Insert".to_string(), keycodes::KEY_INSERT));
+        mappings.insert(
+            "pageup".to_string(),
+            ("PageUp".to_string(), keycodes::KEY_PAGEUP),
+        );
+        mappings.insert(
+            "pagedown".to_string(),
+            ("PageDown".to_string(), keycodes::KEY_PAGEDOWN),
+        );
+        mappings.insert(
+            "insert".to_string(),
+            ("Insert".to_string(), keycodes::KEY_INSERT),
+        );
     }
 
     /// Override key mapping for a specific input
@@ -281,7 +344,7 @@ impl KeyboardInputNode {
             Some(KeyboardInput::new(
                 key_name.clone(),
                 *keycode,
-                vec![],  // Modifiers can be added based on input parsing
+                vec![], // Modifiers can be added based on input parsing
                 true,
             ))
         } else {
@@ -323,7 +386,7 @@ impl KeyboardInputNode {
                     return None;
                 };
                 (key_str, code)
-            },
+            }
             KeyCode::Enter => ("Enter".to_string(), keycodes::KEY_ENTER),
             KeyCode::Esc => ("Escape".to_string(), keycodes::KEY_ESCAPE),
             KeyCode::Tab => ("Tab".to_string(), keycodes::KEY_TAB),
@@ -334,7 +397,7 @@ impl KeyboardInputNode {
             KeyCode::PageUp => ("PageUp".to_string(), keycodes::KEY_PAGEUP),
             KeyCode::PageDown => ("PageDown".to_string(), keycodes::KEY_PAGEDOWN),
             KeyCode::Insert => ("Insert".to_string(), keycodes::KEY_INSERT),
-            KeyCode::F(n) if n >= 1 && n <= 12 => (format!("F{}", n), 111 + n as u32),
+            KeyCode::F(n) if (1..=12).contains(&n) => (format!("F{}", n), 111 + n as u32),
             _ => return None,
         };
 
@@ -351,10 +414,7 @@ impl KeyboardInputNode {
         }
 
         Some(KeyboardInput::new(
-            key_name,
-            keycode,
-            modifiers,
-            true, // Key press events only
+            key_name, keycode, modifiers, true, // Key press events only
         ))
     }
 }
@@ -371,8 +431,7 @@ impl Node for KeyboardInputNode {
             if self.terminal_enabled {
                 if let Some(key_input) = self.capture_keyboard_event() {
                     // Handle Ctrl+C to quit
-                    if key_input.has_modifier("Ctrl") &&
-                       key_input.code == keycodes::KEY_C {
+                    if key_input.has_modifier("Ctrl") && key_input.code == keycodes::KEY_C {
                         println!("\n🛑 Received Ctrl+C, shutting down gracefully...");
                         let _ = disable_raw_mode();
                         self.terminal_enabled = false;
@@ -390,8 +449,7 @@ impl Node for KeyboardInputNode {
 
                     // Publish the keyboard event via horus Hub
                     let _ = self.publisher.send(key_input, ctx);
-                }
-                return; // Skip demo mode when real input is available
+                }// Skip demo mode when real input is available
             }
         }
 

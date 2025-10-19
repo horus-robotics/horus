@@ -1,12 +1,15 @@
+use crate::AppState;
 use axum::{
-    extract::{ws::{WebSocket, WebSocketUpgrade}, Path, State},
+    extract::{
+        ws::{WebSocket, WebSocketUpgrade},
+        Path, State,
+    },
     response::IntoResponse,
 };
 use futures::{sink::SinkExt, stream::StreamExt};
+use horus_core::core::log_buffer::GLOBAL_LOG_BUFFER;
 use std::time::Duration;
 use tokio::time;
-use horus_core::core::log_buffer::GLOBAL_LOG_BUFFER;
-use crate::AppState;
 
 /// WebSocket handler for streaming logs from a specific deployment
 pub async fn stream_deployment_logs(
@@ -22,11 +25,14 @@ async fn handle_socket(socket: WebSocket, deployment_id: String, state: AppState
 
     // Check if deployment exists
     if state.registry.get(&deployment_id).is_none() {
-        let _ = sender.send(axum::extract::ws::Message::Text(
-            serde_json::json!({
-                "error": "Deployment not found"
-            }).to_string()
-        )).await;
+        let _ = sender
+            .send(axum::extract::ws::Message::Text(
+                serde_json::json!({
+                    "error": "Deployment not found"
+                })
+                .to_string(),
+            ))
+            .await;
         return;
     }
 

@@ -381,20 +381,17 @@ impl DiagnosticValue {
 
     /// Create an integer diagnostic value
     pub fn int(key: &str, value: i64) -> Self {
-        Self::string(key, &value.to_string())
-            .with_type(Self::TYPE_INT)
+        Self::string(key, &value.to_string()).with_type(Self::TYPE_INT)
     }
 
     /// Create a float diagnostic value
     pub fn float(key: &str, value: f64) -> Self {
-        Self::string(key, &format!("{:.3}", value))
-            .with_type(Self::TYPE_FLOAT)
+        Self::string(key, &format!("{:.3}", value)).with_type(Self::TYPE_FLOAT)
     }
 
     /// Create a boolean diagnostic value
     pub fn bool(key: &str, value: bool) -> Self {
-        Self::string(key, if value { "true" } else { "false" })
-            .with_type(Self::TYPE_BOOL)
+        Self::string(key, if value { "true" } else { "false" }).with_type(Self::TYPE_BOOL)
     }
 
     fn with_type(mut self, value_type: u8) -> Self {
@@ -700,12 +697,12 @@ impl SafetyStatus {
 
     /// Check if system is safe to operate
     pub fn is_safe(&self) -> bool {
-        self.enabled &&
-        !self.estop_engaged &&
-        self.watchdog_ok &&
-        self.limits_ok &&
-        self.comms_ok &&
-        self.fault_code == 0
+        self.enabled
+            && !self.estop_engaged
+            && self.watchdog_ok
+            && self.limits_ok
+            && self.comms_ok
+            && self.fault_code == 0
     }
 
     /// Set a fault condition

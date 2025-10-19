@@ -1,10 +1,10 @@
 //! Cargo.toml configuration parsing
 //! Handles package metadata and HORUS-specific metadata for registry/marketplace
 
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use std::path::Path;
 use std::fs;
-use anyhow::{Result, Context};
+use std::path::Path;
 
 /// Root structure of Cargo.toml
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -88,7 +88,6 @@ fn default_true() -> bool {
     true
 }
 
-
 /// Example configuration for documentation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExampleConfig {
@@ -110,8 +109,8 @@ pub struct HorusDependency {
 impl CargoConfig {
     /// Load Cargo.toml from file
     pub fn load(path: &Path) -> Result<Self> {
-        let contents = fs::read_to_string(path)
-            .with_context(|| format!("Failed to read {:?}", path))?;
+        let contents =
+            fs::read_to_string(path).with_context(|| format!("Failed to read {:?}", path))?;
 
         // Parse as raw TOML first
         let cargo_toml: toml::Value = toml::from_str(&contents)
@@ -131,7 +130,8 @@ impl CargoConfig {
             .ok_or_else(|| anyhow::anyhow!("Missing [package] section"))?
             .clone();
 
-        let package_section: PackageSection = package.try_into()
+        let package_section: PackageSection = package
+            .try_into()
             .context("Failed to parse [package] section")?;
 
         let dependencies = cargo_toml

@@ -43,8 +43,8 @@ pub use horus_library as library;
 /// The HORUS prelude - everything you need to get started
 pub mod prelude {
     // Core node types
-    pub use horus_core::core::{Node, NodeInfo, NodeState};
     pub use horus_core::core::node::NodeConfig;
+    pub use horus_core::core::{Node, NodeInfo, NodeState};
 
     // Communication types
     pub use horus_core::communication::{Hub, Link};
@@ -57,8 +57,8 @@ pub mod prelude {
     pub type Result<T> = HorusResult<T>;
 
     // Common std types
-    pub use std::time::{Duration, Instant};
     pub use std::sync::{Arc, Mutex};
+    pub use std::time::{Duration, Instant};
 
     #[cfg(feature = "macros")]
     pub use horus_macros::*;
@@ -80,4 +80,3 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub fn version() -> &'static str {
     VERSION
 }
-

@@ -1,6 +1,6 @@
 use eframe::egui::{self, *};
-use std::sync::{Arc, Mutex};
 use std::collections::{HashMap, HashSet};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 // Graph node representation
@@ -24,8 +24,8 @@ pub enum NodeType {
 // Edge type to distinguish publishers from subscribers
 #[derive(Debug, Clone, PartialEq)]
 pub enum EdgeType {
-    Publish,    // Process publishes to topic
-    Subscribe,  // Process subscribes from topic
+    Publish,   // Process publishes to topic
+    Subscribe, // Process subscribes from topic
 }
 
 // Graph edge representation
@@ -68,8 +68,8 @@ enum LayoutAlgorithm {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum GraphTheme {
-    Standard,     // Original near-black theme
-    FullBlack,    // New fully black inverse theme
+    Standard,  // Original near-black theme
+    FullBlack, // New fully black inverse theme
 }
 
 impl GraphVisualization {
@@ -89,10 +89,10 @@ impl GraphVisualization {
             search_query: String::new(),
             highlighted_nodes: HashSet::new(),
             dark_mode: true,
-            graph_theme: GraphTheme::FullBlack,  // Start with new fully black theme
+            graph_theme: GraphTheme::FullBlack, // Start with new fully black theme
             layout_algorithm: LayoutAlgorithm::ForceDirected,
-            force_strength: 0.3,       // Almost no attraction
-            repulsion_strength: 1.0,   // Minimal repulsion - very subtle
+            force_strength: 0.3,     // Almost no attraction
+            repulsion_strength: 1.0, // Minimal repulsion - very subtle
         }
     }
 
@@ -106,10 +106,14 @@ impl GraphVisualization {
         let mut nodes_to_add: Vec<(String, GraphNode)> = Vec::new();
 
         // Count by type for proper indexing
-        let mut process_index = self.nodes.values()
+        let mut process_index = self
+            .nodes
+            .values()
             .filter(|n| n.node_type == NodeType::Process)
             .count();
-        let mut topic_index = self.nodes.values()
+        let mut topic_index = self
+            .nodes
+            .values()
             .filter(|n| n.node_type == NodeType::Topic)
             .count();
 
@@ -132,7 +136,8 @@ impl GraphVisualization {
                     }
                 };
 
-                new_node.position = self.get_initial_position_indexed(&node.id, &node.node_type, index);
+                new_node.position =
+                    self.get_initial_position_indexed(&node.id, &node.node_type, index);
                 nodes_to_add.push((new_node.id.clone(), new_node));
             } else {
                 // Existing node - update data but keep position
@@ -168,7 +173,12 @@ impl GraphVisualization {
         self.last_refresh = std::time::Instant::now();
     }
 
-    fn get_initial_position_indexed(&self, node_id: &str, node_type: &NodeType, index: usize) -> Pos2 {
+    fn get_initial_position_indexed(
+        &self,
+        node_id: &str,
+        node_type: &NodeType,
+        index: usize,
+    ) -> Pos2 {
         // Hash the node ID to get a deterministic unique value for variation
         let mut hash: u64 = 0;
         for byte in node_id.bytes() {
@@ -178,26 +188,26 @@ impl GraphVisualization {
         match node_type {
             NodeType::Process => {
                 // Processes: Vertical column on LEFT side with good spacing
-                let x_base = -300.0;  // Fixed X position on left
-                let x_variation = (hash % 80) as f32 - 40.0;  // ±40px horizontal variation
-                let vertical_spacing = 120.0;  // Good vertical spacing
-                let y_variation = ((hash / 100) % 40) as f32 - 20.0;  // ±20px vertical variation
+                let x_base = -300.0; // Fixed X position on left
+                let x_variation = (hash % 80) as f32 - 40.0; // ±40px horizontal variation
+                let vertical_spacing = 120.0; // Good vertical spacing
+                let y_variation = ((hash / 100) % 40) as f32 - 20.0; // ±20px vertical variation
 
                 Pos2::new(
                     x_base + x_variation,
-                    index as f32 * vertical_spacing + y_variation
+                    index as f32 * vertical_spacing + y_variation,
                 )
             }
             NodeType::Topic => {
                 // Topics: Vertical column on RIGHT side with wide spacing
-                let x_base = 300.0;  // Fixed X position on right
-                let x_variation = (hash % 100) as f32 - 50.0;  // ±50px horizontal variation
-                let vertical_spacing = 140.0;  // Even wider vertical spacing
-                let y_variation = ((hash / 100) % 50) as f32 - 25.0;  // ±25px vertical variation
+                let x_base = 300.0; // Fixed X position on right
+                let x_variation = (hash % 100) as f32 - 50.0; // ±50px horizontal variation
+                let vertical_spacing = 140.0; // Even wider vertical spacing
+                let y_variation = ((hash / 100) % 50) as f32 - 25.0; // ±25px vertical variation
 
                 Pos2::new(
                     x_base + x_variation,
-                    index as f32 * vertical_spacing + y_variation
+                    index as f32 * vertical_spacing + y_variation,
                 )
             }
         }
@@ -259,8 +269,8 @@ impl GraphVisualization {
 
         // Apply very gentle repulsion between all nodes - prevent stacking
         let node_ids: Vec<String> = self.nodes.keys().cloned().collect();
-        let min_distance = 60.0;   // Absolute minimum - nodes can't get closer
-        let ideal_distance = 100.0;  // Target comfortable spacing
+        let min_distance = 60.0; // Absolute minimum - nodes can't get closer
+        let ideal_distance = 100.0; // Target comfortable spacing
 
         for i in 0..node_ids.len() {
             for j in i + 1..node_ids.len() {
@@ -303,7 +313,9 @@ impl GraphVisualization {
 
         // Apply attraction along edges - keep connected nodes together
         for edge in &self.edges {
-            if let (Some(node1), Some(node2)) = (self.nodes.get(&edge.from), self.nodes.get(&edge.to)) {
+            if let (Some(node1), Some(node2)) =
+                (self.nodes.get(&edge.from), self.nodes.get(&edge.to))
+            {
                 let diff = node2.position - node1.position;
                 let dist = diff.length().max(1.0);
 
@@ -322,7 +334,7 @@ impl GraphVisualization {
         }
 
         // Apply velocities with strong damping and velocity limiting
-        let max_velocity = 0.3;  // Extremely low speed cap - almost imperceptible
+        let max_velocity = 0.3; // Extremely low speed cap - almost imperceptible
         for node in self.nodes.values_mut() {
             if self.dragging_node.as_ref() != Some(&node.id) {
                 // Limit velocity to prevent wild movements
@@ -331,7 +343,7 @@ impl GraphVisualization {
                     node.velocity = node.velocity.normalized() * max_velocity;
                 }
 
-                node.position += node.velocity * dt * 0.003;  // Extremely slow, almost imperceptible movement
+                node.position += node.velocity * dt * 0.003; // Extremely slow, almost imperceptible movement
                 node.velocity *= 0.95; // Very strong damping - quick settling
             }
         }
@@ -341,7 +353,7 @@ impl GraphVisualization {
         // Separate processes and topics
         let mut processes: Vec<String> = Vec::new();
         let mut topics: Vec<String> = Vec::new();
-        
+
         for (id, node) in &self.nodes {
             match node.node_type {
                 NodeType::Process => processes.push(id.clone()),
@@ -353,10 +365,7 @@ impl GraphVisualization {
         let process_spacing = 150.0;
         for (i, id) in processes.iter().enumerate() {
             if let Some(node) = self.nodes.get_mut(id) {
-                node.position = Pos2::new(
-                    200.0 + i as f32 * process_spacing,
-                    200.0
-                );
+                node.position = Pos2::new(200.0 + i as f32 * process_spacing, 200.0);
             }
         }
 
@@ -364,10 +373,7 @@ impl GraphVisualization {
         let topic_spacing = 120.0;
         for (i, id) in topics.iter().enumerate() {
             if let Some(node) = self.nodes.get_mut(id) {
-                node.position = Pos2::new(
-                    200.0 + i as f32 * topic_spacing,
-                    400.0
-                );
+                node.position = Pos2::new(200.0 + i as f32 * topic_spacing, 400.0);
             }
         }
     }
@@ -376,7 +382,7 @@ impl GraphVisualization {
         let center = Pos2::new(400.0, 300.0);
         let radius = 250.0;
         let node_count = self.nodes.len();
-        
+
         for (i, (_, node)) in self.nodes.iter_mut().enumerate() {
             let angle = (i as f32 / node_count as f32) * std::f32::consts::TAU;
             node.position = center + Vec2::new(angle.cos(), angle.sin()) * radius;
@@ -405,42 +411,52 @@ impl GraphVisualization {
     }
 
     // Render method for embedding in another UI
-    fn get_theme_colors(&self) -> (Color32, Color32, Color32, Color32, Color32, Color32, Color32) {
+    fn get_theme_colors(
+        &self,
+    ) -> (
+        Color32,
+        Color32,
+        Color32,
+        Color32,
+        Color32,
+        Color32,
+        Color32,
+    ) {
         match self.graph_theme {
             GraphTheme::Standard => {
                 // Original near-black theme
                 if self.dark_mode {
                     (
-                        Color32::from_gray(30),                               // background
+                        Color32::from_gray(30),                              // background
                         Color32::from_rgba_premultiplied(100, 110, 120, 20), // dot_color
                         Color32::from_rgb(70, 130, 180),                     // process_color
                         Color32::from_rgb(255, 215, 0),                      // topic_color
                         Color32::from_rgb(34, 197, 94),                      // publish_edge
                         Color32::from_rgb(59, 130, 246),                     // subscribe_edge
-                        Color32::WHITE,                                       // text_color
+                        Color32::WHITE,                                      // text_color
                     )
                 } else {
                     (
-                        Color32::from_gray(240),                               // background
+                        Color32::from_gray(240),                             // background
                         Color32::from_rgba_premultiplied(180, 185, 190, 30), // dot_color
-                        Color32::from_rgb(40, 80, 120),                       // process_color
-                        Color32::from_rgb(180, 140, 0),                       // topic_color
-                        Color32::from_rgb(34, 150, 80),                       // publish_edge
-                        Color32::from_rgb(40, 100, 200),                      // subscribe_edge
-                        Color32::BLACK,                                        // text_color
+                        Color32::from_rgb(40, 80, 120),                      // process_color
+                        Color32::from_rgb(180, 140, 0),                      // topic_color
+                        Color32::from_rgb(34, 150, 80),                      // publish_edge
+                        Color32::from_rgb(40, 100, 200),                     // subscribe_edge
+                        Color32::BLACK,                                      // text_color
                     )
                 }
-            },
+            }
             GraphTheme::FullBlack => {
                 // New fully black inverse theme
                 (
-                    Color32::BLACK,                                        // background - pure black
+                    Color32::BLACK,                                      // background - pure black
                     Color32::from_rgba_premultiplied(255, 255, 255, 15), // dot_color - bright white dots
-                    Color32::from_rgb(0, 255, 127),                      // process_color - bright green
-                    Color32::from_rgb(255, 20, 147),                     // topic_color - deep pink
-                    Color32::from_rgb(0, 255, 255),                      // publish_edge - cyan
-                    Color32::from_rgb(255, 69, 0),                       // subscribe_edge - red orange
-                    Color32::WHITE,                                        // text_color - white
+                    Color32::from_rgb(0, 255, 127), // process_color - bright green
+                    Color32::from_rgb(255, 20, 147), // topic_color - deep pink
+                    Color32::from_rgb(0, 255, 255), // publish_edge - cyan
+                    Color32::from_rgb(255, 69, 0),  // subscribe_edge - red orange
+                    Color32::WHITE,                 // text_color - white
                 )
             }
         }
@@ -470,9 +486,21 @@ impl GraphVisualization {
             egui::ComboBox::from_id_source("layout_selector")
                 .selected_text(format!("{:?}", self.layout_algorithm))
                 .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut self.layout_algorithm, LayoutAlgorithm::ForceDirected, "Force Directed");
-                    ui.selectable_value(&mut self.layout_algorithm, LayoutAlgorithm::Hierarchical, "Hierarchical");
-                    ui.selectable_value(&mut self.layout_algorithm, LayoutAlgorithm::Circular, "Circular");
+                    ui.selectable_value(
+                        &mut self.layout_algorithm,
+                        LayoutAlgorithm::ForceDirected,
+                        "Force Directed",
+                    );
+                    ui.selectable_value(
+                        &mut self.layout_algorithm,
+                        LayoutAlgorithm::Hierarchical,
+                        "Hierarchical",
+                    );
+                    ui.selectable_value(
+                        &mut self.layout_algorithm,
+                        LayoutAlgorithm::Circular,
+                        "Circular",
+                    );
                 });
 
             // Options
@@ -511,7 +539,9 @@ impl GraphVisualization {
         let rect = response.rect;
 
         // Handle pan with middle mouse or right mouse
-        if response.dragged_by(PointerButton::Middle) || response.dragged_by(PointerButton::Secondary) {
+        if response.dragged_by(PointerButton::Middle)
+            || response.dragged_by(PointerButton::Secondary)
+        {
             self.camera_offset += response.drag_delta();
         }
 
@@ -528,14 +558,24 @@ impl GraphVisualization {
         }
 
         // Get theme colors
-        let (background_color, _dot_color, process_color, topic_color, publish_edge_color, subscribe_edge_color, text_color) = self.get_theme_colors();
+        let (
+            background_color,
+            _dot_color,
+            process_color,
+            topic_color,
+            publish_edge_color,
+            subscribe_edge_color,
+            text_color,
+        ) = self.get_theme_colors();
 
         // Background
         painter.rect_filled(rect, 0.0, background_color);
 
         // Draw edges
         for edge in &self.edges {
-            if let (Some(from_node), Some(to_node)) = (self.nodes.get(&edge.from), self.nodes.get(&edge.to)) {
+            if let (Some(from_node), Some(to_node)) =
+                (self.nodes.get(&edge.from), self.nodes.get(&edge.to))
+            {
                 let from_pos = self.world_to_screen(from_node.position) + rect.min.to_vec2();
                 let to_pos = self.world_to_screen(to_node.position) + rect.min.to_vec2();
 
@@ -558,8 +598,10 @@ impl GraphVisualization {
                 let arrow_angle = std::f32::consts::PI / 6.0;
 
                 let arrow_point1 = to_pos - dir * arrow_size;
-                let arrow_point2 = arrow_point1 - Vec2::angled(dir.angle() + arrow_angle) * arrow_size;
-                let arrow_point3 = arrow_point1 - Vec2::angled(dir.angle() - arrow_angle) * arrow_size;
+                let arrow_point2 =
+                    arrow_point1 - Vec2::angled(dir.angle() + arrow_angle) * arrow_size;
+                let arrow_point3 =
+                    arrow_point1 - Vec2::angled(dir.angle() - arrow_angle) * arrow_size;
 
                 painter.line_segment([to_pos, arrow_point2], stroke);
                 painter.line_segment([to_pos, arrow_point3], stroke);
@@ -672,25 +714,37 @@ impl eframe::App for GraphVisualization {
         egui::TopBottomPanel::top("graph_controls").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.heading("HORUS Node-Topic Graph");
-                
+
                 ui.separator();
-                
+
                 // Search
                 ui.label("Search:");
                 if ui.text_edit_singleline(&mut self.search_query).changed() {
                     self.update_search_highlights();
                 }
-                
+
                 ui.separator();
-                
+
                 // Layout controls
                 ui.label("Layout:");
-                ui.selectable_value(&mut self.layout_algorithm, LayoutAlgorithm::ForceDirected, "Force");
-                ui.selectable_value(&mut self.layout_algorithm, LayoutAlgorithm::Hierarchical, "Hierarchy");
-                ui.selectable_value(&mut self.layout_algorithm, LayoutAlgorithm::Circular, "Circle");
-                
+                ui.selectable_value(
+                    &mut self.layout_algorithm,
+                    LayoutAlgorithm::ForceDirected,
+                    "Force",
+                );
+                ui.selectable_value(
+                    &mut self.layout_algorithm,
+                    LayoutAlgorithm::Hierarchical,
+                    "Hierarchy",
+                );
+                ui.selectable_value(
+                    &mut self.layout_algorithm,
+                    LayoutAlgorithm::Circular,
+                    "Circle",
+                );
+
                 ui.separator();
-                
+
                 // Options
                 ui.checkbox(&mut self.physics_enabled, "Physics");
                 ui.checkbox(&mut self.show_labels, "Labels");
@@ -704,7 +758,7 @@ impl eframe::App for GraphVisualization {
                 });
 
                 ui.separator();
-                
+
                 // Zoom controls
                 if ui.button("Zoom In").clicked() {
                     self.zoom *= 1.2;
@@ -721,13 +775,13 @@ impl eframe::App for GraphVisualization {
                 }
 
                 ui.separator();
-                
+
                 if ui.button("Refresh").clicked() {
                     self.refresh_data();
                 }
-                
+
                 ui.separator();
-                
+
                 // Legend
                 ui.label("Legend:");
                 ui.horizontal(|ui| {
@@ -752,7 +806,7 @@ impl eframe::App for GraphVisualization {
             .show(ctx, |ui| {
                 ui.heading("Node Details");
                 ui.separator();
-                
+
                 if let Some(selected_id) = &self.selected_node {
                     if let Some(node) = self.nodes.get(selected_id) {
                         ui.label(format!("Name: {}", node.label));
@@ -760,13 +814,16 @@ impl eframe::App for GraphVisualization {
                         if let Some(pid) = node.pid {
                             ui.label(format!("PID: {}", pid));
                         }
-                        ui.label(format!("Active: {}", if node.active { "Yes" } else { "No" }));
-                        
+                        ui.label(format!(
+                            "Active: {}",
+                            if node.active { "Yes" } else { "No" }
+                        ));
+
                         ui.separator();
-                        
+
                         // Show connected edges with types
                         ui.label("Connections:");
-                        
+
                         // Show what this node publishes to
                         let mut has_publishes = false;
                         for edge in &self.edges {
@@ -780,7 +837,7 @@ impl eframe::App for GraphVisualization {
                                 }
                             }
                         }
-                        
+
                         // Show what this node subscribes from
                         let mut has_subscribes = false;
                         for edge in &self.edges {
@@ -794,31 +851,33 @@ impl eframe::App for GraphVisualization {
                                 }
                             }
                         }
-                        
+
                         // For topics, show publishers and subscribers
                         if node.node_type == NodeType::Topic {
                             let mut publishers = Vec::new();
                             let mut subscribers = Vec::new();
-                            
+
                             for edge in &self.edges {
                                 if edge.to == *selected_id && edge.edge_type == EdgeType::Publish {
                                     if let Some(pub_node) = self.nodes.get(&edge.from) {
                                         publishers.push(pub_node.label.clone());
                                     }
-                                } else if edge.from == *selected_id && edge.edge_type == EdgeType::Subscribe {
+                                } else if edge.from == *selected_id
+                                    && edge.edge_type == EdgeType::Subscribe
+                                {
                                     if let Some(sub_node) = self.nodes.get(&edge.to) {
                                         subscribers.push(sub_node.label.clone());
                                     }
                                 }
                             }
-                            
+
                             if !publishers.is_empty() {
                                 ui.label("Publishers:");
                                 for pub_name in publishers {
                                     ui.label(format!("  ← {}", pub_name));
                                 }
                             }
-                            
+
                             if !subscribers.is_empty() {
                                 ui.label("Subscribers:");
                                 for sub_name in subscribers {
@@ -830,21 +889,25 @@ impl eframe::App for GraphVisualization {
                 } else {
                     ui.label("Click a node to see details");
                 }
-                
+
                 ui.separator();
-                
+
                 // Statistics
                 ui.heading("Statistics");
                 ui.label(format!("Nodes: {}", self.nodes.len()));
                 ui.label(format!("Edges: {}", self.edges.len()));
-                
-                let process_count = self.nodes.values()
+
+                let process_count = self
+                    .nodes
+                    .values()
                     .filter(|n| n.node_type == NodeType::Process)
                     .count();
-                let topic_count = self.nodes.values()
+                let topic_count = self
+                    .nodes
+                    .values()
                     .filter(|n| n.node_type == NodeType::Topic)
                     .count();
-                
+
                 ui.label(format!("Processes: {}", process_count));
                 ui.label(format!("Topics: {}", topic_count));
             });
@@ -854,12 +917,14 @@ impl eframe::App for GraphVisualization {
             let response = ui.allocate_response(ui.available_size(), Sense::click_and_drag());
             let painter = ui.painter();
             let rect = response.rect;
-            
+
             // Handle pan with middle mouse or right mouse
-            if response.dragged_by(PointerButton::Middle) || response.dragged_by(PointerButton::Secondary) {
+            if response.dragged_by(PointerButton::Middle)
+                || response.dragged_by(PointerButton::Secondary)
+            {
                 self.camera_offset += response.drag_delta();
             }
-            
+
             // Handle zoom with scroll
             if response.hovered() {
                 let scroll_delta = ui.input(|i| i.scroll_delta.y);
@@ -869,12 +934,20 @@ impl eframe::App for GraphVisualization {
                     self.zoom = self.zoom.clamp(0.1, 5.0);
                 }
             }
-            
+
             // Apply physics
             self.apply_physics(0.016); // ~60 FPS
 
             // Get theme colors
-            let (background_color, dot_color, process_color, topic_color, publish_edge_color, subscribe_edge_color, text_color) = self.get_theme_colors();
+            let (
+                background_color,
+                dot_color,
+                process_color,
+                topic_color,
+                publish_edge_color,
+                subscribe_edge_color,
+                text_color,
+            ) = self.get_theme_colors();
 
             // Background
             painter.rect_filled(rect, 0.0, background_color);
@@ -887,25 +960,25 @@ impl eframe::App for GraphVisualization {
                 } else {
                     (edge.to.clone(), edge.from.clone())
                 };
-                
+
                 // Check if reverse edge exists
-                let has_reverse = self.edges.iter().any(|e| 
+                let has_reverse = self.edges.iter().any(|e| {
                     e.from == edge.to && e.to == edge.from && e.edge_type != edge.edge_type
-                );
-                
+                });
+
                 if has_reverse && !edge_offsets.contains_key(&key) {
                     edge_offsets.insert(key, 15.0 * self.zoom); // Offset for curved edges
                 }
             }
-            
+
             // Draw edges with arrows
             for edge in &self.edges {
-                if let (Some(from_node), Some(to_node)) = 
-                    (self.nodes.get(&edge.from), self.nodes.get(&edge.to)) {
-                    
+                if let (Some(from_node), Some(to_node)) =
+                    (self.nodes.get(&edge.from), self.nodes.get(&edge.to))
+                {
                     let from_pos = self.world_to_screen(from_node.position);
                     let to_pos = self.world_to_screen(to_node.position);
-                    
+
                     // Different colors for publish vs subscribe - theme based
                     let color = match edge.edge_type {
                         EdgeType::Publish => {
@@ -923,26 +996,30 @@ impl eframe::App for GraphVisualization {
                             }
                         }
                     };
-                    
+
                     // Check if this edge needs to be curved (bidirectional)
                     let key = if edge.from < edge.to {
                         (edge.from.clone(), edge.to.clone())
                     } else {
                         (edge.to.clone(), edge.from.clone())
                     };
-                    
+
                     let curve_offset = edge_offsets.get(&key).copied().unwrap_or(0.0);
-                    
+
                     if curve_offset > 0.0 {
                         // Draw curved edge for bidirectional connections
                         let mid_point = from_pos + (to_pos - from_pos) * 0.5;
                         let direction = (to_pos - from_pos).normalized();
                         let perp = vec2(-direction.y, direction.x);
-                        
+
                         // Offset based on edge type to separate pub/sub curves
-                        let offset_dir = if edge.edge_type == EdgeType::Publish { 1.0 } else { -1.0 };
+                        let offset_dir = if edge.edge_type == EdgeType::Publish {
+                            1.0
+                        } else {
+                            -1.0
+                        };
                         let control_point = mid_point + perp * curve_offset * offset_dir;
-                        
+
                         // Draw quadratic bezier curve
                         let mut points = Vec::new();
                         for t in 0..=20 {
@@ -952,14 +1029,15 @@ impl eframe::App for GraphVisualization {
                                 + t.powi(2) * to_pos.to_vec2();
                             points.push(point.to_pos2());
                         }
-                        
+
                         for i in 0..points.len() - 1 {
-                            painter.line_segment([points[i], points[i + 1]], Stroke::new(2.0, color));
+                            painter
+                                .line_segment([points[i], points[i + 1]], Stroke::new(2.0, color));
                         }
-                        
+
                         // Calculate arrow direction from last curve segment
                         let arrow_direction = (to_pos - control_point).normalized();
-                        
+
                         // Draw arrow at the end
                         let target_radius = match to_node.node_type {
                             NodeType::Process => 15.0 * self.zoom,
@@ -967,25 +1045,29 @@ impl eframe::App for GraphVisualization {
                         };
                         let arrow_tip = to_pos - arrow_direction * target_radius;
                         let arrow_length = match edge.edge_type {
-                            EdgeType::Publish => 12.0 * self.zoom.min(2.0),   // Larger for publish
+                            EdgeType::Publish => 12.0 * self.zoom.min(2.0), // Larger for publish
                             EdgeType::Subscribe => 10.0 * self.zoom.min(2.0), // Smaller for subscribe
                         };
                         let arrow_width = match edge.edge_type {
-                            EdgeType::Publish => 7.0 * self.zoom.min(2.0),    // Wider for publish
-                            EdgeType::Subscribe => 5.0 * self.zoom.min(2.0),  // Narrower for subscribe
+                            EdgeType::Publish => 7.0 * self.zoom.min(2.0), // Wider for publish
+                            EdgeType::Subscribe => 5.0 * self.zoom.min(2.0), // Narrower for subscribe
                         };
                         let arrow_base = arrow_tip - arrow_direction * arrow_length;
-                        
+
                         let perp = vec2(-arrow_direction.y, arrow_direction.x);
                         let wing1 = arrow_base + perp * arrow_width;
                         let wing2 = arrow_base - perp * arrow_width;
-                        
+
                         // Different arrow styles
                         match edge.edge_type {
                             EdgeType::Publish => {
                                 // Filled triangle for publish (data output)
                                 let arrow_points = vec![arrow_tip, wing1, wing2];
-                                painter.add(Shape::convex_polygon(arrow_points, color, Stroke::NONE));
+                                painter.add(Shape::convex_polygon(
+                                    arrow_points,
+                                    color,
+                                    Stroke::NONE,
+                                ));
                             }
                             EdgeType::Subscribe => {
                                 // Open arrow (chevron) for subscribe (data input)
@@ -996,18 +1078,18 @@ impl eframe::App for GraphVisualization {
                     } else {
                         // Draw straight edge
                         painter.line_segment([from_pos, to_pos], Stroke::new(2.0, color));
-                        
+
                         // Calculate arrow position and direction
                         let direction = (to_pos - from_pos).normalized();
                         let arrow_length = match edge.edge_type {
-                            EdgeType::Publish => 12.0 * self.zoom.min(2.0),   // Larger for publish
+                            EdgeType::Publish => 12.0 * self.zoom.min(2.0), // Larger for publish
                             EdgeType::Subscribe => 10.0 * self.zoom.min(2.0), // Smaller for subscribe
                         };
                         let arrow_width = match edge.edge_type {
-                            EdgeType::Publish => 7.0 * self.zoom.min(2.0),    // Wider for publish
-                            EdgeType::Subscribe => 5.0 * self.zoom.min(2.0),  // Narrower for subscribe
+                            EdgeType::Publish => 7.0 * self.zoom.min(2.0), // Wider for publish
+                            EdgeType::Subscribe => 5.0 * self.zoom.min(2.0), // Narrower for subscribe
                         };
-                        
+
                         // Position arrow at edge endpoint (adjusted for node radius)
                         let target_radius = match to_node.node_type {
                             NodeType::Process => 15.0 * self.zoom,
@@ -1015,18 +1097,22 @@ impl eframe::App for GraphVisualization {
                         };
                         let arrow_tip = to_pos - direction * target_radius;
                         let arrow_base = arrow_tip - direction * arrow_length;
-                        
+
                         // Calculate perpendicular vector for arrow wings
                         let perp = vec2(-direction.y, direction.x);
                         let wing1 = arrow_base + perp * arrow_width;
                         let wing2 = arrow_base - perp * arrow_width;
-                        
+
                         // Different arrow styles for publish vs subscribe
                         match edge.edge_type {
                             EdgeType::Publish => {
                                 // Filled triangle for publish (data output)
                                 let arrow_points = vec![arrow_tip, wing1, wing2];
-                                painter.add(Shape::convex_polygon(arrow_points, color, Stroke::NONE));
+                                painter.add(Shape::convex_polygon(
+                                    arrow_points,
+                                    color,
+                                    Stroke::NONE,
+                                ));
                             }
                             EdgeType::Subscribe => {
                                 // Open arrow (chevron) for subscribe (data input)
@@ -1037,21 +1123,21 @@ impl eframe::App for GraphVisualization {
                     }
                 }
             }
-            
+
             // Draw nodes
             for (id, node) in &self.nodes {
                 let pos = self.world_to_screen(node.position);
-                
+
                 // Skip if outside view
                 if !rect.contains(pos) {
                     continue;
                 }
-                
+
                 let radius = match node.node_type {
                     NodeType::Process => 15.0,
                     NodeType::Topic => 10.0,
                 };
-                
+
                 let color = match node.node_type {
                     NodeType::Process => {
                         if node.active {
@@ -1068,7 +1154,7 @@ impl eframe::App for GraphVisualization {
                         }
                     }
                 };
-                
+
                 // Highlight if searched
                 let stroke = if self.highlighted_nodes.contains(id) {
                     Stroke::new(3.0, Color32::YELLOW)
@@ -1077,9 +1163,9 @@ impl eframe::App for GraphVisualization {
                 } else {
                     Stroke::new(1.0, Color32::from_gray(100))
                 };
-                
+
                 painter.circle(pos, radius * self.zoom, color, stroke);
-                
+
                 // Draw label
                 if self.show_labels {
                     let text_pos = pos + vec2(0.0, radius * self.zoom + 5.0);
@@ -1091,27 +1177,32 @@ impl eframe::App for GraphVisualization {
                         text_color,
                     );
                 }
-                
+
                 // Handle interactions
-                let node_rect = Rect::from_center_size(pos, vec2(radius * 2.0, radius * 2.0) * self.zoom);
+                let node_rect =
+                    Rect::from_center_size(pos, vec2(radius * 2.0, radius * 2.0) * self.zoom);
                 if node_rect.contains(response.hover_pos().unwrap_or_default()) {
                     // Show tooltip on hover
-                    egui::show_tooltip_at_pointer(ui.ctx(), Id::new(format!("tooltip_{}", id)), |ui| {
-                        ui.label(&node.label);
-                    });
-                    
+                    egui::show_tooltip_at_pointer(
+                        ui.ctx(),
+                        Id::new(format!("tooltip_{}", id)),
+                        |ui| {
+                            ui.label(&node.label);
+                        },
+                    );
+
                     // Handle click
                     if response.clicked() {
                         self.selected_node = Some(id.clone());
                     }
-                    
+
                     // Handle drag
                     if response.drag_started_by(PointerButton::Primary) {
                         self.dragging_node = Some(id.clone());
                     }
                 }
             }
-            
+
             // Update dragged node position
             if let Some(dragged_id) = &self.dragging_node {
                 if response.dragged_by(PointerButton::Primary) {
@@ -1123,7 +1214,7 @@ impl eframe::App for GraphVisualization {
                     self.dragging_node = None;
                 }
             }
-            
+
             // Request repaint for animations
             ctx.request_repaint();
         });
@@ -1134,7 +1225,7 @@ impl eframe::App for GraphVisualization {
 pub fn discover_graph_data() -> (Vec<GraphNode>, Vec<GraphEdge>) {
     let mut graph_nodes = Vec::new();
     let mut graph_edges = Vec::new();
-    
+
     // Discover processes
     if let Ok(nodes) = super::commands::monitor::discover_nodes() {
         for node in nodes {
@@ -1149,7 +1240,7 @@ pub fn discover_graph_data() -> (Vec<GraphNode>, Vec<GraphEdge>) {
             });
         }
     }
-    
+
     // Discover topics
     if let Ok(topics) = super::commands::monitor::discover_shared_memory() {
         for topic in topics {
@@ -1170,9 +1261,10 @@ pub fn discover_graph_data() -> (Vec<GraphNode>, Vec<GraphEdge>) {
             // Publisher edges: Process -> Topic (processes that WRITE to this topic)
             for publisher_name in &topic.publishers {
                 // Find the process node by name
-                if let Some(process_node) = graph_nodes.iter().find(|n|
-                    n.node_type == NodeType::Process && n.label == *publisher_name
-                ) {
+                if let Some(process_node) = graph_nodes
+                    .iter()
+                    .find(|n| n.node_type == NodeType::Process && n.label == *publisher_name)
+                {
                     graph_edges.push(GraphEdge {
                         from: process_node.id.clone(),
                         to: topic_id.clone(),
@@ -1185,9 +1277,10 @@ pub fn discover_graph_data() -> (Vec<GraphNode>, Vec<GraphEdge>) {
             // Subscriber edges: Topic -> Process (processes that READ from this topic)
             for subscriber_name in &topic.subscribers {
                 // Find the process node by name
-                if let Some(process_node) = graph_nodes.iter().find(|n|
-                    n.node_type == NodeType::Process && n.label == *subscriber_name
-                ) {
+                if let Some(process_node) = graph_nodes
+                    .iter()
+                    .find(|n| n.node_type == NodeType::Process && n.label == *subscriber_name)
+                {
                     graph_edges.push(GraphEdge {
                         from: topic_id.clone(),
                         to: process_node.id.clone(),
@@ -1200,7 +1293,7 @@ pub fn discover_graph_data() -> (Vec<GraphNode>, Vec<GraphEdge>) {
     }
 
     // Only show real nodes and topics - no demo data
-    
+
     (graph_nodes, graph_edges)
 }
 
@@ -1213,30 +1306,28 @@ pub fn show_graph_visualization() -> anyhow::Result<()> {
             .with_min_inner_size([800.0, 600.0]),
         ..Default::default()
     };
-    
+
     eframe::run_native(
         "HORUS Graph",
         native_options,
-        Box::new(|_cc| {
-            Box::new(GraphVisualization::new(Box::new(discover_graph_data)))
-        }),
-    ).map_err(|e| anyhow::anyhow!("Failed to run graph visualization: {}", e))
+        Box::new(|_cc| Box::new(GraphVisualization::new(Box::new(discover_graph_data)))),
+    )
+    .map_err(|e| anyhow::anyhow!("Failed to run graph visualization: {}", e))
 }
-
 
 // Implement rand::random for demo purposes (replace with proper random in production)
 mod rand {
-    pub fn random<T>() -> T 
-    where 
-        T: RandomValue
+    pub fn random<T>() -> T
+    where
+        T: RandomValue,
     {
         T::random()
     }
-    
+
     pub trait RandomValue {
         fn random() -> Self;
     }
-    
+
     impl RandomValue for f32 {
         fn random() -> Self {
             // Simple pseudo-random using system time

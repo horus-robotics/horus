@@ -9,7 +9,7 @@ mod tests {
     // Test that messages work with standard derive macros
     #[test]
     fn test_message_with_derives() {
-        use serde::{Serialize, Deserialize};
+        use serde::{Deserialize, Serialize};
 
         #[derive(Debug, Clone, Serialize, Deserialize)]
         struct TestMessage {
@@ -33,7 +33,7 @@ mod tests {
     fn test_node_macro_compiles() {
         use horus_core::communication::horus::Hub;
         use horus_core::core::node::{Node, NodeInfo};
-        use serde::{Serialize, Deserialize};
+        use serde::{Deserialize, Serialize};
 
         #[derive(Debug, Clone, Serialize, Deserialize)]
         struct TestData {
@@ -60,7 +60,7 @@ mod tests {
     #[test]
     fn test_public_node() {
         use horus_core::communication::horus::Hub;
-        use serde::{Serialize, Deserialize};
+        use serde::{Deserialize, Serialize};
 
         #[derive(Debug, Clone, Serialize, Deserialize)]
         pub struct PublicData {

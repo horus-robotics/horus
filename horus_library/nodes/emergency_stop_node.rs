@@ -1,6 +1,9 @@
-use horus_core::{Node, NodeInfo, Hub};
 use crate::{EmergencyStop, SafetyStatus};
-use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
+use horus_core::{Hub, Node, NodeInfo};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Emergency Stop Node - Hardware emergency stop handler for industrial safety
@@ -141,15 +144,15 @@ impl EmergencyStopNode {
 
     fn publish_safety_status(&self) {
         let status = if self.is_stopped.load(Ordering::Relaxed) {
-{
-            let mut status = SafetyStatus::new();
-            status.estop_engaged = true;
-            status.mode = SafetyStatus::MODE_SAFE_STOP;
-            status.set_fault(1); // Emergency stop fault code
-            status
-        }
+            {
+                let mut status = SafetyStatus::new();
+                status.estop_engaged = true;
+                status.mode = SafetyStatus::MODE_SAFE_STOP;
+                status.set_fault(1); // Emergency stop fault code
+                status
+            }
         } else {
-SafetyStatus::new()
+            SafetyStatus::new()
         };
         let _ = self.safety_publisher.send(status, None);
     }

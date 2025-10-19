@@ -15,14 +15,23 @@ mod tests {
 
                     impl<T> Hub<T> {
                         pub fn new(_topic: &str) -> Result<Self, Box<dyn std::error::Error>> {
-                            Ok(Self { _phantom: std::marker::PhantomData })
+                            Ok(Self {
+                                _phantom: std::marker::PhantomData,
+                            })
                         }
 
-                        pub fn try_recv(&self, _ctx: Option<&mut crate::mock::horus_core::core::NodeInfo>) -> Option<T> {
+                        pub fn try_recv(
+                            &self,
+                            _ctx: Option<&mut crate::mock::horus_core::core::NodeInfo>,
+                        ) -> Option<T> {
                             None
                         }
 
-                        pub fn send(&self, _data: T, _ctx: Option<&mut crate::mock::horus_core::core::NodeInfo>) -> Result<(), Box<dyn std::error::Error>> {
+                        pub fn send(
+                            &self,
+                            _data: T,
+                            _ctx: Option<&mut crate::mock::horus_core::core::NodeInfo>,
+                        ) -> Result<(), Box<dyn std::error::Error>> {
                             Ok(())
                         }
                     }

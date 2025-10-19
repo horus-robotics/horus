@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 use std::fs;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HardwareInfo {
@@ -120,8 +120,7 @@ fn detect_usb_devices() -> Vec<UsbDevice> {
 
 fn check_gpio() -> bool {
     // Check for common GPIO interfaces
-    PathBuf::from("/sys/class/gpio").exists() ||
-    PathBuf::from("/dev/gpiochip0").exists()
+    PathBuf::from("/sys/class/gpio").exists() || PathBuf::from("/dev/gpiochip0").exists()
 }
 
 fn detect_i2c() -> Vec<I2cBus> {

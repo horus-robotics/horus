@@ -1,11 +1,11 @@
 use clap::{Parser, Subcommand};
 use colored::*;
 use horus_core::error::{HorusError, HorusResult};
-use std::path::PathBuf;
 use std::fs;
+use std::path::PathBuf;
 
 // Use modules from the library instead of redeclaring them
-use horus_manager::{commands, dashboard_tui, dashboard, registry, workspace};
+use horus_manager::{commands, dashboard, dashboard_tui, registry, workspace};
 
 #[derive(Parser)]
 #[command(name = "horus")]
@@ -217,7 +217,14 @@ fn main() {
 
 fn run_command(command: Commands) -> HorusResult<()> {
     match command {
-        Commands::New { name, path, python, rust, c, use_macro } => {
+        Commands::New {
+            name,
+            path,
+            python,
+            rust,
+            c,
+            use_macro,
+        } => {
             let language = if python {
                 "python"
             } else if rust {
@@ -232,9 +239,16 @@ fn run_command(command: Commands) -> HorusResult<()> {
 
             commands::new::create_new_project(name, path, language.to_string(), use_macro)
                 .map_err(|e| HorusError::Config(e.to_string()))
-        },
+        }
 
-        Commands::Run { file, build_only, release, clean, remote, args } => {
+        Commands::Run {
+            file,
+            build_only,
+            release,
+            clean,
+            remote,
+            args,
+        } => {
             if let Some(robot_addr) = remote {
                 // Remote execution mode
                 commands::remote::execute_remote(&robot_addr, file)
@@ -248,19 +262,25 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 commands::run::execute_run(file, args, release, clean)
                     .map_err(|e| HorusError::Config(e.to_string()))
             }
-        },
+        }
 
         Commands::Dashboard { port, tui } => {
             if tui {
                 println!("{} Opening HORUS Terminal UI dashboard...", "→".cyan());
                 // Launch TUI dashboard
-                dashboard_tui::TuiDashboard::run()
-                    .map_err(|e| HorusError::Config(e.to_string()))
+                dashboard_tui::TuiDashboard::run().map_err(|e| HorusError::Config(e.to_string()))
             } else {
                 // Default: Launch web dashboard and auto-open browser
-                println!("{} Starting HORUS web dashboard on http://localhost:{}...", "→".cyan(), port);
+                println!(
+                    "{} Starting HORUS web dashboard on http://localhost:{}...",
+                    "→".cyan(),
+                    port
+                );
                 println!("  {} Opening browser...", "→".dimmed());
-                println!("  {} Use 'horus dashboard -t' for Terminal UI", "Tip:".dimmed());
+                println!(
+                    "  {} Use 'horus dashboard -t' for Terminal UI",
+                    "Tip:".dimmed()
+                );
 
                 tokio::runtime::Runtime::new()
                     .unwrap()
@@ -280,11 +300,17 @@ fn run_command(command: Commands) -> HorusResult<()> {
                         }
                     })
             }
-        },
+        }
 
         Commands::Pkg { command } => {
             match command {
-                PkgCommands::Install { package, ver, global, target, dev } => {
+                PkgCommands::Install {
+                    package,
+                    ver,
+                    global,
+                    target,
+                    dev,
+                } => {
                     if dev {
                         println!("  {} Dev dependencies not yet supported", "Note:".yellow());
                     }
@@ -298,8 +324,9 @@ fn run_command(command: Commands) -> HorusResult<()> {
                         let registry = workspace::WorkspaceRegistry::load()
                             .map_err(|e| HorusError::Config(e.to_string()))?;
 
-                        let ws = registry.find_by_name(&target_name)
-                            .ok_or_else(|| HorusError::Config(format!("Workspace '{}' not found", target_name)))?;
+                        let ws = registry.find_by_name(&target_name).ok_or_else(|| {
+                            HorusError::Config(format!("Workspace '{}' not found", target_name))
+                        })?;
 
                         workspace::InstallTarget::Local(ws.path.clone())
                     } else {
@@ -310,24 +337,31 @@ fn run_command(command: Commands) -> HorusResult<()> {
 
                     // Install package with target
                     let client = registry::RegistryClient::new();
-                    client.install_to_target(&package, ver.as_deref(), install_target)
+                    client
+                        .install_to_target(&package, ver.as_deref(), install_target)
                         .map_err(|e| HorusError::Config(e.to_string()))
-                },
+                }
 
-                PkgCommands::Remove { package, global, target } => {
+                PkgCommands::Remove {
+                    package,
+                    global,
+                    target,
+                } => {
                     println!("{} Removing {}...", "→".cyan(), package.yellow());
 
                     let remove_dir = if global {
                         // Remove from global cache
-                        let home = dirs::home_dir()
-                            .ok_or_else(|| HorusError::Config("Could not find home directory".to_string()))?;
+                        let home = dirs::home_dir().ok_or_else(|| {
+                            HorusError::Config("Could not find home directory".to_string())
+                        })?;
                         let global_cache = home.join(".horus/cache");
 
                         // Find versioned directory
                         let mut found = None;
                         if global_cache.exists() {
                             for entry in fs::read_dir(&global_cache)
-                                .map_err(|e| HorusError::Config(e.to_string()))? {
+                                .map_err(|e| HorusError::Config(e.to_string()))?
+                            {
                                 let entry = entry.map_err(|e| HorusError::Config(e.to_string()))?;
                                 let name = entry.file_name().to_string_lossy().to_string();
                                 if name == package || name.starts_with(&format!("{}@", package)) {
@@ -336,13 +370,19 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                 }
                             }
                         }
-                        found.ok_or_else(|| HorusError::Config(format!("Package {} not found in global cache", package)))?
+                        found.ok_or_else(|| {
+                            HorusError::Config(format!(
+                                "Package {} not found in global cache",
+                                package
+                            ))
+                        })?
                     } else if let Some(target_name) = target {
                         // Remove from specific workspace
                         let registry = workspace::WorkspaceRegistry::load()
                             .map_err(|e| HorusError::Config(e.to_string()))?;
-                        let ws = registry.find_by_name(&target_name)
-                            .ok_or_else(|| HorusError::Config(format!("Workspace '{}' not found", target_name)))?;
+                        let ws = registry.find_by_name(&target_name).ok_or_else(|| {
+                            HorusError::Config(format!("Workspace '{}' not found", target_name))
+                        })?;
                         ws.path.join(".horus/packages").join(&package)
                     } else {
                         // Remove from current workspace
@@ -359,13 +399,14 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     }
 
                     // Remove package directory
-                    std::fs::remove_dir_all(&remove_dir)
-                        .map_err(|e| HorusError::Config(format!("Failed to remove package: {}", e)))?;
+                    std::fs::remove_dir_all(&remove_dir).map_err(|e| {
+                        HorusError::Config(format!("Failed to remove package: {}", e))
+                    })?;
 
                     println!("✅ Removed {} from {}", package, remove_dir.display());
 
                     Ok(())
-                },
+                }
 
                 PkgCommands::List { query, global, all } => {
                     let client = registry::RegistryClient::new();
@@ -373,7 +414,8 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     if let Some(q) = query {
                         // Search registry
                         println!("{} Searching for '{}'...", "→".cyan(), q);
-                        let results = client.search(&q)
+                        let results = client
+                            .search(&q)
                             .map_err(|e| HorusError::Config(e.to_string()))?;
 
                         if results.is_empty() {
@@ -381,7 +423,8 @@ fn run_command(command: Commands) -> HorusResult<()> {
                         } else {
                             println!("\n{} Found {} package(s):\n", "✓".green(), results.len());
                             for pkg in results {
-                                println!("  {} {} - {}",
+                                println!(
+                                    "  {} {} - {}",
                                     pkg.name.yellow().bold(),
                                     pkg.version.dimmed(),
                                     pkg.description.unwrap_or_default()
@@ -391,8 +434,9 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     } else if global {
                         // List global cache packages
                         println!("{} Global cache packages:\n", "→".cyan());
-                        let home = dirs::home_dir()
-                            .ok_or_else(|| HorusError::Config("Could not find home directory".to_string()))?;
+                        let home = dirs::home_dir().ok_or_else(|| {
+                            HorusError::Config("Could not find home directory".to_string())
+                        })?;
                         let global_cache = home.join(".horus/cache");
 
                         if !global_cache.exists() {
@@ -401,13 +445,16 @@ fn run_command(command: Commands) -> HorusResult<()> {
                         }
 
                         for entry in fs::read_dir(&global_cache)
-                            .map_err(|e| HorusError::Config(e.to_string()))? {
+                            .map_err(|e| HorusError::Config(e.to_string()))?
+                        {
                             let entry = entry.map_err(|e| HorusError::Config(e.to_string()))?;
-                            if entry.file_type()
+                            if entry
+                                .file_type()
                                 .map_err(|e| HorusError::Config(e.to_string()))?
-                                .is_dir() {
+                                .is_dir()
+                            {
                                 let name = entry.file_name().to_string_lossy().to_string();
-                                println!("  {} {}", "🌐".to_string(), name.yellow());
+                                println!("  🌐 {}", name.yellow());
                             }
                         }
                     } else {
@@ -426,19 +473,25 @@ fn run_command(command: Commands) -> HorusResult<()> {
                         }
 
                         for entry in fs::read_dir(&packages_dir)
-                            .map_err(|e| HorusError::Config(e.to_string()))? {
+                            .map_err(|e| HorusError::Config(e.to_string()))?
+                        {
                             let entry = entry.map_err(|e| HorusError::Config(e.to_string()))?;
-                            if entry.file_type()
+                            if entry
+                                .file_type()
                                 .map_err(|e| HorusError::Config(e.to_string()))?
-                                .is_dir() {
+                                .is_dir()
+                            {
                                 let name = entry.file_name().to_string_lossy().to_string();
 
                                 // Try to read metadata.json
                                 let metadata_path = entry.path().join("metadata.json");
                                 if metadata_path.exists() {
                                     if let Ok(content) = fs::read_to_string(&metadata_path) {
-                                        if let Ok(metadata) = serde_json::from_str::<serde_json::Value>(&content) {
-                                            let version = metadata["version"].as_str().unwrap_or("unknown");
+                                        if let Ok(metadata) =
+                                            serde_json::from_str::<serde_json::Value>(&content)
+                                        {
+                                            let version =
+                                                metadata["version"].as_str().unwrap_or("unknown");
                                             println!("  {} {}", name.yellow(), version.dimmed());
                                             continue;
                                         }
@@ -451,27 +504,44 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     }
 
                     Ok(())
-                },
+                }
 
-                PkgCommands::Unpublish { package, version, yes } => {
+                PkgCommands::Unpublish {
+                    package,
+                    version,
+                    yes,
+                } => {
                     use std::io::{self, Write};
 
-                    println!("{} Unpublishing {} v{}...", "→".cyan(), package.yellow(), version.yellow());
+                    println!(
+                        "{} Unpublishing {} v{}...",
+                        "→".cyan(),
+                        package.yellow(),
+                        version.yellow()
+                    );
 
                     // Confirmation prompt (unless --yes flag is set)
                     if !yes {
-                        println!("\n{} This action is {} and will:", "Warning:".yellow().bold(), "IRREVERSIBLE".red().bold());
+                        println!(
+                            "\n{} This action is {} and will:",
+                            "Warning:".yellow().bold(),
+                            "IRREVERSIBLE".red().bold()
+                        );
                         println!("  • Delete {} v{} from the registry", package, version);
                         println!("  • Make this version unavailable for download");
                         println!("  • Cannot be undone");
-                        println!("\n{} Consider using 'yank' instead for temporary removal", "Tip:".dimmed());
+                        println!(
+                            "\n{} Consider using 'yank' instead for temporary removal",
+                            "Tip:".dimmed()
+                        );
 
                         print!("\nType the package name '{}' to confirm: ", package);
                         io::stdout().flush().unwrap();
 
                         let mut confirmation = String::new();
-                        io::stdin().read_line(&mut confirmation)
-                            .map_err(|e| HorusError::Config(format!("Failed to read input: {}", e)))?;
+                        io::stdin().read_line(&mut confirmation).map_err(|e| {
+                            HorusError::Config(format!("Failed to read input: {}", e))
+                        })?;
 
                         if confirmation.trim() != package {
                             println!("❌ Package name mismatch. Unpublish cancelled.");
@@ -481,16 +551,21 @@ fn run_command(command: Commands) -> HorusResult<()> {
 
                     // Call unpublish API
                     let client = registry::RegistryClient::new();
-                    client.unpublish(&package, &version)
+                    client
+                        .unpublish(&package, &version)
                         .map_err(|e| HorusError::Config(e.to_string()))?;
 
-                    println!("\n✅ Successfully unpublished {} v{}", package.green(), version.green());
+                    println!(
+                        "\n✅ Successfully unpublished {} v{}",
+                        package.green(),
+                        version.green()
+                    );
                     println!("   The package is no longer available on the registry");
 
                     Ok(())
-                },
+                }
             }
-        },
+        }
 
         Commands::Env { command } => {
             match command {
@@ -498,7 +573,8 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     println!("{} Freezing current environment...", "→".cyan());
 
                     let client = registry::RegistryClient::new();
-                    let manifest = client.freeze()
+                    let manifest = client
+                        .freeze()
                         .map_err(|e| HorusError::Config(e.to_string()))?;
 
                     // Save to local file
@@ -515,7 +591,8 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     // Publish to registry if requested
                     if publish {
                         println!();
-                        client.upload_environment(&manifest)
+                        client
+                            .upload_environment(&manifest)
                             .map_err(|e| HorusError::Config(e.to_string()))?;
                     } else {
                         println!("\n{} To share this environment:", "Tip:".dimmed());
@@ -524,7 +601,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     }
 
                     Ok(())
-                },
+                }
 
                 EnvCommands::Restore { source } => {
                     println!("{} Restoring environment from {}...", "→".cyan(), source);
@@ -532,20 +609,27 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     let client = registry::RegistryClient::new();
 
                     // Check if source is a file path or environment ID
-                    if source.ends_with(".yaml") || source.ends_with(".yml") || PathBuf::from(&source).exists() {
+                    if source.ends_with(".yaml")
+                        || source.ends_with(".yml")
+                        || PathBuf::from(&source).exists()
+                    {
                         // It's a file path
-                        let content = fs::read_to_string(&source)
-                            .map_err(|e| HorusError::Config(format!("Failed to read freeze file: {}", e)))?;
+                        let content = fs::read_to_string(&source).map_err(|e| {
+                            HorusError::Config(format!("Failed to read freeze file: {}", e))
+                        })?;
 
-                        let manifest: registry::EnvironmentManifest = serde_yaml::from_str(&content)
-                            .map_err(|e| HorusError::Config(format!("Failed to parse freeze file: {}", e)))?;
+                        let manifest: registry::EnvironmentManifest =
+                            serde_yaml::from_str(&content).map_err(|e| {
+                                HorusError::Config(format!("Failed to parse freeze file: {}", e))
+                            })?;
 
                         println!("📦 Found {} packages to restore", manifest.packages.len());
 
                         // Install each package from the manifest
                         for pkg in &manifest.packages {
                             println!("  Installing {} v{}...", pkg.name, pkg.version);
-                            client.install(&pkg.name, Some(&pkg.version))
+                            client
+                                .install(&pkg.name, Some(&pkg.version))
                                 .map_err(|e| HorusError::Config(e.to_string()))?;
                         }
 
@@ -554,58 +638,52 @@ fn run_command(command: Commands) -> HorusResult<()> {
                         println!("   Packages: {}", manifest.packages.len());
                     } else {
                         // It's an environment ID from registry
-                        client.restore_environment(&source)
+                        client
+                            .restore_environment(&source)
                             .map_err(|e| HorusError::Config(e.to_string()))?;
                     }
 
                     Ok(())
-                },
+                }
             }
-        },
+        }
 
         Commands::Publish { freeze } => {
             let client = registry::RegistryClient::new();
-            client.publish(None)
+            client
+                .publish(None)
                 .map_err(|e| HorusError::Config(e.to_string()))?;
 
             // If --freeze flag is set, also generate freeze file
             if freeze {
                 println!("\n{} Generating freeze file...", "→".cyan());
-                let manifest = client.freeze()
+                let manifest = client
+                    .freeze()
                     .map_err(|e| HorusError::Config(e.to_string()))?;
 
                 let freeze_file = "horus-freeze.yaml";
                 let yaml = serde_yaml::to_string(&manifest)
                     .map_err(|e| HorusError::Config(e.to_string()))?;
-                std::fs::write(freeze_file, yaml)
-                    .map_err(|e| HorusError::Config(e.to_string()))?;
+                std::fs::write(freeze_file, yaml).map_err(|e| HorusError::Config(e.to_string()))?;
 
                 println!("✅ Environment also frozen to {}", freeze_file);
             }
 
             Ok(())
-        },
+        }
 
-        Commands::Auth { command } => {
-            match command {
-                AuthCommands::Login { github } => {
-                    commands::github_auth::login(github)
-                },
-                AuthCommands::GenerateKey { name, environment } => {
-                    commands::github_auth::generate_key(name, environment)
-                },
-                AuthCommands::Logout => {
-                    commands::github_auth::logout()
-                },
-                AuthCommands::Whoami => {
-                    commands::github_auth::whoami()
-                },
+        Commands::Auth { command } => match command {
+            AuthCommands::Login { github } => commands::github_auth::login(github),
+            AuthCommands::GenerateKey { name, environment } => {
+                commands::github_auth::generate_key(name, environment)
             }
+            AuthCommands::Logout => commands::github_auth::logout(),
+            AuthCommands::Whoami => commands::github_auth::whoami(),
         },
 
         Commands::Version => {
             horus_manager::version::print_version_info();
             Ok(())
-        },
+        }
     }
 }

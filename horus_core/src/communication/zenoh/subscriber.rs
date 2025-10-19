@@ -5,10 +5,10 @@ pub use self::implementation::*;
 
 #[cfg(feature = "zenoh")]
 mod implementation {
-    use zenoh::*;
+    use super::super::ZenohError;
     use std::sync::Arc;
     use tokio::sync::mpsc;
-    use super::super::ZenohError;
+    use zenoh::*;
 
     /// HORUS wrapper around Zenoh Subscriber
     #[derive(Debug)]
@@ -20,19 +20,22 @@ mod implementation {
     }
 
     impl<T> Subscriber<T>
-    where 
-        T: Send + Sync + Clone + serde::de::DeserializeOwned + 'static
+    where
+        T: Send + Sync + Clone + serde::de::DeserializeOwned + 'static,
     {
-        pub(in super::super) fn new(session: Arc<zenoh::Session>, key_expr: &str) -> Result<Self, ZenohError> {
+        pub(in super::super) fn new(
+            session: Arc<zenoh::Session>,
+            key_expr: &str,
+        ) -> Result<Self, ZenohError> {
             let key_expr_owned = key_expr.to_string();
-            
+
             // Create channel for message passing
             let (tx, rx) = mpsc::unbounded_channel();
-            
+
             // Create Zenoh subscriber with callback
             let rt = tokio::runtime::Handle::try_current()
                 .map_err(|_| ZenohError::SubscriberCreation("No Tokio runtime available".into()))?;
-            
+
             let subscriber = rt.block_on(async {
                 session
                     .declare_subscriber(key_expr)
@@ -43,9 +46,14 @@ mod implementation {
                         }
                     })
                     .await
-                    .map_err(|e| ZenohError::SubscriberCreation(format!("Failed to create subscriber: {:?}", e)))
+                    .map_err(|e| {
+                        ZenohError::SubscriberCreation(format!(
+                            "Failed to create subscriber: {:?}",
+                            e
+                        ))
+                    })
             })?;
-            
+
             Ok(Self {
                 receiver: Arc::new(tokio::sync::Mutex::new(rx)),
                 key_expr: key_expr_owned,
@@ -53,7 +61,7 @@ mod implementation {
                 _phantom: std::marker::PhantomData,
             })
         }
-        
+
         /// Try to receive a message (non-blocking)
         pub fn try_recv(&self) -> Option<T> {
             // Use try_lock to avoid blocking in sync context
@@ -69,7 +77,7 @@ mod implementation {
             let mut receiver = self.receiver.lock().await;
             receiver.recv().await
         }
-        
+
         /// Check if messages are available
         pub fn has_messages(&self) -> bool {
             // Use try_lock to check without blocking
@@ -88,7 +96,7 @@ mod implementation {
 
     impl<T> Clone for Subscriber<T>
     where
-        T: Send + Sync + Clone + serde::de::DeserializeOwned + 'static
+        T: Send + Sync + Clone + serde::de::DeserializeOwned + 'static,
     {
         fn clone(&self) -> Self {
             Self {
@@ -109,7 +117,7 @@ mod stub {
     /// Stub Subscriber when zenoh backend is not enabled
     #[derive(Debug)]
     pub struct Subscriber<T>(std::marker::PhantomData<T>);
-    
+
     impl<T> Clone for Subscriber<T> {
         fn clone(&self) -> Self {
             Subscriber(std::marker::PhantomData)

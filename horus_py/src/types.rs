@@ -1,7 +1,7 @@
-use pyo3::prelude::*;
+use horus::{NodeConfig as CoreNodeConfig, NodePriority as CoreNodePriority};
 use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
 use std::collections::HashMap;
-use horus::{NodePriority as CoreNodePriority, NodeConfig as CoreNodeConfig};
 
 /// Python wrapper for messages
 #[pyclass]
@@ -31,20 +31,24 @@ impl PyMessage {
             metadata: HashMap::new(),
         }
     }
-    
+
     fn set_metadata_item(&mut self, key: String, value: String) {
         self.metadata.insert(key, value);
     }
-    
+
     fn get_metadata_item(&self, key: String) -> Option<String> {
         self.metadata.get(&key).cloned()
     }
-    
+
     fn __repr__(&self) -> String {
-        format!("Message(topic='{}', size={} bytes, timestamp={})", 
-                self.topic, self.data.len(), self.timestamp)
+        format!(
+            "Message(topic='{}', size={} bytes, timestamp={})",
+            self.topic,
+            self.data.len(),
+            self.timestamp
+        )
     }
-    
+
     fn __len__(&self) -> usize {
         self.data.len()
     }
@@ -67,38 +71,51 @@ impl PyNodePriority {
             "normal" => CoreNodePriority::Normal,
             "low" => CoreNodePriority::Low,
             "background" => CoreNodePriority::Background,
-            _ => return Err(PyValueError::new_err(
-                format!("Invalid priority '{}'. Must be one of: critical, high, normal, low, background", priority)
-            )),
+            _ => {
+                return Err(PyValueError::new_err(format!(
+                "Invalid priority '{}'. Must be one of: critical, high, normal, low, background",
+                priority
+            )))
+            }
         };
         Ok(PyNodePriority { value })
     }
-    
+
     #[staticmethod]
     fn critical() -> Self {
-        PyNodePriority { value: CoreNodePriority::Critical }
+        PyNodePriority {
+            value: CoreNodePriority::Critical,
+        }
     }
-    
+
     #[staticmethod]
     fn high() -> Self {
-        PyNodePriority { value: CoreNodePriority::High }
+        PyNodePriority {
+            value: CoreNodePriority::High,
+        }
     }
-    
+
     #[staticmethod]
     fn normal() -> Self {
-        PyNodePriority { value: CoreNodePriority::Normal }
+        PyNodePriority {
+            value: CoreNodePriority::Normal,
+        }
     }
-    
+
     #[staticmethod]
     fn low() -> Self {
-        PyNodePriority { value: CoreNodePriority::Low }
+        PyNodePriority {
+            value: CoreNodePriority::Low,
+        }
     }
-    
+
     #[staticmethod]
     fn background() -> Self {
-        PyNodePriority { value: CoreNodePriority::Background }
+        PyNodePriority {
+            value: CoreNodePriority::Background,
+        }
     }
-    
+
     fn __repr__(&self) -> String {
         let name = match self.value {
             CoreNodePriority::Critical => "critical",
@@ -109,7 +126,7 @@ impl PyNodePriority {
         };
         format!("NodePriority.{}", name)
     }
-    
+
     fn __str__(&self) -> String {
         match self.value {
             CoreNodePriority::Critical => "critical".to_string(),
@@ -159,18 +176,20 @@ impl PyNodeConfig {
             custom_params: config.custom_params,
         }
     }
-    
+
     fn set_param(&mut self, key: String, value: String) {
         self.custom_params.insert(key, value);
     }
-    
+
     fn get_param(&self, key: String) -> Option<String> {
         self.custom_params.get(&key).cloned()
     }
-    
+
     fn __repr__(&self) -> String {
-        format!("NodeConfig(logging={}, profiling={}, log_level='{}')",
-                self.enable_logging, self.enable_profiling, self.log_level)
+        format!(
+            "NodeConfig(logging={}, profiling={}, log_level='{}')",
+            self.enable_logging, self.enable_profiling, self.log_level
+        )
     }
 }
 

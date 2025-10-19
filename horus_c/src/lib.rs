@@ -1,9 +1,12 @@
 // HORUS C FFI - Handle-based safe API implementation
-use std::collections::HashMap;
-use std::ffi::{CStr, c_char, c_void};
-use std::sync::{Mutex, atomic::{AtomicU32, Ordering}};
-use std::time::{SystemTime, UNIX_EPOCH};
 use horus_core::Hub;
+use std::collections::HashMap;
+use std::ffi::{c_char, c_void, CStr};
+use std::sync::{
+    atomic::{AtomicU32, Ordering},
+    Mutex,
+};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 // Handle management
 static NEXT_HANDLE: AtomicU32 = AtomicU32::new(1);
@@ -71,7 +74,9 @@ pub extern "C" fn ok() -> bool {
 #[no_mangle]
 pub extern "C" fn publisher(topic: *const c_char, msg_type: MessageType) -> u32 {
     let topic_str = unsafe {
-        if topic.is_null() { return 0; }
+        if topic.is_null() {
+            return 0;
+        }
         CStr::from_ptr(topic).to_str().unwrap_or("")
     };
 
@@ -104,7 +109,9 @@ pub extern "C" fn publisher(topic: *const c_char, msg_type: MessageType) -> u32 
 #[no_mangle]
 pub extern "C" fn publisher_custom(topic: *const c_char, msg_size: usize) -> u32 {
     let topic_str = unsafe {
-        if topic.is_null() { return 0; }
+        if topic.is_null() {
+            return 0;
+        }
         CStr::from_ptr(topic).to_str().unwrap_or("")
     };
 
@@ -121,7 +128,9 @@ pub extern "C" fn publisher_custom(topic: *const c_char, msg_size: usize) -> u32
 #[no_mangle]
 pub extern "C" fn subscriber(topic: *const c_char, msg_type: MessageType) -> u32 {
     let topic_str = unsafe {
-        if topic.is_null() { return 0; }
+        if topic.is_null() {
+            return 0;
+        }
         CStr::from_ptr(topic).to_str().unwrap_or("")
     };
 
@@ -152,7 +161,9 @@ pub extern "C" fn subscriber(topic: *const c_char, msg_type: MessageType) -> u32
 #[no_mangle]
 pub extern "C" fn subscriber_custom(topic: *const c_char, msg_size: usize) -> u32 {
     let topic_str = unsafe {
-        if topic.is_null() { return 0; }
+        if topic.is_null() {
+            return 0;
+        }
         CStr::from_ptr(topic).to_str().unwrap_or("")
     };
 
@@ -167,7 +178,9 @@ pub extern "C" fn subscriber_custom(topic: *const c_char, msg_size: usize) -> u3
 // Send message
 #[no_mangle]
 pub extern "C" fn send(pub_handle: u32, data: *const c_void) -> bool {
-    if data.is_null() { return false; }
+    if data.is_null() {
+        return false;
+    }
 
     let pubs = PUBLISHERS.lock().unwrap();
     if let Some(publisher) = pubs.get(&pub_handle) {
@@ -182,7 +195,9 @@ pub extern "C" fn send(pub_handle: u32, data: *const c_void) -> bool {
 // Receive message (blocking)
 #[no_mangle]
 pub extern "C" fn recv(sub_handle: u32, data: *mut c_void) -> bool {
-    if data.is_null() { return false; }
+    if data.is_null() {
+        return false;
+    }
 
     let subs = SUBSCRIBERS.lock().unwrap();
     if let Some(_subscriber) = subs.get(&sub_handle) {
@@ -196,7 +211,9 @@ pub extern "C" fn recv(sub_handle: u32, data: *mut c_void) -> bool {
 // Try receive message (non-blocking)
 #[no_mangle]
 pub extern "C" fn try_recv(sub_handle: u32, data: *mut c_void) -> bool {
-    if data.is_null() { return false; }
+    if data.is_null() {
+        return false;
+    }
 
     let subs = SUBSCRIBERS.lock().unwrap();
     if let Some(_subscriber) = subs.get(&sub_handle) {
@@ -239,7 +256,9 @@ pub extern "C" fn spin() {
 #[no_mangle]
 pub extern "C" fn log_info(msg: *const c_char) {
     let msg_str = unsafe {
-        if msg.is_null() { return; }
+        if msg.is_null() {
+            return;
+        }
         CStr::from_ptr(msg).to_str().unwrap_or("")
     };
     println!("[INFO] {}", msg_str);
@@ -248,7 +267,9 @@ pub extern "C" fn log_info(msg: *const c_char) {
 #[no_mangle]
 pub extern "C" fn log_warn(msg: *const c_char) {
     let msg_str = unsafe {
-        if msg.is_null() { return; }
+        if msg.is_null() {
+            return;
+        }
         CStr::from_ptr(msg).to_str().unwrap_or("")
     };
     println!("[WARN] {}", msg_str);
@@ -257,7 +278,9 @@ pub extern "C" fn log_warn(msg: *const c_char) {
 #[no_mangle]
 pub extern "C" fn log_error(msg: *const c_char) {
     let msg_str = unsafe {
-        if msg.is_null() { return; }
+        if msg.is_null() {
+            return;
+        }
         CStr::from_ptr(msg).to_str().unwrap_or("")
     };
     eprintln!("[ERROR] {}", msg_str);
@@ -266,7 +289,9 @@ pub extern "C" fn log_error(msg: *const c_char) {
 #[no_mangle]
 pub extern "C" fn log_debug(msg: *const c_char) {
     let msg_str = unsafe {
-        if msg.is_null() { return; }
+        if msg.is_null() {
+            return;
+        }
         CStr::from_ptr(msg).to_str().unwrap_or("")
     };
     println!("[DEBUG] {}", msg_str);

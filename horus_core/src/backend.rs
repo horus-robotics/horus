@@ -85,8 +85,11 @@ impl std::str::FromStr for Backend {
             "iceoryx2" | "iceoryx" => Ok(Backend::IceOryx2),
             #[cfg(feature = "zenoh")]
             "zenoh" => Ok(Backend::Zenoh),
-            _ => Err(format!("Unknown backend: {}. Available: {:?}",
-                s, Backend::available_backends()))
+            _ => Err(format!(
+                "Unknown backend: {}. Available: {:?}",
+                s,
+                Backend::available_backends()
+            )),
         }
     }
 }

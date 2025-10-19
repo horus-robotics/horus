@@ -62,22 +62,22 @@
 //! ```
 
 // Declare node modules
-pub mod emergency_stop_node;
-pub mod safety_monitor_node;
 pub mod camera_node;
-pub mod lidar_node;
-pub mod imu_node;
-pub mod differential_drive_node;
-pub mod pid_controller_node;
-pub mod modbus_node;
-pub mod keyboard_input_node;
-pub mod joystick_node;
-pub mod encoder_node;
-pub mod servo_controller_node;
-pub mod digital_io_node;
-pub mod path_planner_node;
-pub mod localization_node;
 pub mod collision_detector_node;
+pub mod differential_drive_node;
+pub mod digital_io_node;
+pub mod emergency_stop_node;
+pub mod encoder_node;
+pub mod imu_node;
+pub mod joystick_node;
+pub mod keyboard_input_node;
+pub mod lidar_node;
+pub mod localization_node;
+pub mod modbus_node;
+pub mod path_planner_node;
+pub mod pid_controller_node;
+pub mod safety_monitor_node;
+pub mod servo_controller_node;
 
 // Re-export node types for convenience
 // Safety & Monitoring Nodes
@@ -86,9 +86,9 @@ pub use safety_monitor_node::SafetyMonitorNode;
 
 // Sensor Interface Nodes
 pub use camera_node::CameraNode;
-pub use lidar_node::LidarNode;
-pub use imu_node::ImuNode;
 pub use encoder_node::EncoderNode;
+pub use imu_node::ImuNode;
+pub use lidar_node::LidarNode;
 
 // Control & Actuation Nodes
 pub use differential_drive_node::DifferentialDriveNode;
@@ -96,17 +96,17 @@ pub use pid_controller_node::PidControllerNode;
 pub use servo_controller_node::ServoControllerNode;
 
 // Navigation Nodes
-pub use path_planner_node::PathPlannerNode;
-pub use localization_node::LocalizationNode;
 pub use collision_detector_node::CollisionDetectorNode;
+pub use localization_node::LocalizationNode;
+pub use path_planner_node::PathPlannerNode;
 
 // Industrial Integration Nodes
-pub use modbus_node::ModbusNode;
 pub use digital_io_node::DigitalIONode;
+pub use modbus_node::ModbusNode;
 
 // Input Device Nodes (Existing)
-pub use keyboard_input_node::KeyboardInputNode;
 pub use joystick_node::JoystickInputNode;
+pub use keyboard_input_node::KeyboardInputNode;
 
 // Re-export core HORUS types for convenience
-pub use horus_core::{Node, NodeInfo, Hub};
+pub use horus_core::{Hub, Node, NodeInfo};

@@ -74,5 +74,3 @@ mod node;
 pub fn node(input: TokenStream) -> TokenStream {
     node::impl_node_macro(input)
 }
-
-

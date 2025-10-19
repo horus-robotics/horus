@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Command velocity message for robot control
-/// 
+///
 /// Standard message type used across the HORUS ecosystem for controlling
 /// robot movement. Contains linear and angular velocity commands.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

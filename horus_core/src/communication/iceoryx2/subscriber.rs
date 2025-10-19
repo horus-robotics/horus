@@ -9,13 +9,15 @@ pub struct Subscriber<T> {
 }
 
 impl<T> Subscriber<T>
-where 
-    T: Send + Sync + Clone + 'static
+where
+    T: Send + Sync + Clone + 'static,
 {
-    pub(super) fn new(subscriber: iceoryx2::service::subscriber::Subscriber<ipc::Service, T, ()>) -> Self {
+    pub(super) fn new(
+        subscriber: iceoryx2::service::subscriber::Subscriber<ipc::Service, T, ()>,
+    ) -> Self {
         Self { subscriber }
     }
-    
+
     /// Receive a message (non-blocking)
     pub fn recv(&self) -> Option<T> {
         match self.subscriber.receive() {
@@ -32,15 +34,17 @@ where
     pub fn try_recv(&self) -> Option<T> {
         self.recv()
     }
-    
+
     /// Check if messages are available
     pub fn has_messages(&self) -> bool {
         // iceoryx2 doesn't have a direct equivalent, so we use a quick peek
         matches!(self.subscriber.receive(), Ok(Some(_)))
     }
-    
+
     /// Receive with zero-copy (advanced API) - returns a reference to shared memory
-    pub fn try_recv_zero_copy(&self) -> Option<iceoryx2::service::subscriber::subscriber::Sample<ipc::Service, T, ()>> {
+    pub fn try_recv_zero_copy(
+        &self,
+    ) -> Option<iceoryx2::service::subscriber::subscriber::Sample<ipc::Service, T, ()>> {
         match self.subscriber.receive() {
             Ok(sample) => sample,
             Err(_) => None,

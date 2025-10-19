@@ -1,10 +1,10 @@
-use crate::core::{Node, NodeInfo, NodeHeartbeat};
+use crate::core::{Node, NodeHeartbeat, NodeInfo};
 use crate::error::HorusResult;
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 /// Enhanced node registration info with lifecycle tracking
 struct RegisteredNode {
@@ -25,6 +25,12 @@ pub struct Scheduler {
     working_dir: PathBuf,
 }
 
+impl Default for Scheduler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Scheduler {
     /// Create an empty scheduler.
     pub fn new() -> Self {
@@ -43,12 +49,17 @@ impl Scheduler {
 
     /// Register a node under numeric `priority` (0 = highest).
     /// If users only use register(node, priority) then logging defaults to false
-    pub fn register(&mut self, node: Box<dyn Node>, priority: u32, logging_enabled: Option<bool>) -> &mut Self {
+    pub fn register(
+        &mut self,
+        node: Box<dyn Node>,
+        priority: u32,
+        logging_enabled: Option<bool>,
+    ) -> &mut Self {
         let node_name = node.name().to_string();
         let logging_enabled = logging_enabled.unwrap_or(false);
-        
+
         let context = NodeInfo::new(node_name.clone(), logging_enabled);
-        
+
         self.nodes.push(RegisteredNode {
             node,
             priority,
@@ -56,19 +67,21 @@ impl Scheduler {
             initialized: false,
             context: Some(context),
         });
-        
-        println!("Registered node '{}' with priority {} (logging: {})", 
-                 node_name, priority, logging_enabled);
-        
+
+        println!(
+            "Registered node '{}' with priority {} (logging: {})",
+            node_name, priority, logging_enabled
+        );
+
         self
     }
-    
+
     /// Set the scheduler name (chainable)
     pub fn name(mut self, name: &str) -> Self {
         self.scheduler_name = name.to_string();
         self
     }
-    
+
     /// Tick specific nodes by name (runs continuously with the specified nodes)
     pub fn tick_node(&mut self, node_names: &[&str]) -> HorusResult<()> {
         // Use the same pattern as tick_all() but with node filtering
@@ -100,7 +113,7 @@ impl Scheduler {
     fn run_with_filter(&mut self, node_filter: Option<&[&str]>) -> HorusResult<()> {
         // Create tokio runtime for nodes that need async
         let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
-        
+
         rt.block_on(async {
             // Set up signal handling
             let running = self.running.clone();
@@ -114,20 +127,21 @@ impl Scheduler {
                     eprintln!("🚪 Force terminating application...");
                     std::process::exit(0);
                 });
-            }).expect("Error setting HORUS signal handler");
-            
+            })
+            .expect("Error setting HORUS signal handler");
+
             // Initialize nodes
             for registered in self.nodes.iter_mut() {
                 let node_name = registered.node.name();
-                let should_run = node_filter.map_or(true, |filter| filter.contains(&node_name));
-                
+                let should_run = node_filter.is_none_or(|filter| filter.contains(&node_name));
+
                 if should_run && !registered.initialized {
                     if let Some(ref mut ctx) = registered.context {
                         match registered.node.init(ctx) {
                             Ok(()) => {
                                 registered.initialized = true;
                                 println!("Initialized node '{}'", node_name);
-                            },
+                            }
                             Err(e) => {
                                 println!("Failed to initialize node '{}': {}", node_name, e);
                                 ctx.transition_to_error(format!("Initialization failed: {}", e));
@@ -136,7 +150,7 @@ impl Scheduler {
                     }
                 }
             }
-            
+
             // Create heartbeat directory
             Self::setup_heartbeat_directory();
 
@@ -147,13 +161,13 @@ impl Scheduler {
             while self.is_running() {
                 let now = Instant::now();
                 self.last_instant = now;
-                
+
                 // Process nodes in priority order
                 self.nodes.sort_by_key(|r| r.priority);
                 for registered in self.nodes.iter_mut() {
                     let node_name = registered.node.name();
-                    let should_run = node_filter.map_or(true, |filter| filter.contains(&node_name));
-                    
+                    let should_run = node_filter.is_none_or(|filter| filter.contains(&node_name));
+
                     if should_run && registered.initialized {
                         if let Some(ref mut context) = registered.context {
                             context.start_tick();
@@ -174,12 +188,12 @@ impl Scheduler {
 
                 tokio::time::sleep(Duration::from_millis(16)).await; // ~60 FPS
             }
-            
+
             // Shutdown nodes
             for registered in self.nodes.iter_mut() {
                 let node_name = registered.node.name();
-                let should_run = node_filter.map_or(true, |filter| filter.contains(&node_name));
-                
+                let should_run = node_filter.is_none_or(|filter| filter.contains(&node_name));
+
                 if should_run && registered.initialized {
                     if let Some(ref mut ctx) = registered.context {
                         match registered.node.shutdown(ctx) {
@@ -189,7 +203,7 @@ impl Scheduler {
                     }
                 }
             }
-            
+
             // Clean up registry file and heartbeats
             self.cleanup_registry();
             Self::cleanup_heartbeats();
@@ -199,14 +213,15 @@ impl Scheduler {
 
         Ok(())
     }
-    
+
     /// Get information about all registered nodes
     pub fn get_node_list(&self) -> Vec<String> {
-        self.nodes.iter()
+        self.nodes
+            .iter()
             .map(|registered| registered.node.name().to_string())
             .collect()
     }
-    
+
     /// Get detailed information about a specific node
     pub fn get_node_info(&self, name: &str) -> Option<HashMap<String, String>> {
         for registered in &self.nodes {
@@ -214,7 +229,10 @@ impl Scheduler {
                 let mut info = HashMap::new();
                 info.insert("name".to_string(), registered.node.name().to_string());
                 info.insert("priority".to_string(), registered.priority.to_string());
-                info.insert("logging_enabled".to_string(), registered.logging_enabled.to_string());
+                info.insert(
+                    "logging_enabled".to_string(),
+                    registered.logging_enabled.to_string(),
+                );
                 return Some(info);
             }
         }
@@ -233,11 +251,12 @@ impl Scheduler {
     }
     /// Get monitoring summary by creating temporary contexts for each node
     pub fn get_monitoring_summary(&self) -> Vec<(String, u32)> {
-        self.nodes.iter()
+        self.nodes
+            .iter()
             .map(|registered| (registered.node.name().to_string(), registered.priority))
             .collect()
     }
-    
+
     /// Write metadata to registry file for monitor to read
     fn update_registry(&self) {
         if let Ok(registry_path) = Self::get_registry_path() {
@@ -283,14 +302,14 @@ impl Scheduler {
             let _ = fs::write(&registry_path, registry_data);
         }
     }
-    
+
     /// Remove registry file when scheduler stops
     fn cleanup_registry(&self) {
         if let Ok(registry_path) = Self::get_registry_path() {
             let _ = fs::remove_file(registry_path);
         }
     }
-    
+
     /// Get path to registry file
     fn get_registry_path() -> Result<PathBuf, std::io::Error> {
         let mut path = dirs::home_dir().unwrap_or_else(|| PathBuf::from("/tmp"));
@@ -306,10 +325,7 @@ impl Scheduler {
 
     /// Write heartbeat for a node
     fn write_heartbeat(node_name: &str, context: &NodeInfo) {
-        let heartbeat = NodeHeartbeat::from_metrics(
-            context.state().clone(),
-            context.metrics()
-        );
+        let heartbeat = NodeHeartbeat::from_metrics(context.state().clone(), context.metrics());
 
         let _ = heartbeat.write_to_file(node_name);
     }

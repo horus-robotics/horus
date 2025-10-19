@@ -1,12 +1,12 @@
 // Workspace tracking and detection for HORUS projects
 
-use anyhow::{Result, Context, bail};
-use serde::{Deserialize, Serialize};
-use std::fs;
-use std::path::{Path, PathBuf};
+use anyhow::{bail, Context, Result};
 use chrono::{DateTime, Utc};
 use colored::*;
+use serde::{Deserialize, Serialize};
+use std::fs;
 use std::io::{self, Write};
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Workspace {
@@ -32,8 +32,8 @@ impl WorkspaceRegistry {
         }
 
         let content = fs::read_to_string(&registry_path)?;
-        let registry: Self = serde_json::from_str(&content)
-            .context("Failed to parse workspace registry")?;
+        let registry: Self =
+            serde_json::from_str(&content).context("Failed to parse workspace registry")?;
 
         Ok(registry)
     }
@@ -120,7 +120,8 @@ pub fn detect_or_select_workspace(allow_global: bool) -> Result<InstallTarget> {
         let mut registry = WorkspaceRegistry::load()?;
         registry.update_last_used(&root).ok();
 
-        let name = root.file_name()
+        let name = root
+            .file_name()
             .and_then(|s| s.to_str())
             .unwrap_or("unknown")
             .to_string();
@@ -145,7 +146,10 @@ pub enum InstallTarget {
     Global,
 }
 
-fn interactive_workspace_selector(registry: &WorkspaceRegistry, allow_global: bool) -> Result<InstallTarget> {
+fn interactive_workspace_selector(
+    registry: &WorkspaceRegistry,
+    allow_global: bool,
+) -> Result<InstallTarget> {
     println!("\n{} Not in a HORUS workspace", "⚠".yellow());
     println!("Where should we install the package?\n");
 
@@ -154,7 +158,8 @@ fn interactive_workspace_selector(registry: &WorkspaceRegistry, allow_global: bo
 
     // List known workspaces
     for ws in &registry.workspaces {
-        println!("  [{}] {}  ({})",
+        println!(
+            "  [{}] {}  ({})",
             idx.to_string().cyan(),
             ws.name.yellow(),
             ws.path.display().to_string().dimmed()
@@ -165,9 +170,9 @@ fn interactive_workspace_selector(registry: &WorkspaceRegistry, allow_global: bo
 
     // Global option
     if allow_global {
-        println!("  [{}] {} Global  (~/.horus/cache) - shared across projects",
-            idx.to_string().cyan(),
-            "🌐".to_string()
+        println!(
+            "  [{}] 🌐 Global  (~/.horus/cache) - shared across projects",
+            idx.to_string().cyan()
         );
         options.push(InstallTarget::Global);
         idx += 1;
@@ -176,17 +181,17 @@ fn interactive_workspace_selector(registry: &WorkspaceRegistry, allow_global: bo
     // Create new workspace option
     let current = std::env::current_dir()?;
     let new_workspace_idx = idx;
-    println!("  [{}] {} Create new workspace here  ({})",
+    println!(
+        "  [{}] ➕ Create new workspace here  ({})",
         idx.to_string().cyan(),
-        "➕".to_string(),
         current.display().to_string().dimmed()
     );
     idx += 1;
 
     // Cancel option
-    println!("  [{}] {} Cancel\n",
-        idx.to_string().cyan(),
-        "❌".to_string()
+    println!(
+        "  [{}] ❌ Cancel\n",
+        idx.to_string().cyan()
     );
 
     // Get user selection
@@ -196,8 +201,7 @@ fn interactive_workspace_selector(registry: &WorkspaceRegistry, allow_global: bo
     let mut input = String::new();
     io::stdin().read_line(&mut input)?;
 
-    let selection: usize = input.trim().parse()
-        .context("Invalid selection")?;
+    let selection: usize = input.trim().parse().context("Invalid selection")?;
 
     if selection < 1 || selection > idx {
         bail!("Invalid selection");
@@ -209,10 +213,14 @@ fn interactive_workspace_selector(registry: &WorkspaceRegistry, allow_global: bo
 
     // Handle "create new workspace" option
     if selection == new_workspace_idx {
-        println!("\n{} Creating new workspace in current directory...", "→".cyan());
+        println!(
+            "\n{} Creating new workspace in current directory...",
+            "→".cyan()
+        );
 
         // Ask for workspace name
-        let default_name = current.file_name()
+        let default_name = current
+            .file_name()
             .and_then(|s| s.to_str())
             .unwrap_or("workspace");
 
@@ -230,14 +238,12 @@ fn interactive_workspace_selector(registry: &WorkspaceRegistry, allow_global: bo
 
         // Create .horus/ directory
         let horus_dir = current.join(".horus");
-        fs::create_dir_all(&horus_dir)
-            .context("Failed to create .horus directory")?;
+        fs::create_dir_all(&horus_dir).context("Failed to create .horus directory")?;
 
         // Create minimal horus.yaml
         let horus_yaml = current.join("horus.yaml");
         let yaml_content = format!("name: {}\nversion: 0.1.0\n", workspace_name);
-        fs::write(&horus_yaml, yaml_content)
-            .context("Failed to create horus.yaml")?;
+        fs::write(&horus_yaml, yaml_content).context("Failed to create horus.yaml")?;
 
         // Register in workspace registry
         let mut registry = WorkspaceRegistry::load()?;
@@ -268,7 +274,8 @@ pub fn register_current_workspace(name: Option<String>) -> Result<()> {
     let workspace_name = if let Some(n) = name {
         n
     } else {
-        current.file_name()
+        current
+            .file_name()
             .and_then(|s| s.to_str())
             .context("Invalid directory name")?
             .to_string()
@@ -293,7 +300,10 @@ pub fn register_current_workspace(name: Option<String>) -> Result<()> {
     let mut registry = WorkspaceRegistry::load()?;
     registry.add(workspace_name.clone(), current.clone())?;
 
-    println!("✅ Initialized HORUS workspace: {}", workspace_name.yellow());
+    println!(
+        "✅ Initialized HORUS workspace: {}",
+        workspace_name.yellow()
+    );
     println!("   Location: {}", current.display());
     Ok(())
 }

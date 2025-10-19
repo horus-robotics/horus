@@ -29,7 +29,7 @@ impl RateLimiter {
         let mut requests = self.requests.lock().unwrap();
         let now = Instant::now();
 
-        let entry = requests.entry(ip).or_insert_with(Vec::new);
+        let entry = requests.entry(ip).or_default();
 
         // Remove old requests outside the window
         entry.retain(|&time| now.duration_since(time) < self.window);

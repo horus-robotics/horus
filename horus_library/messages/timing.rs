@@ -105,7 +105,8 @@ impl TimeSync {
 
             // Calculate clock offset
             let estimated_master_receive_time = self.master_time + self.network_delay;
-            self.clock_offset = estimated_master_receive_time as i64 - self.local_receive_time as i64;
+            self.clock_offset =
+                estimated_master_receive_time as i64 - self.local_receive_time as i64;
 
             // Estimate accuracy based on network delay
             self.accuracy_estimate = self.network_delay + 1000; // Add 1us base uncertainty
@@ -143,9 +144,9 @@ impl TimeSync {
 
     /// Check if synchronization is valid
     pub fn is_valid(&self) -> bool {
-        self.confidence > 0.1 &&
-        self.sync_quality != SyncQuality::None &&
-        self.accuracy_estimate < 10_000_000 // 10ms max
+        self.confidence > 0.1
+            && self.sync_quality != SyncQuality::None
+            && self.accuracy_estimate < 10_000_000 // 10ms max
     }
 
     /// Get master ID as string
@@ -286,8 +287,8 @@ impl ScheduledEvent {
             return false;
         }
 
-        current_time >= self.scheduled_time.saturating_sub(self.tolerance) &&
-        current_time <= self.scheduled_time.saturating_add(self.tolerance)
+        current_time >= self.scheduled_time.saturating_sub(self.tolerance)
+            && current_time <= self.scheduled_time.saturating_add(self.tolerance)
     }
 
     /// Check if event has missed its execution window
@@ -308,8 +309,9 @@ impl ScheduledEvent {
             self.last_execution = self.timestamp;
 
             // Schedule next repeat if applicable
-            if self.repeat_interval > 0 &&
-               (self.max_repeats == 0 || self.repeat_count < self.max_repeats) {
+            if self.repeat_interval > 0
+                && (self.max_repeats == 0 || self.repeat_count < self.max_repeats)
+            {
                 self.repeat_count += 1;
                 self.scheduled_time += self.repeat_interval;
                 self.status = EventStatus::Scheduled;
@@ -479,14 +481,15 @@ impl Timeline {
 
         // Check if timeline is complete
         if self.status == TimelineStatus::Running {
-            let all_complete = self.get_events()
-                .iter()
-                .all(|event| matches!(event.status,
-                    EventStatus::Completed |
-                    EventStatus::Failed |
-                    EventStatus::Cancelled |
-                    EventStatus::Missed
-                ));
+            let all_complete = self.get_events().iter().all(|event| {
+                matches!(
+                    event.status,
+                    EventStatus::Completed
+                        | EventStatus::Failed
+                        | EventStatus::Cancelled
+                        | EventStatus::Missed
+                )
+            });
 
             if all_complete {
                 self.status = TimelineStatus::Completed;
@@ -560,7 +563,7 @@ impl ClockStats {
     /// Create new clock statistics
     pub fn new(master_id: &str) -> Self {
         let mut stats = Self {
-            sync_interval: 1_000_000_000, // 1 second default
+            sync_interval: 1_000_000_000,       // 1 second default
             measurement_period: 60_000_000_000, // 1 minute
             timestamp: TimeSync::current_time_ns(),
             ..Default::default()
@@ -587,7 +590,8 @@ impl ClockStats {
             self.average_offset = offset;
         } else {
             const ALPHA: f64 = 0.1; // Smoothing factor
-            self.average_offset = (ALPHA * offset as f64 + (1.0 - ALPHA) * self.average_offset as f64) as i64;
+            self.average_offset =
+                (ALPHA * offset as f64 + (1.0 - ALPHA) * self.average_offset as f64) as i64;
         }
 
         self.timestamp = self.last_sync_time;
@@ -614,11 +618,11 @@ impl ClockStats {
     /// Get estimated time accuracy in nanoseconds
     pub fn estimated_accuracy(&self) -> u64 {
         match self.sync_quality {
-            SyncQuality::Precision => 1_000,      // 1 microsecond
-            SyncQuality::Excellent => 10_000,     // 10 microseconds
-            SyncQuality::Good => 100_000,         // 100 microseconds
-            SyncQuality::Fair => 1_000_000,       // 1 millisecond
-            SyncQuality::Poor => 10_000_000,      // 10 milliseconds
+            SyncQuality::Precision => 1_000,  // 1 microsecond
+            SyncQuality::Excellent => 10_000, // 10 microseconds
+            SyncQuality::Good => 100_000,     // 100 microseconds
+            SyncQuality::Fair => 1_000_000,   // 1 millisecond
+            SyncQuality::Poor => 10_000_000,  // 10 milliseconds
             SyncQuality::None => u64::MAX,
         }
     }
@@ -660,7 +664,8 @@ mod tests {
 
     #[test]
     fn test_repeating_event() {
-        let mut event = ScheduledEvent::repeating(2, EventType::DataCollection, 1000000000, 500000000);
+        let mut event =
+            ScheduledEvent::repeating(2, EventType::DataCollection, 1000000000, 500000000);
         event.max_repeats = 3;
 
         assert_eq!(event.repeat_count, 0);

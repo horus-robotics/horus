@@ -1,6 +1,6 @@
-use horus_core::{Node, NodeInfo, Hub};
-use crate::{Image, CompressedImage, CameraInfo};
 use crate::vision::ImageEncoding;
+use crate::{CameraInfo, CompressedImage, Image};
+use horus_core::{Hub, Node, NodeInfo};
 // Removed unused imports
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -45,7 +45,8 @@ impl CameraNode {
 
         Self {
             publisher: Hub::new(&image_topic).expect("Failed to create camera image hub"),
-            compressed_publisher: Hub::new(&compressed_topic).expect("Failed to create compressed hub"),
+            compressed_publisher: Hub::new(&compressed_topic)
+                .expect("Failed to create compressed hub"),
             info_publisher: Hub::new(&info_topic).expect("Failed to create camera info hub"),
 
             device_id: 0,
@@ -118,8 +119,10 @@ impl CameraNode {
 
     #[cfg(feature = "opencv-backend")]
     fn initialize_opencv(&mut self) -> bool {
+        use opencv::videoio::VideoCaptureProperties::{
+            CAP_PROP_FPS, CAP_PROP_FRAME_HEIGHT, CAP_PROP_FRAME_WIDTH,
+        };
         use opencv::videoio::{VideoCapture, CAP_ANY};
-        use opencv::videoio::VideoCaptureProperties::{CAP_PROP_FRAME_WIDTH, CAP_PROP_FRAME_HEIGHT, CAP_PROP_FPS};
 
         match VideoCapture::new(self.device_id as i32, CAP_ANY) {
             Ok(mut cap) => {
@@ -230,14 +233,14 @@ impl CameraNode {
                         data[idx] = intensity;
                     }
                     ImageEncoding::Rgb8 => {
-                        data[idx] = intensity;     // R
+                        data[idx] = intensity; // R
                         data[idx + 1] = 255 - intensity; // G
-                        data[idx + 2] = (intensity / 2) as u8; // B
+                        data[idx + 2] = intensity / 2; // B
                     }
                     ImageEncoding::Bgr8 => {
-                        data[idx] = (intensity / 2) as u8; // B
+                        data[idx] = intensity / 2; // B
                         data[idx + 1] = 255 - intensity; // G
-                        data[idx + 2] = intensity;     // R
+                        data[idx + 2] = intensity; // R
                     }
                     _ => {
                         data[idx] = intensity;
@@ -257,12 +260,7 @@ impl CameraNode {
             .unwrap()
             .as_nanos() as u64;
 
-        let image = Image::new(
-            self.width,
-            self.height,
-            self.encoding,
-            data,
-        );
+        let image = Image::new(self.width, self.height, self.encoding, data);
 
         let _ = self.publisher.send(image, None);
     }
@@ -271,9 +269,9 @@ impl CameraNode {
         let camera_info = CameraInfo::new(
             self.width,
             self.height,
-            800.0, // fx
-            800.0, // fy
-            self.width as f64 / 2.0, // cx
+            800.0,                    // fx
+            800.0,                    // fy
+            self.width as f64 / 2.0,  // cx
             self.height as f64 / 2.0, // cy
         );
         let _ = self.info_publisher.send(camera_info, None);
@@ -287,11 +285,10 @@ impl Node for CameraNode {
 
     fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
         // Initialize camera on first tick
-        if !self.is_initialized {
-            if !self.initialize_camera() {
+        if !self.is_initialized
+            && !self.initialize_camera() {
                 return; // Skip if initialization failed
             }
-        }
 
         // Capture and publish frame
         if let Some(data) = self.capture_frame() {

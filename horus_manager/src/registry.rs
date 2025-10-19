@@ -1,21 +1,21 @@
 // Simple registry client for HORUS package management
 // Keeps complexity low - just HTTP calls to registry
 
+use crate::dependency_resolver::{DependencySpec, PackageProvider};
 use anyhow::{anyhow, Result};
-use reqwest::blocking::Client;
-use serde::{Deserialize, Serialize};
-use std::fs;
-use std::path::{Path, PathBuf};
-use tar::Builder;
-use flate2::Compression;
-use flate2::write::GzEncoder;
-use flate2::read::GzDecoder;
-use tar::Archive;
-use sha2::{Sha256, Digest};
 use chrono::{DateTime, Utc};
 use colored::*;
+use flate2::read::GzDecoder;
+use flate2::write::GzEncoder;
+use flate2::Compression;
+use reqwest::blocking::Client;
 use semver::Version;
-use crate::dependency_resolver::{PackageProvider, DependencySpec};
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use std::fs;
+use std::path::{Path, PathBuf};
+use tar::Archive;
+use tar::Builder;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Package {
@@ -70,6 +70,12 @@ pub struct RegistryClient {
     base_url: String,
 }
 
+impl Default for RegistryClient {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RegistryClient {
     pub fn new() -> Self {
         let base_url = std::env::var("HORUS_REGISTRY_URL")
@@ -90,11 +96,19 @@ impl RegistryClient {
     }
 
     // Install a package from registry to a specific target
-    pub fn install_to_target(&self, package_name: &str, version: Option<&str>, target: crate::workspace::InstallTarget) -> Result<()> {
+    pub fn install_to_target(
+        &self,
+        package_name: &str,
+        version: Option<&str>,
+        target: crate::workspace::InstallTarget,
+    ) -> Result<()> {
         println!("📦 Downloading {}...", package_name);
 
         let version_str = version.unwrap_or("latest");
-        let url = format!("{}/api/packages/{}/{}/download", self.base_url, package_name, version_str);
+        let url = format!(
+            "{}/api/packages/{}/{}/download",
+            self.base_url, package_name, version_str
+        );
 
         // Download package
         let response = self.client.get(&url).send()?;
@@ -121,7 +135,7 @@ impl RegistryClient {
                 fs::create_dir_all(&global_cache)?;
                 let current_local = PathBuf::from(".horus/packages");
                 (global_cache.clone(), "global", Some(current_local))
-            },
+            }
             InstallTarget::Local(workspace_path) => {
                 // Install to specific workspace
                 let local_packages = workspace_path.join(".horus/packages");
@@ -138,7 +152,7 @@ impl RegistryClient {
                     // Install locally
                     (local_packages.clone(), "local", None)
                 }
-            },
+            }
         };
 
         // Create package directory with version
@@ -216,10 +230,20 @@ impl RegistryClient {
                 #[cfg(windows)]
                 std::os::windows::fs::symlink_dir(&package_dir, &local_link)?;
 
-                println!("✅ Installed {} v{} to global cache", package_name, actual_version);
-                println!("   Linked: {} -> {}", local_link.display(), package_dir.display());
+                println!(
+                    "✅ Installed {} v{} to global cache",
+                    package_name, actual_version
+                );
+                println!(
+                    "   Linked: {} -> {}",
+                    local_link.display(),
+                    package_dir.display()
+                );
             } else {
-                println!("✅ Installed {} v{} to global cache", package_name, actual_version);
+                println!(
+                    "✅ Installed {} v{} to global cache",
+                    package_name, actual_version
+                );
                 println!("   Location: {}", package_dir.display());
             }
         } else {
@@ -251,7 +275,11 @@ impl RegistryClient {
     }
 
     // Install multiple dependencies recursively
-    fn install_dependencies(&self, dependencies: &[DependencySpec], target: &crate::workspace::InstallTarget) -> Result<()> {
+    fn install_dependencies(
+        &self,
+        dependencies: &[DependencySpec],
+        target: &crate::workspace::InstallTarget,
+    ) -> Result<()> {
         // Use dependency resolver for version resolution
         use crate::dependency_resolver::{DependencyResolver, ResolvedDependency};
 
@@ -274,10 +302,11 @@ impl RegistryClient {
                     // Check if already installed
                     let is_installed = match target {
                         crate::workspace::InstallTarget::Global => {
-                            let home = dirs::home_dir().ok_or_else(|| anyhow!("Could not find home directory"))?;
+                            let home = dirs::home_dir()
+                                .ok_or_else(|| anyhow!("Could not find home directory"))?;
                             let global_cache = home.join(".horus/cache");
                             check_global_versions(&global_cache, dep_name)?
-                        },
+                        }
                         crate::workspace::InstallTarget::Local(workspace_path) => {
                             let local_packages = workspace_path.join(".horus/packages");
                             local_packages.join(dep_name).exists()
@@ -304,10 +333,11 @@ impl RegistryClient {
             // Check if already installed
             let is_installed = match target {
                 crate::workspace::InstallTarget::Global => {
-                    let home = dirs::home_dir().ok_or_else(|| anyhow!("Could not find home directory"))?;
+                    let home =
+                        dirs::home_dir().ok_or_else(|| anyhow!("Could not find home directory"))?;
                     let global_cache = home.join(".horus/cache");
                     check_global_versions(&global_cache, &resolved_dep.name)?
-                },
+                }
                 crate::workspace::InstallTarget::Local(workspace_path) => {
                     let local_packages = workspace_path.join(".horus/packages");
                     local_packages.join(&resolved_dep.name).exists()
@@ -315,12 +345,22 @@ impl RegistryClient {
             };
 
             if is_installed {
-                println!("  {} {} v{} (already installed)", "✓".green(), resolved_dep.name, resolved_dep.version);
+                println!(
+                    "  {} {} v{} (already installed)",
+                    "✓".green(),
+                    resolved_dep.name,
+                    resolved_dep.version
+                );
                 continue;
             }
 
             // Install the resolved version
-            println!("  {} Installing {} v{}...", "→".cyan(), resolved_dep.name, resolved_dep.version);
+            println!(
+                "  {} Installing {} v{}...",
+                "→".cyan(),
+                resolved_dep.name,
+                resolved_dep.version
+            );
             self.install_to_target(&resolved_dep.name, Some(&version_str), target.clone())?;
         }
 
@@ -371,11 +411,15 @@ impl RegistryClient {
             .text("version", version.clone())
             .text("description", description.unwrap_or_default())
             .text("license", license.unwrap_or_else(|| "MIT".to_string()))
-            .part("package", reqwest::blocking::multipart::Part::bytes(package_data)
-                .file_name(format!("{}-{}.tar.gz", name, version)));
+            .part(
+                "package",
+                reqwest::blocking::multipart::Part::bytes(package_data)
+                    .file_name(format!("{}-{}.tar.gz", name, version)),
+            );
 
         // Upload to registry with API key authentication
-        let response = self.client
+        let response = self
+            .client
             .post(format!("{}/api/packages/upload", self.base_url))
             .header("Authorization", format!("Bearer {}", api_key))
             .multipart(form)
@@ -383,7 +427,9 @@ impl RegistryClient {
 
         if !response.status().is_success() {
             let status = response.status();
-            let error_text = response.text().unwrap_or_else(|_| "Unknown error".to_string());
+            let error_text = response
+                .text()
+                .unwrap_or_else(|_| "Unknown error".to_string());
 
             if status == reqwest::StatusCode::UNAUTHORIZED {
                 println!("\n❌ Authentication failed!");
@@ -410,7 +456,14 @@ impl RegistryClient {
         // If user provided docs or source, update the package
         if !docs_url.is_empty() || !source_url.is_empty() {
             println!("\n{} Updating package metadata...", "→".cyan());
-            self.update_package_metadata(&name, &version, &docs_url, &docs_type, &source_url, &api_key)?;
+            self.update_package_metadata(
+                &name,
+                &version,
+                &docs_url,
+                &docs_type,
+                &source_url,
+                &api_key,
+            )?;
             println!("✅ Package metadata updated!");
         }
 
@@ -418,14 +471,26 @@ impl RegistryClient {
     }
 
     // Update package metadata (docs/source URLs)
-    fn update_package_metadata(&self, name: &str, version: &str, docs_url: &str, docs_type: &str, source_url: &str, api_key: &str) -> Result<()> {
+    fn update_package_metadata(
+        &self,
+        name: &str,
+        version: &str,
+        docs_url: &str,
+        docs_type: &str,
+        source_url: &str,
+        api_key: &str,
+    ) -> Result<()> {
         let form = reqwest::blocking::multipart::Form::new()
             .text("docs_url", docs_url.to_string())
             .text("docs_type", docs_type.to_string())
             .text("source_url", source_url.to_string());
 
-        let response = self.client
-            .post(format!("{}/api/packages/{}/{}/metadata", self.base_url, name, version))
+        let response = self
+            .client
+            .post(format!(
+                "{}/api/packages/{}/{}/metadata",
+                self.base_url, name, version
+            ))
             .header("Authorization", format!("Bearer {}", api_key))
             .multipart(form)
             .send()?;
@@ -454,22 +519,34 @@ impl RegistryClient {
         };
 
         // Call DELETE endpoint
-        let url = format!("{}/api/packages/{}/{}", self.base_url, package_name, version);
-        let response = self.client
+        let url = format!(
+            "{}/api/packages/{}/{}",
+            self.base_url, package_name, version
+        );
+        let response = self
+            .client
             .delete(&url)
             .header("Authorization", format!("Bearer {}", api_key))
             .send()?;
 
         if !response.status().is_success() {
             let status = response.status();
-            let error_text = response.text().unwrap_or_else(|_| "Unknown error".to_string());
+            let error_text = response
+                .text()
+                .unwrap_or_else(|_| "Unknown error".to_string());
 
             if status == reqwest::StatusCode::UNAUTHORIZED {
-                return Err(anyhow!("Authentication failed - invalid or expired API key"));
+                return Err(anyhow!(
+                    "Authentication failed - invalid or expired API key"
+                ));
             } else if status == reqwest::StatusCode::FORBIDDEN {
                 return Err(anyhow!("You do not have permission to unpublish this package. Only the package owner can unpublish it."));
             } else if status == reqwest::StatusCode::NOT_FOUND {
-                return Err(anyhow!("Package {} v{} not found in registry", package_name, version));
+                return Err(anyhow!(
+                    "Package {} v{} not found in registry",
+                    package_name,
+                    version
+                ));
             }
 
             return Err(anyhow!("Failed to unpublish: {} - {}", status, error_text));
@@ -494,8 +571,10 @@ impl RegistryClient {
 
     // Resolve an import name to a package name via registry
     pub fn resolve_import(&self, import_name: &str, language: &str) -> Result<Option<String>> {
-        let url = format!("{}/api/imports/resolve?import={}&language={}",
-            self.base_url, import_name, language);
+        let url = format!(
+            "{}/api/imports/resolve?import={}&language={}",
+            self.base_url, import_name, language
+        );
 
         let response = self.client.get(&url).send()?;
 
@@ -527,9 +606,8 @@ impl RegistryClient {
                     // Try to read package metadata
                     let metadata_path = entry.path().join("metadata.json");
                     if metadata_path.exists() {
-                        let metadata: PackageMetadata = serde_json::from_str(
-                            &fs::read_to_string(&metadata_path)?
-                        )?;
+                        let metadata: PackageMetadata =
+                            serde_json::from_str(&fs::read_to_string(&metadata_path)?)?;
 
                         locked_packages.push(LockedPackage {
                             name: metadata.name,
@@ -590,13 +668,16 @@ impl RegistryClient {
     // Save environment manifest to registry
     pub fn save_environment(&self, manifest: &EnvironmentManifest) -> Result<()> {
         // No auth for now - server doesn't validate yet
-        let response = self.client
+        let response = self
+            .client
             .post(format!("{}/api/environments", self.base_url))
             .json(manifest)
             .send()?;
 
         if !response.status().is_success() {
-            let error_text = response.text().unwrap_or_else(|_| "Unknown error".to_string());
+            let error_text = response
+                .text()
+                .unwrap_or_else(|_| "Unknown error".to_string());
             return Err(anyhow!("Failed to save environment: {}", error_text));
         }
 
@@ -629,14 +710,18 @@ impl RegistryClient {
     }
 
     pub fn upload_environment(&self, manifest: &EnvironmentManifest) -> Result<()> {
-        println!("📤 Publishing environment {} to registry...", manifest.horus_id);
+        println!(
+            "📤 Publishing environment {} to registry...",
+            manifest.horus_id
+        );
 
         // Get API key
         let api_key = get_api_key()?;
 
         // Upload to registry
         let url = format!("{}/api/environments", self.base_url);
-        let response = self.client
+        let response = self
+            .client
             .post(&url)
             .header("x-api-key", api_key)
             .json(&serde_json::json!({
@@ -648,12 +733,17 @@ impl RegistryClient {
             .send()?;
 
         if !response.status().is_success() {
-            let error_text = response.text().unwrap_or_else(|_| "Unknown error".to_string());
+            let error_text = response
+                .text()
+                .unwrap_or_else(|_| "Unknown error".to_string());
             return Err(anyhow!("Failed to publish environment: {}", error_text));
         }
 
         println!("✅ Environment published successfully!");
-        println!("   Anyone can now restore with: horus env restore {}", manifest.horus_id);
+        println!(
+            "   Anyone can now restore with: horus env restore {}",
+            manifest.horus_id
+        );
         Ok(())
     }
 }
@@ -665,7 +755,8 @@ fn get_python_version() -> Option<String> {
         .output()
         .ok()
         .and_then(|output| {
-            String::from_utf8(output.stdout).ok()
+            String::from_utf8(output.stdout)
+                .ok()
                 .map(|s| s.trim().replace("Python ", ""))
         })
 }
@@ -676,7 +767,8 @@ fn get_rust_version() -> Option<String> {
         .output()
         .ok()
         .and_then(|output| {
-            String::from_utf8(output.stdout).ok()
+            String::from_utf8(output.stdout)
+                .ok()
                 .and_then(|s| s.split_whitespace().nth(1).map(|v| v.to_string()))
         })
 }
@@ -687,12 +779,12 @@ fn get_gcc_version() -> Option<String> {
         .output()
         .ok()
         .and_then(|output| {
-            String::from_utf8(output.stdout).ok()
-                .and_then(|s| {
-                    s.lines().next()
-                        .and_then(|line| line.split_whitespace().last())
-                        .map(|v| v.to_string())
-                })
+            String::from_utf8(output.stdout).ok().and_then(|s| {
+                s.lines()
+                    .next()
+                    .and_then(|line| line.split_whitespace().last())
+                    .map(|v| v.to_string())
+            })
         })
 }
 
@@ -821,7 +913,12 @@ fn detect_package_info(dir: &Path) -> Result<(String, String, Option<String>, Op
         } else if trimmed.starts_with("version:") {
             version = trimmed.trim_start_matches("version:").trim().to_string();
         } else if trimmed.starts_with("description:") {
-            description = Some(trimmed.trim_start_matches("description:").trim().to_string());
+            description = Some(
+                trimmed
+                    .trim_start_matches("description:")
+                    .trim()
+                    .to_string(),
+            );
         } else if trimmed.starts_with("license:") {
             license = Some(trimmed.trim_start_matches("license:").trim().to_string());
         }
@@ -919,7 +1016,8 @@ fn precompile_package(package_dir: &Path) -> Result<()> {
 
     // Detect package language
     let has_cargo_toml = package_dir.join("Cargo.toml").exists();
-    let has_makefile = package_dir.join("Makefile").exists() || package_dir.join("makefile").exists();
+    let has_makefile =
+        package_dir.join("Makefile").exists() || package_dir.join("makefile").exists();
     let has_cmake = package_dir.join("CMakeLists.txt").exists();
 
     if has_cargo_toml {
@@ -950,7 +1048,10 @@ fn precompile_package(package_dir: &Path) -> Result<()> {
                 let name = entry.file_name();
                 let name_str = name.to_string_lossy();
 
-                if name_str.ends_with(".rlib") || name_str.ends_with(".so") || name_str.ends_with(".a") {
+                if name_str.ends_with(".rlib")
+                    || name_str.ends_with(".so")
+                    || name_str.ends_with(".a")
+                {
                     let dest = lib_dir.join(&name);
                     fs::copy(&path, &dest)?;
                 }
@@ -965,7 +1066,10 @@ fn precompile_package(package_dir: &Path) -> Result<()> {
                     let name = entry.file_name();
                     let name_str = name.to_string_lossy();
 
-                    if name_str.ends_with(".rlib") || name_str.ends_with(".so") || name_str.ends_with(".a") {
+                    if name_str.ends_with(".rlib")
+                        || name_str.ends_with(".so")
+                        || name_str.ends_with(".a")
+                    {
                         let dest = lib_dir.join(&name);
                         fs::copy(&path, &dest)?;
                     }
@@ -978,9 +1082,7 @@ fn precompile_package(package_dir: &Path) -> Result<()> {
         // C package with Makefile
         println!("  {} Pre-compiling C package (make)...", "→".cyan());
 
-        let status = Command::new("make")
-            .current_dir(package_dir)
-            .status()?;
+        let status = Command::new("make").current_dir(package_dir).status()?;
 
         if !status.success() {
             return Err(anyhow!("Make build failed"));
@@ -1006,9 +1108,7 @@ fn precompile_package(package_dir: &Path) -> Result<()> {
         }
 
         // Run make
-        let status = Command::new("make")
-            .current_dir(&build_dir)
-            .status()?;
+        let status = Command::new("make").current_dir(&build_dir).status()?;
 
         if !status.success() {
             return Err(anyhow!("CMake build failed"));
@@ -1078,7 +1178,9 @@ fn prompt_package_metadata(dir: &Path) -> Result<(String, String, String)> {
                         let url = trimmed.trim_start_matches("url = ");
                         // Convert git@github.com:user/repo.git to https://github.com/user/repo
                         if url.starts_with("git@github.com:") {
-                            let repo = url.trim_start_matches("git@github.com:").trim_end_matches(".git");
+                            let repo = url
+                                .trim_start_matches("git@github.com:")
+                                .trim_end_matches(".git");
                             return Some(format!("https://github.com/{}", repo));
                         } else if url.starts_with("https://") {
                             return Some(url.trim_end_matches(".git").to_string());
@@ -1094,7 +1196,10 @@ fn prompt_package_metadata(dir: &Path) -> Result<(String, String, String)> {
     // 1. Documentation prompt
     println!("\n{}", "Documentation".cyan().bold());
     if has_local_docs {
-        println!("   {} Found local /docs folder with markdown files", "✓".green());
+        println!(
+            "   {} Found local /docs folder with markdown files",
+            "✓".green()
+        );
     }
     print!("   Add documentation? (y/n): ");
     io::stdout().flush()?;
@@ -1104,16 +1209,28 @@ fn prompt_package_metadata(dir: &Path) -> Result<(String, String, String)> {
 
     if add_docs.trim().to_lowercase() == "y" {
         println!("\n   Documentation options:");
-        println!("     {} External URL - Link to online documentation (e.g., https://docs.example.com)", "1.".cyan());
-        println!("     {} Local /docs - Bundle markdown files in a /docs folder", "2.".cyan());
+        println!(
+            "     {} External URL - Link to online documentation (e.g., https://docs.example.com)",
+            "1.".cyan()
+        );
+        println!(
+            "     {} Local /docs - Bundle markdown files in a /docs folder",
+            "2.".cyan()
+        );
 
         if has_local_docs {
-            println!("\n   {} Your /docs folder should contain .md files organized as:", "ℹ".blue());
+            println!(
+                "\n   {} Your /docs folder should contain .md files organized as:",
+                "ℹ".blue()
+            );
             println!("      /docs/README.md          (main documentation)");
             println!("      /docs/getting-started.md (guides)");
             println!("      /docs/api.md             (API reference)");
         } else {
-            println!("\n   {} To use local docs, create a /docs folder with .md files:", "ℹ".blue());
+            println!(
+                "\n   {} To use local docs, create a /docs folder with .md files:",
+                "ℹ".blue()
+            );
             println!("      • Add README.md as the main page");
             println!("      • Use markdown formatting");
             println!("      • Organize by topic (getting-started.md, api.md, etc.)");
@@ -1141,9 +1258,15 @@ fn prompt_package_metadata(dir: &Path) -> Result<(String, String, String)> {
                 if has_local_docs {
                     docs_url = "docs/".to_string();
                     docs_type = "local".to_string();
-                    println!("   {} Will bundle local /docs folder with package", "✓".green());
+                    println!(
+                        "   {} Will bundle local /docs folder with package",
+                        "✓".green()
+                    );
                 } else {
-                    println!("   {} No /docs folder found. Please create one with .md files first.", "⚠".yellow());
+                    println!(
+                        "   {} No /docs folder found. Please create one with .md files first.",
+                        "⚠".yellow()
+                    );
                 }
             }
             _ => {
@@ -1218,11 +1341,12 @@ impl PackageProvider for RegistryClient {
                     versions: Vec<String>,
                 }
 
-                let versions_resp: VersionsResponse = resp.json()
-                    .unwrap_or(VersionsResponse { versions: vec![] });
+                let versions_resp: VersionsResponse =
+                    resp.json().unwrap_or(VersionsResponse { versions: vec![] });
 
                 // Parse version strings to semver::Version
-                let mut versions: Vec<Version> = versions_resp.versions
+                let mut versions: Vec<Version> = versions_resp
+                    .versions
                     .iter()
                     .filter_map(|v| Version::parse(v).ok())
                     .collect();
@@ -1232,7 +1356,8 @@ impl PackageProvider for RegistryClient {
             }
             _ => {
                 // Fallback: check local/global cache for versions
-                let home = dirs::home_dir().ok_or_else(|| anyhow!("Could not find home directory"))?;
+                let home =
+                    dirs::home_dir().ok_or_else(|| anyhow!("Could not find home directory"))?;
                 let global_cache = home.join(".horus/cache");
                 let local_packages = PathBuf::from(".horus/packages");
 
@@ -1286,7 +1411,10 @@ impl PackageProvider for RegistryClient {
 
     fn get_dependencies(&self, package: &str, version: &Version) -> Result<Vec<DependencySpec>> {
         // Query registry for package dependencies
-        let url = format!("{}/api/packages/{}/{}/metadata", self.base_url, package, version);
+        let url = format!(
+            "{}/api/packages/{}/{}/metadata",
+            self.base_url, package, version
+        );
 
         let response = self.client.get(&url).send();
 
@@ -1303,10 +1431,12 @@ impl PackageProvider for RegistryClient {
                     version_req: Option<String>,
                 }
 
-                let metadata: MetadataResponse = resp.json()
+                let metadata: MetadataResponse = resp
+                    .json()
                     .unwrap_or(MetadataResponse { dependencies: None });
 
-                let deps: Vec<DependencySpec> = metadata.dependencies
+                let deps: Vec<DependencySpec> = metadata
+                    .dependencies
                     .unwrap_or_default()
                     .into_iter()
                     .filter_map(|dep| {
@@ -1323,7 +1453,8 @@ impl PackageProvider for RegistryClient {
             }
             _ => {
                 // Fallback: read from local cache
-                let home = dirs::home_dir().ok_or_else(|| anyhow!("Could not find home directory"))?;
+                let home =
+                    dirs::home_dir().ok_or_else(|| anyhow!("Could not find home directory"))?;
                 let global_cache = home.join(".horus/cache");
                 let package_dir_name = format!("{}@{}", package, version);
                 let package_dir = global_cache.join(&package_dir_name);

@@ -3,10 +3,10 @@
 //! This module provides messages for coordinating multiple robots,
 //! task assignment, swarm behavior, and fleet management systems.
 
+use crate::messages::diagnostics::StatusLevel;
+use crate::messages::geometry::{Pose2D, Twist};
 use serde::{Deserialize, Serialize};
 use serde_arrays;
-use crate::messages::geometry::{Pose2D, Twist};
-use crate::messages::diagnostics::StatusLevel;
 
 /// Robot state information for fleet management
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -113,17 +113,17 @@ impl RobotState {
 
     /// Check if robot is available for new tasks
     pub fn is_available(&self) -> bool {
-        matches!(self.status, StatusLevel::Ok) &&
-        self.current_task_id == 0 &&
-        self.battery_level > 20.0 &&
-        self.comm_quality > 0.5
+        matches!(self.status, StatusLevel::Ok)
+            && self.current_task_id == 0
+            && self.battery_level > 20.0
+            && self.comm_quality > 0.5
     }
 
     /// Check if robot needs maintenance
     pub fn needs_maintenance(&self) -> bool {
-        self.battery_level < 15.0 ||
-        matches!(self.status, StatusLevel::Error | StatusLevel::Fatal) ||
-        self.comm_quality < 0.3
+        self.battery_level < 15.0
+            || matches!(self.status, StatusLevel::Error | StatusLevel::Fatal)
+            || self.comm_quality < 0.3
     }
 
     /// Set capability flag
@@ -344,19 +344,22 @@ impl FleetStatus {
         }
 
         // Calculate average battery
-        let battery_sum: f32 = self.robots[..self.robot_count as usize].iter()
+        let battery_sum: f32 = self.robots[..self.robot_count as usize]
+            .iter()
             .map(|r| r.battery_level)
             .sum();
         self.average_battery = battery_sum / self.robot_count as f32;
 
         // Calculate communication health
-        let comm_sum: f32 = self.robots[..self.robot_count as usize].iter()
+        let comm_sum: f32 = self.robots[..self.robot_count as usize]
+            .iter()
             .map(|r| r.comm_quality)
             .sum();
         self.comm_health = comm_sum / self.robot_count as f32;
 
         // Check emergency status
-        self.emergency_active = self.robots[..self.robot_count as usize].iter()
+        self.emergency_active = self.robots[..self.robot_count as usize]
+            .iter()
             .any(|r| matches!(r.status, StatusLevel::Fatal));
 
         self.timestamp = std::time::SystemTime::now()
@@ -540,8 +543,11 @@ impl TaskAssignment {
             .unwrap()
             .as_nanos() as u64;
 
-        current_time > self.deadline &&
-        !matches!(self.status, TaskStatus::Completed | TaskStatus::Cancelled | TaskStatus::Aborted)
+        current_time > self.deadline
+            && !matches!(
+                self.status,
+                TaskStatus::Completed | TaskStatus::Cancelled | TaskStatus::Aborted
+            )
     }
 
     /// Get robot ID as string
@@ -753,8 +759,8 @@ impl AuctionBid {
     /// Calculate total bid score (lower is better)
     pub fn total_score(&self) -> f64 {
         // Combine bid value, time, capability, and availability
-        self.bid_value * (1.0 + self.estimated_time) /
-        (self.capability_score as f64 * self.availability as f64).max(0.1)
+        self.bid_value * (1.0 + self.estimated_time)
+            / (self.capability_score as f64 * self.availability as f64).max(0.1)
     }
 }
 

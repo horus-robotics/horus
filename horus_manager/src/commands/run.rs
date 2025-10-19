@@ -1,14 +1,14 @@
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use crate::version;
+use anyhow::{bail, Context, Result};
 use colored::*;
-use anyhow::{Result, Context, bail};
+use glob::glob;
 use std::collections::HashSet;
 use std::env;
-use std::os::unix::fs::symlink;
-use glob::glob;
+use std::fs;
 use std::io::{self, Write};
-use crate::version;
+use std::os::unix::fs::symlink;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 #[derive(Debug, Clone)]
 enum ExecutionTarget {
@@ -18,11 +18,7 @@ enum ExecutionTarget {
     Multiple(Vec<PathBuf>),
 }
 
-pub fn execute_build_only(
-    file: Option<PathBuf>,
-    release: bool,
-    clean: bool,
-) -> Result<()> {
+pub fn execute_build_only(file: Option<PathBuf>, release: bool, clean: bool) -> Result<()> {
     // Handle clean build
     if clean {
         println!("{} Cleaning build cache...", "🧹".cyan());
@@ -30,16 +26,21 @@ pub fn execute_build_only(
     }
 
     let mode = if release { "release" } else { "debug" };
-    println!("{} Building project in {} mode (no execution)...", "🔨".cyan(), mode.yellow());
+    println!(
+        "{} Building project in {} mode (no execution)...",
+        "🔨".cyan(),
+        mode.yellow()
+    );
 
     // Resolve target file
     let target_file = match file {
         Some(f) => f,
-        None => auto_detect_main_file()?
+        None => auto_detect_main_file()?,
     };
 
     let language = detect_language(&target_file)?;
-    println!("{} Detected: {} ({})",
+    println!(
+        "{} Detected: {} ({})",
         "→".cyan(),
         target_file.display().to_string().green(),
         language.yellow()
@@ -52,13 +53,18 @@ pub fn execute_build_only(
     match language.as_str() {
         "python" => {
             println!("{} Python is interpreted, no build needed", "ℹ".blue());
-            println!("  {} File is ready to run: {}", "→".cyan(), target_file.display());
-        },
+            println!(
+                "  {} File is ready to run: {}",
+                "→".cyan(),
+                target_file.display()
+            );
+        }
         "c" => {
             setup_c_environment()?;
 
             // Determine output path
-            let file_stem = target_file.file_stem()
+            let file_stem = target_file
+                .file_stem()
                 .context("Invalid file name")?
                 .to_string_lossy();
             let suffix = if release { "_release" } else { "_debug" };
@@ -75,14 +81,19 @@ pub fn execute_build_only(
 
             println!("{} Compiling with {}...", "→".cyan(), compiler);
             compile_c_file(&target_file, &output_path, compiler, release)?;
-            println!("{} Successfully built: {}", "✓".green(), output_path.display().to_string().green());
-        },
+            println!(
+                "{} Successfully built: {}",
+                "✓".green(),
+                output_path.display().to_string().green()
+            );
+        }
         "rust" => {
             // Setup Rust build in .horus environment
             setup_rust_environment(&target_file)?;
 
             // Determine output binary name
-            let file_stem = target_file.file_stem()
+            let file_stem = target_file
+                .file_stem()
                 .context("Invalid file name")?
                 .to_string_lossy();
             let suffix = if release { "_release" } else { "_debug" };
@@ -139,9 +150,13 @@ pub fn execute_build_only(
                 }
             }
 
-            println!("{} Successfully built: {}", "✓".green(), output_binary.green());
-        },
-        _ => bail!("Unsupported language: {}", language)
+            println!(
+                "{} Successfully built: {}",
+                "✓".green(),
+                output_binary.green()
+            );
+        }
+        _ => bail!("Unsupported language: {}", language),
     }
 
     Ok(())
@@ -160,12 +175,16 @@ pub fn execute_run(
     }
 
     let mode = if release { "release" } else { "debug" };
-    eprintln!("{} Starting HORUS runtime in {} mode...", "🚀".cyan(), mode.yellow());
+    eprintln!(
+        "{} Starting HORUS runtime in {} mode...",
+        "🚀".cyan(),
+        mode.yellow()
+    );
 
     // Step 1: Resolve target(s) - file, directory, or pattern
     let execution_targets = match file {
         Some(f) => resolve_execution_target(f)?,
-        None => vec![ExecutionTarget::File(auto_detect_main_file()?)]
+        None => vec![ExecutionTarget::File(auto_detect_main_file()?)],
     };
 
     // Step 2: Execute based on target type
@@ -173,13 +192,13 @@ pub fn execute_run(
         match target {
             ExecutionTarget::File(file_path) => {
                 execute_single_file(file_path, args.clone(), release, clean)?;
-            },
+            }
             ExecutionTarget::Directory(dir_path) => {
                 execute_directory(dir_path, args.clone(), release, clean)?;
-            },
+            }
             ExecutionTarget::Manifest(manifest_path) => {
                 execute_from_manifest(manifest_path, args.clone(), release, clean)?;
-            },
+            }
             ExecutionTarget::Multiple(file_paths) => {
                 execute_multiple_files(file_paths, args.clone(), release, clean)?;
             }
@@ -189,10 +208,16 @@ pub fn execute_run(
     Ok(())
 }
 
-fn execute_single_file(file_path: PathBuf, args: Vec<String>, release: bool, clean: bool) -> Result<()> {
+fn execute_single_file(
+    file_path: PathBuf,
+    args: Vec<String>,
+    release: bool,
+    clean: bool,
+) -> Result<()> {
     let language = detect_language(&file_path)?;
 
-    eprintln!("{} Detected: {} ({})",
+    eprintln!(
+        "{} Detected: {} ({})",
         "→".cyan(),
         file_path.display().to_string().green(),
         language.yellow()
@@ -220,19 +245,32 @@ fn execute_single_file(file_path: PathBuf, args: Vec<String>, release: bool, cle
     Ok(())
 }
 
-fn execute_directory(dir_path: PathBuf, args: Vec<String>, release: bool, clean: bool) -> Result<()> {
-    println!("{} Executing from directory: {}", "→".cyan(), dir_path.display().to_string().green());
+fn execute_directory(
+    dir_path: PathBuf,
+    args: Vec<String>,
+    release: bool,
+    clean: bool,
+) -> Result<()> {
+    println!(
+        "{} Executing from directory: {}",
+        "→".cyan(),
+        dir_path.display().to_string().green()
+    );
 
     let original_dir = env::current_dir()?;
 
     // Change to target directory
-    env::set_current_dir(&dir_path)
-        .context(format!("Failed to change to directory: {}", dir_path.display()))?;
+    env::set_current_dir(&dir_path).context(format!(
+        "Failed to change to directory: {}",
+        dir_path.display()
+    ))?;
 
     let result = (|| -> Result<()> {
         // Auto-detect main file in this directory
-        let main_file = auto_detect_main_file()
-            .context(format!("No main file found in directory: {}", dir_path.display()))?;
+        let main_file = auto_detect_main_file().context(format!(
+            "No main file found in directory: {}",
+            dir_path.display()
+        ))?;
 
         // Execute the file in this context
         execute_single_file(main_file, args, release, clean)?;
@@ -246,23 +284,34 @@ fn execute_directory(dir_path: PathBuf, args: Vec<String>, release: bool, clean:
     result
 }
 
-fn execute_from_manifest(manifest_path: PathBuf, args: Vec<String>, release: bool, clean: bool) -> Result<()> {
-    println!("{} Executing from manifest: {}", "→".cyan(), manifest_path.display().to_string().green());
+fn execute_from_manifest(
+    manifest_path: PathBuf,
+    args: Vec<String>,
+    release: bool,
+    clean: bool,
+) -> Result<()> {
+    println!(
+        "{} Executing from manifest: {}",
+        "→".cyan(),
+        manifest_path.display().to_string().green()
+    );
 
     match manifest_path.file_name().and_then(|s| s.to_str()) {
-        Some("horus.yaml") => {
-            execute_from_horus_yaml(manifest_path, args, release, clean)
-        },
-        Some("Cargo.toml") => {
-            execute_from_cargo_toml(manifest_path, args, release, clean)
-        },
-        _ => bail!("Unsupported manifest type: {}", manifest_path.display())
+        Some("horus.yaml") => execute_from_horus_yaml(manifest_path, args, release, clean),
+        Some("Cargo.toml") => execute_from_cargo_toml(manifest_path, args, release, clean),
+        _ => bail!("Unsupported manifest type: {}", manifest_path.display()),
     }
 }
 
-fn execute_from_horus_yaml(manifest_path: PathBuf, args: Vec<String>, release: bool, clean: bool) -> Result<()> {
+fn execute_from_horus_yaml(
+    manifest_path: PathBuf,
+    args: Vec<String>,
+    release: bool,
+    clean: bool,
+) -> Result<()> {
     // For now, find the main file in the same directory as horus.yaml
-    let project_dir = manifest_path.parent()
+    let project_dir = manifest_path
+        .parent()
         .ok_or_else(|| anyhow::anyhow!("Cannot determine project directory"))?;
 
     let original_dir = env::current_dir()?;
@@ -278,8 +327,8 @@ fn execute_from_horus_yaml(manifest_path: PathBuf, args: Vec<String>, release: b
         }
 
         // Otherwise, auto-detect and run main file
-        let main_file = auto_detect_main_file()
-            .context("No main file found in project directory")?;
+        let main_file =
+            auto_detect_main_file().context("No main file found in project directory")?;
         execute_single_file(main_file, args, release, clean)
     })();
 
@@ -287,9 +336,15 @@ fn execute_from_horus_yaml(manifest_path: PathBuf, args: Vec<String>, release: b
     result
 }
 
-fn execute_from_cargo_toml(manifest_path: PathBuf, args: Vec<String>, release: bool, clean: bool) -> Result<()> {
+fn execute_from_cargo_toml(
+    manifest_path: PathBuf,
+    args: Vec<String>,
+    release: bool,
+    clean: bool,
+) -> Result<()> {
     // Change to the directory containing Cargo.toml
-    let project_dir = manifest_path.parent()
+    let project_dir = manifest_path
+        .parent()
         .ok_or_else(|| anyhow::anyhow!("Cannot determine project directory"))?;
 
     let original_dir = env::current_dir()?;
@@ -304,7 +359,11 @@ fn execute_from_cargo_toml(manifest_path: PathBuf, args: Vec<String>, release: b
         let horus_deps = parse_cargo_dependencies("Cargo.toml")?;
 
         if !horus_deps.is_empty() {
-            println!("{} Found {} HORUS dependencies", "→".cyan(), horus_deps.len());
+            println!(
+                "{} Found {} HORUS dependencies",
+                "→".cyan(),
+                horus_deps.len()
+            );
             resolve_dependencies(horus_deps)?;
         }
 
@@ -317,7 +376,11 @@ fn execute_from_cargo_toml(manifest_path: PathBuf, args: Vec<String>, release: b
         let binary = format!("target/{}/{}", build_dir, project_name);
 
         if !Path::new(&binary).exists() || clean {
-            println!("{} Building Cargo project ({} mode)...", "→".cyan(), build_dir);
+            println!(
+                "{} Building Cargo project ({} mode)...",
+                "→".cyan(),
+                build_dir
+            );
             let mut cmd = Command::new("cargo");
             cmd.arg("build");
             if release {
@@ -363,7 +426,11 @@ fn execute_makefile_project(args: Vec<String>, release: bool, clean: bool) -> Re
 
     // Build the project
     let build_target = if release { "release" } else { "all" };
-    println!("{} Building Makefile project (target: {})...", "→".cyan(), build_target);
+    println!(
+        "{} Building Makefile project (target: {})...",
+        "→".cyan(),
+        build_target
+    );
 
     let mut cmd = Command::new("make");
     cmd.arg(build_target);
@@ -390,7 +457,10 @@ fn execute_makefile_project(args: Vec<String>, release: bool, clean: bool) -> Re
         }
     }
 
-    println!("{} Build succeeded but could not find executable", "⚠".yellow());
+    println!(
+        "{} Build succeeded but could not find executable",
+        "⚠".yellow()
+    );
     println!("  {} Looked for: {:?}", "→".dimmed(), possible_executables);
     Ok(())
 }
@@ -432,9 +502,7 @@ fn execute_cmake_project(args: Vec<String>, release: bool, clean: bool) -> Resul
     // Build
     println!("{} Building CMake project...", "→".cyan());
     let mut cmd = Command::new("cmake");
-    cmd.arg("--build")
-        .arg(".")
-        .current_dir(&build_dir);
+    cmd.arg("--build").arg(".").current_dir(&build_dir);
 
     let status = cmd.status()?;
     if !status.success() {
@@ -461,7 +529,10 @@ fn execute_cmake_project(args: Vec<String>, release: bool, clean: bool) -> Resul
         }
     }
 
-    println!("{} Build succeeded but could not find executable", "⚠".yellow());
+    println!(
+        "{} Build succeeded but could not find executable",
+        "⚠".yellow()
+    );
     println!("  {} Looked for: {:?}", "→".dimmed(), possible_executables);
     Ok(())
 }
@@ -474,7 +545,6 @@ fn get_cmake_target_name() -> Result<String> {
                 if let Some(name_start) = line.find('(') {
                     if let Some(name_end) = line[name_start..].find(')') {
                         let name = line[name_start + 1..name_start + name_end]
-                            .trim()
                             .split_whitespace()
                             .next()
                             .unwrap_or("main");
@@ -486,7 +556,6 @@ fn get_cmake_target_name() -> Result<String> {
                 if let Some(name_start) = line.find('(') {
                     if let Some(name_end) = line[name_start..].find(')') {
                         let parts: Vec<&str> = line[name_start + 1..name_start + name_end]
-                            .trim()
                             .split_whitespace()
                             .collect();
                         if !parts.is_empty() {
@@ -500,12 +569,22 @@ fn get_cmake_target_name() -> Result<String> {
     Ok("main".to_string())
 }
 
-fn execute_multiple_files(file_paths: Vec<PathBuf>, args: Vec<String>, release: bool, clean: bool) -> Result<()> {
-    println!("{} Executing {} files concurrently:", "→".cyan(), file_paths.len());
+fn execute_multiple_files(
+    file_paths: Vec<PathBuf>,
+    args: Vec<String>,
+    release: bool,
+    clean: bool,
+) -> Result<()> {
+    println!(
+        "{} Executing {} files concurrently:",
+        "→".cyan(),
+        file_paths.len()
+    );
 
     for (i, file_path) in file_paths.iter().enumerate() {
         let language = detect_language(file_path)?;
-        println!("  {} {} ({})",
+        println!(
+            "  {} {} ({})",
             format!("{}.", i + 1).dimmed(),
             file_path.display().to_string().green(),
             language.yellow()
@@ -515,7 +594,11 @@ fn execute_multiple_files(file_paths: Vec<PathBuf>, args: Vec<String>, release: 
     // For now, execute them sequentially
     // TODO: Implement concurrent execution with scheduler
     for file_path in file_paths {
-        println!("\n{} Running {}...", "→".cyan(), file_path.display().to_string().green());
+        println!(
+            "\n{} Running {}...",
+            "→".cyan(),
+            file_path.display().to_string().green()
+        );
         execute_single_file(file_path, args.clone(), release, clean)?;
     }
 
@@ -537,12 +620,12 @@ fn resolve_execution_target(input: PathBuf) -> Result<Vec<ExecutionTarget>> {
                 if input.file_name().and_then(|s| s.to_str()) == Some("horus.yaml") {
                     return Ok(vec![ExecutionTarget::Manifest(input)]);
                 }
-            },
+            }
             Some("toml") => {
                 if input.file_name().and_then(|s| s.to_str()) == Some("Cargo.toml") {
                     return Ok(vec![ExecutionTarget::Manifest(input)]);
                 }
-            },
+            }
             _ => {}
         }
 
@@ -571,7 +654,7 @@ fn resolve_glob_pattern(pattern: &str) -> Result<Vec<ExecutionTarget>> {
                         }
                     }
                 }
-            },
+            }
             Err(e) => eprintln!("Warning: Glob error: {}", e),
         }
     }
@@ -586,7 +669,9 @@ fn resolve_glob_pattern(pattern: &str) -> Result<Vec<ExecutionTarget>> {
     }
 
     if files.len() == 1 {
-        Ok(vec![ExecutionTarget::File(files.into_iter().next().unwrap())])
+        Ok(vec![ExecutionTarget::File(
+            files.into_iter().next().unwrap(),
+        )])
     } else {
         Ok(vec![ExecutionTarget::Multiple(files)])
     }
@@ -644,12 +729,18 @@ fn detect_language(file: &Path) -> Result<String> {
         Some("rs") => Ok("rust".to_string()),
         Some("py") => Ok("python".to_string()),
         Some("c") | Some("cc") | Some("cpp") => Ok("c".to_string()),
-        _ => bail!("Unsupported file type: {}\n\n{}\n  {} Supported: {}\n  {} Got: {}",
+        _ => bail!(
+            "Unsupported file type: {}\n\n{}\n  {} Supported: {}\n  {} Got: {}",
             file.display(),
             "Supported file types:".yellow(),
-            "•".cyan(), ".rs (Rust), .py (Python), .c/.cc/.cpp (C/C++)".green(),
-            "•".cyan(), file.extension().and_then(|s| s.to_str()).unwrap_or("no extension").red()
-        )
+            "•".cyan(),
+            ".rs (Rust), .py (Python), .c/.cc/.cpp (C/C++)".green(),
+            "•".cyan(),
+            file.extension()
+                .and_then(|s| s.to_str())
+                .unwrap_or("no extension")
+                .red()
+        ),
     }
 }
 
@@ -704,7 +795,7 @@ fn scan_imports(file: &Path, language: &str) -> Result<HashSet<String>> {
                     let cargo_deps = parse_cargo_dependencies("Cargo.toml")?;
                     dependencies.extend(cargo_deps);
                 }
-            },
+            }
             "python" => {
                 // Scan for: import horus, from horus_library import
                 for line in content.lines() {
@@ -712,7 +803,7 @@ fn scan_imports(file: &Path, language: &str) -> Result<HashSet<String>> {
                         dependencies.insert(dep);
                     }
                 }
-            },
+            }
             "c" => {
                 // Scan for: #include <horus/*.h>
                 for line in content.lines() {
@@ -720,7 +811,7 @@ fn scan_imports(file: &Path, language: &str) -> Result<HashSet<String>> {
                         dependencies.insert(dep);
                     }
                 }
-            },
+            }
             _ => {}
         }
     }
@@ -788,7 +879,7 @@ fn parse_c_include(line: &str) -> Option<String> {
     if line.starts_with("#include") {
         if let Some(start) = line.find('<') {
             if let Some(end) = line.find('>') {
-                let include = &line[start+1..end];
+                let include = &line[start + 1..end];
                 if include.starts_with("horus") {
                     return Some("horus_c".to_string());
                 }
@@ -798,7 +889,6 @@ fn parse_c_include(line: &str) -> Option<String> {
 
     None
 }
-
 
 fn parse_horus_yaml_dependencies(path: &str) -> Result<HashSet<String>> {
     let content = fs::read_to_string(path)?;
@@ -815,7 +905,12 @@ fn parse_horus_yaml_dependencies(path: &str) -> Result<HashSet<String>> {
         }
 
         // Exit dependencies section if we hit another top-level key
-        if in_deps && !trimmed.is_empty() && !trimmed.starts_with("- ") && !trimmed.starts_with("#") && trimmed.contains(':') {
+        if in_deps
+            && !trimmed.is_empty()
+            && !trimmed.starts_with("- ")
+            && !trimmed.starts_with("#")
+            && trimmed.contains(':')
+        {
             in_deps = false;
         }
 
@@ -888,7 +983,10 @@ fn is_horus_package(package: &str) -> bool {
     }
 
     // Fallback for known packages
-    matches!(package, "numpy" | "cv2" | "matplotlib" | "pandas" | "torch" | "tensorflow")
+    matches!(
+        package,
+        "numpy" | "cv2" | "matplotlib" | "pandas" | "torch" | "tensorflow"
+    )
 }
 
 fn resolve_dependencies(dependencies: HashSet<String>) -> Result<()> {
@@ -923,9 +1021,13 @@ fn resolve_dependencies(dependencies: HashSet<String>) -> Result<()> {
 
         if let Some(cached) = cached_versions.first() {
             // Create symlink to global cache
-            println!("  {} {} -> {}", "↗".cyan(), package, "global cache".dimmed());
-            symlink(cached, &local_link)
-                .context(format!("Failed to symlink {}", package))?;
+            println!(
+                "  {} {} -> {}",
+                "↗".cyan(),
+                package,
+                "global cache".dimmed()
+            );
+            symlink(cached, &local_link).context(format!("Failed to symlink {}", package))?;
         } else {
             // Package not found locally
             missing_packages.push(package.clone());
@@ -934,12 +1036,19 @@ fn resolve_dependencies(dependencies: HashSet<String>) -> Result<()> {
 
     // If there are missing packages, ask user if they want to install
     if !missing_packages.is_empty() {
-        println!("\n{} Missing {} package(s):", "⚠".yellow(), missing_packages.len());
+        println!(
+            "\n{} Missing {} package(s):",
+            "⚠".yellow(),
+            missing_packages.len()
+        );
         for pkg in &missing_packages {
             println!("  • {}", pkg.yellow());
         }
 
-        print!("\n{} Install missing packages from registry? [Y/n]: ", "?".cyan());
+        print!(
+            "\n{} Install missing packages from registry? [Y/n]: ",
+            "?".cyan()
+        );
         io::stdout().flush()?;
 
         let mut input = String::new();
@@ -974,8 +1083,14 @@ fn resolve_dependencies(dependencies: HashSet<String>) -> Result<()> {
             println!("\n{} All dependencies installed successfully!", "✓".green());
         } else {
             // User declined
-            println!("\n{} Installation cancelled. Cannot proceed without dependencies.", "✗".red());
-            bail!("Missing required dependencies: {}", missing_packages.join(", "));
+            println!(
+                "\n{} Installation cancelled. Cannot proceed without dependencies.",
+                "✗".red()
+            );
+            bail!(
+                "Missing required dependencies: {}",
+                missing_packages.join(", ")
+            );
         }
     }
 
@@ -995,11 +1110,10 @@ fn find_cached_versions(cache_dir: &Path, package: &str) -> Result<Vec<PathBuf>>
         let name_str = name.to_string_lossy();
 
         // Match package@version or just package
-        if name_str.starts_with(package) {
-            if name_str == package || name_str.starts_with(&format!("{}@", package)) {
+        if name_str.starts_with(package)
+            && (name_str == package || name_str.starts_with(&format!("{}@", package))) {
                 versions.push(entry.path());
             }
-        }
     }
 
     // Sort by version (newest first)
@@ -1083,7 +1197,10 @@ fn execute_python_node(file: PathBuf, args: Vec<String>, _release: bool) -> Resu
 
     if uses_horus {
         // Use scheduler wrapper for HORUS nodes
-        eprintln!("{} Executing Python node with HORUS scheduler...", "→".cyan());
+        eprintln!(
+            "{} Executing Python node with HORUS scheduler...",
+            "→".cyan()
+        );
 
         let wrapper_script = create_python_wrapper(&file)?;
 
@@ -1140,9 +1257,7 @@ fn create_venv_if_needed() -> Result<()> {
 
     // Create venv
     let mut cmd = Command::new(python_cmd);
-    cmd.arg("-m")
-        .arg("venv")
-        .arg(&venv_path);
+    cmd.arg("-m").arg("venv").arg(&venv_path);
 
     let status = cmd.status()?;
     if !status.success() {
@@ -1206,14 +1321,16 @@ fn setup_python_environment() -> Result<()> {
         // Use venv's site-packages
         let venv_site_packages = find_venv_site_packages(&venv_path)?;
         if let Ok(current_path) = env::var("PYTHONPATH") {
-            let new_path = format!("{}:{}:{}",
+            let new_path = format!(
+                "{}:{}:{}",
                 horus_packages.display(),
                 venv_site_packages.display(),
                 current_path
             );
             env::set_var("PYTHONPATH", new_path);
         } else {
-            let new_path = format!("{}:{}",
+            let new_path = format!(
+                "{}:{}",
                 horus_packages.display(),
                 venv_site_packages.display()
             );
@@ -1261,7 +1378,10 @@ fn find_venv_site_packages(venv_path: &Path) -> Result<PathBuf> {
         }
     }
 
-    bail!("Could not find site-packages in venv: {}", venv_path.display())
+    bail!(
+        "Could not find site-packages in venv: {}",
+        venv_path.display()
+    )
 }
 
 fn detect_horus_usage_python(file: &Path) -> Result<bool> {
@@ -1285,10 +1405,13 @@ fn detect_horus_usage_python(file: &Path) -> Result<bool> {
 }
 
 fn create_python_wrapper(original_file: &Path) -> Result<PathBuf> {
-    let wrapper_path = env::temp_dir().join(format!("horus_wrapper_{}.py",
-        original_file.file_stem().unwrap().to_string_lossy()));
+    let wrapper_path = env::temp_dir().join(format!(
+        "horus_wrapper_{}.py",
+        original_file.file_stem().unwrap().to_string_lossy()
+    ));
 
-    let wrapper_content = format!(r#"#!/usr/bin/env python3
+    let wrapper_content = format!(
+        r#"#!/usr/bin/env python3
 """
 HORUS Python Node Wrapper
 Auto-generated wrapper for HORUS scheduler integration
@@ -1338,7 +1461,10 @@ if __name__ == "__main__":
     print("🚀 HORUS Python Node Starting...", file=sys.stderr)
     scheduler = HorusSchedulerIntegration()
     scheduler.run_node()
-"#, original_file.display(), original_file.display());
+"#,
+        original_file.display(),
+        original_file.display()
+    );
 
     fs::write(&wrapper_path, wrapper_content)?;
 
@@ -1383,13 +1509,19 @@ fn clean_build_cache() -> Result<()> {
     Ok(())
 }
 
-fn execute_with_scheduler(file: PathBuf, language: String, args: Vec<String>, release: bool) -> Result<()> {
+fn execute_with_scheduler(
+    file: PathBuf,
+    language: String,
+    args: Vec<String>,
+    release: bool,
+) -> Result<()> {
     match language.as_str() {
         "rust" => {
             // Use the same approach as build-only: rustc in .horus environment
             setup_rust_environment(&file)?;
 
-            let file_stem = file.file_stem()
+            let file_stem = file
+                .file_stem()
                 .context("Invalid file name")?
                 .to_string_lossy();
             let suffix = if release { "_release" } else { "_debug" };
@@ -1397,8 +1529,11 @@ fn execute_with_scheduler(file: PathBuf, language: String, args: Vec<String>, re
 
             // Build if not cached
             if !Path::new(&binary_path).exists() {
-                eprintln!("{} Compiling Rust program ({} mode)...", "→".cyan(),
-                    if release { "release" } else { "debug" });
+                eprintln!(
+                    "{} Compiling Rust program ({} mode)...",
+                    "→".cyan(),
+                    if release { "release" } else { "debug" }
+                );
 
                 // Copy source to .horus/build
                 let build_dir = PathBuf::from(".horus/build");
@@ -1436,14 +1571,14 @@ fn execute_with_scheduler(file: PathBuf, language: String, args: Vec<String>, re
             if !status.success() {
                 std::process::exit(status.code().unwrap_or(1));
             }
-        },
+        }
         "python" => {
             execute_python_node(file, args, release)?;
-        },
+        }
         "c" => {
             execute_c_node(file, args, release)?;
-        },
-        _ => bail!("Unsupported language: {}", language)
+        }
+        _ => bail!("Unsupported language: {}", language),
     }
 
     Ok(())
@@ -1477,12 +1612,10 @@ fn create_minimal_cargo_toml(file: &Path) -> Result<()> {
         .unwrap_or("horus_project")
         .to_string();
 
-    let file_name = file.file_stem()
-        .and_then(|n| n.to_str())
-        .unwrap_or("main");
+    let file_name = file.file_stem().and_then(|n| n.to_str()).unwrap_or("main");
 
     let content = format!(
-r#"[package]
+        r#"[package]
 name = "{}"
 version = "0.1.0"
 edition = "2021"
@@ -1668,7 +1801,11 @@ typedef struct {
             fs::copy(&horus_c_lib, &lib_path)?;
             println!("  {} Installed {}", "✓".green(), lib_name);
         } else {
-            println!("  {} {} not found - will attempt to build", "⚠".yellow(), lib_name);
+            println!(
+                "  {} {} not found - will attempt to build",
+                "⚠".yellow(),
+                lib_name
+            );
         }
     }
 
@@ -1713,8 +1850,11 @@ fn execute_c_node(file: PathBuf, args: Vec<String>, release: bool) -> Result<()>
     let needs_compile = should_recompile(&file, &binary_path)?;
 
     if needs_compile {
-        eprintln!("{} Compiling C program ({} mode)...", "→".cyan(),
-                if release { "release" } else { "debug" });
+        eprintln!(
+            "{} Compiling C program ({} mode)...",
+            "→".cyan(),
+            if release { "release" } else { "debug" }
+        );
 
         compile_c_file(&file, &binary_path, &compiler, release)?;
         eprintln!("  {} Compiled to {}", "✓".green(), binary_path.display());
@@ -1751,7 +1891,8 @@ fn detect_c_compiler() -> Result<String> {
 }
 
 fn generate_c_binary_name(file: &Path, release: bool) -> Result<String> {
-    let file_stem = file.file_stem()
+    let file_stem = file
+        .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("program");
 

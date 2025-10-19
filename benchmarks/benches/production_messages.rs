@@ -12,9 +12,9 @@ use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criteri
 use horus::communication::horus::Hub;
 use horus_library::messages::{
     cmd_vel::CmdVel,
-    sensor::{LaserScan, Imu, Odometry, BatteryState},
-    perception::PointCloud,
     geometry::Point3,
+    perception::PointCloud,
+    sensor::{BatteryState, Imu, LaserScan, Odometry},
 };
 use std::time::{Duration, Instant};
 

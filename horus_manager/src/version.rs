@@ -1,7 +1,7 @@
+use anyhow::{bail, Result};
+use colored::*;
 use std::fs;
 use std::path::{Path, PathBuf};
-use colored::*;
-use anyhow::{Result, bail};
 
 /// Get the CLI version from Cargo.toml at compile time
 pub fn get_cli_version() -> &'static str {
@@ -16,9 +16,7 @@ pub fn get_installed_version() -> Result<Option<String>> {
         return Ok(None);
     }
 
-    let version = fs::read_to_string(&version_file)?
-        .trim()
-        .to_string();
+    let version = fs::read_to_string(&version_file)?.trim().to_string();
 
     Ok(Some(version))
 }
@@ -36,7 +34,7 @@ pub fn check_version_compatibility() -> Result<()> {
     match get_installed_version()? {
         Some(installed_version) => {
             if cli_version != installed_version {
-                print_version_mismatch(&cli_version, &installed_version);
+                print_version_mismatch(cli_version, &installed_version);
                 bail!("Version mismatch detected");
             }
             Ok(())
@@ -54,12 +52,15 @@ pub fn check_and_prompt_update() -> Result<()> {
 
     if let Some(installed_version) = get_installed_version()? {
         if cli_version != installed_version {
-            print_version_mismatch(&cli_version, &installed_version);
+            print_version_mismatch(cli_version, &installed_version);
 
             // Find HORUS source directory
             if let Some(horus_root) = find_horus_source() {
                 println!("\n{} To update libraries, run:", "→".cyan());
-                println!("  {}", format!("cd {} && ./install.sh", horus_root.display()).cyan());
+                println!(
+                    "  {}",
+                    format!("cd {} && ./install.sh", horus_root.display()).cyan()
+                );
             } else {
                 println!("\n{} To update libraries:", "→".cyan());
                 println!("  1. Navigate to your HORUS source directory");
@@ -76,12 +77,19 @@ pub fn check_and_prompt_update() -> Result<()> {
 /// Print version mismatch warning
 fn print_version_mismatch(cli_version: &str, installed_version: &str) {
     eprintln!();
-    eprintln!("{} {}", "⚠".yellow().bold(), "Version mismatch detected!".yellow().bold());
+    eprintln!(
+        "{} {}",
+        "⚠".yellow().bold(),
+        "Version mismatch detected!".yellow().bold()
+    );
     eprintln!();
     eprintln!("  CLI version:       {}", cli_version.green());
     eprintln!("  Installed libraries: {}", installed_version.red());
     eprintln!();
-    eprintln!("{} The CLI and libraries must be the same version.", "Note:".cyan());
+    eprintln!(
+        "{} The CLI and libraries must be the same version.",
+        "Note:".cyan()
+    );
     eprintln!("  This ensures API compatibility between your code and the runtime.");
 }
 
@@ -176,7 +184,11 @@ pub fn print_version_info() {
             println!("\n{}", "Installed packages:".cyan());
             for (name, version) in packages {
                 let compatible = version == get_cli_version();
-                let marker = if compatible { "✓".green() } else { "⚠".yellow() };
+                let marker = if compatible {
+                    "✓".green()
+                } else {
+                    "⚠".yellow()
+                };
                 println!("  {} {}@{}", marker, name, version);
             }
         }

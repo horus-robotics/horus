@@ -18,10 +18,7 @@ pub enum HorusError {
 
     /// Backend-specific errors
     #[error("Backend '{backend}' error: {message}")]
-    Backend {
-        backend: String,
-        message: String
-    },
+    Backend { backend: String, message: String },
 
     /// Communication layer errors
     #[error("Communication error: {0}")]
@@ -29,10 +26,7 @@ pub enum HorusError {
 
     /// Node-related errors
     #[error("Node '{node}' error: {message}")]
-    Node {
-        node: String,
-        message: String
-    },
+    Node { node: String, message: String },
 
     /// Scheduling errors
     #[error("Scheduling error: {0}")]
@@ -120,7 +114,6 @@ impl From<toml::ser::Error> for HorusError {
         HorusError::Serialization(format!("TOML serialization error: {}", err))
     }
 }
-
 
 impl From<std::num::ParseIntError> for HorusError {
     fn from(err: std::num::ParseIntError) -> Self {

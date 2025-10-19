@@ -43,14 +43,19 @@ pub use messages::*;
 
 // Re-export commonly used nodes for convenience
 pub use nodes::{
-    // Safety & Monitoring
-    EmergencyStopNode, SafetyMonitorNode,
     // Sensors
-    CameraNode, LidarNode, ImuNode,
+    CameraNode,
     // Control
-    DifferentialDriveNode, PidControllerNode,
+    DifferentialDriveNode,
+    // Safety & Monitoring
+    EmergencyStopNode,
+    ImuNode,
+    JoystickInputNode,
+    // Input (existing)
+    KeyboardInputNode,
+    LidarNode,
     // Industrial
     ModbusNode,
-    // Input (existing)
-    KeyboardInputNode, JoystickInputNode,
+    PidControllerNode,
+    SafetyMonitorNode,
 };

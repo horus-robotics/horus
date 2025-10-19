@@ -263,7 +263,7 @@ pub struct ConsumerSample<'a, T> {
 
 ```rust
 // Get reference to data
-let data_ref = sample.as_ref();
+let data_ref = sample.get_ref();
 
 // Get const pointer
 let ptr = sample.as_ptr();

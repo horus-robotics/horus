@@ -44,8 +44,7 @@ impl Twist {
 
     /// Check if all values are finite
     pub fn is_valid(&self) -> bool {
-        self.linear.iter().all(|v| v.is_finite()) &&
-        self.angular.iter().all(|v| v.is_finite())
+        self.linear.iter().all(|v| v.is_finite()) && self.angular.iter().all(|v| v.is_finite())
     }
 }
 
@@ -150,8 +149,9 @@ impl Transform {
     /// Check if quaternion is normalized and values are finite
     pub fn is_valid(&self) -> bool {
         // Check finite values
-        if !self.translation.iter().all(|v| v.is_finite()) ||
-           !self.rotation.iter().all(|v| v.is_finite()) {
+        if !self.translation.iter().all(|v| v.is_finite())
+            || !self.rotation.iter().all(|v| v.is_finite())
+        {
             return false;
         }
 

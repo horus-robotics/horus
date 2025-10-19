@@ -11,9 +11,9 @@ use colored::Colorize;
 use horus::communication::horus::Hub;
 use horus_library::messages::{
     cmd_vel::CmdVel,
-    sensor::{LaserScan, Imu, Odometry, BatteryState},
-    perception::PointCloud,
     geometry::Point3,
+    perception::PointCloud,
+    sensor::{BatteryState, Imu, LaserScan, Odometry},
 };
 use std::time::{Duration, Instant};
 
@@ -21,13 +21,36 @@ const ITERATIONS: usize = 10_000;
 const WARMUP: usize = 100;
 
 fn main() {
-    println!("\n{}", "═══════════════════════════════════════════════════════════════".bright_cyan().bold());
-    println!("{}", "  HORUS Production Message Benchmark Suite".bright_cyan().bold());
-    println!("{}", "  Testing with real robotics message types".bright_cyan().bold());
-    println!("{}", "═══════════════════════════════════════════════════════════════".bright_cyan().bold());
+    println!(
+        "\n{}",
+        "═══════════════════════════════════════════════════════════════"
+            .bright_cyan()
+            .bold()
+    );
+    println!(
+        "{}",
+        "  HORUS Production Message Benchmark Suite"
+            .bright_cyan()
+            .bold()
+    );
+    println!(
+        "{}",
+        "  Testing with real robotics message types"
+            .bright_cyan()
+            .bold()
+    );
+    println!(
+        "{}",
+        "═══════════════════════════════════════════════════════════════"
+            .bright_cyan()
+            .bold()
+    );
 
     println!("\n{}", "Configuration:".bright_yellow());
-    println!("  • Iterations: {}", format!("{}", ITERATIONS).bright_green());
+    println!(
+        "  • Iterations: {}",
+        format!("{}", ITERATIONS).bright_green()
+    );
     println!("  • Warmup: {}", format!("{}", WARMUP).bright_green());
     println!("  • Process ID: {}\n", std::process::id());
 
@@ -42,14 +65,32 @@ fn main() {
     bench_pointcloud_large();
     bench_mixed_robot_loop();
 
-    println!("\n{}", "═══════════════════════════════════════════════════════════════".bright_cyan().bold());
+    println!(
+        "\n{}",
+        "═══════════════════════════════════════════════════════════════"
+            .bright_cyan()
+            .bold()
+    );
     println!("{}", "  Benchmark Complete".bright_green().bold());
-    println!("{}", "═══════════════════════════════════════════════════════════════".bright_cyan().bold());
+    println!(
+        "{}",
+        "═══════════════════════════════════════════════════════════════"
+            .bright_cyan()
+            .bold()
+    );
 }
 
 fn bench_cmdvel() {
-    println!("\n{}  {}", "┏━━".bright_blue(), "CmdVel (Motor Control Command)".bright_white().bold());
-    println!("{}    Size: {} bytes | Typical rate: 1000Hz", "┃".bright_blue(), std::mem::size_of::<CmdVel>());
+    println!(
+        "\n{}  {}",
+        "┏━━".bright_blue(),
+        "CmdVel (Motor Control Command)".bright_white().bold()
+    );
+    println!(
+        "{}    Size: {} bytes | Typical rate: 1000Hz",
+        "┃".bright_blue(),
+        std::mem::size_of::<CmdVel>()
+    );
 
     let topic = format!("bench_cmdvel_{}", std::process::id());
     let sender: Hub<CmdVel> = Hub::new(&topic).unwrap();
@@ -75,8 +116,16 @@ fn bench_cmdvel() {
 }
 
 fn bench_laserscan() {
-    println!("\n{}  {}", "┏━━".bright_blue(), "LaserScan (2D Lidar Data)".bright_white().bold());
-    println!("{}    Size: {} bytes | Typical rate: 10Hz", "┃".bright_blue(), std::mem::size_of::<LaserScan>());
+    println!(
+        "\n{}  {}",
+        "┏━━".bright_blue(),
+        "LaserScan (2D Lidar Data)".bright_white().bold()
+    );
+    println!(
+        "{}    Size: {} bytes | Typical rate: 10Hz",
+        "┃".bright_blue(),
+        std::mem::size_of::<LaserScan>()
+    );
 
     let topic = format!("bench_laserscan_{}", std::process::id());
     let sender: Hub<LaserScan> = Hub::new(&topic).unwrap();
@@ -108,8 +157,16 @@ fn bench_laserscan() {
 }
 
 fn bench_imu() {
-    println!("\n{}  {}", "┏━━".bright_blue(), "IMU (Inertial Measurement Unit)".bright_white().bold());
-    println!("{}    Size: {} bytes | Typical rate: 100Hz", "┃".bright_blue(), std::mem::size_of::<Imu>());
+    println!(
+        "\n{}  {}",
+        "┏━━".bright_blue(),
+        "IMU (Inertial Measurement Unit)".bright_white().bold()
+    );
+    println!(
+        "{}    Size: {} bytes | Typical rate: 100Hz",
+        "┃".bright_blue(),
+        std::mem::size_of::<Imu>()
+    );
 
     let topic = format!("bench_imu_{}", std::process::id());
     let sender: Hub<Imu> = Hub::new(&topic).unwrap();
@@ -142,8 +199,16 @@ fn bench_imu() {
 }
 
 fn bench_odometry() {
-    println!("\n{}  {}", "┏━━".bright_blue(), "Odometry (Pose + Velocity)".bright_white().bold());
-    println!("{}    Size: {} bytes | Typical rate: 50Hz", "┃".bright_blue(), std::mem::size_of::<Odometry>());
+    println!(
+        "\n{}  {}",
+        "┏━━".bright_blue(),
+        "Odometry (Pose + Velocity)".bright_white().bold()
+    );
+    println!(
+        "{}    Size: {} bytes | Typical rate: 50Hz",
+        "┃".bright_blue(),
+        std::mem::size_of::<Odometry>()
+    );
 
     let topic = format!("bench_odometry_{}", std::process::id());
     let sender: Hub<Odometry> = Hub::new(&topic).unwrap();
@@ -180,8 +245,16 @@ fn bench_odometry() {
 }
 
 fn bench_battery() {
-    println!("\n{}  {}", "┏━━".bright_blue(), "BatteryState (Status Monitoring)".bright_white().bold());
-    println!("{}    Size: {} bytes | Typical rate: 1Hz", "┃".bright_blue(), std::mem::size_of::<BatteryState>());
+    println!(
+        "\n{}  {}",
+        "┏━━".bright_blue(),
+        "BatteryState (Status Monitoring)".bright_white().bold()
+    );
+    println!(
+        "{}    Size: {} bytes | Typical rate: 1Hz",
+        "┃".bright_blue(),
+        std::mem::size_of::<BatteryState>()
+    );
 
     let topic = format!("bench_battery_{}", std::process::id());
     let sender: Hub<BatteryState> = Hub::new(&topic).unwrap();
@@ -209,7 +282,11 @@ fn bench_battery() {
 }
 
 fn bench_pointcloud_small() {
-    println!("\n{}  {}", "┏━━".bright_blue(), "PointCloud Small (100 points)".bright_white().bold());
+    println!(
+        "\n{}  {}",
+        "┏━━".bright_blue(),
+        "PointCloud Small (100 points)".bright_white().bold()
+    );
 
     let num_points = 100;
     let topic = format!("bench_pointcloud_small_{}", std::process::id());
@@ -244,7 +321,11 @@ fn bench_pointcloud_small() {
 }
 
 fn bench_pointcloud_medium() {
-    println!("\n{}  {}", "┏━━".bright_blue(), "PointCloud Medium (1000 points)".bright_white().bold());
+    println!(
+        "\n{}  {}",
+        "┏━━".bright_blue(),
+        "PointCloud Medium (1000 points)".bright_white().bold()
+    );
 
     let num_points = 1000;
     let topic = format!("bench_pointcloud_medium_{}", std::process::id());
@@ -279,7 +360,11 @@ fn bench_pointcloud_medium() {
 }
 
 fn bench_pointcloud_large() {
-    println!("\n{}  {}", "┏━━".bright_blue(), "PointCloud Large (10000 points)".bright_white().bold());
+    println!(
+        "\n{}  {}",
+        "┏━━".bright_blue(),
+        "PointCloud Large (10000 points)".bright_white().bold()
+    );
 
     let num_points = 10000;
     let topic = format!("bench_pointcloud_large_{}", std::process::id());
@@ -314,8 +399,17 @@ fn bench_pointcloud_large() {
 }
 
 fn bench_mixed_robot_loop() {
-    println!("\n{}  {}", "┏━━".bright_blue(), "Mixed Messages (Realistic Robot Loop)".bright_white().bold());
-    println!("{}    Simulates: CmdVel@100Hz + IMU@100Hz + Battery@1Hz", "┃".bright_blue());
+    println!(
+        "\n{}  {}",
+        "┏━━".bright_blue(),
+        "Mixed Messages (Realistic Robot Loop)"
+            .bright_white()
+            .bold()
+    );
+    println!(
+        "{}    Simulates: CmdVel@100Hz + IMU@100Hz + Battery@1Hz",
+        "┃".bright_blue()
+    );
 
     let cmd_topic = format!("bench_mix_cmd_{}", std::process::id());
     let imu_topic = format!("bench_mix_imu_{}", std::process::id());
@@ -372,8 +466,12 @@ fn bench_mixed_robot_loop() {
     }
     let elapsed = start.elapsed();
 
-    println!("{}    {}: {} operations", "┃".bright_blue(), "Total messages".bright_white(),
-             format!("{}", ITERATIONS * 2 + ITERATIONS / 100).bright_yellow());
+    println!(
+        "{}    {}: {} operations",
+        "┃".bright_blue(),
+        "Total messages".bright_white(),
+        format!("{}", ITERATIONS * 2 + ITERATIONS / 100).bright_yellow()
+    );
     print_results("Mixed Loop", elapsed, ITERATIONS);
 }
 
@@ -382,22 +480,28 @@ fn print_results(name: &str, elapsed: Duration, iterations: usize) {
     let avg_ns = total_ns / iterations as f64;
     let throughput = (iterations as f64) / elapsed.as_secs_f64();
 
-    println!("{}    {}: {}",
-             "┃".bright_blue(),
-             "Latency (avg)".bright_white(),
-             format_latency(avg_ns).bright_green().bold());
+    println!(
+        "{}    {}: {}",
+        "┃".bright_blue(),
+        "Latency (avg)".bright_white(),
+        format_latency(avg_ns).bright_green().bold()
+    );
 
-    println!("{}    {}: {}",
-             "┃".bright_blue(),
-             "Throughput".bright_white(),
-             format!("{:.2} msg/s", throughput).bright_cyan().bold());
+    println!(
+        "{}    {}: {}",
+        "┃".bright_blue(),
+        "Throughput".bright_white(),
+        format!("{:.2} msg/s", throughput).bright_cyan().bold()
+    );
 
     // Calculate percentiles (approximate)
     let ns_per_iter = avg_ns;
-    println!("{}    {}: ~{} ns",
-             "┃".bright_blue(),
-             "Min/Max range".bright_white(),
-             format!("{:.0}-{:.0}", ns_per_iter * 0.8, ns_per_iter * 1.2).bright_yellow());
+    println!(
+        "{}    {}: ~{} ns",
+        "┃".bright_blue(),
+        "Min/Max range".bright_white(),
+        format!("{:.0}-{:.0}", ns_per_iter * 0.8, ns_per_iter * 1.2).bright_yellow()
+    );
 
     println!("{}━━", "┗".bright_blue());
 }

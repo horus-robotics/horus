@@ -1,7 +1,7 @@
+use memmap2::MmapMut;
 use serde::{Deserialize, Serialize};
 use std::fs::{self, OpenOptions};
 use std::path::PathBuf;
-use memmap2::MmapMut;
 use std::sync::Mutex;
 
 /// Log entry with timestamp and metadata
@@ -42,7 +42,14 @@ const HEADER_SIZE: usize = 64; // Space for metadata (write_idx, etc.)
 /// Shared memory ring buffer for logs - lock-free, cross-process
 pub struct SharedLogBuffer {
     mmap: Mutex<MmapMut>,
+    #[allow(dead_code)]
     path: PathBuf,
+}
+
+impl Default for SharedLogBuffer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SharedLogBuffer {
@@ -62,6 +69,7 @@ impl SharedLogBuffer {
             .read(true)
             .write(true)
             .create(true)
+            .truncate(true)
             .open(&path)
             .expect("Failed to create shared log file");
 
@@ -163,7 +171,7 @@ impl SharedLogBuffer {
     pub fn get_for_topic(&self, topic: &str) -> Vec<LogEntry> {
         self.get_all()
             .into_iter()
-            .filter(|e| e.topic.as_ref().map_or(false, |t| t == topic))
+            .filter(|e| e.topic.as_ref().is_some_and(|t| t == topic))
             .collect()
     }
 

@@ -1,7 +1,7 @@
-use horus_core::{Node, NodeInfo, Hub};
-use crate::{PathPlan, Odometry, LaserScan};
-use std::collections::{HashMap, BinaryHeap, HashSet};
+use crate::{LaserScan, Odometry, PathPlan};
+use horus_core::{Hub, Node, NodeInfo};
 use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Path Planner Node - A* and RRT path planning for autonomous navigation
@@ -67,7 +67,10 @@ impl PartialEq for AStarNode {
 impl Ord for AStarNode {
     fn cmp(&self, other: &Self) -> Ordering {
         // Reverse ordering for min-heap
-        other.f_cost.partial_cmp(&self.f_cost).unwrap_or(Ordering::Equal)
+        other
+            .f_cost
+            .partial_cmp(&self.f_cost)
+            .unwrap_or(Ordering::Equal)
     }
 }
 
@@ -84,7 +87,12 @@ impl PathPlannerNode {
     }
 
     /// Create a new path planner node with custom topics
-    pub fn new_with_topics(plan_topic: &str, odom_topic: &str, lidar_topic: &str, goal_topic: &str) -> Self {
+    pub fn new_with_topics(
+        plan_topic: &str,
+        odom_topic: &str,
+        lidar_topic: &str,
+        goal_topic: &str,
+    ) -> Self {
         Self {
             plan_publisher: Hub::new(plan_topic).expect("Failed to create path plan publisher"),
             odometry_subscriber: Hub::new(odom_topic).expect("Failed to subscribe to odometry"),
@@ -98,7 +106,7 @@ impl PathPlannerNode {
             grid_resolution: 0.1, // 10cm resolution
             grid_width: 200,      // 20m x 20m grid
             grid_height: 200,
-            robot_radius: 0.3,    // 30cm robot radius
+            robot_radius: 0.3, // 30cm robot radius
             planning_algorithm: PlanningAlgorithm::AStar,
 
             current_path: Vec::new(),
@@ -187,7 +195,9 @@ impl PathPlannerNode {
         // Process lidar points
         for (i, &range) in lidar_data.ranges.iter().enumerate() {
             if range > 0.1 && range < lidar_data.range_max {
-                let angle = lidar_data.angle_min as f64 + i as f64 * lidar_data.angle_increment as f64 + robot_theta;
+                let angle = lidar_data.angle_min as f64
+                    + i as f64 * lidar_data.angle_increment as f64
+                    + robot_theta;
 
                 let obstacle_x = robot_x + range as f64 * angle.cos();
                 let obstacle_y = robot_y + range as f64 * angle.sin();
@@ -204,7 +214,8 @@ impl PathPlannerNode {
                             let nx = grid_x + dx;
                             let ny = grid_y + dy;
                             if self.is_valid_grid_cell(nx, ny) {
-                                let dist = ((dx * dx + dy * dy) as f64).sqrt() * self.grid_resolution;
+                                let dist =
+                                    ((dx * dx + dy * dy) as f64).sqrt() * self.grid_resolution;
                                 if dist <= self.robot_radius {
                                     self.grid_map[ny as usize][nx as usize] = true;
                                 }
@@ -227,7 +238,9 @@ impl PathPlannerNode {
         let (start_grid_x, start_grid_y) = self.world_to_grid(start_x, start_y);
         let (goal_grid_x, goal_grid_y) = self.world_to_grid(goal_x, goal_y);
 
-        if !self.is_cell_free(start_grid_x, start_grid_y) || !self.is_cell_free(goal_grid_x, goal_grid_y) {
+        if !self.is_cell_free(start_grid_x, start_grid_y)
+            || !self.is_cell_free(goal_grid_x, goal_grid_y)
+        {
             return Vec::new(); // Start or goal is in obstacle
         }
 
@@ -240,8 +253,10 @@ impl PathPlannerNode {
             y: start_grid_y,
             g_cost: 0.0,
             h_cost: self.euclidean_distance(
-                start_grid_x as f64, start_grid_y as f64,
-                goal_grid_x as f64, goal_grid_y as f64
+                start_grid_x as f64,
+                start_grid_y as f64,
+                goal_grid_x as f64,
+                goal_grid_y as f64,
             ),
             f_cost: 0.0,
             parent: None,
@@ -249,7 +264,16 @@ impl PathPlannerNode {
 
         open_set.push(start_node);
 
-        let directions = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)];
+        let directions = [
+            (-1, -1),
+            (-1, 0),
+            (-1, 1),
+            (0, -1),
+            (0, 1),
+            (1, -1),
+            (1, 0),
+            (1, 1),
+        ];
 
         while let Some(current) = open_set.pop() {
             let current_pos = (current.x, current.y);
@@ -281,20 +305,23 @@ impl PathPlannerNode {
                 let neighbor_y = current.y + dy;
                 let neighbor_pos = (neighbor_x, neighbor_y);
 
-                if closed_set.contains(&neighbor_pos) || !self.is_cell_free(neighbor_x, neighbor_y) {
+                if closed_set.contains(&neighbor_pos) || !self.is_cell_free(neighbor_x, neighbor_y)
+                {
                     continue;
                 }
 
                 let movement_cost = if dx.abs() + dy.abs() == 2 {
                     1.414 // Diagonal movement
                 } else {
-                    1.0   // Orthogonal movement
+                    1.0 // Orthogonal movement
                 };
 
                 let tentative_g_cost = current.g_cost + movement_cost;
                 let h_cost = self.euclidean_distance(
-                    neighbor_x as f64, neighbor_y as f64,
-                    goal_grid_x as f64, goal_grid_y as f64
+                    neighbor_x as f64,
+                    neighbor_y as f64,
+                    goal_grid_x as f64,
+                    goal_grid_y as f64,
                 ) * self.heuristic_weight;
 
                 let neighbor_node = AStarNode {
@@ -324,12 +351,15 @@ impl PathPlannerNode {
 
         for iteration in 0..self.rrt_max_iterations {
             // Sample random point or goal with bias (using simple PRNG)
-            let rand_value = ((iteration as u64 * 1103515245 + 12345) % (1u64 << 31)) as f64 / (1u64 << 31) as f64;
+            let rand_value = ((iteration as u64 * 1103515245 + 12345) % (1u64 << 31)) as f64
+                / (1u64 << 31) as f64;
             let (rand_x, rand_y) = if rand_value < self.rrt_goal_bias {
                 (goal_x, goal_y)
             } else {
-                let x_rand = ((iteration as u64 * 1664525 + 1013904223) % (1u64 << 31)) as f64 / (1u64 << 31) as f64;
-                let y_rand = ((iteration as u64 * 2147483647 + 1) % (1u64 << 31)) as f64 / (1u64 << 31) as f64;
+                let x_rand = ((iteration as u64 * 1664525 + 1013904223) % (1u64 << 31)) as f64
+                    / (1u64 << 31) as f64;
+                let y_rand = ((iteration as u64 * 2147483647 + 1) % (1u64 << 31)) as f64
+                    / (1u64 << 31) as f64;
                 let x = (x_rand - 0.5) * self.grid_width as f64 * self.grid_resolution;
                 let y = (y_rand - 0.5) * self.grid_height as f64 * self.grid_resolution;
                 (x, y)
@@ -363,7 +393,9 @@ impl PathPlannerNode {
                 parents.push(Some(nearest_idx));
 
                 // Check if we reached the goal
-                if self.euclidean_distance(new_x, new_y, goal_x, goal_y) < self.grid_resolution * 2.0 {
+                if self.euclidean_distance(new_x, new_y, goal_x, goal_y)
+                    < self.grid_resolution * 2.0
+                {
                     // Reconstruct path
                     let mut path = Vec::new();
                     let mut current_idx = Some(tree.len() - 1);
@@ -410,8 +442,16 @@ impl PathPlannerNode {
             .as_nanos() as u64;
 
         let path_plan = PathPlan {
-            waypoints: self.current_path.iter().map(|&(x, y)| [x as f32, y as f32, 0.0]).collect(),
-            goal_pose: [self.goal_pose.0 as f32, self.goal_pose.1 as f32, self.goal_pose.2 as f32],
+            waypoints: self
+                .current_path
+                .iter()
+                .map(|&(x, y)| [x as f32, y as f32, 0.0])
+                .collect(),
+            goal_pose: [
+                self.goal_pose.0 as f32,
+                self.goal_pose.1 as f32,
+                self.goal_pose.2 as f32,
+            ],
             path_length: self.current_path.len() as u32,
             timestamp: current_time,
         };
@@ -428,18 +468,18 @@ impl Node for PathPlannerNode {
     fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
         // Update current pose from odometry
         if let Some(odom) = self.odometry_subscriber.recv(None) {
-            self.current_pose = (
-                odom.pose.x,
-                odom.pose.y,
-                odom.pose.theta,
-            );
+            self.current_pose = (odom.pose.x, odom.pose.y, odom.pose.theta);
         }
 
         // Handle new goal commands
         if let Some(goal) = self.goal_subscriber.recv(None) {
             if !goal.waypoints.is_empty() {
                 let goal_point = goal.waypoints.last().unwrap();
-                self.set_goal(goal_point[0] as f64, goal_point[1] as f64, goal.goal_pose[2] as f64);
+                self.set_goal(
+                    goal_point[0] as f64,
+                    goal_point[1] as f64,
+                    goal.goal_pose[2] as f64,
+                );
             }
         }
 
@@ -449,9 +489,8 @@ impl Node for PathPlannerNode {
         }
 
         // Check if we need to replan
-        let should_replan = !self.path_valid ||
-                           self.current_path.is_empty() ||
-                           self.check_path_deviation();
+        let should_replan =
+            !self.path_valid || self.current_path.is_empty() || self.check_path_deviation();
 
         if should_replan {
             self.current_path = match self.planning_algorithm {

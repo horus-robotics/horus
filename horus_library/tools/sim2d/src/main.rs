@@ -13,19 +13,15 @@
 
 mod ui;
 
+use anyhow::Result;
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
-use horus_core::{
-    core::NodeInfo,
-    communication::horus::Hub,
-};
-use horus_library::messages::CmdVel;
-use rapier2d::prelude::*;
-use nalgebra::Vector2;
-use anyhow::Result;
 use clap::Parser;
+use horus_core::{communication::horus::Hub, core::NodeInfo};
+use horus_library::messages::CmdVel;
+use nalgebra::Vector2;
+use rapier2d::prelude::*;
 use tracing::{info, warn};
-
 
 /// CLI arguments
 #[derive(Parser)]
@@ -39,11 +35,11 @@ struct Args {
     /// World configuration file (YAML)
     #[arg(long)]
     world: Option<String>,
-    
+
     /// Control topic name
     #[arg(long, default_value = "/robot/cmd_vel")]
     topic: String,
-    
+
     /// Robot name
     #[arg(long, default_value = "robot")]
     name: String,
@@ -61,9 +57,9 @@ struct RobotConfig {
 impl Default for RobotConfig {
     fn default() -> Self {
         Self {
-            width: 0.5,   // 0.5m wide
-            length: 0.8,  // 0.8m long
-            max_speed: 2.0, // 2 m/s max
+            width: 0.5,             // 0.5m wide
+            length: 0.8,            // 0.8m long
+            max_speed: 2.0,         // 2 m/s max
             color: [0.2, 0.8, 0.2], // Green
         }
     }
@@ -89,9 +85,18 @@ impl Default for WorldConfig {
             width: 20.0,
             height: 15.0,
             obstacles: vec![
-                Obstacle { pos: [5.0, 5.0], size: [2.0, 1.0] },
-                Obstacle { pos: [-3.0, -2.0], size: [1.5, 1.5] },
-                Obstacle { pos: [0.0, 7.0], size: [3.0, 0.5] },
+                Obstacle {
+                    pos: [5.0, 5.0],
+                    size: [2.0, 1.0],
+                },
+                Obstacle {
+                    pos: [-3.0, -2.0],
+                    size: [1.5, 1.5],
+                },
+                Obstacle {
+                    pos: [0.0, 7.0],
+                    size: [3.0, 0.5],
+                },
             ],
         }
     }
@@ -170,23 +175,33 @@ impl AppConfig {
         } else {
             RobotConfig::default()
         };
-        
-        // Load world config  
+
+        // Load world config
         let world_config = if let Some(world_file) = &args.world {
             Self::load_world_config(world_file).unwrap_or_default()
         } else {
             WorldConfig::default()
         };
-        
-        info!("🤖 Robot: {:.1}m x {:.1}m, max speed: {:.1} m/s", 
-              robot_config.length, robot_config.width, robot_config.max_speed);
-        info!("🌍 World: {:.1}m x {:.1}m with {} obstacles", 
-              world_config.width, world_config.height, world_config.obstacles.len());
+
+        info!(
+            "🤖 Robot: {:.1}m x {:.1}m, max speed: {:.1} m/s",
+            robot_config.length, robot_config.width, robot_config.max_speed
+        );
+        info!(
+            "🌍 World: {:.1}m x {:.1}m with {} obstacles",
+            world_config.width,
+            world_config.height,
+            world_config.obstacles.len()
+        );
         info!("📡 Control topic: {}", args.topic);
-        
-        Self { args, robot_config, world_config }
+
+        Self {
+            args,
+            robot_config,
+            world_config,
+        }
     }
-    
+
     pub fn load_robot_config(path: &str) -> Result<RobotConfig> {
         let content = std::fs::read_to_string(path)?;
         Ok(serde_yaml::from_str(&content)?)
@@ -205,18 +220,21 @@ fn setup(
     mut physics_world: ResMut<PhysicsWorld>,
 ) {
     info!("🚀 Setting up sim2d");
-    
+
     // Setup camera with better positioning
     commands.spawn(Camera2dBundle {
         transform: Transform::from_translation(Vec3::new(0.0, 0.0, 100.0)),
         ..default()
     });
-    
+
     // Create HORUS communication
     match Hub::new(&app_config.args.topic) {
         Ok(cmd_vel_sub) => {
             let node_info = NodeInfo::new("sim2d".to_string(), true);
-            commands.insert_resource(HorusComm { cmd_vel_sub, node_info });
+            commands.insert_resource(HorusComm {
+                cmd_vel_sub,
+                node_info,
+            });
             info!("✅ Connected to HORUS topic: {}", app_config.args.topic);
         }
         Err(e) => {
@@ -224,35 +242,60 @@ fn setup(
             warn!("   Robot will not respond to external commands");
         }
     }
-    
+
     // Create world boundaries (scale up by 50 for visibility in pixels)
     let scale = 50.0;
     let world_half_width = app_config.world_config.width / 2.0 * scale;
     let world_half_height = app_config.world_config.height / 2.0 * scale;
-    
+
     let boundaries = [
         // Bottom, Top, Left, Right walls
-        (vector![0.0, -world_half_height], vector![app_config.world_config.width * scale, 0.2 * scale]),
-        (vector![0.0, world_half_height], vector![app_config.world_config.width * scale, 0.2 * scale]),
-        (vector![-world_half_width, 0.0], vector![0.2 * scale, app_config.world_config.height * scale]),
-        (vector![world_half_width, 0.0], vector![0.2 * scale, app_config.world_config.height * scale]),
+        (
+            vector![0.0, -world_half_height],
+            vector![app_config.world_config.width * scale, 0.2 * scale],
+        ),
+        (
+            vector![0.0, world_half_height],
+            vector![app_config.world_config.width * scale, 0.2 * scale],
+        ),
+        (
+            vector![-world_half_width, 0.0],
+            vector![0.2 * scale, app_config.world_config.height * scale],
+        ),
+        (
+            vector![world_half_width, 0.0],
+            vector![0.2 * scale, app_config.world_config.height * scale],
+        ),
     ];
-    
+
     let boundaries_physics = [
         // Bottom, Top, Left, Right walls (original scale for physics)
-        (vector![0.0, -app_config.world_config.height / 2.0], vector![app_config.world_config.width, 0.2]),
-        (vector![0.0, app_config.world_config.height / 2.0], vector![app_config.world_config.width, 0.2]),
-        (vector![-app_config.world_config.width / 2.0, 0.0], vector![0.2, app_config.world_config.height]),
-        (vector![app_config.world_config.width / 2.0, 0.0], vector![0.2, app_config.world_config.height]),
+        (
+            vector![0.0, -app_config.world_config.height / 2.0],
+            vector![app_config.world_config.width, 0.2],
+        ),
+        (
+            vector![0.0, app_config.world_config.height / 2.0],
+            vector![app_config.world_config.width, 0.2],
+        ),
+        (
+            vector![-app_config.world_config.width / 2.0, 0.0],
+            vector![0.2, app_config.world_config.height],
+        ),
+        (
+            vector![app_config.world_config.width / 2.0, 0.0],
+            vector![0.2, app_config.world_config.height],
+        ),
     ];
-    
-    for ((pos, size), (pos_scaled, size_scaled)) in boundaries_physics.iter().zip(boundaries.iter()) {
+
+    for ((pos, size), (pos_scaled, size_scaled)) in boundaries_physics.iter().zip(boundaries.iter())
+    {
         // Physics (original scale)
         let rigid_body = RigidBodyBuilder::fixed().translation(*pos).build();
         let collider = ColliderBuilder::cuboid(size.x / 2.0, size.y / 2.0).build();
         let _handle = physics_world.rigid_body_set.insert(rigid_body);
         physics_world.collider_set.insert(collider);
-        
+
         // Visual (scaled for visibility)
         commands.spawn((
             SpriteBundle {
@@ -267,20 +310,20 @@ fn setup(
             WorldElement,
         ));
     }
-    
+
     // Create obstacles
     for obstacle in &app_config.world_config.obstacles {
         let pos_physics = vector![obstacle.pos[0], obstacle.pos[1]];
         let size_physics = vector![obstacle.size[0], obstacle.size[1]];
         let pos_visual = vector![obstacle.pos[0] * scale, obstacle.pos[1] * scale];
         let size_visual = vector![obstacle.size[0] * scale, obstacle.size[1] * scale];
-        
+
         // Physics (original scale)
         let rigid_body = RigidBodyBuilder::fixed().translation(pos_physics).build();
         let collider = ColliderBuilder::cuboid(size_physics.x / 2.0, size_physics.y / 2.0).build();
         let _handle = physics_world.rigid_body_set.insert(rigid_body);
         physics_world.collider_set.insert(collider);
-        
+
         // Visual (scaled)
         commands.spawn((
             SpriteBundle {
@@ -295,30 +338,37 @@ fn setup(
             WorldElement,
         ));
     }
-    
+
     // Create robot
     let robot_pos = vector![0.0, 0.0]; // Start at center (physics uses original scale)
-    let robot_size = vector![app_config.robot_config.length * scale, app_config.robot_config.width * scale];
-    
+    let robot_size = vector![
+        app_config.robot_config.length * scale,
+        app_config.robot_config.width * scale
+    ];
+
     // Physics (use original scale)
-    let robot_size_physics = vector![app_config.robot_config.length, app_config.robot_config.width];
+    let robot_size_physics = vector![
+        app_config.robot_config.length,
+        app_config.robot_config.width
+    ];
     let rigid_body = RigidBodyBuilder::dynamic()
         .translation(robot_pos)
-        .linear_damping(2.0)  // Natural deceleration
+        .linear_damping(2.0) // Natural deceleration
         .angular_damping(1.0)
         .build();
-    let collider = ColliderBuilder::cuboid(robot_size_physics.x / 2.0, robot_size_physics.y / 2.0).build();
-    
+    let collider =
+        ColliderBuilder::cuboid(robot_size_physics.x / 2.0, robot_size_physics.y / 2.0).build();
+
     let robot_handle = physics_world.rigid_body_set.insert(rigid_body);
     physics_world.collider_set.insert(collider);
-    
+
     // Visual
     let robot_color = Color::srgb(
         app_config.robot_config.color[0],
-        app_config.robot_config.color[1], 
+        app_config.robot_config.color[1],
         app_config.robot_config.color[2],
     );
-    
+
     commands.spawn((
         SpriteBundle {
             sprite: Sprite {
@@ -335,11 +385,20 @@ fn setup(
             rigid_body_handle: robot_handle,
         },
     ));
-    
+
     info!("✅ sim2d setup complete!");
-    info!("   📐 World: {}x{} meters", app_config.world_config.width, app_config.world_config.height);
-    info!("   🤖 Robot: {}x{} meters at ({}, {})", robot_size.x, robot_size.y, robot_pos.x, robot_pos.y);
-    info!("   🏢 Obstacles: {} created", app_config.world_config.obstacles.len());
+    info!(
+        "   📐 World: {}x{} meters",
+        app_config.world_config.width, app_config.world_config.height
+    );
+    info!(
+        "   🤖 Robot: {}x{} meters at ({}, {})",
+        robot_size.x, robot_size.y, robot_pos.x, robot_pos.y
+    );
+    info!(
+        "   🏢 Obstacles: {} created",
+        app_config.world_config.obstacles.len()
+    );
 }
 
 /// HORUS communication system
@@ -349,18 +408,27 @@ fn horus_system(
     mut physics_world: ResMut<PhysicsWorld>,
 ) {
     if let Some(comm) = horus_comm.as_mut() {
-        let HorusComm { ref mut cmd_vel_sub, ref mut node_info } = **comm;
+        let HorusComm {
+            ref mut cmd_vel_sub,
+            ref mut node_info,
+        } = **comm;
         if let Some(cmd_vel) = cmd_vel_sub.recv(Some(node_info)) {
             for robot in robots.iter() {
-                if let Some(rigid_body) = physics_world.rigid_body_set.get_mut(robot.rigid_body_handle) {
+                if let Some(rigid_body) = physics_world
+                    .rigid_body_set
+                    .get_mut(robot.rigid_body_handle)
+                {
                     // Convert differential drive to physics forces
                     let robot_angle = rigid_body.rotation().angle();
                     let forward_dir = Vector2::new(robot_angle.cos(), robot_angle.sin());
-                    
+
                     // Apply linear velocity in robot's forward direction
-                    let linear_vel = forward_dir * cmd_vel.linear.clamp(-robot.config.max_speed, robot.config.max_speed);
+                    let linear_vel = forward_dir
+                        * cmd_vel
+                            .linear
+                            .clamp(-robot.config.max_speed, robot.config.max_speed);
                     let angular_vel = cmd_vel.angular.clamp(-3.0, 3.0); // Max angular speed
-                    
+
                     rigid_body.set_linvel(vector![linear_vel.x, linear_vel.y], true);
                     rigid_body.set_angvel(angular_vel, true);
                 }
@@ -386,7 +454,7 @@ fn physics_system(mut physics_world: ResMut<PhysicsWorld>) {
         ref physics_hooks,
         ref event_handler,
     } = *physics_world;
-    
+
     physics_pipeline.step(
         gravity,
         integration_parameters,
@@ -415,7 +483,7 @@ fn visual_sync_system(
             // Update robot visual position from physics (scale up for visibility)
             let pos = rigid_body.translation();
             let rot = rigid_body.rotation();
-            
+
             transform.translation.x = pos.x * scale;
             transform.translation.y = pos.y * scale;
             transform.rotation = Quat::from_rotation_z(rot.angle());
@@ -426,45 +494,49 @@ fn visual_sync_system(
 fn main() -> Result<()> {
     // Initialize logging
     tracing_subscriber::fmt::init();
-    
+
     // Parse command line arguments
     let args = Args::parse();
-    
+
     info!("🚀 Starting sim2d - Simple 2D Robotics Simulator");
     info!("   One command, physics + visualization!");
-    
+
     // Create app configuration
     let app_config = AppConfig::new(args);
-    
+
     info!("🎮 Control the robot from another terminal:");
     info!("   cargo run -p simple_driver");
     info!("   (publishes to: {})", app_config.args.topic);
-    
+
     // Run Bevy app
     App::new()
-        .add_plugins(DefaultPlugins
-            .set(WindowPlugin {
-                primary_window: Some(Window {
-                    title: "sim2d - 2D Robotics Simulator".to_string(),
-                    resolution: (1600.0, 900.0).into(),  // Wider for panel + viewport
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "sim2d - 2D Robotics Simulator".to_string(),
+                        resolution: (1600.0, 900.0).into(), // Wider for panel + viewport
+                        ..default()
+                    }),
                     ..default()
-                }),
-                ..default()
-            })
-            .disable::<bevy::log::LogPlugin>() // Disable Bevy logging to avoid conflicts
+                })
+                .disable::<bevy::log::LogPlugin>(), // Disable Bevy logging to avoid conflicts
         )
-        .add_plugins(EguiPlugin)  // Add egui plugin for UI
+        .add_plugins(EguiPlugin) // Add egui plugin for UI
         .insert_resource(app_config)
         .insert_resource(PhysicsWorld::default())
-        .insert_resource(ui::UiState::default())  // Add UI state
+        .insert_resource(ui::UiState::default()) // Add UI state
         .add_systems(Startup, setup)
-        .add_systems(Update, (
-            ui::ui_system,              // UI panel rendering
-            ui::file_dialog_system,     // File picker handling
-            horus_system,
-            physics_system,
-            visual_sync_system,
-        ))
+        .add_systems(
+            Update,
+            (
+                ui::ui_system,          // UI panel rendering
+                ui::file_dialog_system, // File picker handling
+                horus_system,
+                physics_system,
+                visual_sync_system,
+            ),
+        )
         .run();
 
     Ok(())

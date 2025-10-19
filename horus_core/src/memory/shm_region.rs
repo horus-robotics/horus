@@ -25,16 +25,13 @@ impl ShmRegion {
         std::fs::create_dir_all(&horus_shm_dir)?;
 
         // Convert topic name to safe filename
-        let safe_name = name.replace('/', "_").replace(':', "_");
+        let safe_name = name.replace(['/', ':'], "_");
         let path = horus_shm_dir.join(format!("horus_{}", safe_name));
 
         // Check if file already exists
         let (file, is_owner) = if path.exists() {
             // Open existing file
-            let file = OpenOptions::new()
-                .read(true)
-                .write(true)
-                .open(&path)?;
+            let file = OpenOptions::new().read(true).write(true).open(&path)?;
 
             // Check existing size
             let metadata = file.metadata()?;
@@ -50,6 +47,7 @@ impl ShmRegion {
                 .read(true)
                 .write(true)
                 .create(true)
+                .truncate(true)
                 .open(&path)?;
 
             // Set initial size
@@ -58,11 +56,7 @@ impl ShmRegion {
         };
 
         // Memory map the file
-        let mut mmap = unsafe {
-            MmapOptions::new()
-                .len(size)
-                .map_mut(&file)?
-        };
+        let mut mmap = unsafe { MmapOptions::new().len(size).map_mut(&file)? };
 
         // Initialize to zero if we're the owner
         if is_owner {
@@ -82,26 +76,19 @@ impl ShmRegion {
     /// Open existing shared memory region (no creation)
     pub fn open(name: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let horus_shm_dir = PathBuf::from("/dev/shm/horus/topics");
-        let safe_name = name.replace('/', "_").replace(':', "_");
+        let safe_name = name.replace(['/', ':'], "_");
         let path = horus_shm_dir.join(format!("horus_{}", safe_name));
 
         if !path.exists() {
             return Err(format!("Shared memory '{}' does not exist", name).into());
         }
 
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(&path)?;
+        let file = OpenOptions::new().read(true).write(true).open(&path)?;
 
         let metadata = file.metadata()?;
         let size = metadata.len() as usize;
 
-        let mmap = unsafe {
-            MmapOptions::new()
-                .len(size)
-                .map_mut(&file)?
-        };
+        let mmap = unsafe { MmapOptions::new().len(size).map_mut(&file)? };
 
         Ok(Self {
             mmap,

@@ -110,10 +110,10 @@ impl Image {
 
     /// Validate image data consistency
     pub fn is_valid(&self) -> bool {
-        self.width > 0 &&
-        self.height > 0 &&
-        self.step >= self.width * self.encoding.bytes_per_pixel() &&
-        self.data.len() >= self.expected_size()
+        self.width > 0
+            && self.height > 0
+            && self.step >= self.width * self.encoding.bytes_per_pixel()
+            && self.data.len() >= self.expected_size()
     }
 
     /// Get pixel at coordinates (x, y)
@@ -169,17 +169,22 @@ impl ImageEncoding {
 
     /// Check if encoding has color information
     pub fn is_color(&self) -> bool {
-        matches!(self,
-            ImageEncoding::Rgb8 | ImageEncoding::Bgr8 |
-            ImageEncoding::Rgba8 | ImageEncoding::Bgra8 |
-            ImageEncoding::Yuv422 | ImageEncoding::Rgb32F |
-            ImageEncoding::BayerRggb8
+        matches!(
+            self,
+            ImageEncoding::Rgb8
+                | ImageEncoding::Bgr8
+                | ImageEncoding::Rgba8
+                | ImageEncoding::Bgra8
+                | ImageEncoding::Yuv422
+                | ImageEncoding::Rgb32F
+                | ImageEncoding::BayerRggb8
         )
     }
 }
 
 /// Compressed image data (JPEG, PNG, etc.)
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct CompressedImage {
     /// Compression format ("jpeg", "png", "webp")
     pub format: [u8; 8],
@@ -195,18 +200,6 @@ pub struct CompressedImage {
     pub timestamp: u64,
 }
 
-impl Default for CompressedImage {
-    fn default() -> Self {
-        Self {
-            format: [0; 8],
-            data: Vec::new(),
-            width: 0,
-            height: 0,
-            frame_id: [0; 32],
-            timestamp: 0,
-        }
-    }
-}
 
 impl CompressedImage {
     /// Create a new compressed image
@@ -348,8 +341,10 @@ impl RegionOfInterest {
 
     /// Check if point is inside ROI
     pub fn contains(&self, x: u32, y: u32) -> bool {
-        x >= self.x_offset && x < self.x_offset + self.width &&
-        y >= self.y_offset && y < self.y_offset + self.height
+        x >= self.x_offset
+            && x < self.x_offset + self.width
+            && y >= self.y_offset
+            && y < self.y_offset + self.height
     }
 
     /// Get area of ROI
@@ -418,6 +413,7 @@ impl Detection {
 
 /// Array of visual detections
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct DetectionArray {
     /// Array of detections (max 32)
     #[serde(with = "serde_arrays")]
@@ -433,18 +429,6 @@ pub struct DetectionArray {
     pub timestamp: u64,
 }
 
-impl Default for DetectionArray {
-    fn default() -> Self {
-        Self {
-            detections: [Detection::default(); 32],
-            count: 0,
-            image_width: 0,
-            image_height: 0,
-            frame_id: [0; 32],
-            timestamp: 0,
-        }
-    }
-}
 
 impl DetectionArray {
     /// Create a new detection array

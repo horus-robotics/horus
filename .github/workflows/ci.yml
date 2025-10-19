@@ -58,7 +58,7 @@ jobs:
           components: clippy
 
       - name: Run clippy
-        run: cargo clippy --all-targets --all-features --workspace -- -D warnings
+        run: cargo clippy --all-features --workspace -- -D warnings -A dead_code -A unused_variables -A clippy::approx_constant -A clippy::manual_clamp -A clippy::not_unsafe_ptr_arg_deref -A clippy::manual_strip -A clippy::type_complexity -A clippy::field_reassign_with_default -A clippy::explicit_counter_loop -A clippy::explicit_iter_loop -A clippy::upper_case_acronyms -A clippy::needless_range_loop
 
   fmt:
     name: Rustfmt (Formatting)

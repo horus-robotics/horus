@@ -1,8 +1,8 @@
 //! UI module for sim2d control panel
 
+use crate::AppConfig;
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
-use crate::AppConfig;
 use std::path::PathBuf;
 
 /// UI state resource
@@ -61,15 +61,22 @@ pub fn ui_system(
                 });
 
                 if let Some(path) = &ui_state.world_config_path {
-                    ui.label(format!("File: {}", path.file_name().unwrap().to_string_lossy()));
+                    ui.label(format!(
+                        "File: {}",
+                        path.file_name().unwrap().to_string_lossy()
+                    ));
                 } else {
                     ui.label("Using default world config");
                 }
 
-                ui.label(format!("Size: {:.1}m × {:.1}m",
-                    app_config.world_config.width,
-                    app_config.world_config.height));
-                ui.label(format!("Obstacles: {}", app_config.world_config.obstacles.len()));
+                ui.label(format!(
+                    "Size: {:.1}m × {:.1}m",
+                    app_config.world_config.width, app_config.world_config.height
+                ));
+                ui.label(format!(
+                    "Obstacles: {}",
+                    app_config.world_config.obstacles.len()
+                ));
             });
 
             ui.add_space(10.0);
@@ -84,15 +91,22 @@ pub fn ui_system(
                 });
 
                 if let Some(path) = &ui_state.robot_config_path {
-                    ui.label(format!("File: {}", path.file_name().unwrap().to_string_lossy()));
+                    ui.label(format!(
+                        "File: {}",
+                        path.file_name().unwrap().to_string_lossy()
+                    ));
                 } else {
                     ui.label("Using default robot config");
                 }
 
-                ui.label(format!("Size: {:.2}m × {:.2}m",
-                    app_config.robot_config.length,
-                    app_config.robot_config.width));
-                ui.label(format!("Max Speed: {:.1} m/s", app_config.robot_config.max_speed));
+                ui.label(format!(
+                    "Size: {:.2}m × {:.2}m",
+                    app_config.robot_config.length, app_config.robot_config.width
+                ));
+                ui.label(format!(
+                    "Max Speed: {:.1} m/s",
+                    app_config.robot_config.max_speed
+                ));
 
                 // Color preview
                 let color = app_config.robot_config.color;
@@ -168,10 +182,7 @@ pub fn ui_system(
 }
 
 /// System to handle file dialog actions
-pub fn file_dialog_system(
-    mut ui_state: ResMut<UiState>,
-    mut app_config: ResMut<AppConfig>,
-) {
+pub fn file_dialog_system(mut ui_state: ResMut<UiState>, mut app_config: ResMut<AppConfig>) {
     match ui_state.show_file_dialog {
         FileDialogType::RobotConfig => {
             if let Some(path) = rfd::FileDialog::new()
@@ -204,7 +215,8 @@ pub fn file_dialog_system(
                     Ok(config) => {
                         app_config.world_config = config;
                         ui_state.world_config_path = Some(path);
-                        ui_state.status_message = "World config loaded! (Restart to apply)".to_string();
+                        ui_state.status_message =
+                            "World config loaded! (Restart to apply)".to_string();
                         info!("✅ Loaded world config");
                     }
                     Err(e) => {
