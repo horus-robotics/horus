@@ -300,7 +300,7 @@ impl Node for CameraNode {
             self.publish_image(data);
 
             // Publish camera info periodically
-            if self.frame_count % 30 == 0 {
+            if self.frame_count.is_multiple_of(30) {
                 self.publish_camera_info();
             }
         }
