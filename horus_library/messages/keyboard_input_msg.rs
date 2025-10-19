@@ -112,7 +112,7 @@ impl KeyboardInput {
             .to_string()
     }
 
-    /// Get modifier names as Vec<String> (for compatibility)
+    /// Get modifier names as `Vec<String>` (for compatibility)
     pub fn get_modifiers(&self) -> Vec<String> {
         let mut modifiers = Vec::new();
         if (self.modifier_flags & MODIFIER_CTRL) != 0 {
