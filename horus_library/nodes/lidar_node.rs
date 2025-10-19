@@ -150,10 +150,9 @@ impl Node for LidarNode {
 
     fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
         // Initialize LiDAR on first tick
-        if !self.is_initialized
-            && !self.initialize_lidar() {
-                return; // Skip if initialization failed
-            }
+        if !self.is_initialized && !self.initialize_lidar() {
+            return; // Skip if initialization failed
+        }
 
         // Generate and publish scan data
         let ranges = self.generate_scan_data();

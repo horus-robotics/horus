@@ -285,10 +285,9 @@ impl Node for CameraNode {
 
     fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
         // Initialize camera on first tick
-        if !self.is_initialized
-            && !self.initialize_camera() {
-                return; // Skip if initialization failed
-            }
+        if !self.is_initialized && !self.initialize_camera() {
+            return; // Skip if initialization failed
+        }
 
         // Capture and publish frame
         if let Some(data) = self.capture_frame() {

@@ -110,10 +110,9 @@ impl Node for ImuNode {
 
     fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
         // Initialize IMU on first tick
-        if !self.is_initialized
-            && !self.initialize_imu() {
-                return;
-            }
+        if !self.is_initialized && !self.initialize_imu() {
+            return;
+        }
 
         // Read and publish IMU data
         let imu_data = self.read_imu_data();

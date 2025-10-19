@@ -183,8 +183,7 @@ impl ImageEncoding {
 }
 
 /// Compressed image data (JPEG, PNG, etc.)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CompressedImage {
     /// Compression format ("jpeg", "png", "webp")
     pub format: [u8; 8],
@@ -199,7 +198,6 @@ pub struct CompressedImage {
     /// Timestamp in nanoseconds since epoch
     pub timestamp: u64,
 }
-
 
 impl CompressedImage {
     /// Create a new compressed image
@@ -412,8 +410,7 @@ impl Detection {
 }
 
 /// Array of visual detections
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DetectionArray {
     /// Array of detections (max 32)
     #[serde(with = "serde_arrays")]
@@ -428,7 +425,6 @@ pub struct DetectionArray {
     /// Timestamp in nanoseconds since epoch
     pub timestamp: u64,
 }
-
 
 impl DetectionArray {
     /// Create a new detection array

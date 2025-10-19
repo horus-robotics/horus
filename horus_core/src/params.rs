@@ -167,7 +167,8 @@ impl RuntimeParams {
     /// Save parameters to YAML file
     pub fn save_to_disk(&self) -> Result<(), Box<dyn std::error::Error + '_>> {
         let path = self
-            .persist_path.clone()
+            .persist_path
+            .clone()
             .unwrap_or_else(|| PathBuf::from(".horus/config/params.yaml"));
 
         // Create .horus directory if it doesn't exist

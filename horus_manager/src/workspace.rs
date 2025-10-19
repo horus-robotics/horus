@@ -189,10 +189,7 @@ fn interactive_workspace_selector(
     idx += 1;
 
     // Cancel option
-    println!(
-        "  [{}] ❌ Cancel\n",
-        idx.to_string().cyan()
-    );
+    println!("  [{}] ❌ Cancel\n", idx.to_string().cyan());
 
     // Get user selection
     print!("→ Select target [1-{}]: ", idx);

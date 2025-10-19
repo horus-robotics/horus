@@ -76,10 +76,7 @@ pub fn create_new_project(
     println!("\n{} Project created successfully!", "✅".green().bold());
     println!("\nTo get started:");
     println!("  {} {}", "cd".cyan(), name);
-    println!(
-        "  {} (auto-installs dependencies)",
-        "horus run".cyan()
-    );
+    println!("  {} (auto-installs dependencies)", "horus run".cyan());
 
     Ok(())
 }

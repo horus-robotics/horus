@@ -1111,9 +1111,10 @@ fn find_cached_versions(cache_dir: &Path, package: &str) -> Result<Vec<PathBuf>>
 
         // Match package@version or just package
         if name_str.starts_with(package)
-            && (name_str == package || name_str.starts_with(&format!("{}@", package))) {
-                versions.push(entry.path());
-            }
+            && (name_str == package || name_str.starts_with(&format!("{}@", package)))
+        {
+            versions.push(entry.path());
+        }
     }
 
     // Sort by version (newest first)

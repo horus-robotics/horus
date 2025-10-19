@@ -10,8 +10,7 @@ use serde_arrays;
 ///
 /// Represents the state of digital input/output pins, typically used
 /// for interfacing with sensors, actuators, and industrial equipment.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
 pub struct DigitalIO {
     /// Pin states (true = high/on, false = low/off)
     #[serde(with = "serde_arrays")]
@@ -31,7 +30,6 @@ pub struct DigitalIO {
     /// Timestamp in nanoseconds since epoch
     pub timestamp: u64,
 }
-
 
 impl DigitalIO {
     /// Create a new digital I/O message

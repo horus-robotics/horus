@@ -88,8 +88,7 @@ impl PointField {
 ///
 /// Represents a collection of 3D points with optional color, intensity,
 /// and other attributes. Uses flexible field structure like ROS PointCloud2.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PointCloud {
     /// Point cloud dimensions
     pub width: u32,
@@ -111,7 +110,6 @@ pub struct PointCloud {
     /// Timestamp in nanoseconds since epoch
     pub timestamp: u64,
 }
-
 
 impl PointCloud {
     /// Create a new empty point cloud
@@ -364,8 +362,7 @@ impl BoundingBox3D {
 }
 
 /// Array of 3D bounding boxes
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct BoundingBoxArray3D {
     /// Array of bounding boxes (max 32)
     #[serde(with = "serde_arrays")]
@@ -377,7 +374,6 @@ pub struct BoundingBoxArray3D {
     /// Timestamp in nanoseconds since epoch
     pub timestamp: u64,
 }
-
 
 impl BoundingBoxArray3D {
     /// Create a new bounding box array
@@ -617,8 +613,7 @@ impl PlaneDetection {
 }
 
 /// Array of plane detections
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PlaneArray {
     /// Array of plane detections (max 16)
     #[serde(with = "serde_arrays")]
@@ -632,7 +627,6 @@ pub struct PlaneArray {
     /// Timestamp in nanoseconds since epoch
     pub timestamp: u64,
 }
-
 
 #[cfg(test)]
 mod tests {

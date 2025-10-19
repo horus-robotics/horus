@@ -522,8 +522,7 @@ pub struct VelocityObstacle {
 }
 
 /// Array of velocity obstacles
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct VelocityObstacles {
     /// Array of obstacles (max 32)
     #[serde(with = "serde_arrays")]
@@ -533,7 +532,6 @@ pub struct VelocityObstacles {
     /// Timestamp in nanoseconds since epoch
     pub timestamp: u64,
 }
-
 
 #[cfg(test)]
 mod tests {

@@ -449,7 +449,7 @@ impl Node for KeyboardInputNode {
 
                     // Publish the keyboard event via horus Hub
                     let _ = self.publisher.send(key_input, ctx);
-                }// Skip demo mode when real input is available
+                } // Skip demo mode when real input is available
             }
         }
 
