@@ -5,19 +5,19 @@
 //!
 //! ## Quick Start
 //!
-//! ```rust
+//! ```rust,no_run
 //! use horus::prelude::*;
+//! use horus::library::messages::cmd_vel::CmdVel;
 //!
 //! pub struct MyNode {
-//!     publisher: Hub<SensorData>,
+//!     publisher: Hub<CmdVel>,
 //! }
 //!
 //! impl Node for MyNode {
 //!     fn name(&self) -> &'static str { "MyNode" }
 //!
-//!     fn tick(&mut self) -> Result<()> {
+//!     fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
 //!         // Node logic here
-//!         Ok(())
 //!     }
 //! }
 //! ```
