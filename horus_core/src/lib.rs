@@ -13,7 +13,7 @@
 //!
 //! ## Quick Start
 //!
-//! ```rust
+//! ```rust,no_run
 //! use horus_core::{Node, NodeInfo, Scheduler, Hub};
 //!
 //! struct ExampleNode {
@@ -22,9 +22,9 @@
 //!
 //! impl Node for ExampleNode {
 //!     fn name(&self) -> &'static str { "example" }
-//!     
-//!     fn tick(&mut self, _ctx: &mut NodeInfo) {
-//!         let _ = self.output.send("Hello HORUS!".into(), ctx.as_deref_mut());
+//!
+//!     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+//!         let _ = self.output.send("Hello HORUS!".into(), ctx);
 //!     }
 //! }
 //! ```

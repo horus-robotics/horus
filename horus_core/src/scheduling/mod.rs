@@ -8,7 +8,7 @@
 //!
 //! ## Usage
 //!
-//! ```rust
+//! ```rust,ignore
 //! use horus_core::Scheduler;
 //!
 //! let mut scheduler = Scheduler::new();

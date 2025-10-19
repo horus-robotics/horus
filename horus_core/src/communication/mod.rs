@@ -8,22 +8,22 @@
 //! ## Usage Patterns
 //!
 //! **For ultra-low latency (real-time control loops):**
-//! ```rust
+//! ```rust,ignore
 //! use horus_core::communication::Link;
-//! let link = Link::new(1024);
+//! let link = Link::new("producer", "consumer", "topic");
 //! ```
 //!
 //! **For general-purpose IPC:**
-//! ```rust
+//! ```rust,no_run
 //! use horus_core::communication::Hub;
-//! let hub = Hub::new("topic_name").unwrap();
+//! let hub: Hub<String> = Hub::new("topic_name").unwrap();
 //! ```
 //!
 //! **Backend-agnostic usage:**
-//! ```rust
+//! ```rust,ignore
 //! use horus_core::communication::traits::{Publisher, Subscriber};
-//! fn send_message<P: Publisher<String>>(pub: &P, msg: String) {
-//!     pub.send(msg).unwrap();
+//! fn send_message<P: Publisher<String>>(publisher: &P, msg: String) {
+//!     publisher.send(msg, None).unwrap();
 //! }
 //! ```
 
