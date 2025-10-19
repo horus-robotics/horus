@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FiGithub, FiMenu, FiSearch } from "react-icons/fi";
+import { FiGithub, FiMenu, FiSearch, FiMessageCircle } from "react-icons/fi";
 import { ThemeToggle } from "./ThemeToggle";
 import { SearchModal } from "./SearchModal";
 import { useState, useEffect } from "react";
@@ -93,6 +93,16 @@ export function DocsNav({ onMenuClick }: DocsNavProps) {
               Benchmarks
             </Link>
             <ThemeToggle />
+            <a
+              href="https://discord.gg/hEZC3ev2Nf"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors touch-manipulation"
+              title="Join Discord Community"
+              aria-label="Discord Community"
+            >
+              <FiMessageCircle className="w-5 h-5" />
+            </a>
             <a
               href="https://github.com/neos-builder/horus"
               target="_blank"

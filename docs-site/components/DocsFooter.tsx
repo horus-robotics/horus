@@ -39,6 +39,7 @@ export function DocsFooter() {
             <div>
               <h4 className="font-semibold text-[var(--text-primary)] mb-3 text-sm uppercase tracking-wider">Community</h4>
               <ul className="space-y-2.5 text-sm text-[var(--text-secondary)]">
+                <li><a href="https://discord.gg/hEZC3ev2Nf" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Discord Community</a></li>
                 <li><a href="https://github.com/neos-builder/horus/issues" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Issues</a></li>
                 <li><a href="/goals" className="hover:text-[var(--accent)] transition-colors">Goals & Vision</a></li>
                 <li><a href="/architecture" className="hover:text-[var(--accent)] transition-colors">Architecture</a></li>

@@ -546,6 +546,14 @@ See [horus_c/README.md](horus_c/README.md) for C bindings documentation.
 - Comprehensive system monitoring
 - Memory-safe message passing for 24/7 operation
 
+## Community
+
+Join our Discord community for support, discussions, and updates:
+
+**[Join HORUS Discord](https://discord.gg/hEZC3ev2Nf)**
+
+Get help, share your projects, and connect with other HORUS developers!
+
 ## Contributing
 
 1. Fork the repository

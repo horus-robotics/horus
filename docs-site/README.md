@@ -120,6 +120,7 @@ The documentation emphasizes HORUS's production-grade performance:
 ## Links
 
 - **Main Repository**: https://github.com/neos-builder/horus
+- **Discord Community**: https://discord.gg/hEZC3ev2Nf
 - **Issues**: https://github.com/neos-builder/horus/issues
 - **Discussions**: https://github.com/neos-builder/horus/discussions
 - **Crates.io**: https://crates.io/search?q=horus
