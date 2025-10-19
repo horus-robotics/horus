@@ -19,7 +19,7 @@ horus_core = { path = "../horus_core" }
 horus_library = { path = "../horus_library", optional = true }
 clap = { version = "4.4", features = ["derive"] }
 tokio = { version = "1.0", features = ["full"] }
-serde = { version = "1.0", features = ["derive"] }
+serde.workspace = true
 serde_json.workspace = true
 colored = "2.0"
 chrono = { version = "0.4", features = ["serde"] }

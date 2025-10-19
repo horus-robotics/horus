@@ -6,7 +6,7 @@ description = "HORUS Library - Collection of Nodes, Algorithms, and Unies"
 authors = ["HORUS Team"]
 
 [dependencies]
-serde = { version = "1.0", features = ["derive", "rc"] }
+serde.workspace = true
 serde_arrays = "0.1"
 toml = "0.8"
 uuid = { version = "1.0", features = ["v4", "serde"] }

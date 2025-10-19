@@ -11,5 +11,5 @@ path = "src/main.rs"
 horus = { path = "../../../horus" }
 horus_core = { path = "../../../horus_core" }
 horus_library = { path = "../.." }
-serde = { version = "1.0", features = ["derive"] }
+serde.workspace = true
 tokio = { version = "1.0", features = ["full"] }
