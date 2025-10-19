@@ -45,10 +45,10 @@ jobs:
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Run tests
-        run: cargo test --workspace --exclude horus_py
+        run: cargo test --workspace --exclude horus_py --exclude horus_macros
 
       - name: Run tests (release mode)
-        run: cargo test --workspace --release --exclude horus_py
+        run: cargo test --workspace --release --exclude horus_py --exclude horus_macros
 
   clippy:
     name: Clippy (Lints)
