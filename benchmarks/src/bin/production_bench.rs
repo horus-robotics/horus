@@ -435,7 +435,7 @@ fn bench_mixed_robot_loop() {
         imu_sender.send(imu, None).unwrap();
         let _ = imu_receiver.recv(None);
 
-        if i % 100 == 0 {
+        if i.is_multiple_of(100) {
             let battery = BatteryState::new(12.4, 70.0);
             battery_sender.send(battery, None).unwrap();
             let _ = battery_receiver.recv(None);
@@ -458,7 +458,7 @@ fn bench_mixed_robot_loop() {
         let _ = imu_receiver.recv(None);
 
         // Battery (1Hz = every 100 iterations at 100Hz)
-        if i % 100 == 0 {
+        if i.is_multiple_of(100) {
             let battery = BatteryState::new(12.4 - (i as f32 * 0.0001), 70.0);
             battery_sender.send(battery, None).unwrap();
             let _ = battery_receiver.recv(None);

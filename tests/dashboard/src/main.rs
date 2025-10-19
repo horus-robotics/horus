@@ -400,7 +400,7 @@ impl Node for StatusMonitor {
         }
 
         // Publish status every few ticks
-        if self.message_count % 10 == 0 {
+        if self.message_count.is_multiple_of(10) {
             let status = SystemStatus {
                 healthy: true,
                 cpu_usage: 25.0 + (self.message_count as f64 * 0.1) % 50.0,

@@ -281,7 +281,7 @@ fn bench_mixed_messages(c: &mut Criterion) {
                 let _ = cmd_receiver.recv(None);
 
                 // IMU at 100Hz
-                if i % 1 == 0 {
+                if i.is_multiple_of(1) {
                     let mut imu = Imu::new();
                     imu.angular_velocity = [0.01, 0.02, 0.03];
                     imu_sender.send(imu, None).unwrap();
@@ -289,7 +289,7 @@ fn bench_mixed_messages(c: &mut Criterion) {
                 }
 
                 // Battery at 1Hz (every 100 iterations at 100Hz)
-                if i % 100 == 0 {
+                if i.is_multiple_of(100) {
                     let battery = BatteryState::new(12.4, 70.0);
                     battery_sender.send(battery, None).unwrap();
                     let _ = battery_receiver.recv(None);
