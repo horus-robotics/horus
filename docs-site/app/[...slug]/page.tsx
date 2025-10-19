@@ -72,6 +72,7 @@ export async function generateStaticParams() {
     { slug: ['api'] },
     { slug: ['api-node'] },
     { slug: ['api-hub'] },
+    { slug: ['api-link'] },
     { slug: ['api-scheduler'] },
   ];
 }

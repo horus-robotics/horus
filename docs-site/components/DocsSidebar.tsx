@@ -60,7 +60,8 @@ const sections: SidebarSection[] = [
     links: [
       { title: "Node", href: "/api-node", order: 1 },
       { title: "Hub", href: "/api-hub", order: 2 },
-      { title: "Scheduler", href: "/api-scheduler", order: 3 },
+      { title: "Link", href: "/api-link", order: 3 },
+      { title: "Scheduler", href: "/api-scheduler", order: 4 },
     ],
   },
 ];

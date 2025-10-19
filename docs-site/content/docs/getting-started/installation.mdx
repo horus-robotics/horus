@@ -44,7 +44,13 @@ If you see `horus 0.3.0` (or similar), you're all set! Skip to [Next Steps](#nex
 
 **What the installer does:**
 - Builds the `horus` CLI tool
-- Installs core libraries (`horus`, `horus_library`) to `~/.horus/cache/`
+- Installs six core libraries to `~/.horus/cache/`:
+  - `horus_core` - Core runtime and scheduler
+  - `horus` - Main framework library
+  - `horus_macros` - Procedural macros for simplified syntax
+  - `horus_library` - Standard message types and nodes
+  - `horus_c` - C bindings with headers
+  - `horus_py` - Python bindings
 - Tracks the installed version for automatic updates
 - Verifies installation with built-in tests
 

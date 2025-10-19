@@ -82,10 +82,12 @@ The installation script handles everything automatically:
 2. Build all packages in release mode (`cargo build --release`)
 3. Install the `horus` CLI to `~/.cargo/bin/`
 4. Set up `~/.horus/cache/` with versioned libraries:
-   - `horus_core@0.1.0`
-   - `horus@0.1.0`
-   - `horus_macros@0.1.0`
-   - `horus_library@0.1.0`
+   - `horus_core@0.1.0` - Core runtime and scheduler
+   - `horus@0.1.0` - Main framework library
+   - `horus_macros@0.1.0` - Procedural macros for simplified syntax
+   - `horus_library@0.1.0` - Standard message types and nodes
+   - `horus_c@0.1.0` - C bindings with headers (automatically available)
+   - `horus_py@0.1.0` - Python bindings (automatically available)
 5. Create `metadata.json` for each package
 6. Verify the installation
 7. Display next steps
