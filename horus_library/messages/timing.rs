@@ -144,9 +144,7 @@ impl TimeSync {
 
     /// Check if synchronization is valid
     pub fn is_valid(&self) -> bool {
-        self.confidence > 0.1
-            && self.sync_quality != SyncQuality::None
-            && self.accuracy_estimate < 10_000_000 // 10ms max
+        self.confidence > 0.1 && self.sync_quality != SyncQuality::None
     }
 
     /// Get master ID as string
@@ -309,12 +307,14 @@ impl ScheduledEvent {
             self.last_execution = self.timestamp;
 
             // Schedule next repeat if applicable
-            if self.repeat_interval > 0
-                && (self.max_repeats == 0 || self.repeat_count < self.max_repeats)
-            {
+            if self.repeat_interval > 0 {
                 self.repeat_count += 1;
-                self.scheduled_time += self.repeat_interval;
-                self.status = EventStatus::Scheduled;
+
+                // Only reschedule if we haven't reached max repeats
+                if self.max_repeats == 0 || self.repeat_count < self.max_repeats {
+                    self.scheduled_time += self.repeat_interval;
+                    self.status = EventStatus::Scheduled;
+                }
             }
         }
     }

@@ -152,7 +152,7 @@ impl DifferentialDriveCommand {
     pub fn is_valid(&self) -> bool {
         self.left_velocity.is_finite()
             && self.right_velocity.is_finite()
-            && self.max_acceleration.is_finite()
+            && (self.max_acceleration.is_finite() || self.max_acceleration.is_infinite())
     }
 }
 

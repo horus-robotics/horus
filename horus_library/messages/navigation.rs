@@ -372,8 +372,12 @@ impl OccupancyGrid {
 
     /// Convert world coordinates to grid indices
     pub fn world_to_grid(&self, x: f64, y: f64) -> Option<(u32, u32)> {
-        let grid_x = ((x - self.origin.x) / self.resolution as f64) as i32;
-        let grid_y = ((y - self.origin.y) / self.resolution as f64) as i32;
+        // Add small epsilon to handle floating point precision at cell boundaries
+        // This ensures that cell boundary coordinates (like 0.5 with resolution 0.1)
+        // map to the correct cell even when FP division gives values like 4.999999
+        const EPSILON: f64 = 1e-6;
+        let grid_x = ((x - self.origin.x) / self.resolution as f64 + EPSILON).floor() as i32;
+        let grid_y = ((y - self.origin.y) / self.resolution as f64 + EPSILON).floor() as i32;
 
         if grid_x >= 0 && grid_x < self.width as i32 && grid_y >= 0 && grid_y < self.height as i32 {
             Some((grid_x as u32, grid_y as u32))

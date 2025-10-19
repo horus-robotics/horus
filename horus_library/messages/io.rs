@@ -571,6 +571,7 @@ impl SafetyRelayStatus {
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
                 .as_nanos() as u64,
+            safety_active: true, // Default to active/safe state
             ..Default::default()
         };
 
