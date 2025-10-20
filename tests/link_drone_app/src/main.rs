@@ -122,7 +122,7 @@ impl Node for ImuSensorNode {
 
         let imu_data = self.read_imu();
 
-        if let Err(_) = self.imu_output.send(imu_data, ctx) {
+        if self.imu_output.send(imu_data, ctx).is_err() {
             eprintln!("[{}] Warning: Buffer full!", self.name());
         }
 
@@ -194,7 +194,7 @@ impl Node for StateEstimatorNode {
             self.update_state(imu_data);
         }
 
-        if let Err(_) = self.state_output.send(self.state, None) {
+        if self.state_output.send(self.state, None).is_err() {
             eprintln!("[{}] Warning: Buffer full!", self.name());
         }
 
@@ -265,7 +265,7 @@ impl Node for FlightControllerNode {
         if let Some(state) = self.state_input.recv(ctx) {
             let commands = self.compute_commands(state);
 
-            if let Err(_) = self.motor_output.send(commands, None) {
+            if self.motor_output.send(commands, None).is_err() {
                 eprintln!("[{}] Warning: Buffer full!", self.name());
             }
 

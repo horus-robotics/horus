@@ -17,7 +17,7 @@ use anyhow::Result;
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 use clap::Parser;
-use horus_core::{communication::horus::Hub, core::NodeInfo};
+use horus_core::{communication::Hub, core::NodeInfo};
 use horus_library::messages::CmdVel;
 use nalgebra::Vector2;
 use rapier2d::prelude::*;
