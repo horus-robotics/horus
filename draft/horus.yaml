@@ -1,0 +1,12 @@
+name: draft
+version: 0.1.0
+description: A HORUS robotics project
+author: neos-builder
+license: MIT
+language: rust
+horus_id: null  # Auto-generated on first dependency resolution
+
+dependencies:
+  - horus@0.1.0
+  # - horus_library@0.1.0  # Uncomment for standard robotics messages
+
