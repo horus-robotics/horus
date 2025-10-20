@@ -128,7 +128,7 @@ export function DocsSidebar({ isOpen = true, onClose }: DocsSidebarProps) {
             {isExpanded && (
               <ul className="space-y-1 ml-6">
                 {section.links
-                  .sort((a, b) => (a.order || 999) - (b.order || 999))
+                  .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
                   .map((link) => {
                     const isActive = pathname === link.href;
 
