@@ -127,7 +127,7 @@ impl Node for ImuSensorNode {
         }
 
         // Print status every 1000ms
-        if self.tick_count % 1000 == 0 {
+        if self.tick_count.is_multiple_of(1000) {
             let metrics = self.imu_output.get_metrics();
             println!("[{:>15}] Reading IMU: accel=({:>5.2}, {:>5.2}, {:>5.2}) gyro=({:>5.2}, {:>5.2}, {:>5.2}) | Sent: {} Failed: {}",
                 self.name(),
@@ -199,7 +199,7 @@ impl Node for StateEstimatorNode {
         }
 
         // Print status every 1000ms
-        if self.tick_count % 1000 == 0 {
+        if self.tick_count.is_multiple_of(1000) {
             println!(
                 "[{:>15}] State: pos=({:>6.2}, {:>6.2}, {:>6.2}) vel=({:>5.2}, {:>5.2}, {:>5.2})",
                 self.name(),
@@ -270,7 +270,7 @@ impl Node for FlightControllerNode {
             }
 
             // Print status every 1000ms
-            if self.tick_count % 1000 == 0 {
+            if self.tick_count.is_multiple_of(1000) {
                 println!("[{:>15}] Target: {:>5.2}m | Actual: {:>5.2}m | Error: {:>6.3}m | Throttle: {:>5.1}%",
                     self.name(),
                     self.target_altitude,
@@ -323,7 +323,7 @@ impl Node for MotorDriverNode {
             self.apply_motors(commands);
 
             // Print status every 1000ms
-            if self.tick_count % 1000 == 0 {
+            if self.tick_count.is_multiple_of(1000) {
                 println!(
                     "[{:>15}] Motors: M1={:>4.1}% M2={:>4.1}% M3={:>4.1}% M4={:>4.1}%",
                     self.name(),
