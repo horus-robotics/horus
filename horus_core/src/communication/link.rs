@@ -244,7 +244,9 @@ impl<T> Link<T> {
                     .store(element_size, Ordering::Relaxed);
                 // Initialize metrics
                 (*header.as_ptr()).messages_sent.store(0, Ordering::Relaxed);
-                (*header.as_ptr()).messages_received.store(0, Ordering::Relaxed);
+                (*header.as_ptr())
+                    .messages_received
+                    .store(0, Ordering::Relaxed);
                 (*header.as_ptr()).send_failures.store(0, Ordering::Relaxed);
                 (*header.as_ptr())._padding = [0; 8];
             }
@@ -652,7 +654,10 @@ mod tests {
 
         // Check failure counter
         let metrics = producer.get_metrics();
-        assert!(metrics.send_failures > 0, "Should have at least one send failure");
+        assert!(
+            metrics.send_failures > 0,
+            "Should have at least one send failure"
+        );
 
         // Cleanup
         let _ = std::fs::remove_file("/dev/shm/horus/topics/horus_links_test_metrics");

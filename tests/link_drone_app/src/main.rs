@@ -102,10 +102,10 @@ impl ImuSensorNode {
     fn read_imu(&self) -> ImuData {
         let t = self.tick_count as f32 * 0.001; // 1ms per tick
         ImuData::new(
-            0.0 + (t * 0.5).sin() * 0.2,  // Simulated motion
+            0.0 + (t * 0.5).sin() * 0.2, // Simulated motion
             0.0 + (t * 0.3).cos() * 0.2,
             9.81 + (t * 0.1).sin() * 0.1, // Gravity + noise
-            (t * 0.2).sin() * 0.1,         // Rotation rates
+            (t * 0.2).sin() * 0.1,        // Rotation rates
             (t * 0.15).cos() * 0.1,
             (t * 0.25).sin() * 0.05,
         )
@@ -200,10 +200,15 @@ impl Node for StateEstimatorNode {
 
         // Print status every 1000ms
         if self.tick_count % 1000 == 0 {
-            println!("[{:>15}] State: pos=({:>6.2}, {:>6.2}, {:>6.2}) vel=({:>5.2}, {:>5.2}, {:>5.2})",
+            println!(
+                "[{:>15}] State: pos=({:>6.2}, {:>6.2}, {:>6.2}) vel=({:>5.2}, {:>5.2}, {:>5.2})",
                 self.name(),
-                self.state.position[0], self.state.position[1], self.state.position[2],
-                self.state.velocity[0], self.state.velocity[1], self.state.velocity[2]
+                self.state.position[0],
+                self.state.position[1],
+                self.state.position[2],
+                self.state.velocity[0],
+                self.state.velocity[1],
+                self.state.velocity[2]
             );
         }
 
@@ -319,7 +324,8 @@ impl Node for MotorDriverNode {
 
             // Print status every 1000ms
             if self.tick_count % 1000 == 0 {
-                println!("[{:>15}] Motors: M1={:>4.1}% M2={:>4.1}% M3={:>4.1}% M4={:>4.1}%",
+                println!(
+                    "[{:>15}] Motors: M1={:>4.1}% M2={:>4.1}% M3={:>4.1}% M4={:>4.1}%",
                     self.name(),
                     commands.motor1 * 100.0,
                     commands.motor2 * 100.0,

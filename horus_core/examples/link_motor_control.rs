@@ -23,16 +23,16 @@ use std::time::{Duration, Instant};
 #[derive(Debug, Clone, Copy)]
 struct EncoderReading {
     timestamp_us: u64,
-    position: f64,    // radians
-    velocity: f64,    // rad/s
-    current: f32,     // amps
+    position: f64, // radians
+    velocity: f64, // rad/s
+    current: f32,  // amps
 }
 
 /// Motor command (sent from controller to motor driver)
 #[derive(Debug, Clone, Copy)]
 struct MotorCommand {
     timestamp_us: u64,
-    voltage: f32,     // volts (-24.0 to +24.0)
+    voltage: f32, // volts (-24.0 to +24.0)
     enable: bool,
 }
 
@@ -238,8 +238,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut scheduler = Scheduler::new();
 
     // Register nodes with priorities (higher priority = runs first)
-    scheduler.register(Box::new(motor_driver), 0, Some(false));   // High priority
-    scheduler.register(Box::new(controller), 1, Some(false));     // Normal priority
+    scheduler.register(Box::new(motor_driver), 0, Some(false)); // High priority
+    scheduler.register(Box::new(controller), 1, Some(false)); // Normal priority
 
     println!("Starting control loop... (Ctrl+C to stop)\n");
 

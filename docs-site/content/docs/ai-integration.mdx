@@ -1,0 +1,662 @@
+---
+title: AI API Integration
+description: Integrate AI/LLM APIs into HORUS nodes for vision, language control, and intelligent decision-making
+order: 24
+---
+
+# AI API Integration
+
+Learn how to integrate AI and Large Language Model (LLM) APIs into HORUS nodes for computer vision, natural language control, and intelligent robotics applications.
+
+## Why AI APIs in Robotics?
+
+Modern robotics increasingly combines real-time control with AI-powered decision making:
+
+**Computer Vision**
+- Object detection and recognition
+- Scene understanding and semantic segmentation
+- Visual question answering for robot perception
+
+**Natural Language Control**
+- Voice commands to robot actions
+- High-level task planning from descriptions
+- Human-robot interaction and explanation
+
+**Intelligent Decision Making**
+- Anomaly detection in sensor data
+- Path planning with reasoning
+- Adaptive behavior based on context
+
+HORUS's node architecture makes it easy to integrate these capabilities while maintaining sub-microsecond communication between components.
+
+## Architecture Overview
+
+AI integration in HORUS follows a simple pattern:
+
+```
+┌─────────────┐         ┌──────────────┐         ┌─────────────┐
+│   Sensor    │ ──Hub──>│   AI Node    │ ──Hub──>│   Control   │
+│    Node     │         │ (async API)  │         │    Node     │
+└─────────────┘         └──────────────┘         └─────────────┘
+                              │
+                              ▼
+                        External API
+                     (OpenAI, Anthropic, etc.)
+```
+
+**Key Principle**: AI nodes handle async API calls while HORUS's core maintains real-time performance for critical control loops.
+
+## Prerequisites
+
+Add async HTTP client dependencies to your project:
+
+```toml
+# Cargo.toml
+[dependencies]
+horus = "0.1.0"
+tokio = { version = "1.0", features = ["full"] }
+reqwest = { version = "0.11", features = ["json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+```
+
+For API key management:
+
+```bash
+# .env file (don't commit this!)
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+## Example 1: Vision API Node
+
+This example shows object detection using an AI vision API:
+
+```rust
+use horus::prelude::*;
+use reqwest::Client;
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tokio::sync::Mutex;
+
+// Message types
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ImageFrame {
+    pub stamp_nanos: u64,
+    pub width: u32,
+    pub height: u32,
+    pub data: Vec<u8>, // RGB image data
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DetectionResult {
+    pub stamp_nanos: u64,
+    pub objects: Vec<String>,
+    pub confidence: Vec<f32>,
+}
+
+// AI Vision Node
+pub struct VisionNode {
+    image_sub: Hub<ImageFrame>,
+    detection_pub: Hub<DetectionResult>,
+    http_client: Arc<Client>,
+    api_key: String,
+    last_request_time: Arc<Mutex<std::time::Instant>>,
+}
+
+impl VisionNode {
+    pub fn new(api_key: String) -> Self {
+        Self {
+            image_sub: Hub::new("camera/image"),
+            detection_pub: Hub::new("vision/detections"),
+            http_client: Arc::new(Client::new()),
+            api_key,
+            last_request_time: Arc::new(Mutex::new(
+                std::time::Instant::now() - std::time::Duration::from_secs(10)
+            )),
+        }
+    }
+
+    async fn detect_objects(&self, image: &ImageFrame) -> Result<DetectionResult, String> {
+        // Rate limiting: max 1 request per second
+        {
+            let mut last_time = self.last_request_time.lock().await;
+            let elapsed = last_time.elapsed();
+            if elapsed < std::time::Duration::from_secs(1) {
+                return Err("Rate limit: wait before next request".to_string());
+            }
+            *last_time = std::time::Instant::now();
+        }
+
+        // Convert image to base64
+        let base64_image = base64::encode(&image.data);
+
+        // Call vision API (example using OpenAI-style endpoint)
+        let response = self.http_client
+            .post("https://api.openai.com/v1/vision/detect")
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .json(&serde_json::json!({
+                "image": base64_image,
+                "model": "vision-v1"
+            }))
+            .send()
+            .await
+            .map_err(|e| format!("API request failed: {}", e))?;
+
+        let result: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|e| format!("Failed to parse response: {}", e))?;
+
+        // Parse detection results
+        let objects = result["objects"]
+            .as_array()
+            .unwrap_or(&vec![])
+            .iter()
+            .map(|v| v["name"].as_str().unwrap_or("unknown").to_string())
+            .collect();
+
+        let confidence = result["confidence"]
+            .as_array()
+            .unwrap_or(&vec![])
+            .iter()
+            .map(|v| v.as_f64().unwrap_or(0.0) as f32)
+            .collect();
+
+        Ok(DetectionResult {
+            stamp_nanos: image.stamp_nanos,
+            objects,
+            confidence,
+        })
+    }
+}
+
+impl Node for VisionNode {
+    fn name(&self) -> &'static str {
+        "VisionNode"
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        // Check for new images
+        if let Some(image) = self.image_sub.recv(ctx) {
+            // Spawn async task to avoid blocking the tick loop
+            let client = self.http_client.clone();
+            let api_key = self.api_key.clone();
+            let detection_pub = self.detection_pub.clone();
+            let last_request_time = self.last_request_time.clone();
+
+            tokio::spawn(async move {
+                // Create temporary node to handle async work
+                let temp_node = VisionNode {
+                    image_sub: Hub::new("camera/image"),
+                    detection_pub: detection_pub.clone(),
+                    http_client: client,
+                    api_key,
+                    last_request_time,
+                };
+
+                match temp_node.detect_objects(&image).await {
+                    Ok(result) => {
+                        // Publish detection results
+                        detection_pub.send(result, None).ok();
+                    }
+                    Err(e) => {
+                        eprintln!("Vision API error: {}", e);
+                    }
+                }
+            });
+        }
+    }
+}
+```
+
+**Key Features**:
+- **Non-blocking**: Spawns async task to avoid blocking tick loop
+- **Rate limiting**: Prevents exceeding API quotas
+- **Error handling**: Gracefully handles API failures
+- **Timestamping**: Preserves temporal alignment with sensor data
+
+## Example 2: LLM Control Node
+
+Natural language commands to robot actions:
+
+```rust
+use horus::prelude::*;
+use reqwest::Client;
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug)]
+pub struct TextCommand {
+    pub stamp_nanos: u64,
+    pub text: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct RobotAction {
+    pub stamp_nanos: u64,
+    pub action_type: String,  // "move", "turn", "stop", etc.
+    pub parameters: Vec<f32>,  // speed, distance, angle, etc.
+}
+
+pub struct LLMControlNode {
+    command_sub: Hub<TextCommand>,
+    action_pub: Hub<RobotAction>,
+    http_client: Client,
+    api_key: String,
+}
+
+impl LLMControlNode {
+    pub fn new(api_key: String) -> Self {
+        Self {
+            command_sub: Hub::new("voice/command"),
+            action_pub: Hub::new("control/action"),
+            http_client: Client::new(),
+            api_key,
+        }
+    }
+
+    async fn parse_command(&self, text: &str) -> Result<RobotAction, String> {
+        let system_prompt = r#"
+You are a robot control system. Convert natural language commands to structured actions.
+Output JSON with fields: action_type (move/turn/stop), parameters (array of numbers).
+
+Examples:
+"move forward 2 meters" -> {"action_type": "move", "parameters": [2.0]}
+"turn left 90 degrees" -> {"action_type": "turn", "parameters": [-90.0]}
+"stop" -> {"action_type": "stop", "parameters": []}
+"#;
+
+        let response = self.http_client
+            .post("https://api.anthropic.com/v1/messages")
+            .header("x-api-key", &self.api_key)
+            .header("anthropic-version", "2023-06-01")
+            .json(&serde_json::json!({
+                "model": "claude-3-5-sonnet-20241022",
+                "max_tokens": 256,
+                "system": system_prompt,
+                "messages": [{
+                    "role": "user",
+                    "content": text
+                }]
+            }))
+            .send()
+            .await
+            .map_err(|e| format!("API error: {}", e))?;
+
+        let result: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|e| format!("Parse error: {}", e))?;
+
+        // Extract action from response
+        let content = result["content"][0]["text"]
+            .as_str()
+            .ok_or("No response content")?;
+
+        let action: serde_json::Value = serde_json::from_str(content)
+            .map_err(|e| format!("JSON parse error: {}", e))?;
+
+        Ok(RobotAction {
+            stamp_nanos: 0, // Will be set by caller
+            action_type: action["action_type"]
+                .as_str()
+                .unwrap_or("stop")
+                .to_string(),
+            parameters: action["parameters"]
+                .as_array()
+                .unwrap_or(&vec![])
+                .iter()
+                .map(|v| v.as_f64().unwrap_or(0.0) as f32)
+                .collect(),
+        })
+    }
+}
+
+impl Node for LLMControlNode {
+    fn name(&self) -> &'static str {
+        "LLMControlNode"
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        if let Some(command) = self.command_sub.recv(ctx) {
+            let client = self.http_client.clone();
+            let api_key = self.api_key.clone();
+            let action_pub = self.action_pub.clone();
+            let stamp = command.stamp_nanos;
+            let text = command.text.clone();
+
+            tokio::spawn(async move {
+                let temp_node = LLMControlNode {
+                    command_sub: Hub::new("voice/command"),
+                    action_pub: action_pub.clone(),
+                    http_client: client,
+                    api_key,
+                };
+
+                match temp_node.parse_command(&text).await {
+                    Ok(mut action) => {
+                        action.stamp_nanos = stamp;
+                        action_pub.send(action, None).ok();
+                    }
+                    Err(e) => {
+                        eprintln!("LLM parse error: {}", e);
+                    }
+                }
+            });
+        }
+    }
+}
+```
+
+## Best Practices
+
+### 1. Rate Limiting
+
+Prevent exceeding API quotas:
+
+```rust
+use std::time::{Duration, Instant};
+use tokio::sync::Mutex;
+
+pub struct RateLimiter {
+    last_request: Mutex<Instant>,
+    min_interval: Duration,
+}
+
+impl RateLimiter {
+    pub fn new(requests_per_second: f32) -> Self {
+        Self {
+            last_request: Mutex::new(Instant::now() - Duration::from_secs(10)),
+            min_interval: Duration::from_secs_f32(1.0 / requests_per_second),
+        }
+    }
+
+    pub async fn wait(&self) {
+        let mut last = self.last_request.lock().await;
+        let elapsed = last.elapsed();
+
+        if elapsed < self.min_interval {
+            tokio::time::sleep(self.min_interval - elapsed).await;
+        }
+
+        *last = Instant::now();
+    }
+}
+```
+
+### 2. Caching Responses
+
+Avoid redundant API calls:
+
+```rust
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::RwLock;
+
+pub struct ResponseCache<T> {
+    cache: Arc<RwLock<HashMap<String, (T, Instant)>>>,
+    ttl: Duration,
+}
+
+impl<T: Clone> ResponseCache<T> {
+    pub fn new(ttl: Duration) -> Self {
+        Self {
+            cache: Arc::new(RwLock::new(HashMap::new())),
+            ttl,
+        }
+    }
+
+    pub async fn get(&self, key: &str) -> Option<T> {
+        let cache = self.cache.read().await;
+        cache.get(key).and_then(|(value, timestamp)| {
+            if timestamp.elapsed() < self.ttl {
+                Some(value.clone())
+            } else {
+                None
+            }
+        })
+    }
+
+    pub async fn set(&self, key: String, value: T) {
+        let mut cache = self.cache.write().await;
+        cache.insert(key, (value, Instant::now()));
+    }
+}
+```
+
+### 3. API Key Security
+
+Never hardcode API keys:
+
+```rust
+use std::env;
+
+pub fn load_api_key(service: &str) -> Result<String, String> {
+    // Load from environment variable
+    let key_name = format!("{}_API_KEY", service.to_uppercase());
+    env::var(&key_name).map_err(|_| {
+        format!("API key not found. Set {} environment variable", key_name)
+    })
+}
+
+// Usage
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    self.api_key = load_api_key("OPENAI")?;
+    ctx.log_info("API key loaded successfully");
+    Ok(())
+}
+```
+
+### 4. Error Handling and Retries
+
+Implement exponential backoff:
+
+```rust
+use tokio::time::{sleep, Duration};
+
+pub async fn retry_with_backoff<F, T, E>(
+    mut operation: F,
+    max_retries: u32,
+) -> Result<T, E>
+where
+    F: FnMut() -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<T, E>>>>,
+{
+    let mut attempt = 0;
+
+    loop {
+        match operation().await {
+            Ok(result) => return Ok(result),
+            Err(e) if attempt >= max_retries => return Err(e),
+            Err(_) => {
+                attempt += 1;
+                let delay = Duration::from_millis(100 * 2_u64.pow(attempt));
+                sleep(delay).await;
+            }
+        }
+    }
+}
+```
+
+### 5. Timeout Management
+
+Prevent hanging requests:
+
+```rust
+use tokio::time::{timeout, Duration};
+
+async fn api_call_with_timeout(&self, data: &str) -> Result<String, String> {
+    let future = self.http_client
+        .post("https://api.example.com/endpoint")
+        .body(data.to_string())
+        .send();
+
+    match timeout(Duration::from_secs(5), future).await {
+        Ok(Ok(response)) => {
+            response.text().await.map_err(|e| e.to_string())
+        }
+        Ok(Err(e)) => Err(format!("Request failed: {}", e)),
+        Err(_) => Err("Request timeout".to_string()),
+    }
+}
+```
+
+## Performance Considerations
+
+### Async Overhead
+
+AI API calls introduce latency (50-500ms typical):
+
+```
+┌─────────────────────────────────────────────┐
+│         HORUS Node Execution                │
+├─────────────────────────────────────────────┤
+│ tick() [~16μs]                              │
+│   ├─ recv() from sensor [2μs]               │
+│   ├─ spawn async task [5μs]                 │
+│   └─ continue tick [9μs]                    │
+│                                             │
+│ Async Task (parallel)                       │
+│   ├─ API call [200ms]                       │
+│   └─ send() result [2μs]                    │
+└─────────────────────────────────────────────┘
+```
+
+**Key Point**: HORUS tick loop remains fast (~16μs) because async work happens in parallel.
+
+### Separating AI from Control
+
+Keep critical control loops separate from AI nodes:
+
+```rust
+// GOOD: Separate responsibilities
+scheduler.register(sensor_node);        // 60 FPS
+scheduler.register(ai_vision_node);     // Async, variable latency
+scheduler.register(control_node);       // 60 FPS
+
+// BAD: AI in critical path
+scheduler.register(combined_node);      // Would block on API calls
+```
+
+### Message Queue Size
+
+Configure Hub capacity for bursty AI responses:
+
+```rust
+// Allow buffering up to 10 vision results
+let vision_hub: Hub<DetectionResult> = Hub::with_capacity("vision/detections", 10);
+```
+
+## Complete Example: AI-Augmented Robot
+
+Full integration showing sensor → AI → control pipeline:
+
+```rust
+use horus::prelude::*;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Load API keys
+    let vision_key = std::env::var("OPENAI_API_KEY")?;
+    let llm_key = std::env::var("ANTHROPIC_API_KEY")?;
+
+    // Create nodes
+    let camera_node = CameraNode::new("/dev/video0");
+    let vision_node = VisionNode::new(vision_key);
+    let voice_node = VoiceInputNode::new();
+    let llm_node = LLMControlNode::new(llm_key);
+    let control_node = RobotControlNode::new();
+
+    // Register with scheduler
+    let mut scheduler = Scheduler::new();
+    scheduler.register(camera_node);
+    scheduler.register(vision_node);
+    scheduler.register(voice_node);
+    scheduler.register(llm_node);
+    scheduler.register(control_node);
+
+    // Run system
+    scheduler.tick_all()?;
+
+    Ok(())
+}
+```
+
+**Data Flow**:
+1. Camera captures frames → vision API identifies objects
+2. Voice input captures commands → LLM converts to actions
+3. Control node executes actions based on AI decisions
+4. All communication via HORUS Hub (sub-microsecond IPC)
+
+## Troubleshooting
+
+### API Rate Limits Exceeded
+
+**Symptom**: Frequent 429 errors from API
+
+**Solution**: Increase rate limiter interval or implement request queuing
+
+```rust
+let rate_limiter = RateLimiter::new(0.5); // Max 0.5 requests/sec
+```
+
+### High Latency
+
+**Symptom**: Slow robot responses to commands
+
+**Solution**: Use caching for repeated queries
+
+```rust
+let cache = ResponseCache::new(Duration::from_secs(60));
+if let Some(cached) = cache.get(&query).await {
+    return cached; // Skip API call
+}
+```
+
+### Memory Leaks from Async Tasks
+
+**Symptom**: Memory usage grows over time
+
+**Solution**: Ensure tasks complete and resources are cleaned up
+
+```rust
+// Use tokio::spawn with proper error handling
+tokio::spawn(async move {
+    // Work here
+}).await?; // Ensure task completes
+```
+
+### API Key Exposure
+
+**Symptom**: Security concerns
+
+**Solution**: Use environment variables and .gitignore
+
+```bash
+# .gitignore
+.env
+*.key
+
+# Load in code
+dotenv::dotenv().ok();
+let key = std::env::var("API_KEY")?;
+```
+
+## Next Steps
+
+- **[Examples](/docs/examples)** - See complete AI integration examples
+- **[Message Types](/docs/message-types)** - Define custom AI message types
+- **[Performance](/docs/performance)** - Optimize async node performance
+- **[Python Bindings](/docs/python-bindings)** - Use AI libraries from Python nodes
+
+## Additional Resources
+
+**AI APIs**:
+- [OpenAI API Documentation](https://platform.openai.com/docs)
+- [Anthropic Claude API](https://docs.anthropic.com)
+- [Google Gemini API](https://ai.google.dev/docs)
+
+**Rust Async**:
+- [Tokio Tutorial](https://tokio.rs/tokio/tutorial)
+- [Async Book](https://rust-lang.github.io/async-book/)
+
+**Security**:
+- [OWASP API Security](https://owasp.org/www-project-api-security/)
