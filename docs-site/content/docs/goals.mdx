@@ -103,37 +103,55 @@ HORUS aims to become the **de facto standard for real-time robotics communicatio
 **Problem**: Robotics teams waste countless hours rewriting the same components - IMU drivers, PID controllers, path planners, sensor filters. Every project starts from scratch because sharing code across teams and organizations is too difficult.
 
 **HORUS Solution**:
-- **Registry Marketplace**: Central hub for sharing and discovering pre-built nodes
-- **One-command install**: `horus add imu-driver` installs tested, production-ready components
-- **Semantic versioning**: Reliable dependency management for robot components
-- **Community contributions**: Browse and install nodes from the HORUS ecosystem
-- **Private registries**: Share internal components within your organization
+- **Built-in horus_library**: Pre-built, tested nodes for common robotics tasks
+- **Direct instantiation**: `Node::new()` for ready-to-use components
+- **Easy customization**: Override just the `tick()` method to customize behavior
+- **Registry for sharing**: Publish and reuse custom nodes across teams
+- **Community ecosystem**: Growing library of production-ready components
 
 **Real-World Impact**:
 
-Instead of writing yet another IMU driver:
-```bash
-horus search imu
-horus add bno055-driver  # Install pre-built, tested node
+Instead of writing yet another IMU driver, just use the built-in one:
+```rust
+use horus_library::sensors::ImuNode;
+
+let imu = ImuNode::new("/dev/i2c-1", "bno055")?;
+scheduler.register(Box::new(imu), 0, Some(true));
 ```
 
-Instead of rewriting PID controllers for every robot:
-```bash
-horus add pid-controller
-horus add state-estimator
+Need a PID controller? Already built:
+```rust
+use horus_library::control::PidController;
+
+let mut pid = PidController::new(1.0, 0.1, 0.05)?;
+// Customize if needed
+pid.set_limits(-100.0, 100.0);
+scheduler.register(Box::new(pid), 1, Some(true));
 ```
 
-Build a drone in hours, not weeks:
-```bash
-horus new my-drone
-horus add imu-bno055
-horus add barometer-bmp280
-horus add motor-controller
-horus add flight-controller
-# Just wire them together and fly
+Build a drone in hours by composing existing nodes:
+```rust
+use horus_library::sensors::{ImuNode, BarometerNode};
+use horus_library::control::FlightController;
+use horus_library::actuators::MotorController;
+
+let mut scheduler = Scheduler::new();
+scheduler.register(Box::new(ImuNode::new()?), 0, Some(true));
+scheduler.register(Box::new(BarometerNode::new()?), 0, Some(true));
+scheduler.register(Box::new(FlightController::new()?), 1, Some(true));
+scheduler.register(Box::new(MotorController::new()?), 2, Some(true));
+scheduler.tick_all()?;
 ```
 
-**Impact**: Transform robotics from "build everything from scratch" to "compose from proven components". Teams ship faster, researchers focus on novel algorithms instead of infrastructure, and knowledge compounds across the community.
+Want custom behavior? Override just what you need:
+```rust
+let mut controller = FlightController::new()?;
+controller.tick = |ctx| {
+    // Your custom control logic here
+};
+```
+
+**Impact**: Transform robotics from "build everything from scratch" to "compose from proven components". Teams ship faster, researchers focus on novel algorithms instead of infrastructure, and knowledge compounds across the community through horus_library and the registry.
 
 ---
 
