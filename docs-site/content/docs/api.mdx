@@ -12,7 +12,7 @@ Complete API documentation for the HORUS framework.
 
 HORUS provides three main APIs for building distributed systems:
 
-### [Node API](/docs/api-node)
+### [Node API](/api-node)
 
 The `Node` trait is the fundamental building block. Implement this trait to create custom nodes.
 
@@ -34,9 +34,9 @@ impl Node for MyNode {
 }
 ```
 
-[→ Full Node API Reference](/docs/api-node)
+[→ Full Node API Reference](/api-node)
 
-### [Hub API](/docs/api-hub)
+### [Hub API](/api-hub)
 
 The `Hub<T>` provides ultra-low latency pub/sub communication through shared memory.
 
@@ -59,9 +59,9 @@ if let Some(value) = hub.recv(ctx) {
 }
 ```
 
-[→ Full Hub API Reference](/docs/api-hub)
+[→ Full Hub API Reference](/api-hub)
 
-### [Scheduler API](/docs/api-scheduler)
+### [Scheduler API](/api-scheduler)
 
 The `Scheduler` orchestrates node execution, managing priorities and lifecycle.
 
@@ -79,7 +79,7 @@ scheduler.register(Box::new(my_node), 0, Some(true));
 scheduler.tick_all()?;
 ```
 
-[→ Full Scheduler API Reference](/docs/api-scheduler)
+[→ Full Scheduler API Reference](/api-scheduler)
 
 ## Quick Example
 
@@ -358,8 +358,8 @@ hub.send(data, ctx);  // .ok() or .unwrap() without handling
 
 ## Next Steps
 
-- **Getting Started**: [Quick Start Guide](/docs/quick-start)
-- **Tutorials**: [Examples](/docs/examples)
-- **Concepts**: [Core Concepts](/docs/core-concepts-nodes)
-- **Tools**: [CLI Reference](/docs/cli-reference)
-- **Performance**: [Performance Guide](/docs/performance)
+- **Getting Started**: [Quick Start Guide](/quick-start)
+- **Tutorials**: [Examples](/examples)
+- **Concepts**: [Core Concepts](/core-concepts-nodes)
+- **Tools**: [CLI Reference](/cli-reference)
+- **Performance**: [Performance Guide](/performance)
