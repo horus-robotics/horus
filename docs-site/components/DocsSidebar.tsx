@@ -54,6 +54,7 @@ const sections: SidebarSection[] = [
       { title: "Performance", href: "/performance", order: 12 },
       { title: "Python Bindings", href: "/python-bindings", order: 13 },
       { title: "C Bindings", href: "/c-bindings", order: 14 },
+      { title: "AI API Integration", href: "/ai-integration", order: 15 },
     ],
   },
   {
