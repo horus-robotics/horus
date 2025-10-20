@@ -98,6 +98,45 @@ HORUS aims to become the **de facto standard for real-time robotics communicatio
 
 ---
 
+### Reinventing the Wheel Every Project
+
+**Problem**: Robotics teams waste countless hours rewriting the same components - IMU drivers, PID controllers, path planners, sensor filters. Every project starts from scratch because sharing code across teams and organizations is too difficult.
+
+**HORUS Solution**:
+- **Registry Marketplace**: Central hub for sharing and discovering pre-built nodes
+- **One-command install**: `horus add imu-driver` installs tested, production-ready components
+- **Semantic versioning**: Reliable dependency management for robot components
+- **Community contributions**: Browse and install nodes from the HORUS ecosystem
+- **Private registries**: Share internal components within your organization
+
+**Real-World Impact**:
+
+Instead of writing yet another IMU driver:
+```bash
+horus search imu
+horus add bno055-driver  # Install pre-built, tested node
+```
+
+Instead of rewriting PID controllers for every robot:
+```bash
+horus add pid-controller
+horus add state-estimator
+```
+
+Build a drone in hours, not weeks:
+```bash
+horus new my-drone
+horus add imu-bno055
+horus add barometer-bmp280
+horus add motor-controller
+horus add flight-controller
+# Just wire them together and fly
+```
+
+**Impact**: Transform robotics from "build everything from scratch" to "compose from proven components". Teams ship faster, researchers focus on novel algorithms instead of infrastructure, and knowledge compounds across the community.
+
+---
+
 ### Lack of Multi-Language Support
 
 **Problem**: Switching between languages in robotics often requires multiple communication frameworks or language-specific bindings with performance penalties.
@@ -167,8 +206,9 @@ HORUS aims to become the **de facto standard for real-time robotics communicatio
 
 ### Multi-Robot Systems
 - **Use Case**: Swarm robotics, warehouse fleets, distributed sensing
-- **Why HORUS**: Package registry enables code sharing, isolated environments prevent conflicts
+- **Why HORUS**: Registry marketplace enables instant code sharing across robot fleets, isolated environments prevent conflicts
 - **Performance**: `.horus` environments isolate dependencies between robot types
+- **Reusability**: Share swarm coordination nodes, formation controllers, and multi-agent algorithms through the registry
 
 ---
 
@@ -193,8 +233,11 @@ HORUS is building towards a future where:
 - **Research-to-production is seamless**, not a rewrite
 - **Dependencies just work**, everywhere, every time
 - **One command does everything**: Build, run, deploy - across all languages
+- **Robotics becomes composable**: Install proven components instead of rewriting everything
+- **Knowledge compounds**: The community builds on each other's work through the registry marketplace
+- **Sharing is effortless**: Publishing your node benefits the entire robotics community
 
-We're creating the robotics framework we wish existed when we started.
+We're creating the robotics framework we wish existed when we started - and the ecosystem that makes robotics truly reusable.
 
 ---
 
