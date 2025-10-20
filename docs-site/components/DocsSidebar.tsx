@@ -20,6 +20,7 @@ const sections: SidebarSection[] = [
   {
     title: "Getting Started",
     links: [
+      { title: "Goals & Vision", href: "/goals", order: 0 },
       { title: "Introduction", href: "/getting-started", order: 1 },
       { title: "Installation", href: "/getting-started/installation", order: 2 },
       { title: "Quick Start", href: "/getting-started/quick-start", order: 3 },
