@@ -153,6 +153,50 @@ controller.tick = |ctx| {
 
 **Impact**: Transform robotics from "build everything from scratch" to "compose from proven components". Teams ship faster, researchers focus on novel algorithms instead of infrastructure, and knowledge compounds across the community through horus_library and the registry.
 
+### Sharing Across Developers & Organizations
+
+Built your own IMU driver for a specific sensor? **Share it with the community through the HORUS Registry Marketplace**:
+
+```bash
+# Publish your package to the registry
+horus publish
+
+# Others can discover it
+horus pkg list imu-driver
+
+# And install it in one command
+horus pkg install your-imu-driver
+```
+
+**The Registry Marketplace enables:**
+
+- **Discover packages**: Search thousands of community-contributed nodes
+- **One-command install**: `horus pkg install sensor-fusion` - no manual setup
+- **Semantic versioning**: Reliable dependency management with automatic updates
+- **Quality metrics**: Stars, downloads, documentation coverage help you choose
+- **GitHub authentication**: Secure publishing with your GitHub account
+- **Share environments**: Publish complete `.horus` environments for reproducible setups
+
+**Real example - Cross-team collaboration:**
+```bash
+# Team A builds and publishes a SLAM node
+cd my-slam-package
+horus publish
+# → Published: slam-cartographer v1.0.0
+# → Install: horus pkg install slam-cartographer
+
+# Team B discovers and uses it weeks later
+horus pkg list slam
+# → slam-cartographer  1.0.0  SLAM using cartographer  ⭐234  ⬇5.2k
+horus pkg install slam-cartographer
+
+# Use it directly in their code
+use slam_cartographer::CartographerNode;
+scheduler.register(Box::new(CartographerNode::new()?), 2, Some(true));
+```
+
+**Impact**: Knowledge compounds across the entire robotics community. Build something useful once, share it globally. The registry becomes the npm/cargo/PyPI for robotics - proven components available to everyone.
+
 ---
 
 ### Lack of Multi-Language Support
