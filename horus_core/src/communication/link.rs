@@ -1,4 +1,5 @@
 use crate::core::node::NodeInfo;
+use crate::error::HorusResult;
 use crate::memory::shm_region::ShmRegion;
 use std::marker::PhantomData;
 use std::mem::{self, MaybeUninit};
@@ -124,7 +125,7 @@ impl<T> Link<T> {
     /// let output: Link<f32> = Link::producer("sensor_data")?;
     /// output.send(42.0, None)?;
     /// ```
-    pub fn producer(topic: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn producer(topic: &str) -> HorusResult<Self> {
         Self::with_role(topic, LinkRole::Producer, 1024)
     }
 
@@ -139,7 +140,7 @@ impl<T> Link<T> {
     ///     println!("Received: {}", value);
     /// }
     /// ```
-    pub fn consumer(topic: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn consumer(topic: &str) -> HorusResult<Self> {
         Self::with_role(topic, LinkRole::Consumer, 1024)
     }
 
@@ -152,7 +153,7 @@ impl<T> Link<T> {
     pub fn producer_with_capacity(
         topic: &str,
         capacity: usize,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+    ) -> HorusResult<Self> {
         Self::with_role(topic, LinkRole::Producer, capacity)
     }
 
@@ -165,7 +166,7 @@ impl<T> Link<T> {
     pub fn consumer_with_capacity(
         topic: &str,
         capacity: usize,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+    ) -> HorusResult<Self> {
         Self::with_role(topic, LinkRole::Consumer, capacity)
     }
 
@@ -176,7 +177,7 @@ impl<T> Link<T> {
         topic: &str,
         role: LinkRole,
         capacity: usize,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+    ) -> HorusResult<Self> {
         let capacity = capacity.next_power_of_two();
         let element_size = mem::size_of::<T>();
         let element_align = mem::align_of::<T>();
@@ -217,7 +218,7 @@ impl<T> Link<T> {
         role: LinkRole,
         capacity: usize,
         shm_region: Arc<ShmRegion>,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+    ) -> HorusResult<Self> {
         let element_size = mem::size_of::<T>();
         let element_align = mem::align_of::<T>();
         let header_size = mem::size_of::<LinkHeader>();

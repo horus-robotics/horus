@@ -1,4 +1,5 @@
 use crate::core::node::NodeInfo;
+use crate::error::HorusResult;
 use crate::memory::shm_topic::ShmTopic;
 use std::sync::Arc;
 use std::time::Instant;
@@ -130,7 +131,7 @@ impl ConnectionState {
 
 impl<T: Send + Sync + 'static + Clone + std::fmt::Debug> Hub<T> {
     /// Create a new Hub
-    pub fn new(topic_name: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new(topic_name: &str) -> HorusResult<Self> {
         Self::new_with_capacity(topic_name, 1024)
     }
 
@@ -138,7 +139,7 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug> Hub<T> {
     pub fn new_with_capacity(
         topic_name: &str,
         capacity: usize,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+    ) -> HorusResult<Self> {
         let shm_topic = Arc::new(ShmTopic::new(topic_name, capacity)?);
 
         Ok(Hub {

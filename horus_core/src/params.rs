@@ -2,6 +2,7 @@
 //!
 //! Provides a straightforward key-value store for runtime configuration
 
+use crate::error::{HorusError, HorusResult};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -18,7 +19,7 @@ pub struct RuntimeParams {
 
 impl RuntimeParams {
     /// Create new parameter store with defaults
-    pub fn init() -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn init() -> HorusResult<Self> {
         let mut initial_params = BTreeMap::new();
 
         // Try to load from .horus/config/params.yaml in current project
@@ -64,7 +65,7 @@ impl RuntimeParams {
     }
 
     /// Set default parameters
-    fn set_defaults(&self) -> Result<(), Box<dyn std::error::Error + '_>> {
+    fn set_defaults(&self) -> Result<(), HorusError> {
         // System defaults
         self.set("tick_rate", 30)?;
         self.set("max_memory_mb", 512)?;
@@ -128,7 +129,7 @@ impl RuntimeParams {
         &self,
         key: &str,
         value: T,
-    ) -> Result<(), Box<dyn std::error::Error + '_>> {
+    ) -> Result<(), HorusError> {
         let json_value = serde_json::to_value(value)?;
         let mut params = self.params.write()?;
         params.insert(key.to_string(), json_value);
@@ -156,7 +157,7 @@ impl RuntimeParams {
     }
 
     /// Clear all parameters and reset to defaults
-    pub fn reset(&self) -> Result<(), Box<dyn std::error::Error + '_>> {
+    pub fn reset(&self) -> Result<(), HorusError> {
         let mut params = self.params.write()?;
         params.clear();
         drop(params);
@@ -165,7 +166,7 @@ impl RuntimeParams {
     }
 
     /// Save parameters to YAML file
-    pub fn save_to_disk(&self) -> Result<(), Box<dyn std::error::Error + '_>> {
+    pub fn save_to_disk(&self) -> Result<(), HorusError> {
         let path = self
             .persist_path
             .clone()
@@ -183,7 +184,7 @@ impl RuntimeParams {
     }
 
     /// Load parameters from YAML file
-    pub fn load_from_disk(&self, path: &Path) -> Result<(), Box<dyn std::error::Error + '_>> {
+    pub fn load_from_disk(&self, path: &Path) -> Result<(), HorusError> {
         if path.exists() {
             let yaml_str = std::fs::read_to_string(path)?;
             let loaded: BTreeMap<String, Value> = serde_yaml::from_str(&yaml_str)?;

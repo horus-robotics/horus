@@ -1,4 +1,5 @@
 use super::shm_region::ShmRegion;
+use crate::error::HorusResult;
 use std::marker::PhantomData;
 use std::mem;
 use std::ptr::NonNull;
@@ -127,7 +128,7 @@ impl<'a, T> Drop for ConsumerSample<'a, T> {
 
 impl<T> ShmTopic<T> {
     /// Create a new ring buffer in shared memory
-    pub fn new(name: &str, capacity: usize) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new(name: &str, capacity: usize) -> HorusResult<Self> {
         // Safety validation: check capacity bounds
         if capacity < MIN_CAPACITY {
             return Err(format!(
@@ -296,7 +297,7 @@ impl<T> ShmTopic<T> {
     }
 
     /// Open an existing ring buffer from shared memory
-    pub fn open(name: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn open(name: &str) -> HorusResult<Self> {
         let region = Arc::new(ShmRegion::open(name)?);
 
         // Safety checks for opening existing shared memory

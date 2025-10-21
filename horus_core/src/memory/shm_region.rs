@@ -1,4 +1,5 @@
 // HORUS Shared Memory Region - Using /dev/shm/horus for performance
+use crate::error::HorusResult;
 use memmap2::{MmapMut, MmapOptions};
 use std::fs::{File, OpenOptions};
 use std::path::PathBuf;
@@ -19,7 +20,7 @@ pub struct ShmRegion {
 
 impl ShmRegion {
     /// Create or open a shared memory region in /dev/shm/horus
-    pub fn new(name: &str, size: usize) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new(name: &str, size: usize) -> HorusResult<Self> {
         // Create HORUS directory in /dev/shm if it doesn't exist
         let horus_shm_dir = PathBuf::from("/dev/shm/horus/topics");
         std::fs::create_dir_all(&horus_shm_dir)?;
@@ -74,7 +75,7 @@ impl ShmRegion {
     }
 
     /// Open existing shared memory region (no creation)
-    pub fn open(name: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn open(name: &str) -> HorusResult<Self> {
         let horus_shm_dir = PathBuf::from("/dev/shm/horus/topics");
         let safe_name = name.replace(['/', ':'], "_");
         let path = horus_shm_dir.join(format!("horus_{}", safe_name));

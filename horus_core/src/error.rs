@@ -115,6 +115,12 @@ impl From<toml::ser::Error> for HorusError {
     }
 }
 
+impl From<serde_yaml::Error> for HorusError {
+    fn from(err: serde_yaml::Error) -> Self {
+        HorusError::Serialization(format!("YAML error: {}", err))
+    }
+}
+
 impl From<std::num::ParseIntError> for HorusError {
     fn from(err: std::num::ParseIntError) -> Self {
         HorusError::ParseError(format!("Integer parse error: {}", err))
@@ -139,9 +145,9 @@ impl From<uuid::Error> for HorusError {
     }
 }
 
-impl From<std::sync::PoisonError<std::sync::MutexGuard<'_, ()>>> for HorusError {
-    fn from(_: std::sync::PoisonError<std::sync::MutexGuard<'_, ()>>) -> Self {
-        HorusError::Internal("Mutex poisoned".to_string())
+impl<T> From<std::sync::PoisonError<T>> for HorusError {
+    fn from(_: std::sync::PoisonError<T>) -> Self {
+        HorusError::Internal("Lock poisoned".to_string())
     }
 }
 
@@ -162,6 +168,20 @@ impl From<Box<dyn std::error::Error + Send + Sync>> for HorusError {
 impl From<anyhow::Error> for HorusError {
     fn from(err: anyhow::Error) -> Self {
         HorusError::Other(err.to_string())
+    }
+}
+
+// Convert from &str for convenient error creation
+impl From<&str> for HorusError {
+    fn from(msg: &str) -> Self {
+        HorusError::Other(msg.to_string())
+    }
+}
+
+// Convert from String for convenient error creation
+impl From<String> for HorusError {
+    fn from(msg: String) -> Self {
+        HorusError::Other(msg)
     }
 }
 
