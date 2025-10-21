@@ -138,11 +138,9 @@ pub mod keycodes {
 /// It supports custom key mappings that can be overridden by users.
 pub struct KeyboardInputNode {
     publisher: Hub<KeyboardInput>,
-    last_key_time: u64,
     /// Custom key mapping: maps from input string/char to (key_name, keycode)
     custom_mapping: Arc<Mutex<HashMap<String, (String, u32)>>>,
     /// For demo/testing: current key index
-    demo_key_index: usize,
     /// Flag to indicate if terminal mode is enabled
     #[cfg(feature = "crossterm")]
     terminal_enabled: bool,
@@ -158,9 +156,7 @@ impl KeyboardInputNode {
     pub fn new_with_topic(topic: &str) -> HorusResult<Self> {
         let mut node = Self {
             publisher: Hub::new(topic)?,
-            last_key_time: 0,
             custom_mapping: Arc::new(Mutex::new(HashMap::new())),
-            demo_key_index: 0,
             #[cfg(feature = "crossterm")]
             terminal_enabled: false,
         };

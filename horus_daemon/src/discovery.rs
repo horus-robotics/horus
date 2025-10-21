@@ -89,9 +89,4 @@ impl DiscoveryService {
 
         ips
     }
-
-    /// Stop broadcasting (called on shutdown)
-    pub fn stop(&self) {
-        self.daemon.shutdown().ok();
-    }
 }

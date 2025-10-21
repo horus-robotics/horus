@@ -43,7 +43,7 @@ fn main() -> AnyResult<()> {
 
     // 1. Keyboard Input Node (Priority 0 - highest, captures input first)
     println!("📝 Registering KeyboardInputNode...");
-    let keyboard_node = KeyboardInputNode::new_with_topic("keyboard_input");
+    let keyboard_node = KeyboardInputNode::new_with_topic("keyboard_input")?;
     scheduler.register(Box::new(keyboard_node), 0, Some(true));
 
     // 2. Tank Controller Node (Priority 1 - converts keyboard to tank commands)

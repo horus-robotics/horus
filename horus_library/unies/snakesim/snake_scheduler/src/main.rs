@@ -2,7 +2,7 @@ use horus::library::nodes::{JoystickInputNode, KeyboardInputNode};
 use horus::prelude::*;
 use snake_control_node::SnakeControlNode;
 
-fn main() {
+fn main() -> HorusResult<()> {
     println!("=== Snake Game Controller ===");
     println!("Starting snake scheduler with keyboard input support...");
     println!("\nControls:");
@@ -14,14 +14,14 @@ fn main() {
     let mut sched = Scheduler::new().name("SnakeScheduler");
 
     // Create keyboard input node - this will capture real keyboard input from terminal
-    let keyboard_input_node = KeyboardInputNode::new_with_topic("snakeinput");
+    let keyboard_input_node = KeyboardInputNode::new_with_topic("snakeinput")?;
 
     // Create joystick input node
-    let joystick_input_node = JoystickInputNode::new_with_topic("snakeinput");
+    let joystick_input_node = JoystickInputNode::new_with_topic("snakeinput")?;
 
     // Snake control node subscribes to snakeinput topic for both keyboard and joystick messages
     let snake_control_node =
-        SnakeControlNode::new_with_topics("snakeinput", "snakeinput", "snakestate");
+        SnakeControlNode::new_with_topics("snakeinput", "snakeinput", "snakestate")?;
 
     sched.register(Box::new(keyboard_input_node), 0, Some(true));
     sched.register(Box::new(joystick_input_node), 1, None);
@@ -29,4 +29,6 @@ fn main() {
 
     // Run the scheduler loop - this will continuously tick all nodes
     let _ = sched.tick_node(&["KeyboardInputNode", "JoystickInputNode", "SnakeControlNode"]);
+
+    Ok(())
 }

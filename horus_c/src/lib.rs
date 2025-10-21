@@ -183,7 +183,7 @@ pub extern "C" fn send(pub_handle: u32, data: *const c_void) -> bool {
     }
 
     let pubs = PUBLISHERS.lock().unwrap();
-    if let Some(publisher) = pubs.get(&pub_handle) {
+    if let Some(_publisher) = pubs.get(&pub_handle) {
         // Type-erased send - would need proper type handling in real implementation
         // For now, return true to indicate message was "sent"
         true

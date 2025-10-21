@@ -475,7 +475,7 @@ fn bench_mixed_robot_loop() {
     print_results("Mixed Loop", elapsed, ITERATIONS);
 }
 
-fn print_results(name: &str, elapsed: Duration, iterations: usize) {
+fn print_results(_name: &str, elapsed: Duration, iterations: usize) {
     let total_ns = elapsed.as_nanos() as f64;
     let avg_ns = total_ns / iterations as f64;
     let throughput = (iterations as f64) / elapsed.as_secs_f64();

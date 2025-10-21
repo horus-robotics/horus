@@ -237,21 +237,3 @@ impl PyNode {
 }
 
 // Bridge struct to implement the Rust Node trait
-pub struct PythonNodeBridge {
-    pub py_node: Arc<Mutex<PyObject>>,
-    pub name: String,
-}
-
-impl Node for PythonNodeBridge {
-    fn name(&self) -> &'static str {
-        Box::leak(self.name.clone().into_boxed_str())
-    }
-
-    fn tick(&mut self, _ctx: Option<&mut CoreNodeInfo>) {
-        Python::with_gil(|py| {
-            if let Ok(node) = self.py_node.lock() {
-                let _ = node.call_method0(py, "tick");
-            }
-        });
-    }
-}

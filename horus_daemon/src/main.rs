@@ -4,7 +4,6 @@ mod discovery;
 mod executor;
 mod hardware;
 mod process;
-mod ratelimit;
 mod stream;
 
 use axum::{

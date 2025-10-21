@@ -408,7 +408,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     Ok(())
                 }
 
-                PkgCommands::List { query, global, all } => {
+                PkgCommands::List { query, global, all: _ } => {
                     let client = registry::RegistryClient::new();
 
                     if let Some(q) = query {

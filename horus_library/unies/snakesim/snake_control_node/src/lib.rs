@@ -11,33 +11,24 @@ pub struct SnakeControlNode {
     joystick_subscriber: Hub<JoystickInput>,
     snake_publisher: Hub<SnakeState>,
 }
-impl Default for SnakeControlNode {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 impl SnakeControlNode {
     /// Create with default topics
-    pub fn new() -> Self {
-        Self {
-            keyboard_subscriber: Hub::new("keyboard_input")
-                .expect("Failed to create keyboard subscriber"),
-            joystick_subscriber: Hub::new("joystick_input")
-                .expect("Failed to create joystick subscriber"),
-            snake_publisher: Hub::new("snakestate").expect("Failed to create snake publisher"),
-        }
+    pub fn new() -> HorusResult<Self> {
+        Ok(Self {
+            keyboard_subscriber: Hub::new("keyboard_input")?,
+            joystick_subscriber: Hub::new("joystick_input")?,
+            snake_publisher: Hub::new("snakestate")?,
+        })
     }
 
     /// Create with custom topics - both keyboard and joystick can use the same topic
-    pub fn new_with_topics(keyboard_topic: &str, joystick_topic: &str, snake_topic: &str) -> Self {
-        Self {
-            keyboard_subscriber: Hub::new(keyboard_topic)
-                .expect("Failed to create keyboard subscriber"),
-            joystick_subscriber: Hub::new(joystick_topic)
-                .expect("Failed to create joystick subscriber"),
-            snake_publisher: Hub::new(snake_topic).expect("Failed to create snake publisher"),
-        }
+    pub fn new_with_topics(keyboard_topic: &str, joystick_topic: &str, snake_topic: &str) -> HorusResult<Self> {
+        Ok(Self {
+            keyboard_subscriber: Hub::new(keyboard_topic)?,
+            joystick_subscriber: Hub::new(joystick_topic)?,
+            snake_publisher: Hub::new(snake_topic)?,
+        })
     }
 }
 

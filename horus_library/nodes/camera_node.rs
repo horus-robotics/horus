@@ -1,5 +1,5 @@
 use crate::vision::ImageEncoding;
-use crate::{CameraInfo, CompressedImage, Image};
+use crate::{CameraInfo, Image};
 use horus_core::error::HorusResult;
 use horus_core::{Hub, Node, NodeInfo};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -10,7 +10,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 /// Supports multiple backends (OpenCV, V4L2) and configurable image parameters.
 pub struct CameraNode {
     publisher: Hub<Image>,
-    compressed_publisher: Hub<CompressedImage>,
     info_publisher: Hub<CameraInfo>,
 
     // Configuration
@@ -40,12 +39,10 @@ impl CameraNode {
     /// Create a new camera node with custom topic prefix
     pub fn new_with_topic(topic_prefix: &str) -> HorusResult<Self> {
         let image_topic = format!("{}/image", topic_prefix);
-        let compressed_topic = format!("{}/image/compressed", topic_prefix);
         let info_topic = format!("{}/camera_info", topic_prefix);
 
         Ok(Self {
             publisher: Hub::new(&image_topic)?,
-            compressed_publisher: Hub::new(&compressed_topic)?,
             info_publisher: Hub::new(&info_topic)?,
 
             device_id: 0,
@@ -254,7 +251,7 @@ impl CameraNode {
     }
 
     fn publish_image(&self, data: Vec<u8>) {
-        let current_time = SystemTime::now()
+        let _current_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos() as u64;

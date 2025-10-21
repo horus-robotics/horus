@@ -46,13 +46,6 @@ impl TankControllerNode {
         })
     }
 
-    /// Set tank control parameters
-    pub fn set_parameters(&mut self, max_linear: f32, max_angular: f32, accel: f32) {
-        self.max_linear_speed = max_linear;
-        self.max_angular_speed = max_angular;
-        self.acceleration = accel;
-    }
-
     /// Process keyboard input and update tank commands
     fn process_keyboard(&mut self, key: &KeyboardInput) {
         // Target velocities based on keyboard
