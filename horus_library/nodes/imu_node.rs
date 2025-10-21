@@ -1,4 +1,5 @@
 use crate::Imu;
+use horus_core::error::HorusResult;
 use horus_core::{Hub, Node, NodeInfo};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -24,21 +25,21 @@ pub struct ImuNode {
 
 impl ImuNode {
     /// Create a new IMU node with default topic "imu"
-    pub fn new() -> Self {
+    pub fn new() -> HorusResult<Self> {
         Self::new_with_topic("imu")
     }
 
     /// Create a new IMU node with custom topic
-    pub fn new_with_topic(topic: &str) -> Self {
-        Self {
-            publisher: Hub::new(topic).expect("Failed to create IMU hub"),
+    pub fn new_with_topic(topic: &str) -> HorusResult<Self> {
+        Ok(Self {
+            publisher: Hub::new(topic)?,
             frame_id: "imu_link".to_string(),
             sample_rate: 100.0, // 100 Hz default
             is_initialized: false,
             sample_count: 0,
             last_sample_time: 0,
             sim_angle: 0.0,
-        }
+        })
     }
 
     /// Set frame ID for coordinate system
@@ -126,8 +127,4 @@ impl Node for ImuNode {
     }
 }
 
-impl Default for ImuNode {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// Default impl removed - use Node::new() instead which returns HorusResult

@@ -1,4 +1,5 @@
 use crate::{EmergencyStop, SafetyStatus};
+use horus_core::error::HorusResult;
 use horus_core::{Hub, Node, NodeInfo};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -24,16 +25,16 @@ pub struct EmergencyStopNode {
 
 impl EmergencyStopNode {
     /// Create a new emergency stop node with default topic "emergency_stop"
-    pub fn new() -> Self {
+    pub fn new() -> HorusResult<Self> {
         Self::new_with_topic("emergency_stop")
     }
 
     /// Create a new emergency stop node with custom topic
-    pub fn new_with_topic(topic: &str) -> Self {
+    pub fn new_with_topic(topic: &str) -> HorusResult<Self> {
         let safety_topic = format!("{}_safety", topic);
-        Self {
-            publisher: Hub::new(topic).expect("Failed to create emergency stop hub"),
-            safety_publisher: Hub::new(&safety_topic).expect("Failed to create safety hub"),
+        Ok(Self {
+            publisher: Hub::new(topic)?,
+            safety_publisher: Hub::new(&safety_topic)?,
             is_stopped: Arc::new(AtomicBool::new(false)),
             stop_reason: String::new(),
             gpio_pin: None,
@@ -41,7 +42,7 @@ impl EmergencyStopNode {
             auto_reset: false,
             stop_timeout_ms: 5000, // 5 second timeout for auto-reset
             last_stop_time: 0,
-        }
+        })
     }
 
     /// Set GPIO pin for hardware emergency stop button (Raspberry Pi)
@@ -177,8 +178,4 @@ impl Node for EmergencyStopNode {
     }
 }
 
-impl Default for EmergencyStopNode {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// Default impl removed - use Node::new() instead which returns HorusResult

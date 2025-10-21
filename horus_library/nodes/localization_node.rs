@@ -1,4 +1,5 @@
 use crate::{Imu, LaserScan, Odometry};
+use horus_core::error::HorusResult;
 use horus_core::{Hub, Node, NodeInfo};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -38,7 +39,7 @@ pub struct LocalizationNode {
 
 impl LocalizationNode {
     /// Create a new localization node with default topic "pose"
-    pub fn new() -> Self {
+    pub fn new() -> HorusResult<Self> {
         Self::new_with_topics("pose", "odom", "imu", "lidar_scan")
     }
 
@@ -48,12 +49,12 @@ impl LocalizationNode {
         odom_topic: &str,
         imu_topic: &str,
         lidar_topic: &str,
-    ) -> Self {
+    ) -> HorusResult<Self> {
         let mut node = Self {
-            pose_publisher: Hub::new(pose_topic).expect("Failed to create pose publisher"),
-            odometry_subscriber: Hub::new(odom_topic).expect("Failed to subscribe to odometry"),
-            imu_subscriber: Hub::new(imu_topic).expect("Failed to subscribe to IMU"),
-            lidar_subscriber: Hub::new(lidar_topic).expect("Failed to subscribe to lidar"),
+            pose_publisher: Hub::new(pose_topic)?,
+            odometry_subscriber: Hub::new(odom_topic)?,
+            imu_subscriber: Hub::new(imu_topic)?,
+            lidar_subscriber: Hub::new(lidar_topic)?,
 
             state: [0.0; 6], // Initial state: all zeros
             covariance: [[0.0; 6]; 6],
@@ -97,7 +98,7 @@ impl LocalizationNode {
         node.imu_noise[1][1] = 0.1; // acceleration y
         node.imu_noise[2][2] = 0.05; // angular velocity z
 
-        node
+        Ok(node)
     }
 
     /// Set initial pose estimate
@@ -410,8 +411,4 @@ impl Node for LocalizationNode {
     }
 }
 
-impl Default for LocalizationNode {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// Default impl removed - use Node::new() instead which returns HorusResult

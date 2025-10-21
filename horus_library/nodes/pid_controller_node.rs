@@ -1,4 +1,5 @@
 use crate::{MotorCommand, PidConfig};
+use horus_core::error::HorusResult;
 use horus_core::{Hub, Node, NodeInfo};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -39,7 +40,7 @@ pub struct PidControllerNode {
 
 impl PidControllerNode {
     /// Create a new PID controller node with default topics
-    pub fn new() -> Self {
+    pub fn new() -> HorusResult<Self> {
         Self::new_with_topics("setpoint", "feedback", "pid_output", "pid_config")
     }
 
@@ -49,12 +50,12 @@ impl PidControllerNode {
         feedback_topic: &str,
         output_topic: &str,
         config_topic: &str,
-    ) -> Self {
-        Self {
-            output_publisher: Hub::new(output_topic).expect("Failed to create PID output hub"),
-            setpoint_subscriber: Hub::new(setpoint_topic).expect("Failed to subscribe to setpoint"),
-            feedback_subscriber: Hub::new(feedback_topic).expect("Failed to subscribe to feedback"),
-            config_subscriber: Hub::new(config_topic).expect("Failed to subscribe to config"),
+    ) -> HorusResult<Self> {
+        Ok(Self {
+            output_publisher: Hub::new(output_topic)?,
+            setpoint_subscriber: Hub::new(setpoint_topic)?,
+            feedback_subscriber: Hub::new(feedback_topic)?,
+            config_subscriber: Hub::new(config_topic)?,
 
             // Default PID gains
             kp: 1.0,
@@ -77,7 +78,7 @@ impl PidControllerNode {
 
             is_initialized: false,
             motor_id: 0,
-        }
+        })
     }
 
     /// Set PID gains
@@ -212,8 +213,4 @@ impl Node for PidControllerNode {
     }
 }
 
-impl Default for PidControllerNode {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// Default impl removed - use PidControllerNode::new() instead which returns HorusResult

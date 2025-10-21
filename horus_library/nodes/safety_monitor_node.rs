@@ -1,4 +1,5 @@
 use crate::{BatteryState, EmergencyStop, ResourceUsage, SafetyStatus, StatusLevel};
+use horus_core::error::HorusResult;
 use horus_core::{Hub, Node, NodeInfo};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -46,19 +47,17 @@ struct SafetyCheck {
 
 impl SafetyMonitorNode {
     /// Create a new safety monitor node with default topic "safety_status"
-    pub fn new() -> Self {
+    pub fn new() -> HorusResult<Self> {
         Self::new_with_topic("safety_status")
     }
 
     /// Create a new safety monitor node with custom topic
-    pub fn new_with_topic(topic: &str) -> Self {
-        Self {
-            publisher: Hub::new(topic).expect("Failed to create safety monitor hub"),
-            emergency_subscriber: Hub::new("emergency_stop")
-                .expect("Failed to subscribe to emergency"),
-            battery_subscriber: Hub::new("battery_state").expect("Failed to subscribe to battery"),
-            resource_subscriber: Hub::new("resource_usage")
-                .expect("Failed to subscribe to resources"),
+    pub fn new_with_topic(topic: &str) -> HorusResult<Self> {
+        Ok(Self {
+            publisher: Hub::new(topic)?,
+            emergency_subscriber: Hub::new("emergency_stop")?,
+            battery_subscriber: Hub::new("battery_state")?,
+            resource_subscriber: Hub::new("resource_usage")?,
 
             #[cfg(feature = "sysinfo")]
             system: System::new_all(),
@@ -77,7 +76,7 @@ impl SafetyMonitorNode {
             last_battery_time: 0,
             last_resource_time: 0,
             current_safety_level: StatusLevel::Ok,
-        }
+        })
     }
 
     /// Set CPU usage threshold (0-100%)
@@ -293,8 +292,4 @@ impl Node for SafetyMonitorNode {
     }
 }
 
-impl Default for SafetyMonitorNode {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// Default impl removed - use SafetyMonitorNode::new() instead which returns HorusResult

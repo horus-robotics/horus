@@ -1,4 +1,5 @@
 use crate::{DifferentialDriveCommand, Odometry, Twist};
+use horus_core::error::HorusResult;
 use horus_core::{Hub, Node, NodeInfo};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -30,16 +31,16 @@ pub struct DifferentialDriveNode {
 
 impl DifferentialDriveNode {
     /// Create a new differential drive node with default topics
-    pub fn new() -> Self {
+    pub fn new() -> HorusResult<Self> {
         Self::new_with_topics("cmd_vel", "drive_command", "odom")
     }
 
     /// Create a new differential drive node with custom topics
-    pub fn new_with_topics(cmd_topic: &str, drive_topic: &str, odom_topic: &str) -> Self {
-        Self {
-            drive_publisher: Hub::new(drive_topic).expect("Failed to create drive command hub"),
-            odom_publisher: Hub::new(odom_topic).expect("Failed to create odometry hub"),
-            cmd_subscriber: Hub::new(cmd_topic).expect("Failed to subscribe to cmd_vel"),
+    pub fn new_with_topics(cmd_topic: &str, drive_topic: &str, odom_topic: &str) -> HorusResult<Self> {
+        Ok(Self {
+            drive_publisher: Hub::new(drive_topic)?,
+            odom_publisher: Hub::new(odom_topic)?,
+            cmd_subscriber: Hub::new(cmd_topic)?,
 
             wheel_base: 0.5,       // 50cm wheel base
             wheel_radius: 0.1,     // 10cm wheel radius
@@ -51,7 +52,7 @@ impl DifferentialDriveNode {
             position_y: 0.0,
             orientation: 0.0,
             last_update_time: 0,
-        }
+        })
     }
 
     /// Set wheel base (distance between wheels in meters)
@@ -201,8 +202,4 @@ impl Node for DifferentialDriveNode {
     }
 }
 
-impl Default for DifferentialDriveNode {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// Default impl removed - use Node::new() instead which returns HorusResult

@@ -1,4 +1,5 @@
 use crate::DigitalIO;
+use horus_core::error::HorusResult;
 use horus_core::{Hub, Node, NodeInfo};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -36,17 +37,17 @@ pub struct DigitalIONode {
 
 impl DigitalIONode {
     /// Create a new digital I/O node with default topics
-    pub fn new() -> Self {
+    pub fn new() -> HorusResult<Self> {
         Self::new_with_topics("digital_input", "digital_output", "io_status")
     }
 
     /// Create a new digital I/O node with custom topics
-    pub fn new_with_topics(input_topic: &str, output_topic: &str, status_topic: &str) -> Self {
-        Self {
-            input_publisher: Hub::new(input_topic).expect("Failed to create digital input hub"),
+    pub fn new_with_topics(input_topic: &str, output_topic: &str, status_topic: &str) -> HorusResult<Self> {
+        Ok(Self {
+            input_publisher: Hub::new(input_topic)?,
             output_subscriber: Hub::new(output_topic)
-                .expect("Failed to subscribe to digital output"),
-            status_publisher: Hub::new(status_topic).expect("Failed to create status hub"),
+                ?,
+            status_publisher: Hub::new(status_topic)?,
 
             input_pin_count: 8,  // Default 8 input pins
             output_pin_count: 8, // Default 8 output pins
@@ -63,7 +64,7 @@ impl DigitalIONode {
 
             simulate_inputs: true,
             sim_input_pattern: 0,
-        }
+        })
     }
 
     /// Set number of I/O pins
@@ -336,10 +337,4 @@ impl Node for DigitalIONode {
     }
 }
 
-impl Default for DigitalIONode {
-    fn default() -> Self {
-        let mut node = Self::new();
-        node.set_pin_counts(8, 8); // Initialize with 8 input, 8 output pins
-        node
-    }
-}
+// Default impl removed - use Node::new() instead which returns HorusResult

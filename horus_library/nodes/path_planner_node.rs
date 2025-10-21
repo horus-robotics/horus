@@ -1,4 +1,5 @@
 use crate::{LaserScan, Odometry, PathPlan};
+use horus_core::error::HorusResult;
 use horus_core::{Hub, Node, NodeInfo};
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap, HashSet};
@@ -82,7 +83,7 @@ impl PartialOrd for AStarNode {
 
 impl PathPlannerNode {
     /// Create a new path planner node with default topics
-    pub fn new() -> Self {
+    pub fn new() -> HorusResult<Self> {
         Self::new_with_topics("path_plan", "odom", "lidar_scan", "goal")
     }
 
@@ -92,12 +93,12 @@ impl PathPlannerNode {
         odom_topic: &str,
         lidar_topic: &str,
         goal_topic: &str,
-    ) -> Self {
-        Self {
-            plan_publisher: Hub::new(plan_topic).expect("Failed to create path plan publisher"),
-            odometry_subscriber: Hub::new(odom_topic).expect("Failed to subscribe to odometry"),
-            lidar_subscriber: Hub::new(lidar_topic).expect("Failed to subscribe to lidar"),
-            goal_subscriber: Hub::new(goal_topic).expect("Failed to subscribe to goals"),
+    ) -> HorusResult<Self> {
+        Ok(Self {
+            plan_publisher: Hub::new(plan_topic)?,
+            odometry_subscriber: Hub::new(odom_topic)?,
+            lidar_subscriber: Hub::new(lidar_topic)?,
+            goal_subscriber: Hub::new(goal_topic)?,
 
             current_pose: (0.0, 0.0, 0.0),
             goal_pose: (0.0, 0.0, 0.0),
@@ -118,7 +119,7 @@ impl PathPlannerNode {
             rrt_max_iterations: 1000,
             rrt_step_size: 0.5,
             rrt_goal_bias: 0.1,
-        }
+        })
     }
 
     /// Set grid map parameters
@@ -508,10 +509,5 @@ impl Node for PathPlannerNode {
     }
 }
 
-impl Default for PathPlannerNode {
-    fn default() -> Self {
-        let mut node = Self::new();
-        node.set_grid_config(0.1, 200, 200); // 10cm resolution, 20x20m grid
-        node
-    }
-}
+// Default impl removed - use PathPlannerNode::new() instead which returns HorusResult
+// Default configuration is built into new()

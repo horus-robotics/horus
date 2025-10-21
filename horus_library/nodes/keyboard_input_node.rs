@@ -1,4 +1,5 @@
 use crate::KeyboardInput;
+use horus_core::error::HorusResult;
 use horus_core::{Hub, Node, NodeInfo};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -149,14 +150,14 @@ pub struct KeyboardInputNode {
 
 impl KeyboardInputNode {
     /// Create a new keyboard input node with default topic "keyboard_input"
-    pub fn new() -> Self {
+    pub fn new() -> HorusResult<Self> {
         Self::new_with_topic("keyboard_input")
     }
 
     /// Create a new keyboard input node with custom topic
-    pub fn new_with_topic(topic: &str) -> Self {
+    pub fn new_with_topic(topic: &str) -> HorusResult<Self> {
         let mut node = Self {
-            publisher: Hub::new(topic).expect("Failed to create keyboard input hub"),
+            publisher: Hub::new(topic)?,
             last_key_time: 0,
             custom_mapping: Arc::new(Mutex::new(HashMap::new())),
             demo_key_index: 0,
@@ -176,7 +177,7 @@ impl KeyboardInputNode {
             }
         }
 
-        node
+        Ok(node)
     }
 
     /// Initialize default key mappings
@@ -477,11 +478,7 @@ impl Node for KeyboardInputNode {
     }
 }
 
-impl Default for KeyboardInputNode {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// Default impl removed - use Node::new() instead which returns HorusResult
 
 #[cfg(feature = "crossterm")]
 impl Drop for KeyboardInputNode {

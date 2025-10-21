@@ -1,4 +1,5 @@
 use crate::{ModbusMessage, NetworkStatus};
+use horus_core::error::HorusResult;
 use horus_core::{Hub, Node, NodeInfo};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -27,16 +28,16 @@ pub struct ModbusNode {
 
 impl ModbusNode {
     /// Create a new Modbus node with default topics
-    pub fn new() -> Self {
+    pub fn new() -> HorusResult<Self> {
         Self::new_with_topics("modbus_request", "modbus_response", "modbus_status")
     }
 
     /// Create a new Modbus node with custom topics
-    pub fn new_with_topics(request_topic: &str, response_topic: &str, status_topic: &str) -> Self {
-        Self {
-            publisher: Hub::new(response_topic).expect("Failed to create Modbus response hub"),
-            status_publisher: Hub::new(status_topic).expect("Failed to create status hub"),
-            request_subscriber: Hub::new(request_topic).expect("Failed to subscribe to requests"),
+    pub fn new_with_topics(request_topic: &str, response_topic: &str, status_topic: &str) -> HorusResult<Self> {
+        Ok(Self {
+            publisher: Hub::new(response_topic)?,
+            status_publisher: Hub::new(status_topic)?,
+            request_subscriber: Hub::new(request_topic)?,
 
             server_address: "127.0.0.1".to_string(),
             server_port: 502,
@@ -47,7 +48,7 @@ impl ModbusNode {
             connection_attempts: 0,
             last_activity: 0,
             device_cache: HashMap::new(),
-        }
+        })
     }
 
     /// Set Modbus server connection parameters
@@ -187,8 +188,4 @@ impl Node for ModbusNode {
     }
 }
 
-impl Default for ModbusNode {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// Default impl removed - use Node::new() instead which returns HorusResult

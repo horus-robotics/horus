@@ -1,4 +1,5 @@
 use crate::{DigitalIO, EmergencyStop, LaserScan, Odometry};
+use horus_core::error::HorusResult;
 use horus_core::{Hub, Node, NodeInfo};
 use std::collections::VecDeque;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -53,7 +54,7 @@ pub struct CollisionDetectorNode {
 
 impl CollisionDetectorNode {
     /// Create a new collision detector node with default topics
-    pub fn new() -> Self {
+    pub fn new() -> HorusResult<Self> {
         Self::new_with_topics("emergency_stop", "lidar_scan", "odom", "digital_input")
     }
 
@@ -63,13 +64,12 @@ impl CollisionDetectorNode {
         lidar_topic: &str,
         odom_topic: &str,
         io_topic: &str,
-    ) -> Self {
-        Self {
-            emergency_publisher: Hub::new(emergency_topic)
-                .expect("Failed to create emergency stop publisher"),
-            lidar_subscriber: Hub::new(lidar_topic).expect("Failed to subscribe to lidar"),
-            odometry_subscriber: Hub::new(odom_topic).expect("Failed to subscribe to odometry"),
-            digital_io_subscriber: Hub::new(io_topic).expect("Failed to subscribe to digital I/O"),
+    ) -> HorusResult<Self> {
+        Ok(Self {
+            emergency_publisher: Hub::new(emergency_topic)?,
+            lidar_subscriber: Hub::new(lidar_topic)?,
+            odometry_subscriber: Hub::new(odom_topic)?,
+            digital_io_subscriber: Hub::new(io_topic)?,
 
             // Default safety zones
             critical_zone: 0.3,   // 30cm immediate stop
@@ -101,7 +101,7 @@ impl CollisionDetectorNode {
             last_lidar_time: 0,
             emergency_cooldown: 500, // 500ms cooldown between emergency stops
             last_emergency_time: 0,
-        }
+        })
     }
 
     /// Configure safety zones
@@ -398,11 +398,5 @@ impl Node for CollisionDetectorNode {
     }
 }
 
-impl Default for CollisionDetectorNode {
-    fn default() -> Self {
-        let mut node = Self::new();
-        node.set_safety_zones(0.3, 0.8, 2.0); // 30cm critical, 80cm warning, 2m monitoring
-        node.set_robot_geometry(0.6, 0.8, 0.1); // 60x80cm robot with 10cm margin
-        node
-    }
-}
+// Default impl removed - use CollisionDetectorNode::new() instead which returns HorusResult
+// The default configuration is already built into new()

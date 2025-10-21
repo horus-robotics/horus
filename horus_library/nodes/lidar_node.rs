@@ -1,4 +1,5 @@
 use crate::LaserScan;
+use horus_core::error::HorusResult;
 use horus_core::{Hub, Node, NodeInfo};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -24,14 +25,14 @@ pub struct LidarNode {
 
 impl LidarNode {
     /// Create a new LiDAR node with default topic "scan"
-    pub fn new() -> Self {
+    pub fn new() -> HorusResult<Self> {
         Self::new_with_topic("scan")
     }
 
     /// Create a new LiDAR node with custom topic
-    pub fn new_with_topic(topic: &str) -> Self {
-        Self {
-            publisher: Hub::new(topic).expect("Failed to create LiDAR hub"),
+    pub fn new_with_topic(topic: &str) -> HorusResult<Self> {
+        Ok(Self {
+            publisher: Hub::new(topic)?,
             frame_id: "laser_frame".to_string(),
             scan_frequency: 10.0,
             min_range: 0.1,
@@ -40,7 +41,7 @@ impl LidarNode {
             is_initialized: false,
             scan_count: 0,
             last_scan_time: 0,
-        }
+        })
     }
 
     /// Set frame ID for coordinate system
@@ -166,8 +167,4 @@ impl Node for LidarNode {
     }
 }
 
-impl Default for LidarNode {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// Default impl removed - use LidarNode::new() instead which returns HorusResult

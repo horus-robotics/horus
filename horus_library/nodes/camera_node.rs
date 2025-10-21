@@ -1,7 +1,7 @@
 use crate::vision::ImageEncoding;
 use crate::{CameraInfo, CompressedImage, Image};
+use horus_core::error::HorusResult;
 use horus_core::{Hub, Node, NodeInfo};
-// Removed unused imports
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Camera Node - Generic camera interface for vision input
@@ -33,21 +33,20 @@ pub struct CameraNode {
 
 impl CameraNode {
     /// Create a new camera node with default topic "camera/image"
-    pub fn new() -> Self {
+    pub fn new() -> HorusResult<Self> {
         Self::new_with_topic("camera")
     }
 
     /// Create a new camera node with custom topic prefix
-    pub fn new_with_topic(topic_prefix: &str) -> Self {
+    pub fn new_with_topic(topic_prefix: &str) -> HorusResult<Self> {
         let image_topic = format!("{}/image", topic_prefix);
         let compressed_topic = format!("{}/image/compressed", topic_prefix);
         let info_topic = format!("{}/camera_info", topic_prefix);
 
-        Self {
-            publisher: Hub::new(&image_topic).expect("Failed to create camera image hub"),
-            compressed_publisher: Hub::new(&compressed_topic)
-                .expect("Failed to create compressed hub"),
-            info_publisher: Hub::new(&info_topic).expect("Failed to create camera info hub"),
+        Ok(Self {
+            publisher: Hub::new(&image_topic)?,
+            compressed_publisher: Hub::new(&compressed_topic)?,
+            info_publisher: Hub::new(&info_topic)?,
 
             device_id: 0,
             width: 640,
@@ -63,7 +62,7 @@ impl CameraNode {
 
             #[cfg(feature = "opencv-backend")]
             capture: None,
-        }
+        })
     }
 
     /// Set camera device ID (0 for default camera)
@@ -307,8 +306,4 @@ impl Node for CameraNode {
     }
 }
 
-impl Default for CameraNode {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// Default impl removed - use CameraNode::new() instead which returns HorusResult

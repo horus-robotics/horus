@@ -1,4 +1,5 @@
 use crate::{JointCommand, ServoCommand};
+use horus_core::error::HorusResult;
 use horus_core::{Hub, Node, NodeInfo};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -32,16 +33,16 @@ pub struct ServoControllerNode {
 
 impl ServoControllerNode {
     /// Create a new servo controller node with default topics
-    pub fn new() -> Self {
+    pub fn new() -> HorusResult<Self> {
         Self::new_with_topics("servo_command", "joint_command", "joint_states")
     }
 
     /// Create a new servo controller node with custom topics
-    pub fn new_with_topics(servo_topic: &str, joint_topic: &str, status_topic: &str) -> Self {
-        Self {
-            servo_subscriber: Hub::new(servo_topic).expect("Failed to subscribe to servo commands"),
-            joint_subscriber: Hub::new(joint_topic).expect("Failed to subscribe to joint commands"),
-            status_publisher: Hub::new(status_topic).expect("Failed to create status publisher"),
+    pub fn new_with_topics(servo_topic: &str, joint_topic: &str, status_topic: &str) -> HorusResult<Self> {
+        Ok(Self {
+            servo_subscriber: Hub::new(servo_topic)?,
+            joint_subscriber: Hub::new(joint_topic)?,
+            status_publisher: Hub::new(status_topic)?,
 
             servo_count: 6, // Default 6-DOF robot arm
             position_limits: HashMap::new(),
@@ -56,7 +57,7 @@ impl ServoControllerNode {
             position_tolerance: 0.01, // 1 degree tolerance
             default_velocity: 1.0,    // 1 rad/s default
             interpolation_enabled: true,
-        }
+        })
     }
 
     /// Set number of servos to control
@@ -278,8 +279,4 @@ impl Node for ServoControllerNode {
     }
 }
 
-impl Default for ServoControllerNode {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// Default impl removed - use ServoControllerNode::new() instead which returns HorusResult

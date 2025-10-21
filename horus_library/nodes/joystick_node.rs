@@ -1,4 +1,5 @@
 use crate::JoystickInput;
+use horus_core::error::HorusResult;
 use horus_core::{Hub, Node, NodeInfo};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -13,16 +14,16 @@ pub struct JoystickInputNode {
 
 impl JoystickInputNode {
     /// Create a new joystick input node with default topic "joystick_input"
-    pub fn new() -> Self {
+    pub fn new() -> HorusResult<Self> {
         Self::new_with_topic("joystick_input")
     }
 
     /// Create a new joystick input node with custom topic
-    pub fn new_with_topic(topic: &str) -> Self {
-        Self {
-            publisher: Hub::new(topic).expect("Failed to create joystick input hub"),
+    pub fn new_with_topic(topic: &str) -> HorusResult<Self> {
+        Ok(Self {
+            publisher: Hub::new(topic)?,
             last_input_time: 0,
-        }
+        })
     }
 }
 
@@ -53,8 +54,4 @@ impl Node for JoystickInputNode {
     }
 }
 
-impl Default for JoystickInputNode {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// Default impl removed - use Node::new() instead which returns HorusResult

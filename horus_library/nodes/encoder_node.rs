@@ -1,4 +1,5 @@
 use crate::Odometry;
+use horus_core::error::HorusResult;
 use horus_core::{Hub, Node, NodeInfo};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -29,14 +30,14 @@ pub struct EncoderNode {
 
 impl EncoderNode {
     /// Create a new encoder node with default topic "odom"
-    pub fn new() -> Self {
+    pub fn new() -> HorusResult<Self> {
         Self::new_with_topic("odom")
     }
 
     /// Create a new encoder node with custom topic
-    pub fn new_with_topic(topic: &str) -> Self {
-        Self {
-            publisher: Hub::new(topic).expect("Failed to create encoder hub"),
+    pub fn new_with_topic(topic: &str) -> HorusResult<Self> {
+        Ok(Self {
+            publisher: Hub::new(topic)?,
             frame_id: "odom".to_string(),
             child_frame_id: "base_link".to_string(),
             encoder_resolution: 1024.0, // 1024 pulses per revolution default
@@ -48,7 +49,7 @@ impl EncoderNode {
             total_distance: 0.0,
             sim_velocity: 0.0,
             sim_angular_velocity: 0.0,
-        }
+        })
     }
 
     /// Set encoder configuration parameters
@@ -175,8 +176,4 @@ impl Node for EncoderNode {
     }
 }
 
-impl Default for EncoderNode {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// Default impl removed - use EncoderNode::new() instead which returns HorusResult
