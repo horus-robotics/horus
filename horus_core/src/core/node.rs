@@ -385,24 +385,26 @@ impl NodeInfo {
     }
 
     // Lifecycle Methods
-    pub fn initialize(&mut self) -> Result<(), String> {
+    pub fn initialize(&mut self) -> crate::error::HorusResult<()> {
         self.set_state(NodeState::Initializing);
         // Initialization logic can be added here
         self.set_state(NodeState::Running);
         Ok(())
     }
 
-    pub fn shutdown(&mut self) -> Result<(), String> {
+    pub fn shutdown(&mut self) -> crate::error::HorusResult<()> {
         self.set_state(NodeState::Stopping);
         // Cleanup logic can be added here
         self.set_state(NodeState::Stopped);
         Ok(())
     }
 
-    pub fn restart(&mut self) -> Result<(), String> {
+    pub fn restart(&mut self) -> crate::error::HorusResult<()> {
         self.restart_count += 1;
         if self.restart_count > self.config.max_restart_attempts {
-            return Err("Maximum restart attempts exceeded".to_string());
+            return Err(crate::error::HorusError::InvalidInput(
+                "Maximum restart attempts exceeded".to_string()
+            ));
         }
 
         self.shutdown()?;
@@ -713,7 +715,7 @@ pub trait Node: Send {
     fn name(&self) -> &'static str;
 
     /// Initialize the node (called once at startup)
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> crate::error::HorusResult<()> {
         ctx.log_info("Node initialized successfully");
         Ok(())
     }
@@ -722,7 +724,7 @@ pub trait Node: Send {
     fn tick(&mut self, ctx: Option<&mut NodeInfo>);
 
     /// Shutdown the node (called once at cleanup)
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> crate::error::HorusResult<()> {
         ctx.log_info("Node shutdown successfully");
         Ok(())
     }

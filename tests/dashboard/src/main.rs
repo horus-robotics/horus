@@ -69,7 +69,7 @@ impl Node for SensorNode {
         }]
     }
 
-    fn init(&mut self, _ctx: &mut NodeInfo) -> std::result::Result<(), String> {
+    fn init(&mut self, _ctx: &mut NodeInfo) -> horus::error::HorusResult<()> {
         println!("🔵 SensorNode initialized - simulating LIDAR sensor");
         Ok(())
     }
@@ -95,7 +95,7 @@ impl Node for SensorNode {
         std::thread::sleep(Duration::from_millis(50)); // 20 Hz
     }
 
-    fn shutdown(&mut self, _ctx: &mut NodeInfo) -> std::result::Result<(), String> {
+    fn shutdown(&mut self, _ctx: &mut NodeInfo) -> horus::error::HorusResult<()> {
         println!(
             "🔵 SensorNode shutdown - {} readings published",
             self.counter
@@ -144,7 +144,7 @@ impl Node for ObstacleDetector {
         }]
     }
 
-    fn init(&mut self, _ctx: &mut NodeInfo) -> std::result::Result<(), String> {
+    fn init(&mut self, _ctx: &mut NodeInfo) -> horus::error::HorusResult<()> {
         println!("🟡 ObstacleDetector initialized - processing sensor data");
         Ok(())
     }
@@ -182,7 +182,7 @@ impl Node for ObstacleDetector {
         }
     }
 
-    fn shutdown(&mut self, _ctx: &mut NodeInfo) -> std::result::Result<(), String> {
+    fn shutdown(&mut self, _ctx: &mut NodeInfo) -> horus::error::HorusResult<()> {
         println!(
             "🟡 ObstacleDetector shutdown - {} obstacles detected",
             self.detection_count
@@ -231,7 +231,7 @@ impl Node for PathPlanner {
         }]
     }
 
-    fn init(&mut self, _ctx: &mut NodeInfo) -> std::result::Result<(), String> {
+    fn init(&mut self, _ctx: &mut NodeInfo) -> horus::error::HorusResult<()> {
         println!("🟢 PathPlanner initialized - computing navigation paths");
         Ok(())
     }
@@ -270,7 +270,7 @@ impl Node for PathPlanner {
         }
     }
 
-    fn shutdown(&mut self, _ctx: &mut NodeInfo) -> std::result::Result<(), String> {
+    fn shutdown(&mut self, _ctx: &mut NodeInfo) -> horus::error::HorusResult<()> {
         println!(
             "🟢 PathPlanner shutdown - {} path adjustments made",
             self.adjustments
@@ -319,7 +319,7 @@ impl Node for MotorController {
         }]
     }
 
-    fn init(&mut self, _ctx: &mut NodeInfo) -> std::result::Result<(), String> {
+    fn init(&mut self, _ctx: &mut NodeInfo) -> horus::error::HorusResult<()> {
         println!("🟣 MotorController initialized - controlling differential drive");
         Ok(())
     }
@@ -340,7 +340,7 @@ impl Node for MotorController {
         }
     }
 
-    fn shutdown(&mut self, _ctx: &mut NodeInfo) -> std::result::Result<(), String> {
+    fn shutdown(&mut self, _ctx: &mut NodeInfo) -> horus::error::HorusResult<()> {
         println!(
             "🟣 MotorController shutdown - {} motor commands sent",
             self.commands_sent
@@ -389,7 +389,7 @@ impl Node for StatusMonitor {
         }]
     }
 
-    fn init(&mut self, _ctx: &mut NodeInfo) -> std::result::Result<(), String> {
+    fn init(&mut self, _ctx: &mut NodeInfo) -> horus::error::HorusResult<()> {
         println!("⚪ StatusMonitor initialized - tracking system health");
         Ok(())
     }
@@ -413,7 +413,7 @@ impl Node for StatusMonitor {
         std::thread::sleep(Duration::from_millis(100));
     }
 
-    fn shutdown(&mut self, _ctx: &mut NodeInfo) -> std::result::Result<(), String> {
+    fn shutdown(&mut self, _ctx: &mut NodeInfo) -> horus::error::HorusResult<()> {
         println!(
             "⚪ StatusMonitor shutdown - {} total messages monitored",
             self.message_count

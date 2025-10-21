@@ -114,7 +114,7 @@ impl Node for TankControllerNode {
         "TankControllerNode"
     }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> horus_core::error::HorusResult<()> {
         ctx.log_info(&format!(
             "TankControllerNode initialized - controlling {}",
             self.tank_id
@@ -142,7 +142,7 @@ impl Node for TankControllerNode {
         let _ = self.cmd_vel_pub.send(cmd, ctx);
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> horus_core::error::HorusResult<()> {
         ctx.log_info("TankControllerNode shutting down");
         Ok(())
     }
