@@ -24,7 +24,6 @@ The `Node` trait is the fundamental building block. Implement this trait to crea
 
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 
 impl Node for MyNode {
     fn name(&self) -> &'static str { "MyNode" }
@@ -48,7 +47,6 @@ The `Hub<T>` provides ultra-low latency pub/sub communication through shared mem
 
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 
 let hub: Hub<f32> = Hub::new("velocity")?;
 
@@ -74,7 +72,6 @@ The `Scheduler` orchestrates node execution, managing priorities and lifecycle.
 
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 
 let mut scheduler = Scheduler::new();
 
@@ -90,7 +87,6 @@ Here's a complete example using all three APIs:
 
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 
 // 1. Define a node
 struct TemperatureSensor {
@@ -158,7 +154,6 @@ Describes published and subscribed topics:
 
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 
 fn get_publishers(&self) -> Vec<TopicMetadata> {
     vec![

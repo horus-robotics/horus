@@ -23,7 +23,6 @@ pub fn new() -> Self
 **Example**:
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 
 let mut scheduler = Scheduler::new();
 ```
@@ -53,7 +52,6 @@ pub fn register(
 **Example**:
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 
 let mut scheduler = Scheduler::new();
 
@@ -278,7 +276,6 @@ scheduler.set_node_logging("ProcessorNode", true);
 
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 
 // Define nodes
 struct SensorNode {

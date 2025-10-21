@@ -26,7 +26,6 @@ pub fn new(topic_name: &str) -> HorusResult<Self>
 **Example**:
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 
 let velocity_hub: Hub<f32> = Hub::new("cmd_vel")?;
 ```
@@ -246,7 +245,6 @@ HORUS provides pre-defined message types:
 
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 use horus_library::messages::{CmdVel, LaserScan, Imu};
 
 let cmd_hub: Hub<CmdVel> = Hub::new("cmd_vel")?;

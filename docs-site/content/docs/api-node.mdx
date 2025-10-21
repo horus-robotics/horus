@@ -242,7 +242,6 @@ println!("Average tick duration: {}ms", metrics.avg_tick_duration_ms);
 
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 
 struct TemperatureSensor {
     temperature_pub: Hub<f32>,
@@ -308,7 +307,6 @@ fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
 **Common Pattern** (from production code):
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 
 struct ProcessorNode {
     input_sub: Hub<f32>,

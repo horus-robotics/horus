@@ -32,7 +32,6 @@ pub fn producer(topic: &str) -> HorusResult<Self>
 **Example**:
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 
 let sensor_output: Link<f32> = Link::producer("sensor_data")?;
 ```
@@ -56,7 +55,6 @@ pub fn consumer(topic: &str) -> HorusResult<Self>
 **Example**:
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 
 let sensor_input: Link<f32> = Link::consumer("sensor_data")?;
 ```
@@ -363,7 +361,6 @@ HORUS provides pre-defined message types:
 
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 use horus_library::messages::{CmdVel, LaserScan, Imu};
 
 let cmd_link: Link<CmdVel> = Link::producer("cmd_vel")?;
@@ -758,7 +755,6 @@ See `examples/link_motor_control.rs` for a full working example of Link in a PD 
 //! - Buffer management
 
 use horus::prelude::*;
-use horus::error::HorusResult;
 
 // Run with:
 // cargo run --example link_motor_control

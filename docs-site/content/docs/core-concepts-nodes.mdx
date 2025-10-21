@@ -335,7 +335,6 @@ scheduler.register_with_priority(logger_node, NodePriority::Background);
 
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 
 struct SensorNode {
     data_pub: Hub<f32>,

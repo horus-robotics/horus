@@ -16,7 +16,6 @@ The foundational pattern in HORUS: one node publishes data, another subscribes.
 
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 
 // Define publisher node
 struct SensorNode {
@@ -66,7 +65,6 @@ fn main() -> HorusResult<()> {
 
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 
 struct ProcessorNode {
     data_sub: Hub<f32>,
@@ -109,7 +107,6 @@ fn main() -> HorusResult<()> {
 
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 
 // Publisher
 struct SensorNode {
@@ -167,7 +164,6 @@ Control a robot using CmdVel messages.
 
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 use horus_library::messages::CmdVel;
 
 // Keyboard input → velocity commands
@@ -232,7 +228,6 @@ Process laser scan data to detect obstacles.
 
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 use horus_library::messages::{LaserScan, CmdVel};
 
 // Lidar → Scan data
@@ -311,7 +306,6 @@ Implement a PID controller node for position tracking.
 
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 
 struct PIDController {
     setpoint_sub: Hub<f32>,    // Desired position
@@ -376,7 +370,6 @@ Chain multiple processing stages together.
 
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 
 // Stage 1: Data acquisition
 struct SensorNode {
@@ -462,7 +455,6 @@ Implement behavior using state machines.
 
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 
 #[derive(Debug, Clone, Copy)]
 enum RobotState {
@@ -533,7 +525,6 @@ Use priority levels to ensure safety-critical tasks run first.
 
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 
 // CRITICAL PRIORITY: Emergency stop
 struct EmergencyStopNode {

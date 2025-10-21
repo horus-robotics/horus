@@ -49,7 +49,6 @@ HORUS provides clean, Rust-native APIs:
 **Manual Implementation**:
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 
 struct SensorNode {
     publisher: Hub<f32>,
@@ -181,7 +180,6 @@ HORUS includes a library of ready-to-use nodes. Just import and connect with top
 
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 use horus_library::{KeyboardInputNode, DifferentialDriveNode};
 
 fn main() -> HorusResult<()> {
@@ -209,7 +207,6 @@ Or build custom nodes when needed:
 
 ```rust
 use horus::prelude::*;
-use horus::error::HorusResult;
 use std::time::Duration;
 
 // Node that generates temperature readings
