@@ -20,7 +20,7 @@ struct SensorNode {
 }
 
 impl SensorNode {
-    fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    fn new() -> HorusResult<Self> {
         Ok(Self {
             publisher: Hub::new("temperature")?,
             counter: 0,
@@ -360,6 +360,7 @@ Yes, import the prelude:
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 node! {
     MyNode { ... }
@@ -412,6 +413,7 @@ Import your message types:
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 use horus_library::messages::CmdVel; // If using library types
 
 node! {

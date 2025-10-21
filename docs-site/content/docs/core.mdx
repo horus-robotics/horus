@@ -34,19 +34,19 @@ HORUS provides multiple IPC backends, each optimized for different use cases. Al
 
 ```rust
 use horus::prelude::*;
+use horus_library::messages::CmdVel;
 
 // Create publisher/subscriber for any message type
-let mut pub = node.create_publisher::<CmdVel>("motor/cmd_vel")?;
-let mut sub = node.create_subscriber::<CmdVel>("motor/cmd_vel")?;
+let mut cmd_pub: Hub<CmdVel> = Hub::new("motor/cmd_vel")?;
+let mut cmd_sub: Hub<CmdVel> = Hub::new("motor/cmd_vel")?;
 
-```rust
 // Multiple publishers can send to same topic
-let mut pub1 = node1.create_publisher::<SensorData>("sensors/imu")?;
-let mut pub2 = node2.create_publisher::<SensorData>("sensors/imu")?;
+let mut pub1: Hub<SensorData> = Hub::new("sensors/imu")?;
+let mut pub2: Hub<SensorData> = Hub::new("sensors/imu")?;
 
 // Multiple subscribers receive all messages
-let mut sub1 = node3.create_subscriber::<SensorData>("sensors/imu")?;
-let mut sub2 = node4.create_subscriber::<SensorData>("sensors/imu")?;
+let mut sub1: Hub<SensorData> = Hub::new("sensors/imu")?;
+let mut sub2: Hub<SensorData> = Hub::new("sensors/imu")?;
 ```
 
 ## Production Performance

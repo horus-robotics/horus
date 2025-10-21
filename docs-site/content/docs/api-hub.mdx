@@ -15,17 +15,18 @@ The `Hub<T>` provides ultra-low latency pub/sub communication through shared mem
 Create a new hub for publishing and subscribing to a topic.
 
 ```rust
-pub fn new(topic_name: &str) -> Result<Self, Box<dyn std::error::Error>>
+pub fn new(topic_name: &str) -> HorusResult<Self>
 ```
 
 **Parameters**:
 - `topic_name`: Name of the topic (string)
 
-**Returns**: `Result<Hub<T>, Box<dyn std::error::Error>>`
+**Returns**: `Result<Hub<T>, HorusError>`
 
 **Example**:
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 let velocity_hub: Hub<f32> = Hub::new("cmd_vel")?;
 ```
@@ -41,14 +42,14 @@ Create a hub with custom message capacity.
 pub fn new_with_capacity(
     topic_name: &str,
     capacity: usize
-) -> Result<Self, Box<dyn std::error::Error>>
+) -> HorusResult<Self>
 ```
 
 **Parameters**:
 - `topic_name`: Name of the topic
 - `capacity`: Maximum number of messages to buffer
 
-**Returns**: `Result<Hub<T>, Box<dyn std::error::Error>>`
+**Returns**: `Result<Hub<T>, HorusError>`
 
 **Example**:
 ```rust
@@ -245,6 +246,7 @@ HORUS provides pre-defined message types:
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 use horus_library::messages::{CmdVel, LaserScan, Imu};
 
 let cmd_hub: Hub<CmdVel> = Hub::new("cmd_vel")?;

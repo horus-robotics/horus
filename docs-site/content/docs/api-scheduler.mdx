@@ -23,6 +23,7 @@ pub fn new() -> Self
 **Example**:
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 let mut scheduler = Scheduler::new();
 ```
@@ -52,6 +53,7 @@ pub fn register(
 **Example**:
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 let mut scheduler = Scheduler::new();
 
@@ -276,6 +278,7 @@ scheduler.set_node_logging("ProcessorNode", true);
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 // Define nodes
 struct SensorNode {
@@ -283,7 +286,7 @@ struct SensorNode {
 }
 
 impl SensorNode {
-    fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    fn new() -> HorusResult<Self> {
         Ok(Self {
             data_pub: Hub::new("sensor_data")?,
         })
@@ -304,7 +307,7 @@ struct ProcessorNode {
 }
 
 impl ProcessorNode {
-    fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    fn new() -> HorusResult<Self> {
         Ok(Self {
             data_sub: Hub::new("sensor_data")?,
             result_pub: Hub::new("processed_data")?,
@@ -323,7 +326,7 @@ impl Node for ProcessorNode {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new()
         .name("ExampleScheduler");
 

@@ -21,17 +21,18 @@ The `Link<T>` provides ultra-low latency point-to-point (Single Producer Single 
 Create a Link as a producer (sender).
 
 ```rust
-pub fn producer(topic: &str) -> Result<Self, Box<dyn std::error::Error>>
+pub fn producer(topic: &str) -> HorusResult<Self>
 ```
 
 **Parameters**:
 - `topic`: Name of the link (string)
 
-**Returns**: `Result<Link<T>, Box<dyn std::error::Error>>`
+**Returns**: `Result<Link<T>, HorusError>`
 
 **Example**:
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 let sensor_output: Link<f32> = Link::producer("sensor_data")?;
 ```
@@ -44,17 +45,18 @@ let sensor_output: Link<f32> = Link::producer("sensor_data")?;
 Create a Link as a consumer (receiver).
 
 ```rust
-pub fn consumer(topic: &str) -> Result<Self, Box<dyn std::error::Error>>
+pub fn consumer(topic: &str) -> HorusResult<Self>
 ```
 
 **Parameters**:
 - `topic`: Name of the link (must match producer's topic)
 
-**Returns**: `Result<Link<T>, Box<dyn std::error::Error>>`
+**Returns**: `Result<Link<T>, HorusError>`
 
 **Example**:
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 let sensor_input: Link<f32> = Link::consumer("sensor_data")?;
 ```
@@ -67,14 +69,14 @@ Create a producer with custom buffer capacity.
 pub fn producer_with_capacity(
     topic: &str,
     capacity: usize
-) -> Result<Self, Box<dyn std::error::Error>>
+) -> HorusResult<Self>
 ```
 
 **Parameters**:
 - `topic`: Name of the link
 - `capacity`: Buffer size (automatically rounded to next power of 2)
 
-**Returns**: `Result<Link<T>, Box<dyn std::error::Error>>`
+**Returns**: `Result<Link<T>, HorusError>`
 
 **Default capacity**: 1024 messages
 
@@ -92,14 +94,14 @@ Create a consumer with custom buffer capacity.
 pub fn consumer_with_capacity(
     topic: &str,
     capacity: usize
-) -> Result<Self, Box<dyn std::error::Error>>
+) -> HorusResult<Self>
 ```
 
 **Parameters**:
 - `topic`: Name of the link
 - `capacity`: Buffer size (must match producer's capacity)
 
-**Returns**: `Result<Link<T>, Box<dyn std::error::Error>>`
+**Returns**: `Result<Link<T>, HorusError>`
 
 **Example**:
 ```rust
@@ -361,6 +363,7 @@ HORUS provides pre-defined message types:
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 use horus_library::messages::{CmdVel, LaserScan, Imu};
 
 let cmd_link: Link<CmdVel> = Link::producer("cmd_vel")?;
@@ -755,6 +758,7 @@ See `examples/link_motor_control.rs` for a full working example of Link in a PD 
 //! - Buffer management
 
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 // Run with:
 // cargo run --example link_motor_control

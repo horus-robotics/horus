@@ -33,6 +33,7 @@ Edit `src/main.rs`:
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 struct PublisherNode {
     counter: u32,
@@ -40,7 +41,7 @@ struct PublisherNode {
 }
 
 impl PublisherNode {
-    fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    fn new() -> HorusResult<Self> {
         Ok(Self {
             counter: 0,
             cmd_vel_pub: Hub::new("cmd_vel")?,
@@ -72,8 +73,9 @@ impl Node for PublisherNode {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> HorusResult<()> {
     use horus::prelude::*;
+use horus::error::HorusResult;
 
     let mut scheduler = Scheduler::new();
     let publisher = PublisherNode::new()?;
@@ -110,13 +112,14 @@ Create `src/subscriber.rs`:
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 pub struct SubscriberNode {
     cmd_vel_sub: Hub<f32>,
 }
 
 impl SubscriberNode {
-    pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new() -> HorusResult<Self> {
         Ok(Self {
             cmd_vel_sub: Hub::new("cmd_vel")?,
         })
@@ -157,6 +160,7 @@ Update `src/main.rs`:
 mod subscriber;
 
 use horus::prelude::*;
+use horus::error::HorusResult;
 use subscriber::SubscriberNode;
 
 struct PublisherNode {
@@ -165,7 +169,7 @@ struct PublisherNode {
 }
 
 impl PublisherNode {
-    fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    fn new() -> HorusResult<Self> {
         Ok(Self {
             counter: 0,
             cmd_vel_pub: Hub::new("cmd_vel")?,
@@ -195,7 +199,7 @@ impl Node for PublisherNode {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
 
     // Register publisher with priority 0 (highest)
@@ -297,6 +301,7 @@ cargo add horus_library
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 use horus_library::messages::CmdVel;
 
 struct VelocityPublisher {
@@ -338,6 +343,7 @@ Control execution order with priorities:
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 let mut scheduler = Scheduler::new();
 
@@ -462,9 +468,10 @@ cargo add horus_library
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 use horus_library::{KeyboardInputNode, DifferentialDriveNode};
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
 
     // Nodes auto-connect through topics - zero config!

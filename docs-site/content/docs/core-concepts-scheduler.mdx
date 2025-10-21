@@ -30,8 +30,9 @@ The Scheduler is responsible for:
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
 
     // Register nodes (priority 0 = highest, logging enabled)
@@ -47,6 +48,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 let mut scheduler = Scheduler::new();
 
@@ -60,7 +62,7 @@ scheduler.register(Box::new(safety_node), 0, Some(true));
 ### Running the Scheduler
 
 ```rust
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
 
     // Register your nodes
@@ -508,7 +510,7 @@ Run multiple independent schedulers:
 ```rust
 use std::thread;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> HorusResult<()> {
     let mut scheduler1 = Scheduler::new();
     scheduler1.register(Box::new(critical_nodes), 0, Some(true));
 

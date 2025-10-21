@@ -16,6 +16,7 @@ The foundational pattern in HORUS: one node publishes data, another subscribes.
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 // Define publisher node
 struct SensorNode {
@@ -24,7 +25,7 @@ struct SensorNode {
 }
 
 impl SensorNode {
-    fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    fn new() -> HorusResult<Self> {
         Ok(Self {
             data_pub: Hub::new("sensor_data")?,
             counter: 0.0,
@@ -53,7 +54,7 @@ impl Node for SensorNode {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
     scheduler.register(Box::new(SensorNode::new()?), 0, Some(true));
     scheduler.tick_all()?;
@@ -65,13 +66,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 struct ProcessorNode {
     data_sub: Hub<f32>,
 }
 
 impl ProcessorNode {
-    fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    fn new() -> HorusResult<Self> {
         Ok(Self {
             data_sub: Hub::new("sensor_data")?,
         })
@@ -95,7 +97,7 @@ impl Node for ProcessorNode {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
     scheduler.register(Box::new(ProcessorNode::new()?), 0, Some(true));
     scheduler.tick_all()?;
@@ -107,6 +109,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 // Publisher
 struct SensorNode {
@@ -139,7 +142,7 @@ impl Node for ProcessorNode {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
 
     // Register both nodes
@@ -164,6 +167,7 @@ Control a robot using CmdVel messages.
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 use horus_library::messages::CmdVel;
 
 // Keyboard input → velocity commands
@@ -206,7 +210,7 @@ impl Node for MotorDriverNode {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
 
     scheduler.register(Box::new(TeleopNode {
@@ -228,6 +232,7 @@ Process laser scan data to detect obstacles.
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 use horus_library::messages::{LaserScan, CmdVel};
 
 // Lidar → Scan data
@@ -281,7 +286,7 @@ impl Node for ObstacleDetector {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
 
     scheduler.register(Box::new(LidarNode {
@@ -306,6 +311,7 @@ Implement a PID controller node for position tracking.
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 struct PIDController {
     setpoint_sub: Hub<f32>,    // Desired position
@@ -321,7 +327,7 @@ struct PIDController {
 }
 
 impl PIDController {
-    fn new(kp: f32, ki: f32, kd: f32) -> Result<Self, Box<dyn std::error::Error>> {
+    fn new(kp: f32, ki: f32, kd: f32) -> HorusResult<Self> {
         Ok(Self {
             setpoint_sub: Hub::new("setpoint")?,
             feedback_sub: Hub::new("feedback")?,
@@ -370,6 +376,7 @@ Chain multiple processing stages together.
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 // Stage 1: Data acquisition
 struct SensorNode {
@@ -424,7 +431,7 @@ impl Node for ControllerNode {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
 
     // Register pipeline stages
@@ -455,6 +462,7 @@ Implement behavior using state machines.
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 #[derive(Debug, Clone, Copy)]
 enum RobotState {
@@ -525,6 +533,7 @@ Use priority levels to ensure safety-critical tasks run first.
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 // CRITICAL PRIORITY: Emergency stop
 struct EmergencyStopNode {
@@ -583,7 +592,7 @@ impl Node for LoggerNode {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
 
     // Safety runs FIRST (priority 0 = Critical)
@@ -667,7 +676,7 @@ mod tests {
     }
 
     #[test]
-    fn test_pubsub_integration() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_pubsub_integration() -> HorusResult<()> {
         let mut scheduler = Scheduler::new();
 
         // Create publisher and subscriber

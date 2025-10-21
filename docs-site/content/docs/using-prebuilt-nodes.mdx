@@ -28,6 +28,7 @@ horus pkg install pid-controller
 ```rust
 use pid_controller::PIDNode;
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 fn main() {
     let mut scheduler = Scheduler::new();
@@ -154,6 +155,7 @@ horus pkg install differential-drive
 use keyboard_input::KeyboardNode;
 use differential_drive::DiffDriveNode;
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 fn main() {
     let mut scheduler = Scheduler::new();
@@ -195,6 +197,7 @@ use keyboard_input::KeyboardNode;
 use differential_drive::DiffDriveNode;
 use emergency_stop::EStopNode;
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 fn main() {
     let mut scheduler = Scheduler::new();
@@ -234,6 +237,7 @@ use lidar_driver::LidarNode;
 use imu_driver::ImuNode;
 use kalman_filter::EKFNode;
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 fn main() {
     let mut scheduler = Scheduler::new();
@@ -478,8 +482,9 @@ use path_planner::LocalPlannerNode;
 use differential_drive::DiffDriveNode;
 use emergency_stop::EStopNode;
 use horus::prelude::*;
+use horus::error::HorusResult;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
 
     // Safety (Priority 0 - runs first)

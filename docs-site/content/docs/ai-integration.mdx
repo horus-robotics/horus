@@ -74,6 +74,7 @@ This example shows object detection using an AI vision API:
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -222,6 +223,7 @@ Natural language commands to robot actions:
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
@@ -552,8 +554,9 @@ Full integration showing sensor → AI → control pipeline:
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> HorusResult<()> {
     // Load API keys
     let vision_key = std::env::var("OPENAI_API_KEY")?;
     let llm_key = std::env::var("ANTHROPIC_API_KEY")?;

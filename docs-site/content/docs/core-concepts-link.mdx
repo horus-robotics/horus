@@ -169,13 +169,14 @@ struct ControllerNode {
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 struct SensorNode {
     output: Link<LidarScan>,
 }
 
 impl SensorNode {
-    fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    fn new() -> HorusResult<Self> {
         Ok(Self {
             output: Link::producer("lidar")?,
         })

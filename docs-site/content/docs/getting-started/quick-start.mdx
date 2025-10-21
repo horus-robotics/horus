@@ -62,6 +62,7 @@ Replace `src/main.rs` with this complete example:
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 use std::time::Duration;
 
 //===========================================
@@ -74,7 +75,7 @@ struct TemperatureSensor {
 }
 
 impl TemperatureSensor {
-    fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    fn new() -> HorusResult<Self> {
         Ok(Self {
             publisher: Hub::new("temperature")?,
             temperature: 20.0,
@@ -108,7 +109,7 @@ struct TemperatureMonitor {
 }
 
 impl TemperatureMonitor {
-    fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    fn new() -> HorusResult<Self> {
         Ok(Self {
             subscriber: Hub::new("temperature")?,
         })
@@ -132,7 +133,7 @@ impl Node for TemperatureMonitor {
 // MAIN - Run both nodes
 //============================================
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> HorusResult<()> {
     println!("Starting temperature monitoring system...\n");
 
     // Create the scheduler

@@ -49,13 +49,14 @@ HORUS provides clean, Rust-native APIs:
 **Manual Implementation**:
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 
 struct SensorNode {
     publisher: Hub<f32>,
 }
 
 impl SensorNode {
-    fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    fn new() -> HorusResult<Self> {
         Ok(Self {
             publisher: Hub::new("temperature")?,
         })
@@ -180,9 +181,10 @@ HORUS includes a library of ready-to-use nodes. Just import and connect with top
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 use horus_library::{KeyboardInputNode, DifferentialDriveNode};
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
 
     // Create nodes - they auto-connect via topics
@@ -207,6 +209,7 @@ Or build custom nodes when needed:
 
 ```rust
 use horus::prelude::*;
+use horus::error::HorusResult;
 use std::time::Duration;
 
 // Node that generates temperature readings
@@ -216,7 +219,7 @@ struct TemperatureSensor {
 }
 
 impl TemperatureSensor {
-    fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    fn new() -> HorusResult<Self> {
         Ok(Self {
             publisher: Hub::new("temperature")?,
             reading: 20.0,
@@ -241,7 +244,7 @@ struct TemperatureDisplay {
 }
 
 impl TemperatureDisplay {
-    fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    fn new() -> HorusResult<Self> {
         Ok(Self {
             subscriber: Hub::new("temperature")?,
         })
@@ -259,7 +262,7 @@ impl Node for TemperatureDisplay {
 }
 
 // Main program
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
 
     // Register nodes (sensor has higher priority)
