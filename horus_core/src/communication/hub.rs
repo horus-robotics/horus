@@ -136,10 +136,7 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug> Hub<T> {
     }
 
     /// Create a new Hub with custom capacity
-    pub fn new_with_capacity(
-        topic_name: &str,
-        capacity: usize,
-    ) -> HorusResult<Self> {
+    pub fn new_with_capacity(topic_name: &str, capacity: usize) -> HorusResult<Self> {
         let shm_topic = Arc::new(ShmTopic::new(topic_name, capacity)?);
 
         Ok(Hub {

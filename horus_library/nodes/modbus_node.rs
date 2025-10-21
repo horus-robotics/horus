@@ -33,7 +33,11 @@ impl ModbusNode {
     }
 
     /// Create a new Modbus node with custom topics
-    pub fn new_with_topics(request_topic: &str, response_topic: &str, status_topic: &str) -> HorusResult<Self> {
+    pub fn new_with_topics(
+        request_topic: &str,
+        response_topic: &str,
+        status_topic: &str,
+    ) -> HorusResult<Self> {
         Ok(Self {
             publisher: Hub::new(response_topic)?,
             status_publisher: Hub::new(status_topic)?,

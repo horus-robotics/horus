@@ -23,7 +23,11 @@ impl SnakeControlNode {
     }
 
     /// Create with custom topics - both keyboard and joystick can use the same topic
-    pub fn new_with_topics(keyboard_topic: &str, joystick_topic: &str, snake_topic: &str) -> HorusResult<Self> {
+    pub fn new_with_topics(
+        keyboard_topic: &str,
+        joystick_topic: &str,
+        snake_topic: &str,
+    ) -> HorusResult<Self> {
         Ok(Self {
             keyboard_subscriber: Hub::new(keyboard_topic)?,
             joystick_subscriber: Hub::new(joystick_topic)?,

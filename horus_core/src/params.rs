@@ -125,11 +125,7 @@ impl RuntimeParams {
     }
 
     /// Set a parameter value
-    pub fn set<T: Serialize>(
-        &self,
-        key: &str,
-        value: T,
-    ) -> Result<(), HorusError> {
+    pub fn set<T: Serialize>(&self, key: &str, value: T) -> Result<(), HorusError> {
         let json_value = serde_json::to_value(value)?;
         let mut params = self.params.write()?;
         params.insert(key.to_string(), json_value);
@@ -138,21 +134,21 @@ impl RuntimeParams {
 
     /// Get all parameters
     pub fn get_all(&self) -> BTreeMap<String, Value> {
-        self.params.read()
-            .map(|p| p.clone())
-            .unwrap_or_default()
+        self.params.read().map(|p| p.clone()).unwrap_or_default()
     }
 
     /// List all parameter keys
     pub fn list_keys(&self) -> Vec<String> {
-        self.params.read()
+        self.params
+            .read()
             .map(|p| p.keys().cloned().collect())
             .unwrap_or_default()
     }
 
     /// Check if a parameter exists
     pub fn has(&self, key: &str) -> bool {
-        self.params.read()
+        self.params
+            .read()
             .map(|p| p.contains_key(key))
             .unwrap_or(false)
     }
@@ -214,7 +210,10 @@ impl Clone for RuntimeParams {
 impl Default for RuntimeParams {
     fn default() -> Self {
         Self::init().unwrap_or_else(|e| {
-            eprintln!("Warning: Failed to initialize RuntimeParams: {}. Using empty params.", e);
+            eprintln!(
+                "Warning: Failed to initialize RuntimeParams: {}. Using empty params.",
+                e
+            );
             Self {
                 params: Arc::new(RwLock::new(BTreeMap::new())),
                 persist_path: None,

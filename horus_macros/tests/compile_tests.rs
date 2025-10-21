@@ -4,7 +4,6 @@
 
 #[cfg(test)]
 mod tests {
-    
 
     // Test that messages work with standard derive macros
     #[test]

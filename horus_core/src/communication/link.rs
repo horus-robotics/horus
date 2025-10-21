@@ -150,10 +150,7 @@ impl<T> Link<T> {
     /// ```rust,ignore
     /// let output: Link<f32> = Link::producer_with_capacity("fast_data", 4096)?;
     /// ```
-    pub fn producer_with_capacity(
-        topic: &str,
-        capacity: usize,
-    ) -> HorusResult<Self> {
+    pub fn producer_with_capacity(topic: &str, capacity: usize) -> HorusResult<Self> {
         Self::with_role(topic, LinkRole::Producer, capacity)
     }
 
@@ -163,21 +160,14 @@ impl<T> Link<T> {
     /// ```rust,ignore
     /// let input: Link<f32> = Link::consumer_with_capacity("fast_data", 4096)?;
     /// ```
-    pub fn consumer_with_capacity(
-        topic: &str,
-        capacity: usize,
-    ) -> HorusResult<Self> {
+    pub fn consumer_with_capacity(topic: &str, capacity: usize) -> HorusResult<Self> {
         Self::with_role(topic, LinkRole::Consumer, capacity)
     }
 
     // ====== INTERNAL IMPLEMENTATION ======
 
     /// Internal method to create Link with explicit role
-    fn with_role(
-        topic: &str,
-        role: LinkRole,
-        capacity: usize,
-    ) -> HorusResult<Self> {
+    fn with_role(topic: &str, role: LinkRole, capacity: usize) -> HorusResult<Self> {
         let capacity = capacity.next_power_of_two();
         let element_size = mem::size_of::<T>();
         let element_align = mem::align_of::<T>();

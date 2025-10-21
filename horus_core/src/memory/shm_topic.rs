@@ -594,7 +594,11 @@ impl<T> ShmTopic<T> {
                                 "Critical safety violation: head index {} >= capacity {}",
                                 head, self.capacity
                             );
-                            return Err(format!("Head index {} >= capacity {}", head, self.capacity).into());
+                            return Err(format!(
+                                "Head index {} >= capacity {}",
+                                head, self.capacity
+                            )
+                            .into());
                         }
 
                         let byte_offset = head * mem::size_of::<T>();

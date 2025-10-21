@@ -112,8 +112,9 @@ impl Scheduler {
     /// Internal method to run scheduler with optional node filtering
     fn run_with_filter(&mut self, node_filter: Option<&[&str]>) -> HorusResult<()> {
         // Create tokio runtime for nodes that need async
-        let rt = tokio::runtime::Runtime::new()
-            .map_err(|e| crate::error::HorusError::Internal(format!("Failed to create tokio runtime: {}", e)))?;
+        let rt = tokio::runtime::Runtime::new().map_err(|e| {
+            crate::error::HorusError::Internal(format!("Failed to create tokio runtime: {}", e))
+        })?;
 
         rt.block_on(async {
             // Set up signal handling

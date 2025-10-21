@@ -38,7 +38,11 @@ impl ServoControllerNode {
     }
 
     /// Create a new servo controller node with custom topics
-    pub fn new_with_topics(servo_topic: &str, joint_topic: &str, status_topic: &str) -> HorusResult<Self> {
+    pub fn new_with_topics(
+        servo_topic: &str,
+        joint_topic: &str,
+        status_topic: &str,
+    ) -> HorusResult<Self> {
         Ok(Self {
             servo_subscriber: Hub::new(servo_topic)?,
             joint_subscriber: Hub::new(joint_topic)?,

@@ -403,7 +403,7 @@ impl NodeInfo {
         self.restart_count += 1;
         if self.restart_count > self.config.max_restart_attempts {
             return Err(crate::error::HorusError::InvalidInput(
-                "Maximum restart attempts exceeded".to_string()
+                "Maximum restart attempts exceeded".to_string(),
             ));
         }
 

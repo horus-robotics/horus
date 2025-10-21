@@ -42,11 +42,14 @@ impl DigitalIONode {
     }
 
     /// Create a new digital I/O node with custom topics
-    pub fn new_with_topics(input_topic: &str, output_topic: &str, status_topic: &str) -> HorusResult<Self> {
+    pub fn new_with_topics(
+        input_topic: &str,
+        output_topic: &str,
+        status_topic: &str,
+    ) -> HorusResult<Self> {
         Ok(Self {
             input_publisher: Hub::new(input_topic)?,
-            output_subscriber: Hub::new(output_topic)
-                ?,
+            output_subscriber: Hub::new(output_topic)?,
             status_publisher: Hub::new(status_topic)?,
 
             input_pin_count: 8,  // Default 8 input pins

@@ -155,8 +155,8 @@ pub struct TopicInfo {
 }
 
 fn read_registry_file() -> anyhow::Result<Vec<NodeStatus>> {
-    let home_dir = std::env::var("HOME")
-        .map_err(|_| anyhow::anyhow!("Could not determine home directory"))?;
+    let home_dir =
+        std::env::var("HOME").map_err(|_| anyhow::anyhow!("Could not determine home directory"))?;
     let registry_path = format!("{}/.horus_registry.json", home_dir);
 
     if !std::path::Path::new(&registry_path).exists() {

@@ -36,7 +36,11 @@ impl DifferentialDriveNode {
     }
 
     /// Create a new differential drive node with custom topics
-    pub fn new_with_topics(cmd_topic: &str, drive_topic: &str, odom_topic: &str) -> HorusResult<Self> {
+    pub fn new_with_topics(
+        cmd_topic: &str,
+        drive_topic: &str,
+        odom_topic: &str,
+    ) -> HorusResult<Self> {
         Ok(Self {
             drive_publisher: Hub::new(drive_topic)?,
             odom_publisher: Hub::new(odom_topic)?,
