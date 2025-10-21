@@ -46,14 +46,11 @@ pub struct SharedLogBuffer {
     path: PathBuf,
 }
 
-impl Default for SharedLogBuffer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// Default implementation removed - use SharedLogBuffer::new()? instead
+// since initialization can fail
 
 impl SharedLogBuffer {
-    pub fn new() -> Self {
+    pub fn new() -> crate::error::HorusResult<Self> {
         let path = PathBuf::from("/dev/shm/horus_logs");
 
         // Ensure parent directory exists
@@ -70,18 +67,19 @@ impl SharedLogBuffer {
             .write(true)
             .create(true)
             .truncate(true)
-            .open(&path)
-            .expect("Failed to create shared log file");
+            .open(&path)?;
 
-        file.set_len(total_size as u64)
-            .expect("Failed to set file size");
+        file.set_len(total_size as u64)?;
 
-        let mmap = unsafe { MmapMut::map_mut(&file).expect("Failed to mmap") };
+        let mmap = unsafe {
+            MmapMut::map_mut(&file)
+                .map_err(|e| crate::error::HorusError::Memory(format!("Failed to mmap: {}", e)))?
+        };
 
-        Self {
+        Ok(Self {
             mmap: Mutex::new(mmap),
             path,
-        }
+        })
     }
 
     /// Push a log entry to the ring buffer (lock-free write)
@@ -90,7 +88,13 @@ impl SharedLogBuffer {
 
         // Read current write index from header
         let write_idx_bytes = &mmap[0..8];
-        let write_idx = u64::from_le_bytes(write_idx_bytes.try_into().unwrap()) as usize;
+        let write_idx = match write_idx_bytes.try_into() {
+            Ok(bytes) => u64::from_le_bytes(bytes) as usize,
+            Err(_) => {
+                eprintln!("❌ Failed to read log buffer index");
+                return;
+            }
+        };
 
         // Serialize log entry
         let serialized = match bincode::serialize(&entry) {
@@ -130,7 +134,13 @@ impl SharedLogBuffer {
 
         // Read write index
         let write_idx_bytes = &mmap[0..8];
-        let write_idx = u64::from_le_bytes(write_idx_bytes.try_into().unwrap()) as usize;
+        let write_idx = match write_idx_bytes.try_into() {
+            Ok(bytes) => u64::from_le_bytes(bytes) as usize,
+            Err(_) => {
+                eprintln!("❌ Failed to read log buffer index");
+                return Vec::new();
+            }
+        };
 
         let mut logs = Vec::new();
 
@@ -183,7 +193,8 @@ impl SharedLogBuffer {
 
 // Global shared memory log buffer
 lazy_static::lazy_static! {
-    pub static ref GLOBAL_LOG_BUFFER: SharedLogBuffer = SharedLogBuffer::new();
+    pub static ref GLOBAL_LOG_BUFFER: SharedLogBuffer = SharedLogBuffer::new()
+        .expect("FATAL: Failed to initialize global log buffer - cannot continue");
 }
 
 /// Publish a log entry to shared memory ring buffer

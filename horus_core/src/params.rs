@@ -213,7 +213,13 @@ impl Clone for RuntimeParams {
 
 impl Default for RuntimeParams {
     fn default() -> Self {
-        Self::init().expect("Failed to initialize params")
+        Self::init().unwrap_or_else(|e| {
+            eprintln!("Warning: Failed to initialize RuntimeParams: {}. Using empty params.", e);
+            Self {
+                params: Arc::new(RwLock::new(BTreeMap::new())),
+                persist_path: None,
+            }
+        })
     }
 }
 

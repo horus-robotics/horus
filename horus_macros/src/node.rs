@@ -460,13 +460,13 @@ pub fn impl_node_macro(input: TokenStream) -> TokenStream {
         let init_body = &init_section.body;
         if init_section.ctx_arg.is_some() {
             quote! {
-                fn init(&mut self, ctx: &mut horus_core::core::NodeInfo) -> ::std::result::Result<(), String> {
+                fn init(&mut self, ctx: &mut horus_core::core::NodeInfo) -> horus_core::error::HorusResult<()> {
                     #init_body
                 }
             }
         } else {
             quote! {
-                fn init(&mut self, _ctx: &mut horus_core::core::NodeInfo) -> ::std::result::Result<(), String> {
+                fn init(&mut self, _ctx: &mut horus_core::core::NodeInfo) -> horus_core::error::HorusResult<()> {
                     #init_body
                 }
             }
@@ -480,14 +480,13 @@ pub fn impl_node_macro(input: TokenStream) -> TokenStream {
         let shutdown_body = &shutdown_section.body;
         if shutdown_section.ctx_arg.is_some() {
             quote! {
-                fn shutdown(&mut self) -> ::std::result::Result<(), String> {
-                    let ctx = (); // placeholder for now
+                fn shutdown(&mut self, ctx: &mut horus_core::core::NodeInfo) -> horus_core::error::HorusResult<()> {
                     #shutdown_body
                 }
             }
         } else {
             quote! {
-                fn shutdown(&mut self) -> ::std::result::Result<(), String> {
+                fn shutdown(&mut self, _ctx: &mut horus_core::core::NodeInfo) -> horus_core::error::HorusResult<()> {
                     #shutdown_body
                 }
             }

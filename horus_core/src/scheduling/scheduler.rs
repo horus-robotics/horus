@@ -112,12 +112,13 @@ impl Scheduler {
     /// Internal method to run scheduler with optional node filtering
     fn run_with_filter(&mut self, node_filter: Option<&[&str]>) -> HorusResult<()> {
         // Create tokio runtime for nodes that need async
-        let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
+        let rt = tokio::runtime::Runtime::new()
+            .map_err(|e| crate::error::HorusError::Internal(format!("Failed to create tokio runtime: {}", e)))?;
 
         rt.block_on(async {
             // Set up signal handling
             let running = self.running.clone();
-            ctrlc::set_handler(move || {
+            if let Err(e) = ctrlc::set_handler(move || {
                 eprintln!("\n🛑 Ctrl+C received! Shutting down HORUS scheduler...");
                 if let Ok(mut r) = running.lock() {
                     *r = false;
@@ -127,8 +128,9 @@ impl Scheduler {
                     eprintln!("🚪 Force terminating application...");
                     std::process::exit(0);
                 });
-            })
-            .expect("Error setting HORUS signal handler");
+            }) {
+                eprintln!("Warning: Failed to set signal handler: {}", e);
+            }
 
             // Initialize nodes
             for registered in self.nodes.iter_mut() {

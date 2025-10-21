@@ -456,10 +456,11 @@ impl<T> ShmTopic<T> {
                         // Comprehensive bounds checking
                         if head >= self.capacity {
                             // This should never happen due to modulo arithmetic, but be extra safe
-                            panic!(
+                            eprintln!(
                                 "Critical safety violation: head index {} >= capacity {}",
                                 head, self.capacity
                             );
+                            return Err(msg);
                         }
 
                         // Calculate byte offset and verify it's within bounds
@@ -469,9 +470,10 @@ impl<T> ShmTopic<T> {
                         // Verify the write location is within our data region
                         let data_region_size = self.capacity * mem::size_of::<T>();
                         if byte_offset + mem::size_of::<T>() > data_region_size {
-                            panic!(
+                            eprintln!(
                                 "Critical safety violation: write would exceed data region bounds"
                             );
+                            return Err(msg);
                         }
 
                         // Safe to write now that we've verified bounds
@@ -501,18 +503,20 @@ impl<T> ShmTopic<T> {
 
         // Validate tail position is within bounds
         if my_tail >= self.capacity {
-            panic!(
+            eprintln!(
                 "Critical safety violation: consumer tail {} >= capacity {}",
                 my_tail, self.capacity
             );
+            return None;
         }
 
         // Validate head position is within bounds
         if current_head >= self.capacity {
-            panic!(
+            eprintln!(
                 "Critical safety violation: head {} >= capacity {}",
                 current_head, self.capacity
             );
+            return None;
         }
 
         if my_tail == current_head {
@@ -530,10 +534,11 @@ impl<T> ShmTopic<T> {
         let msg = unsafe {
             // Comprehensive bounds checking
             if my_tail >= self.capacity {
-                panic!(
+                eprintln!(
                     "Critical safety violation: consumer tail index {} >= capacity {}",
                     my_tail, self.capacity
                 );
+                return None;
             }
 
             // Calculate byte offset and verify it's within bounds
@@ -543,7 +548,8 @@ impl<T> ShmTopic<T> {
             // Verify the read location is within our data region
             let data_region_size = self.capacity * mem::size_of::<T>();
             if byte_offset + mem::size_of::<T>() > data_region_size {
-                panic!("Critical safety violation: read would exceed data region bounds");
+                eprintln!("Critical safety violation: read would exceed data region bounds");
+                return None;
             }
 
             // Safe to read now that we've verified bounds
@@ -584,10 +590,11 @@ impl<T> ShmTopic<T> {
                     unsafe {
                         // Bounds checking
                         if head >= self.capacity {
-                            panic!(
+                            eprintln!(
                                 "Critical safety violation: head index {} >= capacity {}",
                                 head, self.capacity
                             );
+                            return Err(format!("Head index {} >= capacity {}", head, self.capacity).into());
                         }
 
                         let byte_offset = head * mem::size_of::<T>();
@@ -596,9 +603,10 @@ impl<T> ShmTopic<T> {
                         // Verify bounds
                         let data_region_size = self.capacity * mem::size_of::<T>();
                         if byte_offset + mem::size_of::<T>() > data_region_size {
-                            panic!(
+                            eprintln!(
                                 "Critical safety violation: loan would exceed data region bounds"
                             );
+                            return Err("Loan would exceed data region bounds".into());
                         }
 
                         return Ok(PublisherSample {
@@ -628,17 +636,19 @@ impl<T> ShmTopic<T> {
 
         // Validate positions
         if my_tail >= self.capacity {
-            panic!(
+            eprintln!(
                 "Critical safety violation: consumer tail {} >= capacity {}",
                 my_tail, self.capacity
             );
+            return None;
         }
 
         if current_head >= self.capacity {
-            panic!(
+            eprintln!(
                 "Critical safety violation: head {} >= capacity {}",
                 current_head, self.capacity
             );
+            return None;
         }
 
         if my_tail == current_head {
@@ -658,7 +668,8 @@ impl<T> ShmTopic<T> {
             // Verify bounds
             let data_region_size = self.capacity * mem::size_of::<T>();
             if byte_offset + mem::size_of::<T>() > data_region_size {
-                panic!("Critical safety violation: receive would exceed data region bounds");
+                eprintln!("Critical safety violation: receive would exceed data region bounds");
+                return None;
             }
 
             Some(ConsumerSample {
