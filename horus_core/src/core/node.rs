@@ -130,7 +130,7 @@ impl NodeHeartbeat {
     }
 
     /// Write heartbeat to file
-    pub fn write_to_file(&self, node_name: &str) -> std::io::Result<()> {
+    pub fn write_to_file(&self, node_name: &str) -> crate::error::HorusResult<()> {
         let dir = std::path::PathBuf::from("/dev/shm/horus/heartbeats");
         std::fs::create_dir_all(&dir)?;
 

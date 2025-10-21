@@ -555,7 +555,7 @@ impl<T> ShmTopic<T> {
 
     /// Loan a slot in the shared memory for zero-copy publishing
     /// Returns a PublisherSample that provides direct access to shared memory
-    pub fn loan(&self) -> Result<PublisherSample<'_, T>, &'static str> {
+    pub fn loan(&self) -> crate::error::HorusResult<PublisherSample<'_, T>> {
         let header = unsafe { self.header.as_ref() };
 
         loop {
@@ -569,7 +569,7 @@ impl<T> ShmTopic<T> {
             if current_sequence >= max_unread
                 && current_sequence - header.sequence_number.load(Ordering::Relaxed) >= max_unread
             {
-                return Err("Buffer full - cannot loan slot");
+                return Err("Buffer full - cannot loan slot".into());
             }
 
             // Try to claim this slot atomically

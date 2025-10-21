@@ -307,9 +307,9 @@ impl<T> Link<T> {
     /// Loan a slot in shared memory for zero-copy writing (advanced API)
     /// Returns a LinkSample that auto-publishes on drop
     /// Only works if this Link is a Producer
-    pub fn loan(&self) -> Result<LinkSample<'_, T>, &'static str> {
+    pub fn loan(&self) -> HorusResult<LinkSample<'_, T>> {
         if self.role != LinkRole::Producer {
-            return Err("Cannot loan on Consumer Link");
+            return Err("Cannot loan on Consumer Link".into());
         }
 
         let header = unsafe { self.header.as_ref() };
@@ -317,7 +317,7 @@ impl<T> Link<T> {
         let next_head = (head + 1) & (self.capacity - 1);
 
         if next_head == header.tail.load(Ordering::Acquire) {
-            return Err("Buffer full");
+            return Err("Buffer full".into());
         }
 
         let slot_ptr = unsafe { self.data_ptr.as_ptr().add(head * mem::size_of::<T>()) as *mut T };

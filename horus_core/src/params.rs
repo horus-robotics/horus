@@ -138,17 +138,23 @@ impl RuntimeParams {
 
     /// Get all parameters
     pub fn get_all(&self) -> BTreeMap<String, Value> {
-        self.params.read().unwrap().clone()
+        self.params.read()
+            .map(|p| p.clone())
+            .unwrap_or_default()
     }
 
     /// List all parameter keys
     pub fn list_keys(&self) -> Vec<String> {
-        self.params.read().unwrap().keys().cloned().collect()
+        self.params.read()
+            .map(|p| p.keys().cloned().collect())
+            .unwrap_or_default()
     }
 
     /// Check if a parameter exists
     pub fn has(&self, key: &str) -> bool {
-        self.params.read().unwrap().contains_key(key)
+        self.params.read()
+            .map(|p| p.contains_key(key))
+            .unwrap_or(false)
     }
 
     /// Remove a parameter
