@@ -8,13 +8,13 @@ members = [
     "horus_daemon",
     "horus_library",
     "horus_c",  # C API bindings
-    # Unies (multi-node applications)
+    # Example apps (multi-node applications)
 
-    "horus_library/unies/snakesim",
-    "horus_library/unies/snakesim/snake_control_node",
-    "horus_library/unies/snakesim/snake_scheduler",
-    "horus_library/unies/snakesim/snakesim_gui",
-    "horus_library/unies/tanksim",
+    "horus_library/apps/snakesim",
+    "horus_library/apps/snakesim/snake_control_node",
+    "horus_library/apps/snakesim/snake_scheduler",
+    "horus_library/apps/snakesim/snakesim_gui",
+    "horus_library/apps/tanksim",
    # Tools
     "horus_library/tools/sim2d",
     "benchmarks",

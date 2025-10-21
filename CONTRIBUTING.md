@@ -83,7 +83,7 @@ Follow standard Rust conventions:
 /// ```
 /// let hub = Hub::<f32>::new("temperature")?;
 /// ```
-pub fn new(topic: &str) -> Result<Self, HorusError> {
+pub fn new(topic: &str) -> HorusResult<Self> {
     // implementation
 }
 ```

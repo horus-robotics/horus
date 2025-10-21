@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
     use horus_core::core::{Node, NodeInfo, NodeState};
+    use horus_core::error::HorusResult;
     use std::sync::{Arc, Mutex};
 
     // Simple test node implementation
@@ -20,7 +21,7 @@ mod tests {
             self.name
         }
 
-        fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        fn init(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
             ctx.log_info("Test node initializing");
             Ok(())
         }
@@ -34,7 +35,7 @@ mod tests {
             }
         }
 
-        fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        fn shutdown(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
             ctx.log_info("Test node shutting down");
             Ok(())
         }

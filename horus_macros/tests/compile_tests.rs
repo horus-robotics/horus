@@ -4,7 +4,7 @@
 
 #[cfg(test)]
 mod tests {
-    use horus_macros::node;
+    
 
     // Test that messages work with standard derive macros
     #[test]

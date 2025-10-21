@@ -99,12 +99,12 @@ impl NodeInfo {
 
 ### 3. Hub Communication
 
-From `horus_core/src/communication/horus/hub.rs`:
+From `horus_core/src/communication/hub.rs`:
 
 ```rust
 impl<T> Hub<T> {
-    pub fn new(topic_name: &str) -> Result<Self, Box<dyn Error>>;
-    pub fn new_with_capacity(topic_name: &str, capacity: usize) -> Result<Self, Box<dyn Error>>;
+    pub fn new(topic_name: &str) -> HorusResult<Self>;
+    pub fn new_with_capacity(topic_name: &str, capacity: usize) -> HorusResult<Self>;
     pub fn send(&self, msg: T, ctx: Option<&mut NodeInfo>) -> Result<(), T>;
     pub fn recv(&self, ctx: Option<&mut NodeInfo>) -> Option<T>;
     pub fn get_topic_name(&self) -> &str;
@@ -157,7 +157,7 @@ pub struct SensorNode {
 }
 
 impl SensorNode {
-    pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new() -> HorusResult<Self> {
         Ok(Self {
             publisher: Hub::new("sensor_data")?,
             counter: 0,
@@ -168,7 +168,7 @@ impl SensorNode {
 impl Node for SensorNode {
     fn name(&self) -> &'static str { "SensorNode" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
         ctx.log_info("SensorNode initialized");
         Ok(())
     }
@@ -180,7 +180,7 @@ impl Node for SensorNode {
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
         ctx.log_info("SensorNode shutdown");
         Ok(())
     }
@@ -195,7 +195,7 @@ pub struct ControlNode {
 }
 
 impl ControlNode {
-    pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new() -> HorusResult<Self> {
         Ok(Self {
             subscriber: Hub::new("sensor_data")?,
         })
@@ -205,7 +205,7 @@ impl ControlNode {
 impl Node for ControlNode {
     fn name(&self) -> &'static str { "ControlNode" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
         ctx.log_info("ControlNode initialized");
         Ok(())
     }
@@ -219,7 +219,7 @@ impl Node for ControlNode {
         }
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
         ctx.log_info("ControlNode shutdown");
         Ok(())
     }
@@ -230,8 +230,9 @@ impl Node for ControlNode {
 
 ```rust
 use horus_core::scheduling::Scheduler;
+use horus_core::error::HorusResult;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
 
     scheduler
@@ -371,7 +372,7 @@ impl Node for MyNode {
 
 ### Uni (Multi-Node Application)
 
-See the SnakeSim example in `horus_library/unies/snakesim/` which demonstrates:
+See the SnakeSim example in `horus_library/apps/snakesim/` which demonstrates:
 - Multiple nodes with different priorities
 - Built-in logging for debugging message flow
 - Real-time game loop execution

@@ -11,7 +11,7 @@ The HORUS Library provides a comprehensive collection of tested nodes, algorithm
   - [Messages](#messages)
   - [Nodes](#nodes)
   - [Algorithms](#algorithms)
-  - [Unies (Applications)](#unies-applications)
+  - [Example Apps (Applications)](#example-apps-applications)
 - [Message Safety](#message-safety)
 - [Usage Examples](#usage-examples)
 - [Building](#building)
@@ -210,7 +210,7 @@ let path = pathfinder.process(&input_data);
 pathfinder.reset(); // Reset algorithm state
 ```
 
-### Unies (Applications)
+### Example Apps (Applications)
 
 Complete distributed applications demonstrating HORUS concepts.
 
@@ -372,7 +372,7 @@ cargo build --release -p joystick_node
 
 ```bash
 # Run SnakeSim
-cd horus_library/unies/snakesim/snake_scheduler
+cd horus_library/apps/snakesim/snake_scheduler
 cargo run
 
 # Monitor in another terminal
@@ -390,7 +390,7 @@ cargo test -p keyboard_input_node
 cargo test -p joystick_node
 
 # Integration tests with actual hardware
-cd horus_library/unies/snakesim/snake_scheduler
+cd horus_library/apps/snakesim/snake_scheduler
 cargo run  # Use arrow keys and gamepad to test both input nodes
 ```
 

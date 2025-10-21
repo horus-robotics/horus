@@ -263,7 +263,7 @@ node! {
     }
 }
 
-fn main() -> Result<()> {
+fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
 
     // Register the controller node with priority 0 (highest)
@@ -288,7 +288,7 @@ struct Controller {
 }
 
 impl Controller {
-    fn new() -> Result<Self> {
+    fn new() -> HorusResult<Self> {
         Ok(Self {
             cmd_vel: Hub::new("motors/cmd_vel")?,
         })
@@ -308,7 +308,7 @@ impl Node for Controller {
     }
 }
 
-fn main() -> Result<()> {
+fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
 
     // Register the controller node with priority 10
@@ -363,8 +363,11 @@ if __name__ == "__main__":
 }
 
 fn create_main_c(project_path: &Path) -> Result<()> {
-    // Placeholder - blank for now
-    let content = "";
+    // C bindings are under development - placeholder template
+    let content = r#"// C bindings for HORUS are under development
+// Please use Rust or Python for now
+// See: https://docs.horus.dev/c-bindings for updates
+"#;
     fs::write(project_path.join("main.c"), content)?;
     Ok(())
 }

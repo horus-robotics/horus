@@ -16,7 +16,7 @@ The library includes:
 
 - **Standard Messages** - Memory-safe message types for common robotics data
 - **Pre-built Nodes** - Ready-to-use nodes for sensors, actuators, and control
-- **Example Applications** (Unies) - Complete multi-node demonstrations
+- **Example Applications** - Complete multi-node demonstrations
 - **Development Tools** - Simulators and testing utilities
 
 **Installation:**
@@ -649,7 +649,7 @@ scheduler.register(Box::new(encoder), 0, Some(true));
 **Topics:**
 - Publishes: `encoder/ticks` → `i64`
 
-## Example Applications (Unies)
+## Example Applications
 
 ### SnakeSim
 Multi-node snake game demonstration.
@@ -665,7 +665,7 @@ KeyboardInputNode (priority 0)
 
 **Run:**
 ```bash
-cd horus_library/unies/snakesim/snake_scheduler
+cd horus_library/apps/snakesim/snake_scheduler
 cargo run --release
 ```
 
@@ -680,7 +680,7 @@ Tank physics simulation.
 
 **Run:**
 ```bash
-cd horus_library/unies/tanksim
+cd horus_library/apps/tanksim
 cargo run --release
 ```
 

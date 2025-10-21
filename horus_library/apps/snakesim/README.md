@@ -31,7 +31,7 @@ SnakeSim is a **uni (multi-node application)** that demonstrates HORUS's pub/sub
 ### Run with Scheduler (Recommended)
 
 ```bash
-cd horus_library/unies/snakesim/snake_scheduler
+cd horus_library/apps/snakesim/snake_scheduler
 cargo run --release
 ```
 
@@ -43,10 +43,10 @@ cargo run --release
 
 ```bash
 # From HORUS root
-horus run horus_library/unies/snakesim/snake_scheduler/src/main.rs
+horus run horus_library/apps/snakesim/snake_scheduler/src/main.rs
 
 # Or with release mode
-horus run -r horus_library/unies/snakesim/snake_scheduler/src/main.rs
+horus run -r horus_library/apps/snakesim/snake_scheduler/src/main.rs
 ```
 
 ## Project Structure

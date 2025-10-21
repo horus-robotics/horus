@@ -66,7 +66,7 @@ HORUS is currently in **alpha development** (v0.1.0-alpha). The core framework i
 
 **Language Bindings**
 - Python bindings functional but missing type hints
-- C bindings support minimal operations only
+- C bindings are in alpha (minimal operations only, under active development)
 
 ### Recommendations
 
@@ -260,8 +260,8 @@ HORUS/
 ├── horus_c/                    # C bindings
 ├── horus_library/              # Standard library and examples
 │   ├── messages/               # Standard message types
-│   ├── unies/snakesim/         # Uni: Snake game demo
-│   ├── unies/tanksim/          # Uni: Tank simulation
+│   ├── apps/snakesim/          # Example app: Snake game demo
+│   ├── apps/tanksim/           # Example app: Tank simulation
 │   └── tools/sim2d/            # 2D physics simulator
 ├── benchmarks/                 # Performance testing
 └── docs-site/                  # Documentation website
@@ -274,7 +274,7 @@ HORUS/
 horus new <name>                # Create new project (interactive)
 horus new my_robot -r           # Create Rust project
 horus new my_robot -p           # Create Python project
-horus new my_robot -c           # Create C project
+horus new my_robot -c           # Create C project (⚠️ alpha - under development)
 horus new my_robot -m           # Create Rust project with macros
 ```
 
@@ -425,9 +425,9 @@ node! {
 
 ## Example Applications
 
-### SnakeSim (Uni - Multi-Node Game)
+### SnakeSim (Example App - Multi-Node Game)
 ```bash
-cd horus_library/unies/snakesim/snake_scheduler
+cd horus_library/apps/snakesim/snake_scheduler
 cargo run --release
 ```
 

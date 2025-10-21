@@ -155,13 +155,15 @@ pub struct TopicInfo {
 }
 
 fn read_registry_file() -> anyhow::Result<Vec<NodeStatus>> {
-    let registry_path = "/home/lord-patpak/.horus_registry.json";
+    let home_dir = std::env::var("HOME")
+        .map_err(|_| anyhow::anyhow!("Could not determine home directory"))?;
+    let registry_path = format!("{}/.horus_registry.json", home_dir);
 
-    if !std::path::Path::new(registry_path).exists() {
+    if !std::path::Path::new(&registry_path).exists() {
         return Ok(Vec::new());
     }
 
-    let registry_content = std::fs::read_to_string(registry_path)?;
+    let registry_content = std::fs::read_to_string(&registry_path)?;
     let registry: serde_json::Value = serde_json::from_str(&registry_content)?;
 
     let mut nodes = Vec::new();
@@ -711,9 +713,11 @@ fn calculate_topic_rate(topic_name: &str, modified: Option<std::time::SystemTime
 
 fn load_topic_metadata_from_registry() -> StdHashMap<String, (String, Vec<String>, Vec<String>)> {
     let mut topic_map = StdHashMap::new();
-    let registry_path = "/home/lord-patpak/.horus_registry.json";
+    let registry_path = std::env::var("HOME")
+        .map(|home| format!("{}/.horus_registry.json", home))
+        .unwrap_or_else(|_| ".horus_registry.json".to_string());
 
-    if let Ok(content) = std::fs::read_to_string(registry_path) {
+    if let Ok(content) = std::fs::read_to_string(&registry_path) {
         if let Ok(registry) = serde_json::from_str::<serde_json::Value>(&content) {
             if let Some(nodes) = registry["nodes"].as_array() {
                 for node in nodes {

@@ -2,7 +2,7 @@
 name = "horus_library"
 version = "0.1.0"
 edition = "2021"
-description = "HORUS Library - Collection of Nodes, Algorithms, and Unies"
+description = "HORUS Library - Collection of Nodes, Algorithms, and Example Apps"
 authors = ["HORUS Team"]
 
 [dependencies]
@@ -56,4 +56,4 @@ path = "lib.rs"
 
 
 # Note: snakesim has its own workspace configuration
-# Individual unies manage their own dependencies
+# Individual example apps manage their own dependencies

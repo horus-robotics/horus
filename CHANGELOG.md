@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Lock-free, zero-copy shared memory pub/sub system (Hub)
 - Priority-based scheduler with deterministic execution (0-255 priority levels)
 - Node trait with init/tick/shutdown lifecycle
-- Production-grade latency: 366ns-2.8us for 16B-120KB messages
+- Production-grade latency: 296ns-176μs for 16B-120KB messages
 - POSIX shared memory implementation with cache-line alignment
 - Built-in Ctrl+C handling with proper cleanup
 - Comprehensive logging with IPC timing metrics
@@ -112,10 +112,10 @@ This is the initial alpha release of HORUS. The core framework is production-gra
 - Advanced C bindings
 
 **Performance Benchmarks:**
-- 16B messages: 366ns
-- 304B IMU data: 543ns
-- 1.5KB LaserScan: 1.58us
-- 120KB PointCloud: 2.8us
+- 16B CmdVel: 296ns
+- 304B IMU data: 718ns
+- 1.5KB LaserScan: 1.31μs
+- 120KB PointCloud (10K pts): 176μs
 
 **Breaking Changes:**
 - None (initial release)
