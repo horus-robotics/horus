@@ -305,17 +305,17 @@ struct TemperatureSensor {
 }
 
 impl TemperatureSensor {
-    pub fn new() -> Self {
-        Self {
-            publisher: Hub::new("temperature_data").expect("Failed to create publisher"),
+    pub fn new() -> HorusResult<Self> {
+        Ok(Self {
+            publisher: Hub::new("temperature_data")?,
             reading_count: 0,
-        }
+        })
     }
 }
 
 impl Node for TemperatureSensor {
     fn name(&self) -> &'static str { "TemperatureSensor" }
-    
+
     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         // Simulate sensor reading
         let temperature = 20.0 + (self.reading_count as f32 * 0.1);
@@ -324,9 +324,6 @@ impl Node for TemperatureSensor {
         // Publish with automatic logging
         let _ = self.publisher.send(sensor_data, ctx);
         self.reading_count += 1;
-        
-        // Sleep for realistic sensor timing
-        std::thread::sleep(std::time::Duration::from_millis(1000));
     }
 }
 ```
@@ -335,23 +332,24 @@ impl Node for TemperatureSensor {
 
 ```rust
 use horus_core::Scheduler;
+use horus_core::error::HorusResult;
 
-fn main() {
+fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
-    
+
     // Input layer (highest priority)
-    scheduler.register(Box::new(KeyboardInputNode::new()), 0, Some(true));
-    scheduler.register(Box::new(JoystickInputNode::new()), 1, Some(true));
-    
+    scheduler.register(Box::new(KeyboardInputNode::new()?), 0, Some(true));
+    scheduler.register(Box::new(JoystickInputNode::new()?), 1, Some(true));
+
     // Processing layer (medium priority)
-    scheduler.register(Box::new(ControllerNode::new()), 5, Some(true));
-    
+    scheduler.register(Box::new(ControllerNode::new()?), 5, Some(true));
+
     // Output layer (lowest priority)
-    scheduler.register(Box::new(ActuatorNode::new()), 10, Some(true));
-    scheduler.register(Box::new(LoggerNode::new()), 11, Some(false));
-    
+    scheduler.register(Box::new(ActuatorNode::new()?), 10, Some(true));
+    scheduler.register(Box::new(LoggerNode::new()?), 11, Some(false));
+
     // Run with built-in Ctrl+C handling
-    scheduler.tick_all();
+    scheduler.tick_all()
 }
 ```
 

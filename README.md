@@ -196,37 +196,39 @@ pub struct SensorNode {
 impl Node for SensorNode {
     fn name(&self) -> &'static str { "SensorNode" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    // Optional: Called once at startup
+    fn init(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
         ctx.log_info("SensorNode initialized");
         Ok(())
     }
 
+    // Required: Called repeatedly by scheduler
     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         let reading = self.counter as f64 * 0.1;
         let _ = self.publisher.send(reading, ctx);
         self.counter += 1;
-        std::thread::sleep(std::time::Duration::from_millis(100));
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    // Optional: Called once at shutdown
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
         ctx.log_info("SensorNode shutdown");
         Ok(())
     }
 }
 
-fn main() {
+fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
 
     scheduler.register(
         Box::new(SensorNode {
-            publisher: Hub::new("sensor_data").expect("Failed to create hub"),
+            publisher: Hub::new("sensor_data")?,
             counter: 0,
         }),
         0,           // Priority (0 = highest)
         Some(true)   // Enable logging
     );
 
-    scheduler.tick_all().expect("Scheduler failed");
+    scheduler.tick_all()
 }
 ```
 

@@ -168,18 +168,20 @@ impl SensorNode {
 impl Node for SensorNode {
     fn name(&self) -> &'static str { "SensorNode" }
 
+    // Optional: Called once at startup
     fn init(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
         ctx.log_info("SensorNode initialized");
         Ok(())
     }
 
+    // Required: Called repeatedly by scheduler
     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         let reading = self.counter as f64 * 0.1;
         let _ = self.publisher.send(reading, ctx);
         self.counter += 1;
-        std::thread::sleep(std::time::Duration::from_millis(100));
     }
 
+    // Optional: Called once at shutdown
     fn shutdown(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
         ctx.log_info("SensorNode shutdown");
         Ok(())
@@ -205,11 +207,13 @@ impl ControlNode {
 impl Node for ControlNode {
     fn name(&self) -> &'static str { "ControlNode" }
 
+    // Optional: Called once at startup
     fn init(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
         ctx.log_info("ControlNode initialized");
         Ok(())
     }
 
+    // Required: Called repeatedly by scheduler
     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         if let Some(data) = self.subscriber.recv(ctx) {
             // Process the received data
@@ -219,6 +223,7 @@ impl Node for ControlNode {
         }
     }
 
+    // Optional: Called once at shutdown
     fn shutdown(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
         ctx.log_info("ControlNode shutdown");
         Ok(())
