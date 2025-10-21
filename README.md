@@ -7,8 +7,8 @@ HORUS is a modern Rust-based robotics framework designed for real-time performan
 ## Key Features
 
 ### **Real-Time Performance**
-- **Production Latency**: 366ns-2.8μs (16B-120KB messages)
-- **Sub-Microsecond Messaging**: Ultra-low latency for time-critical robotics applications
+- **Production Latency**: 296ns-176μs (16B-120KB messages)
+- **Sub-Microsecond Messaging**: 296-718ns for control messages, ultra-low latency for time-critical robotics
 - **Priority-Based Scheduling**: Deterministic execution order (0 = highest priority)
 - **Lock-Free Communication**: Atomic operations with cache-line alignment
 - **Built-in Ctrl+C Handling**: Reliable termination with proper cleanup
@@ -33,7 +33,7 @@ HORUS is currently in **alpha development** (v0.1.0-alpha). The core framework i
 ### What Works
 
 **Core Framework (Production-Ready)**
-- Hub pub/sub messaging with 366ns-2.8us latency
+- Hub pub/sub messaging with 296ns-1.31μs latency (control/sensor messages)
 - Priority-based scheduler with deterministic execution
 - Multi-language support (Rust, Python, C)
 - Shared memory IPC with zero-copy performance

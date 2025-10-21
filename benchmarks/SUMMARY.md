@@ -2,29 +2,29 @@
 
 ## Quick Reference
 
-**Last Updated**: October 3, 2025
+**Last Updated**: October 21, 2025
 
 ### Production Performance (with serde serialization)
 
 | Message Type | Size | Latency Range | Avg Latency | Throughput | Target Rate | Headroom |
 |--------------|------|---------------|-------------|------------|-------------|----------|
-| **CmdVel** | 16 B | 366-643 ns | ~500 ns | 2.7M msg/s | 1000 Hz | 2,700x |
-| **BatteryState** | 104 B | 390-700 ns | ~545 ns | 2.6M msg/s | 1 Hz | 2.6M x |
-| **IMU** | 304 B | 543ns-1.37μs | ~940 ns | 1.8M msg/s | 100 Hz | 18,000x |
-| **Odometry** | 736 B | 774ns-1.43μs | ~1.1 μs | 1.3M msg/s | 50 Hz | 26,000x |
-| **LaserScan** | 1.5 KB | 1.58-2.81μs | ~2.2 μs | 633K msg/s | 10 Hz | 63,000x |
-| **PointCloud (100pt)** | 1.2 KB | 1.5-3.8μs | ~2.6 μs | 665K msg/s | 30 Hz | 22,000x |
-| **PointCloud (1Kpt)** | 12 KB | 12-18μs | ~15 μs | 82K msg/s | 30 Hz | 2,700x |
-| **PointCloud (10Kpt)** | 120 KB | 215-507μs | ~360 μs | 4.7K msg/s | 30 Hz | 155x |
-| **Mixed Loop** | - | 993ns-1.77μs | ~1.4 μs | 1M msg/s | 100 Hz | 10,000x |
+| **CmdVel** | 16 B | 237-355 ns | **296 ns** | **3.4M msg/s** | 1000 Hz | **3,380x** |
+| **BatteryState** | 104 B | 284-426 ns | **355 ns** | **2.8M msg/s** | 1 Hz | **2.8M x** |
+| **IMU** | 304 B | 574-861 ns | **718 ns** | **1.4M msg/s** | 100 Hz | **13,937x** |
+| **Odometry** | 736 B | 520-780 ns | **650 ns** | **1.5M msg/s** | 50 Hz | **30,783x** |
+| **LaserScan** | 1.5 KB | 1.05-1.58μs | **1.31 μs** | **762K msg/s** | 10 Hz | **76,203x** |
+| **PointCloud (100pt)** | 1.2 KB | 1.48-2.22μs | **1.85 μs** | **540K msg/s** | 30 Hz | **17,984x** |
+| **PointCloud (1Kpt)** | 12 KB | 6.04-9.06μs | **7.55 μs** | **132K msg/s** | 30 Hz | **4,414x** |
+| **PointCloud (10Kpt)** | 120 KB | 141-211μs | **176 μs** | **5.7K msg/s** | 30 Hz | **189x** |
+| **Mixed Loop** | - | 518-778 ns | **648 ns** | **1.5M msg/s** | 100 Hz | **15,431x** |
 
 ### vs traditional frameworks Comparison
 
 | Message Size | HORUS | traditional frameworks (DDS) | traditional frameworks (FastDDS) | Speedup |
 |--------------|-------|------------|----------------|---------|
-| 16 B | **~500 ns** | 50-100 μs | 20-50 μs | **100-200x** |
-| 304 B | **~940 ns** | 50-100 μs | 20-50 μs | **53-106x** |
-| 1.5 KB | **~2.2 μs** | 100-500 μs | 50-200 μs | **45-227x** |
+| 16 B | **296 ns** | 50-100 μs | 20-50 μs | **169-338x** |
+| 304 B | **718 ns** | 50-100 μs | 20-50 μs | **70-139x** |
+| 1.5 KB | **1.31 μs** | 100-500 μs | 50-200 μs | **76-382x** |
 
 ## Key Findings
 

@@ -8,13 +8,13 @@
 
 | Message Type | Size | Latency | Throughput | Typical Rate | Headroom |
 |--------------|------|---------|------------|--------------|----------|
-| **CmdVel** | 16 B | **366 ns** | 2.73M msg/s | 1000 Hz | 2,730x |
-| **BatteryState** | 104 B | **390 ns** | 2.56M msg/s | 1 Hz | 2.5M x |
-| **IMU** | 304 B | **543 ns** | 1.84M msg/s | 100 Hz | 18,400x |
-| **Odometry** | 736 B | **774 ns** | 1.29M msg/s | 50 Hz | 25,800x |
-| **LaserScan** | 1.5 KB | **1.58 μs** | 633K msg/s | 10 Hz | 63,300x |
-| **PointCloud (1K)** | ~12 KB | **12.16 μs** | 82K msg/s | 30 Hz | 2,740x |
-| **PointCloud (10K)** | ~120 KB | **215 μs** | 4.7K msg/s | 30 Hz | 155x |
+| **CmdVel** | 16 B | **296 ns** | 3.38M msg/s | 1000 Hz | 3,380x |
+| **BatteryState** | 104 B | **355 ns** | 2.82M msg/s | 1 Hz | 2.8M x |
+| **IMU** | 304 B | **718 ns** | 1.39M msg/s | 100 Hz | 13,937x |
+| **Odometry** | 736 B | **650 ns** | 1.54M msg/s | 50 Hz | 30,783x |
+| **LaserScan** | 1.5 KB | **1.31 μs** | 762K msg/s | 10 Hz | 76,203x |
+| **PointCloud (1K)** | ~12 KB | **7.55 μs** | 132K msg/s | 30 Hz | 4,414x |
+| **PointCloud (10K)** | ~120 KB | **176 μs** | 5.7K msg/s | 30 Hz | 189x |
 
 
 ---
@@ -39,14 +39,14 @@ cargo build --release --bin production_bench
 
 ┏━━  CmdVel (Motor Control Command)
 ┃    Size: 16 bytes | Typical rate: 1000Hz
-┃    Latency (avg): 366.06 ns
-┃    Throughput: 2731801.56 msg/s
+┃    Latency (avg): 295.88 ns
+┃    Throughput: 3379733.70 msg/s
 ┗━━
 
 ┏━━  LaserScan (2D Lidar Data)
 ┃    Size: 1480 bytes | Typical rate: 10Hz
-┃    Latency (avg): 1.58 μs
-┃    Throughput: 633403.12 msg/s
+┃    Latency (avg): 1.31 μs
+┃    Throughput: 762025.93 msg/s
 ┗━━
 ```
 
@@ -63,9 +63,9 @@ cargo build --release --bin production_bench
 
 ### Production Readiness
 
-- **Real-time control**: 366 ns latency supports 1000Hz+ control loops
-- **Sensor fusion**: Mixed workload maintains sub-microsecond performance (993 ns avg)
-- **Perception pipelines**: 10K point clouds @ 30Hz with 155x headroom
+- **Real-time control**: 296 ns latency supports 1000Hz+ control loops with 3,380x headroom
+- **Sensor fusion**: Mixed workload maintains sub-microsecond performance (648 ns avg)
+- **Perception pipelines**: 10K point clouds @ 30Hz with 189x headroom
 - **Multi-robot systems**: Throughput supports 100+ robots on single node
 
 ---
@@ -77,12 +77,12 @@ cargo build --release --bin production_bench
 **Structure**: `{ timestamp: u64, linear: f32, angular: f32 }`
 
 ```
-Average Latency: 366.06 ns
-Throughput:      2,731,801 msg/s
-Range:           293-439 ns
+Average Latency: 295.88 ns
+Throughput:      3,379,734 msg/s
+Range:           237-355 ns
 ```
 
-**Analysis**: Excellent sub-microsecond performance suitable for 1000Hz control loops with 2,730x headroom.
+**Analysis**: Excellent sub-microsecond performance suitable for 1000Hz control loops with 3,380x headroom.
 
 ---
 
@@ -91,12 +91,12 @@ Range:           293-439 ns
 **Structure**: `{ ranges: [f32; 360], angle_min/max, metadata }`
 
 ```
-Average Latency: 1.58 μs
-Throughput:      633,403 msg/s
-Range:           1.26-1.90 μs
+Average Latency: 1.31 μs
+Throughput:      762,026 msg/s
+Range:           1.05-1.58 μs
 ```
 
-**Analysis**: Consistent sub-2-microsecond latency for 1.5KB messages. Can easily handle 10Hz lidar updates with 63,000x headroom.
+**Analysis**: Consistent sub-2-microsecond latency for 1.5KB messages. Can easily handle 10Hz lidar updates with 76,203x headroom.
 
 ---
 
@@ -105,9 +105,9 @@ Range:           1.26-1.90 μs
 **Structure**: `{ orientation: [f64; 4], angular_velocity: [f64; 3], linear_acceleration: [f64; 3], covariances: [f64; 27] }`
 
 ```
-Average Latency: 543.43 ns
-Throughput:      1,840,150 msg/s
-Range:           435-652 ns
+Average Latency: 717.53 ns
+Throughput:      1,393,671 msg/s
+Range:           574-861 ns
 ```
 
 **Analysis**: Sub-microsecond performance with complex nested arrays and 27-element covariance matrices.
@@ -119,9 +119,9 @@ Range:           435-652 ns
 **Structure**: `{ pose: Pose2D, twist: Twist, pose_covariance: [f64; 36], twist_covariance: [f64; 36] }`
 
 ```
-Average Latency: 773.54 ns
-Throughput:      1,292,753 msg/s
-Range:           619-928 ns
+Average Latency: 649.70 ns
+Throughput:      1,539,167 msg/s
+Range:           520-780 ns
 ```
 
 **Analysis**: Sub-microsecond latency for 736-byte messages with extensive covariance data.
@@ -132,26 +132,26 @@ Range:           619-928 ns
 
 #### Small (100 points @ 30Hz)
 ```
-Average Latency: 1.50 μs
-Throughput:      664,661 msg/s
+Average Latency: 1.85 μs
+Throughput:      539,529 msg/s
 Data Size:       ~1.2 KB
 ```
 
 #### Medium (1,000 points @ 30Hz)
 ```
-Average Latency: 12.16 μs
-Throughput:      82,256 msg/s
+Average Latency: 7.55 μs
+Throughput:      132,432 msg/s
 Data Size:       ~12 KB
 ```
 
 #### Large (10,000 points @ 30Hz)
 ```
-Average Latency: 215.02 μs
-Throughput:      4,651 msg/s
+Average Latency: 176.00 μs
+Throughput:      5,682 msg/s
 Data Size:       ~120 KB
 ```
 
-**Analysis**: Linear scaling with point count. Even 10K point clouds process in 215 μs (sufficient for 30Hz perception with 155x headroom).
+**Analysis**: Linear scaling with point count. Even 10K point clouds process in 176 μs (sufficient for 30Hz perception with 189x headroom).
 
 ---
 
@@ -162,9 +162,9 @@ Data Size:       ~120 KB
 
 ```
 Total Operations: 20,100 messages
-Average Latency:  993.18 ns
-Throughput:       1,006,864 msg/s
-Range:            795-1,192 ns
+Average Latency:  648.05 ns
+Throughput:       1,543,098 msg/s
+Range:            518-778 ns
 ```
 
 **Analysis**: Sub-microsecond average latency for mixed message types simulating realistic robotics workload.
