@@ -113,15 +113,20 @@ HORUS works on systems with POSIX shared memory support:
 
 - **Build tools** (C compiler, pkg-config, system libraries)
   ```bash
-  # Ubuntu/Debian
-  sudo apt update && sudo apt install build-essential pkg-config libudev-dev libssl-dev
+  # Ubuntu/Debian - COMPLETE dependencies
+  sudo apt update && sudo apt install \
+    build-essential \
+    pkg-config \
+    libudev-dev \
+    libssl-dev \
+    libasound2-dev
 
   # Fedora/RHEL/CentOS
   sudo dnf groupinstall "Development Tools"
-  sudo dnf install pkg-config systemd-devel openssl-devel
+  sudo dnf install pkg-config systemd-devel openssl-devel alsa-lib-devel
 
   # Arch Linux
-  sudo pacman -S base-devel pkg-config systemd openssl
+  sudo pacman -S base-devel pkg-config systemd openssl alsa-lib
 
   # macOS
   xcode-select --install
