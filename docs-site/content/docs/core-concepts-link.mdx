@@ -89,17 +89,17 @@ Link uses a **ring buffer** in shared memory (`/dev/shm/horus/topics/horus_links
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ Header (64 bytes, cache-aligned)                        │
-│  - head: AtomicUsize (producer write position)          │
-│  - tail: AtomicUsize (consumer read position)           │
+│ Header (64 bytes, cache-aligned)                         │
+│  - head: AtomicUsize (producer write position)           │
+│  - tail: AtomicUsize (consumer read position)            │
 │  - capacity: usize                                       │
 │  - metrics: messages_sent, messages_received, failures   │
 ├─────────────────────────────────────────────────────────┤
-│ Ring Buffer (capacity × element_size bytes)             │
-│  - Slot 0: T                                            │
-│  - Slot 1: T                                            │
-│  - ...                                                  │
-│  - Slot N-1: T                                          │
+│ Ring Buffer (capacity × element_size bytes)              │
+│  - Slot 0: T                                             │
+│  - Slot 1: T                                             │
+│  - ...                                                   │
+│  - Slot N-1: T                                           │
 └─────────────────────────────────────────────────────────┘
 ```
 

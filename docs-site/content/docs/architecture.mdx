@@ -255,20 +255,20 @@ horus_library/
 │   ├── imu.rs          # IMU (accel, gyro, mag)
 │   ├── laser_scan.rs   # LaserScan (ranges, angles)
 │   └── point_cloud.rs  # PointCloud (3D points)
-│
+                                                                        │
 ├── nodes/              # Generic reusable nodes
 │   ├── input.rs        # Keyboard, gamepad input
 │   └── drivers.rs      # Hardware abstraction
-│
+                                                                        │
 ├── algorithms/         # Robotics algorithms
 │   ├── pathfinding.rs  # A*, Dijkstra, RRT
 │   ├── control.rs      # PID, MPC
 │   └── filters.rs      # Kalman, particle filters
-│
+                                                                        │
 ├── apps/               # Complete example applications (multi-node apps)
 │   ├── snakesim/       # Example: snake game demo
 │   └── tanksim/        # Example: tank simulation
-│
+                                                                        │
 └── tools/              # Development tools
     └── sim2d/          # 2D physics simulator (Bevy + Rapier2D)
 ```
@@ -631,33 +631,33 @@ horus run --release
 
 ```
 ┌─────────────┐  1. tick()    ┌──────────────────┐
-│ SensorNode  │──────────────>│ Hub<SensorData>  │
-│ Priority: 0 │               │ "sensors/data"   │
+│ SensorNode  │──────────────>│ Hub<SensorData>               │
+│ Priority: 0 │               │ "sensors/data"                │
 └─────────────┘               └────────┬─────────┘
                                        │ 2. send()
                                        ▼
                               ┌──────────────────┐
-                              │ Shared Memory    │
+                              │ Shared Memory                 │
                               │ /dev/shm/        │ 366ns-1.58μs
-                              │ horus_sensors    │
+                              │ horus_sensors                 │
                               └────────┬─────────┘
                                        │ 3. try_recv()
                                        ▼
 ┌──────────────┐ 4. tick()   ┌──────────────────┐
-│ ControlNode  │<─────────────│ Hub<SensorData>  │
-│ Priority: 5  │              │ "sensors/data"   │
+│ ControlNode  │<─────────────│ Hub<SensorData>               │
+│ Priority: 5  │              │ "sensors/data"                │
 └──────┬───────┘              └──────────────────┘
        │ 5. send()
        ▼
 ┌──────────────────┐
-│ Hub<CmdVel>      │
-│ "motors/cmd"     │
+│ Hub<CmdVel>                                                 │
+│ "motors/cmd"                                                │
 └────────┬─────────┘
          │ 6. Shared memory write
          ▼
 ┌──────────────────┐
-│ MotorNode        │
-│ Priority: 10     │
+│ MotorNode                                                   │
+│ Priority: 10                                                │
 └──────────────────┘
 ```
 

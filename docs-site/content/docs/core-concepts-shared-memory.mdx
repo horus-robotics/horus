@@ -184,15 +184,15 @@ Modern CPUs fetch memory in 64-byte cache lines. Aligning to 64 bytes:
 ┌─────────────────────────────────────┐
 │  RingBufferHeader (64 bytes)        │  ← Aligned to 64 bytes
 ├─────────────────────────────────────┤
-│  Padding (for data alignment)       │
+│  Padding (for data alignment)                              │
 ├─────────────────────────────────────┤
-│  Data Slot 0                        │
+│  Data Slot 0                                               │
 ├─────────────────────────────────────┤
-│  Data Slot 1                        │
+│  Data Slot 1                                               │
 ├─────────────────────────────────────┤
-│  ...                                │
+│  ...                                                       │
 ├─────────────────────────────────────┤
-│  Data Slot N-1                      │
+│  Data Slot N-1                                             │
 └─────────────────────────────────────┘
 ```
 
