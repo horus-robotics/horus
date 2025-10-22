@@ -448,28 +448,28 @@ For programmatic access:
 
 **List all packages:**
 ```bash
-curl http://localhost:3001/api/packages
+curl https://marketplace.horus-registry.dev/api/packages
 ```
 
 **Search packages:**
 ```bash
-curl "http://localhost:3001/api/packages/search?q=sensor"
+curl "https://marketplace.horus-registry.dev/api/packages/search?q=sensor"
 ```
 
 **Get package info:**
 ```bash
-curl http://localhost:3001/api/packages/pid-controller
+curl https://marketplace.horus-registry.dev/api/packages/pid-controller
 ```
 
 **Download package:**
 ```bash
 curl -o pkg.tar.gz \
-  http://localhost:3001/api/packages/pid-controller/1.2.0/download
+  https://marketplace.horus-registry.dev/api/packages/pid-controller/1.2.0/download
 ```
 
 **Get local documentation:**
 ```bash
-curl http://localhost:3001/api/packages/my-package/1.0.0/docs/README.md
+curl https://marketplace.horus-registry.dev/api/packages/my-package/1.0.0/docs/README.md
 ```
 
 ### API Endpoints
