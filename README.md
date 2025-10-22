@@ -90,16 +90,31 @@ See [ROADMAP.md](ROADMAP.md) for detailed development plans and timelines.
 ### Prerequisites
 
 **Required:**
-- Rust 1.70+ (install from [rustup.rs](https://rustup.rs))
+- **Rust 1.70+** (install from [rustup.rs](https://rustup.rs))
   ```bash
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
   source $HOME/.cargo/env
   ```
-- Linux (Ubuntu 20.04+, other distros supported)
+
+- **C compiler/linker** (required by Rust for native compilation)
+  ```bash
+  # Ubuntu/Debian
+  sudo apt update && sudo apt install build-essential
+
+  # Fedora/RHEL/CentOS
+  sudo dnf groupinstall "Development Tools"
+
+  # Arch Linux
+  sudo pacman -S base-devel
+
+  # macOS
+  xcode-select --install
+  ```
+
+- **Linux** (Ubuntu 20.04+, other distros supported) or **macOS**
 
 **Optional:**
 - Python 3.8+ for Python bindings: `sudo apt install python3 python3-pip`
-- GCC/Clang for C bindings: `sudo apt install build-essential`
 
 ### Quick Install (Recommended)
 

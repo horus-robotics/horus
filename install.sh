@@ -22,6 +22,31 @@ if ! command -v cargo &> /dev/null; then
 fi
 
 echo -e "${CYAN}→${NC} Detected Rust version: $(rustc --version)"
+
+# Check if C compiler/linker is installed
+if ! command -v cc &> /dev/null && ! command -v gcc &> /dev/null; then
+    echo -e "${RED}❌ Error: C compiler not found${NC}"
+    echo ""
+    echo "HORUS requires a C compiler/linker to build native code."
+    echo ""
+    echo "Install build tools for your system:"
+    echo ""
+    echo -e "${CYAN}Ubuntu/Debian:${NC}"
+    echo "  sudo apt update && sudo apt install build-essential"
+    echo ""
+    echo -e "${CYAN}Fedora/RHEL/CentOS:${NC}"
+    echo "  sudo dnf groupinstall \"Development Tools\""
+    echo ""
+    echo -e "${CYAN}Arch Linux:${NC}"
+    echo "  sudo pacman -S base-devel"
+    echo ""
+    echo -e "${CYAN}macOS:${NC}"
+    echo "  xcode-select --install"
+    echo ""
+    exit 1
+fi
+
+echo -e "${CYAN}→${NC} Detected C compiler: $(cc --version | head -n1)"
 echo ""
 
 # Determine installation paths
