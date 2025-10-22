@@ -111,19 +111,21 @@ HORUS works on systems with POSIX shared memory support:
   source $HOME/.cargo/env
   ```
 
-- **C compiler/linker** (required by Rust for native compilation)
+- **Build tools** (C compiler, pkg-config, system libraries)
   ```bash
   # Ubuntu/Debian
-  sudo apt update && sudo apt install build-essential
+  sudo apt update && sudo apt install build-essential pkg-config libudev-dev
 
   # Fedora/RHEL/CentOS
   sudo dnf groupinstall "Development Tools"
+  sudo dnf install pkg-config systemd-devel
 
   # Arch Linux
-  sudo pacman -S base-devel
+  sudo pacman -S base-devel pkg-config systemd
 
   # macOS
   xcode-select --install
+  brew install pkg-config
   ```
 
 - **Linux** (Ubuntu 20.04+, other distros supported) or **macOS**

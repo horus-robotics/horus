@@ -28,16 +28,21 @@ HORUS works on systems with POSIX shared memory support:
 **Required:**
 - **Operating System**: Linux (Ubuntu 20.04+) or macOS 11+
 - **Rust 1.70+**: We'll install this in Step 1
-- **C Compiler**: Required by Rust for native compilation
+- **Build Tools**: C compiler, pkg-config, and system libraries
   ```bash
   # Ubuntu/Debian
-  sudo apt update && sudo apt install build-essential
+  sudo apt update && sudo apt install build-essential pkg-config libudev-dev
 
   # Fedora/RHEL
   sudo dnf groupinstall "Development Tools"
+  sudo dnf install pkg-config systemd-devel
+
+  # Arch Linux
+  sudo pacman -S base-devel pkg-config systemd
 
   # macOS
   xcode-select --install
+  brew install pkg-config
   ```
 - **10-15 minutes**: For first-time installation
 - **Internet connection**: To download dependencies
@@ -344,19 +349,40 @@ export PATH="$HOME/.cargo/bin:$PATH"
 source ~/.bashrc  # or ~/.zshrc
 ```
 
-### "linker `cc` not found"
+### "linker `cc` not found" or "pkg-config not found"
 
-You need a C compiler:
+You need build tools and development libraries:
 
 ```bash
 # Ubuntu/Debian
-sudo apt install build-essential
+sudo apt update
+sudo apt install build-essential pkg-config libudev-dev
+
+# Fedora/RHEL
+sudo dnf groupinstall "Development Tools"
+sudo dnf install pkg-config systemd-devel
+
+# Arch Linux
+sudo pacman -S base-devel pkg-config systemd
 
 # macOS
 xcode-select --install
+brew install pkg-config
+```
 
-# Fedora
-sudo dnf groupinstall "Development Tools"
+### "failed to run custom build command for `libudev-sys`"
+
+You need the libudev development library:
+
+```bash
+# Ubuntu/Debian
+sudo apt install libudev-dev
+
+# Fedora/RHEL
+sudo dnf install systemd-devel
+
+# Arch Linux
+sudo pacman -S systemd
 ```
 
 ### Build takes forever

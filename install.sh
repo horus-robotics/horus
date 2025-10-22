@@ -32,21 +32,48 @@ if ! command -v cc &> /dev/null && ! command -v gcc &> /dev/null; then
     echo "Install build tools for your system:"
     echo ""
     echo -e "${CYAN}Ubuntu/Debian:${NC}"
-    echo "  sudo apt update && sudo apt install build-essential"
+    echo "  sudo apt update && sudo apt install build-essential pkg-config libudev-dev"
     echo ""
     echo -e "${CYAN}Fedora/RHEL/CentOS:${NC}"
     echo "  sudo dnf groupinstall \"Development Tools\""
+    echo "  sudo dnf install pkg-config systemd-devel"
     echo ""
     echo -e "${CYAN}Arch Linux:${NC}"
-    echo "  sudo pacman -S base-devel"
+    echo "  sudo pacman -S base-devel pkg-config systemd"
     echo ""
     echo -e "${CYAN}macOS:${NC}"
     echo "  xcode-select --install"
+    echo "  brew install pkg-config"
     echo ""
     exit 1
 fi
 
 echo -e "${CYAN}→${NC} Detected C compiler: $(cc --version | head -n1)"
+
+# Check if pkg-config is installed
+if ! command -v pkg-config &> /dev/null; then
+    echo -e "${RED}❌ Error: pkg-config not found${NC}"
+    echo ""
+    echo "HORUS requires pkg-config to build system library dependencies."
+    echo ""
+    echo "Install pkg-config for your system:"
+    echo ""
+    echo -e "${CYAN}Ubuntu/Debian:${NC}"
+    echo "  sudo apt install pkg-config libudev-dev"
+    echo ""
+    echo -e "${CYAN}Fedora/RHEL/CentOS:${NC}"
+    echo "  sudo dnf install pkg-config systemd-devel"
+    echo ""
+    echo -e "${CYAN}Arch Linux:${NC}"
+    echo "  sudo pacman -S pkg-config systemd"
+    echo ""
+    echo -e "${CYAN}macOS:${NC}"
+    echo "  brew install pkg-config"
+    echo ""
+    exit 1
+fi
+
+echo -e "${CYAN}→${NC} Detected pkg-config: $(pkg-config --version)"
 echo ""
 
 # Determine installation paths
