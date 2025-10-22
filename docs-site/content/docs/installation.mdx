@@ -292,11 +292,33 @@ rm -rf horus
 rm -rf /dev/shm/horus/
 ```
 
-## Troubleshooting
+## Utility Scripts
+
+HORUS includes helpful scripts for maintenance and troubleshooting:
+
+**Quick Health Check:**
+```bash
+./verify.sh  # Check installation status
+```
+
+**Update HORUS:**
+```bash
+git pull
+./update.sh  # Smart incremental update
+```
+
+**Fix Broken Installation:**
+```bash
+./recovery_install.sh  # Nuclear option: full cleanup and rebuild
+```
+
+> **📘 Full Guide:** See [Troubleshooting & Maintenance](/troubleshooting) for complete documentation, common issues, and solutions.
+
+## Common Issues
 
 ### "command not found: horus"
 
-Solution: Make sure `~/.cargo/bin` is in your PATH:
+**Solution:** Make sure `~/.cargo/bin` is in your PATH:
 
 ```bash
 export PATH="$HOME/.cargo/bin:$PATH"
@@ -305,7 +327,7 @@ source ~/.bashrc  # or ~/.zshrc
 
 ### Build fails with "linker not found"
 
-Solution: Install a C compiler:
+**Solution:** Install a C compiler:
 
 ```bash
 # Ubuntu/Debian
@@ -315,22 +337,15 @@ sudo apt-get install build-essential
 xcode-select --install
 ```
 
-### Shared memory errors
+### Installation broken or corrupted
 
-Solution: Check `/dev/shm` permissions and space:
-
-```bash
-ls -la /dev/shm
-df -h /dev/shm
-```
-
-### Python bindings fail to build
-
-Solution: Install maturin:
+**Solution:** Run recovery install:
 
 ```bash
-pip install maturin
+./recovery_install.sh  # Diagnose and fix issues
 ```
+
+> **💡 More Help:** See the [Troubleshooting Guide](/troubleshooting) for 15+ common issues and solutions.
 
 ## Next Steps
 
