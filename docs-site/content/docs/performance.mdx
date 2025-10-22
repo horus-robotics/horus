@@ -68,10 +68,9 @@ Debug builds are **10-100x slower**:
 
 ```bash
 # SLOW: Debug build
-cargo run
+horus run
 
 # FAST: Release build
-cargo run --release
 horus run --release
 ```
 
@@ -96,13 +95,11 @@ codegen-units = 1
 
 ### Target CPU Features
 
-Optimize for your specific CPU:
+**CPU-Specific Optimizations:**
 
-```bash
-RUSTFLAGS="-C target-cpu=native" cargo build --release
-```
+HORUS compiles with `rustc` optimizations enabled in release mode. For advanced CPU-specific tuning, the framework is optimized for modern x86-64 and ARM64 processors.
 
-**Gains**: 5-15% from CPU-specific SIMD instructions.
+**Gains**: 5-15% from CPU-specific SIMD instructions (automatically enabled in release builds).
 
 ## Message Optimization
 
@@ -416,10 +413,10 @@ perf report
 
 ```bash
 # SLOW: 50µs/tick
-cargo run
+horus run
 
 # FAST: 500ns/tick
-cargo run --release
+horus run --release
 ```
 
 **Fix**: Always use `--release` for benchmarks and production.
