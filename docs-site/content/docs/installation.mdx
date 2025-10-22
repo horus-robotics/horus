@@ -228,24 +228,36 @@ sudo mount -o remount,size=2G /dev/shm
 
 ## Updating HORUS
 
-To update to the latest version:
+To update to the latest version, use the smart update script:
 
 ```bash
-# Pull latest changes
+cd horus
+./update.sh
+```
+
+**What the update script does:**
+- Checks for uncommitted changes (offers to stash)
+- Pulls latest changes from git
+- Detects what changed (dependencies vs source code)
+- Rebuilds only what's necessary
+- Updates libraries in `~/.horus/cache/`
+- Verifies the update succeeded
+
+**Alternative: Manual Update**
+
+If you prefer manual control:
+
+```bash
+# Pull changes
 cd horus
 git pull
 
-# Re-run installer (handles version upgrades automatically)
+# Re-run full installer
 ./install.sh
 ```
 
-**What happens during update:**
-- Detects version changes
-- Removes old library versions if needed
-- Installs new versions to `~/.horus/cache/`
-- Preserves your existing configuration
+Or rebuild directly:
 
-**Manual Update (Alternative):**
 ```bash
 # Pull changes
 git pull
