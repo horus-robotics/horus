@@ -23,9 +23,10 @@ const sections: SidebarSection[] = [
       { title: "Goals & Vision", href: "/goals", order: 0 },
       { title: "Introduction", href: "/getting-started", order: 1 },
       { title: "Installation", href: "/getting-started/installation", order: 2 },
-      { title: "Quick Start", href: "/getting-started/quick-start", order: 3 },
-      { title: "Architecture", href: "/architecture", order: 4 },
-      { title: "Examples", href: "/examples", order: 5 },
+      { title: "Troubleshooting", href: "/troubleshooting", order: 3 },
+      { title: "Quick Start", href: "/getting-started/quick-start", order: 4 },
+      { title: "Architecture", href: "/architecture", order: 5 },
+      { title: "Examples", href: "/examples", order: 6 },
     ],
   },
   {
