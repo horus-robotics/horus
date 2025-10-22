@@ -21,7 +21,7 @@ The marketplace provides:
 - **Analytics** - Download counts, trending packages
 - **Quality Metrics** - Community ratings and documentation quality
 
-**Registry URL:** https://registry.horus.dev
+**Registry URL:** https://marketplace.horus-registry.dev
 
 ## Quick Start
 
@@ -30,7 +30,7 @@ The marketplace provides:
 **Web Interface:**
 ```bash
 # Open marketplace in browser
-open https://registry.horus.dev
+open https://marketplace.horus-registry.dev
 ```
 
 **CLI Search:**
@@ -84,7 +84,7 @@ horus publish
 
 **Navigation:**
 ```
-https://registry.horus.dev/
+https://marketplace.horus-registry.dev/
 ├── /packages              # Browse all packages
 ├── /packages/trending     # Trending this week
 ├── /packages/featured     # Staff picks
@@ -309,11 +309,11 @@ Uploading...
 
 Published successfully!
 
-Package URL: https://registry.horus.dev/packages/my-awesome-package
+Package URL: https://marketplace.horus-registry.dev/packages/my-awesome-package
 Install command: horus pkg install my-awesome-package
 
 Share your package:
-  https://registry.horus.dev/packages/my-awesome-package
+  https://marketplace.horus-registry.dev/packages/my-awesome-package
 ```
 
 ### Updating Packages
@@ -385,7 +385,7 @@ Share this environment:
   horus env restore env_abc123def456
 
 View online:
-  https://registry.horus.dev/environments/env_abc123def456
+  https://marketplace.horus-registry.dev/environments/env_abc123def456
 ```
 
 ### Discovering Environments
@@ -439,7 +439,7 @@ horus env restore env_abc123def456 --verify
 
 The registry provides a REST API for programmatic access:
 
-**Base URL:** `https://registry.horus.dev/api/v1`
+**Base URL:** `https://marketplace.horus-registry.dev/api/v1`
 
 ### Search Packages
 
@@ -454,7 +454,7 @@ The registry provides a REST API for programmatic access:
 
 **Example:**
 ```bash
-curl "https://registry.horus.dev/api/v1/packages?q=sensor&category=perception&limit=10"
+curl "https://marketplace.horus-registry.dev/api/v1/packages?q=sensor&category=perception&limit=10"
 ```
 
 **Response:**
@@ -486,7 +486,7 @@ curl "https://registry.horus.dev/api/v1/packages?q=sensor&category=perception&li
 
 **Example:**
 ```bash
-curl "https://registry.horus.dev/api/v1/packages/sensor-fusion"
+curl "https://marketplace.horus-registry.dev/api/v1/packages/sensor-fusion"
 ```
 
 **Response:**
@@ -521,7 +521,7 @@ curl "https://registry.horus.dev/api/v1/packages/sensor-fusion"
 **Example:**
 ```bash
 curl -o sensor-fusion.tar.gz \
-  "https://registry.horus.dev/api/v1/packages/sensor-fusion/2.1.0/download"
+  "https://marketplace.horus-registry.dev/api/v1/packages/sensor-fusion/2.1.0/download"
 ```
 
 ### Publish Package
@@ -545,7 +545,7 @@ curl -X POST \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/octet-stream" \
   --data-binary @package.tar.gz \
-  "https://registry.horus.dev/api/v1/packages"
+  "https://marketplace.horus-registry.dev/api/v1/packages"
 ```
 
 ## Quality & Trust
@@ -742,7 +742,7 @@ horus pkg list nonexistent
 horus pkg list --detailed
 
 # Verify availability
-curl "https://registry.horus.dev/api/v1/packages/package-name"
+curl "https://marketplace.horus-registry.dev/api/v1/packages/package-name"
 ```
 
 ### Version Already Published

@@ -68,7 +68,7 @@ $ curl -X POST http://localhost:3000/api/packages/upload \
   "package": {
     "name": "lidar-driver",
     "version": "1.0.0",
-    "url": "https://registry.horus.dev/packages/lidar-driver/1.0.0"
+    "url": "https://marketplace.horus-registry.dev/packages/lidar-driver/1.0.0"
   }
 }
 ```
