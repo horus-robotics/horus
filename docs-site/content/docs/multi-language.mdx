@@ -1,0 +1,102 @@
+---
+title: Multi-Language Support
+description: Use HORUS with Python, C, and Rust
+order: 8
+---
+
+# Multi-Language Support
+
+HORUS supports multiple programming languages, allowing you to choose the best tool for each component of your robotics system.
+
+## Supported Languages
+
+### Rust (Native)
+
+**Best for:** High-performance nodes, control loops, real-time systems
+
+HORUS is written in Rust and provides the most complete API. All examples in the documentation use Rust by default.
+
+**Getting Started:**
+```bash
+horus new my-project
+# Select: Rust (option 2)
+```
+
+**Learn more:** [Quick Start](/getting-started/quick-start)
+
+### Python
+
+**Best for:** Rapid prototyping, AI/ML integration, data processing, visualization
+
+Python bindings provide a simple, Pythonic API for HORUS. Perfect for integrating with NumPy, PyTorch, TensorFlow, and other Python libraries.
+
+**Getting Started:**
+```bash
+horus new my-project
+# Select: Python (option 1)
+```
+
+**Learn more:** [Python Bindings](/python-bindings)
+
+### C (Alpha)
+
+**Best for:** Hardware drivers, legacy system integration, embedded systems
+
+C bindings provide low-level access to HORUS from C code. Currently in alpha with basic pub/sub support.
+
+**Status:** ⚠️ Alpha - Basic functionality only
+
+**Learn more:** [C Bindings](/c-bindings)
+
+## Cross-Language Communication
+
+**All languages can communicate seamlessly** through HORUS's shared memory system:
+
+```python
+# Python publisher
+import horus
+node = horus.Node(name="sensor", pubs="temperature")
+node.send("temperature", 25.5)
+```
+
+```rust
+// Rust subscriber (in another process)
+let hub = Hub::<f32>::new("temperature")?;
+if let Some(temp) = hub.recv(None) {
+    println!("Temperature: {}", temp);
+}
+```
+
+## Choosing a Language
+
+| Use Case | Recommended Language |
+|----------|---------------------|
+| **Control loops** | Rust (lowest latency) |
+| **AI/ML models** | Python (ecosystem) |
+| **Hardware drivers** | C or Rust |
+| **Data processing** | Python or Rust |
+| **Real-time systems** | Rust |
+| **Prototyping** | Python (fastest development) |
+
+## Mixed-Language Systems
+
+You can build systems with nodes in different languages:
+
+**Example: Robot with mixed languages**
+- **Motor controller** (Rust) - 1kHz control loop
+- **Vision processing** (Python) - PyTorch object detection
+- **Hardware driver** (C) - Legacy sensor integration
+- **Dashboard** (Rust) - Real-time visualization
+
+All communicate through HORUS shared memory with **sub-microsecond latency**.
+
+## Next Steps
+
+**Choose your language:**
+- [Python Bindings](/python-bindings) - Full guide with examples
+- [C Bindings](/c-bindings) - Alpha status, basic usage
+- [Quick Start](/getting-started/quick-start) - Get started with Rust
+
+**Build something:**
+- [Examples](/examples) - See multi-language systems in action
+- [CLI Reference](/cli-reference) - `horus new` command options
