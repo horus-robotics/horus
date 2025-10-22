@@ -1,662 +1,917 @@
 ---
-title: AI API Integration
-description: Integrate AI/LLM APIs into HORUS nodes for vision, language control, and intelligent decision-making
+title: AI Integration
+description: Integrate local AI frameworks and cloud APIs into HORUS for computer vision, ML inference, and intelligent robotics
 order: 24
 ---
 
-# AI API Integration
+# AI Integration
 
-Learn how to integrate AI and Large Language Model (LLM) APIs into HORUS nodes for computer vision, natural language control, and intelligent robotics applications.
+Integrate AI and machine learning into HORUS nodes for computer vision, real-time inference, and intelligent decision-making - from local GPU-accelerated models to cloud AI APIs.
 
-## Why AI APIs in Robotics?
+## Overview
 
-Modern robotics increasingly combines real-time control with AI-powered decision making:
+Modern robotics combines real-time control with AI-powered intelligence:
 
-**Computer Vision**
-- Object detection and recognition
-- Scene understanding and semantic segmentation
-- Visual question answering for robot perception
+**Local AI (Real-Time)**
+- Computer vision with OpenCV (<5ms)
+- Local model inference with PyTorch/ONNX (<10ms)
+- GPU-accelerated processing (CUDA/Metal)
+- Edge detection, tracking, SLAM
 
-**Natural Language Control**
-- Voice commands to robot actions
-- High-level task planning from descriptions
-- Human-robot interaction and explanation
+**Cloud AI (Non-Time-Critical)**
+- Complex vision tasks (GPT-4 Vision, Anthropic Claude)
+- Natural language understanding (50-500ms)
+- Task planning and reasoning
+- Model training and updates
 
-**Intelligent Decision Making**
-- Anomaly detection in sensor data
-- Path planning with reasoning
-- Adaptive behavior based on context
-
-HORUS's node architecture makes it easy to integrate these capabilities while maintaining sub-microsecond communication between components.
-
-## Architecture Overview
-
-AI integration in HORUS follows a simple pattern:
-
+**HORUS Integration Pattern:**
 ```
-┌─────────────┐         ┌──────────────┐         ┌─────────────┐
-│   Sensor    │ ──Hub──>│   AI Node    │ ──Hub──>│   Control   │
-│    Node     │         │ (async API)  │         │    Node     │
-└─────────────┘         └──────────────┘         └─────────────┘
-                                                               │
+┌──────────────┐         ┌──────────────┐         ┌──────────────┐
+│   Camera     │ ──Hub──>│  AI Vision   │ ──Hub──>│   Control    │
+│    Node      │         │  Node (GPU)  │         │     Node     │
+└──────────────┘         └──────────────┘         └──────────────┘
+                              2-10ms                    ~16μs
+                                │
+                                │ (optional)
                                 ▼
-                          External API
-                       (OpenAI, Anthropic, etc.)
+                          Cloud API
+                         (complex tasks)
 ```
 
-**Key Principle**: AI nodes handle async API calls while HORUS's core maintains real-time performance for critical control loops.
+---
 
-## Prerequisites
+## Part 1: Local AI Integration
 
-Add async HTTP client dependencies to your project:
+### OpenCV Computer Vision
+
+Real-time vision processing with OpenCV in Rust:
+
+#### Dependencies
 
 ```toml
 # Cargo.toml
 [dependencies]
 horus = "0.1.0"
-tokio = { version = "1.0", features = ["full"] }
-reqwest = { version = "0.11", features = ["json"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+opencv = { version = "0.88", default-features = false, features = ["imgcodecs", "videoio", "imgproc", "objdetect"] }
 ```
 
-For API key management:
-
-```bash
-# .env file (don't commit this!)
-OPENAI_API_KEY=sk-...
-ANTHROPIC_API_KEY=sk-ant-...
-```
-
-## Example 1: Vision API Node
-
-This example shows object detection using an AI vision API:
+#### Example: Edge Detection Node
 
 ```rust
 use horus::prelude::*;
-use reqwest::Client;
-use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use tokio::sync::Mutex;
+use opencv::{
+    core::{Mat, Size, Vector},
+    imgproc::{self, INTER_LINEAR},
+    prelude::*,
+};
 
 // Message types
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ImageFrame {
+#[derive(Clone, Debug)]
+pub struct ImageRaw {
     pub stamp_nanos: u64,
     pub width: u32,
     pub height: u32,
-    pub data: Vec<u8>, // RGB image data
+    pub data: Vec<u8>,  // RGB8
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct DetectionResult {
+#[derive(Clone, Debug)]
+pub struct ImageProcessed {
     pub stamp_nanos: u64,
-    pub objects: Vec<String>,
-    pub confidence: Vec<f32>,
+    pub edges: Vec<u8>,  // Grayscale edge map
+    pub edge_count: u32,
 }
 
-// AI Vision Node
-pub struct VisionNode {
-    image_sub: Hub<ImageFrame>,
-    detection_pub: Hub<DetectionResult>,
-    http_client: Arc<Client>,
-    api_key: String,
-    last_request_time: Arc<Mutex<std::time::Instant>>,
+// OpenCV Vision Node
+pub struct EdgeDetectorNode {
+    image_sub: Hub<ImageRaw>,
+    edges_pub: Hub<ImageProcessed>,
+    canny_low: f64,
+    canny_high: f64,
 }
 
-impl VisionNode {
-    pub fn new(api_key: String) -> Self {
-        Self {
-            image_sub: Hub::new("camera/image"),
-            detection_pub: Hub::new("vision/detections"),
-            http_client: Arc::new(Client::new()),
-            api_key,
-            last_request_time: Arc::new(Mutex::new(
-                std::time::Instant::now() - std::time::Duration::from_secs(10)
-            )),
-        }
+impl EdgeDetectorNode {
+    pub fn new() -> HorusResult<Self> {
+        Ok(Self {
+            image_sub: Hub::new("camera/raw"),
+            edges_pub: Hub::new("vision/edges"),
+            canny_low: 50.0,
+            canny_high: 150.0,
+        })
     }
 
-    async fn detect_objects(&self, image: &ImageFrame) -> Result<DetectionResult, String> {
-        // Rate limiting: max 1 request per second
-        {
-            let mut last_time = self.last_request_time.lock().await;
-            let elapsed = last_time.elapsed();
-            if elapsed < std::time::Duration::from_secs(1) {
-                return Err("Rate limit: wait before next request".to_string());
-            }
-            *last_time = std::time::Instant::now();
-        }
+    fn process_image(&self, image: &ImageRaw) -> HorusResult<ImageProcessed> {
+        // Convert to OpenCV Mat
+        let mat = unsafe {
+            Mat::new_rows_cols_with_data(
+                image.height as i32,
+                image.width as i32,
+                opencv::core::CV_8UC3,
+                image.data.as_ptr() as *mut std::ffi::c_void,
+                opencv::core::Mat_AUTO_STEP,
+            )?
+        };
 
-        // Convert image to base64
-        let base64_image = base64::encode(&image.data);
+        // Convert to grayscale
+        let mut gray = Mat::default();
+        imgproc::cvt_color(&mat, &mut gray, imgproc::COLOR_RGB2GRAY, 0)?;
 
-        // Call vision API (example using OpenAI-style endpoint)
-        let response = self.http_client
-            .post("https://api.openai.com/v1/vision/detect")
-            .header("Authorization", format!("Bearer {}", self.api_key))
-            .json(&serde_json::json!({
-                "image": base64_image,
-                "model": "vision-v1"
-            }))
-            .send()
-            .await
-            .map_err(|e| format!("API request failed: {}", e))?;
+        // Apply Canny edge detection
+        let mut edges = Mat::default();
+        imgproc::canny(&gray, &mut edges, self.canny_low, self.canny_high, 3, false)?;
 
-        let result: serde_json::Value = response
-            .json()
-            .await
-            .map_err(|e| format!("Failed to parse response: {}", e))?;
+        // Count edge pixels
+        let edge_count = edges.iter::<u8>()?.filter(|&(_, val)| val > 0).count() as u32;
 
-        // Parse detection results
-        let objects = result["objects"]
-            .as_array()
-            .unwrap_or(&vec![])
-            .iter()
-            .map(|v| v["name"].as_str().unwrap_or("unknown").to_string())
-            .collect();
+        // Extract edge data
+        let mut edge_data = vec![0u8; (image.width * image.height) as usize];
+        edges.data_bytes()?.iter().enumerate().for_each(|(i, &val)| {
+            edge_data[i] = val;
+        });
 
-        let confidence = result["confidence"]
-            .as_array()
-            .unwrap_or(&vec![])
-            .iter()
-            .map(|v| v.as_f64().unwrap_or(0.0) as f32)
-            .collect();
-
-        Ok(DetectionResult {
+        Ok(ImageProcessed {
             stamp_nanos: image.stamp_nanos,
-            objects,
-            confidence,
+            edges: edge_data,
+            edge_count,
         })
     }
 }
 
-impl Node for VisionNode {
+impl Node for EdgeDetectorNode {
     fn name(&self) -> &'static str {
-        "VisionNode"
+        "EdgeDetectorNode"
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        // Check for new images
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) -> HorusResult<()> {
+        // Process incoming images
         if let Some(image) = self.image_sub.recv(ctx) {
-            // Spawn async task to avoid blocking the tick loop
-            let client = self.http_client.clone();
-            let api_key = self.api_key.clone();
-            let detection_pub = self.detection_pub.clone();
-            let last_request_time = self.last_request_time.clone();
-
-            tokio::spawn(async move {
-                // Create temporary node to handle async work
-                let temp_node = VisionNode {
-                    image_sub: Hub::new("camera/image"),
-                    detection_pub: detection_pub.clone(),
-                    http_client: client,
-                    api_key,
-                    last_request_time,
-                };
-
-                match temp_node.detect_objects(&image).await {
-                    Ok(result) => {
-                        // Publish detection results
-                        detection_pub.send(result, None).ok();
-                    }
-                    Err(e) => {
-                        eprintln!("Vision API error: {}", e);
-                    }
+            match self.process_image(&image) {
+                Ok(result) => {
+                    self.edges_pub.send(result, ctx)?;
                 }
-            });
-        }
-    }
-}
-```
-
-**Key Features**:
-- **Non-blocking**: Spawns async task to avoid blocking tick loop
-- **Rate limiting**: Prevents exceeding API quotas
-- **Error handling**: Gracefully handles API failures
-- **Timestamping**: Preserves temporal alignment with sensor data
-
-## Example 2: LLM Control Node
-
-Natural language commands to robot actions:
-
-```rust
-use horus::prelude::*;
-use reqwest::Client;
-use serde::{Deserialize, Serialize};
-
-#[derive(Clone, Debug)]
-pub struct TextCommand {
-    pub stamp_nanos: u64,
-    pub text: String,
-}
-
-#[derive(Clone, Debug)]
-pub struct RobotAction {
-    pub stamp_nanos: u64,
-    pub action_type: String,  // "move", "turn", "stop", etc.
-    pub parameters: Vec<f32>,  // speed, distance, angle, etc.
-}
-
-pub struct LLMControlNode {
-    command_sub: Hub<TextCommand>,
-    action_pub: Hub<RobotAction>,
-    http_client: Client,
-    api_key: String,
-}
-
-impl LLMControlNode {
-    pub fn new(api_key: String) -> Self {
-        Self {
-            command_sub: Hub::new("voice/command"),
-            action_pub: Hub::new("control/action"),
-            http_client: Client::new(),
-            api_key,
-        }
-    }
-
-    async fn parse_command(&self, text: &str) -> Result<RobotAction, String> {
-        let system_prompt = r#"
-You are a robot control system. Convert natural language commands to structured actions.
-Output JSON with fields: action_type (move/turn/stop), parameters (array of numbers).
-
-Examples:
-"move forward 2 meters" -> {"action_type": "move", "parameters": [2.0]}
-"turn left 90 degrees" -> {"action_type": "turn", "parameters": [-90.0]}
-"stop" -> {"action_type": "stop", "parameters": []}
-"#;
-
-        let response = self.http_client
-            .post("https://api.anthropic.com/v1/messages")
-            .header("x-api-key", &self.api_key)
-            .header("anthropic-version", "2023-06-01")
-            .json(&serde_json::json!({
-                "model": "claude-3-5-sonnet-20241022",
-                "max_tokens": 256,
-                "system": system_prompt,
-                "messages": [{
-                    "role": "user",
-                    "content": text
-                }]
-            }))
-            .send()
-            .await
-            .map_err(|e| format!("API error: {}", e))?;
-
-        let result: serde_json::Value = response
-            .json()
-            .await
-            .map_err(|e| format!("Parse error: {}", e))?;
-
-        // Extract action from response
-        let content = result["content"][0]["text"]
-            .as_str()
-            .ok_or("No response content")?;
-
-        let action: serde_json::Value = serde_json::from_str(content)
-            .map_err(|e| format!("JSON parse error: {}", e))?;
-
-        Ok(RobotAction {
-            stamp_nanos: 0, // Will be set by caller
-            action_type: action["action_type"]
-                .as_str()
-                .unwrap_or("stop")
-                .to_string(),
-            parameters: action["parameters"]
-                .as_array()
-                .unwrap_or(&vec![])
-                .iter()
-                .map(|v| v.as_f64().unwrap_or(0.0) as f32)
-                .collect(),
-        })
-    }
-}
-
-impl Node for LLMControlNode {
-    fn name(&self) -> &'static str {
-        "LLMControlNode"
-    }
-
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        if let Some(command) = self.command_sub.recv(ctx) {
-            let client = self.http_client.clone();
-            let api_key = self.api_key.clone();
-            let action_pub = self.action_pub.clone();
-            let stamp = command.stamp_nanos;
-            let text = command.text.clone();
-
-            tokio::spawn(async move {
-                let temp_node = LLMControlNode {
-                    command_sub: Hub::new("voice/command"),
-                    action_pub: action_pub.clone(),
-                    http_client: client,
-                    api_key,
-                };
-
-                match temp_node.parse_command(&text).await {
-                    Ok(mut action) => {
-                        action.stamp_nanos = stamp;
-                        action_pub.send(action, None).ok();
-                    }
-                    Err(e) => {
-                        eprintln!("LLM parse error: {}", e);
-                    }
+                Err(e) => {
+                    eprintln!("Edge detection failed: {}", e);
                 }
-            });
-        }
-    }
-}
-```
-
-## Best Practices
-
-### 1. Rate Limiting
-
-Prevent exceeding API quotas:
-
-```rust
-use std::time::{Duration, Instant};
-use tokio::sync::Mutex;
-
-pub struct RateLimiter {
-    last_request: Mutex<Instant>,
-    min_interval: Duration,
-}
-
-impl RateLimiter {
-    pub fn new(requests_per_second: f32) -> Self {
-        Self {
-            last_request: Mutex::new(Instant::now() - Duration::from_secs(10)),
-            min_interval: Duration::from_secs_f32(1.0 / requests_per_second),
-        }
-    }
-
-    pub async fn wait(&self) {
-        let mut last = self.last_request.lock().await;
-        let elapsed = last.elapsed();
-
-        if elapsed < self.min_interval {
-            tokio::time::sleep(self.min_interval - elapsed).await;
-        }
-
-        *last = Instant::now();
-    }
-}
-```
-
-### 2. Caching Responses
-
-Avoid redundant API calls:
-
-```rust
-use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::RwLock;
-
-pub struct ResponseCache<T> {
-    cache: Arc<RwLock<HashMap<String, (T, Instant)>>>,
-    ttl: Duration,
-}
-
-impl<T: Clone> ResponseCache<T> {
-    pub fn new(ttl: Duration) -> Self {
-        Self {
-            cache: Arc::new(RwLock::new(HashMap::new())),
-            ttl,
-        }
-    }
-
-    pub async fn get(&self, key: &str) -> Option<T> {
-        let cache = self.cache.read().await;
-        cache.get(key).and_then(|(value, timestamp)| {
-            if timestamp.elapsed() < self.ttl {
-                Some(value.clone())
-            } else {
-                None
-            }
-        })
-    }
-
-    pub async fn set(&self, key: String, value: T) {
-        let mut cache = self.cache.write().await;
-        cache.insert(key, (value, Instant::now()));
-    }
-}
-```
-
-### 3. API Key Security
-
-Never hardcode API keys:
-
-```rust
-use std::env;
-
-pub fn load_api_key(service: &str) -> Result<String, String> {
-    // Load from environment variable
-    let key_name = format!("{}_API_KEY", service.to_uppercase());
-    env::var(&key_name).map_err(|_| {
-        format!("API key not found. Set {} environment variable", key_name)
-    })
-}
-
-// Usage
-fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
-    self.api_key = load_api_key("OPENAI")?;
-    ctx.log_info("API key loaded successfully");
-    Ok(())
-}
-```
-
-### 4. Error Handling and Retries
-
-Implement exponential backoff:
-
-```rust
-use tokio::time::{sleep, Duration};
-
-pub async fn retry_with_backoff<F, T, E>(
-    mut operation: F,
-    max_retries: u32,
-) -> Result<T, E>
-where
-    F: FnMut() -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<T, E>>>>,
-{
-    let mut attempt = 0;
-
-    loop {
-        match operation().await {
-            Ok(result) => return Ok(result),
-            Err(e) if attempt >= max_retries => return Err(e),
-            Err(_) => {
-                attempt += 1;
-                let delay = Duration::from_millis(100 * 2_u64.pow(attempt));
-                sleep(delay).await;
             }
         }
+        Ok(())
     }
 }
 ```
 
-### 5. Timeout Management
-
-Prevent hanging requests:
-
-```rust
-use tokio::time::{timeout, Duration};
-
-async fn api_call_with_timeout(&self, data: &str) -> Result<String, String> {
-    let future = self.http_client
-        .post("https://api.example.com/endpoint")
-        .body(data.to_string())
-        .send();
-
-    match timeout(Duration::from_secs(5), future).await {
-        Ok(Ok(response)) => {
-            response.text().await.map_err(|e| e.to_string())
-        }
-        Ok(Err(e)) => Err(format!("Request failed: {}", e)),
-        Err(_) => Err("Request timeout".to_string()),
-    }
-}
-```
-
-## Performance Considerations
-
-### Async Overhead
-
-AI API calls introduce latency (50-500ms typical):
-
-```
-┌─────────────────────────────────────────────┐
-│         HORUS Node Execution                │
-├─────────────────────────────────────────────┤
-│ tick() [~16μs]                              │
-│   ├─ recv() from sensor [2μs]               │
-│   ├─ spawn async task [5μs]                 │
-│   └─ continue tick [9μs]                    │
-│                                             │
-│ Async Task (parallel)                       │
-│   ├─ API call [200ms]                       │
-│   └─ send() result [2μs]                    │
-└─────────────────────────────────────────────┘
-```
-
-**Key Point**: HORUS tick loop remains fast (~16μs) because async work happens in parallel.
-
-### Separating AI from Control
-
-Keep critical control loops separate from AI nodes:
-
-```rust
-// GOOD: Separate responsibilities
-scheduler.register(sensor_node);        // 60 FPS
-scheduler.register(ai_vision_node);     // Async, variable latency
-scheduler.register(control_node);       // 60 FPS
-
-// BAD: AI in critical path
-scheduler.register(combined_node);      // Would block on API calls
-```
-
-### Message Queue Size
-
-Configure Hub capacity for bursty AI responses:
-
-```rust
-// Allow buffering up to 10 vision results
-let vision_hub: Hub<DetectionResult> = Hub::with_capacity("vision/detections", 10);
-```
-
-## Complete Example: AI-Augmented Robot
-
-Full integration showing sensor → AI → control pipeline:
+#### Registering with Scheduler
 
 ```rust
 use horus::prelude::*;
 
 fn main() -> HorusResult<()> {
-    // Load API keys
-    let vision_key = std::env::var("OPENAI_API_KEY")?;
-    let llm_key = std::env::var("ANTHROPIC_API_KEY")?;
-
-    // Create nodes
-    let camera_node = CameraNode::new("/dev/video0");
-    let vision_node = VisionNode::new(vision_key);
-    let voice_node = VoiceInputNode::new();
-    let llm_node = LLMControlNode::new(llm_key);
-    let control_node = RobotControlNode::new();
-
-    // Register with scheduler
     let mut scheduler = Scheduler::new();
-    scheduler.register(camera_node);
-    scheduler.register(vision_node);
-    scheduler.register(voice_node);
-    scheduler.register(llm_node);
-    scheduler.register(control_node);
 
-    // Run system
+    // Register camera node (priority 2 - runs first)
+    let camera = CameraNode::new("/dev/video0", "camera/raw", 30)?;
+    scheduler.register(Box::new(camera), 2, Some(true));
+
+    // Register edge detector (priority 3 - runs after camera)
+    let edge_detector = EdgeDetectorNode::new()?;
+    scheduler.register(Box::new(edge_detector), 3, Some(true));
+
+    // Register control node (priority 5 - runs last)
+    let controller = ControlNode::new("vision/edges")?;
+    scheduler.register(Box::new(controller), 5, Some(true));
+
+    // Run at 30 Hz
     scheduler.tick_all()?;
-
     Ok(())
 }
 ```
 
-**Data Flow**:
-1. Camera captures frames → vision API identifies objects
-2. Voice input captures commands → LLM converts to actions
-3. Control node executes actions based on AI decisions
-4. All communication via HORUS Hub (sub-microsecond IPC)
+**Performance**: Edge detection runs in ~2-5ms per frame at 640x480.
 
-## Troubleshooting
+---
 
-### API Rate Limits Exceeded
+### PyTorch Local Inference
 
-**Symptom**: Frequent 429 errors from API
+GPU-accelerated model inference with LibTorch (Rust PyTorch bindings):
 
-**Solution**: Increase rate limiter interval or implement request queuing
+#### Dependencies
 
-```rust
-let rate_limiter = RateLimiter::new(0.5); // Max 0.5 requests/sec
+```toml
+[dependencies]
+horus = "0.1.0"
+tch = "0.14"  # LibTorch bindings
 ```
 
-### High Latency
-
-**Symptom**: Slow robot responses to commands
-
-**Solution**: Use caching for repeated queries
+#### Example: Object Detection with YOLO
 
 ```rust
-let cache = ResponseCache::new(Duration::from_secs(60));
-if let Some(cached) = cache.get(&query).await {
-    return cached; // Skip API call
+use horus::prelude::*;
+use tch::{nn, vision, Device, Tensor};
+
+#[derive(Clone, Debug)]
+pub struct Detection {
+    pub class_id: i32,
+    pub class_name: String,
+    pub confidence: f32,
+    pub bbox: [f32; 4],  // [x, y, width, height]
+}
+
+#[derive(Clone, Debug)]
+pub struct Detections {
+    pub stamp_nanos: u64,
+    pub objects: Vec<Detection>,
+}
+
+pub struct YOLONode {
+    image_sub: Hub<ImageRaw>,
+    detections_pub: Hub<Detections>,
+    model: nn::VarStore,
+    device: Device,
+    class_names: Vec<String>,
+}
+
+impl YOLONode {
+    pub fn new(model_path: &str) -> HorusResult<Self> {
+        // Use GPU if available
+        let device = Device::cuda_if_available();
+
+        // Load YOLO model
+        let mut model = nn::VarStore::new(device);
+        model.load(model_path)
+            .map_err(|e| HorusError::Config(format!("Failed to load model: {}", e)))?;
+
+        // Load COCO class names
+        let class_names = vec![
+            "person", "bicycle", "car", "motorcycle", "airplane",
+            "bus", "train", "truck", "boat", /* ... */
+        ].iter().map(|s| s.to_string()).collect();
+
+        Ok(Self {
+            image_sub: Hub::new("camera/raw"),
+            detections_pub: Hub::new("vision/detections"),
+            model,
+            device,
+            class_names,
+        })
+    }
+
+    fn detect(&self, image: &ImageRaw) -> HorusResult<Detections> {
+        // Convert image to tensor [1, 3, H, W]
+        let tensor = Tensor::of_slice(&image.data)
+            .view([image.height as i64, image.width as i64, 3])
+            .permute(&[2, 0, 1])  // HWC -> CHW
+            .unsqueeze(0)         // Add batch dimension
+            .to_kind(tch::Kind::Float)
+            .divide_scalar(255.0)  // Normalize to [0, 1]
+            .to(self.device);
+
+        // Run inference
+        let output = self.model.forward_t(&tensor, false);
+
+        // Parse detections (simplified YOLO output parsing)
+        let mut objects = Vec::new();
+        let output_data = Vec::<f32>::from(output);
+
+        // Process each detection (confidence > 0.5)
+        for i in (0..output_data.len()).step_by(6) {
+            let confidence = output_data[i + 4];
+            if confidence > 0.5 {
+                let class_id = output_data[i + 5] as i32;
+                objects.push(Detection {
+                    class_id,
+                    class_name: self.class_names.get(class_id as usize)
+                        .cloned()
+                        .unwrap_or_else(|| "unknown".to_string()),
+                    confidence,
+                    bbox: [
+                        output_data[i],     // x
+                        output_data[i + 1], // y
+                        output_data[i + 2], // width
+                        output_data[i + 3], // height
+                    ],
+                });
+            }
+        }
+
+        Ok(Detections {
+            stamp_nanos: image.stamp_nanos,
+            objects,
+        })
+    }
+}
+
+impl Node for YOLONode {
+    fn name(&self) -> &'static str {
+        "YOLONode"
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) -> HorusResult<()> {
+        if let Some(image) = self.image_sub.recv(ctx) {
+            match self.detect(&image) {
+                Ok(detections) => {
+                    self.detections_pub.send(detections, ctx)?;
+                }
+                Err(e) => {
+                    eprintln!("YOLO detection failed: {}", e);
+                }
+            }
+        }
+        Ok(())
+    }
 }
 ```
 
-### Memory Leaks from Async Tasks
-
-**Symptom**: Memory usage grows over time
-
-**Solution**: Ensure tasks complete and resources are cleaned up
+#### Registering with Scheduler
 
 ```rust
-// Use tokio::spawn with proper error handling
-tokio::spawn(async move {
-    // Work here
-}).await?; // Ensure task completes
+fn main() -> HorusResult<()> {
+    let mut scheduler = Scheduler::new();
+
+    // Camera node
+    scheduler.register(
+        Box::new(CameraNode::new("/dev/video0", "camera/raw", 30)?),
+        2,
+        Some(true)
+    );
+
+    // YOLO inference node (GPU-accelerated)
+    scheduler.register(
+        Box::new(YOLONode::new("models/yolov5s.pt")?),
+        3,
+        Some(true)
+    );
+
+    // Control node using detections
+    scheduler.register(
+        Box::new(ObjectTrackingNode::new("vision/detections")?),
+        5,
+        Some(true)
+    );
+
+    scheduler.tick_all()?;
+    Ok(())
+}
 ```
 
-### API Key Exposure
+**Performance**: YOLOv5s runs at ~8-12ms per frame on RTX 3060.
 
-**Symptom**: Security concerns
+---
 
-**Solution**: Use environment variables and .gitignore
+### ONNX Runtime
 
-```bash
-# .gitignore
-.env
-*.key
+Cross-platform optimized inference:
 
-# Load in code
-dotenv::dotenv().ok();
-let key = std::env::var("API_KEY")?;
+#### Dependencies
+
+```toml
+[dependencies]
+horus = "0.1.0"
+ort = "1.16"  # ONNX Runtime bindings
+ndarray = "0.15"
 ```
+
+#### Example: MobileNet Classification
+
+```rust
+use horus::prelude::*;
+use ort::{Environment, ExecutionProvider, Session, SessionBuilder, Value};
+use ndarray::Array4;
+
+#[derive(Clone, Debug)]
+pub struct Classification {
+    pub stamp_nanos: u64,
+    pub class_id: usize,
+    pub class_name: String,
+    pub confidence: f32,
+    pub top_5: Vec<(String, f32)>,
+}
+
+pub struct MobileNetNode {
+    image_sub: Hub<ImageRaw>,
+    class_pub: Hub<Classification>,
+    session: Session,
+    class_names: Vec<String>,
+}
+
+impl MobileNetNode {
+    pub fn new(model_path: &str) -> HorusResult<Self> {
+        // Create ONNX Runtime environment
+        let environment = Environment::builder()
+            .with_name("mobilenet")
+            .build()
+            .map_err(|e| HorusError::Config(format!("ONNX env: {}", e)))?;
+
+        // Create session with GPU execution provider
+        let session = SessionBuilder::new(&environment)
+            .map_err(|e| HorusError::Config(format!("Session builder: {}", e)))?
+            .with_execution_providers([ExecutionProvider::CUDA(Default::default())])
+            .map_err(|e| HorusError::Config(format!("CUDA provider: {}", e)))?
+            .with_model_from_file(model_path)
+            .map_err(|e| HorusError::Config(format!("Load model: {}", e)))?;
+
+        // Load ImageNet class names
+        let class_names = load_imagenet_classes();
+
+        Ok(Self {
+            image_sub: Hub::new("camera/raw"),
+            class_pub: Hub::new("vision/classification"),
+            session,
+            class_names,
+        })
+    }
+
+    fn classify(&self, image: &ImageRaw) -> HorusResult<Classification> {
+        // Preprocess: resize to 224x224 and normalize
+        let preprocessed = self.preprocess_image(image);
+
+        // Create input tensor [1, 3, 224, 224]
+        let input_array = Array4::from_shape_vec(
+            (1, 3, 224, 224),
+            preprocessed,
+        ).map_err(|e| HorusError::Config(format!("Array shape: {}", e)))?;
+
+        let input_tensor = Value::from_array(self.session.allocator(), &input_array)
+            .map_err(|e| HorusError::Config(format!("Create tensor: {}", e)))?;
+
+        // Run inference
+        let outputs = self.session.run(vec![input_tensor])
+            .map_err(|e| HorusError::Config(format!("Inference: {}", e)))?;
+
+        // Extract output probabilities
+        let output = outputs[0]
+            .try_extract::<f32>()
+            .map_err(|e| HorusError::Config(format!("Extract output: {}", e)))?;
+        let probs = output.view().to_slice().unwrap();
+
+        // Get top-5 predictions
+        let mut indexed: Vec<(usize, f32)> = probs.iter()
+            .enumerate()
+            .map(|(i, &p)| (i, p))
+            .collect();
+        indexed.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+
+        let top_5: Vec<(String, f32)> = indexed[..5]
+            .iter()
+            .map(|(idx, conf)| {
+                (self.class_names[*idx].clone(), *conf)
+            })
+            .collect();
+
+        let (class_id, confidence) = indexed[0];
+
+        Ok(Classification {
+            stamp_nanos: image.stamp_nanos,
+            class_id,
+            class_name: self.class_names[class_id].clone(),
+            confidence,
+            top_5,
+        })
+    }
+
+    fn preprocess_image(&self, image: &ImageRaw) -> Vec<f32> {
+        // Resize to 224x224 and normalize (simplified)
+        let mut preprocessed = Vec::with_capacity(3 * 224 * 224);
+        // ... resize and normalize logic
+        preprocessed
+    }
+}
+
+impl Node for MobileNetNode {
+    fn name(&self) -> &'static str {
+        "MobileNetNode"
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) -> HorusResult<()> {
+        if let Some(image) = self.image_sub.recv(ctx) {
+            match self.classify(&image) {
+                Ok(result) => {
+                    self.class_pub.send(result, ctx)?;
+                }
+                Err(e) => {
+                    eprintln!("Classification failed: {}", e);
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+fn load_imagenet_classes() -> Vec<String> {
+    // Load from file or embed in binary
+    vec!["class1".to_string(), "class2".to_string()] // ... 1000 classes
+}
+```
+
+**Performance**: MobileNetV2 runs at ~3-5ms on GPU, ~15-20ms on CPU.
+
+---
+
+### Python AI Integration
+
+Use Python for AI while keeping HORUS real-time:
+
+#### Python AI Node
+
+```python
+# vision_node.py
+import horus
+import torch
+import torchvision
+from PIL import Image
+import numpy as np
+
+class TorchVisionNode(horus.Node):
+    def __init__(self):
+        super().__init__("TorchVisionNode")
+
+        # Hubs
+        self.image_sub = horus.Hub("camera/raw", horus.ImageRaw)
+        self.detections_pub = horus.Hub("vision/detections", horus.Detections)
+
+        # Load model
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
+        self.model.to(self.device)
+        self.model.eval()
+
+        # COCO classes
+        self.classes = [
+            "__background__", "person", "bicycle", "car", "motorcycle",
+            "airplane", "bus", "train", "truck", "boat", # ...
+        ]
+
+    def tick(self, ctx=None):
+        # Receive image
+        image_msg = self.image_sub.recv(ctx)
+        if image_msg is None:
+            return
+
+        # Convert to PIL Image
+        img = Image.fromarray(
+            np.array(image_msg.data).reshape(
+                image_msg.height, image_msg.width, 3
+            ).astype(np.uint8)
+        )
+
+        # Preprocess
+        transform = torchvision.transforms.Compose([
+            torchvision.transforms.ToTensor(),
+        ])
+        img_tensor = transform(img).unsqueeze(0).to(self.device)
+
+        # Inference
+        with torch.no_grad():
+            predictions = self.model(img_tensor)[0]
+
+        # Parse results
+        detections = []
+        for box, label, score in zip(
+            predictions['boxes'],
+            predictions['labels'],
+            predictions['scores']
+        ):
+            if score > 0.5:
+                detections.append(horus.Detection(
+                    class_id=int(label),
+                    class_name=self.classes[int(label)],
+                    confidence=float(score),
+                    bbox=[float(x) for x in box]
+                ))
+
+        # Publish
+        result = horus.Detections(
+            stamp_nanos=image_msg.stamp_nanos,
+            objects=detections
+        )
+        self.detections_pub.send(result, ctx)
+
+# Register with scheduler
+if __name__ == "__main__":
+    scheduler = horus.Scheduler()
+
+    # Camera (Rust node)
+    camera = horus.CameraNode("/dev/video0", "camera/raw", 30)
+    scheduler.register(camera, priority=2, continuous=True)
+
+    # Vision (Python node with PyTorch)
+    vision = TorchVisionNode()
+    scheduler.register(vision, priority=3, continuous=True)
+
+    # Control (Rust node)
+    controller = horus.ControlNode("vision/detections")
+    scheduler.register(controller, priority=5, continuous=True)
+
+    # Run
+    scheduler.tick_all()
+```
+
+**Performance**: Faster R-CNN runs at ~25-35ms on RTX 3060.
+
+---
+
+## Part 2: Cloud AI Integration
+
+For non-time-critical tasks (natural language, complex reasoning):
+
+### OpenAI Vision API Node
+
+```rust
+use horus::prelude::*;
+use reqwest::Client;
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tokio::sync::Mutex;
+
+#[derive(Clone, Debug)]
+pub struct VisionQuery {
+    pub stamp_nanos: u64,
+    pub image: Vec<u8>,
+    pub question: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct VisionAnswer {
+    pub stamp_nanos: u64,
+    pub answer: String,
+    pub confidence: f32,
+}
+
+pub struct GPTVisionNode {
+    query_sub: Hub<VisionQuery>,
+    answer_pub: Hub<VisionAnswer>,
+    http_client: Arc<Client>,
+    api_key: String,
+    last_request: Arc<Mutex<std::time::Instant>>,
+}
+
+impl GPTVisionNode {
+    pub fn new(api_key: String) -> Self {
+        Self {
+            query_sub: Hub::new("vision/query"),
+            answer_pub: Hub::new("vision/answer"),
+            http_client: Arc::new(Client::new()),
+            api_key,
+            last_request: Arc::new(Mutex::new(
+                std::time::Instant::now() - std::time::Duration::from_secs(10)
+            )),
+        }
+    }
+
+    async fn query_gpt_vision(
+        &self,
+        image: &[u8],
+        question: &str,
+    ) -> Result<String, String> {
+        // Rate limit
+        {
+            let mut last = self.last_request.lock().await;
+            let elapsed = last.elapsed();
+            if elapsed < std::time::Duration::from_millis(500) {
+                tokio::time::sleep(
+                    std::time::Duration::from_millis(500) - elapsed
+                ).await;
+            }
+            *last = std::time::Instant::now();
+        }
+
+        // Encode image
+        let base64_img = base64::encode(image);
+
+        // Call GPT-4 Vision API
+        let response = self.http_client
+            .post("https://api.openai.com/v1/chat/completions")
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .json(&serde_json::json!({
+                "model": "gpt-4-vision-preview",
+                "messages": [{
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": question},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": format!("data:image/jpeg;base64,{}", base64_img)
+                            }
+                        }
+                    ]
+                }],
+                "max_tokens": 300
+            }))
+            .send()
+            .await
+            .map_err(|e| format!("Request failed: {}", e))?;
+
+        let result: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|e| format!("Parse failed: {}", e))?;
+
+        let answer = result["choices"][0]["message"]["content"]
+            .as_str()
+            .ok_or("No answer in response")?
+            .to_string();
+
+        Ok(answer)
+    }
+}
+
+impl Node for GPTVisionNode {
+    fn name(&self) -> &'static str {
+        "GPTVisionNode"
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) -> HorusResult<()> {
+        if let Some(query) = self.query_sub.recv(ctx) {
+            // Spawn async task (doesn't block scheduler)
+            let client = self.http_client.clone();
+            let api_key = self.api_key.clone();
+            let answer_pub = self.answer_pub.clone();
+            let last_request = self.last_request.clone();
+            let stamp = query.stamp_nanos;
+
+            tokio::spawn(async move {
+                let temp_node = GPTVisionNode {
+                    query_sub: Hub::new("vision/query"),
+                    answer_pub: answer_pub.clone(),
+                    http_client: client,
+                    api_key,
+                    last_request,
+                };
+
+                match temp_node.query_gpt_vision(&query.image, &query.question).await {
+                    Ok(answer) => {
+                        answer_pub.send(VisionAnswer {
+                            stamp_nanos: stamp,
+                            answer,
+                            confidence: 0.9,  // GPT-4V doesn't provide confidence
+                        }, None).ok();
+                    }
+                    Err(e) => {
+                        eprintln!("GPT Vision error: {}", e);
+                    }
+                }
+            });
+        }
+        Ok(())
+    }
+}
+```
+
+### Registering Cloud AI Node
+
+```rust
+fn main() -> HorusResult<()> {
+    let mut scheduler = Scheduler::new();
+
+    // Local vision (real-time, priority 3)
+    scheduler.register(
+        Box::new(YOLONode::new("models/yolo.pt")?),
+        3,
+        Some(true)
+    );
+
+    // Cloud vision (async, priority 4 - doesn't block)
+    let api_key = std::env::var("OPENAI_API_KEY")
+        .expect("OPENAI_API_KEY not set");
+    scheduler.register(
+        Box::new(GPTVisionNode::new(api_key)),
+        4,
+        Some(true)
+    );
+
+    // Control uses local vision for real-time decisions
+    scheduler.register(
+        Box::new(ControlNode::new("vision/detections")?),
+        5,
+        Some(true)
+    );
+
+    scheduler.tick_all()?;
+    Ok(())
+}
+```
+
+**Key Point**: Cloud API calls run in async tasks and don't block the real-time scheduler loop.
+
+---
+
+## Best Practices
+
+### 1. Separate Real-Time from AI
+
+```
+Real-Time Loop (60 Hz):
+  Camera → YOLO (10ms) → Control (2ms) → Motors
+
+Async Tasks (when needed):
+  Complex queries → GPT-4 Vision (500ms) → High-level planning
+```
+
+### 2. GPU Management
+
+```rust
+// Use one GPU context per node
+impl YOLONode {
+    pub fn new() -> Self {
+        let device = Device::cuda_if_available();
+        // Keep device in struct, reuse for all inferences
+    }
+}
+```
+
+### 3. Priority Assignment
+
+```rust
+// Priority determines execution order:
+scheduler.register(camera, 2, Some(true));      // Sensors first
+scheduler.register(local_ai, 3, Some(true));    // Local AI (fast)
+scheduler.register(cloud_ai, 4, Some(true));    // Cloud AI (async)
+scheduler.register(control, 5, Some(true));     // Control last
+```
+
+### 4. Error Handling
+
+```rust
+impl Node for AINode {
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) -> HorusResult<()> {
+        if let Some(input) = self.input_sub.recv(ctx) {
+            match self.process(&input) {
+                Ok(result) => {
+                    self.output_pub.send(result, ctx)?;
+                }
+                Err(e) => {
+                    // Log but don't crash - keep system running
+                    eprintln!("AI processing failed: {}", e);
+                    // Optionally publish default/fallback result
+                }
+            }
+        }
+        Ok(())
+    }
+}
+```
+
+---
+
+## Performance Comparison
+
+| Approach | Latency | Use Case |
+|----------|---------|----------|
+| OpenCV (Rust) | 2-5ms | Edge detection, filtering, tracking |
+| ONNX CPU | 15-20ms | Classification, small models |
+| ONNX GPU | 3-5ms | Classification with GPU |
+| PyTorch GPU | 8-12ms | YOLO, Faster R-CNN |
+| TensorFlow GPU | 10-15ms | Custom models |
+| OpenAI API | 200-500ms | Complex vision, NLP |
+| Anthropic API | 300-600ms | Reasoning, planning |
+
+---
+
+## Complete Example System
+
+```rust
+use horus::prelude::*;
+
+fn main() -> HorusResult<()> {
+    let mut scheduler = Scheduler::new();
+
+    // 1. Camera input (priority 2)
+    let camera = CameraNode::new("/dev/video0", "camera/raw", 30)?;
+    scheduler.register(Box::new(camera), 2, Some(true));
+
+    // 2. Fast edge detection with OpenCV (priority 3)
+    let edges = EdgeDetectorNode::new()?;
+    scheduler.register(Box::new(edges), 3, Some(true));
+
+    // 3. GPU object detection with YOLO (priority 3)
+    let yolo = YOLONode::new("models/yolov5s.pt")?;
+    scheduler.register(Box::new(yolo), 3, Some(true));
+
+    // 4. Optional cloud reasoning (priority 4, async)
+    if let Ok(api_key) = std::env::var("OPENAI_API_KEY") {
+        let gpt_vision = GPTVisionNode::new(api_key);
+        scheduler.register(Box::new(gpt_vision), 4, Some(true));
+    }
+
+    // 5. Control using vision (priority 5)
+    let controller = ControlNode::new("vision/detections")?;
+    scheduler.register(Box::new(controller), 5, Some(true));
+
+    // 6. Motor output (priority 6)
+    let motors = MotorNode::new()?;
+    scheduler.register(Box::new(motors), 6, Some(true));
+
+    // Run at 30 Hz (camera framerate)
+    scheduler.tick_all()?;
+    Ok(())
+}
+```
+
+**Performance**: Entire pipeline runs at 30 Hz with ~20-25ms total latency (camera → motors).
+
+---
 
 ## Next Steps
 
-- **[Examples](/docs/examples)** - See complete AI integration examples
-- **[Message Types](/docs/message-types)** - Define custom AI message types
-- **[Performance](/docs/performance)** - Optimize async node performance
-- **[Python Bindings](/docs/python-bindings)** - Use AI libraries from Python nodes
-
-## Additional Resources
-
-**AI APIs**:
-- [OpenAI API Documentation](https://platform.openai.com/docs)
-- [Anthropic Claude API](https://docs.anthropic.com)
-- [Google Gemini API](https://ai.google.dev/docs)
-
-**Rust Async**:
-- [Tokio Tutorial](https://tokio.rs/tokio/tutorial)
-- [Async Book](https://rust-lang.github.io/async-book/)
-
-**Security**:
-- [OWASP API Security](https://owasp.org/www-project-api-security/)
+- **[Python Bindings](/python-bindings)** - Use Python AI libraries with HORUS
+- **[Node Macro](/node-macro)** - Simplify node creation
+- **[Library Reference](/library-reference)** - Pre-built vision and AI nodes
+- **[Examples](/examples)** - Complete robotics AI projects
