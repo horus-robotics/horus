@@ -16,49 +16,27 @@ A system with two components:
 
 They'll communicate using HORUS's ultra-fast shared memory.
 
-## Option 1: Using the CLI (Easiest)
-
-The fastest way to get started:
+## Step 1: Create a New Project
 
 ```bash
-# Create a new project
+# Create a new HORUS project
 horus new temperature-monitor
 
-# Select options:
-# Language: Rust
+# Select options in the interactive prompt:
+# Language: Rust (option 2)
 # Use macros: No (we'll learn the basics first)
 
 cd temperature-monitor
 ```
 
-This creates a working template. Now let's build something custom!
+This creates:
+- `main.rs` - Your code (we'll customize this)
+- `horus.yaml` - Dependencies and project metadata
+- `.horus/` - Build cache and dependencies
 
-## Option 2: From Scratch
+## Step 2: Write the Code
 
-### Step 1: Create a New Rust Project
-
-```bash
-cargo new temperature-monitor
-cd temperature-monitor
-```
-
-### Step 2: Add HORUS to Your Project
-
-Edit `Cargo.toml`:
-
-```toml
-[package]
-name = "temperature-monitor"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-horus = "0.3"
-```
-
-### Step 3: Write the Code
-
-Replace `src/main.rs` with this complete example:
+Replace the generated `main.rs` with this complete example:
 
 ```rust
 use horus::prelude::*;
@@ -160,11 +138,16 @@ fn main() -> HorusResult<()> {
 }
 ```
 
-### Step 4: Run It!
+## Step 3: Run It!
 
 ```bash
-cargo run --release
+horus run --release
 ```
+
+HORUS will automatically:
+- Scan dependencies from `horus.yaml`
+- Compile with `rustc` (optimized)
+- Execute your program
 
 You'll see:
 
