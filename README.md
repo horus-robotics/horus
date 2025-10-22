@@ -87,6 +87,21 @@ See [ROADMAP.md](ROADMAP.md) for detailed development plans and timelines.
 
 ## Installation
 
+### Platform Support
+
+HORUS works on systems with POSIX shared memory support:
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| **Ubuntu 20.04+** | ✅ Fully Supported | Recommended for production |
+| **Ubuntu 22.04+** | ✅ Fully Supported | Best performance |
+| **Debian 11+** | ✅ Supported | Tested and working |
+| **Fedora 36+** | ✅ Supported | Use dnf for packages |
+| **Arch Linux** | ✅ Supported | Community maintained |
+| **macOS 11+** | ✅ Supported | Limited shared memory size |
+| **Windows** | ⚠️ Via WSL Only | Use WSL 2 for best results |
+| **Raspberry Pi** | ✅ Supported | ARM64 tested on Ubuntu |
+
 ### Prerequisites
 
 **Required:**

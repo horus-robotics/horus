@@ -8,12 +8,39 @@ order: 2
 
 Get HORUS up and running in 5 minutes. We'll install Rust, build HORUS, and verify everything works.
 
-## What You'll Need
+## Platform Support
+
+HORUS works on systems with POSIX shared memory support:
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| **Ubuntu 20.04+** | ✅ Fully Supported | Recommended for production |
+| **Ubuntu 22.04+** | ✅ Fully Supported | Best performance |
+| **Debian 11+** | ✅ Supported | Tested and working |
+| **Fedora 36+** | ✅ Supported | Use dnf for packages |
+| **Arch Linux** | ✅ Supported | Community maintained |
+| **macOS 11+** | ✅ Supported | Limited shared memory size |
+| **Windows** | ⚠️ Via WSL Only | Use WSL 2 for best results |
+| **Raspberry Pi** | ✅ Supported | ARM64 tested on Ubuntu |
+
+## Prerequisites
 
 **Required:**
-- **Linux or macOS** - HORUS uses shared memory (available on both)
-- **10-15 minutes** - For first-time installation
-- **Internet connection** - To download dependencies
+- **Operating System**: Linux (Ubuntu 20.04+) or macOS 11+
+- **Rust 1.70+**: We'll install this in Step 1
+- **C Compiler**: Required by Rust for native compilation
+  ```bash
+  # Ubuntu/Debian
+  sudo apt update && sudo apt install build-essential
+
+  # Fedora/RHEL
+  sudo dnf groupinstall "Development Tools"
+
+  # macOS
+  xcode-select --install
+  ```
+- **10-15 minutes**: For first-time installation
+- **Internet connection**: To download dependencies
 
 **Don't worry if you don't have:**
 - Rust (we'll install it)
