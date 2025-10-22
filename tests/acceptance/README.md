@@ -149,15 +149,16 @@ cd /path/to/horus/HORUS
 # Follow scenarios in horus_manager/01_new_command.md
 horus new test_project
 cd test_project
-cargo check
+horus run
 # ✓ Scenario 1: Create Basic Rust Project
 ```
 
 **Automated Testing:**
 While these are written as user stories, many can be automated:
 ```bash
-# Integration tests
-cargo test --test acceptance_tests
+# Integration tests (for HORUS core framework)
+cd /path/to/horus/HORUS
+cargo test --test acceptance_tests  # Core framework tests only
 
 # Python bindings tests
 cd horus_py

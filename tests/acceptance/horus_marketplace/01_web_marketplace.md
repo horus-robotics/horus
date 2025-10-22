@@ -318,7 +318,7 @@ After: [@username] avatar with dropdown
 │ └────────────────────────────────────────┘ │
 │                                            │
 │ Package metadata will be extracted from    │
-│ Cargo.toml. Ensure it includes:            │
+│ horus.yaml. Ensure it includes:            │
 │ - name, version, description, license      │
 │                                            │
 │ [Upload and Publish]                       │

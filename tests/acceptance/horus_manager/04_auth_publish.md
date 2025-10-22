@@ -142,7 +142,7 @@ Publishing update...
 ```bash
 $ horus publish
 Error: Version 1.0.0 is already published
-Bump the version in Cargo.toml and try again
+Bump the version in horus.yaml and try again
 ```
 
 ### Scenario 9: Publish Without Authentication
@@ -174,15 +174,15 @@ Run 'horus auth login' to authenticate with GitHub
 ```bash
 $ horus publish
 Validation failed:
-  ✗ Missing Cargo.toml
-  ✗ No source files found in src/
+  ✗ Missing horus.yaml
+  ✗ No source files found (main.rs, main.py, or main.c)
   ✗ Missing package description
 
 Fix these issues and try again
 ```
 
 ### Scenario 11: Missing Required Metadata
-**Given:** Cargo.toml missing description or license
+**Given:** horus.yaml missing description or license
 **When:** User runs `horus publish`
 **Then:**
 - [ ] Specific missing fields are identified
@@ -193,8 +193,8 @@ Fix these issues and try again
 ```bash
 $ horus publish
 Validation failed:
-  ✗ Missing 'description' in Cargo.toml
-  ✗ Missing 'license' in Cargo.toml
+  ✗ Missing 'description' in horus.yaml
+  ✗ Missing 'license' in horus.yaml
 
 Add these required fields and try again
 ```
@@ -261,12 +261,12 @@ Run 'horus publish' to upload to registry
 - [ ] No upload occurs
 
 ### Edge Case 4: Invalid Version Format
-**Given:** Version in Cargo.toml is "1.0" (not semver)
+**Given:** Version in horus.yaml is "1.0" (not semver)
 **When:** User runs `horus publish`
 **Then:**
 - [ ] Validation fails
 - [ ] Error: "Invalid version format"
-- [ ] Example of valid version shown
+- [ ] Example of valid version shown (e.g., "1.0.0")
 
 ## Help Documentation
 

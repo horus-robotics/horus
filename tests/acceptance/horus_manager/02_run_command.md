@@ -9,10 +9,11 @@ As a developer, I want to run my HORUS project with a single command that handle
 ## Test Scenarios
 
 ### Scenario 1: Run Rust Project in Debug Mode
-**Given:** User has a valid HORUS Rust project
+**Given:** User has a valid HORUS Rust project (created with `horus new`)
 **When:** User runs `horus run`
 **Then:**
-- [ ] Project is built with `cargo build`
+- [ ] Dependencies are scanned from horus.yaml
+- [ ] Project is compiled with rustc
 - [ ] Build output is displayed
 - [ ] Executable runs after successful build
 - [ ] Scheduler starts and nodes execute
@@ -23,9 +24,15 @@ As a developer, I want to run my HORUS project with a single command that handle
 ```bash
 $ cd my_robot
 $ horus run
-   Compiling my_robot v0.1.0
-    Finished dev [unoptimized + debuginfo] target(s) in 2.5s
-     Running target/debug/my_robot
+🚀 Starting HORUS runtime in debug mode...
+→ Detected: main.rs (rust)
+→ Scanning imports...
+→ Found 2 dependencies
+  ✓ horus (already linked)
+  ✓ horus_macros (already linked)
+→ Compiling Rust program (debug mode)...
+  ✓ Compiled to .horus/cache/rust_main_debug
+→ Executing Rust program...
 Registered node 'Controller' with priority 0
 [12:34:56] Controller initialized
 ^C
@@ -36,17 +43,20 @@ Shutting down gracefully...
 **Given:** User wants optimized performance
 **When:** User runs `horus run --release`
 **Then:**
-- [ ] Project is built with `cargo build --release`
+- [ ] Project is compiled with rustc -O (optimizations enabled)
 - [ ] Build shows optimization in progress
-- [ ] Release binary executes from `target/release/`
+- [ ] Release binary executes from `.horus/cache/rust_main_release`
 - [ ] Performance is noticeably faster (for benchmarks)
 
 **Acceptance Criteria:**
 ```bash
 $ horus run --release
-   Compiling my_robot v0.1.0
-    Finished release [optimized] target(s) in 15.2s
-     Running target/release/my_robot
+🚀 Starting HORUS runtime in release mode...
+→ Detected: main.rs (rust)
+→ Scanning imports...
+→ Compiling Rust program (release mode)...
+  ✓ Compiled to .horus/cache/rust_main_release
+→ Executing Rust program...
 Registered node 'Controller' with priority 0
 ...
 ```
@@ -141,14 +151,14 @@ Caused by: Permission denied: /dev/shm/horus/cmd_vel
 
 ## Edge Cases
 
-### Edge Case 1: Incremental Build
-**Given:** Project was already built
+### Edge Case 1: Cached Build
+**Given:** Project was already built and source hasn't changed
 **When:** User runs `horus run` again without changes
 **Then:**
-- [ ] Cargo detects no changes
-- [ ] Build completes in < 1 second
-- [ ] "Finished" message appears quickly
-- [ ] Binary executes immediately
+- [ ] HORUS detects cached binary exists
+- [ ] No recompilation occurs
+- [ ] "Using cached binary" message appears
+- [ ] Binary executes immediately (< 0.1 second startup)
 
 ### Edge Case 2: Build Cache Corruption
 **Given:** `target/` directory is corrupted

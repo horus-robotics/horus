@@ -13,39 +13,58 @@ As a robotics developer, I want to quickly create a new HORUS project with prope
 **When:** User runs `horus new my_robot`
 **Then:**
 - [ ] Directory `my_robot/` is created
-- [ ] `Cargo.toml` exists with correct dependencies
-- [ ] `src/main.rs` exists with compilable Node implementation
-- [ ] `.gitignore` is created
-- [ ] Success message is displayed: "Created Rust project: my_robot"
-- [ ] Project compiles: `cd my_robot && cargo check` succeeds
+- [ ] `horus.yaml` exists with correct dependencies
+- [ ] `main.rs` exists with compilable Node implementation
+- [ ] `.horus/` directory is created
+- [ ] Success message is displayed with instructions
+- [ ] Project builds and runs: `cd my_robot && horus run` succeeds
 - [ ] Generated code uses `HorusResult<T>` (not `Result<T>`)
 - [ ] No `std::thread::sleep()` in generated code
 
 **Acceptance Criteria:**
 ```bash
 $ horus new my_robot
-Created Rust project: my_robot
+✨ Creating new HORUS project 'my_robot'
+✅ Project created successfully!
+
+To get started:
+  cd my_robot
+  horus run (auto-installs dependencies)
+
 $ cd my_robot
-$ cargo check
-   Compiling my_robot v0.1.0
-    Finished dev [unoptimized + debuginfo] target(s)
+$ ls
+main.rs  horus.yaml  .horus/
 ```
 
 ### Scenario 2: Create Rust Project with Macro
 **Given:** User wants to use the `node!` macro
-**When:** User runs `horus new my_robot --macro`
+**When:** Interactive prompt and user selects "yes" for macros
 **Then:**
 - [ ] Project is created with `node!` macro usage
-- [ ] `Cargo.toml` includes `horus_macros` dependency
+- [ ] `horus.yaml` includes `horus_macros` dependency
 - [ ] Generated code compiles without errors
 - [ ] Macro expansion produces correct Node trait implementation
 
 **Acceptance Criteria:**
 ```bash
-$ horus new my_robot --macro
-Created Rust project with macros: my_robot
-$ cd my_robot && cargo check
-    Finished dev [unoptimized + debuginfo] target(s)
+$ horus new my_robot
+✨ Creating new HORUS project 'my_robot'
+
+? Select language:
+  1. Python
+  2. Rust
+  3. C
+> [1-3] (default: 2): 2
+
+? Use HORUS macros for simpler syntax? [y/N]: y
+
+✅ Project created successfully!
+
+$ cd my_robot && horus run
+→ Scanning imports...
+→ Found 2 dependencies
+→ Building Rust project...
+→ Executing...
 ```
 
 ### Scenario 3: Create Python Project
@@ -135,9 +154,9 @@ Options:
 ### Edge Case 1: Special Characters in Project Name
 **When:** User runs `horus new my-robot-123`
 **Then:**
-- [ ] Project is created with valid Rust package name
+- [ ] Project is created with valid package name
 - [ ] Hyphens are preserved in directory name
-- [ ] Cargo.toml uses valid package name (hyphens converted to underscores if needed)
+- [ ] horus.yaml uses valid package name
 
 ### Edge Case 2: Long Project Name
 **When:** User runs `horus new very_long_project_name_for_testing`
