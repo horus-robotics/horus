@@ -1548,36 +1548,43 @@ fn execute_with_scheduler(
                     bail!("HORUS package not found in .horus/packages/horus");
                 }
 
+                eprintln!("  {} Searching for horus libraries in {:?}", "→".cyan(), horus_pkg);
+
                 // Search for .rlib files in the horus package
                 let mut lib_dirs = Vec::new();
                 let mut extern_crates = Vec::new();
 
                 // Check common locations for compiled libraries
                 for subdir in &[
+                    "lib",
                     "target/release",
                     "target/debug",
-                    "lib",
                     "target/release/deps",
                     "target/debug/deps",
                 ] {
                     let lib_path = horus_pkg.join(subdir);
                     if lib_path.exists() {
+                        eprintln!("  {} Checking {:?}", "✓".green(), lib_path);
                         if let Ok(entries) = fs::read_dir(&lib_path) {
                             for entry in entries.flatten() {
                                 let path = entry.path();
                                 if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
                                     if name.ends_with(".rlib") {
+                                        eprintln!("  {} Found {}", "→".cyan(), name);
                                         if name.starts_with("libhorus-") || name == "libhorus.rlib"
                                         {
                                             extern_crates.push(("horus", path.clone()));
+                                            eprintln!("  {} Added horus extern", "✓".green());
                                         } else if name.starts_with("libhorus_core-")
                                             || name == "libhorus_core.rlib"
                                         {
                                             extern_crates.push(("horus_core", path.clone()));
+                                            eprintln!("  {} Added horus_core extern", "✓".green());
                                         } else if name.starts_with("libhorus_macros-")
                                             || name == "libhorus_macros.rlib"
                                         {
                                             extern_crates.push(("horus_macros", path.clone()));
+                                            eprintln!("  {} Added horus_macros extern", "✓".green());
                                         }
                                         lib_dirs.push(lib_path.clone());
                                     }
@@ -1607,6 +1614,13 @@ fn execute_with_scheduler(
                     cmd.arg("--extern")
                         .arg(format!("{}={}", name, path.display()));
                 }
+
+                eprintln!(
+                    "  {} Compiling with {} extern crates, {} lib dirs",
+                    "→".cyan(),
+                    extern_crates.len(),
+                    lib_dirs.len()
+                );
 
                 let status = cmd.status()?;
                 if !status.success() {
