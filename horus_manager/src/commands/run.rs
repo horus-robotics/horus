@@ -1624,6 +1624,16 @@ fn execute_with_scheduler(
                                             }
                                         }
                                     }
+                                    // Also check for proc-macro dynamic libraries (.so, .dylib)
+                                    else if name.ends_with(".so") || name.ends_with(".dylib") {
+                                        eprintln!("  {} Found proc-macro {}", "→".cyan(), name);
+                                        if name.starts_with("libhorus_macros") {
+                                            if !extern_crates.contains_key("horus_macros") {
+                                                extern_crates.insert("horus_macros".to_string(), path.clone());
+                                                eprintln!("  {} Added horus_macros extern (proc-macro)", "✓".green());
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
