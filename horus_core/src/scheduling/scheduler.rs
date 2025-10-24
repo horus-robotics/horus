@@ -125,7 +125,7 @@ impl Scheduler {
                     *r = false;
                 }
                 std::thread::spawn(|| {
-                    std::thread::sleep(std::time::Duration::from_millis(100));
+                    std::thread::sleep(std::time::Duration::from_secs(2));
                     eprintln!("🚪 Force terminating application...");
                     std::process::exit(0);
                 });
