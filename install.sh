@@ -197,6 +197,12 @@ mkdir -p "$HORUS_DIR/target/release"
 cp -r target/release/libhorus*.rlib "$HORUS_DIR/target/release/" 2>/dev/null || true
 cp -r target/release/deps/libhorus_core*.rlib "$HORUS_DIR/target/release/" 2>/dev/null || true
 
+# CRITICAL: Copy ALL transitive dependencies for rustc compilation
+mkdir -p "$HORUS_DIR/target/release/deps"
+echo -e "${CYAN}  →${NC} Bundling transitive dependencies for user projects..."
+cp target/release/deps/*.rlib "$HORUS_DIR/target/release/deps/" 2>/dev/null || true
+echo -e "${GREEN}✓${NC} Bundled $(ls target/release/deps/*.rlib 2>/dev/null | wc -l) dependency libraries"
+
 # Create metadata
 cat > "$HORUS_DIR/metadata.json" << EOF
 {
