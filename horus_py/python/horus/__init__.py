@@ -242,6 +242,19 @@ class Node:
         if self.shutdown_fn:
             self.shutdown_fn(self)
 
+    # Public methods for Rust bindings to call
+    def init(self, info=None):
+        """Called by Rust scheduler during initialization."""
+        self._internal_init(info)
+
+    def tick(self, info=None):
+        """Called by Rust scheduler on each tick."""
+        self._internal_tick(info)
+
+    def shutdown(self, info=None):
+        """Called by Rust scheduler during shutdown."""
+        self._internal_shutdown(info)
+
 
 class Scheduler:
     """
