@@ -242,6 +242,55 @@ if [ -n "$NEEDS_REBUILD" ]; then
     mkdir -p "$HORUS_LIBRARY_DIR/target/release"
     cp -r target/release/libhorus_library*.rlib "$HORUS_LIBRARY_DIR/target/release/" 2>/dev/null || true
 
+    # Update horus_c (C bindings)
+    HORUS_C_VERSION=$(grep -m1 '^version' horus_c/Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
+    HORUS_C_DIR="$CACHE_DIR/horus_c@$HORUS_C_VERSION"
+    mkdir -p "$HORUS_C_DIR/lib"
+    mkdir -p "$HORUS_C_DIR/include"
+
+    cp -r target/release/libhorus_c.so "$HORUS_C_DIR/lib/" 2>/dev/null || true
+    cp -r target/release/libhorus_c.a "$HORUS_C_DIR/lib/" 2>/dev/null || true
+    cp -r target/release/libhorus_c.dylib "$HORUS_C_DIR/lib/" 2>/dev/null || true
+
+    if [ -f "horus_c/horus.h" ]; then
+        cp horus_c/horus.h "$HORUS_C_DIR/include/"
+    elif [ -f "target/horus.h" ]; then
+        cp target/horus.h "$HORUS_C_DIR/include/"
+    fi
+
+    # Update horus_py (Python bindings) if Python is available
+    if command -v python3 &> /dev/null && command -v pip3 &> /dev/null; then
+        PYTHON_VERSION=$(python3 --version | awk '{print $2}')
+        PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
+        PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+
+        if [ "$PYTHON_MAJOR" -ge 3 ] && [ "$PYTHON_MINOR" -ge 9 ]; then
+            HORUS_PY_VERSION=$(grep -m1 '^version' horus_py/Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
+            HORUS_PY_DIR="$CACHE_DIR/horus_py@$HORUS_PY_VERSION"
+
+            # Check if maturin is available
+            if command -v maturin &> /dev/null || command -v "$HOME/.local/bin/maturin" &> /dev/null; then
+                echo -e "${CYAN}→${NC} Updating Python bindings..."
+                cd horus_py
+                (maturin develop --release --quiet 2>/dev/null || "$HOME/.local/bin/maturin" develop --release --quiet 2>/dev/null) && {
+                    mkdir -p "$HORUS_PY_DIR/lib/horus"
+                    cp -r python/horus/__init__.py "$HORUS_PY_DIR/lib/horus/" 2>/dev/null || true
+
+                    # Copy extension
+                    if [ -f "python/horus/_horus.abi3.so" ]; then
+                        cp python/horus/_horus.abi3.so "$HORUS_PY_DIR/lib/horus/_horus.so"
+                    elif [ -f "python/horus/_horus.so" ]; then
+                        cp python/horus/_horus.so "$HORUS_PY_DIR/lib/horus/_horus.so"
+                    elif [ -f "python/horus/_horus.abi3.dylib" ]; then
+                        cp python/horus/_horus.abi3.dylib "$HORUS_PY_DIR/lib/horus/_horus.so"
+                    fi
+                    echo -e "${GREEN}✓${NC} Python bindings updated"
+                }
+                cd ..
+            fi
+        fi
+    fi
+
     echo "$NEW_VERSION" > "$VERSION_FILE"
 
     echo -e "${GREEN}✓${NC} Libraries updated"
