@@ -1630,6 +1630,13 @@ fn execute_with_scheduler(
                     lib_dirs.len()
                 );
 
+                // Debug: show the actual extern declarations
+                eprintln!("  {} Extern crates:", "→".cyan());
+                for (name, path) in &extern_crates {
+                    let exists = if path.exists() { "✓" } else { "✗" };
+                    eprintln!("    {} --extern {}={}", exists, name, path.display());
+                }
+
                 let status = cmd.status()?;
                 if !status.success() {
                     bail!("Rust compilation failed");
