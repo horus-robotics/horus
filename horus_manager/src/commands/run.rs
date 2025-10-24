@@ -1553,7 +1553,13 @@ fn execute_with_scheduler(
                 let mut extern_crates = Vec::new();
 
                 // Check common locations for compiled libraries
-                for subdir in &["target/release", "target/debug", "lib", "target/release/deps", "target/debug/deps"] {
+                for subdir in &[
+                    "target/release",
+                    "target/debug",
+                    "lib",
+                    "target/release/deps",
+                    "target/debug/deps",
+                ] {
                     let lib_path = horus_pkg.join(subdir);
                     if lib_path.exists() {
                         if let Ok(entries) = fs::read_dir(&lib_path) {
@@ -1561,11 +1567,16 @@ fn execute_with_scheduler(
                                 let path = entry.path();
                                 if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
                                     if name.ends_with(".rlib") {
-                                        if name.starts_with("libhorus-") || name == "libhorus.rlib" {
+                                        if name.starts_with("libhorus-") || name == "libhorus.rlib"
+                                        {
                                             extern_crates.push(("horus", path.clone()));
-                                        } else if name.starts_with("libhorus_core-") || name == "libhorus_core.rlib" {
+                                        } else if name.starts_with("libhorus_core-")
+                                            || name == "libhorus_core.rlib"
+                                        {
                                             extern_crates.push(("horus_core", path.clone()));
-                                        } else if name.starts_with("libhorus_macros-") || name == "libhorus_macros.rlib" {
+                                        } else if name.starts_with("libhorus_macros-")
+                                            || name == "libhorus_macros.rlib"
+                                        {
                                             extern_crates.push(("horus_macros", path.clone()));
                                         }
                                         lib_dirs.push(lib_path.clone());
@@ -1587,12 +1598,14 @@ fn execute_with_scheduler(
                 // Add library search paths
                 cmd.arg("-L").arg(".horus/lib");
                 for lib_dir in lib_dirs.iter().collect::<std::collections::HashSet<_>>() {
-                    cmd.arg("-L").arg(format!("dependency={}", lib_dir.display()));
+                    cmd.arg("-L")
+                        .arg(format!("dependency={}", lib_dir.display()));
                 }
 
                 // Add extern declarations
                 for (name, path) in &extern_crates {
-                    cmd.arg("--extern").arg(format!("{}={}", name, path.display()));
+                    cmd.arg("--extern")
+                        .arg(format!("{}={}", name, path.display()));
                 }
 
                 let status = cmd.status()?;
