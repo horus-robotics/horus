@@ -393,15 +393,21 @@ impl RegistryClient {
 
         // Create tar.gz of the package
         let tar_path = std::env::temp_dir().join(format!("{}-{}.tar.gz", name, version));
-        let tar_file = fs::File::create(&tar_path)?;
-        let encoder = GzEncoder::new(tar_file, Compression::default());
-        let mut tar_builder = Builder::new(encoder);
 
-        // Add all files to tar (excluding .git, target, node_modules)
-        tar_builder.append_dir_all(".", current_dir)?;
-        tar_builder.finish()?;
+        // Create tarball in a scope to ensure proper flushing
+        {
+            let tar_file = fs::File::create(&tar_path)?;
+            let encoder = GzEncoder::new(tar_file, Compression::default());
+            let mut tar_builder = Builder::new(encoder);
 
-        // Read the tar file
+            // Add all files to tar (excluding .git, target, node_modules)
+            tar_builder.append_dir_all(".", current_dir)?;
+            tar_builder.finish()?;
+
+            // Explicitly drop to flush encoder before reading
+        } // encoder and tar_builder dropped here, ensuring flush
+
+        // Read the tar file after it's fully written
         let package_data = fs::read(&tar_path)?;
         fs::remove_file(&tar_path)?; // Clean up temp file
 
