@@ -1542,13 +1542,17 @@ fn execute_with_scheduler(
                 let build_source = build_dir.join("main.rs");
                 fs::copy(&file, &build_source)?;
 
-                // Find horus library files
+                // Find horus library files from installed location
                 let horus_pkg = PathBuf::from(".horus/packages/horus");
                 if !horus_pkg.exists() {
                     bail!("HORUS package not found in .horus/packages/horus");
                 }
                 // Convert to absolute path so rustc can find it
                 let horus_pkg = horus_pkg.canonicalize()?;
+
+                // Also check if HORUS source tree is available (for deps)
+                let horus_source = PathBuf::from("/horus");
+                let use_source = horus_source.exists() && horus_source.join("Cargo.toml").exists();
 
                 eprintln!(
                     "  {} Searching for horus libraries in {:?}",
@@ -1619,6 +1623,18 @@ fn execute_with_scheduler(
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+
+                // If HORUS source is available, add its deps directories for external dependencies
+                if use_source {
+                    eprintln!("  {} Using HORUS source tree for dependencies", "→".cyan());
+                    for subdir in &["target/release/deps", "target/debug/deps"] {
+                        let deps_path = horus_source.join(subdir);
+                        if deps_path.exists() {
+                            lib_dirs.push(deps_path);
+                            eprintln!("  {} Added deps from {:?}", "✓".green(), subdir);
                         }
                     }
                 }
