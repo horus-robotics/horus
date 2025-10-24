@@ -149,6 +149,110 @@ Caused by: Permission denied: /dev/shm/horus/cmd_vel
 - [ ] Only specified binary runs
 - [ ] Other binaries are not affected
 
+### Scenario 9: Clean Build (Clear Cache)
+**Given:** User has previously built project with cached artifacts
+**When:** User runs `horus run --clean`
+**Then:**
+- [ ] Build cache is cleared
+- [ ] Message indicates cache removal
+- [ ] Fresh compilation occurs
+- [ ] All dependencies are recompiled
+- [ ] New binary executes successfully
+
+**Acceptance Criteria:**
+```bash
+$ horus run --clean
+🚀 Starting HORUS runtime in debug mode...
+→ Cleaning build cache...
+  ✓ Removed .horus/cache/
+→ Detected: main.rs (rust)
+→ Scanning imports...
+→ Compiling Rust program (debug mode)...
+  ✓ Compiled to .horus/cache/rust_main_debug
+→ Executing Rust program...
+Registered node 'Controller' with priority 0
+...
+```
+
+### Scenario 10: Clean Build with Release Mode
+**Given:** User wants clean release build
+**When:** User runs `horus run --clean --release`
+**Then:**
+- [ ] Both debug and release caches are cleared
+- [ ] Fresh release compilation occurs
+- [ ] Optimized binary executes
+
+### Scenario 11: Remote Deployment
+**Given:** User has configured robot with hostname or IP
+**When:** User runs `horus run --remote robot-01`
+**Then:**
+- [ ] Project is built locally
+- [ ] Binary is packaged for deployment
+- [ ] SSH/network connection to robot is established
+- [ ] Binary and dependencies are transferred
+- [ ] Program executes on remote robot
+- [ ] Output streams back to local terminal
+- [ ] Ctrl+C stops remote execution
+
+**Acceptance Criteria:**
+```bash
+$ horus run --remote robot-01
+🚀 Building for remote deployment...
+→ Compiling Rust program (release mode)...
+  ✓ Compiled to .horus/cache/rust_main_release
+→ Connecting to robot-01...
+  ✓ Connected (192.168.1.100)
+→ Transferring binary (2.3 MB)...
+  ✓ Transferred
+→ Starting remote execution...
+
+[robot-01] Scheduler started
+[robot-01] Node 'Controller' registered
+[robot-01] Running at 1000 Hz...
+^C
+→ Stopping remote execution...
+  ✓ Remote process terminated
+```
+
+### Scenario 12: Remote Deployment by IP Address
+**Given:** User specifies robot by IP instead of hostname
+**When:** User runs `horus run --remote 192.168.1.100`
+**Then:**
+- [ ] IP address is validated
+- [ ] Connection established directly to IP
+- [ ] Deployment proceeds as normal
+
+### Scenario 13: Remote Deployment Failure
+**Given:** Remote robot is unreachable
+**When:** User runs `horus run --remote offline-robot`
+**Then:**
+- [ ] Connection attempt fails
+- [ ] Error: "Cannot connect to offline-robot"
+- [ ] Helpful message with troubleshooting steps
+- [ ] Local binary is NOT executed as fallback
+- [ ] Exit code is non-zero
+
+**Acceptance Criteria:**
+```bash
+$ horus run --remote offline-robot
+🚀 Building for remote deployment...
+  ✓ Compiled
+→ Connecting to offline-robot...
+Error: Cannot connect to offline-robot
+  - Check robot is powered on
+  - Verify network connectivity
+  - Check SSH key is configured
+```
+
+### Scenario 14: Remote Deployment with Build-Only
+**Given:** User wants to deploy without running
+**When:** User runs `horus run --remote robot-01 --build-only`
+**Then:**
+- [ ] Binary is built
+- [ ] Binary is transferred to remote robot
+- [ ] Remote execution does NOT start
+- [ ] Success message indicates deployment complete
+
 ## Edge Cases
 
 ### Edge Case 1: Cached Build

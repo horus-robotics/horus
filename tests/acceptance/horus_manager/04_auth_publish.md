@@ -80,6 +80,91 @@ Logout from HORUS? [y/N] y
 - [ ] Token is removed immediately
 - [ ] Success message shown
 
+### Scenario 5a: Generate API Key
+**Given:** User is logged in via GitHub OAuth
+**When:** User runs `horus auth generate-key --name laptop --environment dev`
+**Then:**
+- [ ] New API key is generated
+- [ ] Key is associated with specified name and environment
+- [ ] API key is displayed once (cannot be retrieved later)
+- [ ] Key is stored locally for CLI use
+- [ ] Success message with key details
+
+**Acceptance Criteria:**
+```bash
+$ horus auth generate-key --name laptop --environment dev
+Generating API key...
+
+✓ API key generated successfully
+
+Key: horus_key_1a2b3c4d5e6f7g8h9i0j
+Name: laptop
+Environment: dev
+
+⚠️  Save this key securely - it won't be shown again.
+   The key has been saved to ~/.horus/auth_token
+```
+
+### Scenario 5b: Generate API Key Without Name
+**Given:** User is logged in
+**When:** User runs `horus auth generate-key`
+**Then:**
+- [ ] API key generated with default name (e.g., "default")
+- [ ] Default environment is "production"
+- [ ] Key is displayed and stored
+
+**Acceptance Criteria:**
+```bash
+$ horus auth generate-key
+Generating API key...
+
+✓ API key generated successfully
+
+Key: horus_key_9z8y7x6w5v4u3t2s1r0q
+Name: default
+Environment: production
+
+⚠️  Save this key securely - it won't be shown again.
+```
+
+### Scenario 5c: Generate Key When Not Logged In
+**Given:** User is not authenticated
+**When:** User runs `horus auth generate-key`
+**Then:**
+- [ ] Error: "Not authenticated"
+- [ ] Instruction to run `horus auth login` first
+- [ ] Exit code is non-zero
+
+**Acceptance Criteria:**
+```bash
+$ horus auth generate-key
+Error: Not authenticated
+Run 'horus auth login' to authenticate with GitHub first
+```
+
+### Scenario 5d: List API Keys (Whoami Command)
+**Given:** User has generated API keys
+**When:** User runs `horus auth whoami`
+**Then:**
+- [ ] Shows username and email
+- [ ] Lists all active API keys with names and environments
+- [ ] Shows creation dates
+- [ ] Does NOT show actual key values
+
+**Acceptance Criteria:**
+```bash
+$ horus auth whoami
+✓ Logged in as @robotics-dev
+Email: dev@robotics.com
+
+Active API Keys:
+  • laptop (dev) - created 2 days ago
+  • ci-server (production) - created 1 week ago
+  • testing (staging) - created 3 days ago
+
+Total: 3 keys
+```
+
 ## Publishing Tests
 
 ### Scenario 6: Publish Package (First Time)

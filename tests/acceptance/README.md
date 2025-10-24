@@ -36,13 +36,15 @@ user_story_acceptance_test/
 ### 1. horus_manager (CLI)
 **Files:**
 - `01_new_command.md` - Project creation (Rust, Python, C)
-- `02_run_command.md` - Build and execution
-- `03_pkg_command.md` - Package management (search, install, remove, list)
-- `04_auth_publish.md` - Authentication and publishing
+- `02_run_command.md` - Build and execution (including --clean, --remote deployment)
+- `03_pkg_command.md` - Package management (search, install, remove, list, unpublish)
+- `04_auth_publish.md` - Authentication (login, logout, generate-key, whoami) and publishing
 - `05_env_dashboard.md` - Environment management and monitoring
 
 **Coverage:**
-- All CLI subcommands
+- All CLI subcommands including remote deployment
+- API key generation and management
+- Package unpublishing
 - Error handling and edge cases
 - Cross-platform compatibility
 - Help documentation

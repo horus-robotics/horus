@@ -85,7 +85,9 @@ Installing packages:
 - [ ] File can be shared with team
 - [ ] Restore works with custom file: `horus env restore --file my-env.toml`
 
-### Scenario 7: Compare Environments
+### Scenario 7: Compare Environments (FUTURE FEATURE)
+> ⚠️ **Note:** This feature is planned but not yet implemented. Marked for future release.
+
 **Given:** User has local changes to environment
 **When:** User runs `horus env diff`
 **Then:**
@@ -102,6 +104,8 @@ Environment differences:
   - old-package v0.5.0 (removed)
   ~ lidar-driver v1.2.0 → v1.3.0 (upgraded)
 ```
+
+**Implementation Status:** Planned for v0.2.0
 
 ## Dashboard Tests
 
