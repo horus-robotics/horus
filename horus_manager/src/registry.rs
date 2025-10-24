@@ -79,7 +79,7 @@ impl Default for RegistryClient {
 impl RegistryClient {
     pub fn new() -> Self {
         let base_url = std::env::var("HORUS_REGISTRY_URL")
-            .unwrap_or_else(|_| "http://localhost:3001".to_string());
+            .unwrap_or_else(|_| "https://horus-marketplace-api.onrender.com".to_string());
 
         Self {
             client: Client::new(),

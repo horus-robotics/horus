@@ -277,7 +277,7 @@ horus_manager/
 
 ### Environment Variables
 
-- `HORUS_REGISTRY_URL` - Registry endpoint (default: http://localhost:3001)
+- `HORUS_REGISTRY_URL` - Registry endpoint (default: https://horus-marketplace-api.onrender.com)
 - `HORUS_API_KEY` - CLI authentication token
 
 ### Package Metadata
