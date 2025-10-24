@@ -12,7 +12,7 @@ HORUS includes utility scripts to help you update, recover from broken installat
 
 | Script | Use When | What It Does |
 |--------|----------|--------------|
-| `./update.sh` | After git pull, dependency changes | Smart incremental update |
+| `./update.sh` | Update to latest version | Smart incremental update (auto git pull) |
 | `./verify.sh` | Check installation health | Diagnose issues, verify setup |
 | `./recovery_install.sh` | Build errors, corrupted cache | Nuclear option: fresh rebuild |
 | `./install.sh` | First time installation | Full installation from source |
@@ -22,14 +22,13 @@ HORUS includes utility scripts to help you update, recover from broken installat
 
 ## update.sh - Smart Updates
 
-**Use when:** You've pulled new code or dependencies changed
+**Use when:** You want to update to the latest version
 
 ### Quick Usage
 
 ```bash
 cd /path/to/HORUS
-git pull
-./update.sh
+./update.sh  # Automatically pulls latest changes
 ```
 
 ### What It Does
@@ -620,8 +619,7 @@ cargo cache --autoclean
 
 **Weekly (active development):**
 ```bash
-git pull
-./update.sh
+./update.sh  # Pulls latest and rebuilds
 ```
 
 **Monthly:**

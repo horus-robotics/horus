@@ -99,9 +99,9 @@ export async function getDoc(slug: string[]): Promise<DocContent | null> {
           );
         },
         code: ({ children, ...props }: any) => {
+          // Don't apply inline-code styling to code blocks (handled by pre component and CSS)
           return (
             <code
-              className="px-1.5 py-0.5 rounded bg-[var(--surface)] text-[var(--accent)] text-sm font-mono"
               style={{
                 fontVariantLigatures: 'none',
                 fontFeatureSettings: '"liga" 0, "calt" 0',

@@ -153,8 +153,10 @@ body {
     to { transform: rotate(360deg); }
 }
 
-/* Code blocks */
-pre {
+/* Code blocks - Override Tailwind prose */
+pre,
+.prose pre,
+.prose-invert pre {
     background: var(--surface) !important;
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -163,17 +165,21 @@ pre {
     margin: 1.5rem 0;
     /* Use Consolas for perfect ASCII art - available on all systems */
     font-family: 'Consolas', 'Courier New', monospace !important;
+    font-size: 0.9rem !important;
     /* Critical for ASCII diagrams */
     font-variant-ligatures: none !important;
     font-feature-settings: "liga" 0, "calt" 0 !important;
     letter-spacing: 0 !important;
     line-height: 1.5 !important;
     tab-size: 4 !important;
+    white-space: pre !important;
+    word-wrap: normal !important;
+    word-break: normal !important;
     /* Perfect rendering for box drawing */
     text-rendering: geometricPrecision !important;
     -webkit-font-smoothing: none !important;
     -moz-osx-font-smoothing: grayscale !important;
-    font-weight: normal !important;
+    font-weight: 400 !important;
 }
 
 code {
@@ -183,10 +189,20 @@ code {
     font-feature-settings: "liga" 0, "calt" 0 !important;
 }
 
-/* When code is inside pre (code blocks), use Consolas */
-pre code {
+/* When code is inside pre (code blocks), use Consolas - Override Tailwind prose */
+pre code,
+.prose pre code,
+.prose-invert pre code {
     font-family: 'Consolas', 'Courier New', monospace !important;
-    font-weight: normal !important;
+    font-size: inherit !important;
+    font-weight: 400 !important;
+    background: transparent !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    color: inherit !important;
+    font-variant-ligatures: none !important;
+    font-feature-settings: "liga" 0, "calt" 0 !important;
 }
 
 /* Inline code */
