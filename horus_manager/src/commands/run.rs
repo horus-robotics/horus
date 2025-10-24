@@ -1578,23 +1578,30 @@ fn execute_with_scheduler(
                                 if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
                                     if name.ends_with(".rlib") {
                                         eprintln!("  {} Found {}", "→".cyan(), name);
+                                        // Only insert if we don't have this crate yet (prefer first match - hash versions from lib/)
                                         if name.starts_with("libhorus-") || name == "libhorus.rlib"
                                         {
-                                            extern_crates.insert("horus".to_string(), path.clone());
-                                            eprintln!("  {} Added horus extern", "✓".green());
+                                            if !extern_crates.contains_key("horus") {
+                                                extern_crates.insert("horus".to_string(), path.clone());
+                                                eprintln!("  {} Added horus extern", "✓".green());
+                                            }
                                         } else if name.starts_with("libhorus_core-")
                                             || name == "libhorus_core.rlib"
                                         {
-                                            extern_crates.insert("horus_core".to_string(), path.clone());
-                                            eprintln!("  {} Added horus_core extern", "✓".green());
+                                            if !extern_crates.contains_key("horus_core") {
+                                                extern_crates.insert("horus_core".to_string(), path.clone());
+                                                eprintln!("  {} Added horus_core extern", "✓".green());
+                                            }
                                         } else if name.starts_with("libhorus_macros-")
                                             || name == "libhorus_macros.rlib"
                                         {
-                                            extern_crates.insert("horus_macros".to_string(), path.clone());
-                                            eprintln!(
-                                                "  {} Added horus_macros extern",
-                                                "✓".green()
-                                            );
+                                            if !extern_crates.contains_key("horus_macros") {
+                                                extern_crates.insert("horus_macros".to_string(), path.clone());
+                                                eprintln!(
+                                                    "  {} Added horus_macros extern",
+                                                    "✓".green()
+                                                );
+                                            }
                                         }
                                         lib_dirs.push(lib_path.clone());
                                     }
