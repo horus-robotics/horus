@@ -302,5 +302,5 @@ pub fn get_registry_url() -> String {
     }
 
     // Default
-    "http://localhost:3001".to_string()
+    "https://horus-marketplace-api.onrender.com".to_string()
 }
