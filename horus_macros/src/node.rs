@@ -369,7 +369,7 @@ pub fn impl_node_macro(input: TokenStream) -> TokenStream {
             let name = &topic.name;
             let ty = &topic.ty;
             struct_fields.push(quote! {
-                #name: horus_core::communication::horus::Hub<#ty>
+                #name: horus_core::communication::Hub<#ty>
             });
         }
     }
@@ -380,7 +380,7 @@ pub fn impl_node_macro(input: TokenStream) -> TokenStream {
             let name = &topic.name;
             let ty = &topic.ty;
             struct_fields.push(quote! {
-                #name: horus_core::communication::horus::Hub<#ty>
+                #name: horus_core::communication::Hub<#ty>
             });
         }
     }
@@ -405,7 +405,7 @@ pub fn impl_node_macro(input: TokenStream) -> TokenStream {
             let name = &topic.name;
             let topic_expr = &topic.topic;
             constructor_fields.push(quote! {
-                #name: horus_core::communication::horus::Hub::new(#topic_expr)
+                #name: horus_core::communication::Hub::new(#topic_expr)
                     .expect(&format!("Failed to create publisher '{}'", stringify!(#name)))
             });
         }
@@ -417,7 +417,7 @@ pub fn impl_node_macro(input: TokenStream) -> TokenStream {
             let name = &topic.name;
             let topic_expr = &topic.topic;
             constructor_fields.push(quote! {
-                #name: horus_core::communication::horus::Hub::new(#topic_expr)
+                #name: horus_core::communication::Hub::new(#topic_expr)
                     .expect(&format!("Failed to create subscriber '{}'", stringify!(#name)))
             });
         }

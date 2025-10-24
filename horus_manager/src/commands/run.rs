@@ -1640,6 +1640,62 @@ fn execute_with_scheduler(
                     }
                 }
 
+                // Also scan global cache for all dependencies (e.g., horus_macros@0.1.0)
+                if let Some(home) = dirs::home_dir() {
+                    let global_cache = home.join(".horus/cache");
+                    if global_cache.exists() {
+                        if let Ok(entries) = fs::read_dir(&global_cache) {
+                            for entry in entries.flatten() {
+                                let dep_path = entry.path();
+                                if dep_path.is_dir() {
+                                    // Skip if it's the main horus package (already scanned)
+                                    if let Some(dir_name) = dep_path.file_name().and_then(|n| n.to_str()) {
+                                        if dir_name.starts_with("horus@") {
+                                            continue;
+                                        }
+                                        // Scan other dependencies (e.g., horus_macros@0.1.0)
+                                        for subdir in &["lib", "target/release", "target/debug"] {
+                                            let lib_path = dep_path.join(subdir);
+                                            if lib_path.exists() {
+                                                eprintln!("  {} Checking {:?}", "✓".green(), lib_path);
+                                                lib_dirs.push(lib_path.clone());
+
+                                                if let Ok(entries) = fs::read_dir(&lib_path) {
+                                                    for entry in entries.flatten() {
+                                                        let path = entry.path();
+                                                        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                                                            // Check for proc-macro dynamic libraries (.so, .dylib)
+                                                            if name.ends_with(".so") || name.ends_with(".dylib") {
+                                                                eprintln!("  {} Found proc-macro {}", "→".cyan(), name);
+                                                                if name.starts_with("libhorus_macros") {
+                                                                    if !extern_crates.contains_key("horus_macros") {
+                                                                        extern_crates.insert("horus_macros".to_string(), path.clone());
+                                                                        eprintln!("  {} Added horus_macros extern (proc-macro)", "✓".green());
+                                                                    }
+                                                                }
+                                                            }
+                                                            // Check for .rlib files
+                                                            else if name.ends_with(".rlib") {
+                                                                eprintln!("  {} Found {}", "→".cyan(), name);
+                                                                if name.starts_with("libhorus_macros-") || name == "libhorus_macros.rlib" {
+                                                                    if !extern_crates.contains_key("horus_macros") {
+                                                                        extern_crates.insert("horus_macros".to_string(), path.clone());
+                                                                        eprintln!("  {} Added horus_macros extern", "✓".green());
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // If HORUS source is available, add its deps directories for external dependencies
                 if use_source {
                     eprintln!("  {} Using HORUS source tree for dependencies", "→".cyan());
