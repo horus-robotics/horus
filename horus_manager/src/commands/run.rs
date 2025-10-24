@@ -1572,6 +1572,9 @@ fn execute_with_scheduler(
                     let lib_path = horus_pkg.join(subdir);
                     if lib_path.exists() {
                         eprintln!("  {} Checking {:?}", "✓".green(), lib_path);
+                        // Add this directory to search path
+                        lib_dirs.push(lib_path.clone());
+
                         if let Ok(entries) = fs::read_dir(&lib_path) {
                             for entry in entries.flatten() {
                                 let path = entry.path();
@@ -1613,7 +1616,6 @@ fn execute_with_scheduler(
                                                 );
                                             }
                                         }
-                                        lib_dirs.push(lib_path.clone());
                                     }
                                 }
                             }
