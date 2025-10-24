@@ -290,26 +290,28 @@ sudo mount -o remount,size=2G /dev/shm
 
 ## Updating HORUS
 
-To update to the latest version:
+To update to the latest version, use the smart update script:
 
 ```bash
 # Navigate to HORUS directory
 cd horus
 
-# Pull latest changes
-git pull
-
-# Run installer again (auto-detects version changes)
-./install.sh
+# Run the update script (handles git pull automatically)
+./update.sh
 ```
 
-The installer automatically:
-- Detects version changes
-- Removes old library versions
-- Rebuilds and reinstalls everything
-- Updates the CLI tool
+**The update script will:**
+- Check for uncommitted changes (offers to stash)
+- Fetch and show what's new from the repository
+- Ask permission before pulling
+- Only rebuild what changed (much faster than reinstalling)
+- Verify the update succeeded
 
-You'll see a message like: `WARNING: Version changed: 0.3.0 → 0.3.1`
+**Alternative: Full reinstall** (if update.sh has issues):
+```bash
+git pull
+./install.sh
+```
 
 ## Uninstalling
 
@@ -323,18 +325,22 @@ cd horus
 ./uninstall.sh
 ```
 
-This removes:
-- The `horus` CLI command
-- All cached libraries (`~/.horus/cache/`)
-- Version tracking files
-- Shared memory files (`/dev/shm/horus/`)
+**The uninstaller will:**
+1. Remove the `horus` CLI binary (`~/.cargo/bin/horus`)
+2. Remove all cached libraries (`~/.horus/cache/`)
+3. Ask if you want to remove `~/.horus/` (contains auth, config, registry data)
+4. Clean up shared memory files:
+   - `/dev/shm/horus/topics/` (Link communication)
+   - `/dev/shm/horus/heartbeats/` (Node monitoring)
+   - `/dev/shm/horus_logs` (Log buffer)
+5. Leave project-local `.horus/` directories untouched
 
 **Manual uninstall (if needed):**
 ```bash
 # Remove CLI tool
 cargo uninstall horus
 
-# Remove global cache
+# Remove global cache and config
 rm -rf ~/.horus/
 
 # Remove source code
@@ -342,54 +348,18 @@ rm -rf ~/horus/  # or wherever you cloned it
 
 # Clean up shared memory
 rm -rf /dev/shm/horus/
+rm -f /dev/shm/horus_logs
 ```
 
 ## Troubleshooting
 
-### Quick Fixes
+Having installation issues? See the **[Troubleshooting & Maintenance Guide](/troubleshooting)** for:
 
-**"command not found: horus"**
-```bash
-# Add to your shell config (~/.bashrc or ~/.zshrc)
-export PATH="$HOME/.cargo/bin:$PATH"
-source ~/.bashrc  # or ~/.zshrc
-```
-
-**Build errors ("linker not found", "pkg-config", etc.)**
-```bash
-# Ubuntu/Debian - Install ALL required dependencies
-sudo apt update && sudo apt install \
-  build-essential \
-  pkg-config \
-  libudev-dev \
-  libssl-dev \
-  libasound2-dev
-
-# Fedora/RHEL
-sudo dnf groupinstall "Development Tools"
-sudo dnf install pkg-config systemd-devel openssl-devel alsa-lib-devel
-
-# macOS
-xcode-select --install
-brew install pkg-config openssl
-```
-
-**Installation broken or corrupted**
-```bash
-cd horus
-./recovery_install.sh  # Diagnose and fix issues
-```
-
-### Need More Help?
-
-For comprehensive troubleshooting including:
-- Update and recovery scripts (`update.sh`, `recovery_install.sh`, `verify.sh`)
-- 15+ common issues and solutions
-- System diagnostics and verification
-- Performance issues
+- Common installation errors and fixes
+- System dependency issues
+- Update and recovery scripts (`update.sh`, `verify.sh`, `recovery_install.sh`)
 - Platform-specific problems
-
-**→ See the [Troubleshooting & Maintenance Guide](/troubleshooting)**
+- 15+ solved issues with detailed solutions
 
 ## Next Steps
 

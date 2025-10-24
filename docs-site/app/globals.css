@@ -160,10 +160,19 @@ pre {
     padding: 1rem !important;
     overflow-x: auto;
     margin: 1.5rem 0;
+    /* Critical for ASCII diagrams */
+    font-variant-ligatures: none !important;
+    font-feature-settings: "liga" 0, "calt" 0 !important;
+    letter-spacing: 0 !important;
+    line-height: 1.4 !important;
+    tab-size: 4 !important;
 }
 
 code {
     font-family: 'JetBrains Mono', monospace !important;
+    /* Disable ligatures for proper ASCII box drawing */
+    font-variant-ligatures: none !important;
+    font-feature-settings: "liga" 0, "calt" 0 !important;
 }
 
 /* Inline code */

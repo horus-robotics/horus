@@ -20,9 +20,10 @@ CACHE_DIR="$HOME/.horus/cache"
 HORUS_DIR="$HOME/.horus"
 
 echo -e "${YELLOW}⚠${NC}  This will remove:"
-echo "  • CLI binary: $INSTALL_DIR/horus"
-echo "  • Libraries:  $CACHE_DIR/"
-echo "  • Cache:      $HORUS_DIR/"
+echo "  • CLI binary:     $INSTALL_DIR/horus"
+echo "  • Libraries:      $CACHE_DIR/"
+echo "  • Cache:          $HORUS_DIR/"
+echo "  • Shared memory:  /dev/shm/horus/"
 echo ""
 
 # Ask for confirmation
@@ -65,8 +66,9 @@ fi
 if [ -d "$HORUS_DIR" ]; then
     echo ""
     echo -e "${YELLOW}⚠${NC}  The .horus directory still exists and may contain:"
-    echo "  • User project caches (.horus/cache in project directories)"
-    echo "  • Workspace registries"
+    echo "  • User settings and configuration"
+    echo "  • Authentication credentials"
+    echo "  • Registry data"
     echo ""
     read -p "$(echo -e ${YELLOW}?${NC}) Remove entire ~/.horus directory? [y/N]: " -n 1 -r
     echo
@@ -76,6 +78,33 @@ if [ -d "$HORUS_DIR" ]; then
     else
         echo -e "${CYAN}→${NC} Kept ~/.horus directory"
     fi
+fi
+
+# Clean up shared memory files
+SHM_DIR="/dev/shm/horus"
+SHM_LOGS="/dev/shm/horus_logs"
+
+if [ -d "$SHM_DIR" ] || [ -f "$SHM_LOGS" ]; then
+    echo ""
+    echo -e "${CYAN}→${NC} Cleaning shared memory files..."
+
+    if [ -d "$SHM_DIR" ]; then
+        # List what's being removed
+        if [ -d "$SHM_DIR/topics" ] && [ "$(ls -A $SHM_DIR/topics 2>/dev/null)" ]; then
+            echo "  • Removing topic files in /dev/shm/horus/topics/"
+        fi
+        if [ -d "$SHM_DIR/heartbeats" ] && [ "$(ls -A $SHM_DIR/heartbeats 2>/dev/null)" ]; then
+            echo "  • Removing heartbeat files in /dev/shm/horus/heartbeats/"
+        fi
+        rm -rf "$SHM_DIR" 2>/dev/null || true
+    fi
+
+    if [ -f "$SHM_LOGS" ]; then
+        echo "  • Removing log buffer at /dev/shm/horus_logs"
+        rm -f "$SHM_LOGS" 2>/dev/null || true
+    fi
+
+    echo -e "${GREEN}✓${NC} Cleaned shared memory"
 fi
 
 echo ""

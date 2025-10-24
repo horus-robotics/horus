@@ -80,10 +80,29 @@ export async function getDoc(slug: string[]): Promise<DocContent | null> {
             </h3>
           );
         },
+        pre: ({ children, ...props }: any) => {
+          return (
+            <pre
+              className="font-mono"
+              style={{
+                fontVariantLigatures: 'none',
+                fontFeatureSettings: '"liga" 0, "calt" 0',
+                letterSpacing: '0',
+              }}
+              {...props}
+            >
+              {children}
+            </pre>
+          );
+        },
         code: ({ children, ...props }: any) => {
           return (
             <code
               className="px-1.5 py-0.5 rounded bg-[var(--surface)] text-[var(--accent)] text-sm font-mono"
+              style={{
+                fontVariantLigatures: 'none',
+                fontFeatureSettings: '"liga" 0, "calt" 0',
+              }}
               {...props}
             >
               {children}
