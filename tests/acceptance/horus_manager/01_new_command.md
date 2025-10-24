@@ -40,10 +40,10 @@ main.rs  horus.yaml  .horus/
 **Given:** User wants to use the `node!` macro
 **When:** Interactive prompt and user selects "yes" for macros
 **Then:**
-- [ ] Project is created with `node!` macro usage
-- [ ] `horus.yaml` includes `horus_macros` dependency
-- [ ] Generated code compiles without errors
-- [ ] Macro expansion produces correct Node trait implementation
+- [x] Project is created with `node!` macro usage
+- [x] `horus.yaml` includes `horus_macros` dependency
+- [x] Generated code compiles without errors
+- [x] Macro expansion produces correct Node trait implementation
 
 **Acceptance Criteria:**
 ```bash
