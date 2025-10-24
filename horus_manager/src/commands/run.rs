@@ -1602,6 +1602,16 @@ fn execute_with_scheduler(
                                                     "✓".green()
                                                 );
                                             }
+                                        } else if name.starts_with("libhorus_library-")
+                                            || name == "libhorus_library.rlib"
+                                        {
+                                            if !extern_crates.contains_key("horus_library") {
+                                                extern_crates.insert("horus_library".to_string(), path.clone());
+                                                eprintln!(
+                                                    "  {} Added horus_library extern",
+                                                    "✓".green()
+                                                );
+                                            }
                                         }
                                         lib_dirs.push(lib_path.clone());
                                     }
