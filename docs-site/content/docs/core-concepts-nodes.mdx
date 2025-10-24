@@ -226,7 +226,7 @@ ctx.log_debug(&format!("Position: ({}, {})", x, y));
 ```rust
 // Called internally by Hub::send()
 ctx.log_pub("cmd_vel", &velocity, ipc_ns);
-// Output: [12:34:56.789] [IPC: 366ns | Tick: 12μs] MyNode --PUB--> 'cmd_vel' = 1.5
+// Output: [12:34:56.789] [IPC: 296ns | Tick: 12μs] MyNode --PUB--> 'cmd_vel' = 1.5
 ```
 
 **log_sub()**: Automatically called when receiving (includes IPC timing)

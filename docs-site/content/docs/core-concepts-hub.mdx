@@ -6,7 +6,7 @@ order: 4
 
 # Hub and Pub/Sub
 
-The Hub is HORUS's ultra-low latency publish-subscribe (pub/sub) communication system. It enables nodes to exchange messages through shared memory IPC with **366ns-2.8µs latency**.
+The Hub is HORUS's ultra-low latency publish-subscribe (pub/sub) communication system. It enables nodes to exchange messages through shared memory IPC with **296ns-2.8µs latency**.
 
 ## What is a Hub?
 
@@ -22,7 +22,7 @@ A `Hub<T>` is a **typed communication channel** that connects publishers and sub
 
 **Cache-Aligned**: Optimized memory layout prevents false sharing
 
-**Sub-Microsecond Latency**: 366ns for small messages (16B), 1.58µs for larger messages (1.5KB)
+**Sub-Microsecond Latency**: 296ns for small messages (16B), 1.31µs for larger messages (1.5KB)
 
 **Linear Scaling**: Latency scales linearly with message size
 
@@ -630,9 +630,9 @@ Based on benchmark data:
 
 | Message Type | Size | Latency |
 |--------------|------|---------|
-| CmdVel | 16B | 366ns |
-| IMU | 304B | 543ns |
-| LaserScan | 1.5KB | 1.58µs |
+| CmdVel | 16B | 296ns |
+| IMU | 304B | 718ns |
+| LaserScan | 1.5KB | 1.31µs |
 | PointCloud | 120KB | 2.8µs |
 
 **Key Insight**: Latency scales linearly with message size.
@@ -650,9 +650,9 @@ HORUS achieves sub-microsecond latency across different message sizes:
 
 | Message Type | Size | HORUS Latency |
 |--------------|------|---------------|
-| CmdVel | 16B | 366ns |
-| IMU | 304B | 543ns |
-| LaserScan | 1.5KB | 1.58µs |
+| CmdVel | 16B | 296ns |
+| IMU | 304B | 718ns |
+| LaserScan | 1.5KB | 1.31µs |
 | PointCloud | 120KB | 2.8µs |
 
 ## Best Practices

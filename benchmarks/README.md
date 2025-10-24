@@ -177,7 +177,7 @@ Range:            518-778 ns
 
 | Framework | Small Msg | Medium Msg | Large Msg |
 |-----------|-----------|------------|-----------|
-| **HORUS** | **366 ns** | **543 ns** | **1.58 μs** |
+| **HORUS** | **296 ns** | **718 ns** | **1.31 μs** |
 | traditional frameworks (DDS) | 50-100 μs | 100-500 μs | 1-10 ms |
 | traditional frameworks (FastDDS) | 20-50 μs | 50-200 μs | 500 μs - 5 ms |
 
@@ -189,11 +189,11 @@ Range:            518-778 ns
 
 | Message Size | Message Type | Latency | Bytes/ns | vs traditional frameworks |
 |-------------|--------------|---------|----------|---------|
-| 16 B | CmdVel | 366 ns | 0.044 | **137x faster** |
-| 104 B | BatteryState | 390 ns | 0.267 | **128x faster** |
-| 304 B | IMU | 543 ns | 0.560 | **92x faster** |
-| 736 B | Odometry | 774 ns | 0.951 | **65x faster** |
-| 1,480 B | LaserScan | 1,580 ns | 0.937 | **32x faster** |
+| 16 B | CmdVel | 296 ns | 0.054 | **169x faster** |
+| 104 B | BatteryState | 355 ns | 0.293 | **141x faster** |
+| 304 B | IMU | 718 ns | 0.423 | **70x faster** |
+| 736 B | Odometry | 650 ns | 1.132 | **77x faster** |
+| 1,480 B | LaserScan | 1,310 ns | 1.130 | **38x faster** |
 
 **Observation**: Near-linear scaling with message size demonstrates efficient serialization and IPC.
 
@@ -243,22 +243,22 @@ benchmarks/
 
 ### Message Type Guidelines
 
-**CmdVel (366 ns)**
+**CmdVel (296 ns)**
 - Motor control @ 1000Hz
 - Real-time actuation commands
 - Safety-critical control loops
 
-**IMU (543 ns)**
+**IMU (718 ns)**
 - High-frequency sensor fusion @ 100Hz
 - State estimation pipelines
 - Orientation tracking
 
-**LaserScan (1.58 μs)**
+**LaserScan (1.31 μs)**
 - 2D lidar @ 10Hz
 - Obstacle detection
 - SLAM front-end
 
-**Odometry (774 ns)**
+**Odometry (650 ns)**
 - Pose estimation @ 50Hz
 - Dead reckoning
 - Filter updates
@@ -290,9 +290,9 @@ benchmarks/
 
 | Application | Frequency | HORUS Latency | traditional frameworks Latency | Speedup |
 |-------------|-----------|---------------|--------------|---------|
-| Motor control | 1000 Hz | 366 ns | 50 μs | **137x** |
-| IMU fusion | 100 Hz | 543 ns | 50 μs | **92x** |
-| Lidar SLAM | 10 Hz | 1.58 μs | 100 μs | **63x** |
+| Motor control | 1000 Hz | 296 ns | 50 μs | **169x** |
+| IMU fusion | 100 Hz | 718 ns | 50 μs | **70x** |
+| Lidar SLAM | 10 Hz | 1.31 μs | 100 μs | **76x** |
 | Vision | 30 Hz | 215 μs | 5 ms | **23x** |
 | Planning | 100 Hz | 993 ns | 100 μs | **100x** |
 
@@ -324,10 +324,10 @@ benchmarks/
 
 **HORUS provides production-grade performance for real robotics applications:**
 
-- **366 ns** - CmdVel (motor control)
-- **543 ns** - IMU (sensor fusion)
-- **1.58 μs** - LaserScan (2D lidar)
-- **774 ns** - Odometry (localization)
+- **296 ns** - CmdVel (motor control)
+- **718 ns** - IMU (sensor fusion)
+- **1.31 μs** - LaserScan (2D lidar)
+- **650 ns** - Odometry (localization)
 - **215 μs** - PointCloud with 10K points
 
 

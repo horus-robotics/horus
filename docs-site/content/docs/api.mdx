@@ -42,7 +42,7 @@ The `Hub<T>` provides ultra-low latency pub/sub communication through shared mem
 
 **Key Methods**:
 - `Hub::new(topic)` - Create a hub
-- `send(msg, ctx)` - Publish a message (366ns latency)
+- `send(msg, ctx)` - Publish a message (296ns latency)
 - `recv(ctx)` - Receive a message (non-blocking)
 
 ```rust
@@ -202,9 +202,9 @@ pub enum NodeState {
 
 | Message Size | Latency |
 |--------------|---------|
-| 16B | 366ns |
-| 304B | 543ns |
-| 1.5KB | 1.58µs |
+| 16B | 296ns |
+| 304B | 718ns |
+| 1.5KB | 1.31µs |
 | 120KB | 2.8µs |
 
 ### Scheduler Performance

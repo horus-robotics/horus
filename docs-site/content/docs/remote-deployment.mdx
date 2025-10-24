@@ -175,7 +175,7 @@ Robot logs:
 [12:34:56.789] Registered node 'VelocityController' with priority 5
 [12:34:56.790] Registered node 'MotorDriver' with priority 10
 [12:34:56.791] Scheduler started
-[12:34:56.792] [IPC: 366ns] VelocityController --PUB--> 'cmd_vel' = 1.5
+[12:34:56.792] [IPC: 296ns] VelocityController --PUB--> 'cmd_vel' = 1.5
 [12:34:56.793] [IPC: 420ns] MotorDriver <--SUB-- 'cmd_vel' = 1.5
 
 Press Ctrl+C to stop...
@@ -596,7 +596,12 @@ df -h
 free -h
 
 # Install dependencies
-sudo apt install build-essential pkg-config
+sudo apt update && sudo apt install \
+  build-essential \
+  pkg-config \
+  libudev-dev \
+  libssl-dev \
+  libasound2-dev
 
 # Increase swap (if low memory)
 sudo fallocate -l 2G /swapfile

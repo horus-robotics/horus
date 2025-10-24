@@ -469,12 +469,16 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 **Solution:**
 ```bash
 # Ubuntu/Debian
-sudo apt update
-sudo apt install build-essential pkg-config libudev-dev libssl-dev
+sudo apt update && sudo apt install \
+  build-essential \
+  pkg-config \
+  libudev-dev \
+  libssl-dev \
+  libasound2-dev
 
 # Fedora/RHEL
 sudo dnf groupinstall "Development Tools"
-sudo dnf install pkg-config systemd-devel openssl-devel
+sudo dnf install pkg-config systemd-devel openssl-devel alsa-lib-devel
 
 # macOS
 xcode-select --install
@@ -492,7 +496,13 @@ error: linking with `cc` failed: exit status: 1
 **Solution:**
 ```bash
 # Install missing system libraries
-sudo apt install libssl-dev libudev-dev  # Ubuntu/Debian
+# Ubuntu/Debian
+sudo apt update && sudo apt install \
+  build-essential \
+  pkg-config \
+  libudev-dev \
+  libssl-dev \
+  libasound2-dev
 
 # Or run recovery
 ./recovery_install.sh
@@ -690,7 +700,7 @@ If you encounter issues:
 
 ## Next Steps
 
-- **[Installation](/installation)** - First-time installation guide
+- **[Installation](/getting-started/installation)** - First-time installation guide
 - **[CLI Reference](/cli-reference)** - All horus commands
 - **[Examples](/examples)** - Working code examples
 - **[Performance](/performance)** - Optimization tips

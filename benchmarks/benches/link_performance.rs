@@ -11,7 +11,7 @@ use horus_library::messages::{
 };
 
 /// Small message (16 bytes) - CmdVel
-/// Target: <100ns for Link vs ~366ns for Hub
+/// Target: <100ns for Link vs ~296ns for Hub
 fn bench_link_small_message(c: &mut Criterion) {
     let mut group = c.benchmark_group("link_small_16B");
     group.throughput(Throughput::Bytes(std::mem::size_of::<CmdVel>() as u64));

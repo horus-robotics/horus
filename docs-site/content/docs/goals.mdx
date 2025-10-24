@@ -12,7 +12,7 @@ HORUS aims to become the **de facto standard for real-time robotics communicatio
 
 ### Core Objectives
 
-**Sub-Microsecond Communication**: Achieve 366ns-2.8µs latency for robotics messages, enabling real-time control loops at 1kHz+ frequencies
+**Sub-Microsecond Communication**: Achieve 296ns-2.8µs latency for robotics messages, enabling real-time control loops at 1kHz+ frequencies
 
 **Zero Compromise Performance**: Deliver 100-270x faster performance than traditional frameworks without sacrificing safety or ease of use
 
@@ -32,8 +32,8 @@ HORUS aims to become the **de facto standard for real-time robotics communicatio
 
 **HORUS Solution**:
 - Shared memory architecture with zero-copy semantics
-- 366ns for CmdVel (16B messages)
-- 1.58µs for LaserScan (1.5KB messages)
+- 296ns for CmdVel (16B messages)
+- 1.31µs for LaserScan (1.5KB messages)
 - Linear scaling with message size
 
 **Impact**: Enables 1kHz+ control loops for precise manipulation, high-speed drones, and real-time sensor fusion.
@@ -234,11 +234,11 @@ scheduler.register(Box::new(CartographerNode::new()?), 2, Some(true));
 ### High-Speed Manipulation
 - **Use Case**: Pick-and-place robots, surgical robots, assembly line automation
 - **Why HORUS**: Sub-microsecond latency enables 1kHz+ control loops for precise trajectory following
-- **Performance**: 366ns CmdVel latency for real-time control
+- **Performance**: 296ns CmdVel latency for real-time control
 
 ### Drone Control & Stabilization
 - **Use Case**: Quadcopters, racing drones, delivery drones
-- **Why HORUS**: Fast IMU processing (543ns for 304B IMU messages) enables real-time attitude control
+- **Why HORUS**: Fast IMU processing (718ns for 304B IMU messages) enables real-time attitude control
 - **Performance**: 270x faster than traditional frameworks for sensor fusion pipelines
 
 ### Collaborative Robots (Cobots)
@@ -248,7 +248,7 @@ scheduler.register(Box::new(CartographerNode::new()?), 2, Some(true));
 
 ### Autonomous Vehicles
 - **Use Case**: Self-driving cars, mobile robots, warehouse robots
-- **Why HORUS**: Fast laser scan processing (1.58µs for 1.5KB scans) enables real-time obstacle detection
+- **Why HORUS**: Fast laser scan processing (1.31µs for 1.5KB scans) enables real-time obstacle detection
 - **Performance**: Linear scaling from 16B to 120KB messages
 
 ### Industrial Automation
@@ -264,7 +264,7 @@ scheduler.register(Box::new(CartographerNode::new()?), 2, Some(true));
 ### Teleoperation & Haptics
 - **Use Case**: Remote surgery, VR robotics, haptic feedback systems
 - **Why HORUS**: Ultra-low latency eliminates perceptible lag in feedback loops
-- **Performance**: 366ns message passing enables sub-millisecond end-to-end latency
+- **Performance**: 296ns message passing enables sub-millisecond end-to-end latency
 
 ### Multi-Robot Systems
 - **Use Case**: Swarm robotics, warehouse fleets, distributed sensing

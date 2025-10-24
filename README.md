@@ -278,7 +278,7 @@ horus run --release
 ```
 Registered node 'SensorNode' with priority 0 (logging: true)
 SensorNode initialized
-[12:34:56.123] [IPC: 366ns | Tick: 12µs] SensorNode --PUB--> 'sensor_data' = 0.0
+[12:34:56.123] [IPC: 296ns | Tick: 12µs] SensorNode --PUB--> 'sensor_data' = 0.0
 [12:34:56.223] [IPC: 370ns | Tick: 11µs] SensorNode --PUB--> 'sensor_data' = 0.1
 ```
 
@@ -410,9 +410,9 @@ if let Some(msg) = hub.recv(ctx) {
 ```
 
 **Performance:**
-- 366ns for small messages (16B)
-- 543ns for IMU data (304B)
-- 1.58μs for LaserScan (1.5KB)
+- 296ns for small messages (16B)
+- 718ns for IMU data (304B)
+- 1.31μs for LaserScan (1.5KB)
 - 2.8μs for PointCloud (120KB)
 
 ### Node Trait
@@ -615,7 +615,7 @@ By contributing to HORUS, you agree to our [Contributor License Agreement](.gith
 
 **Key Advantages:**
 
-- **Ultra-Low Latency**: 366ns-2.8μs message passing with shared memory architecture
+- **Ultra-Low Latency**: 296ns-2.8μs message passing with shared memory architecture
 - **Simple Setup**: `register()` → `tick_all()` - no complex configuration files
 - **Memory Safe**: Rust + fixed-size messages prevent corruption and race conditions
 - **Built-in Debugging**: Integrated dashboard for real-time system monitoring

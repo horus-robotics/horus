@@ -235,8 +235,12 @@ See [Multi-Language](/multi-language) for C examples.
 Most things "just work" on Linux. If you hit build errors:
 
 ```bash
-sudo apt-get update
-sudo apt-get install build-essential pkg-config
+sudo apt update && sudo apt install \
+  build-essential \
+  pkg-config \
+  libudev-dev \
+  libssl-dev \
+  libasound2-dev
 ```
 
 ### Linux (Fedora/RHEL)
@@ -342,22 +346,16 @@ rm -rf /dev/shm/horus/
 
 ## Troubleshooting
 
-### "command not found: horus"
+### Quick Fixes
 
-The cargo bin directory isn't in your PATH. Fix it:
-
+**"command not found: horus"**
 ```bash
 # Add to your shell config (~/.bashrc or ~/.zshrc)
 export PATH="$HOME/.cargo/bin:$PATH"
-
-# Then reload your shell
 source ~/.bashrc  # or ~/.zshrc
 ```
 
-### "linker `cc` not found" or "pkg-config not found"
-
-You need build tools and development libraries:
-
+**Build errors ("linker not found", "pkg-config", etc.)**
 ```bash
 # Ubuntu/Debian - Install ALL required dependencies
 sudo apt update && sudo apt install \
@@ -371,69 +369,27 @@ sudo apt update && sudo apt install \
 sudo dnf groupinstall "Development Tools"
 sudo dnf install pkg-config systemd-devel openssl-devel alsa-lib-devel
 
-# Arch Linux
-sudo pacman -S base-devel pkg-config systemd openssl alsa-lib
-
 # macOS
 xcode-select --install
 brew install pkg-config openssl
 ```
 
-### Build fails with "`libudev-sys`", "`openssl-sys`", or "`alsa-sys`"
-
-You need system development libraries:
-
+**Installation broken or corrupted**
 ```bash
-# Ubuntu/Debian - Complete fix
-sudo apt install libudev-dev libssl-dev libasound2-dev
-
-# Fedora/RHEL
-sudo dnf install systemd-devel openssl-devel alsa-lib-devel
-
-# Arch Linux
-sudo pacman -S systemd openssl alsa-lib
-
-# macOS
-brew install openssl
+cd horus
+./recovery_install.sh  # Diagnose and fix issues
 ```
 
-### Build takes forever
+### Need More Help?
 
-First build is slow (5-10 minutes). Subsequent builds are much faster (seconds).
+For comprehensive troubleshooting including:
+- Update and recovery scripts (`update.sh`, `recovery_install.sh`, `verify.sh`)
+- 15+ common issues and solutions
+- System diagnostics and verification
+- Performance issues
+- Platform-specific problems
 
-If it's taking more than 15 minutes, you might have a slow internet connection or limited CPU. Try building with fewer CPU cores:
-
-```bash
-cargo install --path horus_manager -j 2
-```
-
-### "permission denied: /dev/shm"
-
-Check permissions:
-
-```bash
-ls -la /dev/shm
-
-# Should be writable by your user
-# If not:
-sudo chmod 1777 /dev/shm
-```
-
-### Python bindings fail
-
-Make sure you have Python development headers:
-
-```bash
-# Ubuntu/Debian
-sudo apt install python3-dev
-
-# macOS (usually included)
-
-# Then retry:
-pip install maturin
-cd horus_py
-maturin develop --release
-```
+**→ See the [Troubleshooting & Maintenance Guide](/troubleshooting)**
 
 ## Next Steps
 

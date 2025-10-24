@@ -28,9 +28,9 @@ HORUS provides multiple IPC backends, each optimized for different use cases. Al
 
 **Production-Grade Message Passing**
 
-- **Latency**: 366ns-2.8µs for production messages (with serde)
+- **Latency**: 296ns-2.8µs for production messages (with serde)
 - **Use case**: All robotics applications - control, sensing, perception
-- **Message Types**: CmdVel (366ns), IMU (543ns), LaserScan (1.58µs), Odometry (774ns)
+- **Message Types**: CmdVel (296ns), IMU (718ns), LaserScan (1.31µs), Odometry (650ns)
 
 ```rust
 use horus::prelude::*;
@@ -55,10 +55,10 @@ let mut sub2: Hub<SensorData> = Hub::new("sensors/imu")?;
 
 | Message Type | Size | Latency | Throughput | vs traditional frameworks |
 |--------------|------|---------|------------|---------|
-| **CmdVel** | 16 B | 366 ns | 2.7M msg/s | **137x faster** |
-| **IMU** | 304 B | 543 ns | 1.8M msg/s | **92x faster** |
-| **LaserScan** | 1.5 KB | 1.58 µs | 633K msg/s | **63x faster** |
-| **Odometry** | 736 B | 774 ns | 1.3M msg/s | **65x faster** |
+| **CmdVel** | 16 B | 296 ns | 3.4M msg/s | **169x faster** |
+| **IMU** | 304 B | 718 ns | 1.4M msg/s | **70x faster** |
+| **LaserScan** | 1.5 KB | 1.31 µs | 762K msg/s | **76x faster** |
+| **Odometry** | 736 B | 650 ns | 1.5M msg/s | **77x faster** |
 | **PointCloud (10K)** | 120 KB | 215 µs | 4.7K msg/s | **23x faster** |
 
 See [Benchmarks](/benchmarks) for complete performance analysis.
@@ -76,7 +76,7 @@ HORUS uses **shared memory** for fast IPC:
 use horus::prelude::*;
 
 // Send complex message types
-let cmd = CmdVel::new(1.5, 0.8);  // 366ns latency
+let cmd = CmdVel::new(1.5, 0.8);  // 296ns latency
 pub.send(cmd, Some(&mut node))?;
 
 if let Some(cmd) = sub.recv() {

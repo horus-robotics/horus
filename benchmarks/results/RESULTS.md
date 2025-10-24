@@ -16,8 +16,8 @@
 
 ### Performance Highlights
 
- **Sub-microsecond latency** for control messages (CmdVel: 366-643ns)
- **Low-microsecond latency** for sensor data (LaserScan: 1.58-2.81μs)
+ **Sub-microsecond latency** for control messages (CmdVel: 296-643ns)
+ **Low-microsecond latency** for sensor data (LaserScan: 1.31-2.81μs)
  **Linear scaling** with message size
  **Massive headroom** for all typical robotics frequencies
 
@@ -103,9 +103,9 @@ See [`../README.md`](../README.md) and [`../SUMMARY.md`](../SUMMARY.md) for:
 
 **HORUS delivers production-grade performance:**
 
- **366ns-643ns** - CmdVel (motor control)
- **543ns-1.37μs** - IMU (sensor fusion)
- **1.58-2.81μs** - LaserScan (2D lidar)
- **774ns-1.43μs** - Odometry (localization)
+ **296ns-643ns** - CmdVel (motor control)
+ **718ns-1.37μs** - IMU (sensor fusion)
+ **1.31-2.81μs** - LaserScan (2D lidar)
+ **650ns-1.43μs** - Odometry (localization)
  **215-507μs** - PointCloud (10K points)
 

@@ -102,7 +102,7 @@ The heart of the HORUS framework. Implements all core functionality including co
 
 #### `communication/`
 - **hub.rs**: Generic `Hub<T>` implementation with backend abstraction
-- **horus_backend.rs**: Shared memory IPC with serde serialization (366ns-215μs)
+- **horus_backend.rs**: Shared memory IPC with serde serialization (296ns-215μs)
 - **message.rs**: Message trait and safety primitives
 
 #### `scheduling/`
@@ -127,10 +127,10 @@ The heart of the HORUS framework. Implements all core functionality including co
 - **backend.rs**: Backend trait for pluggable communication
 
 **Performance:**
-- CmdVel (16B): **366ns**
-- LaserScan (1.5KB): **1.58μs**
-- IMU (304B): **543ns**
-- Odometry (736B): **774ns**
+- CmdVel (16B): **296ns**
+- LaserScan (1.5KB): **1.31μs**
+- IMU (304B): **718ns**
+- Odometry (736B): **650ns**
 - PointCloud (120KB): **215μs**
 
 **Location:** `/horus_core/`
@@ -281,14 +281,14 @@ All messages use **fixed-size arrays** (`[u8; N]`) instead of `String` for cross
 pub struct CmdVel {
     pub linear: f64,      // m/s
     pub angular: f64,     // rad/s
-}  // 16 bytes → 366ns latency
+}  // 16 bytes → 296ns latency
 
 pub struct LaserScan {
     pub ranges: [f32; 360],
     pub angle_min: f32,
     pub angle_max: f32,
     pub angle_increment: f32,
-}  // 1.5KB → 1.58μs latency
+}  // 1.5KB → 1.31μs latency
 ```
 
 **Location:** `/horus_library/`
@@ -378,11 +378,11 @@ struct SharedChannel<T> {
 
 **Latency Breakdown:**
 ```
-Total: 366ns (CmdVel 16B)
-├── Serialization (serde):  ~100ns
-├── Shared memory write:    ~150ns
-├── Atomic operations:       ~50ns
-└── Cache coherency:         ~66ns
+Total: 296ns (CmdVel 16B)
+├── Serialization (serde):  ~80ns
+├── Shared memory write:    ~120ns
+├── Atomic operations:       ~40ns
+└── Cache coherency:         ~56ns
 ```
 
 ---
@@ -466,7 +466,7 @@ const MAX_LOG_ENTRIES: usize = 5000;  // Ring buffer capacity
 **Log Format:**
 ```
 [12:39:28.039] [IPC: 1112ns | Tick: 218μs] MotorController --PUB--> 'actuators/motors'
-[12:39:28.040] [IPC: 543ns  | Tick: 89μs]  SensorNode --SUB<-- 'sensors/imu'
+[12:39:28.040] [IPC: 718ns  | Tick: 89μs]  SensorNode --SUB<-- 'sensors/imu'
 ```
 
 **Performance:**
@@ -638,7 +638,7 @@ horus run --release
                                        ▼
                               ┌──────────────────┐
                               │ Shared Memory                 │
-                              │ /dev/shm/        │ 366ns-1.58μs
+                              │ /dev/shm/        │ 296ns-1.31μs
                               │ horus_sensors                 │
                               └────────┬─────────┘
                                        │ 3. try_recv()
@@ -664,12 +664,12 @@ horus run --release
 **Latency Budget:**
 ```
 Total: ~2-5μs for 3-node pipeline
-├── SensorNode publish:     366ns
-├── Shared memory write:    150ns
-├── ControlNode receive:    366ns
+├── SensorNode publish:     296ns
+├── Shared memory write:    120ns
+├── ControlNode receive:    296ns
 ├── Processing:             1000ns (user code)
-├── ControlNode publish:    366ns
-└── MotorNode receive:      366ns
+├── ControlNode publish:    296ns
+└── MotorNode receive:      296ns
 ```
 
 ---
@@ -696,10 +696,10 @@ Total: ~2-5μs for 3-node pipeline
 ```
 Message Size    Latency     Example
 ────────────────────────────────────────
-16B             366ns       CmdVel
-304B            543ns       IMU
-736B            774ns       Odometry
-1.5KB           1.58μs      LaserScan
+16B             296ns       CmdVel
+304B            718ns       IMU
+736B            650ns       Odometry
+1.5KB           1.31μs      LaserScan
 120KB           215μs       PointCloud (10K points)
 ```
 
@@ -709,8 +709,8 @@ Message Size    Latency     Example
 
 | Metric | HORUS | traditional frameworks (DDS) | Improvement |
 |--------|-------|------------|-------------|
-| **CmdVel latency** | 366ns | 50-100μs | **137-273x faster** |
-| **LaserScan latency** | 1.58μs | 200-500μs | **126-316x faster** |
+| **CmdVel latency** | 296ns | 50-100μs | **169-338x faster** |
+| **LaserScan latency** | 1.31μs | 200-500μs | **153-382x faster** |
 | **Setup complexity** | 2 lines | ~50 lines (launch files) | **25x simpler** |
 | **Memory safety** | Guaranteed (Rust) | Manual (C++) | **Zero segfaults** |
 | **Monitoring** | Built-in | External (rviz/rqt) | **Zero config** |

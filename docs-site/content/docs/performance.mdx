@@ -46,9 +46,9 @@ pub struct Hub<T> {
 
 | Message Type | Size | HORUS | traditional frameworks DDS | Speedup |
 |--------------|------|-------|----------|---------|
-| CmdVel | 16B | 366ns | 50-100µs | **270x** |
-| IMU | 304B | 543ns | 80-150µs | **180x** |
-| LaserScan | 1.5KB | 1.58µs | 150-300µs | **150x** |
+| CmdVel | 16B | 296ns | 50-100µs | **338x** |
+| IMU | 304B | 718ns | 80-150µs | **139x** |
+| LaserScan | 1.5KB | 1.31µs | 150-300µs | **191x** |
 | PointCloud | 120KB | 2.8µs | 500µs-1ms | **200x** |
 
 **Key insight**: Latency scales linearly with message size.
@@ -372,7 +372,7 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 HORUS automatically logs IPC timing:
 
 ```
-[12:34:56.789] [IPC: 366ns | Tick: 12µs] PublisherNode --PUB--> 'cmd_vel' = 1.5
+[12:34:56.789] [IPC: 296ns | Tick: 12µs] PublisherNode --PUB--> 'cmd_vel' = 1.5
 ```
 
 **IPC**: Time to write to shared memory
