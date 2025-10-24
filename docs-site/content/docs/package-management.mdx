@@ -108,12 +108,66 @@ my_project/
 - Save disk space (one copy for everything)
 - Faster install after first download
 
-### Priority Order
+### Priority Order & Smart Dependency Resolution
 
-When resolving packages, HORUS checks:
-1. Project-local `.horus/packages/` (highest priority)
-2. Global cache `~/.horus/cache/`
-3. System install `/usr/local/lib/horus/` (if available)
+When resolving packages, HORUS checks in this order:
+
+**1. Project-local `.horus/packages/` (highest priority)**
+- Checked first, ALWAYS wins
+- Can be symlink to global OR real directory
+- Enables local override of broken global packages
+
+**2. Global cache `~/.horus/cache/`**
+- Only checked if not found locally
+- Shared across all projects
+- Version-specific directories (e.g., `serde@1.0.228/`)
+
+**3. System install `/usr/local/lib/horus/` (if available)**
+- Last resort fallback
+
+**Smart Installation Behavior:**
+
+When you run `horus pkg install`, HORUS automatically chooses the best strategy:
+
+```bash
+# Default behavior (no flags)
+horus pkg install serde
+
+# If package exists in global cache:
+#   → Install to global cache
+#   → Create symlink: .horus/packages/serde -> ~/.horus/cache/serde@1.0.228/
+#   → Disk efficient!
+
+# If package NOT in global cache:
+#   → Install directly to .horus/packages/serde@1.0.228/
+#   → No symlink, real directory
+#   → Isolated from global!
+```
+
+**Override Broken Global Cache:**
+
+Local packages always win, so you can override corrupted global packages:
+
+```bash
+# Scenario: Global cache has broken serde@1.0.228
+~/.horus/cache/serde@1.0.228/  # Corrupted
+
+# Fix: Install working version locally
+rm .horus/packages/serde  # Remove symlink to broken global
+horus pkg install serde -v 1.0.150  # Install working version locally
+
+# Result:
+.horus/packages/serde@1.0.150/  # Real directory, not symlink
+# horus run will use this, ignoring broken global!
+```
+
+**Benefits:**
+- ✅ **Local override** - Bypass broken global packages
+- ✅ **Version isolation** - Different projects can use different versions
+- ✅ **Disk efficient** - Shares global cache when possible
+- ✅ **Zero config** - Works automatically
+
+See [Environment Management](/environment-management#solving-dependency-hell) for more details on how this solves dependency hell.
 
 ## Package Commands
 

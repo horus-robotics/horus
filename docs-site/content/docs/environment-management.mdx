@@ -117,6 +117,89 @@ project_b/horus.yaml:  serde@1.0.150
 # Both work perfectly - isolated environments
 ```
 
+### Solving Dependency Hell
+
+HORUS solves dependency hell with **local-first resolution** and **smart fallback**:
+
+**Resolution Order** (how `horus run` finds packages):
+1. **Check local first** - `.horus/packages/<package>` exists? Use it immediately
+2. **Check global cache** - Only if not found locally
+3. **Install from registry** - Only if missing from both
+
+**Local Always Wins:**
+```bash
+# Scenario: Global cache has broken package
+~/.horus/cache/
+└── serde@1.0.228/  # Corrupted or incompatible
+
+my_project/.horus/packages/
+└── serde@1.0.150/  # Working local version
+
+# When you run:
+horus run
+# ✓ Uses local serde@1.0.150 (line 1010-1012 in run.rs)
+# ✓ NEVER checks global cache
+# ✓ Broken global version ignored!
+```
+
+**Automatic Smart Behavior:**
+
+When you install a package, HORUS automatically chooses the best strategy:
+
+```bash
+horus pkg install serde
+```
+
+**If package exists in global cache:**
+- Install to global cache (save disk space)
+- Create symlink: `.horus/packages/serde -> ~/.horus/cache/serde@1.0.228/`
+- All projects share same version efficiently
+
+**If package NOT in global cache:**
+- Install directly to local: `.horus/packages/serde@1.0.228/`
+- No symlink needed - real directory
+- Project is isolated from global cache
+
+**Override Broken Global Cache:**
+
+If global cache has corrupted or incompatible package:
+
+```bash
+# Option 1: Remove symlink and reinstall locally
+rm .horus/packages/serde  # Remove symlink to broken global
+horus pkg install serde   # Installs locally (global check fails)
+
+# Option 2: Install different version locally
+horus pkg install serde -v 1.0.150  # Specific working version
+
+# Option 3: Clear global and reinstall
+rm -rf ~/.horus/cache/serde@1.0.228/
+horus run  # Auto-reinstalls to global
+```
+
+**Benefits:**
+
+✅ **True isolation** - Local packages override global
+✅ **No conflicts** - Version-specific directories coexist
+✅ **Disk efficient** - Uses global cache when possible
+✅ **Escape hatch** - Can bypass broken global cache
+✅ **Zero config** - Works automatically
+
+**Comparison with other tools:**
+
+| Feature | Python venv | Node node_modules | HORUS |
+|---------|------------|-------------------|-------|
+| Isolated envs | ✓ Full copies | ✓ Full copies | ✓ Symlinks + local override |
+| Disk efficient | ✗ Duplicates everything | ✗ Duplicates everything | ✓ Global cache shared |
+| Local override | ✓ Always local | ✓ Always local | ✓ Local-first, global fallback |
+| Escape broken global | ✓ Independent | ✓ Independent | ✓ Local override |
+| Multiple versions | ✗ One per venv | ✗ Nested hell | ✓ Version-specific dirs |
+
+**Best of both worlds:**
+- Disk efficiency of global cache (like Cargo, pip global)
+- Isolation of virtual environments (like venv, node_modules)
+- Smart automatic fallback
+
 ## Quick Start
 
 ### Save Your Environment

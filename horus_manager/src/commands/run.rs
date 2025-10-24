@@ -760,16 +760,6 @@ fn ensure_horus_directory() -> Result<()> {
     fs::create_dir_all(horus_dir.join("include"))?;
     fs::create_dir_all(horus_dir.join("cache"))?;
 
-    // Create env.toml if it doesn't exist
-    let env_toml = horus_dir.join("env.toml");
-    if !env_toml.exists() {
-        let env_content = r#"# Auto-generated environment
-[environment]
-created_at = "auto"
-"#;
-        fs::write(env_toml, env_content)?;
-    }
-
     // Setup C environment if needed
     setup_c_environment()?;
 
