@@ -163,8 +163,8 @@ pre,
     padding: 1rem !important;
     overflow-x: auto;
     margin: 1.5rem 0;
-    /* Use Consolas for perfect ASCII art - available on all systems */
-    font-family: 'Consolas', 'Courier New', monospace !important;
+    /* Use Courier - available on both Windows and Linux for perfect ASCII art */
+    font-family: 'Courier New', 'Courier', monospace !important;
     font-size: 0.9rem !important;
     /* Critical for ASCII diagrams */
     font-variant-ligatures: none !important;
@@ -176,9 +176,9 @@ pre,
     word-wrap: normal !important;
     word-break: normal !important;
     /* Perfect rendering for box drawing */
-    text-rendering: geometricPrecision !important;
+    text-rendering: optimizeSpeed !important;
     -webkit-font-smoothing: none !important;
-    -moz-osx-font-smoothing: grayscale !important;
+    -moz-osx-font-smoothing: unset !important;
     font-weight: 400 !important;
 }
 
@@ -189,11 +189,11 @@ code {
     font-feature-settings: "liga" 0, "calt" 0 !important;
 }
 
-/* When code is inside pre (code blocks), use Consolas - Override Tailwind prose */
+/* When code is inside pre (code blocks), use Courier - Override Tailwind prose */
 pre code,
 .prose pre code,
 .prose-invert pre code {
-    font-family: 'Consolas', 'Courier New', monospace !important;
+    font-family: 'Courier New', 'Courier', monospace !important;
     font-size: inherit !important;
     font-weight: 400 !important;
     background: transparent !important;

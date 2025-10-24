@@ -84,11 +84,11 @@ export async function getDoc(slug: string[]): Promise<DocContent | null> {
           return (
             <pre
               style={{
-                fontFamily: 'Consolas, "Courier New", monospace',
+                fontFamily: '"Courier New", Courier, monospace',
                 fontVariantLigatures: 'none',
                 fontFeatureSettings: '"liga" 0, "calt" 0',
                 letterSpacing: '0',
-                textRendering: 'geometricPrecision',
+                textRendering: 'optimizeSpeed',
                 WebkitFontSmoothing: 'none',
                 fontWeight: 'normal',
               }}
