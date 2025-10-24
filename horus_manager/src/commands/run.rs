@@ -1625,6 +1625,8 @@ fn execute_with_scheduler(
                 let mut cmd = Command::new("rustc");
                 cmd.arg(&build_source);
                 cmd.arg("-o").arg(&binary_path);
+                cmd.arg("--edition").arg("2021");
+                cmd.arg("--crate-type").arg("bin");
                 if release {
                     cmd.arg("-O");
                 }
