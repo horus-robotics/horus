@@ -6,592 +6,194 @@ order: 5
 
 # Dashboard Guide
 
-> **Note**: Both web dashboard and terminal UI are fully functional. Use `horus dashboard` for web or `horus dashboard --tui` for terminal mode.
-
-The HORUS Dashboard provides real-time monitoring, debugging, and management capabilities for your robotics applications.
-
-## Overview
-
-The dashboard gives you:
-
-- **Real-time node monitoring** - CPU, memory, tick rates
-- **Topic visualization** - Active topics and message flow
-- **System health** - Aggregate health from all nodes
-- **Parameter management** - Live parameter editing
-- **Graph view** - Visualize pub/sub relationships
-- **Log streaming** - System-wide and per-node logs
-- **Package management** - Install/remove packages
-- **Remote deployment** - Deploy to hardware robots
+The HORUS Dashboard is your mission control for robotics applications - monitor performance, debug issues, and tune parameters in real-time from any device on your network.
 
 ## Quick Start
 
-### Web Dashboard (Default)
-
-Launch the web dashboard with automatic browser opening:
+### Launch the Dashboard
 
 ```bash
+# Web dashboard (opens in browser)
 horus dashboard
-```
 
-This starts the server on `http://localhost:3000` and opens your browser.
-
-**Custom port:**
-```bash
+# Custom port
 horus dashboard 8080
-```
 
-**Access from network:**
-```
-• Local:    http://localhost:3000
-• Network:  http://192.168.1.100:3000
-```
-
-The dashboard is accessible from any device on your network - perfect for monitoring robots remotely.
-
-### Terminal UI Mode
-
-For headless environments or terminal enthusiasts:
-
-```bash
+# Terminal UI mode
 horus dashboard --tui
-# or
-horus dashboard -t
 ```
 
-## Core Features
-
-### 1. System Status
-
-**Endpoint:** `GET /api/status`
-
-The dashboard displays system-wide health aggregated from all running nodes:
-
-```json
-{
-  "status": "Healthy",
-  "health": "3 healthy, 1 warning",
-  "health_color": "green",
-  "version": "0.1.0",
-  "nodes": 4,
-  "topics": 12
-}
+**Access from anywhere:**
+```
+• Local device:    http://localhost:3000
+• Other devices:   http://192.168.1.100:3000
 ```
 
-**Health States:**
-- **Healthy** (green) - All nodes operating normally
-- **Warning** (yellow) - Some nodes report warnings
-- **Degraded** (orange) - Some nodes in error state
-- **Critical** (red) - Critical failures detected
-- **Idle** (gray) - No nodes running
+The dashboard automatically binds to all network interfaces, so you can monitor your robot from your phone, tablet, or another computer.
 
-### 2. Node Monitoring
+## What You'll See
 
-**Endpoint:** `GET /api/nodes`
+### System Overview
 
-View all running nodes with performance metrics:
+At the top of the dashboard, you'll see:
 
-```json
-{
-  "nodes": [
-    {
-      "name": "velocity_publisher",
-      "pid": 12345,
-      "status": "Running",
-      "health": "Healthy",
-      "health_color": "green",
-      "cpu": "2.3%",
-      "memory": "45 MB",
-      "tick_count": 12450,
-      "error_count": 0,
-      "tick_rate": 60.2
-    }
-  ]
-}
-```
+**System Health Badge**
+- 🟢 **Healthy** - All nodes running normally
+- 🟡 **Warning** - Some nodes reporting warnings
+- 🟠 **Degraded** - Errors detected in nodes
+- 🔴 **Critical** - Critical failures
+- ⚪ **Idle** - No nodes running
 
-**Metrics Explained:**
-- **CPU** - Current CPU usage percentage
-- **Memory** - RSS memory in MB
-- **Tick Count** - Total iterations since start
+**Quick Stats**
+- Active nodes count
+- Active topics count
+- HORUS version
+
+### Main Sections
+
+## 1. Nodes Tab
+
+**What it shows:** All running HORUS nodes with live performance metrics
+
+**You'll see:**
+
+| Node Name | Status | Health | CPU | Memory | Tick Rate | Errors |
+|-----------|--------|--------|-----|--------|-----------|--------|
+| velocity_controller | Running | 🟢 Healthy | 2.3% | 45 MB | 60.2 Hz | 0 |
+| lidar_processor | Running | 🟡 Warning | 15.1% | 128 MB | 59.8 Hz | 3 |
+| motor_driver | Running | 🟢 Healthy | 1.8% | 32 MB | 100.1 Hz | 0 |
+
+**What to watch:**
+- **Tick Rate** - Should match your target (default 60 Hz)
+  - ✅ Good: 59-61 Hz
+  - ⚠️ Warning: 50-59 Hz or 61-70 Hz
+  - ❌ Problem: <50 Hz (system overloaded)
+
+- **CPU Usage** - Shows computation load
+  - ✅ Good: <30%
+  - ⚠️ Monitor: 30-80%
+  - ❌ Problem: >80% sustained
+
+- **Memory** - RSS memory usage
+  - ⚠️ Watch for continuous growth (possible leak)
+
 - **Error Count** - Cumulative errors
-- **Tick Rate** - Actual execution rate in Hz
+  - ✅ Good: 0 or slow growth
+  - ❌ Problem: Rapidly increasing
 
-### 3. Topic Visualization
+**Use it to:**
+- Identify performance bottlenecks
+- Spot nodes that are struggling
+- Verify all expected nodes are running
 
-**Endpoint:** `GET /api/topics`
+## 2. Topics Tab
 
-Monitor active topics and their shared memory usage:
+**What it shows:** All active communication topics and their memory usage
 
-```json
-{
-  "topics": [
-    {
-      "name": "sensors/lidar",
-      "size": "128 KB",
-      "active": true,
-      "processes": 3
-    }
-  ]
-}
+**You'll see:**
+
+| Topic | Size | Active | Subscribers |
+|-------|------|--------|-------------|
+| sensors/lidar | 128 KB | 🟢 | 3 |
+| motors/cmd_vel | 8 KB | 🟢 | 2 |
+| vision/camera | 1.2 MB | 🟢 | 1 |
+
+Topics are automatically formatted:
+- Internal: `horus_sensors_lidar`
+- Display: `sensors/lidar` (easier to read)
+
+**Use it to:**
+- Verify topics are created
+- Check subscriber counts (is anyone listening?)
+- Monitor memory usage in `/dev/shm`
+- Debug communication issues
+
+## 3. Graph View
+
+**What it shows:** Visual network of how nodes connect through topics
+
+**You'll see:**
+- 🔵 **Blue circles** - Your HORUS nodes (processes)
+- 🟢 **Green circles** - Topics (communication channels)
+- ➡️ **Arrows** - Publish/subscribe relationships
+  - Node → Topic = Publishing
+  - Topic → Node = Subscribing
+
+**Interactive features:**
+- **Click nodes** - Highlight connections
+- **Drag nodes** - Rearrange layout
+- **Zoom** - Mouse wheel or pinch
+- **Pan** - Click and drag background
+
+**Use it to:**
+- Visualize system architecture
+- Debug: "Why isn't my node receiving messages?"
+- Verify pub/sub connections are correct
+- Understand data flow
+
+## 4. Logs View
+
+**What it shows:** Real-time logs from all nodes and topics
+
+**Filter options:**
+- **All Logs** - System-wide feed
+- **By Node** - Select specific node from dropdown
+- **By Topic** - Filter by topic name
+- **By Level** - Info, Debug, Warning, Error
+
+**Log entry format:**
+```
+[2025-10-24 12:34:56.789] [velocity_controller] [INFO] Published velocity: 1.5 m/s
+  ↳ IPC: 296ns | Tick: 12μs
 ```
 
-**Topic Display:**
-- Topics automatically convert from internal format: `horus_sensors_lidar` → `sensors/lidar`
-- Size shows shared memory allocation in `/dev/shm`
-- Active indicates recent message activity
-- Processes shows subscriber count
-
-### 4. Graph Visualization
-
-**Endpoint:** `GET /api/graph`
-
-Visualize node-topic relationships as a graph:
-
-```json
-{
-  "nodes": [
-    {
-      "id": "velocity_publisher",
-      "label": "velocity_publisher",
-      "type": "process",
-      "pid": 12345,
-      "active": true
-    },
-    {
-      "id": "cmd_vel",
-      "label": "cmd_vel",
-      "type": "topic",
-      "active": true
-    }
-  ],
-  "edges": [
-    {
-      "from": "velocity_publisher",
-      "to": "cmd_vel",
-      "type": "publish",
-      "active": true
-    }
-  ]
-}
-```
-
-**Graph Types:**
-- **Nodes:** Processes (your HORUS nodes) and Topics
-- **Edges:** Publish (node → topic) and Subscribe (topic → node)
-
-### 5. Log Streaming
-
-View logs from the global log buffer in `/dev/shm/horus_logs`:
-
-**All logs:**
-```bash
-GET /api/logs/all
-```
-
-**Node-specific:**
-```bash
-GET /api/logs/node/velocity_publisher
-```
-
-**Topic-specific:**
-```bash
-GET /api/logs/topic/cmd_vel
-```
-
-**Response:**
-```json
-{
-  "logs": [
-    {
-      "timestamp": "2025-10-09T12:34:56.789Z",
-      "node": "velocity_publisher",
-      "level": "info",
-      "message": "Published velocity: 1.5 m/s",
-      "ipc_time": "296ns",
-      "tick_time": "12μs"
-    }
-  ]
-}
-```
-
-**Log Levels:**
-- `info` - General information
-- `debug` - Detailed debugging
-- `warning` - Non-critical issues
-- `error` - Errors and failures
-
-## Parameter Management
-
-The dashboard provides a full-featured parameter editor with live updates.
-
-### List All Parameters
-
-**Endpoint:** `GET /api/params`
-
-```json
-{
-  "success": true,
-  "params": [
-    {
-      "key": "motion.max_speed",
-      "value": 1.5,
-      "type": "number"
-    },
-    {
-      "key": "safety.emergency_stop",
-      "value": false,
-      "type": "boolean"
-    }
-  ],
-  "count": 2
-}
-```
-
-### Get Single Parameter
-
-**Endpoint:** `GET /api/params/:key`
-
-```bash
-GET /api/params/motion.max_speed
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "key": "motion.max_speed",
-  "value": 1.5
-}
-```
-
-### Set Parameter
-
-**Endpoint:** `POST /api/params/:key`
-
-```bash
-POST /api/params/motion.max_speed
-Content-Type: application/json
-
-{
-  "value": 2.0
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Parameter 'motion.max_speed' updated",
-  "key": "motion.max_speed",
-  "value": 2.0
-}
-```
-
-**Auto-save:** Parameters are automatically saved to `~/.horus/config/params.yaml`
-
-### Delete Parameter
-
-**Endpoint:** `DELETE /api/params/:key`
-
-```bash
-DELETE /api/params/custom.temp_setting
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Parameter 'custom.temp_setting' deleted",
-  "key": "custom.temp_setting",
-  "old_value": 42
-}
-```
-
-### Export Parameters
-
-**Endpoint:** `POST /api/params/export`
-
-Export all parameters as YAML for backup or sharing:
-
-```json
-{
-  "success": true,
-  "format": "yaml",
-  "data": "motion:\n  max_speed: 1.5\n  acceleration: 0.5\nsafety:\n  emergency_stop: false\n"
-}
-```
-
-### Import Parameters
-
-**Endpoint:** `POST /api/params/import`
-
-Import parameters from YAML or JSON:
-
-```bash
-POST /api/params/import
-Content-Type: application/json
-
-{
-  "format": "yaml",
-  "data": "motion:\n  max_speed: 2.0\n  acceleration: 0.8\n"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Imported 2 parameters",
-  "count": 2
-}
-```
-
-**Supported formats:** `yaml` or `json`
-
-## Package Management
-
-Install and manage packages directly from the dashboard.
-
-### Search Registry
-
-**Endpoint:** `GET /api/packages/registry?query=controller`
-
-```json
-{
-  "packages": [
-    {
-      "name": "pid_controller",
-      "version": "1.0.0",
-      "description": "PID controller implementation",
-      "author": "horus-team",
-      "downloads": 1250
-    }
-  ]
-}
-```
-
-### List Environments
-
-**Endpoint:** `GET /api/packages/environments`
-
-View available environment manifests for quick setup:
-
-```json
-{
-  "environments": [
-    {
-      "id": "env_abc123",
-      "name": "Mobile Robot Base",
-      "packages": ["motor_controller", "lidar_driver"],
-      "author": "robotics-lab"
-    }
-  ]
-}
-```
-
-### Install Package
-
-**Endpoint:** `POST /api/packages/install`
-
-```bash
-POST /api/packages/install
-Content-Type: application/json
-
-{
-  "package": "pid_controller",
-  "version": "1.0.0",
-  "global": false
-}
-```
-
-### Publish Package
-
-**Endpoint:** `POST /api/packages/publish`
-
-Publish your local package to the registry (requires authentication).
-
-## Remote Deployment
-
-Deploy and manage code on physical robots over the network.
-
-### Deploy to Robot
-
-**Endpoint:** `POST /api/remote/deploy`
-
-```bash
-POST /api/remote/deploy
-Content-Type: application/json
-
-{
-  "robot_id": "robot_lab_01",
-  "file": "main.rs",
-  "release": true
-}
-```
-
-### List Deployments
-
-**Endpoint:** `POST /api/remote/deployments`
-
-```bash
-POST /api/remote/deployments
-Content-Type: application/json
-
-{
-  "robot_id": "robot_lab_01"
-}
-```
-
-**Response:**
-```json
-{
-  "deployments": [
-    {
-      "id": "deploy_xyz789",
-      "file": "main.rs",
-      "status": "running",
-      "started_at": "2025-10-09T12:00:00Z"
-    }
-  ]
-}
-```
-
-### Check Hardware Status
-
-**Endpoint:** `POST /api/remote/hardware`
-
-```bash
-POST /api/remote/hardware
-Content-Type: application/json
-
-{
-  "robot_id": "robot_lab_01"
-}
-```
-
-**Response:**
-```json
-{
-  "cpu": "45%",
-  "memory": "2.1 GB",
-  "disk": "15.2 GB free",
-  "temperature": "52°C"
-}
-```
-
-### Stop Deployment
-
-**Endpoint:** `POST /api/remote/stop`
-
-```bash
-POST /api/remote/stop
-Content-Type: application/json
-
-{
-  "robot_id": "robot_lab_01",
-  "deployment_id": "deploy_xyz789"
-}
-```
-
-## WebSocket Real-Time Updates
-
-**Endpoint:** `GET /api/ws`
-
-Connect via WebSocket for real-time updates:
-
-```javascript
-const ws = new WebSocket('ws://localhost:3000/api/ws');
-
-ws.onmessage = (event) => {
-  const update = JSON.parse(event.data);
-  console.log('Real-time update:', update);
-};
-```
-
-**Update types:**
-- Node status changes
-- New log entries
-- Parameter updates
-- Topic activity
-
-## Using the Dashboard
-
-### Monitoring Workflow
-
-**1. Launch your application:**
-```bash
-# Terminal 1
-horus run --release
-```
-
-**2. Start dashboard:**
-```bash
-# Terminal 2
-horus dashboard
-```
-
-**3. Monitor:**
-- Check system health in the header
-- View node performance metrics
-- Watch topic message flow
-- Review logs for errors
-
-### Debugging Workflow
-
-**Problem:** Node not receiving messages
-
-**Dashboard steps:**
-1. Go to **Nodes** tab - verify both publisher and subscriber are running
-2. Go to **Topics** tab - check if topic exists and has correct subscriber count
-3. Go to **Graph** tab - verify pub/sub connections are shown
-4. Go to **Logs** tab - filter by node name to see detailed logs
-
-**Problem:** Performance degradation
-
-**Dashboard steps:**
-1. **Nodes** tab - identify high CPU or memory usage
-2. Check **tick_rate** - should be near target (e.g., ~60 Hz)
-3. Check **error_count** - rising errors indicate issues
-4. **Logs** tab - look for warnings about slow ticks
-
-### Parameter Tuning Workflow
-
-**Scenario:** Tuning PID controller gains
-
-**Live tuning:**
-1. Dashboard → **Parameters** tab
-2. Find `control.pid.kp`, `control.pid.ki`, `control.pid.kd`
-3. Adjust values in real-time
-4. Observe robot behavior through dashboard metrics
-5. When satisfied, parameters are auto-saved to disk
-6. Export final parameters for sharing
-
-## Best Practices
-
-### Performance Monitoring
-
-**Watch these metrics:**
-- **Tick rate** - Should match target (default 60 Hz)
-- **CPU usage** - Spikes indicate heavy computation
-- **Memory growth** - May indicate memory leaks
-- **Error count** - Should stay at 0 or grow slowly
-
-**Red flags:**
-- Tick rate dropping below 50 Hz consistently
-- CPU usage > 80% sustained
-- Memory growing unbounded
-- Error count increasing rapidly
-
-### Parameter Management
-
-**Organization:**
+**Performance metrics shown:**
+- **IPC time** - Inter-process communication overhead
+- **Tick time** - Total execution time for this tick
+
+**Use it to:**
+- Debug runtime issues
+- Monitor message flow
+- Check IPC performance
+- Track down errors
+
+## 5. Parameters
+
+**What it shows:** Live parameter editor with instant updates
+
+**You'll see:**
+
+| Parameter | Value | Type | Actions |
+|-----------|-------|------|---------|
+| motion.max_speed | 1.5 | number | ✏️ Edit  🗑️ Delete |
+| safety.emergency_stop | false | boolean | ✏️ Edit  🗑️ Delete |
+| control.pid.kp | 1.0 | number | ✏️ Edit  🗑️ Delete |
+
+**Features:**
+- **Live editing** - Changes apply immediately
+- **Auto-save** - Saves to `~/.horus/config/params.yaml`
+- **Add new** - Create parameters on the fly
+- **Export** - Save as YAML for backup
+- **Import** - Load from YAML/JSON file
+
+**Common use case - Tuning a PID controller:**
+1. Click ✏️ next to `control.pid.kp`
+2. Enter new value: `1.5`
+3. Hit Enter
+4. Watch robot behavior change immediately
+5. Adjust `ki` and `kd` the same way
+6. When satisfied, click "Export" to save configuration
+
+**Parameter organization:**
 ```yaml
-# Good: Hierarchical structure
 motion:
   max_speed: 1.5
   acceleration: 0.5
+
 safety:
   emergency_stop: false
+  max_temperature: 80.0
+
 control:
   pid:
     kp: 1.0
@@ -599,20 +201,138 @@ control:
     kd: 0.01
 ```
 
-**Naming conventions:**
-- Use dot notation: `category.subcategory.param`
-- Lowercase with underscores: `max_speed` not `maxSpeed`
+## 6. Packages
+
+**What it shows:** Package browser and installer
+
+**Features:**
+- **Search Registry** - Find packages by name/description
+- **Browse Environments** - Pre-configured setups
+- **Install** - One-click package installation
+- **Publish** - Upload your packages (requires auth)
+
+**Example workflow:**
+1. Search for "lidar"
+2. See results: `velodyne_driver`, `rplidar_ros2`, etc.
+3. Click "Install" next to desired package
+4. Choose: Install globally or locally
+5. Package downloads and installs automatically
+
+## 7. Remote Deployment
+
+**What it shows:** Deploy and manage code on physical robots
+
+**Features:**
+- **Deploy** - Send code to robot over network
+- **Monitor** - Check CPU, memory, temperature
+- **View Logs** - See robot's stdout/stderr
+- **Stop** - Kill running deployments
+
+**Deploy workflow:**
+1. Enter robot ID: `robot_lab_01`
+2. Select file: `main.rs`
+3. Choose: Debug or Release build
+4. Click "Deploy"
+5. Dashboard shows build progress
+6. View robot hardware stats and logs
+
+**Hardware monitoring:**
+```
+CPU: 45%
+Memory: 2.1 GB / 4 GB
+Disk: 15.2 GB free
+Temperature: 52°C
+```
+
+## Common Workflows
+
+### Debugging: Node Not Receiving Messages
+
+**Problem:** Your subscriber node isn't getting data
+
+**Dashboard investigation:**
+1. **Nodes Tab** → Verify both publisher and subscriber are listed
+2. **Topics Tab** → Check topic exists and shows >0 subscribers
+3. **Graph View** → Verify visual connection exists
+4. **Logs → Filter by node** → Check for connection errors
+
+**Common findings:**
+- Topic name mismatch (typo in pub/sub)
+- Publisher not running
+- Shared memory permissions issue
+- Namespace confusion
+
+### Performance Optimization
+
+**Problem:** System running slow
+
+**Dashboard investigation:**
+1. **Nodes Tab** → Sort by CPU (click column header)
+2. Identify high CPU nodes
+3. Check their tick rates - are they hitting target?
+4. **Logs** → Filter by that node → Look for "slow tick" warnings
+
+**Red flags:**
+- Tick rate <50 Hz on 60 Hz node
+- CPU >80% sustained
+- Memory continuously growing
+- Errors increasing rapidly
+
+### Live Parameter Tuning
+
+**Scenario:** Tuning robot motion parameters
+
+**Dashboard workflow:**
+1. **Parameters Tab**
+2. Find `motion.max_speed`, `motion.acceleration`
+3. Edit values while watching robot
+4. Check **Nodes Tab** → `motion_controller` → CPU/tick rate
+5. Adjust until behavior is optimal
+6. Click "Export Parameters" to save
+7. Copy YAML to your config file
+
+## Tips & Best Practices
+
+### Performance Monitoring
+
+**What to watch:**
+- Tick rate stability (should be consistent)
+- CPU usage trends (spikes are OK, sustained high is bad)
+- Memory growth (flat is good, growing is concerning)
+- Error count (should be 0 or very slow growth)
+
+**When to investigate:**
+- Tick rate drops below 90% of target
+- CPU >80% for more than a few seconds
+- Memory growing >10 MB/minute
+- Error count increasing >1/second
+
+### Parameter Management
+
+**Best practices:**
+- Use hierarchical structure: `category.subcategory.param`
+- Lowercase with underscores: `max_speed` not `MaxSpeed`
 - Descriptive names: `motion.max_linear_velocity` not `motion.vel`
+- Export parameters regularly for backup
+- Version control your `params.yaml`
 
 ### Network Access
 
-**Security considerations:**
-- Dashboard binds to `0.0.0.0` (all interfaces)
-- Accessible from any device on your network
-- No authentication by default (suitable for lab/dev environments)
-- For production: Run on localhost only or add reverse proxy with auth
+**Multi-device monitoring:**
 
-**Firewall:**
+✅ **Works great for:**
+- Monitoring robot from your desk
+- Team members viewing same dashboard
+- Tablet/phone for mobile monitoring
+- Remote debugging over VPN
+
+⚠️ **Security note:**
+- No authentication by default
+- Only use on trusted networks
+- For production: Use localhost only or add auth layer
+- Consider firewall rules for external access
+
+**Firewall setup:**
 ```bash
 # Allow dashboard access on port 3000
 sudo ufw allow 3000/tcp
@@ -620,124 +340,112 @@ sudo ufw allow 3000/tcp
 
 ## Troubleshooting
 
-### Port Already in Use
+### Dashboard shows "No nodes running"
 
-**Error:**
-```
-Error: Port 3000 is already in use.
-  → Try a different port: horus dashboard <PORT>
-  → Example: horus dashboard 3001
-```
+**Cause:** No HORUS application is currently running
 
 **Solution:**
 ```bash
-horus dashboard 3001
-```
+# Terminal 1 - Start your app
+horus run main.rs
 
-Or kill the existing process:
-```bash
-lsof -ti:3000 | xargs kill -9
-```
-
-### Cannot Access from Network
-
-**Problem:** Dashboard works on `localhost` but not from other devices.
-
-**Solution:**
-
-1. Check firewall:
-```bash
-sudo ufw allow 3000/tcp
-```
-
-2. Find your IP:
-```bash
-ip addr show | grep inet
-```
-
-3. Access from network device:
-```
-http://192.168.1.100:3000
-```
-
-### Logs Not Appearing
-
-**Problem:** Dashboard shows no logs or outdated logs.
-
-**Cause:** Shared memory log buffer at `/dev/shm/horus_logs` doesn't exist or is full.
-
-**Solution:**
-```bash
-# Check shared memory
-ls -lh /dev/shm/horus_*
-
-# If missing, run a HORUS application first
-horus run
-
-# Then start dashboard
+# Terminal 2 - Start dashboard
 horus dashboard
 ```
 
-### Parameters Not Saving
+### Logs are empty
 
-**Problem:** Parameter changes lost after restart.
+**Cause:** Shared memory log buffer doesn't exist
 
-**Cause:** Config directory doesn't exist or lacks write permissions.
+**Solution:**
+1. Run a HORUS app first (creates `/dev/shm/horus_logs`)
+2. Then start dashboard
+3. Refresh browser if needed
+
+### Can't access from phone/tablet
+
+**Cause:** Firewall blocking or wrong IP
+
+**Solution:**
+```bash
+# 1. Check your computer's IP
+ip addr show | grep inet
+
+# 2. Allow port in firewall
+sudo ufw allow 3000/tcp
+
+# 3. Access from device
+# Use: http://192.168.1.100:3000 (your actual IP)
+```
+
+### Port already in use
+
+**Error:** `Port 3000 is already in use`
+
+**Solution:**
+```bash
+# Use different port
+horus dashboard 3001
+
+# Or kill existing process
+lsof -ti:3000 | xargs kill -9
+```
+
+### Parameters not saving
+
+**Cause:** Config directory doesn't exist or lacks permissions
 
 **Solution:**
 ```bash
 # Create config directory
 mkdir -p ~/.horus/config
 
-# Check permissions
-ls -la ~/.horus/config
-
-# Fix permissions if needed
+# Fix permissions
 chmod 755 ~/.horus/config
 ```
 
-### WebSocket Connection Failed
+## Terminal UI Mode
 
-**Problem:** Real-time updates not working.
+For headless servers or terminal purists:
 
-**Cause:** WebSocket upgrade failed or CORS issue.
+```bash
+horus dashboard --tui
+```
 
-**Solution:**
-1. Check browser console for WebSocket errors
-2. Verify dashboard is running
-3. Try disabling browser extensions (ad blockers)
-4. Use incognito mode to rule out cache issues
+**Features:**
+- All monitoring capabilities
+- Keyboard navigation
+- ASCII visualizations
+- Perfect for SSH sessions
 
-## API Reference Summary
+**Controls:**
+- `↑↓` - Navigate
+- `Tab` - Switch sections
+- `Enter` - Select/expand
+- `q` - Quit
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/status` | GET | System health and node count |
-| `/api/nodes` | GET | All running nodes with metrics |
-| `/api/topics` | GET | Active topics and sizes |
-| `/api/graph` | GET | Node-topic graph visualization |
-| `/api/logs/all` | GET | All system logs |
-| `/api/logs/node/:name` | GET | Logs for specific node |
-| `/api/logs/topic/:name` | GET | Logs for specific topic |
-| `/api/params` | GET | List all parameters |
-| `/api/params/:key` | GET | Get parameter value |
-| `/api/params/:key` | POST | Set parameter value |
-| `/api/params/:key` | DELETE | Delete parameter |
-| `/api/params/export` | POST | Export parameters as YAML |
-| `/api/params/import` | POST | Import parameters from YAML/JSON |
-| `/api/packages/registry` | GET | Search package registry |
-| `/api/packages/environments` | GET | List environment manifests |
-| `/api/packages/install` | POST | Install package |
-| `/api/packages/publish` | POST | Publish package |
-| `/api/remote/deploy` | POST | Deploy to robot |
-| `/api/remote/deployments` | POST | List deployments |
-| `/api/remote/hardware` | POST | Check hardware status |
-| `/api/remote/stop` | POST | Stop deployment |
-| `/api/ws` | GET | WebSocket for real-time updates |
+## API Reference
+
+For developers building custom integrations, the dashboard provides a REST API:
+
+**Base:** `http://localhost:3000/api`
+
+**Key endpoints:**
+- `GET /status` - System health
+- `GET /nodes` - All nodes with metrics
+- `GET /topics` - Active topics
+- `GET /graph` - Node-topic relationships
+- `GET /logs/all` - System logs
+- `GET /logs/node/:name` - Node-specific logs
+- `GET /params` - All parameters
+- `POST /params/:key` - Set parameter
+- `GET /ws` - WebSocket for real-time updates
+
+**Full API documentation:** See [API Reference](#) for complete endpoint specs
 
 ## Next Steps
 
-- **[Parameters Guide](/parameters)** - Deep dive into parameter system
-- **[CLI Reference](/cli-reference)** - All available commands
-- **[Examples](/examples)** - Real-world usage scenarios
-- **[Performance Guide](/performance)** - Optimize your applications
+- **[CLI Reference](/cli-reference)** - All dashboard commands
+- **[Parameters Guide](/parameters)** - Deep dive into param system
+- **[Performance Guide](/performance)** - Optimization techniques
+- **[Examples](/examples)** - Real-world usage patterns
