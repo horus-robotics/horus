@@ -136,7 +136,7 @@ HORUS works on systems with POSIX shared memory support:
 - **Linux** (Ubuntu 20.04+, other distros supported) or **macOS**
 
 **Optional:**
-- Python 3.8+ for Python bindings: `sudo apt install python3 python3-pip`
+- Python 3.9+ for Python bindings: `sudo apt install python3 python3-pip`
 
 ### Quick Install (Recommended)
 
@@ -152,6 +152,7 @@ cd horus
 - Builds all packages in release mode (`cargo build --release`)
 - Installs `horus` CLI to `~/.cargo/bin/`
 - Installs runtime libraries to `~/.horus/cache/`
+- **Automatically installs Python bindings** (if Python 3.9+ detected)
 - Verifies installation and tests `horus` command
 
 **After installation, you can create projects anywhere:**
@@ -548,6 +549,8 @@ df -h /dev/shm
 HORUS supports Python and C in addition to Rust. Language bindings are currently in alpha and under active development.
 
 ### Python
+
+Python bindings are automatically installed when you run `./install.sh` (requires Python 3.9+).
 
 See [horus_py/README.md](horus_py/README.md) for the complete Python API documentation and examples.
 

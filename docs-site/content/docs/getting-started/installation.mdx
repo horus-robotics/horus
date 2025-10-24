@@ -87,7 +87,7 @@ If you see `horus 0.3.0` (or similar), you're all set! Skip to [Next Steps](#nex
   - `horus_macros` - Procedural macros for simplified syntax
   - `horus_library` - Standard message types and nodes
   - `horus_c` - C bindings with headers
-  - `horus_py` - Python bindings
+  - `horus_py` - Python bindings (auto-installed if Python 3.9+ detected)
 - Tracks the installed version for automatic updates
 - Verifies installation with built-in tests
 
@@ -193,10 +193,16 @@ horus --help
 
 You should see a list of available commands like `new`, `run`, `dashboard`, etc.
 
-## Optional: Python Support
+## Python Support
 
-Want to use HORUS with Python? Here's how:
+Python bindings are **automatically installed** by `./install.sh` if Python 3.9+ is detected.
 
+**To verify Python bindings work:**
+```bash
+python3 -c "import horus; print('Python bindings work!')"
+```
+
+**Manual installation** (if automatic installation was skipped):
 ```bash
 # 1. Install maturin (Python build tool)
 pip install maturin
@@ -206,12 +212,9 @@ cd horus_py
 
 # 3. Build and install (takes ~3 minutes)
 maturin develop --release
-
-# 4. Test it works
-python -c "import horus; print('Python bindings work!')"
 ```
 
-See [Multi-Language](/multi-language) for Python examples.
+See [Python Bindings](/python-bindings) for complete API documentation and examples.
 
 ## Optional: C Support
 

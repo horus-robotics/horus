@@ -30,13 +30,23 @@ $ python3 -c "import horus; print(horus.__version__)"
 
 ### Scenario 2: Build from Source
 **Given:** User clones repository
-**When:** User runs `maturin develop` in horus_py/
+**When:** User runs the installation script or builds manually
 **Then:**
 - [ ] Rust code compiles
 - [ ] Python bindings are built
 - [ ] Package is available in local environment
 
-**Acceptance Criteria:**
+**Acceptance Criteria (Automatic via install.sh):**
+```bash
+$ cd HORUS
+$ ./install.sh
+   ...
+   Installing horus_py...
+   Built and installed horus_py Python package
+✓ horus_py is importable in Python
+```
+
+**Acceptance Criteria (Manual build):**
 ```bash
 $ cd horus_py
 $ maturin develop --release

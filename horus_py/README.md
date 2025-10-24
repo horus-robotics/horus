@@ -20,7 +20,24 @@ That's it! No classes to inherit, no boilerplate, just pure logic.
 
 ## Installation
 
-### From Source
+### Automatic Installation (Recommended)
+
+The easiest way to install HORUS Python bindings is using the main installation script:
+
+```bash
+# From the HORUS root directory
+./install.sh
+```
+
+The script will:
+- Check for Python 3.9+ and pip
+- Automatically install maturin if needed
+- Build and install the horus_py package
+- Verify the installation
+
+### Manual Installation
+
+If you prefer to install manually or the automatic installation fails:
 
 ```bash
 # Install maturin (Python/Rust build tool)
@@ -36,6 +53,7 @@ maturin develop --release
 - Python 3.9+
 - Rust 1.70+
 - Linux (for shared memory support)
+- pip (Python package manager)
 
 ## Core Concepts
 

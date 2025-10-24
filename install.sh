@@ -74,6 +74,39 @@ if ! command -v pkg-config &> /dev/null; then
 fi
 
 echo -e "${CYAN}→${NC} Detected pkg-config: $(pkg-config --version)"
+
+# Check if Python is installed (for horus_py)
+if command -v python3 &> /dev/null; then
+    PYTHON_VERSION=$(python3 --version | awk '{print $2}')
+    echo -e "${CYAN}→${NC} Detected Python: $PYTHON_VERSION"
+
+    # Check if Python version is 3.9+
+    PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
+    PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+
+    if [ "$PYTHON_MAJOR" -ge 3 ] && [ "$PYTHON_MINOR" -ge 9 ]; then
+        PYTHON_AVAILABLE=true
+    else
+        echo -e "${YELLOW}⚠${NC}  Python 3.9+ required for horus_py (found $PYTHON_VERSION)"
+        echo -e "  horus_py will be skipped"
+        PYTHON_AVAILABLE=false
+    fi
+else
+    echo -e "${YELLOW}⚠${NC}  Python3 not found - horus_py will be skipped"
+    PYTHON_AVAILABLE=false
+fi
+
+# Check for pip (needed for maturin)
+if [ "$PYTHON_AVAILABLE" = true ]; then
+    if command -v pip3 &> /dev/null || command -v pip &> /dev/null; then
+        echo -e "${CYAN}→${NC} Detected pip: $(pip3 --version 2>/dev/null || pip --version)"
+    else
+        echo -e "${YELLOW}⚠${NC}  pip not found - horus_py will be skipped"
+        echo "  Install pip: sudo apt install python3-pip (Debian/Ubuntu)"
+        PYTHON_AVAILABLE=false
+    fi
+fi
+
 echo ""
 
 # Determine installation paths
@@ -297,37 +330,76 @@ EOF
 echo -e "${GREEN}✓${NC} Installed horus_c"
 
 # Step 9: Install horus_py (Python bindings)
-echo -e "${CYAN}→${NC} Installing horus_py@$HORUS_PY_VERSION..."
-HORUS_PY_DIR="$CACHE_DIR/horus_py@$HORUS_PY_VERSION"
-mkdir -p "$HORUS_PY_DIR/lib"
+if [ "$PYTHON_AVAILABLE" = true ]; then
+    echo -e "${CYAN}→${NC} Installing horus_py@$HORUS_PY_VERSION (Python bindings)..."
+    HORUS_PY_DIR="$CACHE_DIR/horus_py@$HORUS_PY_VERSION"
+    mkdir -p "$HORUS_PY_DIR"
 
-# Copy Python extension module
-cp -r target/release/libhorus_py.so "$HORUS_PY_DIR/lib/horus_py.so" 2>/dev/null || true
-cp -r target/release/horus_py.so "$HORUS_PY_DIR/lib/" 2>/dev/null || true
-cp -r target/release/libhorus_py.dylib "$HORUS_PY_DIR/lib/horus_py.dylib" 2>/dev/null || true  # macOS
-cp -r target/release/horus_py.pyd "$HORUS_PY_DIR/lib/" 2>/dev/null || true  # Windows
+    # Check if maturin is installed
+    if ! command -v maturin &> /dev/null; then
+        echo -e "${CYAN}  →${NC} Installing maturin (Python/Rust build tool)..."
+        pip3 install maturin --user --quiet
 
-# Create __init__.py for Python package
-cat > "$HORUS_PY_DIR/lib/__init__.py" << 'EOF'
-"""HORUS Python bindings"""
-try:
-    from .horus_py import *
-except ImportError:
-    import horus_py
-    __all__ = dir(horus_py)
-EOF
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}✗${NC} Failed to install maturin"
+            echo -e "${YELLOW}⚠${NC}  Skipping horus_py installation"
+            echo -e "  You can install it manually later:"
+            echo -e "    ${CYAN}pip install maturin${NC}"
+            echo -e "    ${CYAN}cd horus_py && maturin develop --release${NC}"
+            PYTHON_AVAILABLE=false
+        else
+            # Add user bin to PATH for this session
+            export PATH="$HOME/.local/bin:$PATH"
+            echo -e "${GREEN}✓${NC} Installed maturin"
+        fi
+    else
+        echo -e "${CYAN}  →${NC} maturin already installed: $(maturin --version)"
+    fi
 
-# Create metadata
-cat > "$HORUS_PY_DIR/metadata.json" << EOF
+    if [ "$PYTHON_AVAILABLE" = true ]; then
+        # Build and install using maturin
+        echo -e "${CYAN}  →${NC} Building and installing Python package..."
+        cd horus_py
+
+        # Use maturin develop to build and install in development mode
+        maturin develop --release --quiet
+
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}✓${NC} Built and installed horus_py Python package"
+
+            # Copy built files to cache for reference
+            cp -r target/release/libhorus_py.so "$HORUS_PY_DIR/" 2>/dev/null || true
+            cp -r target/release/horus_py.so "$HORUS_PY_DIR/" 2>/dev/null || true
+            cp -r target/release/libhorus_py.dylib "$HORUS_PY_DIR/" 2>/dev/null || true
+
+            # Create metadata
+            cat > "$HORUS_PY_DIR/metadata.json" << PYEOF
 {
   "name": "horus_py",
   "version": "$HORUS_PY_VERSION",
   "description": "HORUS Python bindings - Python API for HORUS framework",
-  "install_type": "source"
+  "install_type": "maturin",
+  "python_version": "$PYTHON_VERSION"
 }
-EOF
+PYEOF
 
-echo -e "${GREEN}✓${NC} Installed horus_py"
+            # Test the installation
+            if python3 -c "import horus" 2>/dev/null; then
+                echo -e "${GREEN}✓${NC} horus_py is importable in Python"
+            else
+                echo -e "${YELLOW}⚠${NC}  Warning: horus_py built but import test failed"
+            fi
+        else
+            echo -e "${RED}✗${NC} Failed to build horus_py"
+            echo -e "${YELLOW}⚠${NC}  You can try building manually:"
+            echo -e "    ${CYAN}cd horus_py && maturin develop --release${NC}"
+        fi
+
+        cd ..
+    fi
+else
+    echo -e "${YELLOW}→${NC} Skipping horus_py (Python not available)"
+fi
 echo ""
 
 # Save installed version for future updates
@@ -372,10 +444,14 @@ else
     echo -e "${RED}✗${NC} horus_c: Missing"
 fi
 
-if [ -d "$HORUS_PY_DIR" ]; then
-    echo -e "${GREEN}✓${NC} horus_py: OK"
+if [ "$PYTHON_AVAILABLE" = true ]; then
+    if [ -d "$HORUS_PY_DIR" ]; then
+        echo -e "${GREEN}✓${NC} horus_py: OK"
+    else
+        echo -e "${RED}✗${NC} horus_py: Missing"
+    fi
 else
-    echo -e "${RED}✗${NC} horus_py: Missing"
+    echo -e "${YELLOW}⊘${NC} horus_py: Skipped (Python not available)"
 fi
 
 echo ""
@@ -403,5 +479,13 @@ echo "  2. Run your project:"
 echo -e "     ${CYAN}cd my_robot${NC}"
 echo -e "     ${CYAN}horus run${NC}"
 echo ""
+
+if [ "$PYTHON_AVAILABLE" = true ]; then
+    echo -e "${CYAN}Python bindings:${NC}"
+    echo "  Try the Python API:"
+    echo -e "     ${CYAN}python3 -c 'import horus; print(horus.__doc__)'${NC}"
+    echo ""
+fi
+
 echo -e "For help: ${CYAN}horus --help${NC}"
 echo ""
