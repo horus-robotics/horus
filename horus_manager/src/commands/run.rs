@@ -1549,7 +1549,23 @@ fn execute_with_scheduler(
                 if release {
                     cmd.arg("-O");
                 }
+
+                // Add library search paths for dependencies
                 cmd.arg("-L").arg(".horus/lib");
+
+                // Add global cache path for horus crate
+                let home = std::env::var("HOME").unwrap_or_else(|_| "/home/user".to_string());
+                let horus_cache = format!("{}/.horus/cache/horus@0.1.0/target/release/deps", home);
+                cmd.arg("-L").arg("dependency=").arg(&horus_cache);
+
+                // Also check packages symlinks
+                if Path::new(".horus/packages/horus/target/release").exists() {
+                    cmd.arg("-L").arg("dependency=.horus/packages/horus/target/release/deps");
+                }
+
+                // Add extern for horus crate
+                cmd.arg("--extern").arg("horus=.horus/packages/horus/target/release/libhorus.rlib");
+                cmd.arg("--extern").arg("horus_core=.horus/packages/horus/target/release/libhorus_core.rlib");
 
                 let status = cmd.status()?;
                 if !status.success() {
