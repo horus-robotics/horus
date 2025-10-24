@@ -1020,6 +1020,24 @@ fn resolve_dependencies(dependencies: HashSet<String>) -> Result<()> {
         let cached_versions = find_cached_versions(&global_cache, package)?;
 
         if let Some(cached) = cached_versions.first() {
+            // Special handling for horus_py - the Python package is named "horus"
+            if package == "horus_py" {
+                // Check if lib/horus exists in the cached package
+                let lib_horus = cached.join("lib/horus");
+                if lib_horus.exists() {
+                    // Create symlink named "horus" pointing to lib/horus
+                    let horus_link = local_packages.join("horus");
+                    println!(
+                        "  {} {} -> {}",
+                        "↗".cyan(),
+                        "horus_py",
+                        "global cache".dimmed()
+                    );
+                    symlink(&lib_horus, &horus_link).context("Failed to symlink horus_py")?;
+                    continue;
+                }
+            }
+
             // Create symlink to global cache
             println!(
                 "  {} {} -> {}",

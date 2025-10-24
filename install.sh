@@ -367,10 +367,24 @@ if [ "$PYTHON_AVAILABLE" = true ]; then
         if [ $? -eq 0 ]; then
             echo -e "${GREEN}✓${NC} Built and installed horus_py Python package"
 
-            # Copy built files to cache for reference
-            cp -r target/release/libhorus_py.so "$HORUS_PY_DIR/" 2>/dev/null || true
-            cp -r target/release/horus_py.so "$HORUS_PY_DIR/" 2>/dev/null || true
-            cp -r target/release/libhorus_py.dylib "$HORUS_PY_DIR/" 2>/dev/null || true
+            # Set up proper package structure in cache for HORUS runtime
+            echo -e "${CYAN}  →${NC} Setting up package structure in cache..."
+            mkdir -p "$HORUS_PY_DIR/lib/horus"
+
+            # Copy the Python wrapper
+            cp -r python/horus/__init__.py "$HORUS_PY_DIR/lib/horus/" 2>/dev/null || true
+
+            # Find and copy the compiled extension with correct name
+            # maturin builds it as either libhorus_py.so or horus_py.so, but we need _horus.so
+            if [ -f "target/release/libhorus_py.so" ]; then
+                cp target/release/libhorus_py.so "$HORUS_PY_DIR/lib/horus/_horus.so"
+            elif [ -f "target/release/horus_py.so" ]; then
+                cp target/release/horus_py.so "$HORUS_PY_DIR/lib/horus/_horus.so"
+            elif [ -f "target/release/libhorus_py.dylib" ]; then
+                cp target/release/libhorus_py.dylib "$HORUS_PY_DIR/lib/horus/_horus.so"
+            else
+                echo -e "${YELLOW}⚠${NC}  Warning: Could not find compiled extension module"
+            fi
 
             # Create metadata
             cat > "$HORUS_PY_DIR/metadata.json" << PYEOF
@@ -378,16 +392,22 @@ if [ "$PYTHON_AVAILABLE" = true ]; then
   "name": "horus_py",
   "version": "$HORUS_PY_VERSION",
   "description": "HORUS Python bindings - Python API for HORUS framework",
-  "install_type": "maturin",
-  "python_version": "$PYTHON_VERSION"
+  "install_type": "source"
 }
 PYEOF
 
-            # Test the installation
+            # Test both installations: pip-installed and cache
             if python3 -c "import horus" 2>/dev/null; then
-                echo -e "${GREEN}✓${NC} horus_py is importable in Python"
+                echo -e "${GREEN}✓${NC} horus_py is importable in Python (system)"
             else
-                echo -e "${YELLOW}⚠${NC}  Warning: horus_py built but import test failed"
+                echo -e "${YELLOW}⚠${NC}  Warning: horus_py built but import test failed (system)"
+            fi
+
+            # Test cache installation
+            if PYTHONPATH="$HORUS_PY_DIR/lib" python3 -c "import horus" 2>/dev/null; then
+                echo -e "${GREEN}✓${NC} horus_py is importable from cache"
+            else
+                echo -e "${YELLOW}⚠${NC}  Warning: horus_py not importable from cache"
             fi
         else
             echo -e "${RED}✗${NC} Failed to build horus_py"
