@@ -374,16 +374,28 @@ if [ "$PYTHON_AVAILABLE" = true ]; then
             # Copy the Python wrapper
             cp -r python/horus/__init__.py "$HORUS_PY_DIR/lib/horus/" 2>/dev/null || true
 
-            # Find and copy the compiled extension with correct name
-            # maturin builds it as either libhorus_py.so or horus_py.so, but we need _horus.so
-            if [ -f "target/release/libhorus_py.so" ]; then
-                cp target/release/libhorus_py.so "$HORUS_PY_DIR/lib/horus/_horus.so"
-            elif [ -f "target/release/horus_py.so" ]; then
-                cp target/release/horus_py.so "$HORUS_PY_DIR/lib/horus/_horus.so"
-            elif [ -f "target/release/libhorus_py.dylib" ]; then
-                cp target/release/libhorus_py.dylib "$HORUS_PY_DIR/lib/horus/_horus.so"
-            else
+            # Find and copy the compiled extension
+            # maturin develop installs it to python/horus/ with .abi3.so extension
+            EXTENSION_FOUND=false
+
+            # Check python/horus/ directory (where maturin develop puts it)
+            if [ -f "python/horus/_horus.abi3.so" ]; then
+                cp python/horus/_horus.abi3.so "$HORUS_PY_DIR/lib/horus/_horus.so"
+                EXTENSION_FOUND=true
+            elif [ -f "python/horus/_horus.so" ]; then
+                cp python/horus/_horus.so "$HORUS_PY_DIR/lib/horus/_horus.so"
+                EXTENSION_FOUND=true
+            # Check for macOS
+            elif [ -f "python/horus/_horus.abi3.dylib" ]; then
+                cp python/horus/_horus.abi3.dylib "$HORUS_PY_DIR/lib/horus/_horus.so"
+                EXTENSION_FOUND=true
+            fi
+
+            if [ "$EXTENSION_FOUND" = false ]; then
                 echo -e "${YELLOW}⚠${NC}  Warning: Could not find compiled extension module"
+                echo -e "  Expected location: python/horus/_horus.abi3.so"
+            else
+                echo -e "${GREEN}✓${NC} Copied compiled extension to cache"
             fi
 
             # Create metadata

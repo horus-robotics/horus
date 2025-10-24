@@ -1334,36 +1334,47 @@ fn setup_python_environment() -> Result<()> {
     let current_dir = env::current_dir()?;
     let horus_packages = current_dir.join(".horus/packages");
 
+    // Add global cache Python packages to PYTHONPATH
+    let home = dirs::home_dir().context("Could not find home directory")?;
+    let global_cache = home.join(".horus/cache");
+
+    let mut python_paths = Vec::new();
+
+    // Collect all global cache Python package lib directories
+    if global_cache.exists() {
+        if let Ok(entries) = fs::read_dir(&global_cache) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    // Check for lib directory (Python packages)
+                    let lib_dir = path.join("lib");
+                    if lib_dir.exists() {
+                        python_paths.push(lib_dir.display().to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    // Add local packages
+    python_paths.push(horus_packages.display().to_string());
+
     // Check if venv should be used
     let venv_path = PathBuf::from(".horus/venv");
     if venv_path.exists() {
         // Use venv's site-packages
         let venv_site_packages = find_venv_site_packages(&venv_path)?;
-        if let Ok(current_path) = env::var("PYTHONPATH") {
-            let new_path = format!(
-                "{}:{}:{}",
-                horus_packages.display(),
-                venv_site_packages.display(),
-                current_path
-            );
-            env::set_var("PYTHONPATH", new_path);
-        } else {
-            let new_path = format!(
-                "{}:{}",
-                horus_packages.display(),
-                venv_site_packages.display()
-            );
-            env::set_var("PYTHONPATH", new_path);
-        }
-    } else {
-        // No venv, use system Python with .horus/packages
-        if let Ok(current_path) = env::var("PYTHONPATH") {
-            let new_path = format!("{}:{}", horus_packages.display(), current_path);
-            env::set_var("PYTHONPATH", new_path);
-        } else {
-            env::set_var("PYTHONPATH", horus_packages.display().to_string());
-        }
+        python_paths.push(venv_site_packages.display().to_string());
     }
+
+    // Add existing PYTHONPATH
+    if let Ok(current_path) = env::var("PYTHONPATH") {
+        python_paths.push(current_path);
+    }
+
+    // Set the combined PYTHONPATH
+    let new_path = python_paths.join(":");
+    env::set_var("PYTHONPATH", new_path);
 
     Ok(())
 }
