@@ -1547,6 +1547,8 @@ fn execute_with_scheduler(
                 if !horus_pkg.exists() {
                     bail!("HORUS package not found in .horus/packages/horus");
                 }
+                // Convert to absolute path so rustc can find it
+                let horus_pkg = horus_pkg.canonicalize()?;
 
                 eprintln!(
                     "  {} Searching for horus libraries in {:?}",
