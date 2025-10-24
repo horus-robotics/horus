@@ -1556,11 +1556,11 @@ fn execute_with_scheduler(
                 // Add global cache path for horus crate
                 let home = std::env::var("HOME").unwrap_or_else(|_| "/home/user".to_string());
                 let horus_cache = format!("{}/.horus/cache/horus@0.1.0/target/release/deps", home);
-                cmd.arg("-L").arg("dependency=").arg(&horus_cache);
+                cmd.arg(format!("-Ldependency={}", horus_cache));
 
                 // Also check packages symlinks
                 if Path::new(".horus/packages/horus/target/release").exists() {
-                    cmd.arg("-L").arg("dependency=.horus/packages/horus/target/release/deps");
+                    cmd.arg("-Ldependency=.horus/packages/horus/target/release/deps");
                 }
 
                 // Add extern for horus crate
