@@ -747,21 +747,27 @@ fn detect_language(file: &Path) -> Result<String> {
 fn ensure_horus_directory() -> Result<()> {
     let horus_dir = PathBuf::from(".horus");
 
+    // Create .horus/ if it doesn't exist
     if !horus_dir.exists() {
         println!("{} Creating .horus/ environment...", "→".cyan());
         fs::create_dir_all(&horus_dir)?;
-        fs::create_dir_all(horus_dir.join("packages"))?;
-        fs::create_dir_all(horus_dir.join("bin"))?;
-        fs::create_dir_all(horus_dir.join("lib"))?;
-        fs::create_dir_all(horus_dir.join("include"))?;
-        fs::create_dir_all(horus_dir.join("cache"))?;
+    }
 
-        // Create env.toml
+    // Always ensure subdirectories exist (they might not if created by `horus new`)
+    fs::create_dir_all(horus_dir.join("packages"))?;
+    fs::create_dir_all(horus_dir.join("bin"))?;
+    fs::create_dir_all(horus_dir.join("lib"))?;
+    fs::create_dir_all(horus_dir.join("include"))?;
+    fs::create_dir_all(horus_dir.join("cache"))?;
+
+    // Create env.toml if it doesn't exist
+    let env_toml = horus_dir.join("env.toml");
+    if !env_toml.exists() {
         let env_content = r#"# Auto-generated environment
 [environment]
 created_at = "auto"
 "#;
-        fs::write(horus_dir.join("env.toml"), env_content)?;
+        fs::write(env_toml, env_content)?;
     }
 
     // Setup C environment if needed

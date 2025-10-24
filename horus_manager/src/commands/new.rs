@@ -53,6 +53,9 @@ pub fn create_new_project(
     // Create .horus/ directory structure
     create_horus_directory(&project_path)?;
 
+    // Create .gitignore in project root
+    create_gitignore(&project_path, &language)?;
+
     // Generate horus.yaml with dependencies
     create_horus_yaml(
         &project_path,
@@ -161,23 +164,69 @@ fn get_author() -> Result<String> {
 fn create_horus_directory(project_path: &Path) -> Result<()> {
     let horus_dir = project_path.join(".horus");
 
-    // Create main .horus directory
+    // Create empty .horus/ directory as workspace marker
+    // This allows HORUS to recognize this directory as a workspace (workspace.rs:94-96)
+    // Subdirectories (packages/, bin/, lib/, include/, cache/, env.toml) are created
+    // automatically by `horus run` on first execution
     fs::create_dir_all(&horus_dir)?;
 
-    // Create subdirectories
-    fs::create_dir_all(horus_dir.join("bin"))?;
-    fs::create_dir_all(horus_dir.join("lib"))?;
-    fs::create_dir_all(horus_dir.join("include"))?;
+    Ok(())
+}
 
-    // Create env.toml with initial content
-    let env_content = r#"# Auto-generated environment snapshot
-# This file is managed by HORUS - do not edit manually
+fn create_gitignore(project_path: &Path, language: &str) -> Result<()> {
+    // Create .gitignore in project root
+    let mut gitignore_content = String::from(
+        r#"# HORUS environment (auto-managed by `horus run`)
+.horus/packages/
+.horus/bin/
+.horus/lib/
+.horus/include/
+.horus/cache/
+.horus/build/
+*.log
+"#,
+    );
 
-[environment]
-created = "auto-generated on first run"
-"#;
+    // Add language-specific ignores
+    match language {
+        "rust" => {
+            gitignore_content.push_str(
+                r#"
+# Rust
+target/
+Cargo.lock
+"#,
+            );
+        }
+        "python" => {
+            gitignore_content.push_str(
+                r#"
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+"#,
+            );
+        }
+        "c" => {
+            gitignore_content.push_str(
+                r#"
+# C
+*.o
+*.so
+*.a
+*.out
+"#,
+            );
+        }
+        _ => {}
+    }
 
-    fs::write(horus_dir.join("env.toml"), env_content)?;
+    fs::write(project_path.join(".gitignore"), gitignore_content)?;
 
     Ok(())
 }

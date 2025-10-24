@@ -18,6 +18,105 @@ Think of environments like Python's `requirements.txt` or Node's `package-lock.j
 - **Deploy** exact versions to production robots
 - **Track** environment history in version control
 
+## Understanding HORUS's Hidden Environment
+
+HORUS automatically manages a hidden `.horus/` environment in each project. Understanding the **global vs local** architecture helps you work efficiently across multiple projects.
+
+### Global Cache (Shared Storage)
+
+**Location**: `~/.horus/cache/`
+
+All packages are downloaded once and stored here:
+```
+~/.horus/cache/
+├── horus_py@0.1.0/          # HORUS packages
+│   └── lib/horus/
+├── serde@1.0.228/           # External crates (from crates.io)
+│   ├── src/
+│   ├── Cargo.toml           # Cargo lives here, not your project!
+│   └── lib/libserde.rlib    # Pre-compiled
+└── pid-controller@1.2.0/    # More HORUS packages
+```
+
+**Benefits:**
+- **Download once** - Use in all projects
+- **Saves disk space** - No duplication
+- **Faster setup** - Cached packages install instantly
+- **Works offline** - Already have what you need
+
+### Local Workspace (Project-Specific)
+
+**Location**: `.horus/` in your project
+
+Each project gets its own isolated environment:
+```
+my_robot_project/
+├── horus.yaml               # Dependencies declared here
+├── main.py                  # Your code
+└── .horus/                  # Hidden automatic environment
+    ├── packages/            # Symlinks to global cache
+    │   ├── horus_py -> ~/.horus/cache/horus_py@0.1.0/
+    │   └── serde -> ~/.horus/cache/serde@1.0.228/
+    ├── bin/                 # Project binaries (auto-created)
+    ├── lib/                 # Project libraries (auto-created)
+    └── env.toml             # Environment metadata (auto-managed)
+```
+
+**Key Points:**
+- **Workspace marker** - `.horus/` identifies a HORUS project
+- **Symlinks not copies** - Points to global cache (lightweight!)
+- **Isolated** - Each project independent
+- **Auto-managed** - Created by `horus run`, not by you
+
+### Automatic Workflow
+
+When you run `horus run`:
+
+1. **Reads** `horus.yaml` dependencies
+2. **Checks** global cache - already downloaded?
+3. **Downloads** if missing:
+   - HORUS registry first
+   - crates.io fallback for external Rust crates
+4. **Compiles** external crates (in global cache with cargo)
+5. **Symlinks** to `.horus/packages/` in your project
+6. **Runs** your code with correct environment
+
+**You never touch `.horus/`** - It's automatic!
+
+### Why This Matters
+
+**Portable**: `horus.yaml` works on any machine
+```bash
+# Team member clones your project
+git clone your-repo
+cd your-repo
+horus run  # Auto-installs everything, just works!
+```
+
+**Lightweight**: Projects stay small
+```bash
+# Without HORUS (traditional)
+project1/node_modules/  # 500 MB
+project2/node_modules/  # 500 MB
+project3/node_modules/  # 500 MB
+# Total: 1.5 GB duplicated!
+
+# With HORUS (global cache)
+~/.horus/cache/         # 500 MB (shared)
+project1/.horus/packages/  # Symlinks only (a few KB)
+project2/.horus/packages/  # Symlinks only (a few KB)
+project3/.horus/packages/  # Symlinks only (a few KB)
+# Total: 500 MB globally, ~10 KB per project!
+```
+
+**Isolated**: Projects don't interfere
+```bash
+# Different versions, no problem
+project_a/horus.yaml:  serde@1.0.228
+project_b/horus.yaml:  serde@1.0.150
+# Both work perfectly - isolated environments
+```
+
 ## Quick Start
 
 ### Save Your Environment
