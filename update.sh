@@ -296,6 +296,19 @@ if [ -n "$NEEDS_REBUILD" ]; then
     echo -e "${GREEN}✓${NC} Libraries updated"
     echo ""
 
+    # Migrate old config files from localhost to production
+    AUTH_CONFIG="$HOME/.horus/auth.json"
+    if [ -f "$AUTH_CONFIG" ]; then
+        if grep -q "localhost" "$AUTH_CONFIG" 2>/dev/null; then
+            echo -e "${CYAN}→${NC} Migrating registry configuration..."
+            # Update localhost URLs to production
+            sed -i.bak 's|http://localhost:3001|https://horus-marketplace-api.onrender.com|g' "$AUTH_CONFIG"
+            sed -i.bak 's|http://localhost:8080|https://horus-marketplace-api.onrender.com|g' "$AUTH_CONFIG"
+            echo -e "${GREEN}✓${NC} Registry URL updated to production"
+            echo ""
+        fi
+    fi
+
     # Quick verification
     echo -e "${CYAN}🔍 Verifying update...${NC}"
 
