@@ -1542,7 +1542,41 @@ fn execute_with_scheduler(
                 let build_source = build_dir.join("main.rs");
                 fs::copy(&file, &build_source)?;
 
-                // Use rustc directly (MUCH faster than cargo)
+                // Find horus library files
+                let horus_pkg = PathBuf::from(".horus/packages/horus");
+                if !horus_pkg.exists() {
+                    bail!("HORUS package not found in .horus/packages/horus");
+                }
+
+                // Search for .rlib files in the horus package
+                let mut lib_dirs = Vec::new();
+                let mut extern_crates = Vec::new();
+
+                // Check common locations for compiled libraries
+                for subdir in &["target/release", "target/debug", "lib", "target/release/deps", "target/debug/deps"] {
+                    let lib_path = horus_pkg.join(subdir);
+                    if lib_path.exists() {
+                        if let Ok(entries) = fs::read_dir(&lib_path) {
+                            for entry in entries.flatten() {
+                                let path = entry.path();
+                                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                                    if name.ends_with(".rlib") {
+                                        if name.starts_with("libhorus-") || name == "libhorus.rlib" {
+                                            extern_crates.push(("horus", path.clone()));
+                                        } else if name.starts_with("libhorus_core-") || name == "libhorus_core.rlib" {
+                                            extern_crates.push(("horus_core", path.clone()));
+                                        } else if name.starts_with("libhorus_macros-") || name == "libhorus_macros.rlib" {
+                                            extern_crates.push(("horus_macros", path.clone()));
+                                        }
+                                        lib_dirs.push(lib_path.clone());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Use rustc directly
                 let mut cmd = Command::new("rustc");
                 cmd.arg(&build_source);
                 cmd.arg("-o").arg(&binary_path);
@@ -1550,22 +1584,16 @@ fn execute_with_scheduler(
                     cmd.arg("-O");
                 }
 
-                // Add library search paths for dependencies
+                // Add library search paths
                 cmd.arg("-L").arg(".horus/lib");
-
-                // Add global cache path for horus crate
-                let home = std::env::var("HOME").unwrap_or_else(|_| "/home/user".to_string());
-                let horus_cache = format!("{}/.horus/cache/horus@0.1.0/target/release/deps", home);
-                cmd.arg(format!("-Ldependency={}", horus_cache));
-
-                // Also check packages symlinks
-                if Path::new(".horus/packages/horus/target/release").exists() {
-                    cmd.arg("-Ldependency=.horus/packages/horus/target/release/deps");
+                for lib_dir in lib_dirs.iter().collect::<std::collections::HashSet<_>>() {
+                    cmd.arg("-L").arg(format!("dependency={}", lib_dir.display()));
                 }
 
-                // Add extern for horus crate
-                cmd.arg("--extern").arg("horus=.horus/packages/horus/target/release/libhorus.rlib");
-                cmd.arg("--extern").arg("horus_core=.horus/packages/horus/target/release/libhorus_core.rlib");
+                // Add extern declarations
+                for (name, path) in &extern_crates {
+                    cmd.arg("--extern").arg(format!("{}={}", name, path.display()));
+                }
 
                 let status = cmd.status()?;
                 if !status.success() {
