@@ -8,18 +8,18 @@ As a robotics developer, I want to quickly create a new HORUS project with prope
 
 ## Test Scenarios
 
-### Scenario 1: Create Basic Rust Project
+### Scenario 1: Create Basic Rust Project ✅
 **Given:** User has HORUS CLI installed
 **When:** User runs `horus new my_robot`
 **Then:**
-- [ ] Directory `my_robot/` is created
-- [ ] `horus.yaml` exists with correct dependencies
-- [ ] `main.rs` exists with compilable Node implementation
-- [ ] `.horus/` directory is created
-- [ ] Success message is displayed with instructions
-- [ ] Project builds and runs: `cd my_robot && horus run` succeeds
-- [ ] Generated code uses `HorusResult<T>` (not `Result<T>`)
-- [ ] No `std::thread::sleep()` in generated code
+- [x] Directory `my_robot/` is created
+- [x] `horus.yaml` exists with correct dependencies
+- [x] `main.rs` exists with compilable Node implementation
+- [x] `.horus/` directory is created
+- [x] Success message is displayed with instructions
+- [x] Project builds and runs: `cd my_robot && horus run` succeeds
+- [x] Generated code uses `HorusResult<T>` (not `Result<T>`)
+- [x] No `std::thread::sleep()` in generated code
 
 **Acceptance Criteria:**
 ```bash
