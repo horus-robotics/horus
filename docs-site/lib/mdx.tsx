@@ -83,11 +83,14 @@ export async function getDoc(slug: string[]): Promise<DocContent | null> {
         pre: ({ children, ...props }: any) => {
           return (
             <pre
-              className="font-mono"
               style={{
+                fontFamily: 'Consolas, "Courier New", monospace',
                 fontVariantLigatures: 'none',
                 fontFeatureSettings: '"liga" 0, "calt" 0',
                 letterSpacing: '0',
+                textRendering: 'geometricPrecision',
+                WebkitFontSmoothing: 'none',
+                fontWeight: 'normal',
               }}
               {...props}
             >

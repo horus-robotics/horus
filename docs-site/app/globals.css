@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -160,12 +161,19 @@ pre {
     padding: 1rem !important;
     overflow-x: auto;
     margin: 1.5rem 0;
+    /* Use Consolas for perfect ASCII art - available on all systems */
+    font-family: 'Consolas', 'Courier New', monospace !important;
     /* Critical for ASCII diagrams */
     font-variant-ligatures: none !important;
     font-feature-settings: "liga" 0, "calt" 0 !important;
     letter-spacing: 0 !important;
-    line-height: 1.4 !important;
+    line-height: 1.5 !important;
     tab-size: 4 !important;
+    /* Perfect rendering for box drawing */
+    text-rendering: geometricPrecision !important;
+    -webkit-font-smoothing: none !important;
+    -moz-osx-font-smoothing: grayscale !important;
+    font-weight: normal !important;
 }
 
 code {
@@ -173,6 +181,12 @@ code {
     /* Disable ligatures for proper ASCII box drawing */
     font-variant-ligatures: none !important;
     font-feature-settings: "liga" 0, "calt" 0 !important;
+}
+
+/* When code is inside pre (code blocks), use Consolas */
+pre code {
+    font-family: 'Consolas', 'Courier New', monospace !important;
+    font-weight: normal !important;
 }
 
 /* Inline code */
