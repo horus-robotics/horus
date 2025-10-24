@@ -1548,11 +1548,16 @@ fn execute_with_scheduler(
                     bail!("HORUS package not found in .horus/packages/horus");
                 }
 
-                eprintln!("  {} Searching for horus libraries in {:?}", "→".cyan(), horus_pkg);
+                eprintln!(
+                    "  {} Searching for horus libraries in {:?}",
+                    "→".cyan(),
+                    horus_pkg
+                );
 
                 // Search for .rlib files in the horus package
                 let mut lib_dirs = Vec::new();
-                let mut extern_crates = Vec::new();
+                let mut extern_crates: std::collections::HashMap<String, PathBuf> =
+                    std::collections::HashMap::new();
 
                 // Check common locations for compiled libraries
                 for subdir in &[
@@ -1573,18 +1578,21 @@ fn execute_with_scheduler(
                                         eprintln!("  {} Found {}", "→".cyan(), name);
                                         if name.starts_with("libhorus-") || name == "libhorus.rlib"
                                         {
-                                            extern_crates.push(("horus", path.clone()));
+                                            extern_crates.insert("horus".to_string(), path.clone());
                                             eprintln!("  {} Added horus extern", "✓".green());
                                         } else if name.starts_with("libhorus_core-")
                                             || name == "libhorus_core.rlib"
                                         {
-                                            extern_crates.push(("horus_core", path.clone()));
+                                            extern_crates.insert("horus_core".to_string(), path.clone());
                                             eprintln!("  {} Added horus_core extern", "✓".green());
                                         } else if name.starts_with("libhorus_macros-")
                                             || name == "libhorus_macros.rlib"
                                         {
-                                            extern_crates.push(("horus_macros", path.clone()));
-                                            eprintln!("  {} Added horus_macros extern", "✓".green());
+                                            extern_crates.insert("horus_macros".to_string(), path.clone());
+                                            eprintln!(
+                                                "  {} Added horus_macros extern",
+                                                "✓".green()
+                                            );
                                         }
                                         lib_dirs.push(lib_path.clone());
                                     }
