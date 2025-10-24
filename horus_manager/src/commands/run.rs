@@ -1542,6 +1542,9 @@ fn execute_with_scheduler(
                 let build_source = build_dir.join("main.rs");
                 fs::copy(&file, &build_source)?;
 
+                // Ensure .horus/cache exists for rustc temp files
+                fs::create_dir_all(".horus/cache")?;
+
                 // Find horus library files from installed location
                 let horus_pkg = PathBuf::from(".horus/packages/horus");
                 if !horus_pkg.exists() {
