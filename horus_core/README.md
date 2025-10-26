@@ -374,7 +374,7 @@ impl Node for MyNode {
 
 ## Examples
 
-### Uni (Multi-Node Application)
+### App (Multi-Node Application)
 
 See the SnakeSim example in `horus_library/apps/snakesim/` which demonstrates:
 - Multiple nodes with different priorities

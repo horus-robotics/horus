@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enhanced CLI reference docs with examples
   - Added complete snakesim demo to docs-site examples
   - Added guidance for multi-crate workspace projects (use `cargo` directly)
+  - Fixed installation docs: "Full reinstall" now includes `git pull` before `./install.sh`
 - **Snakesim Architecture**: Restructured to proper single-file HORUS project
   - Merged multi-crate structure into single main.rs file
   - Now compatible with `horus run` command
