@@ -161,6 +161,46 @@ horus run --remote 192.168.1.100
 horus run -- --config robot.yaml --verbose
 ```
 
+### Important: Single-File Projects Only
+
+`horus run` is designed for **single-file HORUS projects** (main.rs, main.py, or main.c). It creates a temporary workspace in `.horus/` and automatically handles dependencies.
+
+**What works with `horus run`:**
+- Single main.rs with all nodes defined in one file
+- Simple Python scripts (main.py)
+- Single C files (main.c)
+
+**What doesn't work:**
+- Multi-crate Cargo workspaces
+- Projects with multiple Cargo.toml files
+- Complex module structures with separate crate directories
+
+**For multi-crate projects**, use `cargo` directly:
+```bash
+cd your_multi_crate_project
+cargo build --release
+cargo run --release
+```
+
+**Example of a proper single-file structure:**
+```rust
+// main.rs - everything in one file
+use horus::prelude::*;
+
+struct SensorNode { /* ... */ }
+impl Node for SensorNode { /* ... */ }
+
+struct ControlNode { /* ... */ }
+impl Node for ControlNode { /* ... */ }
+
+fn main() -> HorusResult<()> {
+    let mut scheduler = Scheduler::new();
+    scheduler.register(Box::new(SensorNode::new()?), 0, Some(true));
+    scheduler.register(Box::new(ControlNode::new()?), 1, Some(true));
+    scheduler.tick_all()
+}
+```
+
 ---
 
 ## `horus dashboard` - Monitor Everything

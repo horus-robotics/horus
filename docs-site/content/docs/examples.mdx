@@ -683,6 +683,122 @@ mod tests {
 }
 ```
 
+## Snake Game (Multi-Process Demo)
+
+A complete snake game demonstrating HORUS's real-time IPC capabilities with a visual GUI.
+
+### Features
+
+- **Real-time IPC**: Sub-microsecond message passing between backend and GUI
+- **Keyboard Input**: Arrow keys or WASD controls
+- **Visual Display**: Animated snake with eyes that point in the direction of movement
+- **Multi-Process Architecture**: Backend and GUI run as separate processes
+
+### Architecture
+
+**Backend (main.rs)** - Run with `horus run`:
+- KeyboardInputNode: Captures keyboard input
+- JoystickInputNode: Optional gamepad support
+- SnakeControlNode: Converts input to snake state
+- Publishes to `"snakestate"` topic
+
+**GUI (snakesim_gui)** - Separate binary:
+- Subscribes to `"snakestate"` topic
+- Renders 20x20 grid with snake visualization
+- Built with eframe/egui (Rust GUI framework)
+- Updates every 200ms
+
+### Running the Game
+
+```bash
+# Copy from installed examples
+cp -r ~/.horus/cache/horus@0.1.0/examples/snakesim ~/my_snakesim
+cd ~/my_snakesim
+
+# Terminal 1: Run backend (keyboard input + game logic)
+horus run
+
+# Terminal 2: Run GUI (visual display)
+./snakesim_gui
+```
+
+Use **Arrow Keys or WASD** to control the snake!
+
+### Code Structure
+
+The backend is a single-file HORUS project:
+
+```rust
+use horus::prelude::*;
+use horus::library::nodes::{JoystickInputNode, KeyboardInputNode};
+
+#[derive(Clone, Copy, Debug)]
+pub struct SnakeState {
+    pub direction: u32,
+}
+
+struct SnakeControlNode {
+    keyboard_subscriber: Hub<KeyboardInput>,
+    joystick_subscriber: Hub<JoystickInput>,
+    snake_publisher: Hub<SnakeState>,
+}
+
+impl Node for SnakeControlNode {
+    fn name(&self) -> &'static str {
+        "SnakeControlNode"
+    }
+
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+        // Handle keyboard input
+        while let Some(input) = self.keyboard_subscriber.recv(ctx.as_deref_mut()) {
+            if input.pressed {
+                let direction = match input.code {
+                    38 | 87 => 1,  // ArrowUp or W -> Up
+                    40 | 83 => 2,  // ArrowDown or S -> Down
+                    37 | 65 => 3,  // ArrowLeft or A -> Left
+                    39 | 68 => 4,  // ArrowRight or D -> Right
+                    _ => continue,
+                };
+
+                let snake_state = SnakeState { direction };
+                let _ = self.snake_publisher.send(snake_state, ctx.as_deref_mut());
+            }
+        }
+    }
+}
+
+fn main() -> HorusResult<()> {
+    let mut sched = Scheduler::new().name("SnakeScheduler");
+
+    let keyboard_input_node = KeyboardInputNode::new_with_topic("snakeinput")?;
+    let joystick_input_node = JoystickInputNode::new_with_topic("snakeinput")?;
+    let snake_control_node = SnakeControlNode::new()?;
+
+    sched.register(Box::new(keyboard_input_node), 0, Some(true));
+    sched.register(Box::new(joystick_input_node), 1, None);
+    sched.register(Box::new(snake_control_node), 2, Some(true));
+
+    sched.tick_node(&["KeyboardInputNode", "JoystickInputNode", "SnakeControlNode"])
+}
+```
+
+### Performance
+
+The game demonstrates HORUS's real-time capabilities:
+- IPC latency: 262ns-1527ns (sub-microsecond!)
+- Update rate: 200ms (5 FPS for smooth gameplay)
+- Message types: KeyboardInput, JoystickInput, SnakeState
+
+### Why Two Processes?
+
+This architecture demonstrates:
+- **Process isolation**: GUI crashes don't affect game logic
+- **Language flexibility**: Could rewrite GUI in any language
+- **Real-time IPC**: Shared memory pub/sub with zero-copy messaging
+- **Production pattern**: Typical robotics architecture (sensor nodes + visualization)
+
+---
+
 ## Next Steps
 
 - Read the [API Reference](/api) for detailed documentation

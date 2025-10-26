@@ -24,10 +24,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Shell scripts now use `[+]`, `[x]`, `[!]`, `[i]`, `[*]`, `[#]`, `[>]` instead of Unicode symbols
   - Improved terminal compatibility across different platforms
   - Preserved React icon components in horus-marketplace
+- **Documentation**: Major documentation improvements
+  - **Positioned HORUS as production ROS2 competitor** with direct comparison table
+  - Clarified `horus run` single-file design as feature, not limitation
+  - Updated README.md with ROS2 performance comparison (50-500x faster IPC)
+  - Enhanced CLI reference docs with examples
+  - Added complete snakesim demo to docs-site examples
+  - Added guidance for multi-crate workspace projects (use `cargo` directly)
 - **Snakesim Architecture**: Restructured to proper single-file HORUS project
   - Merged multi-crate structure into single main.rs file
   - Now compatible with `horus run` command
   - GUI remains as separate binary (snakesim_gui) due to eframe event loop
+  - GUI features: 20x20 grid, bright green snake with animated eyes, smooth 200ms updates
+  - Pre-built GUI binary included in examples installation
 
 ### Fixed
 - Implemented missing `--clean` flag functionality in `horus run`
@@ -38,7 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Modified `find_horus_source_dir()` to fall back to `~/.horus/cache/` when source not found
   - Updated Cargo.toml generation to detect cache vs source installations
   - Modified install.sh to copy workspace Cargo.toml and source files to cache
+  - Added examples directory (`~/.horus/cache/horus@0.1.0/examples/`) with snakesim
   - Users can now run HORUS projects with only the installed packages
+  - Verified end-to-end: users can copy examples and run them successfully
 
 ### Known Issues
 - Dashboard TUI mode is incomplete

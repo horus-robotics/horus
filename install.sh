@@ -475,7 +475,14 @@ if [ -d "horus_library/apps/snakesim" ]; then
     cp horus_library/apps/snakesim/main.rs "$EXAMPLES_DIR/snakesim/" 2>/dev/null || true
     cp horus_library/apps/snakesim/horus.yaml "$EXAMPLES_DIR/snakesim/" 2>/dev/null || true
     cp horus_library/apps/snakesim/README.md "$EXAMPLES_DIR/snakesim/" 2>/dev/null || true
-    echo -e "${GREEN}${NC} Installed snakesim example"
+
+    # Copy GUI binary if available
+    if [ -f "target/release/snakesim_gui" ]; then
+        cp target/release/snakesim_gui "$EXAMPLES_DIR/snakesim/" 2>/dev/null || true
+        echo -e "${GREEN}${NC} Installed snakesim example with GUI"
+    else
+        echo -e "${GREEN}${NC} Installed snakesim example (GUI not built)"
+    fi
 fi
 
 echo ""
@@ -630,10 +637,12 @@ echo -e "${CYAN}Next steps:${NC}"
 echo "  1. Create a new project:"
 echo -e "     ${CYAN}horus new my_robot${NC}"
 echo ""
-echo "  2. Or try an example:"
+echo "  2. Or try the snake game example:"
 echo -e "     ${CYAN}cp -r ~/.horus/cache/horus@0.1.0/examples/snakesim ~/my_snakesim${NC}"
 echo -e "     ${CYAN}cd ~/my_snakesim${NC}"
-echo -e "     ${CYAN}horus run${NC}"
+echo -e "     Terminal 1: ${CYAN}horus run${NC}  (backend with keyboard input)"
+echo -e "     Terminal 2: ${CYAN}./snakesim_gui${NC}  (GUI visualization)"
+echo -e "     Use Arrow Keys or WASD to control the snake!"
 echo ""
 echo "  3. Run your project:"
 echo -e "     ${CYAN}cd my_robot${NC}"

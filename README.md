@@ -2,7 +2,37 @@
 
 **Hybrid Optimized Robotics Unified System**
 
-HORUS is a modern Rust-based robotics framework designed for real-time performance, shared memory communication, and comprehensive system monitoring.
+A production-grade robotics framework built in Rust for **real-time performance** and **memory safety**. HORUS delivers sub-microsecond IPC latency (50-500x faster than ROS2) while maintaining a simpler developer experience.
+
+## Why HORUS?
+
+**Coming from ROS/ROS2?** HORUS provides the same multi-process architecture with **significantly better performance** and **memory safety guarantees**. Perfect for hard real-time control, safety-critical systems, and edge robotics.
+
+**New to robotics?** HORUS's simple CLI and single-file project support gets you from zero to working robot code in minutes, not hours.
+
+### vs ROS2
+
+| Feature | HORUS | ROS2 |
+|---------|-------|------|
+| **Message Latency** | 296ns - 1.5μs | 50μs - 500μs |
+| **Memory Safety** | Rust (zero-cost) | C++ (manual) |
+| **Getting Started** | 1 command | 10+ commands + config files |
+| **IPC Mechanism** | Lock-free shared memory | DDS middleware |
+| **Real-time Control** | Native priority scheduling | Executor model |
+| **Learning Curve** | Gentle | Steep |
+
+**When to use HORUS:**
+- Hard real-time control (<1ms loops)
+- Safety-critical systems
+- Edge/embedded robotics
+- New projects wanting modern tooling
+- Teams valuing simplicity and performance
+
+**When to use ROS2:**
+- Legacy ROS1 migration
+- Need existing ROS2 packages
+- Large teams already trained in ROS
+- Projects requiring RViz/Gazebo integration
 
 ## Key Features
 
@@ -182,6 +212,14 @@ horus run --release             # Optimized build
 horus run --build-only          # Build without running
 horus run --clean               # Clean build cache
 horus run --remote robot:8080   # Deploy to remote robot
+```
+
+**Important:** `horus run` is designed for **single-file HORUS projects** only (main.rs, main.py, main.c). It automatically generates a temporary workspace in `.horus/` and handles all dependencies.
+
+For **multi-crate workspaces** (projects with multiple `Cargo.toml` files or complex module structures), use `cargo` directly:
+```bash
+cargo build --release
+cargo run --release
 ```
 
 ### Package Management

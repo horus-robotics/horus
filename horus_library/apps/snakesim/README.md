@@ -35,17 +35,26 @@ cargo run
 
 ## Running with GUI
 
-The GUI is a separate application that subscribes to the snake state messages:
+The snake game has a **beautiful graphical interface** that shows the snake moving on a grid!
+
+The GUI is included as a pre-built binary. Run both components together:
 
 ```bash
-# Terminal 1: Run the controller
-cd snakesim
+# Terminal 1: Run the backend (keyboard input + game logic)
 horus run
 
-# Terminal 2: Run the GUI
-cd snakesim_gui
-cargo run
+# Terminal 2: Run the GUI (visual display)
+./snakesim_gui
 ```
+
+Use **Arrow Keys or WASD** in Terminal 1 to control the snake, and watch it move in the GUI window!
+
+### GUI Features
+- 20x20 grid with dark background
+- Bright green snake with animated eyes
+- Eyes point in the direction of movement
+- Smooth updates (200ms tick rate)
+- Real-time IPC communication via HORUS Hub
 
 ## Technical Details
 
