@@ -104,7 +104,7 @@ export function DocsNav({ onMenuClick }: DocsNavProps) {
               <FiMessageCircle className="w-5 h-5" />
             </a>
             <a
-              href="https://github.com/neos-builder/horus"
+              href="https://github.com/horus-robotics/horus"
               target="_blank"
               rel="noopener noreferrer"
               className="p-2 text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors touch-manipulation"

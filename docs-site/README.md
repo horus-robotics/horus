@@ -88,7 +88,7 @@ content/
 This documentation site is part of the HORUS open-source project:
 
 - **License**: MIT/Apache-2.0 (dual-licensed)
-- **Repository**: https://github.com/neos-builder/horus
+- **Repository**: https://github.com/horus-robotics/horus
 - **Framework**: `/HORUS` directory in the main repository
 
 ## Contributing
@@ -119,10 +119,10 @@ The documentation emphasizes HORUS's production-grade performance:
 
 ## Links
 
-- **Main Repository**: https://github.com/neos-builder/horus
+- **Main Repository**: https://github.com/horus-robotics/horus
 - **Discord Community**: https://discord.gg/hEZC3ev2Nf
-- **Issues**: https://github.com/neos-builder/horus/issues
-- **Discussions**: https://github.com/neos-builder/horus/discussions
+- **Issues**: https://github.com/horus-robotics/horus/issues
+- **Discussions**: https://github.com/horus-robotics/horus/discussions
 - **Crates.io**: https://crates.io/search?q=horus
 
 ## License

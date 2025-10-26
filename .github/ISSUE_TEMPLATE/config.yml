@@ -1,10 +1,10 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security Vulnerability
-    url: https://github.com/lord-patpak/horus/security/advisories/new
+    url: https://github.com/horus-robotics/horus/security/advisories/new
     about: Please report security vulnerabilities through GitHub Security Advisories
   - name: Questions and Discussions
-    url: https://github.com/lord-patpak/horus/discussions
+    url: https://github.com/horus-robotics/horus/discussions
     about: Ask questions and discuss ideas with the community
   - name: Documentation
     url: https://docs.horus-registry.dev
