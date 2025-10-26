@@ -1,7 +1,7 @@
 # User Acceptance Test: C Bindings (Alpha - Under Development)
 
 ## Feature Status
-⚠️ **C bindings are in alpha and under active development. This test suite represents the target functionality.**
+ **C bindings are in alpha and under active development. This test suite represents the target functionality.**
 
 ## User Story
 As a C developer working with hardware drivers, I want to use HORUS from C so that I can integrate with existing embedded systems code.
@@ -22,8 +22,8 @@ As a C developer working with hardware drivers, I want to use HORUS from C so th
 $ cd horus_c
 $ make
 gcc -c ...
-✓ Built libhorus_c.so
-✓ Headers: horus.h
+ Built libhorus_c.so
+ Headers: horus.h
 ```
 
 ### Scenario 2: Link Against C Library

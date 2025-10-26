@@ -37,9 +37,8 @@ Validates that all required files and directories are created.
 
 | Test | Validation | Test File |
 |------|-----------|-----------|
-| .horus directory | Exists with bin/, lib/, include/ subdirs | `test_structure.sh` |
+| .horus directory | Exists as workspace marker | `test_structure.sh` |
 | horus.yaml | Contains name, version, author, description | `test_structure.sh` |
-| env.toml | Created in .horus/ directory | `test_structure.sh` |
 | Main file | Correct extension for language | `test_structure.sh` |
 | Cargo.toml (Rust) | Valid TOML with correct dependencies | `test_rust_validation.sh` |
 

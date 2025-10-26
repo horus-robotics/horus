@@ -22,15 +22,15 @@ As a robotics developer, I want to easily find and install community packages so
 $ horus pkg search lidar
 Found 3 packages:
 
-📦 lidar-driver v1.2.0
+ lidar-driver v1.2.0
    USB Lidar sensor driver with ROS compatibility
    Author: robotics-team
 
-📦 lidar-slam v0.5.1
+ lidar-slam v0.5.1
    Real-time SLAM using lidar data
    Author: slam-lab
 
-📦 multi-sensor v2.1.0
+ multi-sensor v2.1.0
    Multi-sensor fusion including lidar, IMU, GPS
    Author: sensors-inc
 ```
@@ -58,10 +58,10 @@ Found 3 packages:
 $ horus pkg install lidar-driver
 Fetching lidar-driver from registry...
 Resolving dependencies...
-  ├─ horus-core v0.1.0
-  └─ sensor-common v1.0.2
+  ─ horus-core v0.1.0
+  ─ sensor-common v1.0.2
 Installing lidar-driver v1.2.0...
-✓ Installed successfully
+ Installed successfully
 ```
 
 ### Scenario 4: Install Specific Version
@@ -77,7 +77,7 @@ Installing lidar-driver v1.2.0...
 ```bash
 $ horus pkg install lidar-driver@1.1.0
 Installing lidar-driver v1.1.0...
-✓ Installed lidar-driver v1.1.0
+ Installed lidar-driver v1.1.0
 ```
 
 ### Scenario 5: Install Already Installed Package
@@ -141,7 +141,7 @@ Total: 3 packages
 $ horus pkg remove lidar-driver
 Remove lidar-driver v1.2.0? [y/N] y
 Removing lidar-driver v1.2.0...
-✓ Removed successfully
+ Removed successfully
 ```
 
 ### Scenario 10: Remove with Force (No Prompt)
@@ -174,7 +174,7 @@ Removing lidar-driver v1.2.0...
 ```bash
 $ horus pkg info lidar-driver
 
-📦 lidar-driver v1.2.0
+ lidar-driver v1.2.0
 
 Description:
   USB Lidar sensor driver with ROS compatibility
@@ -207,7 +207,7 @@ $ horus pkg update lidar-driver
 Checking for updates...
 Found lidar-driver v1.3.0 (current: v1.2.0)
 Updating lidar-driver...
-✓ Updated to v1.3.0
+ Updated to v1.3.0
 ```
 
 ### Scenario 14: Update All Packages
@@ -232,12 +232,12 @@ Updating lidar-driver...
 **Acceptance Criteria:**
 ```bash
 $ horus pkg unpublish my-package --version 1.0.0
-⚠️  Warning: Unpublishing a package removes it permanently from the registry.
+  Warning: Unpublishing a package removes it permanently from the registry.
     Users who depend on this version will not be able to install it.
 
 Unpublish my-package v1.0.0? [y/N] y
 Removing my-package v1.0.0 from registry...
-✓ Package unpublished successfully
+ Package unpublished successfully
 ```
 
 ### Scenario 16: Unpublish with --yes Flag (Skip Confirmation)

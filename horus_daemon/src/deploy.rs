@@ -42,7 +42,7 @@ pub async fn handle_deploy(
         LogType::RemoteDeploy,
         "Received deployment request".to_string(),
     );
-    tracing::info!("📦 Received deployment request: {}", deployment_id);
+    tracing::info!(" Received deployment request: {}", deployment_id);
 
     match deploy_internal(body, &deployment_id, registry).await {
         Ok(response) => {
@@ -51,7 +51,7 @@ pub async fn handle_deploy(
                 LogType::RemoteDeploy,
                 "Deployment successful".to_string(),
             );
-            tracing::info!("✅ Deployment {} successful", deployment_id);
+            tracing::info!(" Deployment {} successful", deployment_id);
             Ok(Json(response))
         }
         Err(e) => {
@@ -60,7 +60,7 @@ pub async fn handle_deploy(
                 LogType::Error,
                 format!("Deployment failed: {}", e),
             );
-            tracing::error!("❌ Deployment {} failed: {}", deployment_id, e);
+            tracing::error!(" Deployment {} failed: {}", deployment_id, e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
         }
     }
@@ -81,7 +81,7 @@ async fn deploy_internal(
     let mut archive = Archive::new(tar);
     archive.unpack(&deploy_dir)?;
 
-    tracing::debug!("📦 Extracted archive to {}", deploy_dir.display());
+    tracing::debug!(" Extracted archive to {}", deploy_dir.display());
 
     let entrypoint = find_entrypoint(&deploy_dir)?;
     log_deployment(
@@ -89,10 +89,10 @@ async fn deploy_internal(
         LogType::RemoteDeploy,
         format!("Found entrypoint: {}", entrypoint.display()),
     );
-    tracing::info!("🎯 Found entrypoint: {}", entrypoint.display());
+    tracing::info!(" Found entrypoint: {}", entrypoint.display());
 
     let executable = compile_if_needed(&entrypoint, &deploy_dir, deployment_id)?;
-    tracing::info!("✅ Ready to execute: {}", executable.display());
+    tracing::info!(" Ready to execute: {}", executable.display());
 
     let pid = execute_file(&executable, deployment_id)?;
 
@@ -174,6 +174,34 @@ fn compile_if_needed(
     }
 }
 
+fn find_horus_source_dir() -> anyhow::Result<PathBuf> {
+    // Check $HORUS_SOURCE environment variable
+    if let Ok(source_env) = std::env::var("HORUS_SOURCE") {
+        let path = PathBuf::from(source_env);
+        if path.exists() {
+            return Ok(path);
+        }
+    }
+
+    // Check common locations
+    let common_paths = [
+        PathBuf::from("/home/lord-patpak/horus/HORUS"),
+        PathBuf::from(std::env::var("HOME").unwrap_or_default()).join("horus/HORUS"),
+        PathBuf::from("/horus"),
+        PathBuf::from("/opt/horus"),
+    ];
+
+    for path in &common_paths {
+        if path.join("horus/Cargo.toml").exists() {
+            return Ok(path.clone());
+        }
+    }
+
+    anyhow::bail!(
+        "Could not find HORUS source directory. Set $HORUS_SOURCE or install in a standard location."
+    )
+}
+
 fn compile_rust(
     source: &PathBuf,
     deploy_dir: &PathBuf,
@@ -184,16 +212,46 @@ fn compile_rust(
         LogType::RemoteCompile,
         format!("Compiling Rust: {}", source.display()),
     );
-    tracing::info!("🔧 Compiling Rust: {}", source.display());
+    tracing::info!(" Compiling Rust: {}", source.display());
 
-    let output_name = deploy_dir.join("output");
+    // Find HORUS source directory
+    let horus_source = find_horus_source_dir()?;
 
-    let compile_result = Command::new("rustc")
-        .arg(source)
-        .arg("-o")
-        .arg(&output_name)
-        .arg("--edition")
-        .arg("2021")
+    // Create Cargo.toml in deploy directory
+    let cargo_toml_path = deploy_dir.join("Cargo.toml");
+    let source_relative = source
+        .strip_prefix(deploy_dir)
+        .unwrap_or(source)
+        .display()
+        .to_string();
+
+    let cargo_toml = format!(
+        r#"[package]
+name = "horus-deploy"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "output"
+path = "{}"
+
+[dependencies]
+horus = {{ path = "{}" }}
+horus_library = {{ path = "{}" }}
+"#,
+        source_relative,
+        horus_source.join("horus").display(),
+        horus_source.join("horus_library").display()
+    );
+
+    std::fs::write(&cargo_toml_path, cargo_toml)?;
+
+    // Run cargo build
+    let compile_result = Command::new("cargo")
+        .arg("build")
+        .arg("--release")
+        .arg("--bin")
+        .arg("output")
         .current_dir(deploy_dir)
         .output()?;
 
@@ -213,8 +271,10 @@ fn compile_rust(
         LogType::RemoteCompile,
         "Rust compilation successful".to_string(),
     );
-    tracing::info!("✅ Rust compilation successful");
-    Ok(output_name)
+    tracing::info!(" Rust compilation successful");
+
+    // Return path to compiled binary in target/release/
+    Ok(deploy_dir.join("target/release/output"))
 }
 
 fn compile_c(
@@ -227,7 +287,7 @@ fn compile_c(
         LogType::RemoteCompile,
         format!("Compiling C: {}", source.display()),
     );
-    tracing::info!("🔧 Compiling C: {}", source.display());
+    tracing::info!(" Compiling C: {}", source.display());
 
     let output_name = deploy_dir.join("output");
 
@@ -254,7 +314,7 @@ fn compile_c(
         LogType::RemoteCompile,
         "C compilation successful".to_string(),
     );
-    tracing::info!("✅ C compilation successful");
+    tracing::info!(" C compilation successful");
     Ok(output_name)
 }
 
@@ -286,7 +346,7 @@ fn execute_file(path: &PathBuf, deployment_id: &str) -> anyhow::Result<u32> {
         LogType::RemoteExecute,
         format!("Started process with PID: {}", pid),
     );
-    tracing::info!("🚀 Started process with PID: {}", pid);
+    tracing::info!(" Started process with PID: {}", pid);
 
     Ok(pid)
 }

@@ -159,7 +159,7 @@ Built your own IMU driver for a specific sensor? **Share it with the community t
 
 ```bash
 # Publish your package to the registry
-horus publish
+horus pkg publish
 
 # Others can discover it
 horus pkg list imu-driver
@@ -181,13 +181,13 @@ horus pkg install your-imu-driver
 ```bash
 # Team A builds and publishes a SLAM node
 cd my-slam-package
-horus publish
-# → Published: slam-cartographer v1.0.0
-# → Install: horus pkg install slam-cartographer
+horus pkg publish
+#  Published: slam-cartographer v1.0.0
+#  Install: horus pkg install slam-cartographer
 
 # Team B discovers and uses it weeks later
 horus pkg list slam
-# → slam-cartographer  1.0.0  SLAM using cartographer  ⭐234  ⬇5.2k
+#  slam-cartographer  1.0.0  SLAM using cartographer  234  ⬇5.2k
 horus pkg install slam-cartographer
 
 # Use it directly in their code
@@ -281,22 +281,22 @@ While HORUS excels in many scenarios, it may not be the best choice for:
 - **Distributed systems across networks**: HORUS is optimized for shared memory on a single machine
 - **Legacy framework integration**: If you need tight integration with existing ecosystems
 - **Non-real-time applications**: If you don't need sub-millisecond latency, simpler solutions may suffice
-- **Pure simulation**: Gazebo/Webots integration is not yet available (use standalone simulators)
+- **Pure simulation**: Use standalone simulators for pure simulation needs
 
 ---
 
 ## The HORUS Vision
 
-HORUS is building towards a future where:
+HORUS provides:
 
-- **Real-time robotics is accessible** to researchers and hobbyists, not just large companies
-- **Memory safety is the default**, eliminating entire classes of production failures
-- **Developer experience rivals modern web frameworks**, with instant feedback and zero-config tooling
-- **Research-to-production is seamless**, not a rewrite
-- **Dependencies just work**, everywhere, every time
-- **One command does everything**: Build, run, deploy - across all languages
-- **Robotics becomes composable**: Install proven components instead of rewriting everything
-- **Knowledge compounds**: The community builds on each other's work through the registry marketplace
+- **Accessible real-time robotics** for researchers and hobbyists, not just large companies
+- **Memory safety by default**, eliminating entire classes of production failures
+- **Modern developer experience** with instant feedback and zero-config tooling
+- **Seamless research-to-production** without rewrites
+- **Reliable dependencies** that work everywhere, every time
+- **One command for everything**: Build, run, deploy - across all languages
+- **Composable robotics**: Install proven components instead of rewriting everything
+- **Knowledge sharing**: Community builds on each other's work through the registry marketplace
 - **Sharing is effortless**: Publishing your node benefits the entire robotics community
 
 We're creating the robotics framework we wish existed when we started - and the ecosystem that makes robotics truly reusable.

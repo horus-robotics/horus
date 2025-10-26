@@ -16,7 +16,7 @@ pub fn create_new_project(
 
     println!(
         "{} Creating new HORUS project '{}'",
-        "✨".cyan(),
+        "[*]".cyan(),
         name.green().bold()
     );
 
@@ -76,7 +76,7 @@ pub fn create_new_project(
         _ => unreachable!(),
     }
 
-    println!("\n{} Project created successfully!", "✅".green().bold());
+    println!("\n{} Project created successfully!", "".green().bold());
     println!("\nTo get started:");
     println!("  {} {}", "cd".cyan(), name);
     println!("  {} (auto-installs dependencies)", "horus run".cyan());
@@ -104,7 +104,7 @@ fn prompt_language() -> Result<String> {
         "2" => "rust",
         "3" => "c",
         _ => {
-            println!("{} Invalid choice, defaulting to Rust", "⚠".yellow());
+            println!("{} Invalid choice, defaulting to Rust", "".yellow());
             "rust"
         }
     };
@@ -166,7 +166,7 @@ fn create_horus_directory(project_path: &Path) -> Result<()> {
 
     // Create empty .horus/ directory as workspace marker
     // This allows HORUS to recognize this directory as a workspace (workspace.rs:94-96)
-    // Subdirectories (packages/, bin/, lib/, include/, cache/, env.toml) are created
+    // Subdirectories (packages/, bin/, lib/, include/, cache/) are created
     // automatically by `horus run` on first execution
     fs::create_dir_all(&horus_dir)?;
 
@@ -183,6 +183,9 @@ fn create_gitignore(project_path: &Path, language: &str) -> Result<()> {
 .horus/include/
 .horus/cache/
 .horus/build/
+.horus/target/
+.horus/Cargo.toml
+.horus/Cargo.lock
 *.log
 "#,
     );
@@ -246,12 +249,12 @@ fn create_horus_yaml(
                 r#"dependencies:
   - horus@0.1.0
   - horus_macros@0.1.0
-  # - horus_library@0.1.0  # Uncomment for standard robotics messages
+  - horus_library@0.1.0  # Standard robotics messages (CmdVel, etc.)
 "#
             } else {
                 r#"dependencies:
   - horus@0.1.0
-  # - horus_library@0.1.0  # Uncomment for standard robotics messages
+  - horus_library@0.1.0  # Standard robotics messages (CmdVel, etc.)
 "#
             }
         }

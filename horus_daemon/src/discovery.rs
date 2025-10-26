@@ -43,7 +43,7 @@ impl DiscoveryService {
         self.daemon.register(service_info)?;
 
         tracing::info!(
-            "🔍 Broadcasting HORUS robot '{}' via mDNS on {}",
+            " Broadcasting HORUS robot '{}' via mDNS on {}",
             hostname,
             local_ips[0]
         );

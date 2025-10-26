@@ -24,16 +24,16 @@ These acceptance tests serve multiple purposes:
 
 ```
 user_story_acceptance_test/
-├── README.md (this file)
-├── horus_manager/          # CLI commands (new, run, pkg, auth, publish, env, dashboard)
-├── horus_core/             # Core framework (Hub, Node, Scheduler)
-├── horus_py/               # Python bindings
-├── horus_macros/           # node! procedural macro
-├── horus_dashboard/        # Web and TUI monitoring
-├── horus_registry/         # Package registry backend
-├── horus_marketplace/      # Web marketplace frontend
-├── horus_c/                # C bindings (alpha)
-└── horus_env/              # Environment management
+── README.md (this file)
+── horus_manager/          # CLI commands (new, run, pkg, auth, publish, env, dashboard)
+── horus_core/             # Core framework (Hub, Node, Scheduler)
+── horus_py/               # Python bindings
+── horus_macros/           # node! procedural macro
+── horus_dashboard/        # Web and TUI monitoring
+── horus_registry/         # Package registry backend
+── horus_marketplace/      # Web marketplace frontend
+── horus_c/                # C bindings (alpha)
+── horus_env/              # Environment management
 
 ```
 
@@ -175,7 +175,7 @@ cd /path/to/horus/HORUS
 horus new test_project
 cd test_project
 horus run
-# ✓ Scenario 1: Create Basic Rust Project
+#  Scenario 1: Create Basic Rust Project
 ```
 
 **Automated Testing:**
@@ -196,7 +196,7 @@ pytest tests/acceptance/
 ### For QA/Testing Teams
 
 **Test Execution:**
-1. Start with critical path: `horus_manager/01_new_command.md` → `02_run_command.md`
+1. Start with critical path: `horus_manager/01_new_command.md`  `02_run_command.md`
 2. Test each scenario sequentially
 3. Mark checkboxes as you complete tests
 4. Note any failures or deviations
@@ -207,11 +207,11 @@ pytest tests/acceptance/
 Component: horus_manager
 Test File: 01_new_command.md
 Scenario: 4 (Create C Project)
-Status: ✅ Pass
+Status:  Pass
 Notes: Warning message appears as expected
 
 Scenario: 5 (Error - Project Already Exists)
-Status: ❌ Fail
+Status:  Fail
 Issue: Error message not displayed, silent failure
 Bug #: 123
 ```
@@ -263,22 +263,22 @@ Bug #: 123
 
 | Component | Basic Functionality | Error Handling | Performance | Cross-Platform | Documentation |
 |-----------|-------------------|----------------|-------------|----------------|---------------|
-| CLI (manager) | ✅ Comprehensive | ✅ All cases | ⚠️ Basic | ✅ Linux/macOS | ✅ Complete |
-| Version | ✅ Complete | N/A | ✅ Instant | ✅ All platforms | ✅ Complete |
-| Env Mgmt | ✅ Freeze/restore | ✅ Conflicts | ✅ Fast | ✅ Portable | ✅ Complete |
-| Hub | ✅ Complete | ✅ All cases | ✅ Benchmarked | ✅ POSIX shm | ✅ Complete |
-| Node/Sched | ✅ Complete | ✅ Lifecycle | ✅ Priority | ✅ Cross-platform | ✅ Complete |
-| Python | ✅ Core features | ✅ Exceptions | ⚠️ Basic | ⚠️ Linux/macOS | ⚠️ Type hints |
-| Macros | ✅ All sections | ✅ Compile errors | N/A | ✅ Rust standard | ✅ Examples |
-| Dashboard | ⚠️ Web only | ⚠️ Basic | ⚠️ Needs testing | ✅ Browsers | ⚠️ Partial |
-| Registry | ✅ Full CRUD | ✅ Validation | ⚠️ Needs load test | ✅ SQLite | ✅ API docs |
-| Marketplace | ⚠️ UI incomplete | ⚠️ Basic | ⚠️ Needs testing | ✅ Responsive | ⚠️ Partial |
-| C Bindings | ⚠️ Alpha | ⚠️ Minimal | ❌ Not tested | ⚠️ Experimental | ❌ Incomplete |
+| CLI (manager) |  Comprehensive |  All cases |  Basic |  Linux/macOS |  Complete |
+| Version |  Complete | N/A |  Instant |  All platforms |  Complete |
+| Env Mgmt |  Freeze/restore |  Conflicts |  Fast |  Portable |  Complete |
+| Hub |  Complete |  All cases |  Benchmarked |  POSIX shm |  Complete |
+| Node/Sched |  Complete |  Lifecycle |  Priority |  Cross-platform |  Complete |
+| Python |  Core features |  Exceptions |  Basic |  Linux/macOS |  Type hints |
+| Macros |  All sections |  Compile errors | N/A |  Rust standard |  Examples |
+| Dashboard |  Web only |  Basic |  Needs testing |  Browsers |  Partial |
+| Registry |  Full CRUD |  Validation |  Needs load test |  SQLite |  API docs |
+| Marketplace |  UI incomplete |  Basic |  Needs testing |  Responsive |  Partial |
+| C Bindings |  Alpha |  Minimal |  Not tested |  Experimental |  Incomplete |
 
 **Legend:**
-- ✅ Complete and tested
-- ⚠️ Partial or needs improvement
-- ❌ Not yet implemented
+-  Complete and tested
+-  Partial or needs improvement
+-  Not yet implemented
 - N/A Not applicable
 
 ## Running All Tests

@@ -23,7 +23,7 @@ As a package developer, I want to authenticate with GitHub and publish my packag
 $ horus auth login
 Opening browser for GitHub authentication...
 Waiting for authorization...
-✓ Logged in as @robotics-dev
+ Logged in as @robotics-dev
 ```
 
 ### Scenario 2: Check Authentication Status
@@ -37,7 +37,7 @@ Waiting for authorization...
 **Acceptance Criteria:**
 ```bash
 $ horus auth status
-✓ Logged in as @robotics-dev
+ Logged in as @robotics-dev
 Email: dev@robotics.com
 Token expires: Never (GitHub PAT)
 ```
@@ -69,7 +69,7 @@ Run 'horus auth login' to authenticate
 ```bash
 $ horus auth logout
 Logout from HORUS? [y/N] y
-✓ Logged out successfully
+ Logged out successfully
 ```
 
 ### Scenario 5: Force Logout (No Prompt)
@@ -95,13 +95,13 @@ Logout from HORUS? [y/N] y
 $ horus auth generate-key --name laptop --environment dev
 Generating API key...
 
-✓ API key generated successfully
+ API key generated successfully
 
 Key: horus_key_1a2b3c4d5e6f7g8h9i0j
 Name: laptop
 Environment: dev
 
-⚠️  Save this key securely - it won't be shown again.
+  Save this key securely - it won't be shown again.
    The key has been saved to ~/.horus/auth_token
 ```
 
@@ -118,13 +118,13 @@ Environment: dev
 $ horus auth generate-key
 Generating API key...
 
-✓ API key generated successfully
+ API key generated successfully
 
 Key: horus_key_9z8y7x6w5v4u3t2s1r0q
 Name: default
 Environment: production
 
-⚠️  Save this key securely - it won't be shown again.
+  Save this key securely - it won't be shown again.
 ```
 
 ### Scenario 5c: Generate Key When Not Logged In
@@ -154,7 +154,7 @@ Run 'horus auth login' to authenticate with GitHub first
 **Acceptance Criteria:**
 ```bash
 $ horus auth whoami
-✓ Logged in as @robotics-dev
+ Logged in as @robotics-dev
 Email: dev@robotics.com
 
 Active API Keys:
@@ -184,14 +184,14 @@ Total: 3 keys
 $ cd my-lidar-driver
 $ horus publish
 Validating package...
-  ✓ Package name: lidar-driver
-  ✓ Version: 1.0.0
-  ✓ Author: @robotics-dev
-  ✓ License: MIT
+   Package name: lidar-driver
+   Version: 1.0.0
+   Author: @robotics-dev
+   License: MIT
 Packaging...
 Uploading to registry...
 [████████████████████] 100% (2.3 MB)
-✓ Published lidar-driver v1.0.0
+ Published lidar-driver v1.0.0
 View at: https://horus-registry.dev/packages/lidar-driver
 ```
 
@@ -209,9 +209,9 @@ View at: https://horus-registry.dev/packages/lidar-driver
 $ horus publish
 Current version in registry: v1.0.0
 New version: v1.1.0
-✓ Version is valid
+ Version is valid
 Publishing update...
-✓ Published lidar-driver v1.1.0
+ Published lidar-driver v1.1.0
 ```
 
 ### Scenario 8: Publish Duplicate Version
@@ -259,9 +259,9 @@ Run 'horus auth login' to authenticate with GitHub
 ```bash
 $ horus publish
 Validation failed:
-  ✗ Missing horus.yaml
-  ✗ No source files found (main.rs, main.py, or main.c)
-  ✗ Missing package description
+   Missing horus.yaml
+   No source files found (main.rs, main.py, or main.c)
+   Missing package description
 
 Fix these issues and try again
 ```
@@ -278,8 +278,8 @@ Fix these issues and try again
 ```bash
 $ horus publish
 Validation failed:
-  ✗ Missing 'description' in horus.yaml
-  ✗ Missing 'license' in horus.yaml
+   Missing 'description' in horus.yaml
+   Missing 'license' in horus.yaml
 
 Add these required fields and try again
 ```
@@ -297,7 +297,7 @@ Add these required fields and try again
 ```bash
 $ horus publish --dry-run
 Validating package...
-  ✓ All checks passed
+   All checks passed
 Dry run successful - package is ready to publish
 Run 'horus publish' to upload to registry
 ```

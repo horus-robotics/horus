@@ -27,17 +27,17 @@ See [`latest_run.txt`](latest_run.txt) for most recent benchmark output.
 
 **Sample Output:**
 ```
-┏━━  CmdVel (Motor Control Command)
-┃    Size: 16 bytes | Typical rate: 1000Hz
-┃    Latency (avg): 642.97 ns
-┃    Throughput: 1555280.58 msg/s
-┗━━
+  CmdVel (Motor Control Command)
+    Size: 16 bytes | Typical rate: 1000Hz
+    Latency (avg): 642.97 ns
+    Throughput: 1555280.58 msg/s
 
-┏━━  LaserScan (2D Lidar Data)
-┃    Size: 1480 bytes | Typical rate: 10Hz
-┃    Latency (avg): 2.81 μs
-┃    Throughput: 356478.18 msg/s
-┗━━
+
+  LaserScan (2D Lidar Data)
+    Size: 1480 bytes | Typical rate: 10Hz
+    Latency (avg): 2.81 μs
+    Throughput: 356478.18 msg/s
+
 ```
 
 ## Comparison with traditional frameworks

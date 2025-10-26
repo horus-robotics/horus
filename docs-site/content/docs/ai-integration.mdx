@@ -26,13 +26,13 @@ Modern robotics combines real-time control with AI-powered intelligence:
 
 **HORUS Integration Pattern:**
 ```
-┌──────────────┐         ┌──────────────┐         ┌──────────────┐
-│   Camera     │ ──Hub──>│  AI Vision   │ ──Hub──>│   Control    │
-│    Node      │         │  Node (GPU)  │         │     Node     │
-└──────────────┘         └──────────────┘         └──────────────┘
+──────────────         ──────────────         ──────────────
+   Camera      ──Hub──>  AI Vision    ──Hub──>   Control    
+    Node                 Node (GPU)                Node     
+──────────────         ──────────────         ──────────────
                               2-10ms                    ~16μs
-                                │
-                                │ (optional)
+                                
+                                 (optional)
                                 ▼
                           Cloud API
                          (complex tasks)
@@ -141,19 +141,18 @@ impl Node for EdgeDetectorNode {
         "EdgeDetectorNode"
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) -> HorusResult<()> {
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         // Process incoming images
         if let Some(image) = self.image_sub.recv(ctx) {
             match self.process_image(&image) {
                 Ok(result) => {
-                    self.edges_pub.send(result, ctx)?;
+                    let _ = self.edges_pub.send(result, ctx);
                 }
                 Err(e) => {
                     eprintln!("Edge detection failed: {}", e);
                 }
             }
         }
-        Ok(())
     }
 }
 ```
@@ -180,7 +179,6 @@ fn main() -> HorusResult<()> {
 
     // Run at 30 Hz
     scheduler.tick_all()?;
-    Ok(())
 }
 ```
 
@@ -303,18 +301,17 @@ impl Node for YOLONode {
         "YOLONode"
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) -> HorusResult<()> {
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         if let Some(image) = self.image_sub.recv(ctx) {
             match self.detect(&image) {
                 Ok(detections) => {
-                    self.detections_pub.send(detections, ctx)?;
+                    self.detections_pub.send(detections, ctx).ok();
                 }
                 Err(e) => {
                     eprintln!("YOLO detection failed: {}", e);
                 }
             }
         }
-        Ok(())
     }
 }
 ```
@@ -347,7 +344,6 @@ fn main() -> HorusResult<()> {
     );
 
     scheduler.tick_all()?;
-    Ok(())
 }
 ```
 
@@ -479,18 +475,17 @@ impl Node for MobileNetNode {
         "MobileNetNode"
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) -> HorusResult<()> {
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         if let Some(image) = self.image_sub.recv(ctx) {
             match self.classify(&image) {
                 Ok(result) => {
-                    self.class_pub.send(result, ctx)?;
+                    self.class_pub.send(result, ctx).ok();
                 }
                 Err(e) => {
                     eprintln!("Classification failed: {}", e);
                 }
             }
         }
-        Ok(())
     }
 }
 
@@ -718,7 +713,7 @@ impl Node for GPTVisionNode {
         "GPTVisionNode"
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) -> HorusResult<()> {
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         if let Some(query) = self.query_sub.recv(ctx) {
             // Spawn async task (doesn't block scheduler)
             let client = self.http_client.clone();
@@ -750,7 +745,6 @@ impl Node for GPTVisionNode {
                 }
             });
         }
-        Ok(())
     }
 }
 ```
@@ -785,7 +779,6 @@ fn main() -> HorusResult<()> {
     );
 
     scheduler.tick_all()?;
-    Ok(())
 }
 ```
 
@@ -799,10 +792,10 @@ fn main() -> HorusResult<()> {
 
 ```
 Real-Time Loop (60 Hz):
-  Camera → YOLO (10ms) → Control (2ms) → Motors
+  Camera  YOLO (10ms)  Control (2ms)  Motors
 
 Async Tasks (when needed):
-  Complex queries → GPT-4 Vision (500ms) → High-level planning
+  Complex queries  GPT-4 Vision (500ms)  High-level planning
 ```
 
 ### 2. GPU Management
@@ -831,11 +824,11 @@ scheduler.register(control, 5, Some(true));     // Control last
 
 ```rust
 impl Node for AINode {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) -> HorusResult<()> {
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         if let Some(input) = self.input_sub.recv(ctx) {
             match self.process(&input) {
                 Ok(result) => {
-                    self.output_pub.send(result, ctx)?;
+                    self.output_pub.send(result, ctx).ok();
                 }
                 Err(e) => {
                     // Log but don't crash - keep system running
@@ -844,7 +837,6 @@ impl Node for AINode {
                 }
             }
         }
-        Ok(())
     }
 }
 ```
@@ -901,11 +893,10 @@ fn main() -> HorusResult<()> {
 
     // Run at 30 Hz (camera framerate)
     scheduler.tick_all()?;
-    Ok(())
 }
 ```
 
-**Performance**: Entire pipeline runs at 30 Hz with ~20-25ms total latency (camera → motors).
+**Performance**: Entire pipeline runs at 30 Hz with ~20-25ms total latency (camera  motors).
 
 ---
 

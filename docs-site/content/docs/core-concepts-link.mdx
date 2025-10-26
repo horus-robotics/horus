@@ -33,7 +33,7 @@ A `Link<T>` is a **typed point-to-point channel** that connects exactly one prod
 Links have explicit roles - you create either a producer or consumer:
 
 ```rust
-use horus_core::Link;
+use horus::prelude::*;
 
 // Producer side
 let output: Link<SensorData> = Link::producer("imu_raw")?;
@@ -62,24 +62,24 @@ if let Some(data) = input.recv(ctx) {
 | Feature | Link (SPSC) | Hub (MPMC) |
 |---------|-------------|------------|
 | **Latency** | 389ns | 606ns |
-| **Pattern** | 1 producer → 1 consumer | N producers → M consumers |
+| **Pattern** | 1 producer  1 consumer | N producers  M consumers |
 | **Use Case** | Control loops, critical paths | General pub/sub, broadcasting |
 | **Complexity** | Lower (no coordination) | Higher (multi-consumer coordination) |
 | **Performance** | 1.56x faster | Flexible but slower |
 
 ### When to Use Link
 
-✅ **Control loops** running at >100Hz where latency matters
-✅ **Point-to-point** communication with fixed topology
-✅ **Critical paths** in your dataflow pipeline
-✅ **Deterministic** real-time systems
+ **Control loops** running at >100Hz where latency matters
+ **Point-to-point** communication with fixed topology
+ **Critical paths** in your dataflow pipeline
+ **Deterministic** real-time systems
 
 ### When to Use Hub
 
-✅ **Broadcasting** to multiple subscribers
-✅ **Dynamic** topologies where subscribers change
-✅ **Logging/monitoring** where many nodes observe one topic
-✅ **Flexibility** over absolute minimum latency
+ **Broadcasting** to multiple subscribers
+ **Dynamic** topologies where subscribers change
+ **Logging/monitoring** where many nodes observe one topic
+ **Flexibility** over absolute minimum latency
 
 ## How Link Works Internally
 
@@ -88,19 +88,19 @@ if let Some(data) = input.recv(ctx) {
 Link uses a **ring buffer** in shared memory (`/dev/shm/horus/topics/horus_links_<topic>`):
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│ Header (64 bytes, cache-aligned)                         │
-│  - head: AtomicUsize (producer write position)           │
-│  - tail: AtomicUsize (consumer read position)            │
-│  - capacity: usize                                       │
-│  - metrics: messages_sent, messages_received, failures   │
-├─────────────────────────────────────────────────────────┤
-│ Ring Buffer (capacity × element_size bytes)              │
-│  - Slot 0: T                                             │
-│  - Slot 1: T                                             │
-│  - ...                                                   │
-│  - Slot N-1: T                                           │
-└─────────────────────────────────────────────────────────┘
+─────────────────────────────────────────────────────────
+ Header (64 bytes, cache-aligned)                         
+  - head: AtomicUsize (producer write position)           
+  - tail: AtomicUsize (consumer read position)            
+  - capacity: usize                                       
+  - metrics: messages_sent, messages_received, failures   
+─────────────────────────────────────────────────────────
+ Ring Buffer (capacity × element_size bytes)              
+  - Slot 0: T                                             
+  - Slot 1: T                                             
+  - ...                                                   
+  - Slot N-1: T                                           
+─────────────────────────────────────────────────────────
 ```
 
 ### Lock-Free Algorithm
@@ -147,7 +147,7 @@ Link can sustain:
 ### 1. Control Loop Pipeline
 
 ```rust
-// IMU → State Estimator → Controller → Motors
+// IMU  State Estimator  Controller  Motors
 // Each stage connected by a Link
 
 struct ImuNode {
@@ -233,7 +233,7 @@ let link = Link::producer_with_capacity("heartbeat", 16)?;
 **Medium buffer (256-1024)**: Sensor data, control commands
 **Large buffer (2048-8192)**: Bursty data, handling jitter
 
-⚠️ **Larger buffers ≠ better performance**. Size for your actual latency requirements and expected burst size.
+ **Larger buffers ≠ better performance**. Size for your actual latency requirements and expected burst size.
 
 ## Error Handling
 
@@ -315,16 +315,16 @@ Link achieves its low latency through:
 
 ## Best Practices
 
-✅ **Use Link for critical paths**: Flight control, motor commands, sensor fusion
-✅ **One Link per data flow**: Don't multiplex - create separate Links for separate data streams
-✅ **Size buffers appropriately**: Match to your actual burst size, not "as large as possible"
-✅ **Monitor metrics**: Track send failures to detect performance issues
-✅ **Handle send errors**: Decide your drop policy (soft vs hard real-time)
+ **Use Link for critical paths**: Flight control, motor commands, sensor fusion
+ **One Link per data flow**: Don't multiplex - create separate Links for separate data streams
+ **Size buffers appropriately**: Match to your actual burst size, not "as large as possible"
+ **Monitor metrics**: Track send failures to detect performance issues
+ **Handle send errors**: Decide your drop policy (soft vs hard real-time)
 
-❌ **Don't use Link for broadcasting**: Use Hub if you need multiple consumers
-❌ **Don't share Link instances**: Each node should own its Link
-❌ **Don't ignore send failures**: They indicate your consumer can't keep up
-❌ **Don't use massive buffers**: Large buffers hide problems and waste memory
+ **Don't use Link for broadcasting**: Use Hub if you need multiple consumers
+ **Don't share Link instances**: Each node should own its Link
+ **Don't ignore send failures**: They indicate your consumer can't keep up
+ **Don't use massive buffers**: Large buffers hide problems and waste memory
 
 ## Example: Drone Flight Controller
 

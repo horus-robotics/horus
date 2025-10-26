@@ -24,13 +24,13 @@ Remote deployment allows you to:
 
 **Architecture:**
 ```
-┌─────────────────────────────────────────────────────────┐
-│ Dev Machine     │                    │ Robot            │
-│                 │                    │                  │
-│ horus run       │──── WiFi/LAN ────→│ horus_daemon      │
-│ --remote robot  │      HTTP          │                  │
-│                 │                    │ Builds & Runs    │
-└─────────────────────────────────────────────────────────┘
+─────────────────────────────────────────────────────────
+ Dev Machine                          Robot            
+                                                       
+ horus run       ──── WiFi/LAN ──── horus_daemon      
+ --remote robot        HTTP                            
+                                      Builds & Runs    
+─────────────────────────────────────────────────────────
 ```
 
 ## Quick Start
@@ -161,17 +161,17 @@ horus run --remote 192.168.1.100:8080
 **Output:**
 ```
 Preparing deployment...
-  ✓ Packaged project (245 KB)
-  ✓ Uploaded to 192.168.1.100:8080
-  ✓ Building on robot (release mode)
+   Packaged project (245 KB)
+   Uploaded to 192.168.1.100:8080
+   Building on robot (release mode)
 
 Build output:
    Compiling horus_core v0.1.0
    Compiling my_robot_controller v1.0.0
     Finished release [optimized] target(s) in 23.45s
 
-  ✓ Build successful
-  ✓ Starting execution
+   Build successful
+   Starting execution
 
 Robot logs:
 [12:34:56.789] Registered node 'VelocityController' with priority 5
@@ -314,9 +314,9 @@ for robot in "${ROBOTS[@]}"; do
 
     # Verify health
     if curl -f http://$robot/health; then
-        echo "✓ $robot updated successfully"
+        echo " $robot updated successfully"
     else
-        echo "✗ $robot update failed"
+        echo " $robot update failed"
         kill $pid
     fi
 done

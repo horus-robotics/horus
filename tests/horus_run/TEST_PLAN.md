@@ -7,7 +7,7 @@ Comprehensive test suite for the `horus run` command, validating production-read
 The `horus run` command is the core execution engine for HORUS robotics applications. It must handle:
 - Multi-language support (Rust, Python, C)
 - Dependency management and auto-installation
-- Build systems (rustc, cargo, gcc, make, cmake)
+- Build systems (cargo, gcc, make, cmake)
 - IPC and shared memory communication
 - Real-time scheduling
 - Environment setup and library paths
@@ -108,7 +108,7 @@ Tests integration with various build systems.
 | Cargo project | Cargo.toml | `horus run` | `test_build_systems.sh` |
 | Makefile project | Makefile | `horus run` | `test_build_systems.sh` |
 | CMake project | CMakeLists.txt | `horus run` | `test_build_systems.sh` |
-| Standalone rustc | Single .rs file | Uses rustc directly | `test_build_systems.sh` |
+| Single Rust file | Single .rs file | Uses cargo via generated Cargo.toml | `test_build_systems.sh` |
 
 ### 9. Environment Setup Tests
 Validates library paths and environment variables.
@@ -145,7 +145,7 @@ Tests error conditions and messages.
 
 | Test | Error Condition | Expected Message | Test File |
 |------|-----------------|------------------|-----------|
-| No compiler | Rust without rustc | "No Rust compiler found" | `test_errors.sh` |
+| No compiler | Rust without cargo | "No Rust compiler found" | `test_errors.sh` |
 | Compilation failure | Syntax error in code | Shows compiler errors | `test_errors.sh` |
 | Runtime failure | Program crashes | Exit code != 0 | `test_errors.sh` |
 | Missing file | File doesn't exist | "File not found" | `test_errors.sh` |
@@ -167,7 +167,7 @@ Validates performance characteristics.
 
 | Test | Metric | Target | Test File |
 |------|--------|--------|-----------|
-| Compile time (rustc) | Single file | < 5 seconds | `test_performance.sh` |
+| Compile time (cargo) | Single file | < 5 seconds | `test_performance.sh` |
 | IPC latency | Message passing | < 1μs | `test_performance.sh` |
 | Startup time | Python node | < 2 seconds | `test_performance.sh` |
 | Memory usage | Running node | Reasonable | `test_performance.sh` |
@@ -222,41 +222,41 @@ For production readiness:
 
 ```
 tests/horus_run/
-├── TEST_PLAN.md              # This file
-├── README.md                 # Quick start guide
-├── run_all.sh                # Master test runner
-│
-├── test_python_exec.sh       # Python execution tests
-├── test_rust_exec.sh         # Rust execution tests
-├── test_c_exec.sh            # C execution tests
-├── test_rust_macros.sh       # Rust macro tests
-│
-├── test_autodetect.sh        # Auto-detection tests
-├── test_directory.sh         # Directory execution
-├── test_patterns.sh          # Glob pattern tests
-│
-├── test_build_modes.sh       # Debug/release/clean
-├── test_caching.sh           # Build cache tests
-│
-├── test_dependencies.sh      # Dependency resolution
-├── test_ipc.sh               # IPC and messaging
-├── test_build_systems.sh     # Cargo/Make/CMake
-├── test_environment.sh       # Environment variables
-│
-├── test_python_advanced.sh   # Python-specific
-├── test_c_advanced.sh        # C-specific
-├── test_errors.sh            # Error handling
-├── test_robotics.sh          # Robotics applications
-├── test_performance.sh       # Performance validation
-│
-└── fixtures/                 # Test code samples
-    ├── simple_python.py
-    ├── simple_rust.rs
-    ├── simple_c.c
-    ├── pub_node.rs
-    ├── sub_node.rs
-    ├── multi_node/
-    └── with_deps/
+── TEST_PLAN.md              # This file
+── README.md                 # Quick start guide
+── run_all.sh                # Master test runner
+
+── test_python_exec.sh       # Python execution tests
+── test_rust_exec.sh         # Rust execution tests
+── test_c_exec.sh            # C execution tests
+── test_rust_macros.sh       # Rust macro tests
+
+── test_autodetect.sh        # Auto-detection tests
+── test_directory.sh         # Directory execution
+── test_patterns.sh          # Glob pattern tests
+
+── test_build_modes.sh       # Debug/release/clean
+── test_caching.sh           # Build cache tests
+
+── test_dependencies.sh      # Dependency resolution
+── test_ipc.sh               # IPC and messaging
+── test_build_systems.sh     # Cargo/Make/CMake
+── test_environment.sh       # Environment variables
+
+── test_python_advanced.sh   # Python-specific
+── test_c_advanced.sh        # C-specific
+── test_errors.sh            # Error handling
+── test_robotics.sh          # Robotics applications
+── test_performance.sh       # Performance validation
+
+── fixtures/                 # Test code samples
+    ── simple_python.py
+    ── simple_rust.rs
+    ── simple_c.c
+    ── pub_node.rs
+    ── sub_node.rs
+    ── multi_node/
+    ── with_deps/
 ```
 
 ## Coverage
@@ -265,7 +265,7 @@ This test suite covers:
 - **Languages:** 100% (Python, Rust, C)
 - **Execution modes:** 100% (single, directory, pattern, multiple)
 - **Build modes:** 100% (debug, release, clean, build-only)
-- **Build systems:** 100% (rustc, cargo, gcc, make, cmake)
+- **Build systems:** 100% (cargo, gcc, make, cmake)
 - **IPC:** Core messaging, pub/sub, scheduling
 - **Dependencies:** Auto-detection, resolution, installation
 - **Environment:** All required variables

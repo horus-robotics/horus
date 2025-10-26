@@ -15,7 +15,7 @@ As a robotics developer, I want my nodes to have clear initialization, execution
 - [ ] init() is called exactly once at startup
 - [ ] tick() is called repeatedly
 - [ ] shutdown() is called exactly once at end
-- [ ] Order is always: init → tick(multiple) → shutdown
+- [ ] Order is always: init  tick(multiple)  shutdown
 
 **Acceptance Criteria:**
 ```rust
@@ -129,7 +129,7 @@ scheduler.register(Box::new(HighPriority), 0, Some(true));
 scheduler.register(Box::new(MediumPriority), 5, Some(true));
 scheduler.register(Box::new(LowPriority), 10, Some(true));
 
-// Each tick: HighPriority → MediumPriority → LowPriority
+// Each tick: HighPriority  MediumPriority  LowPriority
 ```
 
 ### Scenario 7: Same Priority (Order Not Guaranteed)

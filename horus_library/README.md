@@ -33,16 +33,16 @@ The library is organized into several key categories:
 
 ```
 horus_library/
-├── core/              # Standard library components
-│   ├── messages/     # Shared memory-safe message types
-│   ├── nodes/        # Reusable node implementations
-│   └── algorithms/   # Common robotics algorithms
-├── examples/         # Complete example applications
-│   ├── snakesim/    # Multi-node snake game demo
-│   └── tanksim/     # Tank simulation (in development)
-├── tools/           # Development and debugging tools
-│   └── sim2d/      # 2D physics simulator with visualization
-└── models/          # Pre-trained models (future)
+── core/              # Standard library components
+   ── messages/     # Shared memory-safe message types
+   ── nodes/        # Reusable node implementations
+   ── algorithms/   # Common robotics algorithms
+── examples/         # Complete example applications
+   ── snakesim/    # Multi-node snake game demo
+   ── tanksim/     # Tank simulation (in development)
+── tools/           # Development and debugging tools
+   ── sim2d/      # 2D physics simulator with visualization
+── models/          # Pre-trained models (future)
 ```
 
 ## Components
@@ -189,8 +189,8 @@ Gamepad and joystick input capture:
 use horus_library::nodes::JoystickInputNode;
 
 // Default gamepad mappings for common controllers
-// D-pad: Up/Down/Left/Right → direction codes 1/2/3/4
-// Face buttons: A/B/X/Y → direction codes 1/2/3/4
+// D-pad: Up/Down/Left/Right  direction codes 1/2/3/4
+// Face buttons: A/B/X/Y  direction codes 1/2/3/4
 
 let joystick_node = JoystickInputNode::new();
 ```
@@ -226,9 +226,9 @@ cargo run
 ```
 
 **Architecture:**
-- **KeyboardInputNode** (priority 0): Captures arrow keys → direction codes
-- **JoystickInputNode** (priority 1): Captures gamepad input → direction codes  
-- **SnakeControlNode** (priority 2): Processes direction codes → game logic
+- **KeyboardInputNode** (priority 0): Captures arrow keys  direction codes
+- **JoystickInputNode** (priority 1): Captures gamepad input  direction codes  
+- **SnakeControlNode** (priority 2): Processes direction codes  game logic
 
 **Features:**
 - Dual input support (keyboard + gamepad simultaneously)
@@ -242,9 +242,9 @@ Registered node 'KeyboardInputNode' with priority 0 (logging: true)
 Registered node 'JoystickInputNode' with priority 1 (logging: true)
 Registered node 'SnakeControlNode' with priority 2 (logging: true)
 
-[2025-08-10 11:30:00.123] [0ms] 📤 KeyboardInputNode → 'keyboard_input' = ArrowUp
+[2025-08-10 11:30:00.123] [0ms] 📤 KeyboardInputNode  'keyboard_input' = ArrowUp
 [2025-08-10 11:30:00.124] [1ms] 📥 SnakeControlNode ← 'keyboard_input' = ArrowUp
-[2025-08-10 11:30:00.125] [2ms] 📤 SnakeControlNode → 'direction_command' = 1
+[2025-08-10 11:30:00.125] [2ms] 📤 SnakeControlNode  'direction_command' = 1
 ```
 
 ## Message Safety
@@ -280,15 +280,15 @@ All library messages provide conversion methods:
 ```rust
 // Convert from dynamic types
 let message = KeyboardInput::new(
-    "Enter".to_string(),    // String → [u8; 32]
+    "Enter".to_string(),    // String  [u8; 32]
     13,
-    vec!["Ctrl".to_string()], // Vec<String> → u32 bit flags
+    vec!["Ctrl".to_string()], // Vec<String>  u32 bit flags
     true
 );
 
 // Convert back to dynamic types
-let key_name: String = message.get_key_name();        // [u8; 32] → String
-let modifiers: Vec<String> = message.get_modifiers(); // u32 flags → Vec<String>
+let key_name: String = message.get_key_name();        // [u8; 32]  String
+let modifiers: Vec<String> = message.get_modifiers(); // u32 flags  Vec<String>
 ```
 
 ## Usage Examples
@@ -408,7 +408,7 @@ cargo run  # Use arrow keys and gamepad to test both input nodes
 
 ### Application Structure
 1. **Start with examples** - Use SnakeSim as a template
-2. **Layer by priority** - Input → Processing → Output
+2. **Layer by priority** - Input  Processing  Output
 3. **Monitor everything** - Use `horus dashboard` during development
 4. **Test incrementally** - Add one node at a time
 

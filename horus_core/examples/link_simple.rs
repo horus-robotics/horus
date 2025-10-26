@@ -83,7 +83,7 @@ impl Node for ControllerNode {
 
             // Process the value
             if value > 150.0 {
-                println!("[{}] ⚠️  High reading detected!", self.name());
+                println!("[{}]   High reading detected!", self.name());
             }
         }
 

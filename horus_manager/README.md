@@ -108,7 +108,36 @@ horus run main.rs -- arg1 arg2
 - `horus_daemon` on robot receives, builds, and runs
 - Returns deployment ID and PID
 
-### 3. `horus pkg` - Package Management
+### 3. `horus dashboard` - Monitoring Dashboard
+
+Launch real-time monitoring dashboard (web, GUI, or terminal UI).
+
+```bash
+# Web dashboard on port 3000 (auto-opens browser)
+horus dashboard
+
+# Custom port
+horus dashboard 3001
+horus dashboard 8080
+
+# Terminal UI mode (for SSH sessions)
+horus dashboard -t
+horus dashboard --tui
+```
+
+**Modes:**
+- Default: Web dashboard (Axum on port 3000, auto-opens browser)
+- `<PORT>`: Custom port for web dashboard
+- `-t, --tui`: Terminal UI mode
+
+**Dashboard Features:**
+- Real-time process monitoring
+- Topic-based message flow visualization
+- Performance metrics and latency tracking
+- Interactive node graph
+- Package management interface
+
+### 4. `horus pkg` - Package Management
 
 Manage packages with global cache support.
 
@@ -143,13 +172,16 @@ horus pkg list vision                       # Search registry
 - `list [query]` - List or search packages
   - `-g, --global` - List global cache
   - `-a, --all` - List all (local + global)
+- `publish` - Publish current package to registry
+  - `--freeze` - Also generate freeze file
+- `unpublish <name> <version>` - Remove package from registry
 
 **Package Locations:**
 - Global cache: `~/.horus/cache/`
 - Local packages: `.horus/packages/` (per project)
 - Metadata: `metadata.json` in package directory
 
-### 4. `horus env` - Environment Management
+### 5. `horus env` - Environment Management
 
 Freeze and restore development environments for reproducibility.
 
@@ -181,21 +213,6 @@ horus env restore env_abc123
 - Includes checksums and versions
 - Can be published to registry with unique ID
 
-### 5. `horus publish` - Publish Packages
-
-Publish packages to the registry.
-
-```bash
-# Publish current project
-horus publish
-
-# Publish and generate freeze file
-horus publish --freeze
-```
-
-**Flags:**
-- `--freeze` - Also generate freeze file
-
 ### 6. `horus auth` - Authentication
 
 Manage authentication for the package registry.
@@ -225,52 +242,34 @@ horus auth logout
 - `logout` - Logout
 - `whoami` - Show current user
 
-### 7. `horus dashboard` - Monitoring Dashboard
+### 7. `horus version` - Version Information
 
-Launch real-time monitoring dashboard (web, GUI, or terminal UI).
+Display HORUS version information.
 
 ```bash
-# Web dashboard on port 3000 (auto-opens browser)
-horus dashboard
-
-# Custom port
-horus dashboard 3001
-horus dashboard 8080
-
-# Terminal UI mode (for SSH sessions)
-horus dashboard -t
-horus dashboard --tui
+# Show version
+horus version
+horus --version
+horus -V
 ```
-
-**Modes:**
-- Default: Web dashboard (Axum on port 3000, auto-opens browser)
-- `<PORT>`: Custom port for web dashboard
-- `-t, --tui`: Terminal UI mode
-
-**Dashboard Features:**
-- Real-time process monitoring
-- HORUS-specific filtering
-- Shared memory topic discovery
-- Interactive node-topic visualization
-- Performance metrics
 
 ## Project Structure
 
 ```
 horus_manager/
-├── src/
-│   ├── main.rs              # CLI entry point
-│   ├── commands/            # Command implementations
-│   │   ├── new.rs           # Project creation
-│   │   ├── run.rs           # Build and execution
-│   │   ├── remote.rs        # Remote deployment
-│   │   ├── auth.rs          # Authentication
-│   │   └── param.rs         # Parameter management
-│   ├── dashboard/           # Web dashboard (Axum)
-│   ├── dashboard_tui/       # Terminal UI dashboard
-│   ├── registry/            # Package registry client
-│   └── workspace/           # Workspace detection
-└── Cargo.toml
+── src/
+   ── main.rs              # CLI entry point
+   ── commands/            # Command implementations
+      ── new.rs           # Project creation
+      ── run.rs           # Build and execution
+      ── remote.rs        # Remote deployment
+      ── auth.rs          # Authentication
+      ── param.rs         # Parameter management
+   ── dashboard/           # Web dashboard (Axum)
+   ── dashboard_tui/       # Terminal UI dashboard
+   ── registry/            # Package registry client
+   ── workspace/           # Workspace detection
+── Cargo.toml
 ```
 
 ## Configuration

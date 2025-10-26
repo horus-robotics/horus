@@ -14,13 +14,13 @@ MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
 # Symbols
-CHECK="${GREEN}✓${NC}"
-CROSS="${RED}✗${NC}"
-WARN="${YELLOW}⚠${NC}"
-INFO="${CYAN}→${NC}"
+CHECK="${GREEN}${NC}"
+CROSS="${RED}${NC}"
+WARN="${YELLOW}${NC}"
+INFO="${CYAN}${NC}"
 
-echo -e "${MAGENTA}🔧 HORUS Recovery Installation Script${NC}"
-echo -e "${YELLOW}═════════════════════════════════════${NC}"
+echo -e "${MAGENTA} HORUS Recovery Installation Script${NC}"
+echo -e "${YELLOW}${NC}"
 echo ""
 echo "This script will:"
 echo "  • Detect system dependencies and issues"
@@ -32,12 +32,12 @@ echo ""
 read -p "$(echo -e ${YELLOW}?${NC}) Continue with recovery installation? [y/N]: " -n 1 -r
 echo
 if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo -e "${GREEN}✓${NC} Recovery cancelled"
+    echo -e "${GREEN}${NC} Recovery cancelled"
     exit 0
 fi
 
 echo ""
-echo -e "${CYAN}═══ PHASE 1: System Diagnostics ═══${NC}"
+echo -e "${CYAN} PHASE 1: System Diagnostics ${NC}"
 echo ""
 
 # Track errors
@@ -186,32 +186,32 @@ else
 fi
 
 echo ""
-echo -e "${CYAN}═══ Diagnostic Summary ═══${NC}"
+echo -e "${CYAN} Diagnostic Summary ${NC}"
 echo -e "  Errors:   ${RED}$ERRORS${NC}"
 echo -e "  Warnings: ${YELLOW}$WARNINGS${NC}"
 echo ""
 
 if [ $ERRORS -gt 0 ]; then
-    echo -e "${RED}❌ Critical errors found!${NC}"
+    echo -e "${RED} Critical errors found!${NC}"
     echo "Please fix the errors above before proceeding."
     echo ""
     exit 1
 fi
 
 if [ $WARNINGS -gt 0 ]; then
-    echo -e "${YELLOW}⚠  Warnings found${NC}"
+    echo -e "${YELLOW}  Warnings found${NC}"
     echo "You can continue, but some features may not work."
     echo ""
     read -p "$(echo -e ${YELLOW}?${NC}) Continue anyway? [y/N]: " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo -e "${GREEN}✓${NC} Recovery cancelled"
+        echo -e "${GREEN}${NC} Recovery cancelled"
         exit 0
     fi
     echo ""
 fi
 
-echo -e "${CYAN}═══ PHASE 2: Cleanup ═══${NC}"
+echo -e "${CYAN} PHASE 2: Cleanup ${NC}"
 echo ""
 
 # Clean build artifacts
@@ -265,10 +265,10 @@ if [ -f "$HORUS_BINARY" ]; then
 fi
 
 echo ""
-echo -e "${GREEN}✓${NC} Cleanup complete"
+echo -e "${GREEN}${NC} Cleanup complete"
 echo ""
 
-echo -e "${CYAN}═══ PHASE 3: Fresh Installation ═══${NC}"
+echo -e "${CYAN} PHASE 3: Fresh Installation ${NC}"
 echo ""
 
 # Exit on error for installation phase
@@ -281,7 +281,7 @@ if [ -f "./install.sh" ]; then
     bash ./install.sh
     INSTALL_SUCCESS=$?
 else
-    echo -e "${RED}❌ install.sh not found${NC}"
+    echo -e "${RED} install.sh not found${NC}"
     echo "Make sure you're in the HORUS repository root"
     exit 1
 fi
@@ -289,7 +289,7 @@ fi
 echo ""
 
 if [ $INSTALL_SUCCESS -eq 0 ]; then
-    echo -e "${CYAN}═══ PHASE 4: Verification ═══${NC}"
+    echo -e "${CYAN} PHASE 4: Verification ${NC}"
     echo ""
 
     # Comprehensive verification
@@ -324,7 +324,7 @@ if [ $INSTALL_SUCCESS -eq 0 ]; then
     if command -v horus &>/dev/null; then
         WHICH_HORUS=$(which horus)
         echo -e "  $CHECK 'horus' found in PATH"
-        echo -e "      → $WHICH_HORUS"
+        echo -e "       $WHICH_HORUS"
     else
         echo -e "  $WARN 'horus' not in PATH"
         echo -e "      Add to ~/.bashrc or ~/.zshrc:"
@@ -356,7 +356,7 @@ if [ $INSTALL_SUCCESS -eq 0 ]; then
     echo ""
 
     if [ "$ALL_OK" = true ]; then
-        echo -e "${GREEN}✅ Recovery installation successful!${NC}"
+        echo -e "${GREEN} Recovery installation successful!${NC}"
         echo ""
         echo -e "${CYAN}Next steps:${NC}"
         echo "  1. Test creating a project:"
@@ -365,7 +365,7 @@ if [ $INSTALL_SUCCESS -eq 0 ]; then
         echo "  2. Run it:"
         echo -e "     ${CYAN}cd test_project && horus run${NC}"
     else
-        echo -e "${RED}❌ Some verification checks failed${NC}"
+        echo -e "${RED} Some verification checks failed${NC}"
         echo ""
         echo "Installation completed but with issues."
         echo "Try the following:"
@@ -375,7 +375,7 @@ if [ $INSTALL_SUCCESS -eq 0 ]; then
         echo "  4. Report the issue with full output"
     fi
 else
-    echo -e "${RED}❌ Installation failed${NC}"
+    echo -e "${RED} Installation failed${NC}"
     echo ""
     echo "Please check the errors above and try again."
     exit 1

@@ -166,7 +166,7 @@ Control a robot using CmdVel messages.
 use horus::prelude::*;
 use horus_library::messages::CmdVel;
 
-// Keyboard input → velocity commands
+// Keyboard input  velocity commands
 struct TeleopNode {
     cmd_pub: Hub<CmdVel>,
 }
@@ -181,7 +181,7 @@ impl Node for TeleopNode {
     }
 }
 
-// Velocity commands → motor control
+// Velocity commands  motor control
 struct MotorDriverNode {
     cmd_sub: Hub<CmdVel>,
 }
@@ -230,7 +230,7 @@ Process laser scan data to detect obstacles.
 use horus::prelude::*;
 use horus_library::messages::{LaserScan, CmdVel};
 
-// Lidar → Scan data
+// Lidar  Scan data
 struct LidarNode {
     scan_pub: Hub<LaserScan>,
 }
@@ -250,7 +250,7 @@ impl Node for LidarNode {
     }
 }
 
-// Scan data → Obstacle detection
+// Scan data  Obstacle detection
 struct ObstacleDetector {
     scan_sub: Hub<LaserScan>,
     cmd_pub: Hub<CmdVel>,

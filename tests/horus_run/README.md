@@ -91,7 +91,7 @@ All Python execution tests passed!
 
 ### Language Support
 - [x] Python execution and imports
-- [x] Rust compilation (rustc and cargo)
+- [x] Rust compilation (cargo)
 - [x] C compilation (gcc/clang)
 - [x] Multi-language projects
 

@@ -28,33 +28,33 @@ Visit `http://localhost:3009` to view the documentation.
 
 ```
 content/
-├── docs/                              # Core documentation (30+ pages)
-│   ├── getting-started.mdx
-│   ├── installation.mdx
-│   ├── quick-start.mdx
-│   ├── node-macro.mdx
-│   ├── dashboard.mdx
-│   ├── parameters.mdx
-│   ├── cli-reference.mdx
-│   ├── package-management.mdx        # Package install/publish
-│   ├── environment-management.mdx    # Freeze/restore environments
-│   ├── marketplace.mdx                # Registry and marketplace
-│   ├── authentication.mdx             # GitHub OAuth, API keys
-│   ├── remote-deployment.mdx          # Deploy to robots
-│   ├── library-reference.mdx          # Standard library components
-│   ├── core-concepts-nodes.mdx
-│   ├── core-concepts-hub.mdx
-│   ├── core-concepts-scheduler.mdx
-│   ├── core-concepts-shared-memory.mdx
-│   ├── api-node.mdx                   # Node API reference
-│   ├── api-hub.mdx                    # Hub API reference
-│   ├── api-scheduler.mdx              # Scheduler API reference
-│   ├── message-types.mdx
-│   ├── examples.mdx
-│   ├── performance.mdx
-│   ├── multi-language.mdx             # Python & C bindings
-│   └── architecture.mdx
-└── assets/         # Images and media
+── docs/                              # Core documentation (30+ pages)
+   ── getting-started.mdx
+   ── installation.mdx
+   ── quick-start.mdx
+   ── node-macro.mdx
+   ── dashboard.mdx
+   ── parameters.mdx
+   ── cli-reference.mdx
+   ── package-management.mdx        # Package install/publish
+   ── environment-management.mdx    # Freeze/restore environments
+   ── marketplace.mdx                # Registry and marketplace
+   ── authentication.mdx             # GitHub OAuth, API keys
+   ── remote-deployment.mdx          # Deploy to robots
+   ── library-reference.mdx          # Standard library components
+   ── core-concepts-nodes.mdx
+   ── core-concepts-hub.mdx
+   ── core-concepts-scheduler.mdx
+   ── core-concepts-shared-memory.mdx
+   ── api-node.mdx                   # Node API reference
+   ── api-hub.mdx                    # Hub API reference
+   ── api-scheduler.mdx              # Scheduler API reference
+   ── message-types.mdx
+   ── examples.mdx
+   ── performance.mdx
+   ── multi-language.mdx             # Python & C bindings
+   ── architecture.mdx
+── assets/         # Images and media
 ```
 
 ### Documentation Categories

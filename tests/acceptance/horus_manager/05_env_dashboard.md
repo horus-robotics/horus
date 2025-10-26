@@ -27,7 +27,7 @@ Recorded 5 packages:
   - sensor-common v1.0.2
   - slam-toolkit v0.8.1
   - nav-stack v2.1.0
-✓ Environment frozen to horus-lock.toml
+ Environment frozen to horus-lock.toml
 ```
 
 ### Scenario 2: Restore Environment
@@ -44,12 +44,12 @@ Recorded 5 packages:
 $ horus env restore
 Restoring environment from horus-lock.toml...
 Installing packages:
-  ✓ horus-core v0.1.0
-  ✓ lidar-driver v1.2.0
-  ✓ sensor-common v1.0.2
-  ✓ slam-toolkit v0.8.1
-  ✓ nav-stack v2.1.0
-✓ Environment restored successfully
+   horus-core v0.1.0
+   lidar-driver v1.2.0
+   sensor-common v1.0.2
+   slam-toolkit v0.8.1
+   nav-stack v2.1.0
+ Environment restored successfully
 ```
 
 ### Scenario 3: Restore Without Lock File
@@ -86,7 +86,7 @@ Installing packages:
 - [ ] Restore works with custom file: `horus env restore --file my-env.toml`
 
 ### Scenario 7: Compare Environments (FUTURE FEATURE)
-> ⚠️ **Note:** This feature is planned but not yet implemented. Marked for future release.
+>  **Note:** This feature is planned but not yet implemented. Marked for future release.
 
 **Given:** User has local changes to environment
 **When:** User runs `horus env diff`
@@ -102,7 +102,7 @@ $ horus env diff
 Environment differences:
   + new-package v1.0.0 (added)
   - old-package v0.5.0 (removed)
-  ~ lidar-driver v1.2.0 → v1.3.0 (upgraded)
+  ~ lidar-driver v1.2.0  v1.3.0 (upgraded)
 ```
 
 **Implementation Status:** Planned for v0.2.0
@@ -123,7 +123,7 @@ Environment differences:
 ```bash
 $ horus dashboard
 Starting HORUS dashboard...
-✓ Server running at http://localhost:8080
+ Server running at http://localhost:8080
 Opening browser...
 Press Ctrl+C to stop
 ```
@@ -139,7 +139,7 @@ Press Ctrl+C to stop
 **Acceptance Criteria:**
 ```bash
 $ horus dashboard --port 3000
-✓ Server running at http://localhost:3000
+ Server running at http://localhost:3000
 ```
 
 ### Scenario 10: Dashboard Shows Node List
@@ -157,13 +157,13 @@ $ horus dashboard --port 3000
 HORUS Dashboard
 
 Nodes:
-┌─────────────────┬──────────┬────────┬───────────┐
-│ Node Name       │ Priority │ Status │ Ticks     │
-├─────────────────┼──────────┼────────┼───────────┤
-│ KeyboardInput   │ 0        │ Active │ 1,234     │
-│ SnakeControl    │ 2        │ Active │ 1,234     │
-│ GUINode         │ 3        │ Active │ 1,233     │
-└─────────────────┴──────────┴────────┴───────────┘
+──────────────────────────────────────────────
+ Node Name        Priority  Status  Ticks     
+──────────────────────────────────────────────
+ KeyboardInput    0         Active  1,234     
+ SnakeControl     2         Active  1,234     
+ GUINode          3         Active  1,233     
+──────────────────────────────────────────────
 ```
 
 ### Scenario 11: Dashboard Shows Hub Activity
@@ -179,13 +179,13 @@ Nodes:
 **Visual Acceptance:**
 ```
 Topics:
-┌──────────────────┬────────┬────────┬───────────┐
-│ Topic            │ Pub    │ Sub    │ Rate      │
-├──────────────────┼────────┼────────┼───────────┤
-│ keyboard/input   │ 1      │ 1      │ 60 msg/s  │
-│ snake/state      │ 1      │ 1      │ 60 msg/s  │
-│ snake/cmd        │ 1      │ 1      │ 60 msg/s  │
-└──────────────────┴────────┴────────┴───────────┘
+─────────────────────────────────────────────
+ Topic             Pub     Sub     Rate      
+─────────────────────────────────────────────
+ keyboard/input    1       1       60 msg/s  
+ snake/state       1       1       60 msg/s  
+ snake/cmd         1       1       60 msg/s  
+─────────────────────────────────────────────
 ```
 
 ### Scenario 12: Dashboard Real-Time Updates
@@ -218,17 +218,17 @@ Topics:
 **Acceptance Criteria:**
 ```bash
 $ horus dashboard --tui
-╔═══════════════════════════════════════╗
-║       HORUS Dashboard (TUI)           ║
-╠═══════════════════════════════════════╣
-║ Nodes: 3 active                       ║
-║ Topics: 5 active                      ║
-║ Uptime: 00:05:23                      ║
-╠═══════════════════════════════════════╣
-║ KeyboardInput  [Pri:0]  ✓ 1234 ticks ║
-║ SnakeControl   [Pri:2]  ✓ 1234 ticks ║
-║ GUINode        [Pri:3]  ✓ 1233 ticks ║
-╚═══════════════════════════════════════╝
+
+       HORUS Dashboard (TUI)           
+
+ Nodes: 3 active                       
+ Topics: 5 active                      
+ Uptime: 00:05:23                      
+
+ KeyboardInput  [Pri:0]   1234 ticks 
+ SnakeControl   [Pri:2]   1234 ticks 
+ GUINode        [Pri:3]   1233 ticks 
+
 Press 'q' to quit
 ```
 

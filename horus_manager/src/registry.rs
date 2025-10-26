@@ -102,7 +102,7 @@ impl RegistryClient {
         version: Option<&str>,
         target: crate::workspace::InstallTarget,
     ) -> Result<()> {
-        println!("📦 Downloading {}...", package_name);
+        println!(" Downloading {}...", package_name);
 
         let version_str = version.unwrap_or("latest");
         let url = format!(
@@ -231,7 +231,7 @@ impl RegistryClient {
                 std::os::windows::fs::symlink_dir(&package_dir, &local_link)?;
 
                 println!(
-                    "✅ Installed {} v{} to global cache",
+                    " Installed {} v{} to global cache",
                     package_name, actual_version
                 );
                 println!(
@@ -241,27 +241,27 @@ impl RegistryClient {
                 );
             } else {
                 println!(
-                    "✅ Installed {} v{} to global cache",
+                    " Installed {} v{} to global cache",
                     package_name, actual_version
                 );
                 println!("   Location: {}", package_dir.display());
             }
         } else {
-            println!("✅ Installed {} v{} locally", package_name, actual_version);
+            println!(" Installed {} v{} locally", package_name, actual_version);
             println!("   Location: {}", package_dir.display());
         }
 
         // Pre-compile if installed to global cache and is Rust/C package
         if install_type == "global" {
             if let Err(e) = precompile_package(&package_dir) {
-                println!("  {} Pre-compilation skipped: {}", "⚠".yellow(), e);
+                println!("  {} Pre-compilation skipped: {}", "".yellow(), e);
             }
         }
 
         // Resolve transitive dependencies
         if let Ok(deps) = extract_package_dependencies(&package_dir) {
             if !deps.is_empty() {
-                println!("  {} Found {} dependencies", "→".cyan(), deps.len());
+                println!("  {} Found {} dependencies", "".cyan(), deps.len());
                 for dep in &deps {
                     println!("    • {} {}", dep.name, dep.requirement);
                 }
@@ -283,7 +283,7 @@ impl RegistryClient {
         // Use dependency resolver for version resolution
         use crate::dependency_resolver::{DependencyResolver, ResolvedDependency};
 
-        println!("  {} Resolving dependency versions...", "→".cyan());
+        println!("  {} Resolving dependency versions...", "".cyan());
 
         // Create resolver with this registry client as provider
         let mut resolver = DependencyResolver::new(self);
@@ -292,8 +292,8 @@ impl RegistryClient {
         let resolved: Vec<ResolvedDependency> = match resolver.resolve(dependencies.to_vec()) {
             Ok(r) => r,
             Err(e) => {
-                println!("  {} Dependency resolution failed: {}", "❌".red(), e);
-                println!("  {} Falling back to simple installation...", "⚠".yellow());
+                println!("  {} Dependency resolution failed: {}", "".red(), e);
+                println!("  {} Falling back to simple installation...", "".yellow());
 
                 // Fallback: install without version resolution
                 for dep in dependencies {
@@ -314,12 +314,12 @@ impl RegistryClient {
                     };
 
                     if is_installed {
-                        println!("  {} {} (already installed)", "✓".green(), dep_name);
+                        println!("  {} {} (already installed)", "".green(), dep_name);
                         continue;
                     }
 
                     // Install latest version
-                    println!("  {} Installing dependency: {}...", "→".cyan(), dep_name);
+                    println!("  {} Installing dependency: {}...", "".cyan(), dep_name);
                     self.install_to_target(dep_name, None, target.clone())?;
                 }
                 return Ok(());
@@ -347,7 +347,7 @@ impl RegistryClient {
             if is_installed {
                 println!(
                     "  {} {} v{} (already installed)",
-                    "✓".green(),
+                    "".green(),
                     resolved_dep.name,
                     resolved_dep.version
                 );
@@ -357,7 +357,7 @@ impl RegistryClient {
             // Install the resolved version
             println!(
                 "  {} Installing {} v{}...",
-                "→".cyan(),
+                "".cyan(),
                 resolved_dep.name,
                 resolved_dep.version
             );
@@ -374,13 +374,13 @@ impl RegistryClient {
         // Simple detection - just get name, version, description, license
         let (name, version, description, license) = detect_package_info(current_dir)?;
 
-        println!("📦 Publishing {} v{}...", name, version);
+        println!(" Publishing {} v{}...", name, version);
 
         // Read API key from auth config (with helpful error message)
         let api_key = match get_api_key() {
             Ok(key) => key,
             Err(_) => {
-                println!("\n❌ Not authenticated with HORUS registry.");
+                println!("\n Not authenticated with HORUS registry.");
                 println!("\nTo publish packages, you need to authenticate:");
                 println!("  1. Run: horus auth login --github");
                 println!("  2. Authorize in your browser");
@@ -438,7 +438,7 @@ impl RegistryClient {
                 .unwrap_or_else(|_| "Unknown error".to_string());
 
             if status == reqwest::StatusCode::UNAUTHORIZED {
-                println!("\n❌ Authentication failed!");
+                println!("\n Authentication failed!");
                 println!("\nYour API key may be invalid or expired.");
                 println!("\nTo fix this:");
                 println!("  1. Run: horus auth login --github");
@@ -450,33 +450,34 @@ impl RegistryClient {
             return Err(anyhow!("Failed to publish: {} - {}", status, error_text));
         }
 
-        println!("✅ Published {} v{} successfully!", name, version);
+        println!(" Published {} v{} successfully!", name, version);
         println!("   View at: {}/packages/{}", self.base_url, name);
 
         // Interactive prompts for documentation and source (optional metadata)
-        println!("\n{}", "📚 Package Metadata (optional)".cyan().bold());
+        println!("\n{}", "[#] Package Metadata (optional)".cyan().bold());
         println!("   Help users discover and use your package by adding:");
 
-        let (docs_url, docs_type, source_url) = prompt_package_metadata(current_dir)?;
+        let (docs_url, docs_type, source_url, categories) = prompt_package_metadata(current_dir)?;
 
-        // If user provided docs or source, update the package
-        if !docs_url.is_empty() || !source_url.is_empty() {
-            println!("\n{} Updating package metadata...", "→".cyan());
+        // If user provided docs, source, or categories, update the package
+        if !docs_url.is_empty() || !source_url.is_empty() || !categories.is_empty() {
+            println!("\n{} Updating package metadata...", "".cyan());
             self.update_package_metadata(
                 &name,
                 &version,
                 &docs_url,
                 &docs_type,
                 &source_url,
+                &categories,
                 &api_key,
             )?;
-            println!("✅ Package metadata updated!");
+            println!(" Package metadata updated!");
         }
 
         Ok(())
     }
 
-    // Update package metadata (docs/source URLs)
+    // Update package metadata (docs/source URLs and categories)
     fn update_package_metadata(
         &self,
         name: &str,
@@ -484,12 +485,18 @@ impl RegistryClient {
         docs_url: &str,
         docs_type: &str,
         source_url: &str,
+        categories: &str,
         api_key: &str,
     ) -> Result<()> {
-        let form = reqwest::blocking::multipart::Form::new()
+        let mut form = reqwest::blocking::multipart::Form::new()
             .text("docs_url", docs_url.to_string())
             .text("docs_type", docs_type.to_string())
             .text("source_url", source_url.to_string());
+
+        // Add categories if provided
+        if !categories.is_empty() {
+            form = form.text("categories", categories.to_string());
+        }
 
         let response = self
             .client
@@ -514,7 +521,7 @@ impl RegistryClient {
         let api_key = match get_api_key() {
             Ok(key) => key,
             Err(_) => {
-                println!("\n❌ Not authenticated with HORUS registry.");
+                println!("\n Not authenticated with HORUS registry.");
                 println!("\nTo unpublish packages, you need to authenticate:");
                 println!("  1. Run: horus auth login --github");
                 println!("  2. Authorize in your browser");
@@ -687,13 +694,13 @@ impl RegistryClient {
             return Err(anyhow!("Failed to save environment: {}", error_text));
         }
 
-        println!("✅ Environment saved with ID: {}", manifest.horus_id);
+        println!(" Environment saved with ID: {}", manifest.horus_id);
         Ok(())
     }
 
     // Restore environment from manifest
     pub fn restore_environment(&self, horus_id: &str) -> Result<()> {
-        println!("🔄 Restoring environment {}...", horus_id);
+        println!(" Restoring environment {}...", horus_id);
 
         // Fetch environment manifest from registry
         let url = format!("{}/api/environments/{}", self.base_url, horus_id);
@@ -711,7 +718,7 @@ impl RegistryClient {
             self.install(&package.name, Some(&package.version))?;
         }
 
-        println!("✅ Environment {} restored successfully!", horus_id);
+        println!(" Environment {} restored successfully!", horus_id);
         Ok(())
     }
 
@@ -745,7 +752,7 @@ impl RegistryClient {
             return Err(anyhow!("Failed to publish environment: {}", error_text));
         }
 
-        println!("✅ Environment published successfully!");
+        println!(" Environment published successfully!");
         println!(
             "   Anyone can now restore with: horus env restore {}",
             manifest.horus_id
@@ -812,37 +819,6 @@ fn check_global_versions(cache_dir: &Path, package_name: &str) -> Result<bool> {
     }
 
     Ok(false)
-}
-
-// Get installed version of a package
-fn get_installed_version(cache_dir: &Path, package_name: &str) -> Option<String> {
-    if !cache_dir.exists() {
-        return None;
-    }
-
-    // Look for package@version pattern
-    if let Ok(entries) = fs::read_dir(cache_dir) {
-        for entry in entries.flatten() {
-            let name = entry.file_name();
-            let name_str = name.to_string_lossy();
-
-            if name_str.starts_with(&format!("{}@", package_name)) {
-                // Extract version from "package@version"
-                if let Some(version) = name_str.split('@').nth(1) {
-                    return Some(version.to_string());
-                }
-            } else if name_str == package_name {
-                // No version suffix, try to read from metadata
-                let pkg_path = entry.path();
-                if let Some(version) = detect_package_version(&pkg_path) {
-                    return Some(version);
-                }
-                return Some("unknown".to_string());
-            }
-        }
-    }
-
-    None
 }
 
 // Copy directory recursively
@@ -1028,7 +1004,7 @@ fn precompile_package(package_dir: &Path) -> Result<()> {
 
     if has_cargo_toml {
         // Rust package - compile with cargo
-        println!("  {} Pre-compiling Rust package...", "→".cyan());
+        println!("  {} Pre-compiling Rust package...", "".cyan());
 
         let status = Command::new("cargo")
             .arg("build")
@@ -1083,10 +1059,10 @@ fn precompile_package(package_dir: &Path) -> Result<()> {
             }
         }
 
-        println!("  {} Rust package pre-compiled", "✓".green());
+        println!("  {} Rust package pre-compiled", "".green());
     } else if has_makefile {
         // C package with Makefile
-        println!("  {} Pre-compiling C package (make)...", "→".cyan());
+        println!("  {} Pre-compiling C package (make)...", "".cyan());
 
         let status = Command::new("make").current_dir(package_dir).status()?;
 
@@ -1094,10 +1070,10 @@ fn precompile_package(package_dir: &Path) -> Result<()> {
             return Err(anyhow!("Make build failed"));
         }
 
-        println!("  {} C package pre-compiled", "✓".green());
+        println!("  {} C package pre-compiled", "".green());
     } else if has_cmake {
         // C package with CMake
-        println!("  {} Pre-compiling C package (cmake)...", "→".cyan());
+        println!("  {} Pre-compiling C package (cmake)...", "".cyan());
 
         let build_dir = package_dir.join("build");
         fs::create_dir_all(&build_dir)?;
@@ -1120,7 +1096,7 @@ fn precompile_package(package_dir: &Path) -> Result<()> {
             return Err(anyhow!("CMake build failed"));
         }
 
-        println!("  {} C package pre-compiled", "✓".green());
+        println!("  {} C package pre-compiled", "".green());
     } else {
         // Not a compiled package (probably Python)
         return Err(anyhow!("Not a compiled package"));
@@ -1151,13 +1127,14 @@ fn get_api_key() -> Result<String> {
     Ok(api_key.to_string())
 }
 
-// Interactive prompts for package documentation and source URLs
-fn prompt_package_metadata(dir: &Path) -> Result<(String, String, String)> {
+// Interactive prompts for package documentation, source URLs, and categories
+fn prompt_package_metadata(dir: &Path) -> Result<(String, String, String, String)> {
     use std::io::{self, Write};
 
     let mut docs_url = String::new();
     let mut docs_type = String::new();
     let mut source_url = String::new();
+    let mut categories = String::new();
 
     // Check if /docs folder exists with .md files
     let docs_dir = dir.join("docs");
@@ -1204,7 +1181,7 @@ fn prompt_package_metadata(dir: &Path) -> Result<(String, String, String)> {
     if has_local_docs {
         println!(
             "   {} Found local /docs folder with markdown files",
-            "✓".green()
+            "".green()
         );
     }
     print!("   Add documentation? (y/n): ");
@@ -1227,7 +1204,7 @@ fn prompt_package_metadata(dir: &Path) -> Result<(String, String, String)> {
         if has_local_docs {
             println!(
                 "\n   {} Your /docs folder should contain .md files organized as:",
-                "ℹ".blue()
+                "[i]".blue()
             );
             println!("      /docs/README.md          (main documentation)");
             println!("      /docs/getting-started.md (guides)");
@@ -1235,7 +1212,7 @@ fn prompt_package_metadata(dir: &Path) -> Result<(String, String, String)> {
         } else {
             println!(
                 "\n   {} To use local docs, create a /docs folder with .md files:",
-                "ℹ".blue()
+                "[i]".blue()
             );
             println!("      • Add README.md as the main page");
             println!("      • Use markdown formatting");
@@ -1257,7 +1234,7 @@ fn prompt_package_metadata(dir: &Path) -> Result<(String, String, String)> {
                 docs_type = "external".to_string();
 
                 if !docs_url.is_empty() {
-                    println!("   {} Documentation URL: {}", "✓".green(), docs_url);
+                    println!("   {} Documentation URL: {}", "".green(), docs_url);
                 }
             }
             "2" => {
@@ -1266,17 +1243,17 @@ fn prompt_package_metadata(dir: &Path) -> Result<(String, String, String)> {
                     docs_type = "local".to_string();
                     println!(
                         "   {} Will bundle local /docs folder with package",
-                        "✓".green()
+                        "".green()
                     );
                 } else {
                     println!(
                         "   {} No /docs folder found. Please create one with .md files first.",
-                        "⚠".yellow()
+                        "".yellow()
                     );
                 }
             }
             _ => {
-                println!("   {} Skipping documentation", "→".dimmed());
+                println!("   {} Skipping documentation", "".dimmed());
             }
         }
     }
@@ -1284,7 +1261,7 @@ fn prompt_package_metadata(dir: &Path) -> Result<(String, String, String)> {
     // 2. Source repository prompt
     println!("\n{}", "Source Repository".cyan().bold());
     if let Some(ref git_url) = detected_git_url {
-        println!("   {} Auto-detected: {}", "✓".green(), git_url);
+        println!("   {} Auto-detected: {}", "".green(), git_url);
     }
     print!("   Add source repository? (y/n): ");
     io::stdout().flush()?;
@@ -1302,7 +1279,7 @@ fn prompt_package_metadata(dir: &Path) -> Result<(String, String, String)> {
 
             if use_detected.trim().to_lowercase() == "y" {
                 source_url = git_url;
-                println!("   {} Source repository: {}", "✓".green(), source_url);
+                println!("   {} Source repository: {}", "".green(), source_url);
             } else {
                 print!("   Enter source repository URL (e.g., https://github.com/user/repo): ");
                 io::stdout().flush()?;
@@ -1310,11 +1287,11 @@ fn prompt_package_metadata(dir: &Path) -> Result<(String, String, String)> {
                 source_url = source_url.trim().to_string();
 
                 if !source_url.is_empty() {
-                    println!("   {} Source repository: {}", "✓".green(), source_url);
+                    println!("   {} Source repository: {}", "".green(), source_url);
                 }
             }
         } else {
-            println!("   {} Enter the URL where your code is hosted:", "ℹ".blue());
+            println!("   {} Enter the URL where your code is hosted:", "[i]".blue());
             println!("      • GitHub: https://github.com/username/repo");
             println!("      • GitLab: https://gitlab.com/username/repo");
             println!("      • Other: Any public repository URL");
@@ -1324,12 +1301,55 @@ fn prompt_package_metadata(dir: &Path) -> Result<(String, String, String)> {
             source_url = source_url.trim().to_string();
 
             if !source_url.is_empty() {
-                println!("   {} Source repository: {}", "✓".green(), source_url);
+                println!("   {} Source repository: {}", "".green(), source_url);
             }
         }
     }
 
-    Ok((docs_url, docs_type, source_url))
+    // 3. Categories prompt
+    println!("\n{}", "Categories".cyan().bold());
+    println!("   {} Help users discover your package by selecting relevant categories", "[i]".blue());
+    println!("   Available categories:");
+    println!("     {} Navigation    - Path planning, localization, mapping", "1.".cyan());
+    println!("     {} Vision        - Computer vision, image processing", "2.".cyan());
+    println!("     {} Perception    - Sensor fusion, object detection", "3.".cyan());
+    println!("     {} Control       - Motion control, PID, dynamics", "4.".cyan());
+    println!("     {} App           - Complete applications, demos", "5.".cyan());
+    println!("     {} Manipulation  - Arm control, grasping, kinematics", "6.".cyan());
+    println!("     {} Simulation    - Simulators, testing tools", "7.".cyan());
+    println!("     {} Utilities     - Tools, helpers, common functions", "8.".cyan());
+    print!("\n   Select categories (comma-separated numbers, e.g., 1,3,5) or skip: ");
+    io::stdout().flush()?;
+
+    let mut category_input = String::new();
+    io::stdin().read_line(&mut category_input)?;
+    let category_input = category_input.trim();
+
+    if !category_input.is_empty() {
+        let category_map = vec![
+            "Navigation", "Vision", "Perception", "Control",
+            "App", "Manipulation", "Simulation", "Utilities"
+        ];
+
+        let selected: Vec<&str> = category_input
+            .split(',')
+            .filter_map(|s| {
+                let num = s.trim().parse::<usize>().ok()?;
+                if num > 0 && num <= category_map.len() {
+                    Some(category_map[num - 1])
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        if !selected.is_empty() {
+            categories = selected.join(",");
+            println!("   {} Selected categories: {}", "".green(), selected.join(", "));
+        }
+    }
+
+    Ok((docs_url, docs_type, source_url, categories))
 }
 
 // Implement PackageProvider trait for RegistryClient to enable dependency resolution

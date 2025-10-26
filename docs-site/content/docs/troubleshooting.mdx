@@ -43,12 +43,12 @@ cd /path/to/HORUS
 
 ```bash
 $ ./update.sh
-🔄 HORUS Update Script
+ HORUS Update Script
 
-→ Current version: 0.1.0
+ Current version: 0.1.0
 
-→ Fetching latest changes from remote...
-→ Updates available on main
+ Fetching latest changes from remote...
+ Updates available on main
 
 Recent changes:
   * a1b2c3d Fix edge detection bug
@@ -57,52 +57,52 @@ Recent changes:
 
 Pull and update? [Y/n]: y
 
-→ Pulling latest changes...
-✓ Updated to latest commit
+ Pulling latest changes...
+ Updated to latest commit
 
-🔍 Analyzing changes...
-→ Cargo.toml files changed - dependencies may have updated
-→ Rust source files changed
+ Analyzing changes...
+ Cargo.toml files changed - dependencies may have updated
+ Rust source files changed
 
-→ Updating dependencies...
-✓ Dependencies updated
+ Updating dependencies...
+ Dependencies updated
 
-🔨 Rebuilding HORUS (release mode)...
+ Rebuilding HORUS (release mode)...
    Compiling horus_core v0.1.1
    Compiling horus v0.1.1
-✓ Build completed
+ Build completed
 
-→ Installing updated binary...
-✓ Binary installed to ~/.cargo/bin/horus
+ Installing updated binary...
+ Binary installed to ~/.cargo/bin/horus
 
-→ Updating library cache...
-✓ Libraries updated
+ Updating library cache...
+ Libraries updated
 
-🔍 Verifying update...
-✓ New version: 0.1.1
-✓ Smoke test passed
+ Verifying update...
+ New version: 0.1.1
+ Smoke test passed
 
-✅ Update complete!
+ Update complete!
 
-Version: 0.1.0 → 0.1.1
+Version: 0.1.0  0.1.1
 ```
 
 ### Options
 
 **Handle uncommitted changes:**
 ```bash
-⚠  Warning: You have uncommitted changes
+  Warning: You have uncommitted changes
 
  M horus_core/src/scheduler.rs
  M docs/readme.md
 
 ? Stash changes before updating? [y/N]: y
-✓ Changes stashed
+ Changes stashed
 ```
 
 **Rebuild even if up-to-date:**
 ```bash
-✓ Already up to date
+ Already up to date
 
 ? Rebuild anyway? [y/N]: y
 ```
@@ -145,9 +145,13 @@ Version: 0.1.0 → 0.1.1
    - Core libraries
    - Optional components (Python/C bindings)
 
-3. **Functionality**
+3. **Functionality Tests**
    - Commands work (`--version`, `--help`)
-   - Available subcommands
+   - All subcommands accessible (`new`, `run`, `dashboard`, `pkg`, `env`, `auth`, `version`)
+   - **Build verification** (when run in HORUS repo):
+     - `cargo check` passes without errors
+     - Zero warnings in codebase
+     - Debug binary is functional
 
 4. **Disk Usage**
    - Cache sizes
@@ -156,63 +160,60 @@ Version: 0.1.0 → 0.1.1
 ### Example Output
 
 ```bash
-════════════════════════════════════
+
    HORUS Installation Verification
-════════════════════════════════════
+
 
 System Requirements:
 
-  ✓ Rust: 1.75.0 (>= 1.70 required)
-  ✓ Cargo: 1.75.0
-  ✓ C compiler: GCC
-  ✓ pkg-config: 0.29.2
+   Rust: 1.75.0 (>= 1.70 required)
+   Cargo: 1.75.0
+   C compiler: GCC
+   pkg-config: 0.29.2
 
 System Libraries:
 
-  ✓ OpenSSL: 3.0.2
-  ⚠ udev: Not found (optional for some features)
+   OpenSSL: 3.0.2
+   udev: Not found (optional for some features)
 
 HORUS Installation:
 
-  ✓ Binary: v0.1.0 at ~/.cargo/bin/horus
-  ✓ In PATH: Yes (correct binary)
+   Binary: v0.1.0 at ~/.cargo/bin/horus
+   In PATH: Yes (correct binary)
 
 Core Libraries:
 
-  → Installed version: 0.1.0
-  ✓ Main library: v0.1.0
-  ✓ Runtime core: v0.1.0
-  ✓ Proc macros: v0.1.0
-  ✓ Standard library: v0.1.0
-  → C bindings: Not installed (optional)
-  → Python bindings: Not installed (optional)
+   Installed version: 0.1.0
+   Main library: v0.1.0
+   Runtime core: v0.1.0
+   Proc macros: v0.1.0
+   Standard library: v0.1.0
+   C bindings: Not installed (optional)
+   Python bindings: Not installed (optional)
 
 Functionality Tests:
 
-  ✓ Command: --version
-  ✓ Command: --help
-  ✓ Available commands:
-      - auth
-      - dashboard
-      - env
-      - new
-      - pkg
-      - publish
-      - run
+   Command: --version
+   Command: --help
+   All subcommands: Accessible
+
+   Running build verification...
+   Build: cargo check passes (0 warnings)
+   Binary: Debug build functional
 
 Disk Usage:
 
-  → ~/.horus: 45M
-  → Library cache: 42M
-  → Cargo cache: 2.3G
+   ~/.horus: 45M
+   Library cache: 42M
+   Cargo cache: 2.3G
 
-════════════════════════════════════
+
 Summary:
 
-  ✅ Perfect! Everything looks good.
+   Perfect! Everything looks good.
 
   HORUS is properly installed and ready to use.
-════════════════════════════════════
+
 ```
 
 ### Exit Codes
@@ -240,20 +241,20 @@ fi
 
 **Binary not in PATH:**
 ```bash
-⚠ 'horus' command not found in PATH
+ 'horus' command not found in PATH
   Add to shell profile (~/.bashrc, ~/.zshrc, etc.):
   export PATH="$HOME/.cargo/bin:$PATH"
 ```
 
 **Old Rust version:**
 ```bash
-⚠ Rust: 1.65.0 (< 1.70, please update)
+ Rust: 1.65.0 (< 1.70, please update)
   Update with: rustup update
 ```
 
 **Missing optional libraries:**
 ```bash
-⚠ udev: Not found (optional for some features)
+ udev: Not found (optional for some features)
   Ubuntu/Debian: sudo apt install libudev-dev
   Fedora: sudo dnf install systemd-devel
 ```
@@ -298,8 +299,8 @@ fi
 
 ```bash
 $ ./recovery_install.sh
-🔧 HORUS Recovery Installation Script
-═════════════════════════════════════
+ HORUS Recovery Installation Script
+
 
 This script will:
   • Detect system dependencies and issues
@@ -309,80 +310,80 @@ This script will:
 
 ? Continue with recovery installation? [y/N]: y
 
-═══ PHASE 1: System Diagnostics ═══
+ PHASE 1: System Diagnostics 
 
-→ Checking Rust toolchain...
-  ✓ Rust: 1.75.0
-  ✓ Cargo: 1.75.0
+ Checking Rust toolchain...
+   Rust: 1.75.0
+   Cargo: 1.75.0
 
-→ Checking C compiler...
-  ✓ C compiler: gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0
+ Checking C compiler...
+   C compiler: gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0
 
-→ Checking system dependencies...
-  ✓ pkg-config: 0.29.2
-  ✓ libopenssl: 3.0.2
-  ⚠ libudev: not found (optional)
+ Checking system dependencies...
+   pkg-config: 0.29.2
+   libopenssl: 3.0.2
+   libudev: not found (optional)
 
-→ Checking for existing HORUS installations...
-  ⚠ Found existing binary: 0.1.0
-  ⚠ Multiple 'horus' commands found in PATH
+ Checking for existing HORUS installations...
+   Found existing binary: 0.1.0
+   Multiple 'horus' commands found in PATH
       - /home/user/.cargo/bin/horus
       - /usr/local/bin/horus
 
-═══ Diagnostic Summary ═══
+ Diagnostic Summary 
   Errors:   0
   Warnings: 3
 
-⚠  Warnings found
+  Warnings found
 You can continue, but some features may not work.
 
 ? Continue anyway? [y/N]: y
 
-═══ PHASE 2: Cleanup ═══
+ PHASE 2: Cleanup 
 
-→ Cleaning build artifacts...
-  → Removing target/ (1.2G)...
-  ✓ Build artifacts removed
+ Cleaning build artifacts...
+   Removing target/ (1.2G)...
+   Build artifacts removed
 
-→ Cleaning HORUS from cargo cache...
-  ✓ Cargo cache cleaned
+ Cleaning HORUS from cargo cache...
+   Cargo cache cleaned
 
 ? Remove ~/.horus/cache (installed libraries)? [Y/n]: y
-  ✓ HORUS cache removed
+   HORUS cache removed
 
 ? Remove ~/.horus/config (user settings)? [y/N]: n
-  → Keeping user config
+   Keeping user config
 
-  ✓ Old binary removed
+   Old binary removed
 
-✓ Cleanup complete
+ Cleanup complete
 
-═══ PHASE 3: Fresh Installation ═══
+ PHASE 3: Fresh Installation 
 
-→ Running install.sh...
+ Running install.sh...
 
 [... install.sh output ...]
 
-═══ PHASE 4: Verification ═══
+ PHASE 4: Verification 
 
-→ Testing HORUS binary...
-  ✓ Binary works: v0.1.0
+ Testing HORUS binary...
+   Binary works: v0.1.0
 
-→ Testing basic commands...
-  ✓ --help works
+ Testing basic commands...
+   --help works
 
-→ Checking PATH...
-  ✓ 'horus' found in PATH
-      → ~/.cargo/bin/horus
+ Checking PATH...
+   'horus' found in PATH
+       ~/.cargo/bin/horus
 
-→ Checking installed libraries...
-  ✓ Installed version: 0.1.0
-  ✓ horus installed
-  ✓ horus_core installed
-  ✓ horus_macros installed
-  ✓ horus_library installed
+ Checking installed libraries...
+   Installed version: 0.1.0
+   horus installed
+   horus_core installed
+   horus_macros installed
+   horus_library installed
 
-✅ Recovery installation successful!
+ Recovery installation successful!
 
 Next steps:
   1. Test creating a project:
@@ -449,7 +450,7 @@ Next steps:
 
 ```bash
 $ ./install.sh
-❌ Error: Rust is not installed
+ Error: Rust is not installed
 ```
 
 **Solution:**
@@ -581,6 +582,36 @@ but `horus_core 0.1.1` is installed
 
 ---
 
+**Problem: "HORUS source directory not found" (Rust projects)**
+
+```
+Error: HORUS source directory not found. Please set HORUS_SOURCE environment variable.
+```
+
+**Solution:**
+```bash
+# Option 1: Set HORUS_SOURCE (recommended for non-standard installations)
+export HORUS_SOURCE=/path/to/HORUS
+echo 'export HORUS_SOURCE=/path/to/HORUS' >> ~/.bashrc
+
+# Option 2: Install HORUS to a standard location
+# The CLI checks these paths automatically:
+#   - ~/horus/HORUS
+#   - /horus
+#   - /opt/horus
+#   - /usr/local/horus
+
+# Verify HORUS source is found
+horus run --build-only
+```
+
+**Why this happens:**
+- `horus run` needs to find HORUS core libraries for Rust compilation
+- It auto-detects standard installation paths
+- For custom installations, set `$HORUS_SOURCE`
+
+---
+
 ### Performance Issues
 
 **Problem: Slow builds**
@@ -610,6 +641,40 @@ cargo clean
 cargo install cargo-cache
 cargo cache --autoclean
 ```
+
+---
+
+**Problem: Large `.horus/target/` directory (Rust projects)**
+
+**Why this happens:**
+- Cargo stores build artifacts in `.horus/target/`
+- Debug builds are unoptimized and larger
+- Incremental compilation caches intermediate files
+
+**Solution:**
+```bash
+# Clean build artifacts in current project
+rm -rf .horus/target/
+
+# Or use horus clean flag (next build will be slower)
+horus run --clean
+
+# Regular cleanup (if working on multiple projects)
+find . -type d -name ".horus" -exec rm -rf {}/target/ \;
+
+# Add to .gitignore (already included in horus new templates)
+echo ".horus/target/" >> .gitignore
+```
+
+**Disk usage typical sizes:**
+- `.horus/Cargo.toml`: ~266 bytes
+- `.horus/target/debug/`: ~10-100 MB (incremental builds)
+- `.horus/target/release/`: ~5-50 MB (optimized, no debug symbols)
+
+**Best practices:**
+- `.horus/target/` is in `.gitignore` by default
+- Clean periodically if disk space is limited
+- Only `.horus/Cargo.toml` and `.horus/Cargo.lock` are needed for rebuild
 
 ---
 

@@ -22,14 +22,14 @@ As a robotics developer, I want to freeze my project's dependency environment an
 **Acceptance Criteria:**
 ```bash
 $ horus env freeze
-📦 Freezing environment...
-✓ Recorded 5 packages:
+ Freezing environment...
+ Recorded 5 packages:
   • horus-core v0.1.0
   • lidar-driver v1.2.0
   • sensor-common v1.0.2
   • slam-toolkit v0.8.1
   • nav-stack v2.1.0
-✓ Environment frozen to horus-freeze.yaml
+ Environment frozen to horus-freeze.yaml
 ```
 
 **Example `horus-freeze.yaml`:**
@@ -73,9 +73,9 @@ packages:
 **Acceptance Criteria:**
 ```bash
 $ horus env freeze --output ./config/production.yaml
-📦 Freezing environment...
-✓ Recorded 5 packages
-✓ Environment frozen to ./config/production.yaml
+ Freezing environment...
+ Recorded 5 packages
+ Environment frozen to ./config/production.yaml
 ```
 
 ### Scenario 3: Freeze and Publish to Registry
@@ -92,11 +92,11 @@ $ horus env freeze --output ./config/production.yaml
 **Acceptance Criteria:**
 ```bash
 $ horus env freeze --publish
-📦 Freezing environment...
-✓ Recorded 5 packages
-✓ Environment frozen to horus-freeze.yaml
+ Freezing environment...
+ Recorded 5 packages
+ Environment frozen to horus-freeze.yaml
 📤 Publishing to registry...
-✓ Published environment
+ Published environment
 
 Environment ID: env_1a2b3c4d5e6f
 Anyone can restore this environment with:
@@ -115,9 +115,9 @@ Anyone can restore this environment with:
 **Acceptance Criteria:**
 ```bash
 $ horus env freeze
-⚠️  No packages installed
+  No packages installed
 Creating empty freeze file for future use...
-✓ Environment frozen to horus-freeze.yaml
+ Environment frozen to horus-freeze.yaml
 ```
 
 ### Scenario 5: Freeze in Non-HORUS Directory
@@ -141,13 +141,13 @@ Creating empty freeze file for future use...
 **Acceptance Criteria:**
 ```bash
 $ horus env restore horus-freeze.yaml
-📦 Restoring environment from horus-freeze.yaml...
-  ✓ horus-core v0.1.0
-  ✓ lidar-driver v1.2.0
-  ✓ sensor-common v1.0.2
-  ✓ slam-toolkit v0.8.1
-  ✓ nav-stack v2.1.0
-✓ Environment restored successfully (5 packages)
+ Restoring environment from horus-freeze.yaml...
+   horus-core v0.1.0
+   lidar-driver v1.2.0
+   sensor-common v1.0.2
+   slam-toolkit v0.8.1
+   nav-stack v2.1.0
+ Environment restored successfully (5 packages)
 ```
 
 ### Scenario 7: Restore from Registry by ID
@@ -163,14 +163,14 @@ $ horus env restore horus-freeze.yaml
 ```bash
 $ horus env restore env_1a2b3c4d5e6f
 📥 Fetching environment from registry...
-✓ Downloaded environment env_1a2b3c4d5e6f
-📦 Restoring 5 packages...
-  ✓ horus-core v0.1.0
-  ✓ lidar-driver v1.2.0
-  ✓ sensor-common v1.0.2
-  ✓ slam-toolkit v0.8.1
-  ✓ nav-stack v2.1.0
-✓ Environment restored successfully
+ Downloaded environment env_1a2b3c4d5e6f
+ Restoring 5 packages...
+   horus-core v0.1.0
+   lidar-driver v1.2.0
+   sensor-common v1.0.2
+   slam-toolkit v0.8.1
+   nav-stack v2.1.0
+ Environment restored successfully
 ```
 
 ### Scenario 8: Restore with Automatic Detection
@@ -185,10 +185,10 @@ $ horus env restore env_1a2b3c4d5e6f
 ```bash
 $ horus env restore
 Using horus-freeze.yaml...
-📦 Restoring environment...
-  ✓ horus-core v0.1.0
+ Restoring environment...
+   horus-core v0.1.0
   ...
-✓ Environment restored successfully
+ Environment restored successfully
 ```
 
 ### Scenario 9: Restore Without Freeze File
@@ -277,14 +277,14 @@ Update your freeze file or install available versions manually
 **Acceptance Criteria:**
 ```bash
 $ horus env restore production.yaml
-⚠️  Warning: This will replace existing package versions
+  Warning: This will replace existing package versions
 
 Continue? [y/N] y
-📦 Restoring environment...
-  ✓ Replaced lidar-driver v1.3.0 → v1.2.0
-  ✓ Replaced sensor-common v1.1.0 → v1.0.2
-  ✓ horus-core v0.1.0 (unchanged)
-✓ Environment restored successfully
+ Restoring environment...
+   Replaced lidar-driver v1.3.0  v1.2.0
+   Replaced sensor-common v1.1.0  v1.0.2
+   horus-core v0.1.0 (unchanged)
+ Environment restored successfully
 ```
 
 ### Scenario 14: Freeze Includes Local/Git Packages (FUTURE)
@@ -314,7 +314,7 @@ Environment differences from horus-freeze.yaml:
 
   + new-package v1.0.0 (added)
   - old-package v0.5.0 (removed)
-  ~ lidar-driver v1.2.0 → v1.3.0 (upgraded)
+  ~ lidar-driver v1.2.0  v1.3.0 (upgraded)
 
 Run 'horus env freeze' to update the freeze file
 ```

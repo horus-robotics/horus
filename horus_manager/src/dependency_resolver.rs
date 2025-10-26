@@ -83,7 +83,7 @@ impl<'a> DependencyResolver<'a> {
 
     /// Resolve dependencies starting from root requirements
     pub fn resolve(&mut self, root_deps: Vec<DependencySpec>) -> Result<Vec<ResolvedDependency>> {
-        println!("{} Resolving dependencies...", "→".cyan());
+        println!("{} Resolving dependencies...", "".cyan());
 
         // Collect all requirements via BFS
         let mut queue: VecDeque<(String, DependencySpec)> = VecDeque::new();
@@ -91,7 +91,7 @@ impl<'a> DependencyResolver<'a> {
         for dep in root_deps {
             println!(
                 "  {} Root dependency: {} {}",
-                "→".cyan(),
+                "".cyan(),
                 dep.name,
                 dep.requirement
             );
@@ -101,7 +101,7 @@ impl<'a> DependencyResolver<'a> {
         // BFS to collect all requirements
         let mut visited = HashSet::new();
 
-        while let Some((parent, dep)) = queue.pop_front() {
+        while let Some((_parent, dep)) = queue.pop_front() {
             let key = format!("{}@{}", dep.name, dep.requirement);
             if visited.contains(&key) {
                 continue;
@@ -131,7 +131,7 @@ impl<'a> DependencyResolver<'a> {
         // Now resolve all packages
         println!(
             "  {} Found {} unique packages",
-            "→".cyan(),
+            "".cyan(),
             self.requirements.len()
         );
 
@@ -160,7 +160,7 @@ impl<'a> DependencyResolver<'a> {
 
         println!(
             "  {} Successfully resolved {} packages!",
-            "✓".green(),
+            "".green(),
             result.len()
         );
         for dep in &result {
@@ -207,7 +207,7 @@ impl<'a> DependencyResolver<'a> {
 
         println!(
             "    {} {} v{} (satisfies {} constraints)",
-            "✓".green(),
+            "".green(),
             package,
             version,
             requirements.len()

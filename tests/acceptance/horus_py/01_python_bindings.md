@@ -43,7 +43,7 @@ $ ./install.sh
    ...
    Installing horus_py...
    Built and installed horus_py Python package
-✓ horus_py is importable in Python
+ horus_py is importable in Python
 ```
 
 **Acceptance Criteria (Manual build):**
@@ -52,7 +52,7 @@ $ cd horus_py
 $ maturin develop --release
    Compiling horus_py...
    Finished release [optimized]
-📦 Built wheel for CPython 3.11
+ Built wheel for CPython 3.11
 🛠 Installed horus-py-0.1.0
 ```
 

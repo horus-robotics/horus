@@ -319,7 +319,7 @@ scheduler.register(Box::new(camera), 0, Some(true));
 ```
 
 **Topics:**
-- Publishes: `camera/image` → `Image`
+- Publishes: `camera/image`  `Image`
 
 **Features:**
 - V4L2 support (Linux)
@@ -343,7 +343,7 @@ scheduler.register(Box::new(lidar), 0, Some(true));
 ```
 
 **Topics:**
-- Publishes: `scan` → `LaserScan`
+- Publishes: `scan`  `LaserScan`
 
 **Supported devices:**
 - RPLidar A1/A2/A3
@@ -366,7 +366,7 @@ scheduler.register(Box::new(imu), 0, Some(true));
 ```
 
 **Topics:**
-- Publishes: `imu/data` → `IMU`
+- Publishes: `imu/data`  `IMU`
 
 **Supported sensors:**
 - MPU6050, MPU9250
@@ -388,7 +388,7 @@ scheduler.register(Box::new(keyboard), 0, Some(true));
 ```
 
 **Topics:**
-- Publishes: `keyboard/input` → `KeyboardInput`
+- Publishes: `keyboard/input`  `KeyboardInput`
 
 **Features:**
 - Non-blocking input
@@ -411,7 +411,7 @@ scheduler.register(Box::new(joystick), 0, Some(true));
 ```
 
 **Topics:**
-- Publishes: `joystick/input` → `JoystickInput`
+- Publishes: `joystick/input`  `JoystickInput`
 
 **Supported:**
 - Xbox controllers
@@ -440,8 +440,8 @@ scheduler.register(Box::new(pid), 5, Some(true));
 ```
 
 **Topics:**
-- Subscribes: `setpoint` → `f64`, `feedback` → `f64`
-- Publishes: `control_output` → `f64`
+- Subscribes: `setpoint`  `f64`, `feedback`  `f64`
+- Publishes: `control_output`  `f64`
 
 **Features:**
 - Anti-windup protection
@@ -467,8 +467,8 @@ scheduler.register(Box::new(drive), 10, Some(true));
 ```
 
 **Topics:**
-- Subscribes: `cmd_vel` → `CmdVel`
-- Publishes: `motor/left` → `f64`, `motor/right` → `f64`
+- Subscribes: `cmd_vel`  `CmdVel`
+- Publishes: `motor/left`  `f64`, `motor/right`  `f64`
 
 **Features:**
 - Inverse kinematics
@@ -493,8 +493,8 @@ scheduler.register(Box::new(estop), 0, Some(true));
 ```
 
 **Topics:**
-- Subscribes: `emergency_stop` → `bool`, `cmd_vel` → `CmdVel`
-- Publishes: `cmd_vel` → `CmdVel` (zeroed when e-stop active)
+- Subscribes: `emergency_stop`  `bool`, `cmd_vel`  `CmdVel`
+- Publishes: `cmd_vel`  `CmdVel` (zeroed when e-stop active)
 
 **Features:**
 - Zero latency override
@@ -521,7 +521,7 @@ scheduler.register(Box::new(safety), 0, Some(true));
 
 **Topics:**
 - Subscribes: Any monitored topics
-- Publishes: `system/health` → `Health`
+- Publishes: `system/health`  `Health`
 
 **Features:**
 - Timeout detection
@@ -548,8 +548,8 @@ scheduler.register(Box::new(planner), 5, Some(true));
 ```
 
 **Topics:**
-- Subscribes: `map` → `OccupancyGrid`, `goal` → `Pose`
-- Publishes: `path` → `Path`
+- Subscribes: `map`  `OccupancyGrid`, `goal`  `Pose`
+- Publishes: `path`  `Path`
 
 **Algorithms:**
 - A* search
@@ -573,8 +573,8 @@ scheduler.register(Box::new(localization), 5, Some(true));
 ```
 
 **Topics:**
-- Subscribes: `scan` → `LaserScan`, `odom` → `Odometry`
-- Publishes: `pose` → `Pose`
+- Subscribes: `scan`  `LaserScan`, `odom`  `Odometry`
+- Publishes: `pose`  `Pose`
 
 ### Industrial Nodes
 
@@ -595,8 +595,8 @@ scheduler.register(Box::new(modbus), 10, Some(true));
 ```
 
 **Topics:**
-- Subscribes: `modbus/output` → `ModbusWrite`
-- Publishes: `modbus/input` → `ModbusRead`
+- Subscribes: `modbus/output`  `ModbusWrite`
+- Publishes: `modbus/input`  `ModbusRead`
 
 **Features:**
 - TCP and RTU support
@@ -622,7 +622,7 @@ scheduler.register(Box::new(servos), 10, Some(true));
 ```
 
 **Topics:**
-- Subscribes: `servo/command` → `ServoCommand`
+- Subscribes: `servo/command`  `ServoCommand`
 
 **Features:**
 - Multi-channel (up to 16)
@@ -645,7 +645,7 @@ scheduler.register(Box::new(encoder), 0, Some(true));
 ```
 
 **Topics:**
-- Publishes: `encoder/ticks` → `i64`
+- Publishes: `encoder/ticks`  `i64`
 
 ## Example Applications
 
@@ -655,10 +655,10 @@ Multi-node snake game demonstration.
 **Architecture:**
 ```
 KeyboardInputNode (priority 0)
-                                     │
-    ├──> SnakeControlNode (priority 2)
-                                     │
-    └──> GUINode (priority 3)
+                                     
+    ──> SnakeControlNode (priority 2)
+                                     
+    ──> GUINode (priority 3)
 ```
 
 **Run:**

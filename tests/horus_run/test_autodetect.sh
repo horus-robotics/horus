@@ -23,12 +23,12 @@ echo ""
 
 # Helper functions
 pass() {
-    echo -e "${GREEN}✅ PASS${NC}: $1"
+    echo -e "${GREEN} PASS${NC}: $1"
     ((TESTS_PASSED++))
 }
 
 fail() {
-    echo -e "${RED}❌ FAIL${NC}: $1"
+    echo -e "${RED} FAIL${NC}: $1"
     echo "   Error: $2"
     ((TESTS_FAILED++))
 }

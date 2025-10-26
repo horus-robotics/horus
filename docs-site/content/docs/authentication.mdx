@@ -18,7 +18,7 @@ Authentication is required for publishing packages, sharing environments, and ac
 - **Environment Variables** - For containerized deployments
 
 **What requires authentication:**
-- Publishing packages (`horus publish`)
+- Publishing packages (`horus pkg publish`)
 - Publishing environments (`horus env freeze --publish`)
 - Accessing private packages
 - Managing your published packages
@@ -98,14 +98,14 @@ Waiting for authorization...
 
 **Back in terminal:**
 ```
-✓ Authorization successful!
-✓ Token saved to ~/.horus/credentials
+ Authorization successful!
+ Token saved to ~/.horus/credentials
 
 Authenticated as: your-username
 Email: you@example.com
 
 You can now publish packages with:
-  horus publish
+  horus pkg publish
 ```
 
 ### What Gets Stored
@@ -185,7 +185,7 @@ Or use in CI:
   - name: Publish
     env:
       HORUS_API_KEY: ${{ secrets.HORUS_API_KEY }}
-    run: horus publish
+    run: horus pkg publish
 ```
 
 **With flags:**
@@ -203,7 +203,7 @@ horus auth generate-key \
 export HORUS_API_KEY=horus_live_abc123...
 
 # Use horus commands
-horus publish
+horus pkg publish
 ```
 
 **Credentials file:**
@@ -246,7 +246,7 @@ jobs:
         env:
           HORUS_API_KEY: ${{ secrets.HORUS_API_KEY }}
         run: |
-          horus publish --yes
+          horus pkg publish --yes
 
       - name: Publish Environment
         env:
@@ -260,7 +260,7 @@ jobs:
 1. Generate API key: `horus auth generate-key --name "GitHub Actions"`
 2. Copy key: `horus_live_abc123...`
 3. Add to GitHub secrets:
-   - Go to repository Settings → Secrets → Actions
+   - Go to repository Settings  Secrets  Actions
    - New repository secret: `HORUS_API_KEY`
    - Paste key value
 4. Push tag: `git tag v1.0.0 && git push origin v1.0.0`
@@ -275,7 +275,7 @@ publish:
   before_script:
     - cargo install horus_manager
   script:
-    - horus publish --yes
+    - horus pkg publish --yes
   only:
     - tags
   variables:
@@ -285,7 +285,7 @@ publish:
 **Setup:**
 1. Generate key: `horus auth generate-key --name "GitLab CI"`
 2. Add to GitLab:
-   - Settings → CI/CD → Variables
+   - Settings  CI/CD  Variables
    - Key: `CI_HORUS_API_KEY`
    - Value: `horus_live_abc123...`
    - Type: Masked
@@ -307,7 +307,7 @@ WORKDIR /app
 ARG HORUS_API_KEY
 ENV HORUS_API_KEY=${HORUS_API_KEY}
 
-RUN horus publish --yes
+RUN horus pkg publish --yes
 ```
 
 **Build:**
@@ -340,7 +340,7 @@ pipeline {
                 buildingTag()
             }
             steps {
-                sh 'horus publish --yes'
+                sh 'horus pkg publish --yes'
             }
         }
     }
@@ -349,7 +349,7 @@ pipeline {
 
 **Setup:**
 1. Generate key: `horus auth generate-key --name "Jenkins"`
-2. Jenkins dashboard → Manage Jenkins → Credentials
+2. Jenkins dashboard  Manage Jenkins  Credentials
 3. Add secret text credential: `horus-api-key`
 
 ## Environment Variables
@@ -375,7 +375,7 @@ pipeline {
 export HORUS_API_KEY=horus_live_abc123...
 export HORUS_REGISTRY_URL=https://custom-registry.company.com
 
-horus publish
+horus pkg publish
 ```
 
 ## Security Best Practices
@@ -569,7 +569,7 @@ export HORUS_REGISTRY_URL=https://registry.company.internal
 horus auth login --registry https://registry.company.internal
 
 # Use as normal
-horus publish
+horus pkg publish
 ```
 
 ### Multiple Accounts

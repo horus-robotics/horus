@@ -63,7 +63,6 @@ impl Node for SnakesimNode {
     fn tick(&mut self, _: Option<&mut NodeInfo>) {
         self.control();
         let (dx, dy) = self.direction;
-        dbg!(&self.direction);
         let (head_x, head_y) = self.snake[0];
         let new_head = (
             ((head_x as isize + dx + GRID_WIDTH as isize) % GRID_WIDTH as isize) as usize,

@@ -14,14 +14,14 @@ HORUS works on systems with POSIX shared memory support:
 
 | Platform | Status | Notes |
 |----------|--------|-------|
-| **Ubuntu 20.04+** | ✅ Fully Supported | Recommended for production |
-| **Ubuntu 22.04+** | ✅ Fully Supported | Best performance |
-| **Debian 11+** | ✅ Supported | Tested and working |
-| **Fedora 36+** | ✅ Supported | Use dnf for packages |
-| **Arch Linux** | ✅ Supported | Community maintained |
-| **macOS 11+** | ✅ Supported | Limited shared memory size |
-| **Windows** | ⚠️ Via WSL Only | Use WSL 2 for best results |
-| **Raspberry Pi** | ✅ Supported | ARM64 tested on Ubuntu |
+| **Ubuntu 20.04+** |  Fully Supported | Recommended for production |
+| **Ubuntu 22.04+** |  Fully Supported | Best performance |
+| **Debian 11+** |  Supported | Tested and working |
+| **Fedora 36+** |  Supported | Use dnf for packages |
+| **Arch Linux** |  Supported | Community maintained |
+| **macOS 11+** |  Supported | Limited shared memory size |
+| **Windows** |  Via WSL Only | Use WSL 2 for best results |
+| **Raspberry Pi** |  Supported | ARM64 tested on Ubuntu |
 
 ## Prerequisites
 
@@ -75,9 +75,12 @@ cd horus
 
 # 4. Verify it works
 horus --version
+
+# 5. Run full verification (optional but recommended)
+./verify.sh
 ```
 
-If you see `horus 0.3.0` (or similar), you're all set! Skip to [Next Steps](#next-steps).
+If you see `horus 0.3.0` (or similar) and verify.sh shows green checkmarks, you're all set! Skip to [Next Steps](#next-steps).
 
 **What the installer does:**
 - Builds the `horus` CLI tool
@@ -192,6 +195,62 @@ horus --help
 ```
 
 You should see a list of available commands like `new`, `run`, `dashboard`, etc.
+
+### Step 6: Run Full Verification (Recommended)
+
+Run the comprehensive verification script to ensure everything is working:
+
+```bash
+./verify.sh
+```
+
+**What it checks:**
+- [+] System requirements (Rust, Cargo, C compiler, pkg-config)
+- [+] System libraries (OpenSSL, udev)
+- [+] HORUS binary and installation path
+- [+] Core libraries in `~/.horus/cache/`
+- [+] All subcommands (`new`, `run`, `dashboard`, `pkg`, `env`, `auth`)
+- [+] Build verification (`cargo check` with 0 warnings)
+- [+] Debug binary functionality
+- [+] Optional features (Python/C bindings)
+- [+] Disk usage stats
+
+**Example output:**
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   HORUS Installation Verification
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+System Requirements:
+  ✓ Rust: 1.75.0 (>= 1.70 required)
+  ✓ Cargo: 1.75.0
+  ✓ C compiler: gcc
+
+HORUS Installation:
+  ✓ Binary: v0.3.0 at ~/.cargo/bin/horus
+  ✓ In PATH: Yes (correct binary)
+
+Functionality Tests:
+  ✓ Command: --version
+  ✓ Command: --help
+  ✓ All subcommands: Accessible
+  ✓ Build: cargo check passes (0 warnings)
+  ✓ Binary: Debug build functional
+
+Summary:
+   Perfect! Everything looks good.
+  HORUS is properly installed and ready to use.
+```
+
+**If there are issues:**
+- [!] **Warnings** - Minor issues, HORUS will work but review suggestions
+- [x] **Errors** - Critical problems, run `./recovery_install.sh` to fix
+
+**Pro tip:** Run `./verify.sh` anytime you:
+- Update HORUS (`./update.sh`)
+- Suspect installation problems
+- Want to check system health before deployment
+- Contribute to HORUS (ensures no warnings)
 
 ## Python Support
 
@@ -367,13 +426,13 @@ Having installation issues? See the **[Troubleshooting & Maintenance Guide](/tro
 
 Now that HORUS is installed, let's build something!
 
-1. **[Quick Start Tutorial →](/getting-started/quick-start)**
+1. **[Quick Start Tutorial ](/getting-started/quick-start)**
    Build your first HORUS application in 10 minutes
 
-2. **[CLI Reference →](/cli-reference)**
+2. **[CLI Reference ](/cli-reference)**
    Learn all the `horus` commands
 
-3. **[Examples →](/examples)**
+3. **[Examples ](/examples)**
    See real HORUS applications
 
-**Ready to start?** Head to the [Quick Start →](/getting-started/quick-start)
+**Ready to start?** Head to the [Quick Start ](/getting-started/quick-start)

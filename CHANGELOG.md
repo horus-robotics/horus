@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Enhanced verify.sh**: Now includes comprehensive build verification
+  - Tests all subcommands (`new`, `run`, `dashboard`, `pkg`, `env`, `auth`, `version`)
+  - Runs `cargo check` to verify zero warnings
+  - Validates debug binary functionality
+  - Detects and reports codebase health issues
+
+### Changed
+- **Code Quality**: Eliminated all compiler warnings across the workspace
+  - Removed unused code and dead imports
+  - Marked future features with `#[allow(dead_code)]`
+  - Updated Bevy deprecated APIs (Camera2dBundle → Camera2d, SpriteBundle → Sprite)
+  - Fixed privacy warnings in sim2d
+- **UI/UX**: Replaced all Unicode emojis with ASCII equivalents
+  - Shell scripts now use `[+]`, `[x]`, `[!]`, `[i]`, `[*]`, `[#]`, `[>]` instead of Unicode symbols
+  - Improved terminal compatibility across different platforms
+  - Preserved React icon components in horus-marketplace
+- **Snakesim Architecture**: Restructured to proper single-file HORUS project
+  - Merged multi-crate structure into single main.rs file
+  - Now compatible with `horus run` command
+  - GUI remains as separate binary (snakesim_gui) due to eframe event loop
+
+### Fixed
+- Implemented missing `--clean` flag functionality in `horus run`
+- Updated deprecated Bevy APIs in sim2d (0.15 compatibility)
+- Fixed workspace conflict by excluding `.horus/` directory from workspace members
+- Removed debug code (`dbg!` statements) from snakesim_gui
+- **Fixed `horus run` to work for regular users without HORUS source code**
+  - Modified `find_horus_source_dir()` to fall back to `~/.horus/cache/` when source not found
+  - Updated Cargo.toml generation to detect cache vs source installations
+  - Modified install.sh to copy workspace Cargo.toml and source files to cache
+  - Users can now run HORUS projects with only the installed packages
+
 ### Known Issues
 - Dashboard TUI mode is incomplete
 - Remote deployment lacks versioning and rollback features
@@ -165,5 +198,5 @@ Changes are grouped using the following categories:
 
 - [Keep a Changelog](https://keepachangelog.com/)
 - [Semantic Versioning](https://semver.org/)
-- [HORUS Repository](https://github.com/lord-patpak/horus)
+- [HORUS Repository](https://github.com/neos-builder/horus)
 - [HORUS Documentation](https://docs.horus-registry.dev)

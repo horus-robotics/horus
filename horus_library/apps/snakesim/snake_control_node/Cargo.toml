@@ -1,7 +1,0 @@
-[package]
-name = "snake_control_node"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-horus.workspace = true

@@ -78,7 +78,7 @@ impl CratesIoClient {
         // Download .crate file (which is a gzipped tarball)
         let url = format!("{}/{}/{}-{}.crate", CRATES_IO_CDN, name, name, version);
 
-        eprintln!("  {} Downloading from crates.io...", "→".cyan());
+        eprintln!("  {} Downloading from crates.io...", "".cyan());
         let response = self.client
             .get(&url)
             .send()
@@ -96,7 +96,7 @@ impl CratesIoClient {
         let mut archive = Archive::new(tar);
 
         // Extract to destination
-        eprintln!("  {} Extracting...", "→".cyan());
+        eprintln!("  {} Extracting...", "".cyan());
         archive.unpack(dest)?;
 
         // The archive creates a directory named {name}-{version}
@@ -120,12 +120,12 @@ impl CratesIoClient {
     fn compile_crate(&self, crate_dir: &Path, name: &str) -> Result<()> {
         use std::process::Command;
 
-        eprintln!("  {} Compiling in global cache...", "→".cyan());
+        eprintln!("  {} Compiling in global cache...", "".cyan());
 
         // Check if Cargo.toml exists
         let cargo_toml = crate_dir.join("Cargo.toml");
         if !cargo_toml.exists() {
-            eprintln!("  {} No Cargo.toml found, skipping compilation", "→".cyan());
+            eprintln!("  {} No Cargo.toml found, skipping compilation", "".cyan());
             return Ok(());
         }
 
@@ -141,7 +141,7 @@ impl CratesIoClient {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            eprintln!("  {} cargo build failed: {}", "⚠".yellow(), stderr);
+            eprintln!("  {} cargo build failed: {}", "".yellow(), stderr);
             // Don't fail, just warn - crate is still usable as source
             return Ok(());
         }
@@ -164,7 +164,7 @@ impl CratesIoClient {
             }
         }
 
-        eprintln!("  {} Compiled successfully", "✓".green());
+        eprintln!("  {} Compiled successfully", "".green());
         Ok(())
     }
 
@@ -180,14 +180,14 @@ impl CratesIoClient {
 
         // Check if already installed
         if package_dir.exists() {
-            eprintln!("  {} {}@{} already cached", "✓".green(), name, version);
+            eprintln!("  {} {}@{} already cached", "".green(), name, version);
             return Ok(package_dir);
         }
 
         // Download and extract
         self.download_crate(name, &version, &package_dir)?;
 
-        eprintln!("  {} Downloaded {}@{}", "✓".green(), name, version);
+        eprintln!("  {} Downloaded {}@{}", "".green(), name, version);
 
         // Compile the crate
         self.compile_crate(&package_dir, name)?;

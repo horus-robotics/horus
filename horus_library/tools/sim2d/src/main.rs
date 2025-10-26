@@ -27,7 +27,7 @@ use tracing::{info, warn};
 #[derive(Parser)]
 #[command(name = "sim2d")]
 #[command(about = "Simple 2D robotics simulator with physics")]
-struct Args {
+pub struct Args {
     /// Robot configuration file (YAML)
     #[arg(long)]
     robot: Option<String>,
@@ -47,7 +47,7 @@ struct Args {
 
 /// Robot configuration
 #[derive(Debug, Clone, serde::Deserialize)]
-struct RobotConfig {
+pub struct RobotConfig {
     pub width: f32,
     pub length: f32,
     pub max_speed: f32,
@@ -67,14 +67,14 @@ impl Default for RobotConfig {
 
 /// World configuration
 #[derive(Debug, Clone, serde::Deserialize)]
-struct WorldConfig {
+pub struct WorldConfig {
     pub width: f32,
     pub height: f32,
     pub obstacles: Vec<Obstacle>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
-struct Obstacle {
+pub struct Obstacle {
     pub pos: [f32; 2],
     pub size: [f32; 2],
 }
@@ -105,6 +105,7 @@ impl Default for WorldConfig {
 /// Robot entity in Bevy
 #[derive(Component)]
 struct Robot {
+    #[allow(dead_code)]
     pub name: String,
     pub config: RobotConfig,
     pub rigid_body_handle: RigidBodyHandle,
@@ -184,7 +185,7 @@ impl AppConfig {
         };
 
         info!(
-            "🤖 Robot: {:.1}m x {:.1}m, max speed: {:.1} m/s",
+            " Robot: {:.1}m x {:.1}m, max speed: {:.1} m/s",
             robot_config.length, robot_config.width, robot_config.max_speed
         );
         info!(
@@ -193,7 +194,7 @@ impl AppConfig {
             world_config.height,
             world_config.obstacles.len()
         );
-        info!("📡 Control topic: {}", args.topic);
+        info!(" Control topic: {}", args.topic);
 
         Self {
             args,
@@ -219,13 +220,13 @@ fn setup(
     app_config: Res<AppConfig>,
     mut physics_world: ResMut<PhysicsWorld>,
 ) {
-    info!("🚀 Setting up sim2d");
+    info!(" Setting up sim2d");
 
     // Setup camera with better positioning
-    commands.spawn(Camera2dBundle {
-        transform: Transform::from_translation(Vec3::new(0.0, 0.0, 100.0)),
-        ..default()
-    });
+    commands.spawn((
+        Camera2d,
+        Transform::from_translation(Vec3::new(0.0, 0.0, 100.0)),
+    ));
 
     // Create HORUS communication
     match Hub::new(&app_config.args.topic) {
@@ -235,10 +236,10 @@ fn setup(
                 cmd_vel_sub,
                 node_info,
             });
-            info!("✅ Connected to HORUS topic: {}", app_config.args.topic);
+            info!(" Connected to HORUS topic: {}", app_config.args.topic);
         }
         Err(e) => {
-            warn!("❌ Failed to connect to HORUS: {}", e);
+            warn!(" Failed to connect to HORUS: {}", e);
             warn!("   Robot will not respond to external commands");
         }
     }
@@ -298,15 +299,12 @@ fn setup(
 
         // Visual (scaled for visibility)
         commands.spawn((
-            SpriteBundle {
-                sprite: Sprite {
-                    color: Color::srgb(0.3, 0.3, 0.3), // Gray walls
-                    custom_size: Some(Vec2::new(size_scaled.x, size_scaled.y)),
-                    ..default()
-                },
-                transform: Transform::from_translation(Vec3::new(pos_scaled.x, pos_scaled.y, 0.0)),
+            Sprite {
+                color: Color::srgb(0.3, 0.3, 0.3), // Gray walls
+                custom_size: Some(Vec2::new(size_scaled.x, size_scaled.y)),
                 ..default()
             },
+            Transform::from_translation(Vec3::new(pos_scaled.x, pos_scaled.y, 0.0)),
             WorldElement,
         ));
     }
@@ -326,15 +324,12 @@ fn setup(
 
         // Visual (scaled)
         commands.spawn((
-            SpriteBundle {
-                sprite: Sprite {
-                    color: Color::srgb(0.6, 0.4, 0.2), // Brown obstacles
-                    custom_size: Some(Vec2::new(size_visual.x, size_visual.y)),
-                    ..default()
-                },
-                transform: Transform::from_translation(Vec3::new(pos_visual.x, pos_visual.y, 0.5)),
+            Sprite {
+                color: Color::srgb(0.6, 0.4, 0.2), // Brown obstacles
+                custom_size: Some(Vec2::new(size_visual.x, size_visual.y)),
                 ..default()
             },
+            Transform::from_translation(Vec3::new(pos_visual.x, pos_visual.y, 0.5)),
             WorldElement,
         ));
     }
@@ -370,15 +365,12 @@ fn setup(
     );
 
     commands.spawn((
-        SpriteBundle {
-            sprite: Sprite {
-                color: robot_color,
-                custom_size: Some(Vec2::new(robot_size.x, robot_size.y)),
-                ..default()
-            },
-            transform: Transform::from_translation(Vec3::new(robot_pos.x, robot_pos.y, 1.0)),
+        Sprite {
+            color: robot_color,
+            custom_size: Some(Vec2::new(robot_size.x, robot_size.y)),
             ..default()
         },
+        Transform::from_translation(Vec3::new(robot_pos.x, robot_pos.y, 1.0)),
         Robot {
             name: app_config.args.name.clone(),
             config: app_config.robot_config.clone(),
@@ -386,13 +378,13 @@ fn setup(
         },
     ));
 
-    info!("✅ sim2d setup complete!");
+    info!(" sim2d setup complete!");
     info!(
-        "   📐 World: {}x{} meters",
+        "   [#] World: {}x{} meters",
         app_config.world_config.width, app_config.world_config.height
     );
     info!(
-        "   🤖 Robot: {}x{} meters at ({}, {})",
+        "    Robot: {}x{} meters at ({}, {})",
         robot_size.x, robot_size.y, robot_pos.x, robot_pos.y
     );
     info!(
@@ -498,13 +490,13 @@ fn main() -> Result<()> {
     // Parse command line arguments
     let args = Args::parse();
 
-    info!("🚀 Starting sim2d - Simple 2D Robotics Simulator");
+    info!(" Starting sim2d - Simple 2D Robotics Simulator");
     info!("   One command, physics + visualization!");
 
     // Create app configuration
     let app_config = AppConfig::new(args);
 
-    info!("🎮 Control the robot from another terminal:");
+    info!("[>] Control the robot from another terminal:");
     info!("   cargo run -p simple_driver");
     info!("   (publishes to: {})", app_config.args.topic);
 

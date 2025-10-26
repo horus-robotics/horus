@@ -180,7 +180,7 @@ node! {
                 let new_speed = ctx.params.get_f64("motion.max_speed", 1.5);
 
                 if new_speed != self.max_speed {
-                    ctx.log_info(&format!("Speed updated: {} → {}", self.max_speed, new_speed));
+                    ctx.log_info(&format!("Speed updated: {}  {}", self.max_speed, new_speed));
                     self.max_speed = new_speed;
                 }
             }
@@ -273,9 +273,9 @@ control:
 horus dashboard
 
 # Navigate to Parameters tab
-# → View all parameters
-# → Edit values inline
-# → Changes auto-save to disk
+#  View all parameters
+#  Edit values inline
+#  Changes auto-save to disk
 ```
 
 **Features:**
@@ -383,7 +383,7 @@ node! {
 
 **Tuning workflow:**
 1. Start robot with default gains
-2. Open dashboard → Parameters
+2. Open dashboard  Parameters
 3. Adjust `control.pid.kp/ki/kd` while robot runs
 4. Observe behavior in dashboard metrics
 5. Repeat until satisfactory
@@ -630,7 +630,7 @@ init(ctx) {
 ```bash
 # Save current parameters to preset
 horus dashboard
-# → Parameters tab → Export → Save as "aggressive_tuning.yaml"
+#  Parameters tab  Export  Save as "aggressive_tuning.yaml"
 
 # Switch to different preset
 cp ~/.horus/config/params.yaml ~/.horus/config/params_backup.yaml

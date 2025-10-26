@@ -12,14 +12,24 @@ As a developer, I want to check the version of HORUS I'm using so that I can ver
 **Given:** User has HORUS CLI installed
 **When:** User runs `horus version`
 **Then:**
-- [ ] HORUS version number is displayed (semantic versioning format)
+- [ ] HORUS CLI version is displayed
+- [ ] Library version compatibility is shown
+- [ ] Installed packages are listed
 - [ ] Clean, readable output
 - [ ] Exit code is 0
 
 **Acceptance Criteria:**
 ```bash
 $ horus version
-horus 0.1.0
+CLI version: 0.1.0
+Libraries:   0.1.0 (compatible)
+
+Installed packages:
+   horus_macros@0.1.0
+   horus@0.1.0
+   horus_core@0.1.0
+   horus_library@0.1.0
+  ... (other installed packages)
 ```
 
 ### Scenario 2: Version via --version Flag

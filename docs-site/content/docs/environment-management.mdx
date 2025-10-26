@@ -29,13 +29,13 @@ HORUS automatically manages a hidden `.horus/` environment in each project. Unde
 All packages are downloaded once and stored here:
 ```
 ~/.horus/cache/
-├── horus_py@0.1.0/          # HORUS packages
-│   └── lib/horus/
-├── serde@1.0.228/           # External crates (from crates.io)
-│   ├── src/
-│   ├── Cargo.toml           # Cargo lives here, not your project!
-│   └── lib/libserde.rlib    # Pre-compiled
-└── pid-controller@1.2.0/    # More HORUS packages
+── horus_py@0.1.0/          # HORUS packages
+   ── lib/horus/
+── serde@1.0.228/           # External crates (from crates.io)
+   ── src/
+   ── Cargo.toml           # Cargo lives here, not your project!
+   ── lib/libserde.rlib    # Pre-compiled
+── pid-controller@1.2.0/    # More HORUS packages
 ```
 
 **Benefits:**
@@ -51,15 +51,17 @@ All packages are downloaded once and stored here:
 Each project gets its own isolated environment:
 ```
 my_robot_project/
-├── horus.yaml               # Dependencies declared here
-├── main.py                  # Your code
-└── .horus/                  # Hidden automatic environment
-    ├── packages/            # Symlinks to global cache
-    │   ├── horus_py -> ~/.horus/cache/horus_py@0.1.0/
-    │   └── serde -> ~/.horus/cache/serde@1.0.228/
-    ├── bin/                 # Project binaries (auto-created)
-    ├── lib/                 # Project libraries (auto-created)
-    └── env.toml             # Environment metadata (auto-managed)
+── horus.yaml               # Dependencies declared here
+── main.py / main.rs        # Your code
+── .horus/                  # Hidden automatic environment
+    ── packages/            # Symlinks to global cache
+       ── horus_py -> ~/.horus/cache/horus_py@0.1.0/
+       ── serde -> ~/.horus/cache/serde@1.0.228/
+    ── bin/                 # Project binaries (auto-created)
+    ── lib/                 # Project libraries (auto-created)
+    ── Cargo.toml           # Generated for Rust projects (auto-managed)
+    ── Cargo.lock           # Cargo lock file for Rust (auto-managed)
+    ── target/              # Cargo build artifacts for Rust (auto-managed)
 ```
 
 **Key Points:**
@@ -79,7 +81,8 @@ When you run `horus run`:
    - crates.io fallback for external Rust crates
 4. **Compiles** external crates (in global cache with cargo)
 5. **Symlinks** to `.horus/packages/` in your project
-6. **Runs** your code with correct environment
+6. **For Rust projects**: Generates `.horus/Cargo.toml` from `horus.yaml` with path-based dependencies
+7. **Runs** your code with correct environment
 
 **You never touch `.horus/`** - It's automatic!
 
@@ -130,16 +133,16 @@ HORUS solves dependency hell with **local-first resolution** and **smart fallbac
 ```bash
 # Scenario: Global cache has broken package
 ~/.horus/cache/
-└── serde@1.0.228/  # Corrupted or incompatible
+── serde@1.0.228/  # Corrupted or incompatible
 
 my_project/.horus/packages/
-└── serde@1.0.150/  # Working local version
+── serde@1.0.150/  # Working local version
 
 # When you run:
 horus run
-# ✓ Uses local serde@1.0.150 (line 1010-1012 in run.rs)
-# ✓ NEVER checks global cache
-# ✓ Broken global version ignored!
+#  Uses local serde@1.0.150 (line 1010-1012 in run.rs)
+#  NEVER checks global cache
+#  Broken global version ignored!
 ```
 
 **Automatic Smart Behavior:**
@@ -179,21 +182,21 @@ horus run  # Auto-reinstalls to global
 
 **Benefits:**
 
-✅ **True isolation** - Local packages override global
-✅ **No conflicts** - Version-specific directories coexist
-✅ **Disk efficient** - Uses global cache when possible
-✅ **Escape hatch** - Can bypass broken global cache
-✅ **Zero config** - Works automatically
+ **True isolation** - Local packages override global
+ **No conflicts** - Version-specific directories coexist
+ **Disk efficient** - Uses global cache when possible
+ **Escape hatch** - Can bypass broken global cache
+ **Zero config** - Works automatically
 
 **Comparison with other tools:**
 
 | Feature | Python venv | Node node_modules | HORUS |
 |---------|------------|-------------------|-------|
-| Isolated envs | ✓ Full copies | ✓ Full copies | ✓ Symlinks + local override |
-| Disk efficient | ✗ Duplicates everything | ✗ Duplicates everything | ✓ Global cache shared |
-| Local override | ✓ Always local | ✓ Always local | ✓ Local-first, global fallback |
-| Escape broken global | ✓ Independent | ✓ Independent | ✓ Local override |
-| Multiple versions | ✗ One per venv | ✗ Nested hell | ✓ Version-specific dirs |
+| Isolated envs |  Full copies |  Full copies |  Symlinks + local override |
+| Disk efficient |  Duplicates everything |  Duplicates everything |  Global cache shared |
+| Local override |  Always local |  Always local |  Local-first, global fallback |
+| Escape broken global |  Independent |  Independent |  Local override |
+| Multiple versions |  One per venv |  Nested hell |  Version-specific dirs |
 
 **Best of both worlds:**
 - Disk efficiency of global cache (like Cargo, pip global)
@@ -272,17 +275,17 @@ packages:
 **Default locations:**
 ```
 my_project/
-├── horus-freeze.yaml       # Default freeze file
-├── production.yaml         # Custom freeze file
-├── environments/           # Optional: organize freeze files
-│   ├── dev.yaml
-│   ├── staging.yaml
-│   └── production.yaml
-└── .horus/                 # Auto-managed, don't store freeze files here
-    ├── packages/           # Symlinks to global cache
-    ├── bin/                # Compiled binaries
-    ├── lib/                # Libraries
-    └── include/            # Headers
+── horus-freeze.yaml       # Default freeze file
+── production.yaml         # Custom freeze file
+── environments/           # Optional: organize freeze files
+   ── dev.yaml
+   ── staging.yaml
+   ── production.yaml
+── .horus/                 # Auto-managed, don't store freeze files here
+    ── packages/           # Symlinks to global cache
+    ── bin/                # Compiled binaries
+    ── lib/                # Libraries
+    ── include/            # Headers
 ```
 
 > **Note**: Store freeze files in your project root or a custom `environments/` folder (not inside `.horus/`). The `.horus/` directory is auto-managed and should not contain user files.
@@ -311,9 +314,9 @@ horus env freeze
 **Output:**
 ```
 Analyzing environment...
-  ✓ Found 5 packages (3 direct, 2 transitive)
-  ✓ Verified checksums
-  ✓ Generated metadata
+   Found 5 packages (3 direct, 2 transitive)
+   Verified checksums
+   Generated metadata
 
 Saved to: horus-freeze.yaml
 
@@ -348,11 +351,11 @@ horus env freeze --publish
 **Output:**
 ```
 Freezing environment...
-  ✓ Captured 5 packages
-  ✓ Generated manifest
+   Captured 5 packages
+   Generated manifest
 
 Uploading to registry...
-  ✓ Uploaded
+   Uploaded
 
 Environment published:
   ID: env_abc123def456
@@ -400,11 +403,11 @@ Reading environment: horus-freeze.yaml
   Created: 2025-10-09
 
 Restoring environment...
-  ✓ pid-controller@1.2.0
-  ✓ motion-planner@2.0.1
-  ✓ sensor-drivers@1.5.0
-  ✓ pathfinding-utils@1.2.0 (dependency)
-  ✓ control-utils@1.0.0 (dependency)
+   pid-controller@1.2.0
+   motion-planner@2.0.1
+   sensor-drivers@1.5.0
+   pathfinding-utils@1.2.0 (dependency)
+   control-utils@1.0.0 (dependency)
 
 Environment restored successfully!
   Location: .horus/packages/
@@ -421,7 +424,7 @@ horus env restore env_abc123def456
 **Output:**
 ```
 Fetching environment from registry...
-  ✓ Downloaded env_abc123def456
+   Downloaded env_abc123def456
 
 Name: Production v2.1
 Description: Stable release for warehouse robots
@@ -429,7 +432,7 @@ Author: robotics-team
 Packages: 5
 
 Restoring...
-  ✓ All packages installed
+   All packages installed
 
 Environment ready!
 ```

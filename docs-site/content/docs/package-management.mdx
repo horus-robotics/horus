@@ -69,7 +69,7 @@ horus auth login --github
 cd my-awesome-controller
 
 # 3. Publish
-horus publish
+horus pkg publish
 ```
 
 ## Package Locations
@@ -79,12 +79,12 @@ horus publish
 **Project-local** (default):
 ```
 my_project/
-├── .horus/
-│   └── packages/
-│       ├── pid-controller@1.0.0/
-│       └── sensor-drivers@2.1.3/
-└── src/
-    └── main.rs
+── .horus/
+   ── packages/
+       ── pid-controller@1.0.0/
+       ── sensor-drivers@2.1.3/
+── src/
+    ── main.rs
 ```
 
 **Why use local:**
@@ -97,10 +97,10 @@ my_project/
 **System-wide** (installed with `-g` flag):
 ```
 ~/.horus/
-└── cache/
-    ├── pid-controller@1.0.0/
-    ├── pid-controller@1.2.0/
-    └── sensor-drivers@2.1.3/
+── cache/
+    ── pid-controller@1.0.0/
+    ── pid-controller@1.2.0/
+    ── sensor-drivers@2.1.3/
 ```
 
 **Why use global:**
@@ -134,14 +134,14 @@ When you run `horus pkg install`, HORUS automatically chooses the best strategy:
 horus pkg install serde
 
 # If package exists in global cache:
-#   → Install to global cache
-#   → Create symlink: .horus/packages/serde -> ~/.horus/cache/serde@1.0.228/
-#   → Disk efficient!
+#    Install to global cache
+#    Create symlink: .horus/packages/serde -> ~/.horus/cache/serde@1.0.228/
+#    Disk efficient!
 
 # If package NOT in global cache:
-#   → Install directly to .horus/packages/serde@1.0.228/
-#   → No symlink, real directory
-#   → Isolated from global!
+#    Install directly to .horus/packages/serde@1.0.228/
+#    No symlink, real directory
+#    Isolated from global!
 ```
 
 **Override Broken Global Cache:**
@@ -162,10 +162,10 @@ horus pkg install serde -v 1.0.150  # Install working version locally
 ```
 
 **Benefits:**
-- ✅ **Local override** - Bypass broken global packages
-- ✅ **Version isolation** - Different projects can use different versions
-- ✅ **Disk efficient** - Shares global cache when possible
-- ✅ **Zero config** - Works automatically
+-  **Local override** - Bypass broken global packages
+-  **Version isolation** - Different projects can use different versions
+-  **Disk efficient** - Shares global cache when possible
+-  **Zero config** - Works automatically
 
 See [Environment Management](/environment-management#solving-dependency-hell) for more details on how this solves dependency hell.
 
@@ -184,7 +184,6 @@ horus pkg install <package> [OPTIONS]
 - `-v, --ver <VERSION>` - Install specific version (default: latest)
 - `-g, --global` - Install to global cache
 - `-t, --target <NAME>` - Target workspace/project name
-- `-d, --dev` - Install as development dependency (not yet supported)
 
 **Examples:**
 
@@ -205,10 +204,10 @@ horus pkg install pid-controller -t my-project
 **Output:**
 ```
 Installing pid-controller@1.2.0...
-✓ Downloaded (245 KB)
-✓ Extracted to .horus/packages/pid-controller@1.2.0/
-✓ Installed dependencies: control-utils@1.0.0
-✓ Build successful
+ Downloaded (245 KB)
+ Extracted to .horus/packages/pid-controller@1.2.0/
+ Installed dependencies: control-utils@1.0.0
+ Build successful
 
 Package installed: pid-controller@1.2.0
 Location: .horus/packages/pid-controller@1.2.0/
@@ -246,8 +245,8 @@ horus pkg remove pid-controller -t my-project
 **Output:**
 ```
 Removing pid-controller@1.2.0...
-✓ Removed from .horus/packages/
-✓ Freed 892 KB
+ Removed from .horus/packages/
+ Freed 892 KB
 
 Package removed: pid-controller@1.2.0
 ```
@@ -326,7 +325,7 @@ Warning: This action is IRREVERSIBLE and will:
 
 Type the package name 'my-package' to confirm: my-package
 
-✅ Successfully unpublished my-package v1.0.0
+ Successfully unpublished my-package v1.0.0
    The package is no longer available on the registry
 ```
 
@@ -373,24 +372,24 @@ cd my-awesome-package
 horus run --build-only --release
 
 # 3. Publish
-horus publish
+horus pkg publish
 ```
 
 **Interactive prompts:**
 ```
 Publishing my-awesome-package v1.0.0...
 
-✓ Package metadata validated
-✓ Build successful
-✓ Tests passed
-✓ Documentation generated
+ Package metadata validated
+ Build successful
+ Tests passed
+ Documentation generated
 
 Package size: 245 KB (compressed)
 
 Publish to registry? [y/N]: y
 
 Uploading...
-✓ Uploaded to registry
+ Uploaded to registry
 
 Published: my-awesome-package@1.0.0
 Registry URL: https://marketplace.horus-registry.dev/packages/my-awesome-package
@@ -418,7 +417,7 @@ Documentation
 
    Choose option (1/2/skip): 1
    Enter documentation URL: https://my-package-docs.example.com
-   ✓ Documentation URL: https://my-package-docs.example.com
+    Documentation URL: https://my-package-docs.example.com
 ```
 
 **Local Documentation (Bundled Markdown):**
@@ -426,33 +425,33 @@ Include markdown files directly in your package for built-in documentation viewi
 
 ```
 Documentation
-   ✓ Found local /docs folder with markdown files
+    Found local /docs folder with markdown files
    Add documentation? (y/n): y
 
    Documentation options:
      1. External URL - Link to online documentation
      2. Local /docs - Bundle markdown files in a /docs folder
 
-   ℹ Your /docs folder should contain .md files organized as:
+   [i] Your /docs folder should contain .md files organized as:
       /docs/README.md          (main documentation)
       /docs/getting-started.md (guides)
       /docs/api.md             (API reference)
 
    Choose option (1/2/skip): 2
-   ✓ Will bundle local /docs folder with package
+    Will bundle local /docs folder with package
 ```
 
 **Local Docs Structure:**
 ```
 my-package/
-├── docs/
-│   ├── README.md           # Main documentation page
-│   ├── getting-started.md  # Installation and setup guide
-│   ├── api.md              # API reference
-│   └── examples.md         # Usage examples
-├── src/
-│   └── lib.rs
-└── Cargo.toml
+── docs/
+   ── README.md           # Main documentation page
+   ── getting-started.md  # Installation and setup guide
+   ── api.md              # API reference
+   ── examples.md         # Usage examples
+── src/
+   ── lib.rs
+── Cargo.toml
 ```
 
 **Benefits of Local Docs:**
@@ -468,10 +467,10 @@ Link to your GitHub, GitLab, or other repository:
 
 ```
 Source Repository
-   ✓ Auto-detected: https://github.com/username/my-package
+    Auto-detected: https://github.com/username/my-package
    Add source repository? (y/n): y
    Use detected URL? (y/n): y
-   ✓ Source repository: https://github.com/username/my-package
+    Source repository: https://github.com/username/my-package
 ```
 
 **Manual Entry:**
@@ -481,23 +480,23 @@ If auto-detection doesn't work or you want to use a different URL:
 Source Repository
    Add source repository? (y/n): y
 
-   ℹ Enter the URL where your code is hosted:
+   [i] Enter the URL where your code is hosted:
       • GitHub: https://github.com/username/repo
       • GitLab: https://gitlab.com/username/repo
       • Other: Any public repository URL
 
    Enter source repository URL: https://gitlab.com/robotics/my-package
-   ✓ Source repository: https://gitlab.com/robotics/my-package
+    Source repository: https://gitlab.com/robotics/my-package
 ```
 
 #### Complete Publishing Example
 
 ```bash
 $ cd my-sensor-package
-$ horus publish
+$ horus pkg publish
 
 Publishing my-sensor-package v1.0.0...
-✓ Uploaded to registry
+ Uploaded to registry
 
 Published: my-sensor-package@1.0.0
    View at: https://marketplace.horus-registry.dev/packages/my-sensor-package
@@ -506,28 +505,28 @@ Package Metadata (optional)
    Help users discover and use your package by adding:
 
 Documentation
-   ✓ Found local /docs folder with markdown files
+    Found local /docs folder with markdown files
    Add documentation? (y/n): y
 
    Documentation options:
      1. External URL - Link to online documentation
      2. Local /docs - Bundle markdown files in a /docs folder
 
-   ℹ Your /docs folder should contain .md files organized as:
+   [i] Your /docs folder should contain .md files organized as:
       /docs/README.md          (main documentation)
       /docs/getting-started.md (guides)
       /docs/api.md             (API reference)
 
    Choose option (1/2/skip): 2
-   ✓ Will bundle local /docs folder with package
+    Will bundle local /docs folder with package
 
 Source Repository
-   ✓ Auto-detected: https://github.com/robotics-lab/my-sensor-package
+    Auto-detected: https://github.com/robotics-lab/my-sensor-package
    Add source repository? (y/n): y
    Use detected URL? (y/n): y
-   ✓ Source repository: https://github.com/robotics-lab/my-sensor-package
+    Source repository: https://github.com/robotics-lab/my-sensor-package
 
-→ Updating package metadata...
+ Updating package metadata...
 Package metadata updated!
 ```
 
@@ -536,15 +535,15 @@ Package metadata updated!
 On the marketplace, your package will display:
 
 ```
-┌─────────────────────────────────────────┐
-│  my-sensor-package      v1.0.0          │
-│                                         │
-│  High-performance sensor fusion         │
-│                                         │
-│  [View Details] [Docs] [Source]         │
-│                                         │
-│         Markdown Viewer  GitHub Repo    │
-└─────────────────────────────────────────┘
+─────────────────────────────────────────
+  my-sensor-package      v1.0.0          
+                                         
+  High-performance sensor fusion         
+                                         
+  [View Details] [Docs] [Source]         
+                                         
+         Markdown Viewer  GitHub Repo    
+─────────────────────────────────────────
 ```
 
 - **Docs Button**: Only appears if you added documentation
@@ -557,9 +556,9 @@ On the marketplace, your package will display:
 
 **Semantic Versioning:**
 - `1.0.0` - Major.Minor.Patch
-- `1.0.0` → `1.0.1` - Patch: Bug fixes only
-- `1.0.0` → `1.1.0` - Minor: New features (backward compatible)
-- `1.0.0` → `2.0.0` - Major: Breaking changes
+- `1.0.0`  `1.0.1` - Patch: Bug fixes only
+- `1.0.0`  `1.1.0` - Minor: New features (backward compatible)
+- `1.0.0`  `2.0.0` - Major: Breaking changes
 
 **Publishing new version:**
 ```bash
@@ -568,7 +567,7 @@ On the marketplace, your package will display:
 version = "1.1.0"
 
 # 2. Publish
-horus publish
+horus pkg publish
 ```
 
 **Version constraints in dependencies:**
@@ -593,13 +592,13 @@ horus pkg install robot-controller
 ```
 Resolving dependencies...
   robot-controller@1.0.0
-  ├── motion-planner@2.0.1
-  │   └── pathfinding-utils@1.2.0
-  └── pid-controller@1.2.0
-      └── control-utils@1.0.0
+  ── motion-planner@2.0.1
+     ── pathfinding-utils@1.2.0
+  ── pid-controller@1.2.0
+      ── control-utils@1.0.0
 
 Installing 5 packages...
-✓ All dependencies installed
+ All dependencies installed
 ```
 
 ### Specifying Dependencies
@@ -620,22 +619,20 @@ advanced-planning = { version = "3.0", optional = true }
 planning = ["advanced-planning"]
 ```
 
-> **Note**: Feature flag support for package installation via CLI is planned for future releases. Currently, features are managed via Cargo.toml dependencies.
-
 ## Package Structure
 
 ### Minimal Package
 
 ```
 my-package/
-├── Cargo.toml          # Package metadata
-├── src/
-│   ├── lib.rs          # Library entry point
-│   └── nodes/
-│       └── my_node.rs  # Your node implementation
-├── examples/
-│   └── demo.rs         # Usage example
-└── README.md           # Documentation
+── Cargo.toml          # Package metadata
+── src/
+   ── lib.rs          # Library entry point
+   ── nodes/
+       ── my_node.rs  # Your node implementation
+── examples/
+   ── demo.rs         # Usage example
+── README.md           # Documentation
 ```
 
 ### Library Package (`lib.rs`)
@@ -843,7 +840,7 @@ horus run examples/demo.rs
 
 # 6. Publish
 horus auth login --github
-horus publish
+horus pkg publish
 ```
 
 ### Using Multiple Packages
@@ -884,8 +881,6 @@ horus pkg install pid-controller -v 1.3.0
 # Check available versions on registry
 horus pkg list pid-controller
 ```
-
-> **Note**: Automatic update checking is planned for future releases.
 
 ## Troubleshooting
 

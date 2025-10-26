@@ -30,7 +30,7 @@ Laptop (CLI)                    Robot (Daemon)
 - **Auto-extraction**: Unpacks to `/tmp/horus/deploy-{uuid}/`
 - **Multi-Language Support**:
   - **Python**: Direct execution with `python3`
-  - **Rust**: Compilation with `rustc` (if available)
+  - **Rust**: Compilation with `cargo` (if available)
   - **C**: Compilation with `gcc` (if available)
 - **Health Check**: GET `/health` endpoint
 - **Deployment Tracking**: Returns deployment ID and PID
@@ -72,7 +72,7 @@ horus run --remote <ROBOT> <file>
 
 # Expected output:
 #  HORUS daemon listening on 0.0.0.0:8080
-# 📡 Ready to receive deployments
+#  Ready to receive deployments
 ```
 
 ### Deploy Code
@@ -92,10 +92,10 @@ horus run -R http://192.168.1.100:8080 vision.py
 
 ### URL Formats Supported
 
-- `localhost:8080` → `http://localhost:8080/deploy`
-- `192.168.1.100` → `http://192.168.1.100:8080/deploy`
-- `robot` → `http://robot:8080/deploy`
-- `http://robot:8080` → `http://robot:8080/deploy`
+- `localhost:8080`  `http://localhost:8080/deploy`
+- `192.168.1.100`  `http://192.168.1.100:8080/deploy`
+- `robot`  `http://robot:8080/deploy`
+- `http://robot:8080`  `http://robot:8080/deploy`
 
 ## API Reference
 
@@ -129,7 +129,7 @@ Deploy and execute code.
 **Error Response:**
 ```json
 {
-  "error": "Compilation failed: rustc: command not found"
+  "error": "Compilation failed: cargo: command not found"
 }
 ```
 
@@ -140,7 +140,7 @@ The daemon automatically finds and handles the entry point:
 1. Looks for `main.*` (main.py, main.rs, or main.c - highest priority)
 2. Falls back to first source file found (.py, .rs, or .c)
 3. **Python (.py)**: Executes directly with `python3`
-4. **Rust (.rs)**: Compiles with `rustc --edition 2021`, then executes
+4. **Rust (.rs)**: Compiles with `cargo build --release`, then executes
 5. **C (.c)**: Compiles with `gcc`, then executes
 6. Returns compilation errors to CLI if build fails
 
@@ -148,11 +148,11 @@ The daemon automatically finds and handles the entry point:
 
 ```
 horus_daemon/
-├── Cargo.toml           # Dependencies (axum, tokio, tar, etc.)
-├── src/
-│   ├── main.rs         # HTTP server setup
-│   └── deploy.rs       # Upload, extract, execute logic
-└── README.md           # This file
+── Cargo.toml           # Dependencies (axum, tokio, tar, etc.)
+── src/
+   ── main.rs         # HTTP server setup
+   ── deploy.rs       # Upload, extract, execute logic
+── README.md           # This file
 ```
 
 ## Testing
@@ -196,8 +196,8 @@ RUST_LOG=debug ./target/debug/horus_daemon
 # Verify Python is available
 which python3
 
-# Verify rustc is available (for Rust deployments)
-which rustc
+# Verify cargo is available (for Rust deployments)
+which cargo
 
 # Verify gcc is available (for C deployments)
 which gcc

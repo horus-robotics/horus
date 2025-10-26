@@ -11,21 +11,21 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-echo -e "${CYAN}🚀 HORUS Installation Script${NC}"
+echo -e "${CYAN} HORUS Installation Script${NC}"
 echo ""
 
 # Check if Rust is installed
 if ! command -v cargo &> /dev/null; then
-    echo -e "${RED}❌ Error: Rust is not installed${NC}"
+    echo -e "${RED} Error: Rust is not installed${NC}"
     echo "Please install Rust from https://rustup.rs/"
     exit 1
 fi
 
-echo -e "${CYAN}→${NC} Detected Rust version: $(rustc --version)"
+echo -e "${CYAN}${NC} Detected Rust version: $(rustc --version)"
 
 # Check if C compiler/linker is installed
 if ! command -v cc &> /dev/null && ! command -v gcc &> /dev/null; then
-    echo -e "${RED}❌ Error: C compiler not found${NC}"
+    echo -e "${RED} Error: C compiler not found${NC}"
     echo ""
     echo "HORUS requires a C compiler/linker to build native code."
     echo ""
@@ -48,11 +48,11 @@ if ! command -v cc &> /dev/null && ! command -v gcc &> /dev/null; then
     exit 1
 fi
 
-echo -e "${CYAN}→${NC} Detected C compiler: $(cc --version | head -n1)"
+echo -e "${CYAN}${NC} Detected C compiler: $(cc --version | head -n1)"
 
 # Check if pkg-config is installed
 if ! command -v pkg-config &> /dev/null; then
-    echo -e "${RED}❌ Error: pkg-config not found${NC}"
+    echo -e "${RED} Error: pkg-config not found${NC}"
     echo ""
     echo "HORUS requires pkg-config to build system library dependencies."
     echo ""
@@ -73,12 +73,12 @@ if ! command -v pkg-config &> /dev/null; then
     exit 1
 fi
 
-echo -e "${CYAN}→${NC} Detected pkg-config: $(pkg-config --version)"
+echo -e "${CYAN}${NC} Detected pkg-config: $(pkg-config --version)"
 
 # Check if Python is installed (for horus_py)
 if command -v python3 &> /dev/null; then
     PYTHON_VERSION=$(python3 --version | awk '{print $2}')
-    echo -e "${CYAN}→${NC} Detected Python: $PYTHON_VERSION"
+    echo -e "${CYAN}${NC} Detected Python: $PYTHON_VERSION"
 
     # Check if Python version is 3.9+
     PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
@@ -87,21 +87,21 @@ if command -v python3 &> /dev/null; then
     if [ "$PYTHON_MAJOR" -ge 3 ] && [ "$PYTHON_MINOR" -ge 9 ]; then
         PYTHON_AVAILABLE=true
     else
-        echo -e "${YELLOW}⚠${NC}  Python 3.9+ required for horus_py (found $PYTHON_VERSION)"
+        echo -e "${YELLOW}${NC}  Python 3.9+ required for horus_py (found $PYTHON_VERSION)"
         echo -e "  horus_py will be skipped"
         PYTHON_AVAILABLE=false
     fi
 else
-    echo -e "${YELLOW}⚠${NC}  Python3 not found - horus_py will be skipped"
+    echo -e "${YELLOW}${NC}  Python3 not found - horus_py will be skipped"
     PYTHON_AVAILABLE=false
 fi
 
 # Check for pip (needed for maturin)
 if [ "$PYTHON_AVAILABLE" = true ]; then
     if command -v pip3 &> /dev/null || command -v pip &> /dev/null; then
-        echo -e "${CYAN}→${NC} Detected pip: $(pip3 --version 2>/dev/null || pip --version)"
+        echo -e "${CYAN}${NC} Detected pip: $(pip3 --version 2>/dev/null || pip --version)"
     else
-        echo -e "${YELLOW}⚠${NC}  pip not found - horus_py will be skipped"
+        echo -e "${YELLOW}${NC}  pip not found - horus_py will be skipped"
         echo "  Install pip: sudo apt install python3-pip (Debian/Ubuntu)"
         PYTHON_AVAILABLE=false
     fi
@@ -113,7 +113,7 @@ echo ""
 INSTALL_DIR="$HOME/.cargo/bin"
 CACHE_DIR="$HOME/.horus/cache"
 
-echo -e "${CYAN}→${NC} Installation paths:"
+echo -e "${CYAN}${NC} Installation paths:"
 echo "  CLI binary: $INSTALL_DIR/horus"
 echo "  Libraries:  $CACHE_DIR/"
 echo ""
@@ -122,25 +122,25 @@ echo ""
 read -p "$(echo -e ${YELLOW}?${NC}) Proceed with installation? [Y/n]: " -n 1 -r
 echo
 if [[ ! $REPLY =~ ^[Yy]$ ]] && [[ ! -z $REPLY ]]; then
-    echo -e "${RED}✗${NC} Installation cancelled"
+    echo -e "${RED}${NC} Installation cancelled"
     exit 0
 fi
 
 # Step 1: Build all packages in release mode
 echo ""
-echo -e "${CYAN}🔨 Building HORUS packages (release mode)...${NC}"
+echo -e "${CYAN} Building HORUS packages (release mode)...${NC}"
 cargo build --release
 
 if [ $? -ne 0 ]; then
-    echo -e "${RED}❌ Build failed${NC}"
+    echo -e "${RED} Build failed${NC}"
     exit 1
 fi
 
-echo -e "${GREEN}✓${NC} Build completed"
+echo -e "${GREEN}${NC} Build completed"
 echo ""
 
 # Step 2: Install CLI binary
-echo -e "${CYAN}→${NC} Installing CLI binary..."
+echo -e "${CYAN}${NC} Installing CLI binary..."
 
 if [ ! -d "$INSTALL_DIR" ]; then
     mkdir -p "$INSTALL_DIR"
@@ -149,11 +149,11 @@ fi
 cp target/release/horus "$INSTALL_DIR/horus"
 chmod +x "$INSTALL_DIR/horus"
 
-echo -e "${GREEN}✓${NC} CLI installed to $INSTALL_DIR/horus"
+echo -e "${GREEN}${NC} CLI installed to $INSTALL_DIR/horus"
 echo ""
 
 # Step 3: Create cache directory structure
-echo -e "${CYAN}→${NC} Setting up library cache..."
+echo -e "${CYAN}${NC} Setting up library cache..."
 
 mkdir -p "$CACHE_DIR"
 
@@ -165,7 +165,7 @@ HORUS_LIBRARY_VERSION=$(grep -m1 '^version' horus_library/Cargo.toml | sed 's/.*
 HORUS_C_VERSION=$(grep -m1 '^version' horus_c/Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
 HORUS_PY_VERSION=$(grep -m1 '^version' horus_py/Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
 
-echo -e "${CYAN}  →${NC} Detected versions:"
+echo -e "${CYAN}  ${NC} Detected versions:"
 echo "    horus: $HORUS_VERSION"
 echo "    horus_core: $HORUS_CORE_VERSION"
 echo "    horus_macros: $HORUS_MACROS_VERSION"
@@ -179,8 +179,8 @@ VERSION_FILE="$HOME/.horus/installed_version"
 if [ -f "$VERSION_FILE" ]; then
     OLD_VERSION=$(cat "$VERSION_FILE")
     if [ "$OLD_VERSION" != "$HORUS_VERSION" ]; then
-        echo -e "${YELLOW}⚠${NC}  Version changed: ${OLD_VERSION} → ${HORUS_VERSION}"
-        echo -e "${CYAN}→${NC} Cleaning old library versions..."
+        echo -e "${YELLOW}${NC}  Version changed: ${OLD_VERSION}  ${HORUS_VERSION}"
+        echo -e "${CYAN}${NC} Cleaning old library versions..."
 
         # Remove old versioned directories
         rm -rf "$CACHE_DIR/horus@$OLD_VERSION" 2>/dev/null || true
@@ -190,13 +190,13 @@ if [ -f "$VERSION_FILE" ]; then
         rm -rf "$CACHE_DIR/horus_c@$OLD_VERSION" 2>/dev/null || true
         rm -rf "$CACHE_DIR/horus_py@$OLD_VERSION" 2>/dev/null || true
 
-        echo -e "${GREEN}✓${NC} Old versions removed"
+        echo -e "${GREEN}${NC} Old versions removed"
         echo ""
     fi
 fi
 
 # Step 4: Install horus_core library
-echo -e "${CYAN}→${NC} Installing horus_core@$HORUS_CORE_VERSION..."
+echo -e "${CYAN}${NC} Installing horus_core@$HORUS_CORE_VERSION..."
 HORUS_CORE_DIR="$CACHE_DIR/horus_core@$HORUS_CORE_VERSION"
 mkdir -p "$HORUS_CORE_DIR/lib"
 
@@ -214,10 +214,10 @@ cat > "$HORUS_CORE_DIR/metadata.json" << EOF
 }
 EOF
 
-echo -e "${GREEN}✓${NC} Installed horus_core"
+echo -e "${GREEN}${NC} Installed horus_core"
 
 # Step 5: Install horus library
-echo -e "${CYAN}→${NC} Installing horus@$HORUS_VERSION..."
+echo -e "${CYAN}${NC} Installing horus@$HORUS_VERSION..."
 HORUS_DIR="$CACHE_DIR/horus@$HORUS_VERSION"
 mkdir -p "$HORUS_DIR/lib"
 
@@ -225,16 +225,46 @@ mkdir -p "$HORUS_DIR/lib"
 cp -r target/release/libhorus.* "$HORUS_DIR/lib/" 2>/dev/null || true
 cp -r target/release/deps/libhorus*.rlib "$HORUS_DIR/lib/" 2>/dev/null || true
 
-# Also copy target/release for rustc linking
+# Also copy target/release for Cargo path dependencies
 mkdir -p "$HORUS_DIR/target/release"
 cp -r target/release/libhorus*.rlib "$HORUS_DIR/target/release/" 2>/dev/null || true
 cp -r target/release/deps/libhorus_core*.rlib "$HORUS_DIR/target/release/" 2>/dev/null || true
 
-# CRITICAL: Copy ALL transitive dependencies for rustc compilation
+# CRITICAL: Copy ALL transitive dependencies for Cargo compilation
 mkdir -p "$HORUS_DIR/target/release/deps"
-echo -e "${CYAN}  →${NC} Bundling transitive dependencies for user projects..."
+echo -e "${CYAN}  ${NC} Bundling transitive dependencies for user projects..."
 cp target/release/deps/*.rlib "$HORUS_DIR/target/release/deps/" 2>/dev/null || true
-echo -e "${GREEN}✓${NC} Bundled $(ls target/release/deps/*.rlib 2>/dev/null | wc -l) dependency libraries"
+echo -e "${GREEN}${NC} Bundled $(ls target/release/deps/*.rlib 2>/dev/null | wc -l) dependency libraries"
+
+# Copy source Cargo.toml and src for `horus run` Cargo compilation
+echo -e "${CYAN}  ${NC} Copying source files for horus run compatibility..."
+
+# Copy workspace Cargo.toml to make cache a valid workspace
+cp Cargo.toml "$HORUS_DIR/Cargo.toml" 2>/dev/null || true
+
+# Copy horus crate
+mkdir -p "$HORUS_DIR/horus"
+cp horus/Cargo.toml "$HORUS_DIR/horus/" 2>/dev/null || true
+cp -r horus/src "$HORUS_DIR/horus/" 2>/dev/null || true
+
+# Copy horus_core crate
+mkdir -p "$HORUS_DIR/horus_core"
+cp horus_core/Cargo.toml "$HORUS_DIR/horus_core/" 2>/dev/null || true
+cp -r horus_core/src "$HORUS_DIR/horus_core/" 2>/dev/null || true
+
+# Copy horus_macros crate
+mkdir -p "$HORUS_DIR/horus_macros"
+cp horus_macros/Cargo.toml "$HORUS_DIR/horus_macros/" 2>/dev/null || true
+cp -r horus_macros/src "$HORUS_DIR/horus_macros/" 2>/dev/null || true
+
+# Copy horus_library crate (has lib.rs and subdirectories, not src/)
+mkdir -p "$HORUS_DIR/horus_library"
+cp horus_library/Cargo.toml "$HORUS_DIR/horus_library/" 2>/dev/null || true
+cp horus_library/lib.rs "$HORUS_DIR/horus_library/" 2>/dev/null || true
+cp -r horus_library/nodes "$HORUS_DIR/horus_library/" 2>/dev/null || true
+cp -r horus_library/messages "$HORUS_DIR/horus_library/" 2>/dev/null || true
+cp -r horus_library/traits "$HORUS_DIR/horus_library/" 2>/dev/null || true
+cp -r horus_library/algorithms "$HORUS_DIR/horus_library/" 2>/dev/null || true
 
 # Create metadata
 cat > "$HORUS_DIR/metadata.json" << EOF
@@ -246,10 +276,10 @@ cat > "$HORUS_DIR/metadata.json" << EOF
 }
 EOF
 
-echo -e "${GREEN}✓${NC} Installed horus"
+echo -e "${GREEN}${NC} Installed horus"
 
 # Step 6: Install horus_macros
-echo -e "${CYAN}→${NC} Installing horus_macros@$HORUS_MACROS_VERSION..."
+echo -e "${CYAN}${NC} Installing horus_macros@$HORUS_MACROS_VERSION..."
 HORUS_MACROS_DIR="$CACHE_DIR/horus_macros@$HORUS_MACROS_VERSION"
 mkdir -p "$HORUS_MACROS_DIR/lib"
 
@@ -257,7 +287,7 @@ mkdir -p "$HORUS_MACROS_DIR/lib"
 cp -r target/release/libhorus_macros.* "$HORUS_MACROS_DIR/lib/" 2>/dev/null || true
 cp -r target/release/deps/libhorus_macros*.so "$HORUS_MACROS_DIR/lib/" 2>/dev/null || true
 
-# Also copy to target/release for rustc
+# Also copy to target/release for Cargo
 mkdir -p "$HORUS_MACROS_DIR/target/release"
 cp -r target/release/libhorus_macros.so "$HORUS_MACROS_DIR/target/release/" 2>/dev/null || true
 cp -r target/release/deps/libhorus_macros*.so "$HORUS_MACROS_DIR/target/release/" 2>/dev/null || true
@@ -272,10 +302,10 @@ cat > "$HORUS_MACROS_DIR/metadata.json" << EOF
 }
 EOF
 
-echo -e "${GREEN}✓${NC} Installed horus_macros"
+echo -e "${GREEN}${NC} Installed horus_macros"
 
 # Step 7: Install horus_library
-echo -e "${CYAN}→${NC} Installing horus_library@$HORUS_LIBRARY_VERSION..."
+echo -e "${CYAN}${NC} Installing horus_library@$HORUS_LIBRARY_VERSION..."
 HORUS_LIBRARY_DIR="$CACHE_DIR/horus_library@$HORUS_LIBRARY_VERSION"
 mkdir -p "$HORUS_LIBRARY_DIR/lib"
 
@@ -297,10 +327,10 @@ cat > "$HORUS_LIBRARY_DIR/metadata.json" << EOF
 }
 EOF
 
-echo -e "${GREEN}✓${NC} Installed horus_library"
+echo -e "${GREEN}${NC} Installed horus_library"
 
 # Step 8: Install horus_c (C bindings)
-echo -e "${CYAN}→${NC} Installing horus_c@$HORUS_C_VERSION..."
+echo -e "${CYAN}${NC} Installing horus_c@$HORUS_C_VERSION..."
 HORUS_C_DIR="$CACHE_DIR/horus_c@$HORUS_C_VERSION"
 mkdir -p "$HORUS_C_DIR/lib"
 mkdir -p "$HORUS_C_DIR/include"
@@ -327,22 +357,22 @@ cat > "$HORUS_C_DIR/metadata.json" << EOF
 }
 EOF
 
-echo -e "${GREEN}✓${NC} Installed horus_c"
+echo -e "${GREEN}${NC} Installed horus_c"
 
 # Step 9: Install horus_py (Python bindings)
 if [ "$PYTHON_AVAILABLE" = true ]; then
-    echo -e "${CYAN}→${NC} Installing horus_py@$HORUS_PY_VERSION (Python bindings)..."
+    echo -e "${CYAN}${NC} Installing horus_py@$HORUS_PY_VERSION (Python bindings)..."
     HORUS_PY_DIR="$CACHE_DIR/horus_py@$HORUS_PY_VERSION"
     mkdir -p "$HORUS_PY_DIR"
 
     # Check if maturin is installed
     if ! command -v maturin &> /dev/null; then
-        echo -e "${CYAN}  →${NC} Installing maturin (Python/Rust build tool)..."
+        echo -e "${CYAN}  ${NC} Installing maturin (Python/Rust build tool)..."
         pip3 install maturin --user --quiet
 
         if [ $? -ne 0 ]; then
-            echo -e "${RED}✗${NC} Failed to install maturin"
-            echo -e "${YELLOW}⚠${NC}  Skipping horus_py installation"
+            echo -e "${RED}${NC} Failed to install maturin"
+            echo -e "${YELLOW}${NC}  Skipping horus_py installation"
             echo -e "  You can install it manually later:"
             echo -e "    ${CYAN}pip install maturin${NC}"
             echo -e "    ${CYAN}cd horus_py && maturin develop --release${NC}"
@@ -350,25 +380,25 @@ if [ "$PYTHON_AVAILABLE" = true ]; then
         else
             # Add user bin to PATH for this session
             export PATH="$HOME/.local/bin:$PATH"
-            echo -e "${GREEN}✓${NC} Installed maturin"
+            echo -e "${GREEN}${NC} Installed maturin"
         fi
     else
-        echo -e "${CYAN}  →${NC} maturin already installed: $(maturin --version)"
+        echo -e "${CYAN}  ${NC} maturin already installed: $(maturin --version)"
     fi
 
     if [ "$PYTHON_AVAILABLE" = true ]; then
         # Build and install using maturin
-        echo -e "${CYAN}  →${NC} Building and installing Python package..."
+        echo -e "${CYAN}  ${NC} Building and installing Python package..."
         cd horus_py
 
         # Use maturin develop to build and install in development mode
         maturin develop --release --quiet
 
         if [ $? -eq 0 ]; then
-            echo -e "${GREEN}✓${NC} Built and installed horus_py Python package"
+            echo -e "${GREEN}${NC} Built and installed horus_py Python package"
 
             # Set up proper package structure in cache for HORUS runtime
-            echo -e "${CYAN}  →${NC} Setting up package structure in cache..."
+            echo -e "${CYAN}  ${NC} Setting up package structure in cache..."
             mkdir -p "$HORUS_PY_DIR/lib/horus"
 
             # Copy the Python wrapper
@@ -392,10 +422,10 @@ if [ "$PYTHON_AVAILABLE" = true ]; then
             fi
 
             if [ "$EXTENSION_FOUND" = false ]; then
-                echo -e "${YELLOW}⚠${NC}  Warning: Could not find compiled extension module"
+                echo -e "${YELLOW}${NC}  Warning: Could not find compiled extension module"
                 echo -e "  Expected location: python/horus/_horus.abi3.so"
             else
-                echo -e "${GREEN}✓${NC} Copied compiled extension to cache"
+                echo -e "${GREEN}${NC} Copied compiled extension to cache"
             fi
 
             # Create metadata
@@ -410,28 +440,44 @@ PYEOF
 
             # Test both installations: pip-installed and cache
             if python3 -c "import horus" 2>/dev/null; then
-                echo -e "${GREEN}✓${NC} horus_py is importable in Python (system)"
+                echo -e "${GREEN}${NC} horus_py is importable in Python (system)"
             else
-                echo -e "${YELLOW}⚠${NC}  Warning: horus_py built but import test failed (system)"
+                echo -e "${YELLOW}${NC}  Warning: horus_py built but import test failed (system)"
             fi
 
             # Test cache installation
             if PYTHONPATH="$HORUS_PY_DIR/lib" python3 -c "import horus" 2>/dev/null; then
-                echo -e "${GREEN}✓${NC} horus_py is importable from cache"
+                echo -e "${GREEN}${NC} horus_py is importable from cache"
             else
-                echo -e "${YELLOW}⚠${NC}  Warning: horus_py not importable from cache"
+                echo -e "${YELLOW}${NC}  Warning: horus_py not importable from cache"
             fi
         else
-            echo -e "${RED}✗${NC} Failed to build horus_py"
-            echo -e "${YELLOW}⚠${NC}  You can try building manually:"
+            echo -e "${RED}${NC} Failed to build horus_py"
+            echo -e "${YELLOW}${NC}  You can try building manually:"
             echo -e "    ${CYAN}cd horus_py && maturin develop --release${NC}"
         fi
 
         cd ..
     fi
 else
-    echo -e "${YELLOW}→${NC} Skipping horus_py (Python not available)"
+    echo -e "${YELLOW}${NC} Skipping horus_py (Python not available)"
 fi
+echo ""
+
+# Step 10: Copy examples
+echo -e "${CYAN}${NC} Installing examples..."
+EXAMPLES_DIR="$HORUS_DIR/examples"
+mkdir -p "$EXAMPLES_DIR"
+
+# Copy snakesim example
+if [ -d "horus_library/apps/snakesim" ]; then
+    mkdir -p "$EXAMPLES_DIR/snakesim"
+    cp horus_library/apps/snakesim/main.rs "$EXAMPLES_DIR/snakesim/" 2>/dev/null || true
+    cp horus_library/apps/snakesim/horus.yaml "$EXAMPLES_DIR/snakesim/" 2>/dev/null || true
+    cp horus_library/apps/snakesim/README.md "$EXAMPLES_DIR/snakesim/" 2>/dev/null || true
+    echo -e "${GREEN}${NC} Installed snakesim example"
+fi
+
 echo ""
 
 # Save installed version for future updates
@@ -441,59 +487,59 @@ echo "$HORUS_VERSION" > "$VERSION_FILE"
 AUTH_CONFIG="$HOME/.horus/auth.json"
 if [ -f "$AUTH_CONFIG" ]; then
     if grep -q "localhost" "$AUTH_CONFIG" 2>/dev/null; then
-        echo -e "${CYAN}→${NC} Migrating registry configuration..."
+        echo -e "${CYAN}${NC} Migrating registry configuration..."
         # Update localhost URLs to production
         sed -i.bak 's|http://localhost:3001|https://horus-marketplace-api.onrender.com|g' "$AUTH_CONFIG"
         sed -i.bak 's|http://localhost:8080|https://horus-marketplace-api.onrender.com|g' "$AUTH_CONFIG"
-        echo -e "${GREEN}✓${NC} Registry URL updated to production"
+        echo -e "${GREEN}${NC} Registry URL updated to production"
         echo ""
     fi
 fi
 
 # Step 10: Verify installation
-echo -e "${CYAN}🔍 Verifying installation...${NC}"
+echo -e "${CYAN} Verifying installation...${NC}"
 
 if [ -x "$INSTALL_DIR/horus" ]; then
-    echo -e "${GREEN}✓${NC} CLI binary: OK"
+    echo -e "${GREEN}${NC} CLI binary: OK"
 else
-    echo -e "${RED}✗${NC} CLI binary: Missing"
+    echo -e "${RED}${NC} CLI binary: Missing"
 fi
 
 if [ -d "$HORUS_DIR" ]; then
-    echo -e "${GREEN}✓${NC} horus library: OK"
+    echo -e "${GREEN}${NC} horus library: OK"
 else
-    echo -e "${RED}✗${NC} horus library: Missing"
+    echo -e "${RED}${NC} horus library: Missing"
 fi
 
 if [ -d "$HORUS_CORE_DIR" ]; then
-    echo -e "${GREEN}✓${NC} horus_core library: OK"
+    echo -e "${GREEN}${NC} horus_core library: OK"
 else
-    echo -e "${RED}✗${NC} horus_core library: Missing"
+    echo -e "${RED}${NC} horus_core library: Missing"
 fi
 
 if [ -d "$HORUS_MACROS_DIR" ]; then
-    echo -e "${GREEN}✓${NC} horus_macros library: OK"
+    echo -e "${GREEN}${NC} horus_macros library: OK"
 else
-    echo -e "${RED}✗${NC} horus_macros library: Missing"
+    echo -e "${RED}${NC} horus_macros library: Missing"
 fi
 
 if [ -d "$HORUS_LIBRARY_DIR" ]; then
-    echo -e "${GREEN}✓${NC} horus_library: OK"
+    echo -e "${GREEN}${NC} horus_library: OK"
 else
-    echo -e "${RED}✗${NC} horus_library: Missing"
+    echo -e "${RED}${NC} horus_library: Missing"
 fi
 
 if [ -d "$HORUS_C_DIR" ]; then
-    echo -e "${GREEN}✓${NC} horus_c: OK"
+    echo -e "${GREEN}${NC} horus_c: OK"
 else
-    echo -e "${RED}✗${NC} horus_c: Missing"
+    echo -e "${RED}${NC} horus_c: Missing"
 fi
 
 if [ "$PYTHON_AVAILABLE" = true ]; then
     if [ -d "$HORUS_PY_DIR" ]; then
-        echo -e "${GREEN}✓${NC} horus_py: OK"
+        echo -e "${GREEN}${NC} horus_py: OK"
     else
-        echo -e "${RED}✗${NC} horus_py: Missing"
+        echo -e "${RED}${NC} horus_py: Missing"
     fi
 else
     echo -e "${YELLOW}⊘${NC} horus_py: Skipped (Python not available)"
@@ -503,10 +549,10 @@ echo ""
 
 # Check if CLI is in PATH
 if command -v horus &> /dev/null; then
-    echo -e "${GREEN}✓${NC} 'horus' command is available in PATH"
-    echo -e "${CYAN}→${NC} Version: $(horus --version 2>/dev/null || echo 'unknown')"
+    echo -e "${GREEN}${NC} 'horus' command is available in PATH"
+    echo -e "${CYAN}${NC} Version: $(horus --version 2>/dev/null || echo 'unknown')"
 else
-    echo -e "${YELLOW}⚠${NC}  'horus' command not found in PATH"
+    echo -e "${YELLOW}${NC}  'horus' command not found in PATH"
     echo -e "  Add ${CYAN}$INSTALL_DIR${NC} to your PATH:"
     echo -e "  ${CYAN}export PATH=\"\$HOME/.cargo/bin:\$PATH\"${NC}"
     echo ""
@@ -515,7 +561,7 @@ fi
 
 # Step 11: Setup shell completions
 echo ""
-echo -e "${CYAN}→${NC} Setting up shell completions..."
+echo -e "${CYAN}${NC} Setting up shell completions..."
 
 # Detect user's shell
 SHELL_NAME=$(basename "$SHELL")
@@ -530,10 +576,10 @@ case "$SHELL_NAME" in
                 echo "" >> ~/.bashrc
                 echo "# HORUS shell completions" >> ~/.bashrc
                 echo 'eval "$(horus completion bash)"' >> ~/.bashrc
-                echo -e "${GREEN}✓${NC} Added bash completions to ~/.bashrc"
+                echo -e "${GREEN}${NC} Added bash completions to ~/.bashrc"
                 COMPLETION_INSTALLED=true
             else
-                echo -e "${GREEN}✓${NC} Bash completions already configured"
+                echo -e "${GREEN}${NC} Bash completions already configured"
                 COMPLETION_INSTALLED=true
             fi
         fi
@@ -545,10 +591,10 @@ case "$SHELL_NAME" in
                 echo "" >> ~/.zshrc
                 echo "# HORUS shell completions" >> ~/.zshrc
                 echo 'eval "$(horus completion zsh)"' >> ~/.zshrc
-                echo -e "${GREEN}✓${NC} Added zsh completions to ~/.zshrc"
+                echo -e "${GREEN}${NC} Added zsh completions to ~/.zshrc"
                 COMPLETION_INSTALLED=true
             else
-                echo -e "${GREEN}✓${NC} Zsh completions already configured"
+                echo -e "${GREEN}${NC} Zsh completions already configured"
                 COMPLETION_INSTALLED=true
             fi
         fi
@@ -560,13 +606,13 @@ case "$SHELL_NAME" in
             mkdir -p "$FISH_COMP_DIR"
             if [ -x "$INSTALL_DIR/horus" ]; then
                 "$INSTALL_DIR/horus" completion fish > "$FISH_COMP_DIR/horus.fish" 2>/dev/null
-                echo -e "${GREEN}✓${NC} Generated fish completions to $FISH_COMP_DIR/horus.fish"
+                echo -e "${GREEN}${NC} Generated fish completions to $FISH_COMP_DIR/horus.fish"
                 COMPLETION_INSTALLED=true
             fi
         fi
         ;;
     *)
-        echo -e "${YELLOW}⚠${NC}  Unknown shell: $SHELL_NAME"
+        echo -e "${YELLOW}${NC}  Unknown shell: $SHELL_NAME"
         echo -e "  You can manually set up completions later:"
         echo -e "    ${CYAN}horus completion --help${NC}"
         ;;
@@ -578,13 +624,18 @@ if [ "$COMPLETION_INSTALLED" = true ]; then
 fi
 
 echo ""
-echo -e "${GREEN}✅ HORUS installation complete!${NC}"
+echo -e "${GREEN} HORUS installation complete!${NC}"
 echo ""
 echo -e "${CYAN}Next steps:${NC}"
 echo "  1. Create a new project:"
 echo -e "     ${CYAN}horus new my_robot${NC}"
 echo ""
-echo "  2. Run your project:"
+echo "  2. Or try an example:"
+echo -e "     ${CYAN}cp -r ~/.horus/cache/horus@0.1.0/examples/snakesim ~/my_snakesim${NC}"
+echo -e "     ${CYAN}cd ~/my_snakesim${NC}"
+echo -e "     ${CYAN}horus run${NC}"
+echo ""
+echo "  3. Run your project:"
 echo -e "     ${CYAN}cd my_robot${NC}"
 echo -e "     ${CYAN}horus run${NC}"
 echo ""

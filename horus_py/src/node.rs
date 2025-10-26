@@ -1,4 +1,4 @@
-use horus::{Node, NodeInfo as CoreNodeInfo, NodeState as CoreNodeState};
+use horus::{NodeInfo as CoreNodeInfo, NodeState as CoreNodeState};
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 use std::sync::{Arc, Mutex};

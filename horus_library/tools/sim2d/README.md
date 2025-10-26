@@ -88,23 +88,23 @@ horus run circle_driver.rs
 
 ### Architecture
 ```
-┌────────────────────────────────────────┐
-│         sim2d (Single Binary)          │
-├────────────────────────────────────────┤
-│                                        │
-│  ┌──────────────┐  ┌───────────────┐  │
-│  │   Rapier2D   │  │     Bevy      │  │
-│  │   Physics    │  │  Rendering    │  │
-│  └──────┬───────┘  └───────┬───────┘  │
-│         │                   │          │
-│         └───────┬───────────┘          │
-│                 │                      │
-│         ┌───────▼───────┐              │
-│         │  HORUS Hub    │              │
-│         │  cmd_vel ←    │              │
-│         │  odom    →    │              │
-│         └───────────────┘              │
-└────────────────────────────────────────┘
+────────────────────────────────────────
+         sim2d (Single Binary)          
+────────────────────────────────────────
+                                        
+  ──────────────  ───────────────  
+     Rapier2D          Bevy        
+     Physics        Rendering      
+  ─────────────  ──────────────  
+                                      
+         ──────────────────          
+                                       
+         ───────▼───────              
+           HORUS Hub                  
+           cmd_vel ←                  
+           odom                      
+         ───────────────              
+────────────────────────────────────────
 ```
 
 ### What Gets Simulated
@@ -292,13 +292,13 @@ Options:
 ### Project Structure
 ```
 sim2d/
-├── Cargo.toml          # Dependencies and build config
-├── README.md           # This file
-├── src/
-│   └── main.rs         # Single-file simulator (Bevy + Rapier2D + HORUS)
-└── configs/            # Example configurations
-    ├── robot.yaml      # Robot physical parameters
-    └── world.yaml      # World layout and obstacles
+── Cargo.toml          # Dependencies and build config
+── README.md           # This file
+── src/
+   ── main.rs         # Single-file simulator (Bevy + Rapier2D + HORUS)
+── configs/            # Example configurations
+    ── robot.yaml      # Robot physical parameters
+    ── world.yaml      # World layout and obstacles
 ```
 
 ### Key Dependencies
@@ -337,7 +337,7 @@ sim2d renders **simple 2D shapes**, not detailed 3D models:
 - Detailed robot parts (wheels, sensors, etc.)
 - Realistic lighting/shadows
 
-**Scaling:** Coordinates are scaled 50× for visibility (0.5m robot → 25 pixels)
+**Scaling:** Coordinates are scaled 50× for visibility (0.5m robot  25 pixels)
 
 ---
 

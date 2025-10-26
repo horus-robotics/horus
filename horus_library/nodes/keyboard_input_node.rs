@@ -169,7 +169,7 @@ impl KeyboardInputNode {
         {
             if enable_raw_mode().is_ok() {
                 node.terminal_enabled = true;
-                println!("✓ Terminal keyboard input enabled. Press arrow keys to control, ESC or Ctrl+C to quit.");
+                println!(" Terminal keyboard input enabled. Press arrow keys to control, ESC or Ctrl+C to quit.");
             }
         }
 
@@ -333,6 +333,7 @@ impl KeyboardInputNode {
     }
 
     /// Process raw input and convert to KeyboardInput using the mapping
+    #[allow(dead_code)]
     fn process_input(&self, raw_input: &str) -> Option<KeyboardInput> {
         let input = raw_input.trim().to_lowercase();
         let mappings = self.custom_mapping.lock().unwrap();
@@ -438,7 +439,7 @@ impl Node for KeyboardInputNode {
 
                     // Handle ESC key to quit
                     if key_input.code == keycodes::KEY_ESCAPE {
-                        println!("\n⚠ Received ESC key, disabling raw terminal mode...");
+                        println!("\n Received ESC key, disabling raw terminal mode...");
                         let _ = disable_raw_mode();
                         self.terminal_enabled = false;
                         return;

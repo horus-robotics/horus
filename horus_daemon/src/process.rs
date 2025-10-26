@@ -15,6 +15,7 @@ pub enum ProcessStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct ProcessInfo {
     pub deployment_id: String,
     pub pid: u32,

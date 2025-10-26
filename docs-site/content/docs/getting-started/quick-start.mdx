@@ -34,7 +34,7 @@ This creates:
 - `horus.yaml` - Dependencies and project metadata
 - `.horus/` - Auto-managed environment (local workspace + global cache)
 
-> **Note**: `.horus/` is automatically managed. HORUS uses smart dependency resolution with local-first priority and global cache fallback. See [Environment Management](/environment-management#solving-dependency-hell) for details.
+> **Note**: `.horus/` is automatically managed. For Rust projects, HORUS generates `Cargo.toml` from your `horus.yaml` using path references (no source copying). See [Environment Management](/environment-management#solving-dependency-hell) for details.
 
 ## Step 2: Write the Code
 
@@ -148,7 +148,8 @@ horus run --release
 
 HORUS will automatically:
 - Scan dependencies from `horus.yaml`
-- Compile with `rustc` (optimized)
+- Generate `.horus/Cargo.toml` from dependencies
+- Compile with Cargo (optimized)
 - Execute your program
 
 You'll see:

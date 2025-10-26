@@ -126,7 +126,7 @@ pub fn detect_or_select_workspace(allow_global: bool) -> Result<InstallTarget> {
             .unwrap_or("unknown")
             .to_string();
 
-        println!("  {} Detected workspace: {}", "✓".green(), name.yellow());
+        println!("  {} Detected workspace: {}", "".green(), name.yellow());
         return Ok(InstallTarget::Local(root));
     }
 
@@ -150,7 +150,7 @@ fn interactive_workspace_selector(
     registry: &WorkspaceRegistry,
     allow_global: bool,
 ) -> Result<InstallTarget> {
-    println!("\n{} Not in a HORUS workspace", "⚠".yellow());
+    println!("\n{} Not in a HORUS workspace", "".yellow());
     println!("Where should we install the package?\n");
 
     let mut options = Vec::new();
@@ -189,10 +189,10 @@ fn interactive_workspace_selector(
     idx += 1;
 
     // Cancel option
-    println!("  [{}] ❌ Cancel\n", idx.to_string().cyan());
+    println!("  [{}]  Cancel\n", idx.to_string().cyan());
 
     // Get user selection
-    print!("→ Select target [1-{}]: ", idx);
+    print!(" Select target [1-{}]: ", idx);
     io::stdout().flush()?;
 
     let mut input = String::new();
@@ -212,7 +212,7 @@ fn interactive_workspace_selector(
     if selection == new_workspace_idx {
         println!(
             "\n{} Creating new workspace in current directory...",
-            "→".cyan()
+            "".cyan()
         );
 
         // Ask for workspace name
@@ -246,7 +246,7 @@ fn interactive_workspace_selector(
         let mut registry = WorkspaceRegistry::load()?;
         registry.add(workspace_name.clone(), current.clone())?;
 
-        println!("✅ Created workspace: {}", workspace_name.yellow());
+        println!(" Created workspace: {}", workspace_name.yellow());
         println!("   Location: {}", current.display());
 
         return Ok(InstallTarget::Local(current));
@@ -282,7 +282,7 @@ pub fn register_current_workspace(name: Option<String>) -> Result<()> {
     let horus_dir = current.join(".horus");
     if !horus_dir.exists() {
         fs::create_dir_all(&horus_dir)?;
-        println!("  {} Created .horus/ directory", "✓".green());
+        println!("  {} Created .horus/ directory", "".green());
     }
 
     // Create minimal horus.yaml if it doesn't exist
@@ -290,7 +290,7 @@ pub fn register_current_workspace(name: Option<String>) -> Result<()> {
     if !horus_yaml.exists() {
         let yaml_content = format!("name: {}\nversion: 0.1.0\n", workspace_name);
         fs::write(&horus_yaml, yaml_content)?;
-        println!("  {} Created horus.yaml", "✓".green());
+        println!("  {} Created horus.yaml", "".green());
     }
 
     // Register in workspace registry
@@ -298,7 +298,7 @@ pub fn register_current_workspace(name: Option<String>) -> Result<()> {
     registry.add(workspace_name.clone(), current.clone())?;
 
     println!(
-        "✅ Initialized HORUS workspace: {}",
+        " Initialized HORUS workspace: {}",
         workspace_name.yellow()
     );
     println!("   Location: {}", current.display());

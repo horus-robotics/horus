@@ -345,16 +345,16 @@ Nodes execute in **priority order** each tick:
 
 ```
 Tick 1:
-  → Node with priority 0 (Critical)
-  → Node with priority 1 (High)
-  → Node with priority 2 (Normal)
-  → Node with priority 3 (Low)
-  → Node with priority 4 (Background)
+   Node with priority 0 (Critical)
+   Node with priority 1 (High)
+   Node with priority 2 (Normal)
+   Node with priority 3 (Low)
+   Node with priority 4 (Background)
 
 Sleep 16ms (~60 FPS)
 
 Tick 2:
-  → Repeat...
+   Repeat...
 ```
 
 **Within the same priority**: Nodes execute in registration order.

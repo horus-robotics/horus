@@ -87,6 +87,7 @@ lazy_static::lazy_static! {
 }
 
 #[derive(Debug, Default)]
+#[allow(dead_code)]
 struct ProcessInfo {
     pid: u32,
     name: String,
@@ -417,6 +418,7 @@ fn process_exists(pid: u32) -> bool {
     Path::new(&format!("/proc/{}", pid)).exists()
 }
 
+#[allow(dead_code)]
 fn is_horus_process(pid: u32) -> bool {
     if let Ok(cmdline) = std::fs::read_to_string(format!("/proc/{}/cmdline", pid)) {
         let cmdline_str = cmdline.replace('\0', " ");
@@ -762,6 +764,7 @@ fn load_topic_metadata_from_registry() -> StdHashMap<String, (String, Vec<String
     topic_map
 }
 
+#[allow(dead_code)]
 fn find_accessing_processes(shm_path: &Path) -> Vec<u32> {
     let mut processes = Vec::new();
 

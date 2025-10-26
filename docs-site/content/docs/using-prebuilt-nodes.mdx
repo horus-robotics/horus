@@ -379,14 +379,14 @@ scheduler.register(Box::new(logger), 4, Some(true));
 ## When to Build Custom Nodes
 
 **Use pre-built nodes when:**
-- ✅ Functionality exists in marketplace or `horus_library`
-- ✅ Node can be configured to your needs
-- ✅ Performance is acceptable
+-  Functionality exists in marketplace or `horus_library`
+-  Node can be configured to your needs
+-  Performance is acceptable
 
 **Build custom nodes when:**
-- ⚠️ No existing node matches your hardware
-- ⚠️ Unique algorithm or business logic
-- ⚠️ Extreme performance requirements
+-  No existing node matches your hardware
+-  Unique algorithm or business logic
+-  Extreme performance requirements
 
 **Pro tip:** Even then, consider:
 1. Starting with a similar pre-built node
@@ -400,11 +400,11 @@ scheduler.register(Box::new(logger), 4, Some(true));
 ### By Use Case
 
 **I need to...**
-- Control a motor → `motor-driver`, `differential-drive`, `servo-controller`
-- Read a sensor → `lidar-driver`, `camera-node`, `imu-driver`
-- Process data → `kalman-filter`, `pid-controller`, `image-processor`
-- Handle safety → `emergency-stop`, `safety-monitor`, `watchdog`
-- Log data → `data-logger`, `rosbag-writer`, `csv-logger`
+- Control a motor  `motor-driver`, `differential-drive`, `servo-controller`
+- Read a sensor  `lidar-driver`, `camera-node`, `imu-driver`
+- Process data  `kalman-filter`, `pid-controller`, `image-processor`
+- Handle safety  `emergency-stop`, `safety-monitor`, `watchdog`
+- Log data  `data-logger`, `rosbag-writer`, `csv-logger`
 
 ### By Hardware
 

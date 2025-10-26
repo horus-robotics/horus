@@ -6,11 +6,11 @@
 //!
 //! ```text
 //! horus_library/
-//! ├── messages/       # Shared memory-safe messages
-//! ├── nodes/          # Reusable nodes
-//! ├── algorithms/     # Common algorithms (future)
-//! ├── apps/           # Complete demo applications
-//! └── tools/          # Development utilities
+//! ── messages/       # Shared memory-safe messages
+//! ── nodes/          # Reusable nodes
+//! ── algorithms/     # Common algorithms (future)
+//! ── apps/           # Complete demo applications
+//! ── tools/          # Development utilities
 //! ```
 //!
 //! ## Usage

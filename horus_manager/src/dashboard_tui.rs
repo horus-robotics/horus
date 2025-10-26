@@ -555,7 +555,7 @@ impl TuiDashboard {
                     .bg(Color::DarkGray)
                     .add_modifier(Modifier::BOLD),
             )
-            .highlight_symbol("► ")
+            .highlight_symbol(" ")
             .widths(&[Constraint::Length(2), Constraint::Min(10)]);
 
         // Create table state with current selection
@@ -611,7 +611,7 @@ impl TuiDashboard {
                     .bg(Color::DarkGray)
                     .add_modifier(Modifier::BOLD),
             )
-            .highlight_symbol("► ")
+            .highlight_symbol(" ")
             .widths(&[
                 Constraint::Percentage(25),
                 Constraint::Percentage(20),
@@ -766,7 +766,7 @@ impl TuiDashboard {
                     .bg(Color::DarkGray)
                     .add_modifier(Modifier::BOLD),
             )
-            .highlight_symbol("► ")
+            .highlight_symbol(" ")
             .widths(&[Constraint::Length(2), Constraint::Min(10)]);
 
         // Create table state with current selection
@@ -836,7 +836,7 @@ impl TuiDashboard {
                     .bg(Color::DarkGray)
                     .add_modifier(Modifier::BOLD),
             )
-            .highlight_symbol("► ")
+            .highlight_symbol(" ")
             .widths(&[
                 Constraint::Percentage(15),
                 Constraint::Length(8),
@@ -870,7 +870,7 @@ impl TuiDashboard {
                 "Navigation:",
                 Style::default().fg(Color::Cyan),
             )]),
-            Line::from("  Tab        - Next tab (Overview → Nodes → Topics)"),
+            Line::from("  Tab        - Next tab (Overview  Nodes  Topics)"),
             Line::from("  Shift+Tab  - Previous tab"),
             Line::from("  ↑/↓        - Navigate lists"),
             Line::from("  PgUp/PgDn  - Scroll quickly"),
@@ -930,7 +930,7 @@ impl TuiDashboard {
 
     fn draw_log_panel(&self, f: &mut Frame, area: Rect) {
         // Get logs based on panel target
-        let (title, logs) = match &self.panel_target {
+        let (_title, logs) = match &self.panel_target {
             Some(LogPanelTarget::Node(node_name)) => {
                 let logs = GLOBAL_LOG_BUFFER.get_for_node(node_name);
                 (format!("Logs: {}", node_name), logs)

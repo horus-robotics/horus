@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-HORUS is currently in alpha development. Security updates will be provided for the following versions:
+Security updates will be provided for the following versions:
 
 | Version | Supported |
 | ------- | --------- |

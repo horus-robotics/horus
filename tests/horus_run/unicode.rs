@@ -1,5 +1,5 @@
 fn main() {
-    println!("Hello 世界 🚀");
+    println!("Hello 世界 ");
     println!("Тест Русский");
-    println!("Test émojis: 🤖 ⚡ 🔧");
+    println!("Test émojis:   ");
 }

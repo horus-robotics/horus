@@ -1,7 +1,0 @@
-[package]
-name = "link_drone_app"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-horus_core = { path = "../../horus_core" }

@@ -11,14 +11,14 @@ NC='\033[0m'
 # Change to test directory
 cd "$(dirname "$0")"
 
-echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║   HORUS New Command Test Suite           ║${NC}"
-echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
+echo -e "${BLUE}${NC}"
+echo -e "${BLUE}   HORUS New Command Test Suite           ${NC}"
+echo -e "${BLUE}${NC}"
 echo ""
 
 # Check if horus binary exists
 if [ ! -f "/home/lord-patpak/horus/HORUS/target/debug/horus" ]; then
-    echo -e "${RED}❌ Error: horus binary not found${NC}"
+    echo -e "${RED} Error: horus binary not found${NC}"
     echo "Please build horus first:"
     echo "  cd /home/lord-patpak/horus/HORUS"
     echo "  cargo build"
@@ -45,14 +45,14 @@ run_test() {
         return
     fi
 
-    echo -e "${BLUE}━━━ Running: $test_name ━━━${NC}"
+    echo -e "${BLUE} Running: $test_name ${NC}"
     ((TOTAL++))
 
     if bash "$test_file"; then
-        echo -e "${GREEN}✓ PASSED: $test_name${NC}"
+        echo -e "${GREEN} PASSED: $test_name${NC}"
         ((PASSED++))
     else
-        echo -e "${RED}✗ FAILED: $test_name${NC}"
+        echo -e "${RED} FAILED: $test_name${NC}"
         ((FAILED++))
     fi
     echo ""
@@ -69,23 +69,23 @@ run_test "test_conflicts.sh" "Flag Conflicts"
 run_test "test_edge_cases.sh" "Edge Cases"
 
 # Print summary
-echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║              Test Summary                 ║${NC}"
-echo -e "${BLUE}╠════════════════════════════════════════════╣${NC}"
-echo -e "${BLUE}║${NC}  Total test suites:  $TOTAL"
-echo -e "${BLUE}║${NC}  ${GREEN}Passed:${NC}            $PASSED"
-echo -e "${BLUE}║${NC}  ${RED}Failed:${NC}            $FAILED"
+echo -e "${BLUE}${NC}"
+echo -e "${BLUE}              Test Summary                 ${NC}"
+echo -e "${BLUE}${NC}"
+echo -e "${BLUE}${NC}  Total test suites:  $TOTAL"
+echo -e "${BLUE}${NC}  ${GREEN}Passed:${NC}            $PASSED"
+echo -e "${BLUE}${NC}  ${RED}Failed:${NC}            $FAILED"
 if [ $SKIPPED -gt 0 ]; then
-    echo -e "${BLUE}║${NC}  ${YELLOW}Skipped:${NC}           $SKIPPED"
+    echo -e "${BLUE}${NC}  ${YELLOW}Skipped:${NC}           $SKIPPED"
 fi
-echo -e "${BLUE}╚════════════════════════════════════════════╝${NC}"
+echo -e "${BLUE}${NC}"
 echo ""
 
 # Exit code
 if [ $FAILED -eq 0 ]; then
-    echo -e "${GREEN}✅ ALL TESTS PASSED - Ready for production!${NC}"
+    echo -e "${GREEN} ALL TESTS PASSED - Ready for production!${NC}"
     exit 0
 else
-    echo -e "${RED}❌ SOME TESTS FAILED - Please review and fix${NC}"
+    echo -e "${RED} SOME TESTS FAILED - Please review and fix${NC}"
     exit 1
 fi

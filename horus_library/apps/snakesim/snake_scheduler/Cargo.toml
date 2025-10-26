@@ -1,9 +1,0 @@
-[package]
-name = "snake_scheduler"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-horus = { path = "../../../../horus" }
-snake_control_node = { path = "../snake_control_node" }
-tokio = { version = "1.0", features = ["full"] }

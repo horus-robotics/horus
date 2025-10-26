@@ -14,9 +14,8 @@ The `horus` command gives you everything you need to build, run, and manage your
 horus new <name>           # Create a new project
 horus run [file]           # Build and run your app
 horus dashboard [port]     # Monitor your system
-horus pkg <command>        # Manage packages
+horus pkg <command>        # Manage packages (install, publish, etc.)
 horus env <command>        # Save/restore environments
-horus publish              # Share your package
 horus auth <command>       # Login to registry
 horus version              # Show version information
 ```
@@ -41,7 +40,7 @@ horus new my_project --macro
 # Python project
 horus new my_project --python
 
-# C project (⚠️ under development)
+# C project ( under development)
 horus new my_project --c
 ```
 
@@ -87,7 +86,7 @@ horus new robot_controller --output ~/projects/robots
 
 **What it does**: Compiles your code and runs it. Handles all the build tools for you.
 
-**Why it's useful**: One command works for Rust, Python, and C. No need to remember `cargo run`, `python3`, or `gcc` commands.
+**Why it's useful**: One command works for Rust, Python, and C. For Rust, it auto-generates `Cargo.toml` from `horus.yaml` and uses Cargo for compilation. For Python and C, it handles the appropriate tooling.
 
 ### Basic Usage
 
@@ -237,8 +236,11 @@ horus pkg remove <package>
 # List packages
 horus pkg list
 
+# Publish current package to registry
+horus pkg publish
+
 # Unpublish a package from registry
-horus pkg unpublish <package>
+horus pkg unpublish <package> <version>
 ```
 
 ### Examples
@@ -273,9 +275,18 @@ horus pkg list sensor
 horus pkg remove pid-controller
 ```
 
+**Publish your package to registry**:
+```bash
+# First login
+horus auth login --github
+
+# Then publish from your project directory
+horus pkg publish
+```
+
 **Unpublish from registry** (irreversible!):
 ```bash
-horus pkg unpublish my-package -v 1.0.0
+horus pkg unpublish my-package 1.0.0
 ```
 
 ---
@@ -313,36 +324,6 @@ horus env restore teammate-setup.yaml
 ```bash
 # On production machine
 horus env restore production.yaml
-```
-
----
-
-## `horus publish` - Share Your Package
-
-**What it does**: Upload your package so others can use it.
-
-**Why it's useful**: Share your work with the community or your team.
-
-### Usage
-
-```bash
-horus publish
-```
-
-### Requirements
-
-- Must be in a project directory
-- Must be logged in (`horus auth login`)
-
-### Example
-
-```bash
-# Create and publish
-horus new my_awesome_controller --macro
-cd my_awesome_controller
-# ... build and test it ...
-horus auth login --github
-horus publish
 ```
 
 ---
@@ -475,7 +456,7 @@ horus run --remote production-robot --release
 horus auth login --github
 
 # Publish
-horus publish
+horus pkg publish
 
 # Others can now:
 horus pkg install your-package-name

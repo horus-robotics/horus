@@ -1,14 +1,19 @@
-# Rust
+# Rust Build Artifacts
 target/
+**/target/
 Cargo.lock
 **/*.rs.bk
 *.pdb
+*.o
+*.a
+*.so
+*.dylib
+*.dll
 
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
 .Python
 build/
 develop-eggs/
@@ -41,17 +46,15 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-.DS_Store
-*.pem
 
-# Environment variables
-.env
-.env*.local
-
-# HORUS specific
+# HORUS Specific
 .horus/
 /dev/shm/horus/
 *.horus
+
+# Environment Variables
+.env
+.env*.local
 
 # IDE
 .vscode/
@@ -64,32 +67,8 @@ yarn-error.log*
 # OS
 .DS_Store
 Thumbs.db
-
-# Build artifacts
-*.o
-*.a
-*.so
-*.dylib
-*.dll
+*.pem
 
 # Cache
 .cache/
 *.cache
-
-# Build artifacts
-target/
-**/target/
-.next/
-out/
-
-# Runtime cache
-.horus/
-
-# Development files
-.claude/
-
-# IDE
-*.swp
-*.swo
-*~
-

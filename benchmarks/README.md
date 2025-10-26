@@ -32,22 +32,22 @@ cargo build --release --bin production_bench
 
 **Output:**
 ```
-═══════════════════════════════════════════════════════════════
+
   HORUS Production Message Benchmark Suite
   Testing with real robotics message types
-═══════════════════════════════════════════════════════════════
 
-┏━━  CmdVel (Motor Control Command)
-┃    Size: 16 bytes | Typical rate: 1000Hz
-┃    Latency (avg): 295.88 ns
-┃    Throughput: 3379733.70 msg/s
-┗━━
 
-┏━━  LaserScan (2D Lidar Data)
-┃    Size: 1480 bytes | Typical rate: 10Hz
-┃    Latency (avg): 1.31 μs
-┃    Throughput: 762025.93 msg/s
-┗━━
+  CmdVel (Motor Control Command)
+    Size: 16 bytes | Typical rate: 1000Hz
+    Latency (avg): 295.88 ns
+    Throughput: 3379733.70 msg/s
+
+
+  LaserScan (2D Lidar Data)
+    Size: 1480 bytes | Typical rate: 10Hz
+    Latency (avg): 1.31 μs
+    Throughput: 762025.93 msg/s
+
 ```
 
 ---
@@ -225,16 +225,16 @@ See detailed report: [`results/production_messages_benchmark.md`](results/produc
 
 ```
 benchmarks/
-├── README.md                              # This file
-├── Cargo.toml                            # Dependencies
-├── src/
-│   ├── lib.rs                            # Shared utilities
-│   └── bin/
-│       └── production_bench.rs           # Main production benchmark
-├── benches/
-│   └── production_messages.rs            # Criterion benchmarks
-└── results/
-    └── production_messages_benchmark.md  # Detailed results
+── README.md                              # This file
+── Cargo.toml                            # Dependencies
+── src/
+   ── lib.rs                            # Shared utilities
+   ── bin/
+       ── production_bench.rs           # Main production benchmark
+── benches/
+   ── production_messages.rs            # Criterion benchmarks
+── results/
+    ── production_messages_benchmark.md  # Detailed results
 ```
 
 ---

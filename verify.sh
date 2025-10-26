@@ -12,14 +12,14 @@ MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
 # Symbols
-CHECK="${GREEN}✓${NC}"
-CROSS="${RED}✗${NC}"
-WARN="${YELLOW}⚠${NC}"
-INFO="${CYAN}→${NC}"
+CHECK="${GREEN}[+]${NC}"
+CROSS="${RED}[x]${NC}"
+WARN="${YELLOW}[!]${NC}"
+INFO="${CYAN}[i]${NC}"
 
-echo -e "${BLUE}════════════════════════════════════${NC}"
+echo -e "${BLUE}========================================${NC}"
 echo -e "${CYAN}   HORUS Installation Verification${NC}"
-echo -e "${BLUE}════════════════════════════════════${NC}"
+echo -e "${BLUE}========================================${NC}"
 echo ""
 
 ERRORS=0
@@ -215,13 +215,50 @@ if [ -x "$INSTALL_DIR/horus" ]; then
         ERRORS=$((ERRORS + 1))
     fi
 
-    # List available commands
-    COMMANDS=$("$INSTALL_DIR/horus" --help 2>/dev/null | grep -E "^  [a-z]" | awk '{print $1}' | sort)
-    if [ -n "$COMMANDS" ]; then
-        echo -e "  $CHECK Available commands:"
-        echo "$COMMANDS" | while read -r cmd; do
-            echo -e "      - $cmd"
-        done
+    # Test key subcommands exist
+    declare -a SUBCOMMANDS=("new" "run" "dashboard" "pkg" "env" "auth" "version")
+    ALL_CMDS_OK=true
+    for subcmd in "${SUBCOMMANDS[@]}"; do
+        if "$INSTALL_DIR/horus" "$subcmd" --help &>/dev/null; then
+            :  # Success, do nothing
+        else
+            echo -e "  $CROSS Command: horus $subcmd --help failed"
+            ERRORS=$((ERRORS + 1))
+            ALL_CMDS_OK=false
+        fi
+    done
+    if [ "$ALL_CMDS_OK" = true ]; then
+        echo -e "  $CHECK All subcommands: Accessible"
+    fi
+
+    # Test cargo build in HORUS source (if we're in the repo)
+    if [ -f "Cargo.toml" ] && grep -q "horus_manager" "Cargo.toml" 2>/dev/null; then
+        echo ""
+        echo -e "  ${INFO} Running build verification..."
+
+        # Test cargo check (fast, no warnings)
+        if cargo check --quiet 2>&1 | grep -q "error:"; then
+            echo -e "  $CROSS Build: cargo check failed"
+            ERRORS=$((ERRORS + 1))
+        else
+            WARNING_COUNT=$(cargo check 2>&1 | grep "warning:" | grep -v "profiles for the non root" | wc -l)
+            if [ "$WARNING_COUNT" -eq 0 ]; then
+                echo -e "  $CHECK Build: cargo check passes (0 warnings)"
+            else
+                echo -e "  $WARN Build: cargo check has $WARNING_COUNT warning(s)"
+                WARNINGS=$((WARNINGS + 1))
+            fi
+        fi
+
+        # Verify binary still works after build
+        if [ -x "./target/debug/horus" ]; then
+            if ./target/debug/horus --version &>/dev/null; then
+                echo -e "  $CHECK Binary: Debug build functional"
+            else
+                echo -e "  $CROSS Binary: Debug build not working"
+                ERRORS=$((ERRORS + 1))
+            fi
+        fi
     fi
 else
     echo -e "  $WARN Cannot run functionality tests (binary not working)"
@@ -279,23 +316,23 @@ echo ""
 #=====================================
 # Summary
 #=====================================
-echo -e "${BLUE}════════════════════════════════════${NC}"
+echo -e "${BLUE}${NC}"
 echo -e "${CYAN}Summary:${NC}"
 echo ""
 
 if [ $ERRORS -eq 0 ] && [ $WARNINGS -eq 0 ]; then
-    echo -e "  ${GREEN}✅ Perfect! Everything looks good.${NC}"
+    echo -e "  ${GREEN} Perfect! Everything looks good.${NC}"
     echo ""
     echo -e "  HORUS is properly installed and ready to use."
     EXIT_CODE=0
 elif [ $ERRORS -eq 0 ]; then
-    echo -e "  ${YELLOW}⚠  $WARNINGS warning(s) found${NC}"
+    echo -e "  ${YELLOW}  $WARNINGS warning(s) found${NC}"
     echo ""
     echo -e "  HORUS is installed but with minor issues."
     echo -e "  Review warnings above for optional improvements."
     EXIT_CODE=1
 else
-    echo -e "  ${RED}❌ $ERRORS error(s), $WARNINGS warning(s) found${NC}"
+    echo -e "  ${RED} $ERRORS error(s), $WARNINGS warning(s) found${NC}"
     echo ""
     echo -e "  HORUS installation has problems."
     echo ""
@@ -306,7 +343,7 @@ else
     EXIT_CODE=2
 fi
 
-echo -e "${BLUE}════════════════════════════════════${NC}"
+echo -e "${BLUE}${NC}"
 echo ""
 
 exit $EXIT_CODE

@@ -25,75 +25,72 @@ echo "=== Testing C Project Creation ==="
 # Test 1: Create C project
 echo -n "Test 1: Create C project with -c flag... "
 if /home/lord-patpak/horus/HORUS/target/debug/horus new "$PROJECT_NAME" -c 2>&1 | grep -q "Project created successfully"; then
-    echo -e "${GREEN}✅ PASS${NC}"
+    echo -e "${GREEN} PASS${NC}"
 else
-    echo -e "${RED}❌ FAIL${NC}"
+    echo -e "${RED} FAIL${NC}"
     exit 1
 fi
 
 # Test 2: Check project directory exists
 echo -n "Test 2: Project directory exists... "
 if [ -d "$PROJECT_NAME" ]; then
-    echo -e "${GREEN}✅ PASS${NC}"
+    echo -e "${GREEN} PASS${NC}"
 else
-    echo -e "${RED}❌ FAIL${NC}"
+    echo -e "${RED} FAIL${NC}"
     exit 1
 fi
 
 # Test 3: Check main.c exists
 echo -n "Test 3: main.c file exists... "
 if [ -f "$PROJECT_NAME/main.c" ]; then
-    echo -e "${GREEN}✅ PASS${NC}"
+    echo -e "${GREEN} PASS${NC}"
 else
-    echo -e "${RED}❌ FAIL - main.c not found${NC}"
+    echo -e "${RED} FAIL - main.c not found${NC}"
     exit 1
 fi
 
 # Test 4: Check horus.yaml exists
 echo -n "Test 4: horus.yaml exists... "
 if [ -f "$PROJECT_NAME/horus.yaml" ]; then
-    echo -e "${GREEN}✅ PASS${NC}"
+    echo -e "${GREEN} PASS${NC}"
 else
-    echo -e "${RED}❌ FAIL${NC}"
+    echo -e "${RED} FAIL${NC}"
     exit 1
 fi
 
-# Test 5: Check .horus directory structure
-echo -n "Test 5: .horus directory structure... "
-if [ -d "$PROJECT_NAME/.horus" ] && \
-   [ -d "$PROJECT_NAME/.horus/bin" ] && \
-   [ -d "$PROJECT_NAME/.horus/lib" ] && \
-   [ -d "$PROJECT_NAME/.horus/include" ]; then
-    echo -e "${GREEN}✅ PASS${NC}"
+# Test 5: Check .horus directory exists
+echo -n "Test 5: .horus directory exists... "
+if [ -d "$PROJECT_NAME/.horus" ]; then
+    echo -e "${GREEN} PASS${NC}"
 else
-    echo -e "${RED}❌ FAIL${NC}"
+    echo -e "${RED} FAIL - .horus directory not created${NC}"
     exit 1
 fi
 
 # Test 6: Check no Cargo.toml exists (C project)
 echo -n "Test 6: No Cargo.toml for C project... "
 if [ ! -f "$PROJECT_NAME/Cargo.toml" ]; then
-    echo -e "${GREEN}✅ PASS${NC}"
+    echo -e "${GREEN} PASS${NC}"
 else
-    echo -e "${RED}❌ FAIL - Unexpected Cargo.toml${NC}"
+    echo -e "${RED} FAIL - Unexpected Cargo.toml${NC}"
     exit 1
 fi
 
 # Test 7: Check no main.rs exists
 echo -n "Test 7: No main.rs for C project... "
 if [ ! -f "$PROJECT_NAME/main.rs" ]; then
-    echo -e "${GREEN}✅ PASS${NC}"
+    echo -e "${GREEN} PASS${NC}"
 else
-    echo -e "${RED}❌ FAIL - Unexpected main.rs${NC}"
+    echo -e "${RED} FAIL - Unexpected main.rs${NC}"
     exit 1
 fi
 
 # Test 8: Check no main.py exists
 echo -n "Test 8: No main.py for C project... "
 if [ ! -f "$PROJECT_NAME/main.py" ]; then
-    echo -e "${GREEN}✅ PASS${NC}"
+    echo -e "${GREEN} PASS${NC}"
 else
-    echo -e "${RED}❌ FAIL - Unexpected main.py${NC}"
+    echo -e "${RED} FAIL - Unexpected main.py${NC}"
     exit 1
 fi
 

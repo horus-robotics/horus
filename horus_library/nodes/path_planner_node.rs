@@ -48,6 +48,7 @@ enum PlanningAlgorithm {
 }
 
 #[derive(Clone, Debug)]
+#[allow(dead_code)]
 struct AStarNode {
     x: i32,
     y: i32,

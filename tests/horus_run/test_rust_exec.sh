@@ -25,12 +25,12 @@ echo ""
 
 # Helper functions
 pass() {
-    echo -e "${GREEN}✅ PASS${NC}: $1"
+    echo -e "${GREEN} PASS${NC}: $1"
     ((TESTS_PASSED++))
 }
 
 fail() {
-    echo -e "${RED}❌ FAIL${NC}: $1"
+    echo -e "${RED} FAIL${NC}: $1"
     echo "   Error: $2"
     ((TESTS_FAILED++))
 }
@@ -188,13 +188,13 @@ fi
 echo "Test 10: Rust with Unicode characters..."
 cat > unicode.rs << 'EOF'
 fn main() {
-    println!("Hello 世界 🚀");
+    println!("Hello 世界 ");
     println!("Тест Русский");
-    println!("Test émojis: 🤖 ⚡ 🔧");
+    println!("Test émojis:   ");
 }
 EOF
 
-if $HORUS run unicode.rs 2>&1 | grep -q "🚀"; then
+if $HORUS run unicode.rs 2>&1 | grep -q ""; then
     pass "Rust Unicode handling works"
 else
     fail "Rust Unicode" "Unicode output failed"

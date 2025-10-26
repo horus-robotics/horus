@@ -701,10 +701,10 @@ thread::sleep(Duration::from_millis(1));
 **Symptom**: `recv()` always returns `None`
 
 **Checklist**:
-1. ✅ Producer and consumer use same topic name?
-2. ✅ Producer sending before consumer receiving?
-3. ✅ Both using same type `T`?
-4. ✅ Producer calling `send()`?
+1.  Producer and consumer use same topic name?
+2.  Producer sending before consumer receiving?
+3.  Both using same type `T`?
+4.  Producer calling `send()`?
 
 ### Type Mismatch
 
@@ -732,14 +732,14 @@ let c: Link<f32> = Link::consumer("data")?;
 **Example scenarios**:
 
 **Use Link**:
-- Motor encoder → Controller (1kHz control loop)
-- Camera → Vision processor (30Hz frame processing)
-- IMU → State estimator (100Hz sensor fusion)
+- Motor encoder  Controller (1kHz control loop)
+- Camera  Vision processor (30Hz frame processing)
+- IMU  State estimator (100Hz sensor fusion)
 
 **Use Hub**:
-- Sensor → Multiple loggers/visualizers
-- Status updates → Dashboard + Recorder
-- Commands → Multiple actuators
+- Sensor  Multiple loggers/visualizers
+- Status updates  Dashboard + Recorder
+- Commands  Multiple actuators
 
 ## Complete Example
 

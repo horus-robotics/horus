@@ -8,7 +8,7 @@ As a robotics developer, I want to quickly create a new HORUS project with prope
 
 ## Test Scenarios
 
-### Scenario 1: Create Basic Rust Project ✅
+### Scenario 1: Create Basic Rust Project 
 **Given:** User has HORUS CLI installed
 **When:** User runs `horus new my_robot`
 **Then:**
@@ -25,7 +25,7 @@ As a robotics developer, I want to quickly create a new HORUS project with prope
 ```bash
 $ horus new my_robot
 ✨ Creating new HORUS project 'my_robot'
-✅ Project created successfully!
+ Project created successfully!
 
 To get started:
   cd my_robot
@@ -58,13 +58,13 @@ $ horus new my_robot
 
 ? Use HORUS macros for simpler syntax? [y/N]: y
 
-✅ Project created successfully!
+ Project created successfully!
 
 $ cd my_robot && horus run
-→ Scanning imports...
-→ Found 2 dependencies
-→ Building Rust project...
-→ Executing...
+ Scanning imports...
+ Found 2 dependencies
+ Building Rust project...
+ Executing...
 ```
 
 ### Scenario 3: Create Python Project
@@ -73,17 +73,30 @@ $ cd my_robot && horus run
 **Then:**
 - [ ] Directory `my_robot/` is created
 - [ ] `main.py` exists with Python Hub/Node example
-- [ ] `requirements.txt` or `pyproject.toml` is created
+- [ ] `horus.yaml` is created with language: python
 - [ ] `.gitignore` is created for Python
-- [ ] Success message: "Created Python project: my_robot"
+- [ ] `.horus/` directory is created
+- [ ] Success message confirms project creation
 - [ ] Python script is syntactically correct
-- [ ] Imports use correct Python bindings API
+- [ ] Imports use correct Python bindings API (`import horus`)
 
 **Acceptance Criteria:**
 ```bash
 $ horus new my_robot -p
-Created Python project: my_robot
+✨ Creating new HORUS project 'my_robot'
+
+? Project description: A HORUS robotics project
+
+ Project created successfully!
+
+To get started:
+  cd my_robot
+  horus run (auto-installs dependencies)
+
 $ cd my_robot
+$ ls
+main.py  horus.yaml  .horus/  .gitignore
+
 $ python -m py_compile main.py  # No syntax errors
 ```
 
@@ -100,7 +113,7 @@ $ python -m py_compile main.py  # No syntax errors
 **Acceptance Criteria:**
 ```bash
 $ horus new my_robot -c
-Created C project: my_robot (⚠️  C bindings are in alpha)
+Created C project: my_robot (  C bindings are in alpha)
 $ cat my_robot/main.c
 // C bindings for HORUS are under development
 // Please use Rust or Python for now
@@ -144,7 +157,7 @@ Arguments:
 
 Options:
   -p, --python     Create a Python project
-  -c, --c          Create a C project (⚠️ alpha)
+  -c, --c          Create a C project ( alpha)
       --macro      Use horus_macros for node definition
   -h, --help       Print help
 ```

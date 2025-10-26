@@ -346,37 +346,37 @@ Current temperature: 20.3°C
 ## Architecture Overview
 
 ```
-┌─────────────────────────────────────────┐
-│         Your Application                 │
-├─────────────────────────────────────────┤
-│  Node 1    Node 2    Node 3              │
-│  [Sensor] [Process] [Display]            │
-│     │         │         │                │
-│     └────┬────┴────┬────┘                │
-│          │         │                     │
-│     ┌────▼─────────▼────┐                │
-│     │  Shared Memory    │                │
-│     │  (Topics)         │                │
-│     └───────────────────┘                │
-├─────────────────────────────────────────┤
-│         HORUS Framework                  │
-│  • Hub (Communication)                   │
-│  • Scheduler (Execution)                 │
-│  • Logging (Debugging)                   │
-└─────────────────────────────────────────┘
+─────────────────────────────────────────
+         Your Application                 
+─────────────────────────────────────────
+  Node 1    Node 2    Node 3              
+  [Sensor] [Process] [Display]            
+                                       
+     ────────────────                
+                                        
+     ────▼─────────▼────                
+       Shared Memory                    
+       (Topics)                         
+     ───────────────────                
+─────────────────────────────────────────
+         HORUS Framework                  
+  • Hub (Communication)                   
+  • Scheduler (Execution)                 
+  • Logging (Debugging)                   
+─────────────────────────────────────────
 ```
 
 ## Next Steps
 
 Ready to build with HORUS?
 
-1. **[Install HORUS →](/getting-started/installation)**
+1. **[Install HORUS ](/getting-started/installation)**
    Get up and running in 5 minutes
 
-2. **[Quick Start Tutorial →](/getting-started/quick-start)**
+2. **[Quick Start Tutorial ](/getting-started/quick-start)**
    Build a working application
 
-3. **[See Examples →](/examples)**
+3. **[See Examples ](/examples)**
    Learn from real projects
 
 **Questions?** Check out the [CLI Reference](/cli-reference) or [Architecture](/architecture) pages.

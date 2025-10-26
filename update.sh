@@ -12,19 +12,19 @@ CYAN='\033[0;36m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${CYAN}🔄 HORUS Update Script${NC}"
+echo -e "${CYAN} HORUS Update Script${NC}"
 echo ""
 
 # Check if we're in a git repository
 if [ ! -d ".git" ]; then
-    echo -e "${RED}❌ Error: Not in a git repository${NC}"
+    echo -e "${RED} Error: Not in a git repository${NC}"
     echo "Please run this script from the HORUS repository root"
     exit 1
 fi
 
 # Check if there are uncommitted changes
 if ! git diff-index --quiet HEAD --; then
-    echo -e "${YELLOW}⚠  Warning: You have uncommitted changes${NC}"
+    echo -e "${YELLOW}  Warning: You have uncommitted changes${NC}"
     echo ""
     git status --short
     echo ""
@@ -32,10 +32,10 @@ if ! git diff-index --quiet HEAD --; then
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         git stash push -m "Auto-stash before HORUS update at $(date)"
-        echo -e "${GREEN}✓${NC} Changes stashed"
+        echo -e "${GREEN}${NC} Changes stashed"
         STASHED=true
     else
-        echo -e "${YELLOW}→${NC} Continuing with uncommitted changes..."
+        echo -e "${YELLOW}${NC} Continuing with uncommitted changes..."
     fi
     echo ""
 fi
@@ -47,11 +47,11 @@ if [ -x "$INSTALL_DIR/horus" ]; then
     OLD_VERSION=$("$INSTALL_DIR/horus" --version 2>/dev/null | awk '{print $2}' || echo "unknown")
 fi
 
-echo -e "${CYAN}→${NC} Current version: $OLD_VERSION"
+echo -e "${CYAN}${NC} Current version: $OLD_VERSION"
 echo ""
 
 # Fetch latest changes
-echo -e "${CYAN}→${NC} Fetching latest changes from remote..."
+echo -e "${CYAN}${NC} Fetching latest changes from remote..."
 git fetch origin
 
 # Get current branch
@@ -63,11 +63,11 @@ REMOTE=$(git rev-parse @{u} 2>/dev/null || echo "$LOCAL")
 BASE=$(git merge-base @ @{u} 2>/dev/null || echo "$LOCAL")
 
 if [ "$LOCAL" = "$REMOTE" ]; then
-    echo -e "${GREEN}✓${NC} Already up to date"
+    echo -e "${GREEN}${NC} Already up to date"
 
     # Check if binary needs rebuilding anyway
     if [ ! -x "$INSTALL_DIR/horus" ]; then
-        echo -e "${YELLOW}⚠${NC}  Binary not found, rebuilding..."
+        echo -e "${YELLOW}${NC}  Binary not found, rebuilding..."
         NEEDS_REBUILD=true
     else
         echo ""
@@ -76,12 +76,12 @@ if [ "$LOCAL" = "$REMOTE" ]; then
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             NEEDS_REBUILD=true
         else
-            echo -e "${GREEN}✅ Nothing to do!${NC}"
+            echo -e "${GREEN} Nothing to do!${NC}"
             exit 0
         fi
     fi
 elif [ "$LOCAL" = "$BASE" ]; then
-    echo -e "${BLUE}→${NC} Updates available on $CURRENT_BRANCH"
+    echo -e "${BLUE}${NC} Updates available on $CURRENT_BRANCH"
 
     # Show what changed
     echo ""
@@ -92,16 +92,16 @@ elif [ "$LOCAL" = "$BASE" ]; then
     read -p "$(echo -e ${YELLOW}?${NC}) Pull and update? [Y/n]: " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-        echo -e "${CYAN}→${NC} Pulling latest changes..."
+        echo -e "${CYAN}${NC} Pulling latest changes..."
         git pull origin "$CURRENT_BRANCH"
-        echo -e "${GREEN}✓${NC} Updated to latest commit"
+        echo -e "${GREEN}${NC} Updated to latest commit"
         NEEDS_REBUILD=true
     else
-        echo -e "${RED}✗${NC} Update cancelled"
+        echo -e "${RED}${NC} Update cancelled"
         exit 0
     fi
 else
-    echo -e "${YELLOW}⚠${NC}  Branches have diverged!"
+    echo -e "${YELLOW}${NC}  Branches have diverged!"
     echo "Local and remote have different commits."
     echo ""
     echo "Options:"
@@ -121,7 +121,7 @@ else
             NEEDS_REBUILD=true
             ;;
         *)
-            echo -e "${RED}✗${NC} Update cancelled"
+            echo -e "${RED}${NC} Update cancelled"
             exit 0
             ;;
     esac
@@ -131,20 +131,20 @@ echo ""
 
 # Detect what changed
 if [ -n "$NEEDS_REBUILD" ]; then
-    echo -e "${CYAN}🔍 Analyzing changes...${NC}"
+    echo -e "${CYAN} Analyzing changes...${NC}"
 
     CARGO_CHANGED=false
     CODE_CHANGED=false
 
     # Check if Cargo.toml files changed
     if git diff --name-only HEAD@{1} HEAD 2>/dev/null | grep -q "Cargo.toml"; then
-        echo -e "${BLUE}→${NC} Cargo.toml files changed - dependencies may have updated"
+        echo -e "${BLUE}${NC} Cargo.toml files changed - dependencies may have updated"
         CARGO_CHANGED=true
     fi
 
     # Check if Rust source code changed
     if git diff --name-only HEAD@{1} HEAD 2>/dev/null | grep -q "\.rs$"; then
-        echo -e "${BLUE}→${NC} Rust source files changed"
+        echo -e "${BLUE}${NC} Rust source files changed"
         CODE_CHANGED=true
     fi
 
@@ -152,14 +152,14 @@ if [ -n "$NEEDS_REBUILD" ]; then
 
     # Update dependencies if Cargo.toml changed
     if [ "$CARGO_CHANGED" = true ]; then
-        echo -e "${CYAN}→${NC} Updating dependencies..."
+        echo -e "${CYAN}${NC} Updating dependencies..."
         cargo update
-        echo -e "${GREEN}✓${NC} Dependencies updated"
+        echo -e "${GREEN}${NC} Dependencies updated"
         echo ""
     fi
 
     # Rebuild in release mode
-    echo -e "${CYAN}🔨 Rebuilding HORUS (release mode)...${NC}"
+    echo -e "${CYAN} Rebuilding HORUS (release mode)...${NC}"
     echo ""
 
     # Build with progress
@@ -167,7 +167,7 @@ if [ -n "$NEEDS_REBUILD" ]; then
 
     if [ $? -ne 0 ]; then
         echo ""
-        echo -e "${RED}❌ Build failed${NC}"
+        echo -e "${RED} Build failed${NC}"
         echo ""
         echo "Troubleshooting:"
         echo "  1. Try recovery install: ./recovery_install.sh"
@@ -177,11 +177,11 @@ if [ -n "$NEEDS_REBUILD" ]; then
     fi
 
     echo ""
-    echo -e "${GREEN}✓${NC} Build completed"
+    echo -e "${GREEN}${NC} Build completed"
     echo ""
 
     # Install updated binary
-    echo -e "${CYAN}→${NC} Installing updated binary..."
+    echo -e "${CYAN}${NC} Installing updated binary..."
 
     if [ ! -d "$INSTALL_DIR" ]; then
         mkdir -p "$INSTALL_DIR"
@@ -190,11 +190,11 @@ if [ -n "$NEEDS_REBUILD" ]; then
     cp target/release/horus "$INSTALL_DIR/horus"
     chmod +x "$INSTALL_DIR/horus"
 
-    echo -e "${GREEN}✓${NC} Binary installed to $INSTALL_DIR/horus"
+    echo -e "${GREEN}${NC} Binary installed to $INSTALL_DIR/horus"
     echo ""
 
     # Update library cache
-    echo -e "${CYAN}→${NC} Updating library cache..."
+    echo -e "${CYAN}${NC} Updating library cache..."
 
     CACHE_DIR="$HOME/.horus/cache"
     mkdir -p "$CACHE_DIR"
@@ -207,8 +207,8 @@ if [ -n "$NEEDS_REBUILD" ]; then
     if [ -f "$VERSION_FILE" ]; then
         OLD_CACHED_VERSION=$(cat "$VERSION_FILE")
         if [ "$OLD_CACHED_VERSION" != "$NEW_VERSION" ]; then
-            echo -e "${YELLOW}→${NC} Version changed: $OLD_CACHED_VERSION → $NEW_VERSION"
-            echo -e "${CYAN}→${NC} Cleaning old cache..."
+            echo -e "${YELLOW}${NC} Version changed: $OLD_CACHED_VERSION  $NEW_VERSION"
+            echo -e "${CYAN}${NC} Cleaning old cache..."
             rm -rf "$CACHE_DIR"/*@"$OLD_CACHED_VERSION" 2>/dev/null || true
         fi
     fi
@@ -270,7 +270,7 @@ if [ -n "$NEEDS_REBUILD" ]; then
 
             # Check if maturin is available
             if command -v maturin &> /dev/null || command -v "$HOME/.local/bin/maturin" &> /dev/null; then
-                echo -e "${CYAN}→${NC} Updating Python bindings..."
+                echo -e "${CYAN}${NC} Updating Python bindings..."
                 cd horus_py
                 (maturin develop --release --quiet 2>/dev/null || "$HOME/.local/bin/maturin" develop --release --quiet 2>/dev/null) && {
                     mkdir -p "$HORUS_PY_DIR/lib/horus"
@@ -284,7 +284,7 @@ if [ -n "$NEEDS_REBUILD" ]; then
                     elif [ -f "python/horus/_horus.abi3.dylib" ]; then
                         cp python/horus/_horus.abi3.dylib "$HORUS_PY_DIR/lib/horus/_horus.so"
                     fi
-                    echo -e "${GREEN}✓${NC} Python bindings updated"
+                    echo -e "${GREEN}${NC} Python bindings updated"
                 }
                 cd ..
             fi
@@ -293,30 +293,30 @@ if [ -n "$NEEDS_REBUILD" ]; then
 
     echo "$NEW_VERSION" > "$VERSION_FILE"
 
-    echo -e "${GREEN}✓${NC} Libraries updated"
+    echo -e "${GREEN}${NC} Libraries updated"
     echo ""
 
     # Migrate old config files from localhost to production
     AUTH_CONFIG="$HOME/.horus/auth.json"
     if [ -f "$AUTH_CONFIG" ]; then
         if grep -q "localhost" "$AUTH_CONFIG" 2>/dev/null; then
-            echo -e "${CYAN}→${NC} Migrating registry configuration..."
+            echo -e "${CYAN}${NC} Migrating registry configuration..."
             # Update localhost URLs to production
             sed -i.bak 's|http://localhost:3001|https://horus-marketplace-api.onrender.com|g' "$AUTH_CONFIG"
             sed -i.bak 's|http://localhost:8080|https://horus-marketplace-api.onrender.com|g' "$AUTH_CONFIG"
-            echo -e "${GREEN}✓${NC} Registry URL updated to production"
+            echo -e "${GREEN}${NC} Registry URL updated to production"
             echo ""
         fi
     fi
 
     # Quick verification
-    echo -e "${CYAN}🔍 Verifying update...${NC}"
+    echo -e "${CYAN} Verifying update...${NC}"
 
     if [ -x "$INSTALL_DIR/horus" ]; then
         UPDATED_VERSION=$("$INSTALL_DIR/horus" --version 2>/dev/null | awk '{print $2}' || echo "unknown")
-        echo -e "${GREEN}✓${NC} New version: $UPDATED_VERSION"
+        echo -e "${GREEN}${NC} New version: $UPDATED_VERSION"
     else
-        echo -e "${RED}✗${NC} Binary verification failed"
+        echo -e "${RED}${NC} Binary verification failed"
         exit 1
     fi
 
@@ -324,9 +324,9 @@ if [ -n "$NEEDS_REBUILD" ]; then
 
     # Run quick smoke test
     if "$INSTALL_DIR/horus" --help &>/dev/null; then
-        echo -e "${GREEN}✓${NC} Smoke test passed"
+        echo -e "${GREEN}${NC} Smoke test passed"
     else
-        echo -e "${RED}✗${NC} Smoke test failed"
+        echo -e "${RED}${NC} Smoke test failed"
         echo "  Binary installed but not working correctly"
         echo "  Try: ./recovery_install.sh"
         exit 1
@@ -334,13 +334,13 @@ if [ -n "$NEEDS_REBUILD" ]; then
 fi
 
 echo ""
-echo -e "${GREEN}✅ Update complete!${NC}"
+echo -e "${GREEN} Update complete!${NC}"
 echo ""
 
 # Show version comparison
 if [ "$OLD_VERSION" != "unknown" ] && [ -n "$UPDATED_VERSION" ]; then
     if [ "$OLD_VERSION" != "$UPDATED_VERSION" ]; then
-        echo -e "${CYAN}Version:${NC} $OLD_VERSION → $UPDATED_VERSION"
+        echo -e "${CYAN}Version:${NC} $OLD_VERSION  $UPDATED_VERSION"
     else
         echo -e "${CYAN}Version:${NC} $UPDATED_VERSION (rebuilt)"
     fi
@@ -359,7 +359,7 @@ if [ "$STASHED" = true ]; then
     echo
     if [[ ! $REPLY =~ ^[Nn]$ ]]; then
         git stash pop
-        echo -e "${GREEN}✓${NC} Changes restored"
+        echo -e "${GREEN}${NC} Changes restored"
     fi
 fi
 

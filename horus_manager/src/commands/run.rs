@@ -28,7 +28,7 @@ pub fn execute_build_only(file: Option<PathBuf>, release: bool, clean: bool) -> 
     let mode = if release { "release" } else { "debug" };
     println!(
         "{} Building project in {} mode (no execution)...",
-        "🔨".cyan(),
+        "".cyan(),
         mode.yellow()
     );
 
@@ -41,7 +41,7 @@ pub fn execute_build_only(file: Option<PathBuf>, release: bool, clean: bool) -> 
     let language = detect_language(&target_file)?;
     println!(
         "{} Detected: {} ({})",
-        "→".cyan(),
+        "".cyan(),
         target_file.display().to_string().green(),
         language.yellow()
     );
@@ -52,10 +52,10 @@ pub fn execute_build_only(file: Option<PathBuf>, release: bool, clean: bool) -> 
     // Build based on language
     match language.as_str() {
         "python" => {
-            println!("{} Python is interpreted, no build needed", "ℹ".blue());
+            println!("{} Python is interpreted, no build needed", "[i]".blue());
             println!(
                 "  {} File is ready to run: {}",
-                "→".cyan(),
+                "".cyan(),
                 target_file.display()
             );
         }
@@ -79,81 +79,97 @@ pub fn execute_build_only(file: Option<PathBuf>, release: bool, clean: bool) -> 
                 bail!("No C compiler found. Please install gcc or clang.");
             };
 
-            println!("{} Compiling with {}...", "→".cyan(), compiler);
+            println!("{} Compiling with {}...", "".cyan(), compiler);
             compile_c_file(&target_file, &output_path, compiler, release)?;
             println!(
                 "{} Successfully built: {}",
-                "✓".green(),
+                "".green(),
                 output_path.display().to_string().green()
             );
         }
         "rust" => {
-            // Setup Rust build in .horus environment
-            setup_rust_environment(&target_file)?;
+            // Setup Rust build using Cargo in .horus workspace
+            println!("{} Setting up Cargo workspace...", "".cyan());
 
-            // Determine output binary name
-            let file_stem = target_file
-                .file_stem()
-                .context("Invalid file name")?
-                .to_string_lossy();
-            let suffix = if release { "_release" } else { "_debug" };
-            let output_binary = format!(".horus/cache/rust_{}{}", file_stem, suffix);
-
-            // Check if already cached
-            if Path::new(&output_binary).exists() {
-                println!("{} Using cached Rust binary", "→".cyan());
+            // Parse horus.yaml to get dependencies
+            let dependencies = if Path::new("horus.yaml").exists() {
+                parse_horus_yaml_dependencies("horus.yaml")?
             } else {
-                println!("{} Building Rust project...", "→".cyan());
+                HashSet::new()
+            };
 
-                // Copy source to .horus/build directory
-                let build_dir = PathBuf::from(".horus/build");
-                fs::create_dir_all(&build_dir)?;
-                let build_source = build_dir.join("main.rs");
-                fs::copy(&target_file, &build_source)?;
+            // Generate Cargo.toml in .horus/ that references source files in parent directory
+            let cargo_toml_path = PathBuf::from(".horus/Cargo.toml");
 
-                // Use rustc directly for single files (MUCH faster than cargo)
-                let mut cmd = Command::new("rustc");
-                cmd.arg(&build_source);
-                cmd.arg("-o").arg(&output_binary);
+            // Get relative path from .horus/ to the source file
+            let source_relative_path = format!("../{}", target_file.display());
 
-                if release {
-                    cmd.arg("-O"); // Optimization
-                }
+            let mut cargo_toml = format!(
+                r#"[package]
+name = "horus-project"
+version = "0.1.0"
+edition = "2021"
 
-                // Add HORUS lib paths (local + global)
-                cmd.arg("-L").arg(".horus/lib");
+[[bin]]
+name = "horus-project"
+path = "{}"
 
-                // Add global cache library paths
-                let home = home_dir();
-                let global_cache = home.join(".horus/cache");
-                {
-                    if global_cache.exists() {
-                        if let Ok(entries) = fs::read_dir(&global_cache) {
-                            for entry in entries.flatten() {
-                                let lib_dir = entry.path().join("lib");
-                                if lib_dir.exists() {
-                                    cmd.arg("-L").arg(&lib_dir);
-                                }
-                                // Also add target/release for Rust packages
-                                let target_dir = entry.path().join("target/release");
-                                if target_dir.exists() {
-                                    cmd.arg("-L").arg(&target_dir);
-                                }
-                            }
-                        }
-                    }
-                }
+[dependencies]
+"#,
+                source_relative_path
+            );
 
-                let status = cmd.status()?;
-                if !status.success() {
-                    bail!("Rust compilation failed");
+            // Find HORUS source directory
+            let horus_source = find_horus_source_dir()?;
+            println!("  {} Using HORUS source: {}", "".cyan(), horus_source.display());
+
+            // Add dependencies from HORUS source
+            for dep in &dependencies {
+                // Map dependency to source directory
+                let dep_path = horus_source.join(dep);
+
+                if dep_path.exists() && dep_path.join("Cargo.toml").exists() {
+                    cargo_toml.push_str(&format!(
+                        "{} = {{ path = \"{}\" }}\n",
+                        dep,
+                        dep_path.display()
+                    ));
+                    println!("  {} Added dependency: {} -> {}", "".cyan(), dep, dep_path.display());
+                } else {
+                    eprintln!(
+                        "  {} Warning: dependency {} not found at {}",
+                        "".yellow(),
+                        dep,
+                        dep_path.display()
+                    );
                 }
             }
 
+            fs::write(&cargo_toml_path, cargo_toml)?;
+            println!("  {} Generated Cargo.toml (no source copying needed)", "".green());
+
+            // Run cargo build in .horus directory
+            println!("{} Building with cargo...", "".cyan());
+            let mut cmd = Command::new("cargo");
+            cmd.arg("build");
+            cmd.current_dir(".horus");
+
+            if release {
+                cmd.arg("--release");
+            }
+
+            let status = cmd.status()?;
+            if !status.success() {
+                bail!("Cargo build failed");
+            }
+
+            let profile = if release { "release" } else { "debug" };
+            let binary_path = format!(".horus/target/{}/horus-project", profile);
+
             println!(
                 "{} Successfully built: {}",
-                "✓".green(),
-                output_binary.green()
+                "".green(),
+                binary_path.green()
             );
         }
         _ => bail!("Unsupported language: {}", language),
@@ -177,7 +193,7 @@ pub fn execute_run(
     let mode = if release { "release" } else { "debug" };
     eprintln!(
         "{} Starting HORUS runtime in {} mode...",
-        "🚀".cyan(),
+        "".cyan(),
         mode.yellow()
     );
 
@@ -218,7 +234,7 @@ fn execute_single_file(
 
     eprintln!(
         "{} Detected: {} ({})",
-        "→".cyan(),
+        "".cyan(),
         file_path.display().to_string().green(),
         language.yellow()
     );
@@ -227,11 +243,11 @@ fn execute_single_file(
     ensure_horus_directory()?;
 
     // Scan imports and resolve dependencies
-    eprintln!("{} Scanning imports...", "→".cyan());
+    eprintln!("{} Scanning imports...", "".cyan());
     let dependencies = scan_imports(&file_path, &language)?;
 
     if !dependencies.is_empty() {
-        eprintln!("{} Found {} dependencies", "→".cyan(), dependencies.len());
+        eprintln!("{} Found {} dependencies", "".cyan(), dependencies.len());
         resolve_dependencies(dependencies)?;
     }
 
@@ -239,8 +255,8 @@ fn execute_single_file(
     setup_environment()?;
 
     // Execute
-    eprintln!("{} Executing...\n", "→".cyan());
-    execute_with_scheduler(file_path, language, args, release)?;
+    eprintln!("{} Executing...\n", "".cyan());
+    execute_with_scheduler(file_path, language, args, release, clean)?;
 
     Ok(())
 }
@@ -253,7 +269,7 @@ fn execute_directory(
 ) -> Result<()> {
     println!(
         "{} Executing from directory: {}",
-        "→".cyan(),
+        "".cyan(),
         dir_path.display().to_string().green()
     );
 
@@ -292,7 +308,7 @@ fn execute_from_manifest(
 ) -> Result<()> {
     println!(
         "{} Executing from manifest: {}",
-        "→".cyan(),
+        "".cyan(),
         manifest_path.display().to_string().green()
     );
 
@@ -355,13 +371,13 @@ fn execute_from_cargo_toml(
         ensure_horus_directory()?;
 
         // Parse Cargo.toml for HORUS dependencies
-        println!("{} Scanning Cargo.toml dependencies...", "→".cyan());
+        println!("{} Scanning Cargo.toml dependencies...", "".cyan());
         let horus_deps = parse_cargo_dependencies("Cargo.toml")?;
 
         if !horus_deps.is_empty() {
             println!(
                 "{} Found {} HORUS dependencies",
-                "→".cyan(),
+                "".cyan(),
                 horus_deps.len()
             );
             resolve_dependencies(horus_deps)?;
@@ -378,7 +394,7 @@ fn execute_from_cargo_toml(
         if !Path::new(&binary).exists() || clean {
             println!(
                 "{} Building Cargo project ({} mode)...",
-                "→".cyan(),
+                "".cyan(),
                 build_dir
             );
             let mut cmd = Command::new("cargo");
@@ -394,7 +410,7 @@ fn execute_from_cargo_toml(
         }
 
         // Run the binary with environment
-        println!("{} Executing Cargo project...\n", "→".cyan());
+        println!("{} Executing Cargo project...\n", "".cyan());
         let mut cmd = Command::new(binary);
         cmd.args(args);
         let status = cmd.status()?;
@@ -410,7 +426,7 @@ fn execute_from_cargo_toml(
 }
 
 fn execute_makefile_project(args: Vec<String>, release: bool, clean: bool) -> Result<()> {
-    println!("{} Detected Makefile project", "→".cyan());
+    println!("{} Detected Makefile project", "".cyan());
 
     // Ensure .horus directory exists
     ensure_horus_directory()?;
@@ -420,7 +436,7 @@ fn execute_makefile_project(args: Vec<String>, release: bool, clean: bool) -> Re
 
     // Clean if requested
     if clean {
-        println!("{} Cleaning Makefile project...", "→".cyan());
+        println!("{} Cleaning Makefile project...", "".cyan());
         Command::new("make").arg("clean").status().ok();
     }
 
@@ -428,7 +444,7 @@ fn execute_makefile_project(args: Vec<String>, release: bool, clean: bool) -> Re
     let build_target = if release { "release" } else { "all" };
     println!(
         "{} Building Makefile project (target: {})...",
-        "→".cyan(),
+        "".cyan(),
         build_target
     );
 
@@ -446,7 +462,7 @@ fn execute_makefile_project(args: Vec<String>, release: bool, clean: bool) -> Re
 
     for exe in &possible_executables {
         if Path::new(exe).exists() {
-            println!("{} Running executable: {}\n", "→".cyan(), exe.green());
+            println!("{} Running executable: {}\n", "".cyan(), exe.green());
             let mut cmd = Command::new(format!("./{}", exe));
             cmd.args(args);
             let status = cmd.status()?;
@@ -459,14 +475,14 @@ fn execute_makefile_project(args: Vec<String>, release: bool, clean: bool) -> Re
 
     println!(
         "{} Build succeeded but could not find executable",
-        "⚠".yellow()
+        "".yellow()
     );
-    println!("  {} Looked for: {:?}", "→".dimmed(), possible_executables);
+    println!("  {} Looked for: {:?}", "".dimmed(), possible_executables);
     Ok(())
 }
 
 fn execute_cmake_project(args: Vec<String>, release: bool, clean: bool) -> Result<()> {
-    println!("{} Detected CMake project", "→".cyan());
+    println!("{} Detected CMake project", "".cyan());
 
     // Ensure .horus directory exists
     ensure_horus_directory()?;
@@ -478,7 +494,7 @@ fn execute_cmake_project(args: Vec<String>, release: bool, clean: bool) -> Resul
 
     // Clean if requested
     if clean && build_dir.exists() {
-        println!("{} Cleaning CMake build directory...", "→".cyan());
+        println!("{} Cleaning CMake build directory...", "".cyan());
         fs::remove_dir_all(&build_dir)?;
     }
 
@@ -487,7 +503,7 @@ fn execute_cmake_project(args: Vec<String>, release: bool, clean: bool) -> Resul
 
     // Configure with CMake
     let build_type = if release { "Release" } else { "Debug" };
-    println!("{} Configuring CMake ({} mode)...", "→".cyan(), build_type);
+    println!("{} Configuring CMake ({} mode)...", "".cyan(), build_type);
 
     let mut cmd = Command::new("cmake");
     cmd.arg("..")
@@ -500,7 +516,7 @@ fn execute_cmake_project(args: Vec<String>, release: bool, clean: bool) -> Resul
     }
 
     // Build
-    println!("{} Building CMake project...", "→".cyan());
+    println!("{} Building CMake project...", "".cyan());
     let mut cmd = Command::new("cmake");
     cmd.arg("--build").arg(".").current_dir(&build_dir);
 
@@ -518,7 +534,7 @@ fn execute_cmake_project(args: Vec<String>, release: bool, clean: bool) -> Resul
 
     for exe in &possible_executables {
         if Path::new(exe).exists() {
-            println!("{} Running executable: {}\n", "→".cyan(), exe.green());
+            println!("{} Running executable: {}\n", "".cyan(), exe.green());
             let mut cmd = Command::new(format!("./{}", exe));
             cmd.args(args);
             let status = cmd.status()?;
@@ -531,9 +547,9 @@ fn execute_cmake_project(args: Vec<String>, release: bool, clean: bool) -> Resul
 
     println!(
         "{} Build succeeded but could not find executable",
-        "⚠".yellow()
+        "".yellow()
     );
-    println!("  {} Looked for: {:?}", "→".dimmed(), possible_executables);
+    println!("  {} Looked for: {:?}", "".dimmed(), possible_executables);
     Ok(())
 }
 
@@ -577,7 +593,7 @@ fn execute_multiple_files(
 ) -> Result<()> {
     println!(
         "{} Executing {} files concurrently:",
-        "→".cyan(),
+        "".cyan(),
         file_paths.len()
     );
 
@@ -596,7 +612,7 @@ fn execute_multiple_files(
     for file_path in file_paths {
         println!(
             "\n{} Running {}...",
-            "→".cyan(),
+            "".cyan(),
             file_path.display().to_string().green()
         );
         execute_single_file(file_path, args.clone(), release, clean)?;
@@ -749,7 +765,7 @@ fn ensure_horus_directory() -> Result<()> {
 
     // Create .horus/ if it doesn't exist
     if !horus_dir.exists() {
-        println!("{} Creating .horus/ environment...", "→".cyan());
+        println!("{} Creating .horus/ environment...", "".cyan());
         fs::create_dir_all(&horus_dir)?;
     }
 
@@ -772,7 +788,7 @@ fn scan_imports(file: &Path, language: &str) -> Result<HashSet<String>> {
 
     // First, check if horus.yaml exists and use it
     if Path::new("horus.yaml").exists() {
-        eprintln!("  {} Reading dependencies from horus.yaml", "→".cyan());
+        eprintln!("  {} Reading dependencies from horus.yaml", "".cyan());
         let yaml_deps = parse_horus_yaml_dependencies("horus.yaml")?;
         dependencies.extend(yaml_deps);
     } else {
@@ -1008,7 +1024,7 @@ fn resolve_dependencies(dependencies: HashSet<String>) -> Result<()> {
 
         // Skip if already linked
         if local_link.exists() {
-            println!("  {} {} (already linked)", "✓".green(), package);
+            println!("  {} {} (already linked)", "".green(), package);
             continue;
         }
 
@@ -1047,7 +1063,7 @@ fn resolve_dependencies(dependencies: HashSet<String>) -> Result<()> {
     if !missing_packages.is_empty() {
         println!(
             "\n{} Missing {} package(s):",
-            "⚠".yellow(),
+            "".yellow(),
             missing_packages.len()
         );
         for pkg in &missing_packages {
@@ -1066,35 +1082,35 @@ fn resolve_dependencies(dependencies: HashSet<String>) -> Result<()> {
 
         if input.is_empty() || input == "y" || input == "yes" {
             // User wants to install
-            println!("\n{} Installing packages from registry...", "→".cyan());
+            println!("\n{} Installing packages from registry...", "".cyan());
 
             // Import registry client
             use crate::registry::RegistryClient;
             let client = RegistryClient::new();
 
             for package in &missing_packages {
-                print!("  {} Installing {}... ", "→".cyan(), package.yellow());
+                print!("  {} Installing {}... ", "".cyan(), package.yellow());
                 io::stdout().flush()?;
 
                 match client.install(package, None) {
                     Ok(_) => {
-                        println!("{}", "✓".green());
+                        println!("{}", "".green());
                         // client.install() already handles global/local detection and symlinks
                     }
                     Err(e) => {
-                        println!("{}", "✗".red());
-                        eprintln!("    {} Failed to install {}: {}", "✗".red(), package, e);
+                        println!("{}", "".red());
+                        eprintln!("    {} Failed to install {}: {}", "".red(), package, e);
                         bail!("Failed to install required dependency: {}", package);
                     }
                 }
             }
 
-            println!("\n{} All dependencies installed successfully!", "✓".green());
+            println!("\n{} All dependencies installed successfully!", "".green());
         } else {
             // User declined
             println!(
                 "\n{} Installation cancelled. Cannot proceed without dependencies.",
-                "✗".red()
+                "".red()
             );
             bail!(
                 "Missing required dependencies: {}",
@@ -1194,7 +1210,7 @@ fn setup_environment() -> Result<()> {
 }
 
 fn execute_python_node(file: PathBuf, args: Vec<String>, _release: bool) -> Result<()> {
-    eprintln!("{} Setting up Python environment...", "→".cyan());
+    eprintln!("{} Setting up Python environment...", "".cyan());
 
     // Check for Python interpreter (venv or system)
     let python_cmd = detect_python_interpreter()?;
@@ -1209,7 +1225,7 @@ fn execute_python_node(file: PathBuf, args: Vec<String>, _release: bool) -> Resu
         // Use scheduler wrapper for HORUS nodes
         eprintln!(
             "{} Executing Python node with HORUS scheduler...",
-            "→".cyan()
+            "".cyan()
         );
 
         let wrapper_script = create_python_wrapper(&file)?;
@@ -1229,7 +1245,7 @@ fn execute_python_node(file: PathBuf, args: Vec<String>, _release: bool) -> Resu
         }
     } else {
         // Direct execution for plain Python scripts
-        eprintln!("{} Executing Python script directly...", "→".cyan());
+        eprintln!("{} Executing Python script directly...", "".cyan());
 
         let mut cmd = Command::new(python_cmd);
         cmd.arg(&file);
@@ -1246,6 +1262,7 @@ fn execute_python_node(file: PathBuf, args: Vec<String>, _release: bool) -> Resu
     Ok(())
 }
 
+#[allow(dead_code)]
 fn create_venv_if_needed() -> Result<()> {
     let venv_path = PathBuf::from(".horus/venv");
 
@@ -1253,8 +1270,8 @@ fn create_venv_if_needed() -> Result<()> {
         return Ok(());
     }
 
-    println!("{} Python virtual environment not found", "ℹ".blue());
-    println!("  {} Creating venv at .horus/venv/...", "→".cyan());
+    println!("{} Python virtual environment not found", "[i]".blue());
+    println!("  {} Creating venv at .horus/venv/...", "".cyan());
 
     // Find system Python
     let python_cmd = if Command::new("python3").arg("--version").output().is_ok() {
@@ -1274,7 +1291,7 @@ fn create_venv_if_needed() -> Result<()> {
         bail!("Failed to create Python virtual environment");
     }
 
-    println!("  {} Virtual environment created", "✓".green());
+    println!("  {} Virtual environment created", "".green());
 
     // Upgrade pip
     let venv_pip = if cfg!(target_os = "windows") {
@@ -1284,7 +1301,7 @@ fn create_venv_if_needed() -> Result<()> {
     };
 
     if venv_pip.exists() {
-        println!("  {} Upgrading pip...", "→".cyan());
+        println!("  {} Upgrading pip...", "".cyan());
         Command::new(&venv_pip)
             .arg("install")
             .arg("--upgrade")
@@ -1472,14 +1489,14 @@ class HorusSchedulerIntegration:
             # Preserve exit code from sys.exit()
             exit_code = e.code if e.code is not None else 0
         except Exception as e:
-            print(f"❌ Node execution failed: {{e}}", file=sys.stderr)
+            print(f" Node execution failed: {{e}}", file=sys.stderr)
             exit_code = 1
 
         sys.exit(exit_code)
 
 # Initialize HORUS integration
 if __name__ == "__main__":
-    print("🚀 HORUS Python Node Starting...", file=sys.stderr)
+    print(" HORUS Python Node Starting...", file=sys.stderr)
     scheduler = HorusSchedulerIntegration()
     scheduler.run_node()
 "#,
@@ -1500,7 +1517,7 @@ fn clean_build_cache() -> Result<()> {
             let entry = entry?;
             fs::remove_file(entry.path()).ok();
         }
-        println!("  {} Cleaned .horus/cache/", "✓".green());
+        println!("  {} Cleaned .horus/cache/", "".green());
     }
 
     // Clean .horus/bin directory
@@ -1510,21 +1527,21 @@ fn clean_build_cache() -> Result<()> {
             let entry = entry?;
             fs::remove_file(entry.path()).ok();
         }
-        println!("  {} Cleaned .horus/bin/", "✓".green());
+        println!("  {} Cleaned .horus/bin/", "".green());
     }
 
     // Clean Rust target directory if exists
     let target_dir = PathBuf::from("target");
     if target_dir.exists() {
         fs::remove_dir_all(&target_dir)?;
-        println!("  {} Cleaned target/", "✓".green());
+        println!("  {} Cleaned target/", "".green());
     }
 
     // Clean Python __pycache__ in current directory
     let pycache = PathBuf::from("__pycache__");
     if pycache.exists() {
         fs::remove_dir_all(&pycache)?;
-        println!("  {} Cleaned __pycache__/", "✓".green());
+        println!("  {} Cleaned __pycache__/", "".green());
     }
 
     Ok(())
@@ -1535,294 +1552,101 @@ fn execute_with_scheduler(
     language: String,
     args: Vec<String>,
     release: bool,
+    clean: bool,
 ) -> Result<()> {
     match language.as_str() {
         "rust" => {
-            // Use the same approach as build-only: rustc in .horus environment
-            setup_rust_environment(&file)?;
+            // Use Cargo-based compilation (same as horus.yaml path)
+            println!("{} Setting up Cargo workspace...", "".cyan());
 
-            let file_stem = file
-                .file_stem()
-                .context("Invalid file name")?
-                .to_string_lossy();
-            let suffix = if release { "_release" } else { "_debug" };
-            let binary_path = format!(".horus/cache/rust_{}{}", file_stem, suffix);
+            // Find HORUS source directory
+            let horus_source = find_horus_source_dir()?;
+            println!("  {} Using HORUS source: {}", "".cyan(), horus_source.display());
 
-            // Build if not cached
-            if !Path::new(&binary_path).exists() {
-                eprintln!(
-                    "{} Compiling Rust program ({} mode)...",
-                    "→".cyan(),
-                    if release { "release" } else { "debug" }
-                );
+            // Generate Cargo.toml in .horus/ that references the source file
+            let cargo_toml_path = PathBuf::from(".horus/Cargo.toml");
 
-                // Copy source to .horus/build
-                let build_dir = PathBuf::from(".horus/build");
-                fs::create_dir_all(&build_dir)?;
-                let build_source = build_dir.join("main.rs");
-                fs::copy(&file, &build_source)?;
+            // Get relative path from .horus/ to the source file
+            let source_relative_path = format!("../{}", file.display());
 
-                // Ensure .horus/cache exists for rustc temp files
-                fs::create_dir_all(".horus/cache")?;
+            let mut cargo_toml = format!(
+                r#"[package]
+name = "horus-project"
+version = "0.1.0"
+edition = "2021"
 
-                // Find horus library files from installed location
-                let horus_pkg = PathBuf::from(".horus/packages/horus");
-                if !horus_pkg.exists() {
-                    bail!("HORUS package not found in .horus/packages/horus");
-                }
-                // Convert to absolute path so rustc can find it
-                let horus_pkg = horus_pkg.canonicalize()?;
+[[bin]]
+name = "horus-project"
+path = "{}"
 
-                // Also check if HORUS source tree is available (for deps)
-                let horus_source = PathBuf::from("/horus");
-                let use_source = horus_source.exists() && horus_source.join("Cargo.toml").exists();
+[dependencies]
+"#,
+                source_relative_path
+            );
 
-                eprintln!(
-                    "  {} Searching for horus libraries in {:?}",
-                    "→".cyan(),
-                    horus_pkg
-                );
-
-                // Search for .rlib files in the horus package
-                let mut lib_dirs = Vec::new();
-                let mut extern_crates: std::collections::HashMap<String, PathBuf> =
-                    std::collections::HashMap::new();
-
-                // Check common locations for compiled libraries
-                for subdir in &[
-                    "lib",
-                    "target/release",
-                    "target/debug",
-                    "target/release/deps",
-                    "target/debug/deps",
-                ] {
-                    let lib_path = horus_pkg.join(subdir);
-                    if lib_path.exists() {
-                        eprintln!("  {} Checking {:?}", "✓".green(), lib_path);
-                        // Add this directory to search path
-                        lib_dirs.push(lib_path.clone());
-
-                        if let Ok(entries) = fs::read_dir(&lib_path) {
-                            for entry in entries.flatten() {
-                                let path = entry.path();
-                                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                                    if name.ends_with(".rlib") {
-                                        eprintln!("  {} Found {}", "→".cyan(), name);
-                                        // Only insert if we don't have this crate yet (prefer first match - hash versions from lib/)
-                                        if name.starts_with("libhorus-") || name == "libhorus.rlib"
-                                        {
-                                            if !extern_crates.contains_key("horus") {
-                                                extern_crates
-                                                    .insert("horus".to_string(), path.clone());
-                                                eprintln!("  {} Added horus extern", "✓".green());
-                                            }
-                                        } else if name.starts_with("libhorus_core-")
-                                            || name == "libhorus_core.rlib"
-                                        {
-                                            if !extern_crates.contains_key("horus_core") {
-                                                extern_crates
-                                                    .insert("horus_core".to_string(), path.clone());
-                                                eprintln!(
-                                                    "  {} Added horus_core extern",
-                                                    "✓".green()
-                                                );
-                                            }
-                                        } else if name.starts_with("libhorus_macros-")
-                                            || name == "libhorus_macros.rlib"
-                                        {
-                                            if !extern_crates.contains_key("horus_macros") {
-                                                extern_crates.insert(
-                                                    "horus_macros".to_string(),
-                                                    path.clone(),
-                                                );
-                                                eprintln!(
-                                                    "  {} Added horus_macros extern",
-                                                    "✓".green()
-                                                );
-                                            }
-                                        } else if (name.starts_with("libhorus_library-")
-                                            || name == "libhorus_library.rlib")
-                                            && !extern_crates.contains_key("horus_library")
-                                        {
-                                            extern_crates
-                                                .insert("horus_library".to_string(), path.clone());
-                                            eprintln!(
-                                                "  {} Added horus_library extern",
-                                                "✓".green()
-                                            );
-                                        }
-                                    }
-                                    // Also check for proc-macro dynamic libraries (.so, .dylib)
-                                    else if name.ends_with(".so") || name.ends_with(".dylib") {
-                                        eprintln!("  {} Found proc-macro {}", "→".cyan(), name);
-                                        if name.starts_with("libhorus_macros")
-                                            && !extern_crates.contains_key("horus_macros")
-                                        {
-                                            extern_crates
-                                                .insert("horus_macros".to_string(), path.clone());
-                                            eprintln!(
-                                                "  {} Added horus_macros extern (proc-macro)",
-                                                "✓".green()
-                                            );
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Also scan global cache for all dependencies (e.g., horus_macros@0.1.0)
-                if let Some(home) = dirs::home_dir() {
-                    let global_cache = home.join(".horus/cache");
-                    if global_cache.exists() {
-                        if let Ok(entries) = fs::read_dir(&global_cache) {
-                            for entry in entries.flatten() {
-                                let dep_path = entry.path();
-                                if dep_path.is_dir() {
-                                    // Skip if it's the main horus package (already scanned)
-                                    if let Some(dir_name) =
-                                        dep_path.file_name().and_then(|n| n.to_str())
-                                    {
-                                        if dir_name.starts_with("horus@") {
-                                            continue;
-                                        }
-                                        // Scan other dependencies (e.g., horus_macros@0.1.0)
-                                        for subdir in &["lib", "target/release", "target/debug"] {
-                                            let lib_path = dep_path.join(subdir);
-                                            if lib_path.exists() {
-                                                eprintln!(
-                                                    "  {} Checking {:?}",
-                                                    "✓".green(),
-                                                    lib_path
-                                                );
-                                                lib_dirs.push(lib_path.clone());
-
-                                                if let Ok(entries) = fs::read_dir(&lib_path) {
-                                                    for entry in entries.flatten() {
-                                                        let path = entry.path();
-                                                        if let Some(name) = path
-                                                            .file_name()
-                                                            .and_then(|n| n.to_str())
-                                                        {
-                                                            // Check for proc-macro dynamic libraries (.so, .dylib)
-                                                            if name.ends_with(".so")
-                                                                || name.ends_with(".dylib")
-                                                            {
-                                                                eprintln!(
-                                                                    "  {} Found proc-macro {}",
-                                                                    "→".cyan(),
-                                                                    name
-                                                                );
-                                                                if name
-                                                                    .starts_with("libhorus_macros")
-                                                                    && !extern_crates.contains_key(
-                                                                        "horus_macros",
-                                                                    )
-                                                                {
-                                                                    extern_crates.insert(
-                                                                        "horus_macros".to_string(),
-                                                                        path.clone(),
-                                                                    );
-                                                                    eprintln!("  {} Added horus_macros extern (proc-macro)", "✓".green());
-                                                                }
-                                                            }
-                                                            // Check for .rlib files
-                                                            else if name.ends_with(".rlib") {
-                                                                eprintln!(
-                                                                    "  {} Found {}",
-                                                                    "→".cyan(),
-                                                                    name
-                                                                );
-                                                                if (name.starts_with(
-                                                                    "libhorus_macros-",
-                                                                ) || name
-                                                                    == "libhorus_macros.rlib")
-                                                                    && !extern_crates.contains_key(
-                                                                        "horus_macros",
-                                                                    )
-                                                                {
-                                                                    extern_crates.insert(
-                                                                        "horus_macros".to_string(),
-                                                                        path.clone(),
-                                                                    );
-                                                                    eprintln!("  {} Added horus_macros extern", "✓".green());
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // If HORUS source is available, add its deps directories for external dependencies
-                if use_source {
-                    eprintln!("  {} Using HORUS source tree for dependencies", "→".cyan());
-                    for subdir in &["target/release/deps", "target/debug/deps"] {
-                        let deps_path = horus_source.join(subdir);
-                        if deps_path.exists() {
-                            lib_dirs.push(deps_path);
-                            eprintln!("  {} Added deps from {:?}", "✓".green(), subdir);
-                        }
-                    }
-                }
-
-                // Use rustc directly
-                let mut cmd = Command::new("rustc");
-                cmd.arg(&build_source);
-                cmd.arg("-o").arg(&binary_path);
-                cmd.arg("--edition").arg("2021");
-                cmd.arg("--crate-type").arg("bin");
-                if release {
-                    cmd.arg("-O");
-                }
-
-                // Add library search paths
-                cmd.arg("-L").arg(".horus/lib");
-                for lib_dir in lib_dirs.iter().collect::<std::collections::HashSet<_>>() {
-                    cmd.arg("-L")
-                        .arg(format!("dependency={}", lib_dir.display()));
-                }
-
-                // Add extern declarations
-                for (name, path) in &extern_crates {
-                    cmd.arg("--extern")
-                        .arg(format!("{}={}", name, path.display()));
-                }
-
-                eprintln!(
-                    "  {} Compiling with {} extern crates, {} lib dirs",
-                    "→".cyan(),
-                    extern_crates.len(),
-                    lib_dirs.len()
-                );
-
-                // Debug: show the actual extern declarations
-                eprintln!("  {} Extern crates:", "→".cyan());
-                for (name, path) in &extern_crates {
-                    let exists = if path.exists() { "✓" } else { "✗" };
-                    eprintln!("    {} --extern {}={}", exists, name, path.display());
-                }
-
-                let status = cmd.status()?;
-                if !status.success() {
-                    bail!("Rust compilation failed");
-                }
-
-                eprintln!("  {} Compiled to {}", "✓".green(), binary_path);
+            // Add HORUS core dependencies
+            // Check if using source (development) or cache (installed)
+            if horus_source.ends_with(".horus/cache") || horus_source.ends_with(".horus\\cache") {
+                // Using installed packages from cache
+                cargo_toml.push_str(&format!(
+                    "horus = {{ path = \"{}\" }}\n",
+                    horus_source.join("horus@0.1.0/horus").display()
+                ));
+                cargo_toml.push_str(&format!(
+                    "horus_library = {{ path = \"{}\" }}\n",
+                    horus_source.join("horus@0.1.0/horus_library").display()
+                ));
             } else {
-                eprintln!("  {} Using cached binary", "✓".green());
+                // Using source code (development)
+                cargo_toml.push_str(&format!(
+                    "horus = {{ path = \"{}\" }}\n",
+                    horus_source.join("horus").display()
+                ));
+                cargo_toml.push_str(&format!(
+                    "horus_library = {{ path = \"{}\" }}\n",
+                    horus_source.join("horus_library").display()
+                ));
             }
 
+            fs::write(&cargo_toml_path, cargo_toml)?;
+            println!("  {} Generated Cargo.toml", "".green());
+
+            // Run cargo clean if requested
+            if clean {
+                println!("{} Cleaning build artifacts...", "".cyan());
+                let mut clean_cmd = Command::new("cargo");
+                clean_cmd.arg("clean");
+                clean_cmd.current_dir(".horus");
+                let status = clean_cmd.status()?;
+                if !status.success() {
+                    eprintln!("{} Warning: cargo clean failed", "[!]".yellow());
+                }
+            }
+
+            // Run cargo build in .horus directory
+            println!("{} Building with Cargo...", "".cyan());
+            let mut cmd = Command::new("cargo");
+            cmd.arg("build");
+            cmd.current_dir(".horus");
+            if release {
+                cmd.arg("--release");
+            }
+
+            let status = cmd.status()?;
+            if !status.success() {
+                bail!("Cargo build failed");
+            }
+
+            // Determine binary path
+            let binary_path = if release {
+                ".horus/target/release/horus-project"
+            } else {
+                ".horus/target/debug/horus-project"
+            };
+
             // Execute the binary
-            eprintln!("{} Executing Rust program...", "→".cyan());
-            let mut cmd = Command::new(&binary_path);
+            println!("{} Executing...\n", "".cyan());
+            let mut cmd = Command::new(binary_path);
             cmd.args(args);
 
             let status = cmd.status()?;
@@ -1865,6 +1689,7 @@ fn get_project_name() -> Result<String> {
         .to_string())
 }
 
+#[allow(dead_code)]
 fn create_minimal_cargo_toml(file: &Path) -> Result<()> {
     let project_name = env::current_dir()?
         .file_name()
@@ -1872,7 +1697,7 @@ fn create_minimal_cargo_toml(file: &Path) -> Result<()> {
         .unwrap_or("horus_project")
         .to_string();
 
-    let file_name = file.file_stem().and_then(|n| n.to_str()).unwrap_or("main");
+    let _file_name = file.file_stem().and_then(|n| n.to_str()).unwrap_or("main");
 
     let content = format!(
         r#"[package]
@@ -1894,17 +1719,18 @@ horus = "0.1.0"
     );
 
     fs::write("Cargo.toml", content)?;
-    println!("  {} Created Cargo.toml for {}", "✓".green(), project_name);
+    println!("  {} Created Cargo.toml for {}", "".green(), project_name);
 
     Ok(())
 }
 
+#[allow(dead_code)]
 fn setup_rust_environment(_source: &Path) -> Result<()> {
     // Ensure .horus/build exists for compilation
     fs::create_dir_all(".horus/build")?;
 
     // Could add Rust-specific setup here if needed
-    // For now, rustc will handle everything
+    // Cargo handles compilation via Cargo.toml in .horus/
 
     Ok(())
 }
@@ -2042,7 +1868,7 @@ typedef struct {
 
 #endif // HORUS_H"#;
         fs::write(&header_path, header_content)?;
-        println!("  {} Installed horus.h", "✓".green());
+        println!("  {} Installed horus.h", "".green());
     }
 
     // Check if horus_c library exists in .horus/lib/
@@ -2059,11 +1885,11 @@ typedef struct {
         // Try to find and copy horus_c library
         if let Ok(horus_c_lib) = find_horus_c_library() {
             fs::copy(&horus_c_lib, &lib_path)?;
-            println!("  {} Installed {}", "✓".green(), lib_name);
+            println!("  {} Installed {}", "".green(), lib_name);
         } else {
             println!(
                 "  {} {} not found - will attempt to build",
-                "⚠".yellow(),
+                "".yellow(),
                 lib_name
             );
         }
@@ -2094,11 +1920,11 @@ fn find_horus_c_library() -> Result<PathBuf> {
 }
 
 fn execute_c_node(file: PathBuf, args: Vec<String>, release: bool) -> Result<()> {
-    eprintln!("{} Setting up C environment...", "→".cyan());
+    eprintln!("{} Setting up C environment...", "".cyan());
 
     // Detect C compiler
     let compiler = detect_c_compiler()?;
-    eprintln!("  {} Using {} compiler", "✓".green(), compiler);
+    eprintln!("  {} Using {} compiler", "".green(), compiler);
 
     // Generate cache-friendly binary name
     let binary_name = generate_c_binary_name(&file, release)?;
@@ -2112,18 +1938,18 @@ fn execute_c_node(file: PathBuf, args: Vec<String>, release: bool) -> Result<()>
     if needs_compile {
         eprintln!(
             "{} Compiling C program ({} mode)...",
-            "→".cyan(),
+            "".cyan(),
             if release { "release" } else { "debug" }
         );
 
         compile_c_file(&file, &binary_path, &compiler, release)?;
-        eprintln!("  {} Compiled to {}", "✓".green(), binary_path.display());
+        eprintln!("  {} Compiled to {}", "".green(), binary_path.display());
     } else {
-        eprintln!("  {} Using cached binary", "✓".green());
+        eprintln!("  {} Using cached binary", "".green());
     }
 
     // Execute the binary
-    eprintln!("{} Executing C program...", "→".cyan());
+    eprintln!("{} Executing C program...", "".cyan());
     let mut cmd = Command::new(&binary_path);
     cmd.args(args);
 
@@ -2234,7 +2060,7 @@ fn compile_c_file(source: &Path, output: &Path, compiler: &str, release: bool) -
 
     if !output_result.status.success() {
         let stderr = String::from_utf8_lossy(&output_result.stderr);
-        eprintln!("{} Compilation failed:", "❌".red());
+        eprintln!("{} Compilation failed:", "".red());
         eprintln!("{}", stderr);
         bail!("C compilation failed");
     }
@@ -2249,4 +2075,40 @@ fn compile_c_file(source: &Path, output: &Path, compiler: &str, release: bool) -
     }
 
     Ok(())
+}
+
+/// Find the HORUS source directory by checking common locations
+fn find_horus_source_dir() -> Result<PathBuf> {
+    // Check environment variable first
+    if let Ok(horus_source) = env::var("HORUS_SOURCE") {
+        let path = PathBuf::from(horus_source);
+        if path.exists() && path.join("horus/Cargo.toml").exists() {
+            return Ok(path);
+        }
+    }
+
+    // Check common development locations
+    let candidates = vec![
+        PathBuf::from("/horus"),
+        home_dir().join("horus/HORUS"),
+        home_dir().join("horus"),
+        PathBuf::from("/opt/horus"),
+        PathBuf::from("/usr/local/horus"),
+    ];
+
+    for candidate in candidates {
+        if candidate.exists() && candidate.join("horus/Cargo.toml").exists() {
+            return Ok(candidate);
+        }
+    }
+
+    // Fallback: Check for installed packages in cache
+    let cache_dir = home_dir().join(".horus/cache");
+    if cache_dir.join("horus@0.1.0").exists() {
+        return Ok(cache_dir);
+    }
+
+    bail!(
+        "HORUS not found. Please install HORUS or set HORUS_SOURCE environment variable."
+    )
 }

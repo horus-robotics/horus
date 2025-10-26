@@ -25,13 +25,13 @@ mkdir -p "$TEST_BASE"
 echo -n "Test 1: Create project in custom absolute path... "
 if /home/lord-patpak/horus/HORUS/target/debug/horus new "$PROJECT_NAME" -r -o "$TEST_DIR" 2>&1 | grep -q "Project created successfully"; then
     if [ -d "$TEST_DIR/$PROJECT_NAME" ] && [ -f "$TEST_DIR/$PROJECT_NAME/main.rs" ]; then
-        echo -e "${GREEN}✅ PASS${NC}"
+        echo -e "${GREEN} PASS${NC}"
     else
-        echo -e "${RED}❌ FAIL - Project not created in correct location${NC}"
+        echo -e "${RED} FAIL - Project not created in correct location${NC}"
         exit 1
     fi
 else
-    echo -e "${RED}❌ FAIL - Project creation failed${NC}"
+    echo -e "${RED} FAIL - Project creation failed${NC}"
     exit 1
 fi
 
@@ -40,13 +40,13 @@ TEST_DIR2="$TEST_BASE/a/b/c"
 echo -n "Test 2: Create nested directory structure... "
 if /home/lord-patpak/horus/HORUS/target/debug/horus new "$PROJECT_NAME" -r -o "$TEST_DIR2" 2>&1 | grep -q "Project created successfully"; then
     if [ -d "$TEST_DIR2/$PROJECT_NAME" ]; then
-        echo -e "${GREEN}✅ PASS${NC}"
+        echo -e "${GREEN} PASS${NC}"
     else
-        echo -e "${RED}❌ FAIL - Nested directory not created${NC}"
+        echo -e "${RED} FAIL - Nested directory not created${NC}"
         exit 1
     fi
 else
-    echo -e "${RED}❌ FAIL${NC}"
+    echo -e "${RED} FAIL${NC}"
     exit 1
 fi
 
@@ -57,13 +57,13 @@ cd relative_test
 echo -n "Test 3: Create project with relative path... "
 if /home/lord-patpak/horus/HORUS/target/debug/horus new "$PROJECT_NAME" -r -o ./subdir 2>&1 | grep -q "Project created successfully"; then
     if [ -d "./subdir/$PROJECT_NAME" ]; then
-        echo -e "${GREEN}✅ PASS${NC}"
+        echo -e "${GREEN} PASS${NC}"
     else
-        echo -e "${RED}❌ FAIL - Relative path failed${NC}"
+        echo -e "${RED} FAIL - Relative path failed${NC}"
         exit 1
     fi
 else
-    echo -e "${RED}❌ FAIL${NC}"
+    echo -e "${RED} FAIL${NC}"
     exit 1
 fi
 
@@ -74,13 +74,13 @@ cd parent_test/child
 echo -n "Test 4: Create project in parent directory... "
 if /home/lord-patpak/horus/HORUS/target/debug/horus new "$PROJECT_NAME" -r -o .. 2>&1 | grep -q "Project created successfully"; then
     if [ -d "../$PROJECT_NAME" ]; then
-        echo -e "${GREEN}✅ PASS${NC}"
+        echo -e "${GREEN} PASS${NC}"
     else
-        echo -e "${RED}❌ FAIL - Parent directory path failed${NC}"
+        echo -e "${RED} FAIL - Parent directory path failed${NC}"
         exit 1
     fi
 else
-    echo -e "${RED}❌ FAIL${NC}"
+    echo -e "${RED} FAIL${NC}"
     exit 1
 fi
 

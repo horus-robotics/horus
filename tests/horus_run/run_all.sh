@@ -11,14 +11,14 @@ NC='\033[0m'
 # Change to test directory
 cd "$(dirname "$0")"
 
-echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║   HORUS Run Command Test Suite           ║${NC}"
-echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
+echo -e "${BLUE}${NC}"
+echo -e "${BLUE}   HORUS Run Command Test Suite           ${NC}"
+echo -e "${BLUE}${NC}"
 echo ""
 
 # Check if horus binary exists
 if [ ! -f "/home/lord-patpak/horus/HORUS/target/debug/horus" ]; then
-    echo -e "${RED}❌ Error: horus binary not found${NC}"
+    echo -e "${RED} Error: horus binary not found${NC}"
     echo "Please build horus first:"
     echo "  cd /home/lord-patpak/horus/HORUS"
     echo "  cargo build"
@@ -45,14 +45,14 @@ run_test() {
         return
     fi
 
-    echo -e "${BLUE}━━━ Running: $test_name ━━━${NC}"
+    echo -e "${BLUE} Running: $test_name ${NC}"
     ((TOTAL++))
 
     if bash "$test_file"; then
-        echo -e "${GREEN}✓ PASSED: $test_name${NC}"
+        echo -e "${GREEN} PASSED: $test_name${NC}"
         ((PASSED++))
     else
-        echo -e "${RED}✗ FAILED: $test_name${NC}"
+        echo -e "${RED} FAILED: $test_name${NC}"
         ((FAILED++))
     fi
     echo ""
@@ -73,32 +73,32 @@ run_test "test_dependencies.sh" "Dependency Resolution"
 run_test "test_ipc.sh" "IPC and Robotics Applications"
 
 # Print summary
-echo -e "${BLUE}╔════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║              Test Summary                 ║${NC}"
-echo -e "${BLUE}╠════════════════════════════════════════════╣${NC}"
-echo -e "${BLUE}║${NC}  Total test suites:  $TOTAL"
-echo -e "${BLUE}║${NC}  ${GREEN}Passed:${NC}            $PASSED"
-echo -e "${BLUE}║${NC}  ${RED}Failed:${NC}            $FAILED"
+echo -e "${BLUE}${NC}"
+echo -e "${BLUE}              Test Summary                 ${NC}"
+echo -e "${BLUE}${NC}"
+echo -e "${BLUE}${NC}  Total test suites:  $TOTAL"
+echo -e "${BLUE}${NC}  ${GREEN}Passed:${NC}            $PASSED"
+echo -e "${BLUE}${NC}  ${RED}Failed:${NC}            $FAILED"
 if [ $SKIPPED -gt 0 ]; then
-    echo -e "${BLUE}║${NC}  ${YELLOW}Skipped:${NC}           $SKIPPED"
+    echo -e "${BLUE}${NC}  ${YELLOW}Skipped:${NC}           $SKIPPED"
 fi
-echo -e "${BLUE}╚════════════════════════════════════════════╝${NC}"
+echo -e "${BLUE}${NC}"
 echo ""
 
 # Exit code
 if [ $FAILED -eq 0 ]; then
-    echo -e "${GREEN}✅ ALL TESTS PASSED - horus run is production-ready!${NC}"
+    echo -e "${GREEN} ALL TESTS PASSED - horus run is production-ready!${NC}"
     echo ""
     echo "Test coverage:"
-    echo "  ✓ Language execution (Python, Rust, C)"
-    echo "  ✓ Auto-detection of main files"
-    echo "  ✓ Build modes and caching"
-    echo "  ✓ Dependency resolution"
-    echo "  ✓ IPC and robotics patterns"
+    echo "   Language execution (Python, Rust, C)"
+    echo "   Auto-detection of main files"
+    echo "   Build modes and caching"
+    echo "   Dependency resolution"
+    echo "   IPC and robotics patterns"
     echo ""
     exit 0
 else
-    echo -e "${RED}❌ SOME TESTS FAILED - Please review and fix${NC}"
+    echo -e "${RED} SOME TESTS FAILED - Please review and fix${NC}"
     echo ""
     echo "To debug individual test suites:"
     echo "  bash -x ./test_python_exec.sh"

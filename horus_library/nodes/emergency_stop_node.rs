@@ -17,6 +17,7 @@ pub struct EmergencyStopNode {
     is_stopped: Arc<AtomicBool>,
     stop_reason: String,
     gpio_pin: Option<u8>,
+    #[allow(dead_code)]
     last_gpio_state: bool,
     auto_reset: bool,
     stop_timeout_ms: u64,

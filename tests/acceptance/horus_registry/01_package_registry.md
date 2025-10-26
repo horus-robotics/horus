@@ -21,9 +21,9 @@ As a package author, I want a reliable registry to host my packages so that othe
 ```bash
 $ horus-registry start
 Starting HORUS registry server...
-✓ Database initialized: registry.db
-✓ Server listening on http://localhost:3000
-✓ Health check: http://localhost:3000/health
+ Database initialized: registry.db
+ Server listening on http://localhost:3000
+ Health check: http://localhost:3000/health
 Press Ctrl+C to stop
 ```
 
@@ -383,12 +383,12 @@ $ curl '.../lidar-driver/versions'
 ```bash
 $ ls -la packages/
 lidar-driver/
-├── 1.0.0/
-│   └── lidar-driver-1.0.0.tar.gz
-├── 1.1.0/
-│   └── lidar-driver-1.1.0.tar.gz
-└── 1.2.0/
-    └── lidar-driver-1.2.0.tar.gz
+── 1.0.0/
+   ── lidar-driver-1.0.0.tar.gz
+── 1.1.0/
+   ── lidar-driver-1.1.0.tar.gz
+── 1.2.0/
+    ── lidar-driver-1.2.0.tar.gz
 ```
 
 ### Scenario 25: Database Backup

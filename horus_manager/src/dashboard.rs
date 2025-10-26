@@ -310,9 +310,9 @@ async fn logs_all_handler() -> impl IntoResponse {
 async fn logs_node_handler(Path(node_name): Path<String>) -> impl IntoResponse {
     use horus_core::core::log_buffer::GLOBAL_LOG_BUFFER;
 
-    eprintln!("🔍 API: Fetching logs for node '{}'", node_name);
+    eprintln!(" API: Fetching logs for node '{}'", node_name);
     let logs = GLOBAL_LOG_BUFFER.get_for_node(&node_name);
-    eprintln!("📊 API: Found {} logs for '{}'", logs.len(), node_name);
+    eprintln!("[#] API: Found {} logs for '{}'", logs.len(), node_name);
 
     (
         StatusCode::OK,
@@ -335,11 +335,11 @@ async fn logs_topic_handler(Path(topic_name): Path<String>) -> impl IntoResponse
         .replace("_", "/");
 
     eprintln!(
-        "🔍 API: Fetching logs for topic '{}' (original: '{}')",
+        " API: Fetching logs for topic '{}' (original: '{}')",
         topic_name, original_topic
     );
     let logs = GLOBAL_LOG_BUFFER.get_for_topic(&original_topic);
-    eprintln!("📊 API: Found {} logs for '{}'", logs.len(), original_topic);
+    eprintln!("[#] API: Found {} logs for '{}'", logs.len(), original_topic);
 
     (
         StatusCode::OK,
@@ -2175,7 +2175,7 @@ fn generate_html(port: u16) -> String {
             <div class="help-modal-body">
                 <!-- Health Status Section -->
                 <div class="help-section">
-                    <h3>🎯 Node Health Statuses</h3>
+                    <h3> Node Health Statuses</h3>
                     <div class="help-item">
                         <div class="help-status">
                             <span class="status-dot health-green"></span>
@@ -2244,7 +2244,7 @@ fn generate_html(port: u16) -> String {
 
                 <!-- Dashboard Features Section -->
                 <div class="help-section">
-                    <h3>📊 Dashboard Features</h3>
+                    <h3>[#] Dashboard Features</h3>
 
                     <div class="help-item">
                         <strong>Status Bar</strong>
@@ -2301,7 +2301,7 @@ fn generate_html(port: u16) -> String {
 
                 <!-- Tips Section -->
                 <div class="help-section">
-                    <h3>💡 Tips & Tricks</h3>
+                    <h3> Tips & Tricks</h3>
 
                     <div class="help-item">
                         <strong>Real-time Updates</strong>
@@ -2338,7 +2338,7 @@ fn generate_html(port: u16) -> String {
 
                 <!-- Getting Started Section -->
                 <div class="help-section">
-                    <h3>🚀 Getting Started</h3>
+                    <h3> Getting Started</h3>
 
                     <div class="help-item">
                         <strong>Running Your First Node</strong>
@@ -2551,7 +2551,7 @@ fn generate_html(port: u16) -> String {
             <div class="view-selector">
                 <button class="view-btn active" onclick="switchPackageView('global')">🌐 Global Env</button>
                 <button class="view-btn" onclick="switchPackageView('local')">📁 Local Env</button>
-                <button class="view-btn" onclick="switchPackageView('registry')">🔍 Registry</button>
+                <button class="view-btn" onclick="switchPackageView('registry')"> Registry</button>
             </div>
 
             <!-- Global Environment View -->
@@ -2577,7 +2577,7 @@ fn generate_html(port: u16) -> String {
             <!-- Registry View -->
             <div id="package-registry" class="package-view" style="display: none;">
                 <div class="card">
-                    <h2>🔍 Package Registry</h2>
+                    <h2> Package Registry</h2>
                     <div style="display: flex; gap: 10px; margin-bottom: 20px;">
                         <input
                             type="text"
@@ -2924,7 +2924,7 @@ fn generate_html(port: u16) -> String {
                             </div>
                         </div>
                     `).join('');
-                    console.log('📝 Generated topics HTML:', topicsHtml.substring(0, 200));
+                    console.log(' Generated topics HTML:', topicsHtml.substring(0, 200));
                     topicsList.innerHTML = topicsHtml;
                     console.log('Updated topics list. First topic element:', topicsList.querySelector('.topic-item'));
                 }}
@@ -3059,9 +3059,9 @@ fn generate_html(port: u16) -> String {
             const processNodes = nodes.filter(n => n.type === 'process');
             const topicNodes = nodes.filter(n => n.type === 'topic');
 
-            console.log(`📊 Graph data: ${{processNodes.length}} processes, ${{topicNodes.length}} topics, ${{edges.length}} edges`);
+            console.log(`[#] Graph data: ${{processNodes.length}} processes, ${{topicNodes.length}} topics, ${{edges.length}} edges`);
             if (topicNodes.length === 0) {{
-                console.warn('⚠️ No topic nodes found! Node types:', nodes.map(n => `${{n.id}}:${{n.type}}`));
+                console.warn(' No topic nodes found! Node types:', nodes.map(n => `${{n.id}}:${{n.type}}`));
             }}
 
             // Initialize positions only if not already set (preserve drag positions)
@@ -3071,7 +3071,7 @@ fn generate_html(port: u16) -> String {
                                 nodes.some(n => !graphState.nodePositions[n.id]);
 
             if (needsLayout) {{
-                console.log('🎯 Computing Barycenter layout...');
+                console.log(' Computing Barycenter layout...');
 
                 // Step 1: Build adjacency maps
                 const processToTopics = {{}};  // process_id -> [topic_ids]
@@ -3172,7 +3172,7 @@ fn generate_html(port: u16) -> String {
                     }}
                 }});
 
-                console.log(`✅ Layout complete: ${{processOrder.length}} processes, ${{topicOrder.length}} topics`);
+                console.log(` Layout complete: ${{processOrder.length}} processes, ${{topicOrder.length}} topics`);
             }}
 
             // Draw edges
@@ -3388,12 +3388,12 @@ fn generate_html(port: u16) -> String {
             try {{
                 const response = await fetch('/api/graph');
                 const data = await response.json();
-                console.log('📊 Graph API Response:', data);
+                console.log('[#] Graph API Response:', data);
                 console.log(`   Nodes: ${{data.nodes?.length || 0}}, Edges: ${{data.edges?.length || 0}}`);
                 if (data.edges && data.edges.length > 0) {{
                     console.log('   Edges:', data.edges);
                 }} else {{
-                    console.warn('⚠️ No edges found! Cannot draw connection lines.');
+                    console.warn(' No edges found! Cannot draw connection lines.');
                 }}
                 graphData = data;
                 // Store in global state for resize handler
@@ -3407,7 +3407,7 @@ fn generate_html(port: u16) -> String {
         // Refresh all monitor data (triggers backend re-scan + updates frontend)
         // Backend performs fresh system scan on each API call - no caching
         async function refreshMonitorData() {{
-            console.log('🔄 Refreshing monitor data (backend + frontend)...');
+            console.log(' Refreshing monitor data (backend + frontend)...');
 
             // Reset graph layout to default positions
             resetGraphLayout();
@@ -3417,7 +3417,7 @@ fn generate_html(port: u16) -> String {
                 updateTopics(),     // Re-scans shared memory
                 updateGraphData()   // Re-builds graph from fresh data
             ]);
-            console.log('✅ Monitor data refreshed');
+            console.log(' Monitor data refreshed');
         }}
 
         // Track current log view for auto-updates
@@ -3707,7 +3707,7 @@ fn generate_html(port: u16) -> String {
             }};
 
             ws.onerror = (error) => {{
-                console.warn('⚠️ WebSocket error, falling back to polling');
+                console.warn(' WebSocket error, falling back to polling');
                 wsConnected = false;
             }};
 
@@ -3736,7 +3736,7 @@ fn generate_html(port: u16) -> String {
         }}
 
         // Event delegation for node and topic clicks - SET UP EARLY!
-        console.log('🎯 Setting up event delegation for nodes and topics');
+        console.log(' Setting up event delegation for nodes and topics');
 
         try {{
             document.addEventListener('click', (e) => {{
@@ -4099,7 +4099,7 @@ fn generate_html(port: u16) -> String {
                             expandableContent = `
                                 <div id="env-details-${{index}}" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);">
                                     <div style="color: var(--text-secondary); margin-bottom: 8px; font-size: 0.9em;">
-                                        📦 Packages in this environment:
+                                         Packages in this environment:
                                     </div>
                                     ${{env.packages.map(p => `
                                         <div style="padding: 8px 12px; background: var(--primary); border: 1px solid var(--border); border-radius: 4px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">

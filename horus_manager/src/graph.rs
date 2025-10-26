@@ -45,7 +45,6 @@ pub struct GraphVisualization {
     dragging_node: Option<String>,
     camera_offset: Vec2,
     zoom: f32,
-    auto_layout: bool,
     show_labels: bool,
     physics_enabled: bool,
     last_refresh: std::time::Instant,
@@ -81,7 +80,6 @@ impl GraphVisualization {
             dragging_node: None,
             camera_offset: Vec2::ZERO,
             zoom: 1.0,
-            auto_layout: true,
             show_labels: true,
             physics_enabled: true,
             last_refresh: std::time::Instant::now(),
@@ -269,7 +267,6 @@ impl GraphVisualization {
 
         // Apply very gentle repulsion between all nodes - prevent stacking
         let node_ids: Vec<String> = self.nodes.keys().cloned().collect();
-        let min_distance = 60.0; // Absolute minimum - nodes can't get closer
         let ideal_distance = 100.0; // Target comfortable spacing
 
         for i in 0..node_ids.len() {
@@ -833,7 +830,7 @@ impl eframe::App for GraphVisualization {
                                         ui.label("Publishes to:");
                                         has_publishes = true;
                                     }
-                                    ui.label(format!("  → {}", target.label));
+                                    ui.label(format!("   {}", target.label));
                                 }
                             }
                         }
@@ -881,7 +878,7 @@ impl eframe::App for GraphVisualization {
                             if !subscribers.is_empty() {
                                 ui.label("Subscribers:");
                                 for sub_name in subscribers {
-                                    ui.label(format!("  → {}", sub_name));
+                                    ui.label(format!("   {}", sub_name));
                                 }
                             }
                         }
@@ -941,7 +938,7 @@ impl eframe::App for GraphVisualization {
             // Get theme colors
             let (
                 background_color,
-                dot_color,
+                _dot_color,
                 process_color,
                 topic_color,
                 publish_edge_color,
@@ -1315,27 +1312,3 @@ pub fn show_graph_visualization() -> anyhow::Result<()> {
     .map_err(|e| anyhow::anyhow!("Failed to run graph visualization: {}", e))
 }
 
-// Implement rand::random for demo purposes (replace with proper random in production)
-mod rand {
-    pub fn random<T>() -> T
-    where
-        T: RandomValue,
-    {
-        T::random()
-    }
-
-    pub trait RandomValue {
-        fn random() -> Self;
-    }
-
-    impl RandomValue for f32 {
-        fn random() -> Self {
-            // Simple pseudo-random using system time
-            let nanos = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .subsec_nanos();
-            (nanos % 1000) as f32 / 1000.0
-        }
-    }
-}

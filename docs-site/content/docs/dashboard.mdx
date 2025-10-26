@@ -25,10 +25,10 @@ The HORUS Dashboard is a **web interface** that lets you see inside your running
 ### You want to know: "Is my robot working?"
 
 The dashboard shows you **at a glance**:
-- ✅ All nodes running? (System health badge)
-- ✅ Performance good? (CPU, memory, tick rates)
-- ✅ Messages flowing? (Topic activity)
-- ✅ Any errors? (Error counts)
+-  All nodes running? (System health badge)
+-  Performance good? (CPU, memory, tick rates)
+-  Messages flowing? (Topic activity)
+-  Any errors? (Error counts)
 
 **Without the dashboard:** Grep logs, check processes, SSH into robot, hope you find the issue
 
@@ -39,18 +39,18 @@ The dashboard shows you **at a glance**:
 **Common problems the dashboard solves:**
 
 **"My subscriber isn't getting messages"**
-- Check Topics tab → Is the topic there?
-- Check Graph view → Are publisher and subscriber connected?
-- Check Logs → Any connection errors?
+- Check Topics tab  Is the topic there?
+- Check Graph view  Are publisher and subscriber connected?
+- Check Logs  Any connection errors?
 
 **"The robot is running slow"**
-- Check Nodes tab → Which node is using 90% CPU?
-- Check tick rates → Which node can't keep up?
-- Check Logs → Any "slow tick" warnings?
+- Check Nodes tab  Which node is using 90% CPU?
+- Check tick rates  Which node can't keep up?
+- Check Logs  Any "slow tick" warnings?
 
 **"It worked yesterday, what changed?"**
-- Check Parameters → What values are different?
-- Check Nodes → Same nodes running as before?
+- Check Parameters  What values are different?
+- Check Nodes  Same nodes running as before?
 
 ### You want to: "Tune parameters live"
 
@@ -100,9 +100,9 @@ Browser opens automatically to `http://localhost:3000`
 - After code changes (ensure no performance regression)
 
 **What you'll notice:**
-- ✅ Tick rate steady at ~60 Hz → Good
-- ⚠️ CPU jumping to 90% → Check that node
-- ❌ Errors climbing → Something's wrong
+-  Tick rate steady at ~60 Hz  Good
+-  CPU jumping to 90%  Check that node
+-  Errors climbing  Something's wrong
 
 ### 2. **Debug Message Flow**
 
@@ -113,7 +113,7 @@ Browser opens automatically to `http://localhost:3000`
 
 **Use it when:**
 - "Why isn't my subscriber getting data?"
-  - Look: Is there an arrow from publisher → topic → subscriber?
+  - Look: Is there an arrow from publisher  topic  subscriber?
   - If not: Name mismatch or node not running
 
 - "Which nodes use this topic?"
@@ -183,8 +183,8 @@ Browser opens automatically to `http://localhost:3000`
 **You just sat down with coffee:**
 
 1. Open dashboard
-2. Check health badge → 🟢 All good
-3. Glance at nodes table → All running, tick rates normal
+2. Check health badge  🟢 All good
+3. Glance at nodes table  All running, tick rates normal
 4. Start working
 
 **Total time:** 10 seconds to verify system health
@@ -195,7 +195,7 @@ Browser opens automatically to `http://localhost:3000`
 
 **Dashboard workflow:**
 1. Health badge is 🔴 Critical
-2. Nodes tab → `motor_controller` has 50 errors
+2. Nodes tab  `motor_controller` has 50 errors
 3. Click logs for that node
 4. See: "Failed to connect to motor driver"
 5. Fix: Cable unplugged
@@ -240,7 +240,7 @@ Browser opens automatically to `http://localhost:3000`
 
 **The dashboard binds to all network interfaces**, meaning:
 
-✅ **Works great:**
+ **Works great:**
 - Monitor from your desk while robot runs across the room
 - Check on phone while robot is charging
 - Team member in another room sees same view
@@ -295,17 +295,17 @@ http://192.168.1.100:3000
 ## Troubleshooting
 
 **Dashboard shows nothing**
-→ Make sure your HORUS app is running first
+ Make sure your HORUS app is running first
 
 **Can't access from phone**
-→ Check both devices on same WiFi
-→ Allow port 3000 in firewall: `sudo ufw allow 3000`
+ Check both devices on same WiFi
+ Allow port 3000 in firewall: `sudo ufw allow 3000`
 
 **Port already in use**
-→ Use different port: `horus dashboard 8080`
+ Use different port: `horus dashboard 8080`
 
 **Parameters not saving**
-→ Create config directory: `mkdir -p ~/.horus/config`
+ Create config directory: `mkdir -p ~/.horus/config`
 
 ## Terminal UI Mode
 

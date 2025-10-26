@@ -20,7 +20,7 @@ Procedural macros for the HORUS robotics framework that eliminate boilerplate an
 - `new()` constructor with error handling
 - `Node` trait implementation with lifecycle methods
 - `Default` trait implementation
-- Automatic CamelCase → snake_case naming conversion
+- Automatic CamelCase  snake_case naming conversion
 
 **Key Features:**
 - **Zero unsafe code** - all generated code is safe Rust

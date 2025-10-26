@@ -68,7 +68,7 @@ horus pkg info pid-controller
 horus auth login --github
 
 # 2. Publish
-horus publish
+horus pkg publish
 ```
 
 ## Package Discovery
@@ -85,15 +85,15 @@ horus publish
 **Navigation:**
 ```
 https://marketplace.horus-registry.dev/
-├── /packages              # Browse all packages
-├── /packages/trending     # Trending this week
-├── /packages/featured     # Staff picks
-├── /categories            # Browse by category
-│   ├── /control
-│   ├── /planning
-│   ├── /perception
-│   └── /drivers
-└── /environments          # Shared environments
+── /packages              # Browse all packages
+── /packages/trending     # Trending this week
+── /packages/featured     # Staff picks
+── /categories            # Browse by category
+   ── /control
+   ── /planning
+   ── /perception
+   ── /drivers
+── /environments          # Shared environments
 ```
 
 ### CLI Search
@@ -143,9 +143,9 @@ horus pkg info sensor-fusion
 
 **Output:**
 ```
-═══════════════════════════════════════════════════════════════
+
 Package: sensor-fusion
-═══════════════════════════════════════════════════════════════
+
 
 Version: 2.1.0
 Author: robotics-lab
@@ -274,7 +274,7 @@ cargo test
 cargo metadata --format-version 1 | jq '.packages[0]'
 
 # 5. Publish
-horus publish
+horus pkg publish
 ```
 
 **Interactive prompts:**
@@ -337,7 +337,7 @@ git commit -m "Release v1.1.0"
 git tag v1.1.0
 
 # 4. Publish
-horus publish
+horus pkg publish
 ```
 
 ### Yanking Versions
@@ -670,8 +670,8 @@ horus pkg list --author your-username
 
 **Update package metadata:**
 ```bash
-# Edit Cargo.toml, then republish with same version
-horus publish --update-metadata
+# Edit horus.yaml or Cargo.toml, bump version, then republish
+horus pkg publish
 ```
 
 **Delete package:**
@@ -723,7 +723,7 @@ echo "# My Package" > README.md
 license = "MIT"
 
 # Retry
-horus publish
+horus pkg publish
 ```
 
 ### Package Not Found
@@ -760,7 +760,7 @@ Error: Version 1.0.0 already published
 version = "1.0.1"
 
 # Publish new version
-horus publish
+horus pkg publish
 ```
 
 ## Next Steps

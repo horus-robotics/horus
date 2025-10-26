@@ -15,6 +15,7 @@ struct AuthConfig {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct ApiKeyResponse {
     key: String,
     name: String,
@@ -41,11 +42,11 @@ pub fn login(github: bool) -> HorusResult<()> {
 
     if github {
         // GitHub OAuth flow
-        println!("{} Logging in to HORUS registry with GitHub...", "→".cyan());
+        println!("{} Logging in to HORUS registry with GitHub...", "".cyan());
         println!();
         println!(
             "{} Opening browser for GitHub authentication...",
-            "→".cyan()
+            "".cyan()
         );
         println!("  {} {}/auth/github", "URL:".dimmed(), registry_url);
         println!();
@@ -66,7 +67,7 @@ pub fn login(github: bool) -> HorusResult<()> {
         println!("  2. Copy the displayed instructions");
         println!("  3. Run: {}", "horus auth generate-key".cyan());
         println!();
-        println!("{} GitHub authentication initiated!", "✓".green());
+        println!("{} GitHub authentication initiated!", "".green());
     } else {
         println!("{} GitHub authentication is required.", "!".yellow());
         println!();
@@ -78,7 +79,7 @@ pub fn login(github: bool) -> HorusResult<()> {
 
 /// Generate API key after GitHub authentication
 pub fn generate_key(name: Option<String>, environment: Option<String>) -> HorusResult<()> {
-    println!("{} Generating API key...", "→".cyan());
+    println!("{} Generating API key...", "".cyan());
 
     let registry_url = get_registry_url();
     let key_name = name.unwrap_or_else(|| {
@@ -144,7 +145,7 @@ pub fn generate_key(name: Option<String>, environment: Option<String>) -> HorusR
         .map_err(|e| HorusError::Config(format!("Failed to save auth config: {}", e)))?;
 
     println!();
-    println!("{} API key saved successfully!", "✓".green());
+    println!("{} API key saved successfully!", "".green());
     println!("  {} {}", "Registry:".dimmed(), registry_url);
     println!(
         "  {} {}",
@@ -163,7 +164,7 @@ pub fn generate_key(name: Option<String>, environment: Option<String>) -> HorusR
 
 /// Logout from the HORUS registry
 pub fn logout() -> HorusResult<()> {
-    println!("{} Logging out from HORUS registry...", "→".cyan());
+    println!("{} Logging out from HORUS registry...", "".cyan());
 
     let config_path = auth_config_path().map_err(|e| HorusError::Config(e.to_string()))?;
 
@@ -171,7 +172,7 @@ pub fn logout() -> HorusResult<()> {
         fs::remove_file(&config_path)
             .map_err(|e| HorusError::Config(format!("Failed to remove auth config: {}", e)))?;
 
-        println!("{} Successfully logged out!", "✓".green());
+        println!("{} Successfully logged out!", "".green());
         println!("  {} API key removed from local storage", "•".dimmed());
     } else {
         println!("{} Not currently logged in", "!".yellow());
@@ -210,7 +211,7 @@ pub fn whoami() -> HorusResult<()> {
     {
         Ok(response) if response.status().is_success() => {
             if let Ok(user_info) = response.json::<serde_json::Value>() {
-                println!("{} Current authentication:", "→".cyan());
+                println!("{} Current authentication:", "".cyan());
                 println!("  {} {}", "Registry:".dimmed(), registry_url);
 
                 if let Some(username) = user_info["github_username"].as_str() {
@@ -238,7 +239,7 @@ pub fn whoami() -> HorusResult<()> {
         }
         _ => {
             // Fallback to showing local config
-            println!("{} Current authentication:", "→".cyan());
+            println!("{} Current authentication:", "".cyan());
             println!("  {} {}", "Registry:".dimmed(), registry_url);
 
             // Show token prefix only

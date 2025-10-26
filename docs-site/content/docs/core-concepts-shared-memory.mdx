@@ -181,19 +181,19 @@ Modern CPUs fetch memory in 64-byte cache lines. Aligning to 64 bytes:
 ### Memory Layout
 
 ```
-┌─────────────────────────────────────┐
-│  RingBufferHeader (64 bytes)        │  ← Aligned to 64 bytes
-├─────────────────────────────────────┤
-│  Padding (for data alignment)                              │
-├─────────────────────────────────────┤
-│  Data Slot 0                                               │
-├─────────────────────────────────────┤
-│  Data Slot 1                                               │
-├─────────────────────────────────────┤
-│  ...                                                       │
-├─────────────────────────────────────┤
-│  Data Slot N-1                                             │
-└─────────────────────────────────────┘
+─────────────────────────────────────
+  RingBufferHeader (64 bytes)          ← Aligned to 64 bytes
+─────────────────────────────────────
+  Padding (for data alignment)                              
+─────────────────────────────────────
+  Data Slot 0                                               
+─────────────────────────────────────
+  Data Slot 1                                               
+─────────────────────────────────────
+  ...                                                       
+─────────────────────────────────────
+  Data Slot N-1                                             
+─────────────────────────────────────
 ```
 
 ## Zero-Copy Loan Pattern
@@ -355,11 +355,11 @@ pub fn receive(&self) -> Option<ConsumerSample<T>> {
 Each subscriber maintains its own `consumer_tail` position:
 
 ```
-Publisher writes:    HEAD → [0] [1] [2] [3] [4]
+Publisher writes:    HEAD  [0] [1] [2] [3] [4]
 
-Subscriber A:        TAIL_A → [0]  (just joined)
-Subscriber B:        TAIL_B → [2]  (caught up partially)
-Subscriber C:        TAIL_C → [4]  (fully caught up)
+Subscriber A:        TAIL_A  [0]  (just joined)
+Subscriber B:        TAIL_B  [2]  (caught up partially)
+Subscriber C:        TAIL_C  [4]  (fully caught up)
 ```
 
 **Each subscriber**:

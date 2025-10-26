@@ -9,19 +9,16 @@ members = [
     "horus_library",
     "horus_c",  # C API bindings
     # Example apps (multi-node applications)
-
     "horus_library/apps/snakesim",
-    "horus_library/apps/snakesim/snake_control_node",
-    "horus_library/apps/snakesim/snake_scheduler",
     "horus_library/apps/snakesim/snakesim_gui",
     "horus_library/apps/tanksim",
    # Tools
     "horus_library/tools/sim2d",
     "benchmarks",
     "horus_py",
-    # Tests
-    "tests/dashboard",
-    "tests/link_drone_app",
+]
+exclude = [
+    ".horus",  # Exclude horus run temporary workspace
 ]
 
 [workspace.dependencies]

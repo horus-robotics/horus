@@ -17,7 +17,7 @@ struct DeployResponse {
 pub fn execute_remote(robot_addr: &str, file: Option<PathBuf>) -> Result<()> {
     println!(
         "{} Deploying to remote robot: {}",
-        "→".cyan(),
+        "".cyan(),
         robot_addr.yellow()
     );
 
@@ -29,15 +29,15 @@ pub fn execute_remote(robot_addr: &str, file: Option<PathBuf>) -> Result<()> {
         detect_entry_file(&project_dir)?
     };
 
-    println!("{} Packaging {}...", "→".cyan(), entry_file.display());
+    println!("{} Packaging {}...", "".cyan(), entry_file.display());
     let tar_gz_data = package_project(&entry_file)?;
 
     let url = normalize_url(robot_addr);
-    println!("{} Uploading to {}...", "→".cyan(), url);
+    println!("{} Uploading to {}...", "".cyan(), url);
 
     let response = upload_to_daemon(&url, tar_gz_data)?;
 
-    println!("\n{}", "✅ Deployment successful!".green().bold());
+    println!("\n{}", " Deployment successful!".green().bold());
     println!("   Deployment ID: {}", response.deployment_id.yellow());
     println!("   Status: {}", response.status.green());
     if let Some(pid) = response.pid {

@@ -259,7 +259,7 @@ python examples/simple_api_demo.py
 python examples/robot_example.py
 ```
 
-## 🤔 Why This Design?
+##  Why This Design?
 
 The HORUS Python API is designed for simplicity and productivity:
 

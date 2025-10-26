@@ -38,6 +38,7 @@ pub struct SafetyMonitorNode {
 
 #[derive(Clone)]
 struct SafetyCheck {
+    #[allow(dead_code)]
     name: String,
     status: StatusLevel,
     message: String,

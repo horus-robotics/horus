@@ -195,11 +195,11 @@ pub fn file_dialog_system(mut ui_state: ResMut<UiState>, mut app_config: ResMut<
                         app_config.robot_config = config;
                         ui_state.robot_config_path = Some(path);
                         ui_state.status_message = "Robot config loaded!".to_string();
-                        info!("✅ Loaded robot config");
+                        info!(" Loaded robot config");
                     }
                     Err(e) => {
                         ui_state.status_message = format!("Error: {}", e);
-                        warn!("❌ Failed to load robot config: {}", e);
+                        warn!(" Failed to load robot config: {}", e);
                     }
                 }
             }
@@ -217,11 +217,11 @@ pub fn file_dialog_system(mut ui_state: ResMut<UiState>, mut app_config: ResMut<
                         ui_state.world_config_path = Some(path);
                         ui_state.status_message =
                             "World config loaded! (Restart to apply)".to_string();
-                        info!("✅ Loaded world config");
+                        info!(" Loaded world config");
                     }
                     Err(e) => {
                         ui_state.status_message = format!("Error: {}", e);
-                        warn!("❌ Failed to load world config: {}", e);
+                        warn!(" Failed to load world config: {}", e);
                     }
                 }
             }

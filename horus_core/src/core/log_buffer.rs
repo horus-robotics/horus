@@ -91,7 +91,7 @@ impl SharedLogBuffer {
         let write_idx = match write_idx_bytes.try_into() {
             Ok(bytes) => u64::from_le_bytes(bytes) as usize,
             Err(_) => {
-                eprintln!("❌ Failed to read log buffer index");
+                eprintln!(" Failed to read log buffer index");
                 return;
             }
         };
@@ -101,11 +101,11 @@ impl SharedLogBuffer {
             Ok(data) if data.len() <= LOG_ENTRY_SIZE => data,
             Ok(data) => {
                 // Truncate if too large
-                eprintln!("⚠️ Log entry too large ({}), truncating", data.len());
+                eprintln!(" Log entry too large ({}), truncating", data.len());
                 data[..LOG_ENTRY_SIZE].to_vec()
             }
             Err(e) => {
-                eprintln!("❌ Failed to serialize log: {}", e);
+                eprintln!(" Failed to serialize log: {}", e);
                 return;
             }
         };
@@ -137,7 +137,7 @@ impl SharedLogBuffer {
         let write_idx = match write_idx_bytes.try_into() {
             Ok(bytes) => u64::from_le_bytes(bytes) as usize,
             Err(_) => {
-                eprintln!("❌ Failed to read log buffer index");
+                eprintln!(" Failed to read log buffer index");
                 return Vec::new();
             }
         };

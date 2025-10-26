@@ -36,18 +36,18 @@ HORUS Core provides lightweight primitives for robotics applications:
 
 ```
 horus_core/
-├── core/                  # Core framework types
-│   ├── node.rs           # Node trait + NodeInfo context
-│   └── log_buffer.rs     # Global log buffer
-├── communication/        # IPC primitives
-│   └── horus/
-│       └── hub.rs        # Hub pub/sub API
-├── memory/               # Shared memory
-│   └── shm_topic.rs      # Lock-free ring buffer
-├── scheduling/           # Task scheduling
-│   └── scheduler.rs      # Priority-based scheduler
-└── params/               # Runtime parameters
-    └── mod.rs            # Parameter system
+── core/                  # Core framework types
+   ── node.rs           # Node trait + NodeInfo context
+   ── log_buffer.rs     # Global log buffer
+── communication/        # IPC primitives
+   ── horus/
+       ── hub.rs        # Hub pub/sub API
+── memory/               # Shared memory
+   ── shm_topic.rs      # Lock-free ring buffer
+── scheduling/           # Task scheduling
+   ── scheduler.rs      # Priority-based scheduler
+── params/               # Runtime parameters
+    ── mod.rs            # Parameter system
 ```
 
 ## Core Modules
@@ -234,8 +234,7 @@ impl Node for ControlNode {
 ### 3. Complete Application
 
 ```rust
-use horus_core::scheduling::Scheduler;
-use horus_core::error::HorusResult;
+use horus::prelude::*;
 
 fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();

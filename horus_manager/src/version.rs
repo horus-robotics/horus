@@ -56,13 +56,13 @@ pub fn check_and_prompt_update() -> Result<()> {
 
             // Find HORUS source directory
             if let Some(horus_root) = find_horus_source() {
-                println!("\n{} To update libraries, run:", "→".cyan());
+                println!("\n{} To update libraries, run:", "".cyan());
                 println!(
                     "  {}",
                     format!("cd {} && ./install.sh", horus_root.display()).cyan()
                 );
             } else {
-                println!("\n{} To update libraries:", "→".cyan());
+                println!("\n{} To update libraries:", "".cyan());
                 println!("  1. Navigate to your HORUS source directory");
                 println!("  2. Run: {}", "./install.sh".cyan());
             }
@@ -79,7 +79,7 @@ fn print_version_mismatch(cli_version: &str, installed_version: &str) {
     eprintln!();
     eprintln!(
         "{} {}",
-        "⚠".yellow().bold(),
+        "".yellow().bold(),
         "Version mismatch detected!".yellow().bold()
     );
     eprintln!();
@@ -185,9 +185,9 @@ pub fn print_version_info() {
             for (name, version) in packages {
                 let compatible = version == get_cli_version();
                 let marker = if compatible {
-                    "✓".green()
+                    "".green()
                 } else {
-                    "⚠".yellow()
+                    "".yellow()
                 };
                 println!("  {} {}@{}", marker, name, version);
             }

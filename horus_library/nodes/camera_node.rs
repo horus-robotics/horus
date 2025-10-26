@@ -139,17 +139,20 @@ impl CameraNode {
     }
 
     #[cfg(not(feature = "opencv-backend"))]
+    #[allow(dead_code)]
     fn initialize_opencv(&mut self) -> bool {
         false
     }
 
     #[cfg(feature = "v4l2-backend")]
+    #[allow(dead_code)]
     fn initialize_v4l2(&mut self) -> bool {
         // V4L2 implementation would go here
         false
     }
 
     #[cfg(not(feature = "v4l2-backend"))]
+    #[allow(dead_code)]
     fn initialize_v4l2(&mut self) -> bool {
         false
     }
@@ -192,6 +195,7 @@ impl CameraNode {
     }
 
     #[cfg(not(feature = "opencv-backend"))]
+    #[allow(dead_code)]
     fn capture_opencv_frame(&mut self) -> Option<Vec<u8>> {
         None
     }

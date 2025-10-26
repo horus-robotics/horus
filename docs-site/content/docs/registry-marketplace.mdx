@@ -67,31 +67,31 @@ horus pkg install motion-planner
 The marketplace home page displays:
 
 ```
-┌─────────────────────────────────────────────────────┐
-│              HORUS Package Registry                 │
-│    High-performance robotics packages built for     │
-│                      speed                          │
-└─────────────────────────────────────────────────────┘
+─────────────────────────────────────────────────────
+              HORUS Package Registry                 
+    High-performance robotics packages built for     
+                      speed                          
+─────────────────────────────────────────────────────
 
-┌─────────────────────────────────────────────────────┐
-│  Search: [$ _________________________________]      │
-└─────────────────────────────────────────────────────┘
+─────────────────────────────────────────────────────
+  Search: [$ _________________________________]      
+─────────────────────────────────────────────────────
 
-┌─────────────────────────────────────────────────────┐
-│  10 Packages  |  15,432 Downloads  |  8 Publishers  │
-└─────────────────────────────────────────────────────┘
+─────────────────────────────────────────────────────
+  10 Packages  |  15,432 Downloads  |  8 Publishers  
+─────────────────────────────────────────────────────
 
-┌────────────────────┐ ┌────────────────────┐
-│ pid-controller  │ │ motion-planner                  │
-│ v1.2.0             │ │ v2.0.1                       │
-│                    │ │                              │
-│ PID controller     │ │ A* path planning             │
-│                    │ │                              │
-│ 5,234  ★ 45      │ │ 3,421  ★ 32                    │
-│                    │ │                              │
-│ [View] [Docs]      │ │ [View] [Docs]                │
-│        [Source]    │ │        [Source]              │
-└────────────────────┘ └────────────────────┘
+──────────────────── ────────────────────
+ pid-controller    motion-planner                  
+ v1.2.0               v2.0.1                       
+                                                   
+ PID controller       A* path planning             
+                                                   
+ 5,234  ★ 45        3,421  ★ 32                    
+                                                   
+ [View] [Docs]        [View] [Docs]                
+        [Source]             [Source]              
+──────────────────── ────────────────────
 ```
 
 ### Search Functionality
@@ -187,14 +187,14 @@ Include documentation directly in the package:
 **Structure:**
 ```
 my-package/
-├── docs/
-│   ├── README.md           # Main page
-│   ├── getting-started.md  # Installation guide
-│   ├── api.md              # API reference
-│   ├── examples.md         # Usage examples
-│   └── troubleshooting.md  # Common issues
-├── src/
-└── Cargo.toml
+── docs/
+   ── README.md           # Main page
+   ── getting-started.md  # Installation guide
+   ── api.md              # API reference
+   ── examples.md         # Usage examples
+   ── troubleshooting.md  # Common issues
+── src/
+── Cargo.toml
 ```
 
 **How it works:**
@@ -220,34 +220,34 @@ my-package/
 
 **From Package Card:**
 ```
-┌────────────────────┐
-│ my-package                      │
-│ v1.0.0                          │
-│                                 │
-│ [View] [Docs]      │
-└────────────────────┘
+────────────────────
+ my-package                      
+ v1.0.0                          
+                                 
+ [View] [Docs]      
+────────────────────
 ```
 
 **Local Docs Viewer:**
 ```
-┌──────────────────────────────────────────────────────┐
-│  my-package Documentation                     v1.0.0 │
-│  ← Back to package details                           │
-├──────────────┬───────────────────────────────────────┤
-│ Documentation│  # Getting Started                    │
-│              │                                       │
-│ • README.md  │  Install the package:                 │
-│ • getting-   │  ```bash                              │
-│   started.md │  horus pkg install my-package         │
-│ • api.md     │  ```                                  │
-│ • examples.md│                                       │
-│              │  ## Usage                             │
-│              │                                       │
-│              │  Import and use in your code:         │
-│              │  ```rust                              │
-│              │  use my_package::MyNode;              │
-│              │  ```                                  │
-└──────────────┴───────────────────────────────────────┘
+──────────────────────────────────────────────────────
+  my-package Documentation                     v1.0.0 
+  ← Back to package details                           
+─────────────────────────────────────────────────────
+ Documentation  # Getting Started                    
+                                                     
+ • README.md    Install the package:                 
+ • getting-     ```bash                              
+   started.md   horus pkg install my-package         
+ • api.md       ```                                  
+ • examples.md                                       
+                ## Usage                             
+                                                     
+                Import and use in your code:         
+                ```rust                              
+                use my_package::MyNode;              
+                ```                                  
+─────────────────────────────────────────────────────
 ```
 
 ### Writing Good Documentation
@@ -371,10 +371,10 @@ $ cd my-package
 $ git remote -v
 origin  git@github.com:username/my-package.git
 
-$ horus publish
+$ horus pkg publish
 # ...
 Source Repository
-   ✓ Auto-detected: https://github.com/username/my-package
+    Auto-detected: https://github.com/username/my-package
    Add source repository? (y/n): y
 ```
 
@@ -386,7 +386,7 @@ If auto-detection doesn't work:
 Source Repository
    Add source repository? (y/n): y
    Enter source repository URL: https://github.com/username/repo
-   ✓ Source repository: https://github.com/username/repo
+    Source repository: https://github.com/username/repo
 ```
 
 ## Publishing with Documentation
@@ -397,24 +397,24 @@ Source Repository
 $ cd my-sensor-package
 $ tree
 .
-├── Cargo.toml
-├── docs/
-│   ├── README.md
-│   ├── getting-started.md
-│   ├── api.md
-│   └── examples.md
-└── src/
-    └── lib.rs
+── Cargo.toml
+── docs/
+   ── README.md
+   ── getting-started.md
+   ── api.md
+   ── examples.md
+── src/
+    ── lib.rs
 
-$ horus publish
+$ horus pkg publish
 
 Publishing my-sensor-package v1.0.0...
-✓ Uploaded to registry
+ Uploaded to registry
 
 Package Metadata (optional)
 
 Documentation
-   ✓ Found local /docs folder with markdown files
+    Found local /docs folder with markdown files
    Add documentation? (y/n): y
 
    Options:
@@ -422,13 +422,13 @@ Documentation
      2. Local /docs folder
 
    Choose (1/2/skip): 2
-   ✓ Will bundle local /docs folder
+    Will bundle local /docs folder
 
 Source Repository
-   ✓ Auto-detected: https://github.com/robotics/my-sensor-package
+    Auto-detected: https://github.com/robotics/my-sensor-package
    Add source repository? (y/n): y
    Use detected URL? (y/n): y
-   ✓ Source repository: https://github.com/robotics/my-sensor-package
+    Source repository: https://github.com/robotics/my-sensor-package
 
 Package metadata updated!
 ```

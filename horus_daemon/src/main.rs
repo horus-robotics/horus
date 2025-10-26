@@ -87,8 +87,8 @@ async fn main() -> anyhow::Result<()> {
     let app = app.layer(CorsLayer::permissive());
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 8080));
-    tracing::info!("🚀 HORUS daemon listening on {}", addr);
-    tracing::info!("📡 Ready to receive deployments");
+    tracing::info!(" HORUS daemon listening on {}", addr);
+    tracing::info!(" Ready to receive deployments");
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app).await?;

@@ -3,11 +3,9 @@ name = "snakesim"
 version = "0.1.0"
 edition = "2021"
 
-[lib]
-path = "lib.rs"
+[[bin]]
+name = "snakesim"
+path = "main.rs"
 
 [dependencies]
 horus = { path = "../../../horus" }
-horus_library = { path = "../../" }
-tokio = { version = "1.0", features = ["full"] }
-

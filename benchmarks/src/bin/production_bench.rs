@@ -23,7 +23,7 @@ const WARMUP: usize = 100;
 fn main() {
     println!(
         "\n{}",
-        "═══════════════════════════════════════════════════════════════"
+        ""
             .bright_cyan()
             .bold()
     );
@@ -41,7 +41,7 @@ fn main() {
     );
     println!(
         "{}",
-        "═══════════════════════════════════════════════════════════════"
+        ""
             .bright_cyan()
             .bold()
     );
@@ -67,14 +67,14 @@ fn main() {
 
     println!(
         "\n{}",
-        "═══════════════════════════════════════════════════════════════"
+        ""
             .bright_cyan()
             .bold()
     );
     println!("{}", "  Benchmark Complete".bright_green().bold());
     println!(
         "{}",
-        "═══════════════════════════════════════════════════════════════"
+        ""
             .bright_cyan()
             .bold()
     );
@@ -83,12 +83,12 @@ fn main() {
 fn bench_cmdvel() {
     println!(
         "\n{}  {}",
-        "┏━━".bright_blue(),
+        "".bright_blue(),
         "CmdVel (Motor Control Command)".bright_white().bold()
     );
     println!(
         "{}    Size: {} bytes | Typical rate: 1000Hz",
-        "┃".bright_blue(),
+        "".bright_blue(),
         std::mem::size_of::<CmdVel>()
     );
 
@@ -118,12 +118,12 @@ fn bench_cmdvel() {
 fn bench_laserscan() {
     println!(
         "\n{}  {}",
-        "┏━━".bright_blue(),
+        "".bright_blue(),
         "LaserScan (2D Lidar Data)".bright_white().bold()
     );
     println!(
         "{}    Size: {} bytes | Typical rate: 10Hz",
-        "┃".bright_blue(),
+        "".bright_blue(),
         std::mem::size_of::<LaserScan>()
     );
 
@@ -159,12 +159,12 @@ fn bench_laserscan() {
 fn bench_imu() {
     println!(
         "\n{}  {}",
-        "┏━━".bright_blue(),
+        "".bright_blue(),
         "IMU (Inertial Measurement Unit)".bright_white().bold()
     );
     println!(
         "{}    Size: {} bytes | Typical rate: 100Hz",
-        "┃".bright_blue(),
+        "".bright_blue(),
         std::mem::size_of::<Imu>()
     );
 
@@ -201,12 +201,12 @@ fn bench_imu() {
 fn bench_odometry() {
     println!(
         "\n{}  {}",
-        "┏━━".bright_blue(),
+        "".bright_blue(),
         "Odometry (Pose + Velocity)".bright_white().bold()
     );
     println!(
         "{}    Size: {} bytes | Typical rate: 50Hz",
-        "┃".bright_blue(),
+        "".bright_blue(),
         std::mem::size_of::<Odometry>()
     );
 
@@ -247,12 +247,12 @@ fn bench_odometry() {
 fn bench_battery() {
     println!(
         "\n{}  {}",
-        "┏━━".bright_blue(),
+        "".bright_blue(),
         "BatteryState (Status Monitoring)".bright_white().bold()
     );
     println!(
         "{}    Size: {} bytes | Typical rate: 1Hz",
-        "┃".bright_blue(),
+        "".bright_blue(),
         std::mem::size_of::<BatteryState>()
     );
 
@@ -284,7 +284,7 @@ fn bench_battery() {
 fn bench_pointcloud_small() {
     println!(
         "\n{}  {}",
-        "┏━━".bright_blue(),
+        "".bright_blue(),
         "PointCloud Small (100 points)".bright_white().bold()
     );
 
@@ -323,7 +323,7 @@ fn bench_pointcloud_small() {
 fn bench_pointcloud_medium() {
     println!(
         "\n{}  {}",
-        "┏━━".bright_blue(),
+        "".bright_blue(),
         "PointCloud Medium (1000 points)".bright_white().bold()
     );
 
@@ -362,7 +362,7 @@ fn bench_pointcloud_medium() {
 fn bench_pointcloud_large() {
     println!(
         "\n{}  {}",
-        "┏━━".bright_blue(),
+        "".bright_blue(),
         "PointCloud Large (10000 points)".bright_white().bold()
     );
 
@@ -401,14 +401,14 @@ fn bench_pointcloud_large() {
 fn bench_mixed_robot_loop() {
     println!(
         "\n{}  {}",
-        "┏━━".bright_blue(),
+        "".bright_blue(),
         "Mixed Messages (Realistic Robot Loop)"
             .bright_white()
             .bold()
     );
     println!(
         "{}    Simulates: CmdVel@100Hz + IMU@100Hz + Battery@1Hz",
-        "┃".bright_blue()
+        "".bright_blue()
     );
 
     let cmd_topic = format!("bench_mix_cmd_{}", std::process::id());
@@ -468,7 +468,7 @@ fn bench_mixed_robot_loop() {
 
     println!(
         "{}    {}: {} operations",
-        "┃".bright_blue(),
+        "".bright_blue(),
         "Total messages".bright_white(),
         format!("{}", ITERATIONS * 2 + ITERATIONS / 100).bright_yellow()
     );
@@ -482,14 +482,14 @@ fn print_results(_name: &str, elapsed: Duration, iterations: usize) {
 
     println!(
         "{}    {}: {}",
-        "┃".bright_blue(),
+        "".bright_blue(),
         "Latency (avg)".bright_white(),
         format_latency(avg_ns).bright_green().bold()
     );
 
     println!(
         "{}    {}: {}",
-        "┃".bright_blue(),
+        "".bright_blue(),
         "Throughput".bright_white(),
         format!("{:.2} msg/s", throughput).bright_cyan().bold()
     );
@@ -498,12 +498,12 @@ fn print_results(_name: &str, elapsed: Duration, iterations: usize) {
     let ns_per_iter = avg_ns;
     println!(
         "{}    {}: ~{} ns",
-        "┃".bright_blue(),
+        "".bright_blue(),
         "Min/Max range".bright_white(),
         format!("{:.0}-{:.0}", ns_per_iter * 0.8, ns_per_iter * 1.2).bright_yellow()
     );
 
-    println!("{}━━", "┗".bright_blue());
+    println!("{}", "".bright_blue());
 }
 
 fn format_latency(ns: f64) -> String {

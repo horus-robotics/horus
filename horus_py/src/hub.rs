@@ -162,6 +162,7 @@ impl PyHub {
 /// Python wrapper for creating typed hubs
 #[pyclass]
 pub struct PyTypedHub {
+    #[allow(dead_code)]
     topic: String,
     hub_type: String,
     hub: Arc<Mutex<Hub<GenericMessage>>>,
