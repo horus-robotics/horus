@@ -1,7 +1,9 @@
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::{generate, Shell};
 use colored::*;
 use horus_core::error::{HorusError, HorusResult};
 use std::fs;
+use std::io;
 use std::path::PathBuf;
 
 // Use modules from the library instead of redeclaring them
@@ -89,17 +91,18 @@ enum Commands {
         command: EnvCommands,
     },
 
-    /// Publish package to registry
-    Publish {
-        /// Also generate freeze file
-        #[arg(long)]
-        freeze: bool,
-    },
-
     /// Authentication commands
     Auth {
         #[command(subcommand)]
         command: AuthCommands,
+    },
+
+    /// Generate shell completion scripts
+    #[command(hide = true)]
+    Completion {
+        /// Shell to generate completions for
+        #[arg(value_enum)]
+        shell: clap_complete::Shell,
     },
 
     /// Show version information
@@ -148,6 +151,13 @@ enum PkgCommands {
         /// List all (local + global)
         #[arg(short = 'a', long = "all")]
         all: bool,
+    },
+
+    /// Publish package to registry
+    Publish {
+        /// Also generate freeze file
+        #[arg(long)]
+        freeze: bool,
     },
 
     /// Unpublish a package from the registry
@@ -411,21 +421,21 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 PkgCommands::List {
                     query,
                     global,
-                    all: _,
+                    all,
                 } => {
                     let client = registry::RegistryClient::new();
 
                     if let Some(q) = query {
-                        // Search registry
-                        println!("{} Searching for '{}'...", "→".cyan(), q);
+                        // Search registry marketplace
+                        println!("{} Searching registry marketplace for '{}'...", "→".cyan(), q);
                         let results = client
                             .search(&q)
                             .map_err(|e| HorusError::Config(e.to_string()))?;
 
                         if results.is_empty() {
-                            println!("❌ No packages found matching '{}'", q);
+                            println!("❌ No packages found in marketplace matching '{}'", q);
                         } else {
-                            println!("\n{} Found {} package(s):\n", "✓".green(), results.len());
+                            println!("\n{} Found {} package(s) in marketplace:\n", "✓".green(), results.len());
                             for pkg in results {
                                 println!(
                                     "  {} {} - {}",
@@ -434,6 +444,68 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                     pkg.description.unwrap_or_default()
                                 );
                             }
+                        }
+                    } else if all {
+                        // List both local and global packages
+                        let home = dirs::home_dir().ok_or_else(|| {
+                            HorusError::Config("Could not find home directory".to_string())
+                        })?;
+                        let global_cache = home.join(".horus/cache");
+
+                        // Show local packages
+                        println!("{} Local packages:\n", "→".cyan());
+                        let packages_dir = if let Some(root) = workspace::find_workspace_root() {
+                            root.join(".horus/packages")
+                        } else {
+                            PathBuf::from(".horus/packages")
+                        };
+
+                        if packages_dir.exists() {
+                            let mut has_local = false;
+                            for entry in fs::read_dir(&packages_dir)
+                                .map_err(|e| HorusError::Config(e.to_string()))?
+                            {
+                                let entry = entry.map_err(|e| HorusError::Config(e.to_string()))?;
+                                if entry
+                                    .file_type()
+                                    .map_err(|e| HorusError::Config(e.to_string()))?
+                                    .is_dir()
+                                {
+                                    has_local = true;
+                                    let name = entry.file_name().to_string_lossy().to_string();
+                                    println!("  📦 {}", name.yellow());
+                                }
+                            }
+                            if !has_local {
+                                println!("  No local packages");
+                            }
+                        } else {
+                            println!("  No local packages");
+                        }
+
+                        // Show global packages
+                        println!("\n{} Global cache packages:\n", "→".cyan());
+                        if global_cache.exists() {
+                            let mut has_global = false;
+                            for entry in fs::read_dir(&global_cache)
+                                .map_err(|e| HorusError::Config(e.to_string()))?
+                            {
+                                let entry = entry.map_err(|e| HorusError::Config(e.to_string()))?;
+                                if entry
+                                    .file_type()
+                                    .map_err(|e| HorusError::Config(e.to_string()))?
+                                    .is_dir()
+                                {
+                                    has_global = true;
+                                    let name = entry.file_name().to_string_lossy().to_string();
+                                    println!("  🌐 {}", name.yellow());
+                                }
+                            }
+                            if !has_global {
+                                println!("  No global packages");
+                            }
+                        } else {
+                            println!("  No global packages");
                         }
                     } else if global {
                         // List global cache packages
@@ -505,6 +577,31 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                 println!("  {}", name.yellow());
                             }
                         }
+                    }
+
+                    Ok(())
+                }
+
+                PkgCommands::Publish { freeze } => {
+                    let client = registry::RegistryClient::new();
+                    client
+                        .publish(None)
+                        .map_err(|e| HorusError::Config(e.to_string()))?;
+
+                    // If --freeze flag is set, also generate freeze file
+                    if freeze {
+                        println!("\n{} Generating freeze file...", "→".cyan());
+                        let manifest = client
+                            .freeze()
+                            .map_err(|e| HorusError::Config(e.to_string()))?;
+
+                        let freeze_file = "horus-freeze.yaml";
+                        let yaml = serde_yaml::to_string(&manifest)
+                            .map_err(|e| HorusError::Config(e.to_string()))?;
+                        std::fs::write(freeze_file, yaml)
+                            .map_err(|e| HorusError::Config(e.to_string()))?;
+
+                        println!("✅ Environment also frozen to {}", freeze_file);
                     }
 
                     Ok(())
@@ -652,30 +749,6 @@ fn run_command(command: Commands) -> HorusResult<()> {
             }
         }
 
-        Commands::Publish { freeze } => {
-            let client = registry::RegistryClient::new();
-            client
-                .publish(None)
-                .map_err(|e| HorusError::Config(e.to_string()))?;
-
-            // If --freeze flag is set, also generate freeze file
-            if freeze {
-                println!("\n{} Generating freeze file...", "→".cyan());
-                let manifest = client
-                    .freeze()
-                    .map_err(|e| HorusError::Config(e.to_string()))?;
-
-                let freeze_file = "horus-freeze.yaml";
-                let yaml = serde_yaml::to_string(&manifest)
-                    .map_err(|e| HorusError::Config(e.to_string()))?;
-                std::fs::write(freeze_file, yaml).map_err(|e| HorusError::Config(e.to_string()))?;
-
-                println!("✅ Environment also frozen to {}", freeze_file);
-            }
-
-            Ok(())
-        }
-
         Commands::Auth { command } => match command {
             AuthCommands::Login { github } => commands::github_auth::login(github),
             AuthCommands::GenerateKey { name, environment } => {
@@ -684,6 +757,14 @@ fn run_command(command: Commands) -> HorusResult<()> {
             AuthCommands::Logout => commands::github_auth::logout(),
             AuthCommands::Whoami => commands::github_auth::whoami(),
         },
+
+        Commands::Completion { shell } => {
+            // Hidden command used by install.sh for automatic completion setup
+            let mut cmd = Cli::command();
+            let bin_name = cmd.get_name().to_string();
+            generate(shell, &mut cmd, bin_name, &mut io::stdout());
+            Ok(())
+        }
 
         Commands::Version => {
             horus_manager::version::print_version_info();

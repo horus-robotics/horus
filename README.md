@@ -322,8 +322,9 @@ horus new my_robot -m           # Create Rust project with macros
 ```bash
 horus run                       # Auto-detect and run
 horus run main.rs               # Run specific file
-horus run --release             # Build in release mode
+horus run --release             # Build in release mode (optimized)
 horus run --build-only          # Build without running
+horus run --build-only --release # Build optimized binary without running
 horus run --clean               # Clean build cache
 horus run --remote robot:8080   # Deploy to remote robot
 ```
@@ -366,7 +367,14 @@ horus auth logout               # Logout
 ```bash
 horus dashboard                 # Web dashboard (port 3000, auto-opens browser)
 horus dashboard 3001            # Custom port
-horus dashboard -t              # Terminal UI mode
+horus dashboard -t              # Terminal UI mode (in development)
+```
+
+### Version Information
+```bash
+horus version                   # Show version
+horus --version                 # Alternative syntax
+horus -V                        # Short flag
 ```
 
 ## Core API
@@ -588,6 +596,70 @@ See [horus_c/README.md](horus_c/README.md) for C bindings documentation.
 - Comprehensive system monitoring
 - Memory-safe message passing for 24/7 operation
 
+## Testing
+
+HORUS includes comprehensive testing at multiple levels:
+
+### Unit Tests
+```bash
+# Run all Rust unit tests
+cargo test
+
+# Run tests for specific component
+cargo test -p horus_core
+cargo test -p horus_manager
+```
+
+### Acceptance Tests
+
+User acceptance tests document expected behavior from a user's perspective. Located in `tests/acceptance/`, these tests serve as:
+- Feature documentation
+- Regression test checklists
+- User behavior validation
+
+**Test Categories:**
+- CLI Commands (`horus_manager/`) - new, run, pkg, env, auth, dashboard, version
+- Core Framework (`horus_core/`) - Hub, Node, Scheduler
+- Python Bindings (`horus_py/`) - PyO3 FFI, cross-language communication
+- Macros (`horus_macros/`) - node! macro code generation
+- Environment Management (`horus_env/`) - Freeze/restore workflows
+- Dashboard (`horus_dashboard/`) - Monitoring and visualization
+- Package Registry (`horus_registry/`) - Backend API
+- Marketplace (`horus_marketplace/`) - Web frontend
+- C Bindings (`horus_c/`) - Alpha status FFI
+
+**Running Manual Acceptance Tests:**
+```bash
+# Review test documentation
+cat tests/acceptance/README.md
+
+# Check specific feature tests
+cat tests/acceptance/horus_manager/01_new_command.md
+
+# Manually verify scenarios
+horus new test_project
+cd test_project
+horus run
+```
+
+Each test file contains detailed scenarios with:
+- Given/When/Then structure
+- Acceptance criteria with example commands
+- Expected output
+- Edge cases and error handling
+
+See [tests/acceptance/README.md](tests/acceptance/README.md) for complete testing documentation.
+
+### Benchmarks
+```bash
+# Run performance benchmarks
+cd benchmarks
+cargo bench
+
+# View latency measurements
+cargo run --release --bin production_bench
+```
+
 ## Community
 
 Join our Discord community for support, discussions, and updates:
@@ -598,11 +670,24 @@ Get help, share your projects, and connect with other HORUS developers!
 
 ## Contributing
 
+We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+**Quick Start:**
 1. Fork the repository
 2. Create feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open Pull Request
+3. Make your changes and write tests
+4. Review acceptance tests in `tests/acceptance/` for your component
+5. Ensure tests pass: `cargo test && cargo clippy`
+6. Commit changes: `git commit -m 'Add amazing feature'`
+7. Push to branch: `git push origin feature/amazing-feature`
+8. Open Pull Request with clear description and test verification
+
+**Testing:**
+- Unit tests: `cargo test`
+- Acceptance tests: See `tests/acceptance/README.md`
+- All components have documented acceptance criteria
+
+See our [Acceptance Tests](tests/acceptance/README.md) for detailed test scenarios and expected behavior.
 
 ## License
 

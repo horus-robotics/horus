@@ -46,21 +46,72 @@ npm run dev
 
 ## Testing
 
+HORUS has a comprehensive testing strategy including unit tests, integration tests, and user acceptance tests.
+
+### Unit and Integration Tests
+
 ```bash
-# Rust tests
+# Rust unit tests (all components)
 cargo test
 
-# Python tests
+# Python binding tests
 cd horus_py
 pytest tests/
 
-# C tests
+# C binding tests (alpha)
 cd horus_c
 make test
 
-# Integration tests
-./run_integration_tests.sh
+# Benchmarks and performance tests
+cd benchmarks
+cargo bench
 ```
+
+### Acceptance Tests
+
+User acceptance tests are located in `tests/acceptance/` and document expected behavior from a user perspective.
+
+**Before submitting a PR:**
+1. Review relevant acceptance test files for the component you're modifying
+2. Ensure your changes align with documented behavior
+3. Update acceptance tests if you're changing functionality
+4. Add new test scenarios for new features
+
+**Test Categories:**
+- `horus_manager/` - CLI commands (new, run, pkg, env, auth, dashboard, version)
+- `horus_core/` - Core framework (Hub, Node, Scheduler)
+- `horus_py/` - Python bindings
+- `horus_macros/` - Procedural macros
+- `horus_env/` - Environment management (freeze/restore)
+- `horus_dashboard/` - Monitoring dashboards
+- `horus_registry/` - Package registry backend
+- `horus_marketplace/` - Web marketplace
+- `horus_c/` - C bindings (alpha)
+
+**Running acceptance test checklist:**
+```bash
+# Review test documentation
+cat tests/acceptance/README.md
+
+# For CLI changes, review relevant test file
+cat tests/acceptance/horus_manager/01_new_command.md
+
+# Manually validate scenarios from the test file
+horus new test_project
+cd test_project
+horus run
+```
+
+### Continuous Integration
+
+All pull requests automatically run:
+- Unit tests (`cargo test`)
+- Clippy lints (`cargo clippy`)
+- Format checks (`cargo fmt --check`)
+- Python tests (if applicable)
+- Integration tests
+
+Ensure all CI checks pass before requesting review.
 
 ## Code Style
 
@@ -137,21 +188,70 @@ When reporting bugs, include:
 
 ## Pull Request Process
 
-1. **Ensure tests pass**: `cargo test && pytest`
-2. **Update documentation**: Include docs for new features
-3. **Write clear commit messages**:
+1. **Ensure tests pass**:
+   ```bash
+   cargo test              # Unit tests
+   cargo clippy            # Linting
+   cargo fmt --check       # Formatting
+   pytest (if applicable)  # Python tests
+   ```
+
+2. **Check acceptance tests**:
+   - Review relevant test files in `tests/acceptance/`
+   - Manually verify key scenarios for your changes
+   - Update test scenarios if you modified behavior
+   - Add new scenarios for new features
+
+3. **Update documentation**:
+   - Update README.md for user-facing changes
+   - Update inline code documentation (`///` comments)
+   - Add examples for new features
+   - Update CHANGELOG.md with your changes
+
+4. **Write clear commit messages**:
    ```
    Add feature: Brief description
 
    Detailed explanation of what changed and why.
+
+   - Updated acceptance tests in tests/acceptance/...
+   - Added new scenarios for ...
+
    Fixes #123
    ```
-4. **Submit PR** with:
+
+5. **Submit PR** with:
    - Clear title and description
    - Link to related issues
    - Screenshots/examples if UI changes
+   - List of acceptance test scenarios verified
+   - Note any new test scenarios added
 
-5. **Address review feedback** promptly
+6. **Address review feedback** promptly
+
+### Example PR Description Template
+
+```markdown
+## Description
+Brief description of changes
+
+## Changes
+- Added feature X
+- Fixed bug Y
+- Updated tests in tests/acceptance/horus_manager/...
+
+## Testing
+- [ ] Unit tests pass (`cargo test`)
+- [ ] Clippy passes (`cargo clippy`)
+- [ ] Format check passes (`cargo fmt --check`)
+- [ ] Manually verified acceptance test scenarios:
+  - Scenario 1: Create Basic Rust Project
+  - Scenario 2: Build and Run Project
+- [ ] Updated/added acceptance test scenarios
+
+## Related Issues
+Fixes #123
+```
 
 ## Architecture Guidelines
 

@@ -513,6 +513,70 @@ else
     echo -e "  Add this to your shell profile (~/.bashrc, ~/.zshrc, etc.)"
 fi
 
+# Step 11: Setup shell completions
+echo ""
+echo -e "${CYAN}→${NC} Setting up shell completions..."
+
+# Detect user's shell
+SHELL_NAME=$(basename "$SHELL")
+COMPLETION_INSTALLED=false
+
+case "$SHELL_NAME" in
+    bash)
+        # Try to set up bash completions
+        if [ -f ~/.bashrc ]; then
+            # Check if completion is already in bashrc
+            if ! grep -q "horus completion bash" ~/.bashrc 2>/dev/null; then
+                echo "" >> ~/.bashrc
+                echo "# HORUS shell completions" >> ~/.bashrc
+                echo 'eval "$(horus completion bash)"' >> ~/.bashrc
+                echo -e "${GREEN}✓${NC} Added bash completions to ~/.bashrc"
+                COMPLETION_INSTALLED=true
+            else
+                echo -e "${GREEN}✓${NC} Bash completions already configured"
+                COMPLETION_INSTALLED=true
+            fi
+        fi
+        ;;
+    zsh)
+        # Try to set up zsh completions
+        if [ -f ~/.zshrc ]; then
+            if ! grep -q "horus completion zsh" ~/.zshrc 2>/dev/null; then
+                echo "" >> ~/.zshrc
+                echo "# HORUS shell completions" >> ~/.zshrc
+                echo 'eval "$(horus completion zsh)"' >> ~/.zshrc
+                echo -e "${GREEN}✓${NC} Added zsh completions to ~/.zshrc"
+                COMPLETION_INSTALLED=true
+            else
+                echo -e "${GREEN}✓${NC} Zsh completions already configured"
+                COMPLETION_INSTALLED=true
+            fi
+        fi
+        ;;
+    fish)
+        # Try to set up fish completions
+        FISH_COMP_DIR="$HOME/.config/fish/completions"
+        if command -v fish &> /dev/null; then
+            mkdir -p "$FISH_COMP_DIR"
+            if [ -x "$INSTALL_DIR/horus" ]; then
+                "$INSTALL_DIR/horus" completion fish > "$FISH_COMP_DIR/horus.fish" 2>/dev/null
+                echo -e "${GREEN}✓${NC} Generated fish completions to $FISH_COMP_DIR/horus.fish"
+                COMPLETION_INSTALLED=true
+            fi
+        fi
+        ;;
+    *)
+        echo -e "${YELLOW}⚠${NC}  Unknown shell: $SHELL_NAME"
+        echo -e "  You can manually set up completions later:"
+        echo -e "    ${CYAN}horus completion --help${NC}"
+        ;;
+esac
+
+if [ "$COMPLETION_INSTALLED" = true ]; then
+    echo -e "${CYAN}  ℹ${NC}  Shell completions will be active in new terminal sessions"
+    echo -e "  To use in this session: ${CYAN}source ~/.${SHELL_NAME}rc${NC} (bash/zsh)"
+fi
+
 echo ""
 echo -e "${GREEN}✅ HORUS installation complete!${NC}"
 echo ""

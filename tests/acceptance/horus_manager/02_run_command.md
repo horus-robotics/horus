@@ -141,7 +141,47 @@ Caused by: Permission denied: /dev/shm/horus/cmd_vel
 - [ ] Helpful message suggests `horus new` to create project
 - [ ] Exit code is non-zero
 
-### Scenario 8: Run Specific Binary
+### Scenario 8: Build Only (No Execution)
+**Given:** User wants to compile without running
+**When:** User runs `horus run --build-only`
+**Then:**
+- [ ] Project is compiled successfully
+- [ ] Build output is displayed
+- [ ] Execution does NOT start
+- [ ] Success message: "Build complete" or similar
+- [ ] Binary is available in cache for later execution
+
+**Acceptance Criteria:**
+```bash
+$ horus run --build-only
+🚀 Building HORUS project...
+→ Detected: main.rs (rust)
+→ Scanning imports...
+→ Compiling Rust program (debug mode)...
+  ✓ Compiled to .horus/cache/rust_main_debug
+✓ Build complete
+```
+
+### Scenario 8a: Build Only in Release Mode
+**Given:** User wants optimized build without execution
+**When:** User runs `horus run --build-only --release`
+**Then:**
+- [ ] Release build is compiled
+- [ ] Optimizations are applied
+- [ ] Binary is not executed
+- [ ] Success message confirms release build
+
+**Acceptance Criteria:**
+```bash
+$ horus run --build-only --release
+🚀 Building HORUS project (release mode)...
+→ Detected: main.rs (rust)
+→ Compiling Rust program (release mode)...
+  ✓ Compiled to .horus/cache/rust_main_release
+✓ Release build complete
+```
+
+### Scenario 9: Run Specific Binary
 **Given:** Workspace has multiple binaries
 **When:** User runs `horus run --bin my_node`
 **Then:**
@@ -149,7 +189,7 @@ Caused by: Permission denied: /dev/shm/horus/cmd_vel
 - [ ] Only specified binary runs
 - [ ] Other binaries are not affected
 
-### Scenario 9: Clean Build (Clear Cache)
+### Scenario 10: Clean Build (Clear Cache)
 **Given:** User has previously built project with cached artifacts
 **When:** User runs `horus run --clean`
 **Then:**
@@ -174,7 +214,7 @@ Registered node 'Controller' with priority 0
 ...
 ```
 
-### Scenario 10: Clean Build with Release Mode
+### Scenario 11: Clean Build with Release Mode
 **Given:** User wants clean release build
 **When:** User runs `horus run --clean --release`
 **Then:**
@@ -182,7 +222,7 @@ Registered node 'Controller' with priority 0
 - [ ] Fresh release compilation occurs
 - [ ] Optimized binary executes
 
-### Scenario 11: Remote Deployment
+### Scenario 12: Remote Deployment
 **Given:** User has configured robot with hostname or IP
 **When:** User runs `horus run --remote robot-01`
 **Then:**
@@ -214,7 +254,7 @@ $ horus run --remote robot-01
   ✓ Remote process terminated
 ```
 
-### Scenario 12: Remote Deployment by IP Address
+### Scenario 13: Remote Deployment by IP Address
 **Given:** User specifies robot by IP instead of hostname
 **When:** User runs `horus run --remote 192.168.1.100`
 **Then:**
@@ -222,7 +262,7 @@ $ horus run --remote robot-01
 - [ ] Connection established directly to IP
 - [ ] Deployment proceeds as normal
 
-### Scenario 13: Remote Deployment Failure
+### Scenario 14: Remote Deployment Failure
 **Given:** Remote robot is unreachable
 **When:** User runs `horus run --remote offline-robot`
 **Then:**
@@ -244,7 +284,7 @@ Error: Cannot connect to offline-robot
   - Check SSH key is configured
 ```
 
-### Scenario 14: Remote Deployment with Build-Only
+### Scenario 15: Remote Deployment with Build-Only
 **Given:** User wants to deploy without running
 **When:** User runs `horus run --remote robot-01 --build-only`
 **Then:**

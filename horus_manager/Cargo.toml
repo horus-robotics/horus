@@ -18,6 +18,7 @@ path = "src/main.rs"
 horus_core = { path = "../horus_core" }
 horus_library = { path = "../horus_library", optional = true }
 clap = { version = "4.4", features = ["derive"] }
+clap_complete = "4.4"
 tokio = { version = "1.0", features = ["full"] }
 serde.workspace = true
 serde_json.workspace = true

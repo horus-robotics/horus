@@ -4,6 +4,12 @@
 
 This directory contains comprehensive user acceptance tests (UAT) for the HORUS robotics framework. These tests are written as user stories with detailed acceptance criteria to ensure HORUS is ready for open source launch and provides a confidence-inspiring experience for new users.
 
+> **📋 Recent Updates (2024-10-26):**
+> - Added `horus_manager/07_version_command.md` - Version information display and verification
+> - Updated `horus_manager/02_run_command.md` - Added --build-only flag scenarios (Scenario 8 & 8a)
+> - Added `horus_env/01_environment_management.md` - Comprehensive freeze/restore environment testing
+> - Updated test priorities and coverage matrix to reflect current implementation state
+
 ## Purpose
 
 These acceptance tests serve multiple purposes:
@@ -36,15 +42,18 @@ user_story_acceptance_test/
 ### 1. horus_manager (CLI)
 **Files:**
 - `01_new_command.md` - Project creation (Rust, Python, C)
-- `02_run_command.md` - Build and execution (including --clean, --remote deployment)
-- `03_pkg_command.md` - Package management (search, install, remove, list, unpublish)
+- `02_run_command.md` - Build and execution (including --build-only, --clean, --remote deployment)
+- `03_pkg_command.md` - Package management (install, remove, list, publish, unpublish)
 - `04_auth_publish.md` - Authentication (login, logout, generate-key, whoami) and publishing
-- `05_env_dashboard.md` - Environment management and monitoring
+- `05_env_dashboard.md` - Dashboard monitoring (web and TUI modes)
+- `06_version_command.md` - Version information display
 
 **Coverage:**
 - All CLI subcommands including remote deployment
+- Build-only mode for compilation without execution
 - API key generation and management
-- Package unpublishing
+- Package unpublishing with version control
+- Version information for bug reporting
 - Error handling and edge cases
 - Cross-platform compatibility
 - Help documentation
@@ -122,7 +131,21 @@ user_story_acceptance_test/
 - Responsive design
 - SEO and accessibility
 
-### 8. horus_c (C Bindings - Alpha)
+### 8. horus_env (Environment Management)
+**Files:**
+- `01_environment_management.md` - Freeze and restore environments for reproducibility
+
+**Coverage:**
+- Freeze current environment with exact versions
+- Restore from local freeze files
+- Publish environments to registry
+- Restore from registry by environment ID
+- Cross-platform environment handling
+- Version conflict detection
+- Team collaboration workflows
+- CI/CD integration
+
+### 9. horus_c (C Bindings - Alpha)
 **Files:**
 - `01_c_bindings.md` - C API for hardware integration
 
@@ -211,19 +234,22 @@ Bug #: 123
 
 ### Critical (Must Pass for Launch)
 - [ ] `horus_manager/01_new_command.md` - Basic project creation
-- [ ] `horus_manager/02_run_command.md` - Build and run
+- [ ] `horus_manager/02_run_command.md` - Build and run (including --build-only)
+- [ ] `horus_manager/07_version_command.md` - Version information
 - [ ] `horus_core/01_hub_communication.md` - Pub/sub works
 - [ ] `horus_core/02_node_lifecycle_scheduler.md` - Scheduler works
 - [ ] All templates generate correct, compilable code
 
 ### High Priority (Should Pass for Launch)
-- [ ] `horus_manager/03_pkg_command.md` - Package management
-- [ ] `horus_manager/04_auth_publish.md` - Publishing works
+- [ ] `horus_manager/03_pkg_command.md` - Package management (including unpublish)
+- [ ] `horus_manager/04_auth_publish.md` - Authentication and publishing
+- [ ] `horus_env/01_environment_management.md` - Freeze/restore environments
 - [ ] `horus_py/01_python_bindings.md` - Python bindings functional
 - [ ] `horus_macros/01_node_macro.md` - Macros work correctly
 
 ### Medium Priority (Nice to Have)
-- [ ] `horus_dashboard/01_monitoring_dashboard.md` - Dashboard works
+- [ ] `horus_manager/05_env_dashboard.md` - Dashboard command
+- [ ] `horus_dashboard/01_monitoring_dashboard.md` - Dashboard functionality
 - [ ] `horus_registry/01_package_registry.md` - Registry backend stable
 - [ ] `horus_marketplace/01_web_marketplace.md` - Marketplace UI polished
 
@@ -231,20 +257,23 @@ Bug #: 123
 - [ ] `horus_c/01_c_bindings.md` - C bindings (marked as alpha)
 - [ ] Advanced dashboard features (TUI mode)
 - [ ] Analytics and statistics
+- [ ] Environment diff command (future feature)
 
 ## Test Coverage Matrix
 
 | Component | Basic Functionality | Error Handling | Performance | Cross-Platform | Documentation |
 |-----------|-------------------|----------------|-------------|----------------|---------------|
-| CLI       | ✅ Comprehensive   | ✅ All cases    | ⚠️ Basic    | ✅ Linux/macOS  | ✅ Complete    |
-| Hub       | ✅ Complete       | ✅ All cases    | ✅ Benchmarked | ✅ POSIX shm  | ✅ Complete    |
-| Node/Sched| ✅ Complete       | ✅ Lifecycle    | ✅ Priority  | ✅ Cross-platform | ✅ Complete |
-| Python    | ✅ Core features  | ✅ Exceptions  | ⚠️ Basic    | ⚠️ Linux/macOS | ⚠️ Type hints |
-| Macros    | ✅ All sections   | ✅ Compile errors | N/A       | ✅ Rust standard | ✅ Examples   |
-| Dashboard | ⚠️ Web only       | ⚠️ Basic       | ⚠️ Needs testing | ✅ Browsers   | ⚠️ Partial    |
-| Registry  | ✅ Full CRUD      | ✅ Validation  | ⚠️ Needs load test | ✅ SQLite | ✅ API docs   |
-| Marketplace | ⚠️ UI incomplete | ⚠️ Basic      | ⚠️ Needs testing | ✅ Responsive | ⚠️ Partial    |
-| C Bindings | ⚠️ Alpha         | ⚠️ Minimal    | ❌ Not tested | ⚠️ Experimental | ❌ Incomplete |
+| CLI (manager) | ✅ Comprehensive | ✅ All cases | ⚠️ Basic | ✅ Linux/macOS | ✅ Complete |
+| Version | ✅ Complete | N/A | ✅ Instant | ✅ All platforms | ✅ Complete |
+| Env Mgmt | ✅ Freeze/restore | ✅ Conflicts | ✅ Fast | ✅ Portable | ✅ Complete |
+| Hub | ✅ Complete | ✅ All cases | ✅ Benchmarked | ✅ POSIX shm | ✅ Complete |
+| Node/Sched | ✅ Complete | ✅ Lifecycle | ✅ Priority | ✅ Cross-platform | ✅ Complete |
+| Python | ✅ Core features | ✅ Exceptions | ⚠️ Basic | ⚠️ Linux/macOS | ⚠️ Type hints |
+| Macros | ✅ All sections | ✅ Compile errors | N/A | ✅ Rust standard | ✅ Examples |
+| Dashboard | ⚠️ Web only | ⚠️ Basic | ⚠️ Needs testing | ✅ Browsers | ⚠️ Partial |
+| Registry | ✅ Full CRUD | ✅ Validation | ⚠️ Needs load test | ✅ SQLite | ✅ API docs |
+| Marketplace | ⚠️ UI incomplete | ⚠️ Basic | ⚠️ Needs testing | ✅ Responsive | ⚠️ Partial |
+| C Bindings | ⚠️ Alpha | ⚠️ Minimal | ❌ Not tested | ⚠️ Experimental | ❌ Incomplete |
 
 **Legend:**
 - ✅ Complete and tested
