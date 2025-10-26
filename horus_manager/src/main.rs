@@ -1,5 +1,5 @@
 use clap::{CommandFactory, Parser, Subcommand};
-use clap_complete::{generate, Shell};
+use clap_complete::generate;
 use colored::*;
 use horus_core::error::{HorusError, HorusResult};
 use std::fs;
@@ -418,16 +418,16 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     Ok(())
                 }
 
-                PkgCommands::List {
-                    query,
-                    global,
-                    all,
-                } => {
+                PkgCommands::List { query, global, all } => {
                     let client = registry::RegistryClient::new();
 
                     if let Some(q) = query {
                         // Search registry marketplace
-                        println!("{} Searching registry marketplace for '{}'...", "→".cyan(), q);
+                        println!(
+                            "{} Searching registry marketplace for '{}'...",
+                            "→".cyan(),
+                            q
+                        );
                         let results = client
                             .search(&q)
                             .map_err(|e| HorusError::Config(e.to_string()))?;
@@ -435,7 +435,11 @@ fn run_command(command: Commands) -> HorusResult<()> {
                         if results.is_empty() {
                             println!("❌ No packages found in marketplace matching '{}'", q);
                         } else {
-                            println!("\n{} Found {} package(s) in marketplace:\n", "✓".green(), results.len());
+                            println!(
+                                "\n{} Found {} package(s) in marketplace:\n",
+                                "✓".green(),
+                                results.len()
+                            );
                             for pkg in results {
                                 println!(
                                     "  {} {} - {}",

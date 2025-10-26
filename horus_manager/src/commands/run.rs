@@ -1023,12 +1023,7 @@ fn resolve_dependencies(dependencies: HashSet<String>) -> Result<()> {
                 if lib_horus.exists() {
                     // Create symlink named "horus" pointing to lib/horus
                     let horus_link = local_packages.join("horus");
-                    println!(
-                        "  {} {} -> {}",
-                        "↗".cyan(),
-                        "horus_py",
-                        "global cache".dimmed()
-                    );
+                    println!("  {} horus_py -> {}", "↗".cyan(), "global cache".dimmed());
                     symlink(&lib_horus, &horus_link).context("Failed to symlink horus_py")?;
                     continue;
                 }
@@ -1617,46 +1612,58 @@ fn execute_with_scheduler(
                                         if name.starts_with("libhorus-") || name == "libhorus.rlib"
                                         {
                                             if !extern_crates.contains_key("horus") {
-                                                extern_crates.insert("horus".to_string(), path.clone());
+                                                extern_crates
+                                                    .insert("horus".to_string(), path.clone());
                                                 eprintln!("  {} Added horus extern", "✓".green());
                                             }
                                         } else if name.starts_with("libhorus_core-")
                                             || name == "libhorus_core.rlib"
                                         {
                                             if !extern_crates.contains_key("horus_core") {
-                                                extern_crates.insert("horus_core".to_string(), path.clone());
-                                                eprintln!("  {} Added horus_core extern", "✓".green());
+                                                extern_crates
+                                                    .insert("horus_core".to_string(), path.clone());
+                                                eprintln!(
+                                                    "  {} Added horus_core extern",
+                                                    "✓".green()
+                                                );
                                             }
                                         } else if name.starts_with("libhorus_macros-")
                                             || name == "libhorus_macros.rlib"
                                         {
                                             if !extern_crates.contains_key("horus_macros") {
-                                                extern_crates.insert("horus_macros".to_string(), path.clone());
+                                                extern_crates.insert(
+                                                    "horus_macros".to_string(),
+                                                    path.clone(),
+                                                );
                                                 eprintln!(
                                                     "  {} Added horus_macros extern",
                                                     "✓".green()
                                                 );
                                             }
-                                        } else if name.starts_with("libhorus_library-")
-                                            || name == "libhorus_library.rlib"
+                                        } else if (name.starts_with("libhorus_library-")
+                                            || name == "libhorus_library.rlib")
+                                            && !extern_crates.contains_key("horus_library")
                                         {
-                                            if !extern_crates.contains_key("horus_library") {
-                                                extern_crates.insert("horus_library".to_string(), path.clone());
-                                                eprintln!(
-                                                    "  {} Added horus_library extern",
-                                                    "✓".green()
-                                                );
-                                            }
+                                            extern_crates
+                                                .insert("horus_library".to_string(), path.clone());
+                                            eprintln!(
+                                                "  {} Added horus_library extern",
+                                                "✓".green()
+                                            );
                                         }
                                     }
                                     // Also check for proc-macro dynamic libraries (.so, .dylib)
                                     else if name.ends_with(".so") || name.ends_with(".dylib") {
                                         eprintln!("  {} Found proc-macro {}", "→".cyan(), name);
-                                        if name.starts_with("libhorus_macros") {
-                                            if !extern_crates.contains_key("horus_macros") {
-                                                extern_crates.insert("horus_macros".to_string(), path.clone());
-                                                eprintln!("  {} Added horus_macros extern (proc-macro)", "✓".green());
-                                            }
+                                        if name.starts_with("libhorus_macros")
+                                            && !extern_crates.contains_key("horus_macros")
+                                        {
+                                            extern_crates
+                                                .insert("horus_macros".to_string(), path.clone());
+                                            eprintln!(
+                                                "  {} Added horus_macros extern (proc-macro)",
+                                                "✓".green()
+                                            );
                                         }
                                     }
                                 }
@@ -1674,7 +1681,9 @@ fn execute_with_scheduler(
                                 let dep_path = entry.path();
                                 if dep_path.is_dir() {
                                     // Skip if it's the main horus package (already scanned)
-                                    if let Some(dir_name) = dep_path.file_name().and_then(|n| n.to_str()) {
+                                    if let Some(dir_name) =
+                                        dep_path.file_name().and_then(|n| n.to_str())
+                                    {
                                         if dir_name.starts_with("horus@") {
                                             continue;
                                         }
@@ -1682,31 +1691,62 @@ fn execute_with_scheduler(
                                         for subdir in &["lib", "target/release", "target/debug"] {
                                             let lib_path = dep_path.join(subdir);
                                             if lib_path.exists() {
-                                                eprintln!("  {} Checking {:?}", "✓".green(), lib_path);
+                                                eprintln!(
+                                                    "  {} Checking {:?}",
+                                                    "✓".green(),
+                                                    lib_path
+                                                );
                                                 lib_dirs.push(lib_path.clone());
 
                                                 if let Ok(entries) = fs::read_dir(&lib_path) {
                                                     for entry in entries.flatten() {
                                                         let path = entry.path();
-                                                        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                                                        if let Some(name) = path
+                                                            .file_name()
+                                                            .and_then(|n| n.to_str())
+                                                        {
                                                             // Check for proc-macro dynamic libraries (.so, .dylib)
-                                                            if name.ends_with(".so") || name.ends_with(".dylib") {
-                                                                eprintln!("  {} Found proc-macro {}", "→".cyan(), name);
-                                                                if name.starts_with("libhorus_macros") {
-                                                                    if !extern_crates.contains_key("horus_macros") {
-                                                                        extern_crates.insert("horus_macros".to_string(), path.clone());
-                                                                        eprintln!("  {} Added horus_macros extern (proc-macro)", "✓".green());
-                                                                    }
+                                                            if name.ends_with(".so")
+                                                                || name.ends_with(".dylib")
+                                                            {
+                                                                eprintln!(
+                                                                    "  {} Found proc-macro {}",
+                                                                    "→".cyan(),
+                                                                    name
+                                                                );
+                                                                if name
+                                                                    .starts_with("libhorus_macros")
+                                                                    && !extern_crates.contains_key(
+                                                                        "horus_macros",
+                                                                    )
+                                                                {
+                                                                    extern_crates.insert(
+                                                                        "horus_macros".to_string(),
+                                                                        path.clone(),
+                                                                    );
+                                                                    eprintln!("  {} Added horus_macros extern (proc-macro)", "✓".green());
                                                                 }
                                                             }
                                                             // Check for .rlib files
                                                             else if name.ends_with(".rlib") {
-                                                                eprintln!("  {} Found {}", "→".cyan(), name);
-                                                                if name.starts_with("libhorus_macros-") || name == "libhorus_macros.rlib" {
-                                                                    if !extern_crates.contains_key("horus_macros") {
-                                                                        extern_crates.insert("horus_macros".to_string(), path.clone());
-                                                                        eprintln!("  {} Added horus_macros extern", "✓".green());
-                                                                    }
+                                                                eprintln!(
+                                                                    "  {} Found {}",
+                                                                    "→".cyan(),
+                                                                    name
+                                                                );
+                                                                if (name.starts_with(
+                                                                    "libhorus_macros-",
+                                                                ) || name
+                                                                    == "libhorus_macros.rlib")
+                                                                    && !extern_crates.contains_key(
+                                                                        "horus_macros",
+                                                                    )
+                                                                {
+                                                                    extern_crates.insert(
+                                                                        "horus_macros".to_string(),
+                                                                        path.clone(),
+                                                                    );
+                                                                    eprintln!("  {} Added horus_macros extern", "✓".green());
                                                                 }
                                                             }
                                                         }
