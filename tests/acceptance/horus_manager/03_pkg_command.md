@@ -221,7 +221,7 @@ Updating lidar-driver...
 
 ### Scenario 15: Unpublish Package from Registry
 **Given:** User has previously published a package to the registry
-**When:** User runs `horus pkg unpublish my-package --version 1.0.0`
+**When:** User runs `horus pkg unpublish my-package 1.0.0`
 **Then:**
 - [ ] Confirmation prompt: "Unpublish my-package v1.0.0? This cannot be undone. [y/N]"
 - [ ] User confirms with 'y'
@@ -231,7 +231,7 @@ Updating lidar-driver...
 
 **Acceptance Criteria:**
 ```bash
-$ horus pkg unpublish my-package --version 1.0.0
+$ horus pkg unpublish my-package 1.0.0
   Warning: Unpublishing a package removes it permanently from the registry.
     Users who depend on this version will not be able to install it.
 
@@ -242,7 +242,7 @@ Removing my-package v1.0.0 from registry...
 
 ### Scenario 16: Unpublish with --yes Flag (Skip Confirmation)
 **Given:** User wants non-interactive unpublish
-**When:** User runs `horus pkg unpublish my-package --version 1.0.0 --yes`
+**When:** User runs `horus pkg unpublish my-package 1.0.0 --yes`
 **Then:**
 - [ ] No confirmation prompt
 - [ ] Package is removed immediately
@@ -250,14 +250,14 @@ Removing my-package v1.0.0 from registry...
 
 ### Scenario 17: Unpublish Non-Existent Package
 **Given:** Package or version doesn't exist in registry
-**When:** User runs `horus pkg unpublish fake-package --version 1.0.0`
+**When:** User runs `horus pkg unpublish fake-package 1.0.0`
 **Then:**
 - [ ] Error: "Package 'fake-package' version 1.0.0 not found in registry"
 - [ ] Exit code is non-zero
 
 ### Scenario 18: Unpublish Without Authentication
 **Given:** User is not logged in
-**When:** User runs `horus pkg unpublish my-package --version 1.0.0`
+**When:** User runs `horus pkg unpublish my-package 1.0.0`
 **Then:**
 - [ ] Error: "Authentication required"
 - [ ] Suggestion to run `horus auth login`

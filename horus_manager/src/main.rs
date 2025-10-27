@@ -164,8 +164,7 @@ enum PkgCommands {
     Unpublish {
         /// Package name to unpublish
         package: String,
-        /// Package version to unpublish (required)
-        #[arg(short = 'v', long = "version", required = true)]
+        /// Package version to unpublish
         version: String,
         /// Skip confirmation prompt
         #[arg(short = 'y', long = "yes")]

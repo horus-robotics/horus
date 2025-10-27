@@ -302,16 +302,19 @@ Remove a package version from the registry (irreversible!).
 
 **Usage:**
 ```bash
-horus pkg unpublish <package> -v <version> [OPTIONS]
+horus pkg unpublish <package> <version> [OPTIONS]
 ```
 
 **Options:**
-- `-v, --version <VERSION>` - Package version to unpublish (required)
 - `-y, --yes` - Skip confirmation prompt
 
-**Example:**
+**Examples:**
 ```bash
-horus pkg unpublish my-package -v 1.0.0
+# Unpublish a specific version
+horus pkg unpublish my-package 1.0.0
+
+# Skip confirmation prompt
+horus pkg unpublish my-package 1.0.0 -y
 ```
 
 **Output:**
