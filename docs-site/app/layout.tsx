@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { DocsFooter } from "@/components/DocsFooter";
+import { Analytics } from "@vercel/analytics/react";
 
 export const metadata: Metadata = {
   title: "HORUS Documentation - Ultra-Low Latency IPC for Robotics",
@@ -27,6 +28,7 @@ export default function RootLayout({
           {children}
         </main>
         <DocsFooter />
+        <Analytics />
       </body>
     </html>
   );
