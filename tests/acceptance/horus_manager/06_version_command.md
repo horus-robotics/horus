@@ -219,7 +219,7 @@ $ horus run
 Error: Failed to compile project
 
 HORUS v0.1.0
-Please report this issue at: https://github.com/neos-builder/horus/issues
+Please report this issue at: https://github.com/horus-robotics/horus/issues
 ```
 
 **Then:**

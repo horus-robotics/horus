@@ -94,7 +94,7 @@ A production-grade robotics framework built in Rust for **real-time performance*
 ### Quick Install
 
 ```bash
-git clone https://github.com/neos-builder/horus.git
+git clone https://github.com/horus-robotics/horus.git
 cd horus
 ./install.sh
 ```

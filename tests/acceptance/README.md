@@ -418,8 +418,8 @@ When APIs change:
 ## Resources
 
 - **HORUS Documentation**: https://docs.horus.dev
-- **GitHub Repository**: https://github.com/neos-builder/horus
-- **Issue Tracker**: https://github.com/neos-builder/horus/issues
+- **GitHub Repository**: https://github.com/horus-robotics/horus
+- **Issue Tracker**: https://github.com/horus-robotics/horus/issues
 - **CI/CD Pipeline**: .github/workflows/
 
 ## Questions or Issues?
