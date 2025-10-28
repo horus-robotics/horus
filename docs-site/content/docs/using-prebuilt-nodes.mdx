@@ -67,9 +67,6 @@ Browse by category:
 horus pkg list sensor
 horus pkg list controller
 horus pkg list motor
-
-# View details before installing
-horus pkg info pid-controller
 ```
 
 ### From Standard Library
@@ -413,10 +410,6 @@ scheduler.register(Box::new(logger), 4, Some(true));
 horus pkg list lidar
 horus pkg list camera
 horus pkg list imu
-
-# Check compatibility in package info
-horus pkg info lidar-driver
-# Shows: "Supports RPLidar A1/A2/A3, Hokuyo URG-04LX"
 ```
 
 ### By Category
@@ -524,7 +517,6 @@ fn main() -> HorusResult<()> {
 ## Next Steps
 
 - **[Library Reference](/library-reference)** - Browse all standard library nodes
-- **[Marketplace](/marketplace)** - Discover community packages
-- **[Package Management](/package-management)** - Install and manage packages
+- **[Package Management](/package-management)** - Discover and manage packages
 - **[node! Macro](/node-macro)** - When you need custom functionality
 - **[Examples](/examples)** - See complete working systems

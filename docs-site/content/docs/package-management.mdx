@@ -899,11 +899,8 @@ Error: Package 'nonexistent-package' not found in registry
 # Check spelling
 horus pkg list nonexistent
 
-# Search registry
-horus pkg list
-
-# Verify package name
-horus pkg info correct-package-name
+# Search registry for correct package name
+horus pkg list correct-package
 ```
 
 ### Version Conflict
@@ -1003,6 +1000,4 @@ curl -o pkg.tar.gz https://marketplace.horus-registry.dev/api/packages/pid-contr
 
 - **[Environment Management](/environment-management)** - Freeze and restore package sets
 - **[Authentication](/authentication)** - Manage registry credentials
-- **[Marketplace](/marketplace)** - Discover and publish packages
-- **[Registry & Marketplace](/registry-marketplace)** - Publishing workflow
 - **[CLI Reference](/cli-reference)** - Complete command documentation
