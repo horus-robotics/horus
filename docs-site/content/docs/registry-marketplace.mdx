@@ -580,6 +580,466 @@ curl https://marketplace.horus-registry.dev/api/packages/my-package/1.0.0/docs/R
 3. Verify markdown syntax
 4. Try viewing raw content via API
 
+## Custom Registries
+
+HORUS supports custom registries, allowing organizations to host their own private package repositories. This is useful for:
+
+- **Internal/proprietary packages** - Keep company code private
+- **Air-gapped environments** - Operate without internet access
+- **Custom package hosting** - Control your own infrastructure
+- **Development/testing** - Test registry changes locally
+
+### Using a Custom Registry
+
+Set the `HORUS_REGISTRY_URL` environment variable to point to your custom registry:
+
+```bash
+# Temporary (current session only)
+export HORUS_REGISTRY_URL=https://registry.company.internal
+
+# Permanent (add to ~/.bashrc or ~/.zshrc)
+echo 'export HORUS_REGISTRY_URL=https://registry.company.internal' >> ~/.bashrc
+source ~/.bashrc
+```
+
+**All HORUS commands automatically use the custom registry:**
+
+```bash
+# Install from custom registry
+horus pkg install my-internal-package
+
+# Publish to custom registry
+horus auth login --github
+horus pkg publish
+
+# Search custom registry
+horus pkg list sensor
+
+# Freeze/restore environments using custom registry
+horus env freeze
+horus env restore production.yaml
+```
+
+### Creating Your Own Registry
+
+To create a custom HORUS registry, you need to implement a REST API server that supports the required endpoints.
+
+#### Required API Endpoints
+
+**1. Package Download (Public)**
+```
+GET /api/packages/{name}/{version}/download
+```
+- Returns: tar.gz file containing the package
+- Version can be "latest" for the most recent version
+- Used by: `horus pkg install`
+
+**2. Package Upload (Authenticated)**
+```
+POST /api/packages/upload
+Authorization: Bearer {api_key}
+Content-Type: multipart/form-data
+
+Form fields:
+  - name: string (package name)
+  - version: string (semver version)
+  - description: string (optional)
+  - license: string (default: MIT)
+  - package: file (tar.gz archive)
+```
+- Returns: 200 OK on success
+- Returns: 401 Unauthorized if API key is invalid
+- Used by: `horus pkg publish`
+
+**3. Package Metadata Update (Authenticated)**
+```
+POST /api/packages/{name}/{version}/metadata
+Authorization: Bearer {api_key}
+Content-Type: multipart/form-data
+
+Form fields:
+  - docs_url: string (documentation URL)
+  - docs_type: string ("external" or "local")
+  - source_url: string (repository URL)
+  - categories: string (comma-separated)
+```
+- Returns: 200 OK on success
+- Used by: `horus pkg publish` (optional metadata step)
+
+**4. Package Unpublish (Authenticated)**
+```
+DELETE /api/packages/{name}/{version}
+Authorization: Bearer {api_key}
+```
+- Returns: 200 OK on success
+- Returns: 403 Forbidden if not package owner
+- Used by: `horus pkg unpublish`
+
+**5. Package Search (Public)**
+```
+GET /api/packages/search?q={query}
+```
+- Returns: JSON array of packages matching query
+```json
+[
+  {
+    "name": "pid-controller",
+    "version": "1.2.0",
+    "description": "PID controller for robotics"
+  }
+]
+```
+- Used by: `horus pkg list`
+
+**6. Package Versions (Public)**
+```
+GET /api/packages/{name}/versions
+```
+- Returns: JSON array of available versions
+```json
+{
+  "versions": ["1.2.0", "1.1.0", "1.0.0"]
+}
+```
+- Used by: Version resolution
+
+**7. Import Resolution (Public, Optional)**
+```
+GET /api/imports/resolve?import={import_name}&language={language}
+```
+- Returns: Package name for given import
+```json
+{
+  "package_name": "pid-controller"
+}
+```
+- Used by: Automatic dependency resolution
+- Optional: Can return 404 if not supported
+
+**8. Environment Publishing (Authenticated, Optional)**
+```
+POST /api/environments
+Authorization: Bearer {api_key}
+Content-Type: application/json
+
+{
+  "horus_id": "unique-id",
+  "name": "Production Environment",
+  "packages": [...],
+  "system": {...}
+}
+```
+- Returns: 200 OK on success
+- Used by: `horus env freeze` (when pushing to registry)
+- Optional: Only needed if supporting environment sharing
+
+**9. Environment Retrieval (Public, Optional)**
+```
+GET /api/environments/{horus_id}
+```
+- Returns: Environment manifest JSON
+- Used by: `horus env restore {horus_id}`
+- Optional: Only needed if supporting environment sharing
+
+#### Package Format
+
+Packages must be tar.gz archives containing:
+
+```
+package-name/
+├── Cargo.toml           # For Rust packages
+├── src/
+│   └── lib.rs
+├── docs/                # Optional: local documentation
+│   ├── README.md
+│   └── api.md
+└── metadata.json        # Created by CLI during install
+```
+
+**Minimal Registry Implementation:**
+
+```python
+# example-registry.py - Simple Flask-based registry
+from flask import Flask, request, jsonify, send_file
+import os
+import json
+
+app = Flask(__name__)
+PACKAGES_DIR = "./packages"
+METADATA_FILE = "./metadata.json"
+
+# Load/save metadata
+def load_metadata():
+    if os.path.exists(METADATA_FILE):
+        with open(METADATA_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+def save_metadata(metadata):
+    with open(METADATA_FILE, 'w') as f:
+        json.dump(metadata, f, indent=2)
+
+# Download package
+@app.route('/api/packages/<name>/<version>/download', methods=['GET'])
+def download_package(name, version):
+    metadata = load_metadata()
+
+    # Handle "latest" version
+    if version == "latest":
+        versions = metadata.get(name, {}).get("versions", [])
+        if not versions:
+            return jsonify({"error": "Package not found"}), 404
+        version = versions[0]  # Assume sorted, latest first
+
+    package_path = f"{PACKAGES_DIR}/{name}-{version}.tar.gz"
+    if not os.path.exists(package_path):
+        return jsonify({"error": "Package not found"}), 404
+
+    return send_file(package_path, mimetype='application/gzip')
+
+# Upload package
+@app.route('/api/packages/upload', methods=['POST'])
+def upload_package():
+    # Verify API key
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    api_key = auth_header[7:]  # Remove "Bearer "
+    # TODO: Validate api_key against your user database
+
+    # Get form data
+    name = request.form.get('name')
+    version = request.form.get('version')
+    description = request.form.get('description', '')
+    license = request.form.get('license', 'MIT')
+    package_file = request.files.get('package')
+
+    if not all([name, version, package_file]):
+        return jsonify({"error": "Missing required fields"}), 400
+
+    # Save package file
+    os.makedirs(PACKAGES_DIR, exist_ok=True)
+    package_path = f"{PACKAGES_DIR}/{name}-{version}.tar.gz"
+    package_file.save(package_path)
+
+    # Update metadata
+    metadata = load_metadata()
+    if name not in metadata:
+        metadata[name] = {"versions": [], "description": description, "license": license}
+
+    if version not in metadata[name]["versions"]:
+        metadata[name]["versions"].insert(0, version)  # Add to front (latest)
+
+    save_metadata(metadata)
+
+    return jsonify({"message": "Package published successfully"}), 200
+
+# Search packages
+@app.route('/api/packages/search', methods=['GET'])
+def search_packages():
+    query = request.args.get('q', '').lower()
+    metadata = load_metadata()
+
+    results = []
+    for name, info in metadata.items():
+        if query in name.lower() or query in info.get('description', '').lower():
+            results.append({
+                "name": name,
+                "version": info["versions"][0] if info["versions"] else "unknown",
+                "description": info.get("description")
+            })
+
+    return jsonify(results)
+
+# List package versions
+@app.route('/api/packages/<name>/versions', methods=['GET'])
+def list_versions(name):
+    metadata = load_metadata()
+    if name not in metadata:
+        return jsonify({"error": "Package not found"}), 404
+
+    return jsonify({"versions": metadata[name]["versions"]})
+
+# Delete package
+@app.route('/api/packages/<name>/<version>', methods=['DELETE'])
+def unpublish_package(name, version):
+    # Verify API key
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    api_key = auth_header[7:]
+    # TODO: Validate api_key and check ownership
+
+    # Remove package file
+    package_path = f"{PACKAGES_DIR}/{name}-{version}.tar.gz"
+    if os.path.exists(package_path):
+        os.remove(package_path)
+
+    # Update metadata
+    metadata = load_metadata()
+    if name in metadata and version in metadata[name]["versions"]:
+        metadata[name]["versions"].remove(version)
+        if not metadata[name]["versions"]:
+            del metadata[name]  # Remove package if no versions left
+        save_metadata(metadata)
+
+    return jsonify({"message": "Package unpublished"}), 200
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8080)
+```
+
+**Running the example registry:**
+
+```bash
+# Install dependencies
+pip install flask
+
+# Run the registry
+python example-registry.py
+
+# In another terminal, configure HORUS to use it
+export HORUS_REGISTRY_URL=http://localhost:8080
+
+# Test it
+horus pkg publish
+horus pkg install your-package
+```
+
+### Production Registry Considerations
+
+For production use, implement:
+
+**Security:**
+- HTTPS/TLS encryption (required for production)
+- Secure API key storage (hashed, never plain text)
+- User authentication (GitHub OAuth, API keys, etc.)
+- Package ownership verification
+- Rate limiting to prevent abuse
+
+**Storage:**
+- Scalable file storage (S3, Google Cloud Storage, MinIO)
+- Database for metadata (PostgreSQL, MySQL, MongoDB)
+- Backup and redundancy
+- CDN for package downloads
+
+**Features:**
+- Package versioning and semver support
+- Download statistics and analytics
+- Package documentation hosting
+- Search indexing for fast queries
+- Webhook notifications for new packages
+
+### Example: Docker-based Registry
+
+```dockerfile
+# Dockerfile for simple HORUS registry
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN pip install flask gunicorn
+
+COPY example-registry.py /app/
+RUN mkdir -p /app/packages
+
+EXPOSE 8080
+
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:8080", "example-registry:app"]
+```
+
+```yaml
+# docker-compose.yml
+version: '3.8'
+services:
+  registry:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./packages:/app/packages
+      - ./metadata.json:/app/metadata.json
+    environment:
+      - FLASK_ENV=production
+```
+
+**Deploy:**
+
+```bash
+# Start registry
+docker-compose up -d
+
+# Use custom registry
+export HORUS_REGISTRY_URL=http://localhost:8080
+horus pkg install my-package
+```
+
+### Authentication for Custom Registries
+
+Custom registries should implement their own authentication system. The HORUS CLI sends API keys via Bearer token:
+
+```
+Authorization: Bearer horus_live_abc123...
+```
+
+**Implement authentication in your registry:**
+
+1. User registration/login endpoint
+2. API key generation endpoint
+3. Validate Bearer tokens on protected endpoints
+4. Store API keys securely (hashed)
+
+Users configure authentication by saving to `~/.horus/auth.json`:
+
+```json
+{
+  "api_key": "your-custom-registry-key"
+}
+```
+
+Or via environment variable:
+
+```bash
+export HORUS_API_KEY=your-custom-registry-key
+```
+
+### Testing Your Custom Registry
+
+**Checklist:**
+
+- [ ] Download package: `horus pkg install test-package`
+- [ ] Upload package: `horus pkg publish`
+- [ ] Search packages: `horus pkg list sensor`
+- [ ] List versions: Check `/api/packages/{name}/versions`
+- [ ] Update metadata: Publish with docs/source URLs
+- [ ] Unpublish: `horus pkg unpublish test-package 1.0.0`
+- [ ] Authentication: Test with valid/invalid API keys
+- [ ] Error handling: Test 404s, 401s, invalid requests
+
+### Migration from Public Registry
+
+To migrate packages from the public registry to your custom registry:
+
+```bash
+# 1. Download packages from public registry
+export HORUS_REGISTRY_URL=https://horus-marketplace-api.onrender.com
+horus pkg install package1
+horus pkg install package2
+
+# 2. Find downloaded packages
+ls ~/.horus/cache/
+
+# 3. Re-publish to custom registry
+export HORUS_REGISTRY_URL=https://registry.company.internal
+cd ~/.horus/cache/package1@1.0.0
+horus pkg publish
+
+cd ~/.horus/cache/package2@2.0.0
+horus pkg publish
+```
+
 ## Next Steps
 
 - **[Package Management](/package-management)** - Install and manage packages

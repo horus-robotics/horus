@@ -124,9 +124,6 @@ enum PkgCommands {
         /// Target workspace/project name (if not in workspace)
         #[arg(short = 't', long = "target")]
         target: Option<String>,
-        /// Install as development dependency
-        #[arg(short = 'd', long = "dev")]
-        dev: bool,
     },
 
     /// Remove an installed package
@@ -318,12 +315,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     ver,
                     global,
                     target,
-                    dev,
                 } => {
-                    if dev {
-                        println!("  {} Dev dependencies not yet supported", "Note:".yellow());
-                    }
-
                     // Determine installation target
                     let install_target = if global {
                         // Explicit global install

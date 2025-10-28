@@ -329,22 +329,24 @@ impl RegistryClient {
         // Install resolved versions
         for resolved_dep in resolved {
             let version_str = resolved_dep.version.to_string();
+            let home = dirs::home_dir().ok_or_else(|| anyhow!("Could not find home directory"))?;
+            let global_cache = home.join(".horus/cache");
 
             // Check if already installed
-            let is_installed = match target {
+            let (is_installed_local, is_installed_global) = match &target {
                 crate::workspace::InstallTarget::Global => {
-                    let home =
-                        dirs::home_dir().ok_or_else(|| anyhow!("Could not find home directory"))?;
-                    let global_cache = home.join(".horus/cache");
-                    check_global_versions(&global_cache, &resolved_dep.name)?
+                    let has_global = check_global_versions(&global_cache, &resolved_dep.name)?;
+                    (has_global, has_global)
                 }
                 crate::workspace::InstallTarget::Local(workspace_path) => {
                     let local_packages = workspace_path.join(".horus/packages");
-                    local_packages.join(&resolved_dep.name).exists()
+                    let has_local = local_packages.join(&resolved_dep.name).exists();
+                    let has_global = check_global_versions(&global_cache, &resolved_dep.name).unwrap_or(false);
+                    (has_local, has_global)
                 }
             };
 
-            if is_installed {
+            if is_installed_local {
                 println!(
                     "  {} {} v{} (already installed)",
                     "".green(),
@@ -354,7 +356,43 @@ impl RegistryClient {
                 continue;
             }
 
-            // Install the resolved version
+            // If package exists in global cache but not local, create symlink instead of downloading
+            if !is_installed_local && is_installed_global {
+                if let crate::workspace::InstallTarget::Local(workspace_path) = &target {
+                    println!(
+                        "  {} Linking {} v{} from global cache...",
+                        "".cyan(),
+                        resolved_dep.name,
+                        resolved_dep.version
+                    );
+
+                    // Find the global package directory
+                    let package_dir_name = format!("{}@{}", resolved_dep.name, version_str);
+                    let global_package_dir = global_cache.join(&package_dir_name);
+
+                    if global_package_dir.exists() {
+                        let local_packages = workspace_path.join(".horus/packages");
+                        fs::create_dir_all(&local_packages)?;
+                        let local_link = local_packages.join(&resolved_dep.name);
+
+                        // Create symlink
+                        #[cfg(unix)]
+                        std::os::unix::fs::symlink(&global_package_dir, &local_link)?;
+                        #[cfg(windows)]
+                        std::os::windows::fs::symlink_dir(&global_package_dir, &local_link)?;
+
+                        println!(
+                            "  {} {} v{} (linked from global cache)",
+                            "".green(),
+                            resolved_dep.name,
+                            resolved_dep.version
+                        );
+                        continue;
+                    }
+                }
+            }
+
+            // Install the resolved version from registry
             println!(
                 "  {} Installing {} v{}...",
                 "".cyan(),
@@ -843,7 +881,22 @@ fn copy_dir_all(src: &Path, dst: &Path) -> Result<()> {
 
 // Helper function to detect package version from directory
 fn detect_package_version(dir: &Path) -> Option<String> {
-    // Try package.json first
+    // Try horus.yaml first (primary HORUS manifest)
+    let horus_yaml = dir.join("horus.yaml");
+    if horus_yaml.exists() {
+        if let Ok(content) = fs::read_to_string(&horus_yaml) {
+            // Simple YAML parsing for version
+            for line in content.lines() {
+                let trimmed = line.trim();
+                if trimmed.starts_with("version:") {
+                    let version = trimmed.trim_start_matches("version:").trim().to_string();
+                    return Some(version);
+                }
+            }
+        }
+    }
+
+    // Try package.json
     let package_json = dir.join("package.json");
     if package_json.exists() {
         if let Ok(content) = fs::read_to_string(&package_json) {
@@ -1378,60 +1431,67 @@ impl PackageProvider for RegistryClient {
                     .collect();
 
                 versions.sort();
-                Ok(versions)
+
+                // If registry has versions, return them
+                // If empty, fall back to local cache (for built-in packages like "horus")
+                if !versions.is_empty() {
+                    return Ok(versions);
+                }
+
+                // Fall through to cache check below
             }
-            _ => {
-                // Fallback: check local/global cache for versions
-                let home =
-                    dirs::home_dir().ok_or_else(|| anyhow!("Could not find home directory"))?;
-                let global_cache = home.join(".horus/cache");
-                let local_packages = PathBuf::from(".horus/packages");
+            _ => {}
+        }
 
-                let mut versions = Vec::new();
+        // Fallback: check local/global cache for versions
+        let home =
+            dirs::home_dir().ok_or_else(|| anyhow!("Could not find home directory"))?;
+        let global_cache = home.join(".horus/cache");
+        let local_packages = PathBuf::from(".horus/packages");
 
-                // Check global cache
-                if let Ok(entries) = fs::read_dir(&global_cache) {
-                    for entry in entries.flatten() {
-                        let name = entry.file_name();
-                        let name_str = name.to_string_lossy();
+        let mut versions = Vec::new();
 
-                        // Match "package@version" pattern
-                        if name_str.starts_with(&format!("{}@", package)) {
-                            if let Some(version_str) = name_str.split('@').nth(1) {
-                                if let Ok(version) = Version::parse(version_str) {
-                                    versions.push(version);
-                                }
-                            }
+        // Check global cache
+        if let Ok(entries) = fs::read_dir(&global_cache) {
+            for entry in entries.flatten() {
+                let name = entry.file_name();
+                let name_str = name.to_string_lossy();
+
+                // Match "package@version" pattern
+                if name_str.starts_with(&format!("{}@", package)) {
+                    if let Some(version_str) = name_str.split('@').nth(1) {
+                        if let Ok(version) = Version::parse(version_str) {
+                            versions.push(version);
                         }
                     }
                 }
+            }
+        }
 
-                // Check local packages
-                if let Ok(entries) = fs::read_dir(&local_packages) {
-                    for entry in entries.flatten() {
-                        let name = entry.file_name();
-                        let name_str = name.to_string_lossy();
+        // Check local packages
+        if let Ok(entries) = fs::read_dir(&local_packages) {
+            for entry in entries.flatten() {
+                let name = entry.file_name();
+                let name_str = name.to_string_lossy();
 
-                        if name_str == package {
-                            // Read version from metadata
-                            if let Some(version) = detect_package_version(&entry.path()) {
-                                if let Ok(v) = Version::parse(&version) {
-                                    versions.push(v);
-                                }
-                            }
+                if name_str == package {
+                    // Read version from metadata
+                    if let Some(version) = detect_package_version(&entry.path()) {
+                        if let Ok(v) = Version::parse(&version) {
+                            versions.push(v);
                         }
                     }
                 }
-
-                versions.sort();
-                versions.dedup();
-
-                if versions.is_empty() {
-                    Err(anyhow!("No versions found for package: {}", package))
-                } else {
-                    Ok(versions)
-                }
             }
+        }
+
+        versions.sort();
+        versions.dedup();
+
+        if versions.is_empty() {
+            Err(anyhow!("No versions found for package: {}", package))
+        } else {
+            Ok(versions)
         }
     }
 
