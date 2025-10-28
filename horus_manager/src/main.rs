@@ -178,7 +178,7 @@ enum EnvCommands {
         output: Option<PathBuf>,
 
         /// Publish environment to registry for sharing by ID
-        #[arg(long)]
+        #[arg(short = 'p', long = "publish")]
         publish: bool,
     },
 
