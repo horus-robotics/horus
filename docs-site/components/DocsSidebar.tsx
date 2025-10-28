@@ -57,9 +57,8 @@ const sections: SidebarSection[] = [
     links: [
       { title: "Package Management", href: "/package-management", order: 1 },
       { title: "Using Prebuilt Nodes", href: "/using-prebuilt-nodes", order: 2 },
-      { title: "Marketplace & Registry", href: "/marketplace", order: 3 },
-      { title: "Environment Management", href: "/environment-management", order: 4 },
-      { title: "Authentication", href: "/authentication", order: 5 },
+      { title: "Environment Management", href: "/environment-management", order: 3 },
+      { title: "Authentication", href: "/authentication", order: 4 },
     ],
   },
   {

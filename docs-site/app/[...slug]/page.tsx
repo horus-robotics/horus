@@ -48,7 +48,6 @@ export async function generateStaticParams() {
     { slug: ['cli-reference'] },
     { slug: ['package-management'] },
     { slug: ['environment-management'] },
-    { slug: ['marketplace'] },
     { slug: ['authentication'] },
     { slug: ['remote-deployment'] },
     { slug: ['library-reference'] },
