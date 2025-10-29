@@ -6,35 +6,14 @@ order: 2
 
 # HORUS Roadmap to Beta
 
-**Target:** Production-ready beta release with comprehensive features, proven performance, and complete tooling ecosystem.
-
----
-
-## Executive Summary
-
-The HORUS beta release will deliver a **production-grade robotics framework** that matches or exceeds ROS2 capabilities while maintaining superior performance and developer experience. This roadmap outlines all features, improvements, and validations required before beta release.
-
-### Beta Release Criteria
-
-✅ **Performance**: Sub-microsecond latency proven across all message types
-✅ **Features**: Complete core framework, CLI, language bindings, and simulation tools
-✅ **Reliability**: Comprehensive testing, benchmarks, and real-world validation
-✅ **Ecosystem**: Registry marketplace, package manager, and community tools
-✅ **Documentation**: Complete guides, API docs, and examples
-✅ **Production-Ready**: Used in at least 3 real robotics projects
-
----
-
 ## 1. Core Framework Enhancements
 
 ### 1.1 Link Communication Optimization
 
-**Status**: 🟡 In Development
-
 **Goal**: Improve Link (process-to-process) communication mechanism for multi-process robotics systems
 
 **Tasks**:
-- [ ] **Reduce Link latency**: Target &lt;5μs (currently ~10-20μs for network transport)
+- [ ] **Reduce Link latency**: Target sub-nanosecond (currently ~10-20μs for network transport)
   - Optimize TCP socket communication
   - Implement zero-copy serialization for Link messages
   - Add shared memory transport option for same-machine processes
@@ -67,8 +46,6 @@ The HORUS beta release will deliver a **production-grade robotics framework** th
 
 ### 1.2 Hub Performance & Features
 
-**Status**: 🟢 Core Complete, Enhancements Needed
-
 **Tasks**:
 - [ ] **Latency improvements**:
   - Optimize cache-line alignment (currently good, validate on ARM)
@@ -98,8 +75,6 @@ The HORUS beta release will deliver a **production-grade robotics framework** th
 
 ### 1.3 Scheduler Enhancements
 
-**Status**: 🟢 Core Complete, Enhancements Needed
-
 **Tasks**:
 - [ ] **Real-time scheduling**:
   - Priority inheritance for nested node calls
@@ -126,29 +101,16 @@ The HORUS beta release will deliver a **production-grade robotics framework** th
 
 ## 2. Developer Tools
 
-### 2.1 Dashboard (Web & TUI)
+### 2.1 Dashboard Enhancements
 
-**Status**: 🟡 Web Complete, TUI Incomplete
-
-**Web Dashboard Tasks**:
-- [x] Node listing and status
-- [x] Topic visualization
-- [x] CPU/memory monitoring
-- [ ] **Enhanced features**:
-  - Real-time message plotting
-  - Topic recording/playback UI
-  - Node graph visualization (interactive)
-  - Performance profiling view
-  - Log filtering and search
-  - Configuration editor
-  - Remote dashboard (connect to robot over network)
-
-**TUI Dashboard Tasks**:
-- [ ] Port web dashboard features to terminal UI
-- [ ] Interactive node/topic browser
-- [ ] Real-time stats display
-- [ ] Keybindings for common operations
-- [ ] Split-pane layout (nodes, topics, logs, stats)
+**Enhanced features**:
+- [ ] Real-time message plotting
+- [ ] Topic recording/playback UI
+- [ ] Node graph visualization (interactive)
+- [ ] Performance profiling view
+- [ ] Log filtering and search
+- [ ] Configuration editor
+- [ ] Remote dashboard (connect to robot over network)
 
 **Validation**:
 - Use in real robot debugging session
@@ -157,46 +119,7 @@ The HORUS beta release will deliver a **production-grade robotics framework** th
 
 ---
 
-### 2.2 CLI Tool Completeness
-
-**Status**: 🟢 Core Complete, Enhancements Needed
-
-**Missing/Incomplete Commands**:
-- [ ] `horus topic` - Topic introspection
-  - `horus topic list` - List active topics
-  - `horus topic echo <topic>` - Print messages
-  - `horus topic info <topic>` - Show publishers/subscribers
-  - `horus topic hz <topic>` - Measure publish rate
-  - `horus topic bw <topic>` - Measure bandwidth
-- [ ] `horus node` - Node introspection
-  - `horus node list` - List running nodes
-  - `horus node info <node>` - Node details
-  - `horus node kill <node>` - Stop specific node
-- [ ] `horus record` - Message recording
-  - `horus record <topics...>` - Record to file
-  - `horus record --all` - Record all topics
-  - `horus play <file>` - Replay recording
-- [ ] `horus service` - Service calls (future)
-  - `horus service list`
-  - `horus service call <service> <args>`
-- [ ] Enhanced `horus run`:
-  - [ ] Watch mode (auto-reload on file change)
-  - [ ] Multi-node launch files
-  - [ ] Environment variable passing
-  - [ ] Resource limits (CPU, memory)
-
-**Validation**:
-- Complete CLI reference documentation
-- Automated integration tests for all commands
-- User acceptance testing
-
----
-
-### 2.3 Remote Deployment (Daemon)
-
-**Status**: 🟡 Basic Complete, Production Features Needed
-
-**Current State**: Basic daemon exists, remote execution works
+### 2.2 Remote Deployment (Daemon)
 
 **Production Tasks**:
 - [ ] **Versioning & rollback**:
@@ -235,10 +158,6 @@ The HORUS beta release will deliver a **production-grade robotics framework** th
 
 ### 3.1 Python Bindings
 
-**Status**: 🟡 Basic Complete, Missing Features
-
-**Current State**: Core Hub/Node API works via PyO3
-
 **Missing Features**:
 - [ ] **Type hints**:
   - Full `.pyi` stub files
@@ -271,10 +190,6 @@ The HORUS beta release will deliver a **production-grade robotics framework** th
 ---
 
 ### 3.2 C Bindings
-
-**Status**: 🔴 Minimal Implementation
-
-**Current State**: Basic Hub operations only
 
 **Missing Features**:
 - [ ] **Complete API coverage**:
@@ -312,10 +227,6 @@ The HORUS beta release will deliver a **production-grade robotics framework** th
 
 ### 4.1 sim2d
 
-**Status**: 🟢 Complete, Enhancements Needed
-
-**Current State**: Functional 2D simulator with Bevy + Rapier2D
-
 **Enhancements**:
 - [ ] **Physics improvements**:
   - Configurable physics parameters (friction, damping, etc.)
@@ -347,9 +258,7 @@ The HORUS beta release will deliver a **production-grade robotics framework** th
 
 ---
 
-### 4.2 sim3d (NEW)
-
-**Status**: 🔴 Not Started (Spec Complete)
+### 4.2 sim3d
 
 **Goal**: Production-grade 3D robotics simulator with RL support
 
@@ -396,10 +305,6 @@ The HORUS beta release will deliver a **production-grade robotics framework** th
 
 ### 5.1 Package Registry
 
-**Status**: 🟢 Core Complete, Enhancements Needed
-
-**Current State**: Backend + frontend + marketplace working
-
 **Enhancements**:
 - [ ] **Package features**:
   - Dependency resolution (transitive dependencies)
@@ -442,13 +347,6 @@ The HORUS beta release will deliver a **production-grade robotics framework** th
 ---
 
 ### 5.2 Standard Library (horus_library)
-
-**Status**: 🟡 Basic Nodes Complete, Expanding
-
-**Current Nodes**:
-- ✅ IMU drivers (BNO055, MPU6050)
-- ✅ Motor controllers (PWM, servo)
-- ✅ Basic sensors (encoders, digital I/O)
 
 **Planned Nodes**:
 - [ ] **Sensors**:
@@ -497,10 +395,6 @@ The HORUS beta release will deliver a **production-grade robotics framework** th
 ## 6. Performance & Benchmarks
 
 ### 6.1 Comprehensive Benchmarking
-
-**Status**: 🟡 Basic Benchmarks Complete, Need Expansion
-
-**Current**: Production message benchmarks (296ns - 176μs)
 
 **Missing Benchmarks**:
 - [ ] **Latency benchmarks**:
@@ -558,8 +452,6 @@ The HORUS beta release will deliver a **production-grade robotics framework** th
 
 ### 6.2 Latency Optimization
 
-**Status**: 🟢 Excellent, Continuous Improvement
-
 **Target**: Maintain &lt;300ns for control messages, &lt;2μs for sensor messages
 
 **Optimization Areas**:
@@ -593,15 +485,6 @@ The HORUS beta release will deliver a **production-grade robotics framework** th
 ## 7. Documentation & Testing
 
 ### 7.1 Documentation
-
-**Status**: 🟡 Core Docs Complete, Need Expansion
-
-**Completed**:
-- ✅ README with quick start
-- ✅ Core concepts documentation
-- ✅ API reference (partial)
-- ✅ CLI reference
-- ✅ Installation guide
 
 **Missing/Incomplete**:
 - [ ] **Tutorials**:
@@ -651,10 +534,6 @@ The HORUS beta release will deliver a **production-grade robotics framework** th
 
 ### 7.2 Testing
 
-**Status**: 🟡 Basic Tests, Need Comprehensive Coverage
-
-**Current State**: Unit tests for core functionality
-
 **Testing Strategy**:
 - [ ] **Unit tests**:
   - 90%+ code coverage
@@ -693,214 +572,3 @@ The HORUS beta release will deliver a **production-grade robotics framework** th
 - All tests passing on all platforms
 - &lt;5 minute CI/CD pipeline
 - Zero tolerance for flaky tests
-
----
-
-## 8. Production Validation
-
-### 8.1 Real-World Projects
-
-**Status**: 🟡 Internal Use, Need External Validation
-
-**Goal**: HORUS used in 3+ production robotics projects before beta
-
-**Target Projects**:
-- [ ] **Mobile robot** (autonomous navigation)
-  - Use case: Warehouse/delivery robot
-  - Features used: SLAM, path planning, obstacle avoidance
-  - Validation: 100+ hours runtime
-- [ ] **Drone** (flight control)
-  - Use case: Quadcopter stabilization
-  - Features used: 1kHz control loop, sensor fusion
-  - Validation: 50+ flights
-- [ ] **Robot arm** (manipulation)
-  - Use case: Pick-and-place
-  - Features used: Real-time control, trajectory following
-  - Validation: 1000+ picks
-- [ ] **Multi-robot system** (coordination)
-  - Use case: Swarm/fleet management
-  - Features used: Link, registry, deployment
-  - Validation: 10+ robots coordinating
-
-**Deliverables**:
-- Case study documentation
-- Video demonstrations
-- Performance reports
-- Lessons learned
-- Published blog posts
-
----
-
-### 8.2 Community Engagement
-
-**Status**: 🔴 Early Stage
-
-**Goals**:
-- [ ] 1000+ GitHub stars
-- [ ] 100+ Discord community members
-- [ ] 10+ external contributors
-- [ ] 5+ community-contributed packages
-- [ ] Monthly community calls
-- [ ] Active forum/discussions
-
-**Initiatives**:
-- [ ] Launch Discord server
-- [ ] Contribute to robotics conferences
-- [ ] Blog post series
-- [ ] YouTube channel
-- [ ] Twitter/X presence
-- [ ] Hackathons/challenges
-- [ ] University partnerships
-- [ ] Industry partnerships
-
----
-
-## 9. Timeline & Milestones
-
-### Phase 1: Feature Completion (Months 1-2)
-
-**Focus**: Complete all core features and tools
-
-- Week 1-2: Link communication improvements
-- Week 3-4: Dashboard TUI completion
-- Week 5-6: CLI tool completion (topic, node, record commands)
-- Week 7-8: Python type hints and documentation
-
-**Deliverable**: All core features implemented and documented
-
----
-
-### Phase 2: Performance & Validation (Months 2-3)
-
-**Focus**: Comprehensive benchmarking and optimization
-
-- Week 1-2: Comprehensive benchmark suite
-- Week 3-4: Platform benchmarks (x86, ARM, Jetson)
-- Week 5-6: Real-world project validation #1
-- Week 7-8: Real-world project validation #2
-
-**Deliverable**: Proven performance on all platforms
-
----
-
-### Phase 3: Ecosystem & Polish (Months 3-4)
-
-**Focus**: Registry, packages, documentation, testing
-
-- Week 1-2: Registry enhancements
-- Week 3-4: horus_library expansion (20+ nodes)
-- Week 5-6: Complete documentation overhaul
-- Week 7-8: Test coverage to 90%+
-
-**Deliverable**: Production-ready ecosystem
-
----
-
-### Phase 4: Beta Release (Month 4)
-
-**Focus**: Final testing, documentation, announcement
-
-- Week 1: Beta release candidate
-- Week 2: Community testing and feedback
-- Week 3: Bug fixes and polish
-- Week 4: **BETA RELEASE** 🚀
-
-**Deliverable**: Public beta release with announcement
-
----
-
-### Parallel Development: sim3d (Months 1-6)
-
-**Can proceed independently of beta timeline**
-
-- Months 1-2: sim3d MVP
-- Months 2-3: RL support
-- Months 3-6: Advanced features
-
-**Deliverable**: Production simulator (may come after beta)
-
----
-
-## 10. Success Metrics
-
-### Beta Release Checklist
-
-- [ ] **Performance**
-  - ✅ &lt;300ns latency for control messages
-  - ✅ &lt;2μs latency for sensor messages
-  - ✅ Benchmarked on 3+ platforms
-  - ✅ 50-500x faster than ROS2 proven
-
-- [ ] **Features**
-  - ✅ Complete CLI tool (all commands working)
-  - ✅ Web + TUI dashboard
-  - ✅ Python bindings with type hints
-  - ✅ C bindings (complete API)
-  - ✅ Remote deployment with versioning
-  - ✅ sim2d complete
-  - 🔲 sim3d MVP (optional for beta)
-
-- [ ] **Ecosystem**
-  - ✅ Package registry operational
-  - ✅ 50+ packages in registry
-  - ✅ 30+ nodes in horus_library
-  - ✅ Marketplace frontend
-
-- [ ] **Reliability**
-  - ✅ 90%+ test coverage
-  - ✅ All tests passing
-  - ✅ CI/CD on all platforms
-  - ✅ Security audit completed
-
-- [ ] **Documentation**
-  - ✅ Complete API reference
-  - ✅ 10+ tutorials
-  - ✅ 5+ how-to guides
-  - ✅ 3+ video tutorials
-  - ✅ 5+ example projects
-
-- [ ] **Validation**
-  - ✅ 3+ real-world projects
-  - ✅ 100+ hours total runtime
-  - ✅ Community feedback incorporated
-  - ✅ Third-party validation
-
-- [ ] **Community**
-  - ✅ 1000+ GitHub stars
-  - ✅ 100+ Discord members
-  - ✅ 10+ external contributors
-  - ✅ Active discussions
-
----
-
-## 11. Post-Beta Roadmap
-
-**After beta release, focus shifts to:**
-
-1. **Stability**: Bug fixes, performance improvements
-2. **Adoption**: Marketing, tutorials, case studies
-3. **Ecosystem Growth**: More packages, more contributors
-4. **Platform Expansion**: Windows support, RISC-V, embedded
-5. **Advanced Features**: Services, actions, distributed systems
-6. **sim3d Completion**: Full RL simulator ready
-7. **v1.0 Release**: Production-grade, stable API
-
----
-
-## How to Contribute
-
-Want to help HORUS reach beta? Here's how:
-
-- **Code**: Pick a task from this roadmap, open an issue, submit PR
-- **Testing**: Test on your robot, report bugs, share results
-- **Documentation**: Write tutorials, fix typos, create examples
-- **Packages**: Publish nodes to the registry
-- **Community**: Answer questions, share projects, spread the word
-
-**Join the journey**: [Discord](https://discord.gg/hEZC3ev2Nf) | [GitHub](https://github.com/horus-robotics/horus)
-
----
-
-**Last Updated**: 2025-10-29
-**Status**: Roadmap finalized, execution in progress
-**Target Beta Release**: Q2 2025
