@@ -37,6 +37,7 @@ export async function generateStaticParams() {
   // Define all doc routes
   return [
     { slug: ['goals'] },
+    { slug: ['roadmap'] },
     { slug: ['architecture'] },
     { slug: ['benchmarks'] },
     { slug: ['getting-started'] },
