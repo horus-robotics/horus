@@ -15,8 +15,6 @@ order: 2
 **Tasks**:
 - [ ] **Reduce Link latency**: Target sub-nanosecond (currently ~10-20μs for network transport)
   - Optimize TCP socket communication
-  - Implement zero-copy serialization for Link messages
-  - Add shared memory transport option for same-machine processes
   - Benchmark against DDS, ZeroMQ, and raw TCP
 - [ ] **Reliability improvements**:
   - Connection recovery and automatic reconnection
@@ -26,17 +24,10 @@ order: 2
 - [ ] **Discovery mechanism**:
   - Automatic node discovery on local network
   - Service advertisement and lookup
-  - Topic introspection (list active topics/nodes)
 - [ ] **Security**:
   - TLS/SSL encryption for remote connections
   - Authentication and authorization
   - Message signing and verification
-
-**Validation**:
-- Benchmark against ROS2 DDS latency
-- Multi-robot swarm coordination demo
-- Long-running stability test (24+ hours)
-
 ---
 
 ### 1.2 Hub Performance & Features
@@ -55,7 +46,6 @@ order: 2
   - Publish rate monitoring
   - Message size tracking
   - Dropped message detection
-  - Subscriber count tracking
 - [ ] **Dynamic type support**:
   - Runtime message type registration
   - Generic message containers
@@ -99,18 +89,12 @@ order: 2
 ### 2.1 Dashboard Enhancements
 
 **Enhanced features**:
-- [ ] Real-time message plotting
 - [ ] Topic recording/playback UI
-- [ ] Node graph visualization (interactive)
 - [ ] Performance profiling view
 - [ ] Log filtering and search
 - [ ] Configuration editor
 - [ ] Remote dashboard (connect to robot over network)
 
-**Validation**:
-- Use in real robot debugging session
-- User testing with 5+ developers
-- Performance overhead &lt;1% CPU
 
 ---
 
@@ -257,7 +241,7 @@ order: 2
 
 **Goal**: Production-grade 3D robotics simulator with RL support
 
-**Phase 1: MVP (Months 1-2)**
+**Phase 1: **
 - [ ] Basic 3D rendering (Bevy 3D + Rapier3D)
 - [ ] URDF robot model loading
 - [ ] Transform frame (TF) visualization
@@ -266,7 +250,7 @@ order: 2
 - [ ] Differential drive kinematics
 - [ ] Simple world configuration (YAML)
 
-**Phase 2: RL Support (Months 2-3)**
+**Phase 2: **
 - [ ] Headless mode (no rendering)
 - [ ] Vectorized environments (1000+ parallel)
 - [ ] Gymnasium/Gym API (Python)
@@ -275,7 +259,7 @@ order: 2
 - [ ] Fast reset (&lt;1ms)
 - [ ] Example RL tasks (navigation, manipulation)
 
-**Phase 3: Advanced Features (Months 3-6)**
+**Phase 3: **
 - [ ] Articulated robots (robot arms, grippers)
 - [ ] Advanced sensors (depth camera, RGB-D, force/torque)
 - [ ] Scene editor (GUI)
@@ -291,8 +275,6 @@ order: 2
 - URDF loading for 20+ robot models
 - Sim-to-real gap &lt;10% for navigation task
 - Complete documentation and tutorials
-
-**Timeline**: 6 months (can start in parallel with beta prep)
 
 ---
 
