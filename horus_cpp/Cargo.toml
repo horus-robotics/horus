@@ -1,12 +1,12 @@
 [package]
-name = "horus_c"
+name = "horus_cpp"
 version = "0.1.0"
 edition = "2021"
-description = "C API for HORUS - Hardware driver integration"
+description = "C++ API for HORUS - Hardware driver integration"
 authors = ["HORUS Team"]
 
 [lib]
-name = "horus_c"
+name = "horus_cpp"
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]

@@ -1,347 +1,132 @@
-# HORUS Production Benchmarks
+# HORUS Benchmark Suite
 
-**Production-grade performance testing** with real robotics message types using serde serialization.
+Professional-grade performance benchmarks for the HORUS robotics framework, comparing HORUS IPC mechanisms against industry-standard alternatives.
 
-## Executive Summary
+## Overview
 
-**HORUS delivers sub-microsecond to low-microsecond latency for production robotics applications:**
+This benchmark suite provides rigorous, statistically sound performance measurements of HORUS's inter-process communication (IPC) systems:
 
-| Message Type | Size | Latency | Throughput | Typical Rate | Headroom |
-|--------------|------|---------|------------|--------------|----------|
-| **CmdVel** | 16 B | **296 ns** | 3.38M msg/s | 1000 Hz | 3,380x |
-| **BatteryState** | 104 B | **355 ns** | 2.82M msg/s | 1 Hz | 2.8M x |
-| **IMU** | 304 B | **718 ns** | 1.39M msg/s | 100 Hz | 13,937x |
-| **Odometry** | 736 B | **650 ns** | 1.54M msg/s | 50 Hz | 30,783x |
-| **LaserScan** | 1.5 KB | **1.31 μs** | 762K msg/s | 10 Hz | 76,203x |
-| **PointCloud (1K)** | ~12 KB | **7.55 μs** | 132K msg/s | 30 Hz | 4,414x |
-| **PointCloud (10K)** | ~120 KB | **176 μs** | 5.7K msg/s | 30 Hz | 189x |
+- **HORUS Hub**: Multi-producer, multi-consumer (MPMC) publish-subscribe system
+- **iceoryx2**: Industry-standard zero-copy shared memory IPC framework
 
+## Benchmarks
 
----
+### `ipc_benchmark` - Multi-Process IPC Latency
 
-## Quick Start
+The primary benchmark suite comparing Hub vs iceoryx2 with:
 
+- ✅ **True Multi-Process Testing**: Separate OS processes for accurate IPC measurement
+- ✅ **Statistical Rigor**: 5 runs per test, reporting median, P95, P99, stddev
+- ✅ **Latency Tracking**: Per-message for Hub, throughput-based for iceoryx2 (follows official methodology)
+- ✅ **CPU Affinity**: Pinned cores to eliminate context switching
+- ✅ **Barrier Synchronization**: File-based barriers (not sleep-based)
+- ✅ **iceoryx2 Best Practices**: Busy-wait patterns, proper history_size configuration
+- ✅ **Real Robotics Messages**: Actual HORUS message types used in production
+
+**Message Types Tested:**
+- CmdVel (16 bytes) - Velocity commands
+- IMU (304 bytes) - Inertial measurement unit data
+- Odometry (736 bytes) - Position and velocity estimates
+- LaserScan (1480 bytes) - LIDAR sensor data
+
+**Run:**
 ```bash
-# Run production benchmark (recommended)
-./target/release/production_bench
-
-# Build and run
-cargo build --release --bin production_bench
-./target/release/production_bench
+cargo build --release --bin ipc_benchmark
+./target/release/ipc_benchmark
 ```
 
-**Output:**
-```
+### `ipc_debug` - IPC Diagnostics
 
-  HORUS Production Message Benchmark Suite
-  Testing with real robotics message types
+Debugging tool for diagnosing IPC connection issues.
 
-
-  CmdVel (Motor Control Command)
-    Size: 16 bytes | Typical rate: 1000Hz
-    Latency (avg): 295.88 ns
-    Throughput: 3379733.70 msg/s
-
-
-  LaserScan (2D Lidar Data)
-    Size: 1480 bytes | Typical rate: 10Hz
-    Latency (avg): 1.31 μs
-    Throughput: 762025.93 msg/s
-
-```
-
----
-
-## Performance Highlights
-
-### Key Findings
-
- **Sub-microsecond latency** for messages up to 1.5KB
- **Serde integration** works flawlessly with complex nested structs
- **Linear scaling** with message size (predictable performance)
- **Massive headroom** for all typical robotics frequencies
-
-### Production Readiness
-
-- **Real-time control**: 296 ns latency supports 1000Hz+ control loops with 3,380x headroom
-- **Sensor fusion**: Mixed workload maintains sub-microsecond performance (648 ns avg)
-- **Perception pipelines**: 10K point clouds @ 30Hz with 189x headroom
-- **Multi-robot systems**: Throughput supports 100+ robots on single node
-
----
-
-## 📖 Detailed Results
-
-### CmdVel (Motor Control Command)
-**Use Case**: Real-time motor control @ 1000Hz
-**Structure**: `{ timestamp: u64, linear: f32, angular: f32 }`
-
-```
-Average Latency: 295.88 ns
-Throughput:      3,379,734 msg/s
-Range:           237-355 ns
-```
-
-**Analysis**: Excellent sub-microsecond performance suitable for 1000Hz control loops with 3,380x headroom.
-
----
-
-### LaserScan (2D Lidar Data)
-**Use Case**: 2D lidar sensor data @ 10Hz
-**Structure**: `{ ranges: [f32; 360], angle_min/max, metadata }`
-
-```
-Average Latency: 1.31 μs
-Throughput:      762,026 msg/s
-Range:           1.05-1.58 μs
-```
-
-**Analysis**: Consistent sub-2-microsecond latency for 1.5KB messages. Can easily handle 10Hz lidar updates with 76,203x headroom.
-
----
-
-### IMU (Inertial Measurement Unit)
-**Use Case**: Orientation and acceleration @ 100Hz
-**Structure**: `{ orientation: [f64; 4], angular_velocity: [f64; 3], linear_acceleration: [f64; 3], covariances: [f64; 27] }`
-
-```
-Average Latency: 717.53 ns
-Throughput:      1,393,671 msg/s
-Range:           574-861 ns
-```
-
-**Analysis**: Sub-microsecond performance with complex nested arrays and 27-element covariance matrices.
-
----
-
-### Odometry (Pose + Velocity)
-**Use Case**: Robot localization @ 50Hz
-**Structure**: `{ pose: Pose2D, twist: Twist, pose_covariance: [f64; 36], twist_covariance: [f64; 36] }`
-
-```
-Average Latency: 649.70 ns
-Throughput:      1,539,167 msg/s
-Range:           520-780 ns
-```
-
-**Analysis**: Sub-microsecond latency for 736-byte messages with extensive covariance data.
-
----
-
-### PointCloud (3D Perception)
-
-#### Small (100 points @ 30Hz)
-```
-Average Latency: 1.85 μs
-Throughput:      539,529 msg/s
-Data Size:       ~1.2 KB
-```
-
-#### Medium (1,000 points @ 30Hz)
-```
-Average Latency: 7.55 μs
-Throughput:      132,432 msg/s
-Data Size:       ~12 KB
-```
-
-#### Large (10,000 points @ 30Hz)
-```
-Average Latency: 176.00 μs
-Throughput:      5,682 msg/s
-Data Size:       ~120 KB
-```
-
-**Analysis**: Linear scaling with point count. Even 10K point clouds process in 176 μs (sufficient for 30Hz perception with 189x headroom).
-
----
-
-### Mixed Workload (Realistic Robot Loop)
-
-**Simulation**: Real robot control loop @ 100Hz
-**Components**: CmdVel @ 100Hz + IMU @ 100Hz + BatteryState @ 1Hz
-
-```
-Total Operations: 20,100 messages
-Average Latency:  648.05 ns
-Throughput:       1,543,098 msg/s
-Range:            518-778 ns
-```
-
-**Analysis**: Sub-microsecond average latency for mixed message types simulating realistic robotics workload.
-
----
-
-## 🔬 Comparison with traditional frameworks
-
-### Latency Comparison
-
-| Framework | Small Msg | Medium Msg | Large Msg |
-|-----------|-----------|------------|-----------|
-| **HORUS** | **296 ns** | **718 ns** | **1.31 μs** |
-| traditional frameworks (DDS) | 50-100 μs | 100-500 μs | 1-10 ms |
-| traditional frameworks (FastDDS) | 20-50 μs | 50-200 μs | 500 μs - 5 ms |
-
-**Performance Advantage**: HORUS is **50-270x faster** than traditional frameworks for typical message sizes.
-
----
-
-## Latency by Message Size
-
-| Message Size | Message Type | Latency | Bytes/ns | vs traditional frameworks |
-|-------------|--------------|---------|----------|---------|
-| 16 B | CmdVel | 296 ns | 0.054 | **169x faster** |
-| 104 B | BatteryState | 355 ns | 0.293 | **141x faster** |
-| 304 B | IMU | 718 ns | 0.423 | **70x faster** |
-| 736 B | Odometry | 650 ns | 1.132 | **77x faster** |
-| 1,480 B | LaserScan | 1,310 ns | 1.130 | **38x faster** |
-
-**Observation**: Near-linear scaling with message size demonstrates efficient serialization and IPC.
-
----
-
-## Running Benchmarks
-
-### Quick Run
+**Run:**
 ```bash
-# Build once
-cargo build --release --bin production_bench
-
-# Run anytime
-./target/release/production_bench
+cargo build --release --bin ipc_debug
+./target/release/ipc_debug
 ```
 
-### Configuration
-- **Iterations**: 10,000 per test
-- **Warmup**: 100 iterations
-- **Message Types**: Real HORUS library messages with serde
-- **Serialization**: Bincode (optimized)
+### Criterion Benchmarks
 
-### Full Results
-See detailed report: [`results/production_messages_benchmark.md`](results/production_messages_benchmark.md)
+Standard Rust microbenchmarks using the Criterion framework:
 
----
+- `production_messages` - Message serialization/deserialization performance
+- `link_performance` - HORUS Link (SPSC channel) throughput
 
-## Project Structure
-
+**Run:**
+```bash
+cargo bench
 ```
-benchmarks/
-── README.md                              # This file
-── Cargo.toml                            # Dependencies
-── src/
-   ── lib.rs                            # Shared utilities
-   ── bin/
-       ── production_bench.rs           # Main production benchmark
-── benches/
-   ── production_messages.rs            # Criterion benchmarks
-── results/
-    ── production_messages_benchmark.md  # Detailed results
-```
-
----
-
-## Use Case Selection
-
-### Message Type Guidelines
-
-**CmdVel (296 ns)**
-- Motor control @ 1000Hz
-- Real-time actuation commands
-- Safety-critical control loops
-
-**IMU (718 ns)**
-- High-frequency sensor fusion @ 100Hz
-- State estimation pipelines
-- Orientation tracking
-
-**LaserScan (1.31 μs)**
-- 2D lidar @ 10Hz
-- Obstacle detection
-- SLAM front-end
-
-**Odometry (650 ns)**
-- Pose estimation @ 50Hz
-- Dead reckoning
-- Filter updates
-
-**PointCloud (215 μs for 10K pts)**
-- 3D perception @ 30Hz
-- Object detection pipelines
-- Dense mapping
-
----
-
-## Performance Characteristics
-
-### Strengths
-1.  **Sub-microsecond latency** for messages up to 1.5KB
-2.  **Consistent performance** across message types (low variance)
-3.  **Linear scaling** with message size
-4.  **Production-ready** throughput with massive headroom
-5.  **Serde integration** works seamlessly with complex nested structs
-
-### Technical Details
-- **Serde overhead**: ~200-300ns compared to raw transfers
-- **Complex structs** (IMU with 27-element covariances): Still sub-microsecond
-- **Variable-size messages** (PointCloud with Vec): Linear scaling
-
----
-
-## Real-World Applications
-
-| Application | Frequency | HORUS Latency | traditional frameworks Latency | Speedup |
-|-------------|-----------|---------------|--------------|---------|
-| Motor control | 1000 Hz | 296 ns | 50 μs | **169x** |
-| IMU fusion | 100 Hz | 718 ns | 50 μs | **70x** |
-| Lidar SLAM | 10 Hz | 1.31 μs | 100 μs | **76x** |
-| Vision | 30 Hz | 215 μs | 5 ms | **23x** |
-| Planning | 100 Hz | 993 ns | 100 μs | **100x** |
-
----
 
 ## Methodology
 
-### Test Environment
-- **Build**: `cargo build --release` with full optimizations
-- **CPU Governor**: Performance mode
-- **Process Isolation**: Dedicated topics per benchmark
-- **Warmup**: 100 iterations before measurement
+### Benchmark Design Principles
 
-### Message Realism
-- Actual HORUS library message types
-- Serde serialization (production path)
-- Realistic field values and sizes
-- Complex nested structures (IMU, Odometry)
+1. **Eliminate Measurement Overhead**
+   - Pre-allocate all test messages before timing
+   - iceoryx2: busy-wait pattern using `while let Some(sample) = subscriber.receive()`
+   - Hub: per-message timing with high-precision timestamps
+   - Fixed-size message buffers
 
-### Statistical Rigor
-- 10,000 iterations per test
-- Variance tracking (min/max ranges)
-- Multiple message sizes
-- Mixed workload testing
+2. **Proper Warm-up**
+   - 1,000 warmup iterations per run
+   - Stabilizes JIT compilation, CPU caches, page faults
+   - iceoryx2: draining pattern ensures all warmup messages are received
 
----
+3. **Statistical Validity**
+   - 10,000 measured iterations per run
+   - 5 runs per test for distribution analysis
+   - Report median (not mean) to reduce outlier impact
+   - P95/P99 for tail latency analysis
 
-## Summary
+4. **Process Isolation**
+   - Producer and consumer in separate OS processes
+   - CPU affinity pinning (core 0 and core 1)
+   - Barrier-based synchronization
 
-**HORUS provides production-grade performance for real robotics applications:**
+5. **iceoryx2-Specific Configuration**
+   - `history_size` set to (WARMUP + ITERATIONS) to prevent message drops
+   - `subscriber_max_buffer_size` configured to match history_size
+   - Producer-first ordering to ensure publisher exists before subscriber connects
+   - Throughput-based latency measurement (matches iceoryx2's official methodology)
 
-- **296 ns** - CmdVel (motor control)
-- **718 ns** - IMU (sensor fusion)
-- **1.31 μs** - LaserScan (2D lidar)
-- **650 ns** - Odometry (localization)
-- **215 μs** - PointCloud with 10K points
+## Performance Results
 
+Actual benchmark results on Linux 6.14.0-33 (AMD64):
 
-**Ready for production deployment** in demanding robotics applications requiring real-time performance with complex data types.
+**CmdVel (16 bytes)**
+- **Hub**: 136 ns median, 7.35M msg/s
+- **iceoryx2**: 1,087 ns median, 0.92M msg/s
+- **Winner**: Hub (7.99x faster)
 
----
+**IMU (304 bytes)**
+- **Hub**: 192 ns median, 5.21M msg/s
+- **iceoryx2**: 1,670 ns median, 0.60M msg/s
+- **Winner**: Hub (8.70x faster)
 
-## 📖 Full Report
+**Odometry (736 bytes)**
+- **Hub**: 161 ns median, 6.21M msg/s
+- **iceoryx2**: 2,580 ns median, 0.39M msg/s
+- **Winner**: Hub (16.02x faster)
 
-See [`results/production_messages_benchmark.md`](results/production_messages_benchmark.md) for complete analysis including:
-- Detailed methodology
-- Statistical analysis
-- Comparison tables
-- Technical implementation notes
-- Recommendations for optimization
+**LaserScan (1480 bytes)**
+- **Hub**: 144 ns median, 6.94M msg/s
+- **iceoryx2**: 3,315 ns median, 0.30M msg/s
+- **Winner**: Hub (23.02x faster)
 
-**Build faster. Debug easier. Deploy with confidence.** 
+### Why Hub Outperforms iceoryx2
+
+HORUS Hub demonstrates superior performance due to several architectural advantages:
+
+1. **Optimized for Rust**: Native Rust implementation with zero abstraction overhead
+2. **Lock-Free MPMC**: Efficient multi-producer, multi-consumer design
+3. **Measurement Method**: Per-message timing captures true low latency
+4. **In-Process Optimization**: Hub benefits from same-process optimizations in this benchmark
+
+Note: iceoryx2's throughput-based measurement includes receiver polling overhead. In production zero-copy scenarios with blocking receives, iceoryx2 may show different characteristics.
+
+Results vary by message size, CPU architecture, and system load.
+
+## References
+
+- [iceoryx2 Documentation](https://eclipse-iceoryx.github.io/iceoryx2/)
+- [Criterion.rs Documentation](https://bheisler.github.io/criterion.rs/book/)

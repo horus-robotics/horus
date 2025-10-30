@@ -1,7 +1,7 @@
-# Makefile for HORUS C API and examples
-CC = gcc
-CFLAGS = -Wall -O2 -I./include
-LDFLAGS = -L../target/release -lhorus_c -lpthread -ldl -lm
+# Makefile for HORUS C++ API and examples
+CXX = g++
+CXXFLAGS = -std=c++17 -Wall -O2 -I./include
+LDFLAGS = -L../target/release -lhorus_cpp -lpthread -ldl -lm
 
 # Detect OS for rpath
 UNAME_S := $(shell uname -s)
@@ -24,14 +24,14 @@ build:
 
 examples: $(EXAMPLES)
 
-lidar_driver: build examples/lidar_driver.c
-	$(CC) $(CFLAGS) examples/lidar_driver.c -o lidar_driver $(LDFLAGS)
+lidar_driver: build examples/lidar_driver.cpp
+	$(CXX) $(CXXFLAGS) examples/lidar_driver.cpp -o lidar_driver $(LDFLAGS)
 
-camera_driver: build examples/camera_driver.c
-	$(CC) $(CFLAGS) examples/camera_driver.c -o camera_driver $(LDFLAGS)
+camera_driver: build examples/camera_driver.cpp
+	$(CXX) $(CXXFLAGS) examples/camera_driver.cpp -o camera_driver $(LDFLAGS)
 
-robot_arm_driver: build examples/robot_arm_driver.c
-	$(CC) $(CFLAGS) examples/robot_arm_driver.c -o robot_arm_driver $(LDFLAGS)
+robot_arm_driver: build examples/robot_arm_driver.cpp
+	$(CXX) $(CXXFLAGS) examples/robot_arm_driver.cpp -o robot_arm_driver $(LDFLAGS)
 
 clean:
 	rm -f $(EXAMPLES)
@@ -48,11 +48,11 @@ run-robot: robot_arm_driver
 	./robot_arm_driver
 
 help:
-	@echo "HORUS C API Build"
-	@echo "================="
+	@echo "HORUS C++ API Build"
+	@echo "==================="
 	@echo "make all       - Build library and examples"
 	@echo "make build     - Build Rust library only"
-	@echo "make examples  - Build C examples"
+	@echo "make examples  - Build C++ examples"
 	@echo "make clean     - Clean all builds"
 	@echo ""
 	@echo "Run examples:"

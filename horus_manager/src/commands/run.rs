@@ -591,6 +591,11 @@ fn execute_multiple_files(
     release: bool,
     clean: bool,
 ) -> Result<()> {
+    use std::io::{BufRead, BufReader};
+    use std::process::Stdio;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::{Arc, Mutex};
+
     println!(
         "{} Executing {} files concurrently:",
         "".cyan(),
@@ -607,18 +612,481 @@ fn execute_multiple_files(
         );
     }
 
-    // For now, execute them sequentially
-    // TODO: Implement concurrent execution with scheduler
-    for file_path in file_paths {
+    // Phase 1: Build all files (batch Rust files for performance)
+    println!("\n{} Phase 1: Building all files...", "".cyan());
+    let mut executables = Vec::new();
+
+    // Group files by language for optimized building
+    let mut rust_files = Vec::new();
+    let mut other_files = Vec::new();
+
+    for file_path in &file_paths {
+        let language = detect_language(file_path)?;
+        if language == "rust" {
+            rust_files.push(file_path.clone());
+        } else {
+            other_files.push((file_path.clone(), language));
+        }
+    }
+
+    // Build all Rust files together in a single Cargo workspace (major optimization!)
+    if !rust_files.is_empty() {
+        if rust_files.len() == 1 {
+            println!(
+                "  {} Building {}...",
+                "".cyan(),
+                rust_files[0].display().to_string().green()
+            );
+        } else {
+            println!(
+                "  {} Building {} Rust files together (optimized)...",
+                "".cyan(),
+                rust_files.len().to_string().yellow()
+            );
+        }
+
+        let rust_executables = build_rust_files_batch(rust_files, release, clean)?;
+        executables.extend(rust_executables);
+    }
+
+    // Build other languages individually
+    for (file_path, language) in other_files {
         println!(
-            "\n{} Running {}...",
+            "  {} Building {}...",
             "".cyan(),
             file_path.display().to_string().green()
         );
-        execute_single_file(file_path, args.clone(), release, clean)?;
+
+        let exec_info = build_file_for_concurrent_execution(
+            file_path,
+            language,
+            release,
+            false, // Don't clean - already done if needed
+        )?;
+
+        executables.push(exec_info);
+    }
+
+    println!("{} All files built successfully!\n", "".green());
+
+    // Phase 2: Execute all binaries concurrently
+    println!("{} Phase 2: Starting all processes...", "".cyan());
+
+    let running = Arc::new(AtomicBool::new(true));
+    let children: Arc<Mutex<Vec<(String, std::process::Child)>>> = Arc::new(Mutex::new(Vec::new()));
+
+    // Setup Ctrl+C handler with access to children
+    let r = running.clone();
+    let c = children.clone();
+    ctrlc::set_handler(move || {
+        println!("\n{} Shutting down all processes...", "".yellow());
+        r.store(false, Ordering::SeqCst);
+
+        // Kill all child processes
+        if let Ok(mut children_lock) = c.lock() {
+            for (name, child) in children_lock.iter_mut() {
+                println!("  {} Terminating [{}]...", "".yellow(), name);
+                let _ = child.kill();
+            }
+        }
+    })
+    .expect("Error setting Ctrl-C handler");
+
+    let mut handles = Vec::new();
+
+    // Spawn all processes
+    for (i, exec_info) in executables.iter().enumerate() {
+        let node_name = exec_info.name.clone();
+        let color = get_color_for_index(i);
+
+        let mut cmd = exec_info.create_command(&args);
+        cmd.stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+
+        match cmd.spawn() {
+            Ok(mut child) => {
+                // Handle stdout
+                if let Some(stdout) = child.stdout.take() {
+                    let name = node_name.clone();
+                    let handle = std::thread::spawn(move || {
+                        let reader = BufReader::new(stdout);
+                        for line in reader.lines() {
+                            if let Ok(line) = line {
+                                println!("{} {}", format!("[{}]", name).color(color), line);
+                            }
+                        }
+                    });
+                    handles.push(handle);
+                }
+
+                // Handle stderr
+                if let Some(stderr) = child.stderr.take() {
+                    let name = node_name.clone();
+                    let handle = std::thread::spawn(move || {
+                        let reader = BufReader::new(stderr);
+                        for line in reader.lines() {
+                            if let Ok(line) = line {
+                                eprintln!("{} {}", format!("[{}]", name).color(color), line);
+                            }
+                        }
+                    });
+                    handles.push(handle);
+                }
+
+                println!("  {} Started [{}]", "".green(), node_name.color(color));
+                children.lock().unwrap().push((node_name, child));
+            }
+            Err(e) => {
+                eprintln!(
+                    "  {} Failed to start [{}]: {}",
+                    "".red(),
+                    node_name,
+                    e
+                );
+            }
+        }
+    }
+
+    println!("\n{} All processes running. Press Ctrl+C to stop.\n", "".green());
+
+    // Wait for all processes to complete (concurrent, checks running flag)
+    loop {
+        let mut all_done = true;
+        let mut children_lock = children.lock().unwrap();
+
+        // Check each child with try_wait (non-blocking)
+        children_lock.retain_mut(|(name, child)| {
+            match child.try_wait() {
+                Ok(Some(status)) => {
+                    // Process exited
+                    if !status.success() {
+                        eprintln!(
+                            "\n{} Process [{}] exited with code: {}",
+                            "".yellow(),
+                            name,
+                            status.code().unwrap_or(-1)
+                        );
+                    }
+                    false // Remove from list
+                }
+                Ok(None) => {
+                    // Still running
+                    all_done = false;
+                    true // Keep in list
+                }
+                Err(e) => {
+                    eprintln!("\n{} Error checking [{}]: {}", "".red(), name, e);
+                    false // Remove from list
+                }
+            }
+        });
+
+        let still_running = !children_lock.is_empty();
+        drop(children_lock);
+
+        // Exit if all processes done or Ctrl+C was pressed and we killed them
+        if all_done || (!running.load(Ordering::SeqCst) && !still_running) {
+            break;
+        }
+
+        // Small sleep to avoid busy-waiting
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+
+    // Wait for output threads to finish
+    for handle in handles {
+        handle.join().ok();
+    }
+
+    if !running.load(Ordering::SeqCst) {
+        println!("\n{} All processes stopped.", "".green());
+    } else {
+        println!("\n{} All processes completed.", "".green());
     }
 
     Ok(())
+}
+
+struct ExecutableInfo {
+    name: String,
+    command: String,
+    args_override: Vec<String>,
+}
+
+impl ExecutableInfo {
+    fn create_command(&self, user_args: &[String]) -> Command {
+        let mut cmd = Command::new(&self.command);
+
+        // Use override args if provided, otherwise use user args
+        if !self.args_override.is_empty() {
+            cmd.args(&self.args_override);
+        } else {
+            cmd.args(user_args);
+        }
+
+        cmd
+    }
+}
+
+fn get_color_for_index(index: usize) -> &'static str {
+    let colors = ["cyan", "green", "yellow", "magenta", "blue", "red"];
+    colors[index % colors.len()]
+}
+
+/// Build multiple Rust files in a single Cargo workspace for optimal performance
+fn build_rust_files_batch(
+    file_paths: Vec<PathBuf>,
+    release: bool,
+    clean: bool,
+) -> Result<Vec<ExecutableInfo>> {
+    if file_paths.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    // Ensure .horus directory exists
+    ensure_horus_directory()?;
+
+    // Setup environment
+    setup_environment()?;
+
+    // Find HORUS source directory
+    let horus_source = find_horus_source_dir()?;
+
+    // Collect all dependencies from all Rust files
+    let mut all_dependencies = HashSet::new();
+    for file_path in &file_paths {
+        let dependencies = scan_imports(file_path, "rust")?;
+        all_dependencies.extend(dependencies);
+    }
+
+    // Resolve all dependencies once
+    if !all_dependencies.is_empty() {
+        resolve_dependencies(all_dependencies)?;
+    }
+
+    // Generate single Cargo.toml with multiple binary targets
+    let cargo_toml_path = PathBuf::from(".horus/Cargo.toml");
+
+    let mut cargo_toml = String::from(
+        r#"[package]
+name = "horus-multi-node"
+version = "0.1.0"
+edition = "2021"
+
+"#,
+    );
+
+    // Add a [[bin]] entry for each Rust file
+    let mut binary_names = Vec::new();
+    for file_path in &file_paths {
+        let name = file_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("node")
+            .to_string();
+
+        let source_relative_path = format!("../{}", file_path.display());
+
+        cargo_toml.push_str(&format!(
+            r#"[[bin]]
+name = "{}"
+path = "{}"
+
+"#,
+            name, source_relative_path
+        ));
+
+        binary_names.push(name);
+    }
+
+    // Add dependencies section
+    cargo_toml.push_str("[dependencies]\n");
+
+    // Add HORUS core dependencies
+    if horus_source.ends_with(".horus/cache") || horus_source.ends_with(".horus\\cache") {
+        cargo_toml.push_str(&format!(
+            "horus = {{ path = \"{}\" }}\n",
+            horus_source.join("horus@0.1.0/horus").display()
+        ));
+        cargo_toml.push_str(&format!(
+            "horus_library = {{ path = \"{}\" }}\n",
+            horus_source.join("horus@0.1.0/horus_library").display()
+        ));
+    } else {
+        cargo_toml.push_str(&format!(
+            "horus = {{ path = \"{}\" }}\n",
+            horus_source.join("horus").display()
+        ));
+        cargo_toml.push_str(&format!(
+            "horus_library = {{ path = \"{}\" }}\n",
+            horus_source.join("horus_library").display()
+        ));
+    }
+
+    // Write the unified Cargo.toml
+    fs::write(&cargo_toml_path, cargo_toml)?;
+
+    // Clean if requested
+    if clean {
+        let mut clean_cmd = Command::new("cargo");
+        clean_cmd.arg("clean").current_dir(".horus");
+        clean_cmd.status().ok();
+    }
+
+    // Build all binaries with a single cargo build command
+    let mut cmd = Command::new("cargo");
+    cmd.arg("build").current_dir(".horus");
+    if release {
+        cmd.arg("--release");
+    }
+
+    let status = cmd.status()?;
+    if !status.success() {
+        bail!("Cargo build failed for batch Rust compilation");
+    }
+
+    // Create ExecutableInfo for each binary
+    let profile = if release { "release" } else { "debug" };
+    let mut executables = Vec::new();
+
+    for name in binary_names {
+        let binary_path = format!(".horus/target/{}/{}", profile, name);
+        executables.push(ExecutableInfo {
+            name,
+            command: binary_path,
+            args_override: Vec::new(),
+        });
+    }
+
+    Ok(executables)
+}
+
+fn build_file_for_concurrent_execution(
+    file_path: PathBuf,
+    language: String,
+    release: bool,
+    clean: bool,
+) -> Result<ExecutableInfo> {
+    let name = file_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("node")
+        .to_string();
+
+    // Ensure .horus directory exists
+    ensure_horus_directory()?;
+
+    // Scan imports and resolve dependencies
+    let dependencies = scan_imports(&file_path, &language)?;
+    if !dependencies.is_empty() {
+        resolve_dependencies(dependencies)?;
+    }
+
+    // Setup environment
+    setup_environment()?;
+
+    match language.as_str() {
+        "rust" => {
+            // Build Rust file with Cargo
+            let horus_source = find_horus_source_dir()?;
+            let cargo_toml_path = PathBuf::from(".horus/Cargo.toml");
+            let source_relative_path = format!("../{}", file_path.display());
+
+            let mut cargo_toml = format!(
+                r#"[package]
+name = "horus-project-{}"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "{}"
+path = "{}"
+
+[dependencies]
+"#,
+                name, name, source_relative_path
+            );
+
+            // Add HORUS dependencies
+            if horus_source.ends_with(".horus/cache") || horus_source.ends_with(".horus\\cache") {
+                cargo_toml.push_str(&format!(
+                    "horus = {{ path = \"{}\" }}\n",
+                    horus_source.join("horus@0.1.0/horus").display()
+                ));
+                cargo_toml.push_str(&format!(
+                    "horus_library = {{ path = \"{}\" }}\n",
+                    horus_source.join("horus@0.1.0/horus_library").display()
+                ));
+            } else {
+                cargo_toml.push_str(&format!(
+                    "horus = {{ path = \"{}\" }}\n",
+                    horus_source.join("horus").display()
+                ));
+                cargo_toml.push_str(&format!(
+                    "horus_library = {{ path = \"{}\" }}\n",
+                    horus_source.join("horus_library").display()
+                ));
+            }
+
+            fs::write(&cargo_toml_path, cargo_toml)?;
+
+            if clean {
+                let mut clean_cmd = Command::new("cargo");
+                clean_cmd.arg("clean").current_dir(".horus");
+                clean_cmd.status().ok();
+            }
+
+            // Build with Cargo
+            let mut cmd = Command::new("cargo");
+            cmd.arg("build").current_dir(".horus");
+            if release {
+                cmd.arg("--release");
+            }
+            cmd.arg("--bin").arg(&name);
+
+            let status = cmd.status()?;
+            if !status.success() {
+                bail!("Cargo build failed for {}", name);
+            }
+
+            let profile = if release { "release" } else { "debug" };
+            let binary_path = format!(".horus/target/{}/{}", profile, name);
+
+            Ok(ExecutableInfo {
+                name,
+                command: binary_path,
+                args_override: Vec::new(),
+            })
+        }
+        "python" => {
+            // Python doesn't need building, just setup interpreter
+            let python_cmd = detect_python_interpreter()?;
+            setup_python_environment()?;
+
+            Ok(ExecutableInfo {
+                name,
+                command: python_cmd,
+                args_override: vec![file_path.to_string_lossy().to_string()],
+            })
+        }
+        "c" => {
+            // Compile C file
+            let compiler = detect_c_compiler()?;
+            let binary_name = generate_c_binary_name(&file_path, release)?;
+            let cache_dir = PathBuf::from(".horus/cache");
+            fs::create_dir_all(&cache_dir)?;
+            let binary_path = cache_dir.join(&binary_name);
+
+            compile_c_file(&file_path, &binary_path, &compiler, release)?;
+
+            Ok(ExecutableInfo {
+                name,
+                command: binary_path.to_string_lossy().to_string(),
+                args_override: Vec::new(),
+            })
+        }
+        _ => bail!("Unsupported language: {}", language),
+    }
 }
 
 fn resolve_execution_target(input: PathBuf) -> Result<Vec<ExecutionTarget>> {

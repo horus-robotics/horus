@@ -105,9 +105,16 @@ horus.run(node)
 # Multiple nodes
 horus.run(node1, node2, node3, duration=10)
 
-# Using scheduler directly
+# Using scheduler with default priority (insertion order)
 scheduler = horus.Scheduler()
 scheduler.add(node1, node2)
+scheduler.run(duration=5)
+
+# Using scheduler with explicit priorities (deterministic execution)
+scheduler = horus.Scheduler()
+scheduler.register(sensor_node, priority=0, logging=True)   # Runs first
+scheduler.register(control_node, priority=1, logging=False) # Runs second
+scheduler.register(motor_node, priority=2, logging=True)    # Runs third
 scheduler.run(duration=5)
 ```
 
@@ -216,6 +223,47 @@ node = horus.Node(
 
 ## Advanced Features
 
+### Priority-based Execution (Deterministic)
+
+For robotics applications where execution order matters, use explicit priorities:
+
+```python
+import horus
+
+# Create nodes
+sensor = horus.Node(
+    name="sensor",
+    pubs="sensor_data",
+    tick=lambda n: n.send("sensor_data", read_sensor())
+)
+
+controller = horus.Node(
+    name="controller",
+    subs="sensor_data",
+    pubs="motor_cmd",
+    tick=lambda n: n.send("motor_cmd", compute_control(n.get("sensor_data"))) if n.has_msg("sensor_data") else None
+)
+
+actuator = horus.Node(
+    name="actuator",
+    subs="motor_cmd",
+    tick=lambda n: send_to_motor(n.get("motor_cmd")) if n.has_msg("motor_cmd") else None
+)
+
+# Register with priorities (lower = higher priority)
+scheduler = horus.Scheduler()
+scheduler.register(sensor, priority=0, logging=True)      # Runs FIRST
+scheduler.register(controller, priority=1, logging=False) # Runs SECOND
+scheduler.register(actuator, priority=2, logging=True)    # Runs THIRD
+scheduler.run()
+```
+
+**Why priorities matter:**
+- **Deterministic execution**: Nodes always execute in the same order
+- **Correct data flow**: Sensors read before controllers compute
+- **Reproducible behavior**: Same input produces same output every time
+- **Debugging**: Easier to reason about system behavior
+
 ### Broadcast (Fanout)
 ```python
 horus.fanout("sensor", ["log", "display", "storage"])
@@ -226,12 +274,13 @@ horus.fanout("sensor", ["log", "display", "storage"])
 horus.merge(["sensor1", "sensor2", "sensor3"], "all_sensors")
 ```
 
-### Direct Scheduler Control
+### Chainable Registration
 ```python
 scheduler = horus.Scheduler()
-scheduler.add(high_priority_node)
-scheduler.add(low_priority_node)
-scheduler.run()
+scheduler.register(node1, 0, True) \
+         .register(node2, 1, False) \
+         .register(node3, 2, True) \
+         .run()
 ```
 
 ## Design Philosophy

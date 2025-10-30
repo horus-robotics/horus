@@ -54,6 +54,7 @@ pub async fn run(port: u16) -> anyhow::Result<()> {
             get(packages_environments_handler),
         )
         .route("/api/packages/install", post(packages_install_handler))
+        .route("/api/packages/uninstall", post(packages_uninstall_handler))
         .route("/api/packages/publish", post(packages_publish_handler))
         .route("/api/remote/deploy", post(remote_deploy_handler))
         .route("/api/remote/deployments", post(remote_deployments_handler))
@@ -476,7 +477,7 @@ async fn packages_environments_handler() -> impl IntoResponse {
                                         let pkg_name =
                                             pkg_entry.file_name().to_string_lossy().to_string();
 
-                                        // Try to get version
+                                        // Try to get version from metadata.json
                                         let metadata_path = pkg_entry.path().join("metadata.json");
                                         let version = if metadata_path.exists() {
                                             fs::read_to_string(&metadata_path)
@@ -495,9 +496,41 @@ async fn packages_environments_handler() -> impl IntoResponse {
                                             "unknown".to_string()
                                         };
 
+                                        // Scan for installed packages inside this package's .horus/packages/
+                                        let nested_packages_dir = pkg_entry.path().join(".horus/packages");
+                                        let mut installed_packages = Vec::new();
+
+                                        if nested_packages_dir.exists() {
+                                            if let Ok(nested_entries) = fs::read_dir(&nested_packages_dir) {
+                                                for nested_entry in nested_entries.flatten() {
+                                                    if nested_entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                                                        let nested_name = nested_entry.file_name().to_string_lossy().to_string();
+
+                                                        // Try to get version
+                                                        let nested_metadata_path = nested_entry.path().join("metadata.json");
+                                                        let nested_version = if nested_metadata_path.exists() {
+                                                            fs::read_to_string(&nested_metadata_path)
+                                                                .ok()
+                                                                .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+                                                                .and_then(|j| j.get("version").and_then(|v| v.as_str()).map(|s| s.to_string()))
+                                                                .unwrap_or_else(|| "unknown".to_string())
+                                                        } else {
+                                                            "unknown".to_string()
+                                                        };
+
+                                                        installed_packages.push(serde_json::json!({
+                                                            "name": nested_name,
+                                                            "version": nested_version,
+                                                        }));
+                                                    }
+                                                }
+                                            }
+                                        }
+
                                         packages.push(serde_json::json!({
                                             "name": pkg_name,
                                             "version": version,
+                                            "installed_packages": installed_packages,
                                         }));
                                     }
                                 }
@@ -537,16 +570,66 @@ async fn packages_environments_handler() -> impl IntoResponse {
 #[derive(serde::Deserialize)]
 struct InstallRequest {
     package: String,
+    #[serde(default)]
+    target: Option<String>,
 }
 
 async fn packages_install_handler(Json(req): Json<InstallRequest>) -> impl IntoResponse {
     use crate::registry::RegistryClient;
+    use std::path::PathBuf;
 
     let package_name = req.package.clone();
+    let target = req.target.clone();
 
-    let result = tokio::task::spawn_blocking(move || {
+    let result = tokio::task::spawn_blocking(move || -> anyhow::Result<(String, String)> {
         let client = RegistryClient::new();
-        client.install(&req.package, None)
+
+        // Determine target based on input and horus.yaml path
+        let (_install_result, horus_yaml_path) = if let Some(target_str) = &target {
+            if target_str == "global" {
+                // Install globally - no horus.yaml to update
+                let result = client.install_to_target(&req.package, None, crate::workspace::InstallTarget::Global)?;
+                (result, None)
+            } else {
+                // Use specified path - find horus.yaml in parent package
+                let target_path = PathBuf::from(target_str);
+
+                // Extract parent package path (remove /.horus/packages/package_name)
+                // target_path format: /path/to/project/.horus/packages/parent_package
+                let parent_path = if target_path.ends_with(".horus/packages") {
+                    target_path.parent().and_then(|p| p.parent())
+                } else {
+                    // Likely: /path/.horus/packages/parent_package
+                    target_path.parent()
+                        .and_then(|p| p.parent()) // Remove parent_package
+                        .and_then(|p| p.parent()) // Remove packages
+                        .and_then(|p| p.parent()) // Remove .horus
+                };
+
+                let yaml_path = parent_path.map(|p| p.join("horus.yaml"));
+
+                let result = client.install_to_target(&req.package, None, crate::workspace::InstallTarget::Local(target_path))?;
+                (result, yaml_path)
+            }
+        } else {
+            // Default: auto-detect - look for horus.yaml in current dir
+            let yaml_path = PathBuf::from("horus.yaml");
+            let yaml_path = if yaml_path.exists() { Some(yaml_path) } else { None };
+            let result = client.install(&req.package, None)?;
+            (result, yaml_path)
+        };
+
+        // Get installed version (try to read from metadata.json)
+        let version = "latest".to_string(); // TODO: Get actual version from install result
+
+        // Update horus.yaml if path exists
+        if let Some(yaml_path) = horus_yaml_path {
+            if yaml_path.exists() {
+                crate::yaml_utils::add_dependency_to_horus_yaml(&yaml_path, &req.package, &version)?;
+            }
+        }
+
+        Ok((req.package.clone(), version))
     })
     .await;
 
@@ -556,6 +639,102 @@ async fn packages_install_handler(Json(req): Json<InstallRequest>) -> impl IntoR
             serde_json::json!({
                 "success": true,
                 "message": format!("Successfully installed {}", package_name)
+            })
+            .to_string(),
+        ),
+        Ok(Err(e)) => (
+            StatusCode::BAD_REQUEST,
+            serde_json::json!({
+                "success": false,
+                "error": e.to_string()
+            })
+            .to_string(),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            serde_json::json!({
+                "success": false,
+                "error": format!("Task failed: {}", e)
+            })
+            .to_string(),
+        ),
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct UninstallRequest {
+    parent_package: String,
+    package: String,
+}
+
+async fn packages_uninstall_handler(Json(req): Json<UninstallRequest>) -> impl IntoResponse {
+    use std::fs;
+    use std::path::PathBuf;
+
+    let parent_package = req.parent_package.clone();
+    let package = req.package.clone();
+    let parent_package_msg = parent_package.clone();
+    let package_msg = package.clone();
+
+    let result = tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
+        // Find the parent package in local environments
+        let search_paths = vec![PathBuf::from("."), dirs::home_dir().unwrap_or_default()];
+
+        for base_path in search_paths {
+            if !base_path.exists() {
+                continue;
+            }
+
+            if let Ok(entries) = fs::read_dir(&base_path) {
+                for entry in entries.flatten() {
+                    if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                        continue;
+                    }
+
+                    let horus_dir = entry.path().join(".horus");
+                    if !horus_dir.exists() {
+                        continue;
+                    }
+
+                    // Check if this environment has the parent package
+                    let parent_pkg_path = horus_dir.join("packages").join(&parent_package);
+                    if !parent_pkg_path.exists() {
+                        continue;
+                    }
+
+                    // Found the parent package, now uninstall the nested package
+                    let nested_pkg_path = parent_pkg_path.join(".horus/packages").join(&package);
+                    if nested_pkg_path.exists() {
+                        fs::remove_dir_all(&nested_pkg_path)?;
+
+                        // Update horus.yaml of the parent package
+                        // The parent package directory structure is: <project_root>/.horus/packages/<parent_package>
+                        // We need to go up to the project root and find horus.yaml
+                        let project_root = parent_pkg_path.parent().and_then(|p| p.parent());
+                        if let Some(root) = project_root {
+                            let horus_yaml_path = root.join("horus.yaml");
+                            if horus_yaml_path.exists() {
+                                // Ignore errors in updating horus.yaml - package is already uninstalled
+                                let _ = crate::yaml_utils::remove_dependency_from_horus_yaml(&horus_yaml_path, &package);
+                            }
+                        }
+
+                        return Ok(());
+                    }
+                }
+            }
+        }
+
+        anyhow::bail!("Package not found")
+    })
+    .await;
+
+    match result {
+        Ok(Ok(_)) => (
+            StatusCode::OK,
+            serde_json::json!({
+                "success": true,
+                "message": format!("Successfully uninstalled {} from {}", package_msg, parent_package_msg)
             })
             .to_string(),
         ),
@@ -2154,6 +2333,98 @@ fn generate_html(port: u16) -> String {
                 right: -100%;
             }}
         }}
+
+        /* Install Dialog Modal */
+        .install-dialog {{
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }}
+
+        .install-dialog.active {{
+            display: flex;
+        }}
+
+        .install-dialog-content {{
+            background: var(--surface);
+            border: 2px solid var(--accent);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 50px rgba(0, 212, 255, 0.3);
+        }}
+
+        .install-dialog-header {{
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+
+        .install-dialog-header h3 {{
+            color: var(--accent);
+            margin: 0;
+            font-size: 1.3rem;
+        }}
+
+        .install-dialog-body {{
+            padding: 1.5rem;
+            overflow-y: auto;
+        }}
+
+        .install-dialog-footer {{
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }}
+
+        .install-option {{
+            padding: 1rem;
+            background: var(--dark-bg);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }}
+
+        .install-option:hover {{
+            border-color: var(--accent);
+            background: var(--primary);
+        }}
+
+        .install-option.selected {{
+            border-color: var(--accent);
+            background: var(--primary);
+        }}
+
+        .install-option input[type="radio"] {{
+            margin-right: 10px;
+        }}
+
+        .local-packages-select {{
+            width: 100%;
+            padding: 10px;
+            background: var(--dark-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            margin-top: 10px;
+        }}
     </style>
 </head>
 <body>
@@ -2283,7 +2554,7 @@ fn generate_html(port: u16) -> String {
                             <li><strong>Search</strong> - Find packages in registry</li>
                             <li><strong>Global</strong> - View globally installed packages</li>
                             <li><strong>Local</strong> - View local environment packages</li>
-                            <li><strong>Publish</strong> - Share your packages</li>
+                            <li><strong>Registry</strong> - Search and install packages</li>
                         </ul>
                     </div>
 
@@ -2549,15 +2820,15 @@ fn generate_html(port: u16) -> String {
         <div id="tab-packages" class="tab-content">
             <!-- View Selector -->
             <div class="view-selector">
-                <button class="view-btn active" onclick="switchPackageView('global')">🌐 Global Env</button>
-                <button class="view-btn" onclick="switchPackageView('local')">📁 Local Env</button>
-                <button class="view-btn" onclick="switchPackageView('registry')"> Registry</button>
+                <button class="view-btn active" onclick="switchPackageView('global')">Global Env</button>
+                <button class="view-btn" onclick="switchPackageView('local')">Local Env</button>
+                <button class="view-btn" onclick="switchPackageView('registry')">Registry</button>
             </div>
 
             <!-- Global Environment View -->
             <div id="package-global" class="package-view active">
                 <div class="card">
-                    <h2>🌐 Global Environment</h2>
+                    <h2>Global Environment</h2>
                     <div id="global-packages-list">
                         <p style="color: var(--text-secondary);">Loading global packages...</p>
                     </div>
@@ -2567,7 +2838,7 @@ fn generate_html(port: u16) -> String {
             <!-- Local Environment View -->
             <div id="package-local" class="package-view" style="display: none;">
                 <div class="card">
-                    <h2>📁 Local Environments</h2>
+                    <h2>Local Environments</h2>
                     <div id="local-environments-list">
                         <p style="color: var(--text-secondary);">Loading local environments...</p>
                     </div>
@@ -2590,12 +2861,6 @@ fn generate_html(port: u16) -> String {
                             style="padding: 10px 20px; background: var(--accent); color: var(--primary); border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-family: 'JetBrains Mono', monospace;"
                         >
                             Search
-                        </button>
-                        <button
-                            onclick="publishPackage()"
-                            style="padding: 10px 20px; background: var(--success); color: var(--primary); border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-family: 'JetBrains Mono', monospace;"
-                        >
-                            Publish
                         </button>
                     </div>
                     <div id="registry-results">
@@ -3184,19 +3449,19 @@ fn generate_html(port: u16) -> String {
                 ctx.beginPath();
                 ctx.moveTo(from.x, from.y);
                 ctx.lineTo(to.x, to.y);
-                ctx.strokeStyle = edge.type === 'publish' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(0, 255, 136, 0.15)';
-                ctx.lineWidth = 2;
+                ctx.strokeStyle = edge.type === 'publish' ? 'rgba(0, 212, 255, 0.7)' : 'rgba(0, 255, 136, 0.7)';
+                ctx.lineWidth = 2.5;
                 ctx.stroke();
 
                 // Arrow head
                 const angle = Math.atan2(to.y - from.y, to.x - from.x);
-                const headlen = 10;
+                const headlen = 15;
                 ctx.beginPath();
                 ctx.moveTo(to.x, to.y);
                 ctx.lineTo(to.x - headlen * Math.cos(angle - Math.PI / 6), to.y - headlen * Math.sin(angle - Math.PI / 6));
                 ctx.lineTo(to.x - headlen * Math.cos(angle + Math.PI / 6), to.y - headlen * Math.sin(angle + Math.PI / 6));
                 ctx.closePath();
-                ctx.fillStyle = edge.type === 'publish' ? 'rgba(0, 212, 255, 0.7)' : 'rgba(0, 255, 136, 0.7)';
+                ctx.fillStyle = edge.type === 'publish' ? 'rgba(0, 212, 255, 0.9)' : 'rgba(0, 255, 136, 0.9)';
                 ctx.fill();
             }});
 
@@ -3895,7 +4160,7 @@ fn generate_html(port: u16) -> String {
                 // Local Environments Section
                 html += '<div>';
                 html += '<h3 style="color: var(--success); margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">';
-                html += '📁 Local Environments';
+                html += 'Local Environments';
                 html += `<span style="font-size: 0.8em; color: var(--text-secondary); font-weight: normal;">(${{data.local?.length || 0}} environments)</span>`;
                 html += '</h3>';
 
@@ -3908,10 +4173,38 @@ fn generate_html(port: u16) -> String {
                                     <div style="color: var(--text-secondary); margin-bottom: 8px; font-size: 0.9em;">
                                         Packages in this environment:
                                     </div>
-                                    ${{env.packages.map(p => `
-                                        <div style="padding: 8px 12px; background: var(--primary); border: 1px solid var(--border); border-radius: 4px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
-                                            <span style="font-weight: 500;">${{p.name}}</span>
-                                            <span style="color: var(--text-secondary); font-size: 0.85em;">v${{p.version}}</span>
+                                    ${{env.packages.map((p, pidx) => `
+                                        <div style="margin-bottom: 6px;">
+                                            <div onclick="togglePackageDetails(${{index}}, ${{pidx}})" style="padding: 8px 12px; background: var(--primary); border: 1px solid var(--border); border-radius: 4px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s;">
+                                                <div style="display: flex; align-items: center; gap: 8px;">
+                                                    <span id="pkg-arrow-${{index}}-${{pidx}}" style="color: var(--accent); font-size: 0.8em;">▶</span>
+                                                    <span style="font-weight: 500;">${{p.name}}</span>
+                                                </div>
+                                                <span style="color: var(--text-secondary); font-size: 0.85em;">v${{p.version}}</span>
+                                            </div>
+                                            <div id="pkg-details-${{index}}-${{pidx}}" style="display: none; padding: 10px 12px; margin-left: 20px; background: var(--dark-bg); border-left: 2px solid var(--accent); border-radius: 4px; margin-top: 4px;">
+                                                <div style="color: var(--text-secondary); font-size: 0.85em; margin-bottom: 8px;"><strong>Installed Packages (${{p.installed_packages?.length || 0}}):</strong></div>
+                                                ${{p.installed_packages && p.installed_packages.length > 0 ? `
+                                                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                                                        ${{p.installed_packages.map(pkg => `
+                                                            <div style="padding: 6px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                                                                <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+                                                                    <span style="color: var(--text-primary); font-size: 0.85em;">${{pkg.name}}</span>
+                                                                    <span style="color: var(--text-tertiary); font-size: 0.75em;">v${{pkg.version}}</span>
+                                                                </div>
+                                                                <button
+                                                                    onclick="uninstallPackage('${{p.name}}', '${{pkg.name}}', event)"
+                                                                    style="padding: 4px 10px; background: var(--error, #ff4444); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75em; font-weight: 600; transition: opacity 0.2s;"
+                                                                    onmouseover="this.style.opacity='0.8'"
+                                                                    onmouseout="this.style.opacity='1'"
+                                                                >
+                                                                    Uninstall
+                                                                </button>
+                                                            </div>
+                                                        `).join('')}}
+                                                    </div>
+                                                ` : '<div style="color: var(--text-tertiary); font-size: 0.85em;">No packages installed</div>'}}
+                                            </div>
                                         </div>
                                     `).join('')}}
                                 </div>
@@ -3961,6 +4254,19 @@ fn generate_html(port: u16) -> String {
             }}
         }}
 
+        function togglePackageDetails(envIndex, pkgIndex) {{
+            const detailsDiv = document.getElementById(`pkg-details-${{envIndex}}-${{pkgIndex}}`);
+            const arrow = document.getElementById(`pkg-arrow-${{envIndex}}-${{pkgIndex}}`);
+
+            if (detailsDiv) {{
+                const isVisible = detailsDiv.style.display !== 'none';
+                detailsDiv.style.display = isVisible ? 'none' : 'block';
+                if (arrow) {{
+                    arrow.textContent = isVisible ? '▶' : '▼';
+                }}
+            }}
+        }}
+
         async function searchRegistry() {{
             const query = document.getElementById('registry-search-input').value;
             const container = document.getElementById('registry-results');
@@ -3996,7 +4302,7 @@ fn generate_html(port: u16) -> String {
                                 </div>
                             </div>
                             <button
-                                onclick="installPackage('${{pkg.name}}')"
+                                onclick="showInstallDialog('${{pkg.name}}')"
                                 style="padding: 8px 16px; background: var(--accent); color: var(--primary); border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-family: 'JetBrains Mono', monospace;"
                             >
                                 Install
@@ -4008,6 +4314,109 @@ fn generate_html(port: u16) -> String {
                 container.innerHTML = html;
             }} catch (error) {{
                 container.innerHTML = `<p style="color: var(--error);">Search failed: ${{error.message}}</p>`;
+            }}
+        }}
+
+        // Install dialog state
+        let currentInstallPackage = null;
+        let currentInstallLocation = 'global';
+
+        async function showInstallDialog(packageName) {{
+            currentInstallPackage = packageName;
+            document.getElementById('install-pkg-name').textContent = packageName;
+            document.getElementById('install-dialog').classList.add('active');
+
+            // Reset to global selection
+            selectInstallLocation('global');
+
+            // Load local packages
+            await loadLocalPackagesForInstall();
+        }}
+
+        function closeInstallDialog() {{
+            document.getElementById('install-dialog').classList.remove('active');
+            currentInstallPackage = null;
+            currentInstallLocation = 'global';
+        }}
+
+        function selectInstallLocation(location) {{
+            currentInstallLocation = location;
+
+            // Update radio buttons
+            document.getElementById('radio-global').checked = (location === 'global');
+            document.getElementById('radio-local').checked = (location === 'local');
+
+            // Update visual selection
+            document.getElementById('install-option-global').classList.toggle('selected', location === 'global');
+            document.getElementById('install-option-local').classList.toggle('selected', location === 'local');
+
+            // Show/hide local package dropdown
+            const dropdown = document.getElementById('local-package-select');
+            dropdown.style.display = (location === 'local') ? 'block' : 'none';
+        }}
+
+        async function loadLocalPackagesForInstall() {{
+            try {{
+                const response = await fetch('/api/packages/environments');
+                const data = await response.json();
+
+                const dropdown = document.getElementById('local-package-select');
+                dropdown.innerHTML = '<option value="">Select a package...</option>';
+
+                if (data.local && data.local.length > 0) {{
+                    data.local.forEach(env => {{
+                        if (env.packages && env.packages.length > 0) {{
+                            env.packages.forEach(pkg => {{
+                                const option = document.createElement('option');
+                                option.value = `${{env.path}}/.horus/packages/${{pkg.name}}`;
+                                option.textContent = `${{env.name}} → ${{pkg.name}}`;
+                                dropdown.appendChild(option);
+                            }});
+                        }}
+                    }});
+                }}
+            }} catch (error) {{
+                console.error('Failed to load local packages:', error);
+            }}
+        }}
+
+        async function confirmInstall() {{
+            if (!currentInstallPackage) return;
+
+            let target = 'global';
+
+            if (currentInstallLocation === 'local') {{
+                const dropdown = document.getElementById('local-package-select');
+                target = dropdown.value;
+
+                if (!target) {{
+                    alert('Please select a package to install into');
+                    return;
+                }}
+            }}
+
+            closeInstallDialog();
+
+            try {{
+                const response = await fetch('/api/packages/install', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{
+                        package: currentInstallPackage,
+                        target: target
+                    }})
+                }});
+
+                const data = await response.json();
+
+                if (data.success) {{
+                    alert(`Successfully installed ${{currentInstallPackage}}`);
+                    loadEnvironments();
+                }} else {{
+                    alert(`Failed to install: ${{data.error}}`);
+                }}
+            }} catch (error) {{
+                alert(`Installation failed: ${{error.message}}`);
             }}
         }}
 
@@ -4029,6 +4438,35 @@ fn generate_html(port: u16) -> String {
                 }}
             }} catch (error) {{
                 alert(`Installation failed: ${{error.message}}`);
+            }}
+        }}
+
+        async function uninstallPackage(parentPackage, packageName, event) {{
+            // Stop event propagation to prevent toggling the package details
+            event.stopPropagation();
+
+            if (!confirm(`Uninstall ${{packageName}} from ${{parentPackage}}?`)) return;
+
+            try {{
+                const response = await fetch('/api/packages/uninstall', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify({{
+                        parent_package: parentPackage,
+                        package: packageName
+                    }})
+                }});
+
+                const data = await response.json();
+
+                if (data.success) {{
+                    alert(`Successfully uninstalled ${{packageName}}`);
+                    loadEnvironments();
+                }} else {{
+                    alert(`Failed to uninstall: ${{data.error}}`);
+                }}
+            }} catch (error) {{
+                alert(`Uninstallation failed: ${{error.message}}`);
             }}
         }}
 
@@ -4101,10 +4539,38 @@ fn generate_html(port: u16) -> String {
                                     <div style="color: var(--text-secondary); margin-bottom: 8px; font-size: 0.9em;">
                                          Packages in this environment:
                                     </div>
-                                    ${{env.packages.map(p => `
-                                        <div style="padding: 8px 12px; background: var(--primary); border: 1px solid var(--border); border-radius: 4px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
-                                            <span style="font-weight: 500;">${{p.name}}</span>
-                                            <span style="color: var(--text-secondary); font-size: 0.85em;">v${{p.version}}</span>
+                                    ${{env.packages.map((p, pidx) => `
+                                        <div style="margin-bottom: 6px;">
+                                            <div onclick="togglePackageDetails(${{index}}, ${{pidx}})" style="padding: 8px 12px; background: var(--primary); border: 1px solid var(--border); border-radius: 4px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s;">
+                                                <div style="display: flex; align-items: center; gap: 8px;">
+                                                    <span id="pkg-arrow-${{index}}-${{pidx}}" style="color: var(--accent); font-size: 0.8em;">▶</span>
+                                                    <span style="font-weight: 500;">${{p.name}}</span>
+                                                </div>
+                                                <span style="color: var(--text-secondary); font-size: 0.85em;">v${{p.version}}</span>
+                                            </div>
+                                            <div id="pkg-details-${{index}}-${{pidx}}" style="display: none; padding: 10px 12px; margin-left: 20px; background: var(--dark-bg); border-left: 2px solid var(--accent); border-radius: 4px; margin-top: 4px;">
+                                                <div style="color: var(--text-secondary); font-size: 0.85em; margin-bottom: 8px;"><strong>Installed Packages (${{p.installed_packages?.length || 0}}):</strong></div>
+                                                ${{p.installed_packages && p.installed_packages.length > 0 ? `
+                                                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                                                        ${{p.installed_packages.map(pkg => `
+                                                            <div style="padding: 6px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                                                                <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+                                                                    <span style="color: var(--text-primary); font-size: 0.85em;">${{pkg.name}}</span>
+                                                                    <span style="color: var(--text-tertiary); font-size: 0.75em;">v${{pkg.version}}</span>
+                                                                </div>
+                                                                <button
+                                                                    onclick="uninstallPackage('${{p.name}}', '${{pkg.name}}', event)"
+                                                                    style="padding: 4px 10px; background: var(--error, #ff4444); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75em; font-weight: 600; transition: opacity 0.2s;"
+                                                                    onmouseover="this.style.opacity='0.8'"
+                                                                    onmouseout="this.style.opacity='1'"
+                                                                >
+                                                                    Uninstall
+                                                                </button>
+                                                            </div>
+                                                        `).join('')}}
+                                                    </div>
+                                                ` : '<div style="color: var(--text-tertiary); font-size: 0.85em;">No packages installed</div>'}}
+                                            </div>
                                         </div>
                                     `).join('')}}
                                 </div>
@@ -4633,6 +5099,50 @@ fn generate_html(port: u16) -> String {
             }});
         }}
     </script>
+
+    <!-- Install Dialog -->
+    <div class="install-dialog" id="install-dialog">
+        <div class="install-dialog-content">
+            <div class="install-dialog-header">
+                <h3>Install Package: <span id="install-pkg-name"></span></h3>
+                <button onclick="closeInstallDialog()" style="background: transparent; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; padding: 0; width: 30px; height: 30px;">&times;</button>
+            </div>
+            <div class="install-dialog-body">
+                <p style="color: var(--text-secondary); margin-bottom: 1rem;">Where would you like to install this package?</p>
+
+                <div class="install-option" onclick="selectInstallLocation('global')" id="install-option-global">
+                    <input type="radio" name="install-location" id="radio-global" value="global">
+                    <label for="radio-global" style="cursor: pointer; color: var(--text-primary); font-weight: 600;">
+                        Global Installation
+                    </label>
+                    <div style="color: var(--text-secondary); font-size: 0.85em; margin-top: 0.5rem; margin-left: 24px;">
+                        Available to all HORUS projects
+                    </div>
+                </div>
+
+                <div class="install-option" onclick="selectInstallLocation('local')" id="install-option-local">
+                    <input type="radio" name="install-location" id="radio-local" value="local">
+                    <label for="radio-local" style="cursor: pointer; color: var(--text-primary); font-weight: 600;">
+                        Local Installation
+                    </label>
+                    <div style="color: var(--text-secondary); font-size: 0.85em; margin-top: 0.5rem; margin-left: 24px;">
+                        Install into a specific package
+                    </div>
+                    <select id="local-package-select" class="local-packages-select" style="display: none;">
+                        <option value="">Select a package...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="install-dialog-footer">
+                <button onclick="closeInstallDialog()" style="padding: 10px 20px; background: var(--surface); color: var(--text-secondary); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    Cancel
+                </button>
+                <button onclick="confirmInstall()" style="padding: 10px 20px; background: var(--accent); color: var(--primary); border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    Install
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Log Panel -->
     <div id="log-panel" class="log-panel">

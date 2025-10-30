@@ -552,23 +552,24 @@ impl NodeInfo {
         self.metrics.messages_received += 1;
     }
 
-    pub fn log_info(&mut self, message: &str) {
+    pub fn log_info(&self, message: &str) {
         if self.config.enable_logging
             && (self.config.log_level == "INFO" || self.config.log_level == "DEBUG")
         {
-            println!(
-                "\x1b[34m[INFO]\x1b[0m \x1b[33m[{}]\x1b[0m {}",
-                self.name, message
-            );
+            eprintln!("\x1b[34m[INFO]\x1b[0m \x1b[33m[{}]\x1b[0m {}", self.name, message);
         }
     }
 
     pub fn log_warning(&mut self, message: &str) {
         if self.config.enable_logging {
-            println!(
-                "\x1b[33m[WARN]\x1b[0m \x1b[33m[{}]\x1b[0m {}",
+            // Format to owned String first to avoid double-formatting issues
+            let msg = format!(
+                "\x1b[33m[WARN]\x1b[0m \x1b[33m[{}]\x1b[0m {}\n",
                 self.name, message
             );
+            use std::io::{self, Write};
+            let _ = io::stdout().write_all(msg.as_bytes());
+            let _ = io::stdout().flush();
         }
 
         self.warning_history
@@ -581,10 +582,14 @@ impl NodeInfo {
 
     pub fn log_error(&mut self, message: &str) {
         if self.config.enable_logging {
-            println!(
-                "\x1b[31m[ERROR]\x1b[0m \x1b[33m[{}]\x1b[0m {}",
+            // Format to owned String first to avoid double-formatting issues
+            let msg = format!(
+                "\x1b[31m[ERROR]\x1b[0m \x1b[33m[{}]\x1b[0m {}\n",
                 self.name, message
             );
+            use std::io::{self, Write};
+            let _ = io::stdout().write_all(msg.as_bytes());
+            let _ = io::stdout().flush();
         }
 
         self.error_history
@@ -597,10 +602,14 @@ impl NodeInfo {
 
     pub fn log_debug(&mut self, message: &str) {
         if self.config.enable_logging && self.config.log_level == "DEBUG" {
-            println!(
-                "\x1b[90m[DEBUG]\x1b[0m \x1b[33m[{}]\x1b[0m {}",
+            // Format to owned String first to avoid double-formatting issues
+            let msg = format!(
+                "\x1b[90m[DEBUG]\x1b[0m \x1b[33m[{}]\x1b[0m {}\n",
                 self.name, message
             );
+            use std::io::{self, Write};
+            let _ = io::stdout().write_all(msg.as_bytes());
+            let _ = io::stdout().flush();
         }
     }
 

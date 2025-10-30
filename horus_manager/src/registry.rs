@@ -87,6 +87,16 @@ impl RegistryClient {
         }
     }
 
+    /// Get a reference to the HTTP client
+    pub fn http_client(&self) -> &Client {
+        &self.client
+    }
+
+    /// Get the base URL of the registry
+    pub fn base_url(&self) -> &str {
+        &self.base_url
+    }
+
     // Install a package to a specific target (used by install_to_target)
     pub fn install(&self, package_name: &str, version: Option<&str>) -> Result<()> {
         // Default: auto-detect global/local

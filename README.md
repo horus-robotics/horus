@@ -214,6 +214,40 @@ horus run --clean               # Clean build cache
 horus run --remote robot:8080   # Deploy to remote robot
 ```
 
+#### Concurrent Multi-Process Execution
+
+HORUS supports running multiple nodes concurrently as separate processes using glob patterns:
+
+```bash
+horus run "nodes/*.py"          # Run all Python nodes concurrently
+horus run "src/*.rs"            # Run all Rust nodes concurrently
+horus run "nodes/*.c"           # Run all C nodes concurrently
+```
+
+**Features:**
+- **Two-Phase Execution**: Builds all files sequentially (respects Cargo lock), then executes concurrently
+- **Color-Coded Output**: Each node's output is prefixed with `[node_name]` in a unique color
+- **Graceful Shutdown**: Ctrl+C cleanly terminates all running processes
+- **Multi-Language**: Works with Rust, Python, and C files
+
+**Example:**
+```bash
+$ horus run "nodes/*.py"
+ Executing 3 files concurrently:
+  1. nodes/sensor.py (python)
+  2. nodes/controller.py (python)
+  3. nodes/logger.py (python)
+
+ Phase 1: Building all files...
+ Phase 2: Starting all processes...
+
+[sensor] Sensor reading: 25.3°C
+[controller] Motor speed: 45%
+[logger] System operational
+```
+
+Each file runs in a separate process with its own HORUS scheduler, communicating via shared memory IPC.
+
 **Important:** `horus run` is designed for **single-file HORUS projects** only (main.rs, main.py, main.c). It automatically generates a temporary workspace in `.horus/` and handles all dependencies.
 
 For **multi-crate workspaces** (projects with multiple `Cargo.toml` files or complex module structures), use `cargo` directly:

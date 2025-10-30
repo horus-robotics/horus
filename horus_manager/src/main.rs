@@ -339,8 +339,25 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     // Install package with target
                     let client = registry::RegistryClient::new();
                     client
-                        .install_to_target(&package, ver.as_deref(), install_target)
-                        .map_err(|e| HorusError::Config(e.to_string()))
+                        .install_to_target(&package, ver.as_deref(), install_target.clone())
+                        .map_err(|e| HorusError::Config(e.to_string()))?;
+
+                    // Update horus.yaml if installing locally
+                    if let workspace::InstallTarget::Local(workspace_path) = install_target {
+                        let horus_yaml_path = workspace_path.join("horus.yaml");
+                        if horus_yaml_path.exists() {
+                            let version = ver.as_deref().unwrap_or("latest");
+                            if let Err(e) = horus_manager::yaml_utils::add_dependency_to_horus_yaml(
+                                &horus_yaml_path,
+                                &package,
+                                version,
+                            ) {
+                                println!("  {} Failed to update horus.yaml: {}", "".yellow(), e);
+                            }
+                        }
+                    }
+
+                    Ok(())
                 }
 
                 PkgCommands::Remove {
@@ -349,6 +366,20 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     target,
                 } => {
                     println!("{} Removing {}...", "".cyan(), package.yellow());
+
+                    // Track workspace path for horus.yaml update
+                    let workspace_path = if global {
+                        None
+                    } else if let Some(target_name) = &target {
+                        let registry = workspace::WorkspaceRegistry::load()
+                            .map_err(|e| HorusError::Config(e.to_string()))?;
+                        let ws = registry.find_by_name(target_name).ok_or_else(|| {
+                            HorusError::Config(format!("Workspace '{}' not found", target_name))
+                        })?;
+                        Some(ws.path.clone())
+                    } else {
+                        workspace::find_workspace_root()
+                    };
 
                     let remove_dir = if global {
                         // Remove from global cache
@@ -405,6 +436,19 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     })?;
 
                     println!(" Removed {} from {}", package, remove_dir.display());
+
+                    // Update horus.yaml if removing from local workspace
+                    if let Some(ws_path) = workspace_path {
+                        let horus_yaml_path = ws_path.join("horus.yaml");
+                        if horus_yaml_path.exists() {
+                            if let Err(e) = horus_manager::yaml_utils::remove_dependency_from_horus_yaml(
+                                &horus_yaml_path,
+                                &package,
+                            ) {
+                                println!("  {} Failed to update horus.yaml: {}", "".yellow(), e);
+                            }
+                        }
+                    }
 
                     Ok(())
                 }
@@ -721,12 +765,29 @@ fn run_command(command: Commands) -> HorusResult<()> {
 
                         println!(" Found {} packages to restore", manifest.packages.len());
 
+                        // Get workspace path for horus.yaml updates
+                        let workspace_path = workspace::find_workspace_root();
+
                         // Install each package from the manifest
                         for pkg in &manifest.packages {
                             println!("  Installing {} v{}...", pkg.name, pkg.version);
                             client
                                 .install(&pkg.name, Some(&pkg.version))
                                 .map_err(|e| HorusError::Config(e.to_string()))?;
+
+                            // Update horus.yaml if in a workspace
+                            if let Some(ref ws_path) = workspace_path {
+                                let yaml_path = ws_path.join("horus.yaml");
+                                if yaml_path.exists() {
+                                    if let Err(e) = horus_manager::yaml_utils::add_dependency_to_horus_yaml(
+                                        &yaml_path,
+                                        &pkg.name,
+                                        &pkg.version,
+                                    ) {
+                                        eprintln!("  {} Failed to update horus.yaml: {}", "".yellow(), e);
+                                    }
+                                }
+                            }
                         }
 
                         println!(" Environment restored from {}", source);
@@ -734,9 +795,59 @@ fn run_command(command: Commands) -> HorusResult<()> {
                         println!("   Packages: {}", manifest.packages.len());
                     } else {
                         // It's an environment ID from registry
-                        client
-                            .restore_environment(&source)
+                        // Fetch manifest and install manually to update horus.yaml
+                        println!(" Fetching environment {}...", source);
+
+                        let url = format!(
+                            "{}/api/environments/{}",
+                            client.base_url(),
+                            source
+                        );
+
+                        let response = client.http_client()
+                            .get(&url)
+                            .send()
                             .map_err(|e| HorusError::Config(e.to_string()))?;
+
+                        if !response.status().is_success() {
+                            return Err(HorusError::Config(format!(
+                                "Environment not found: {}",
+                                source
+                            )));
+                        }
+
+                        let manifest: registry::EnvironmentManifest = response
+                            .json()
+                            .map_err(|e| HorusError::Config(e.to_string()))?;
+
+                        println!(" Found {} packages to restore", manifest.packages.len());
+
+                        // Get workspace path for horus.yaml updates
+                        let workspace_path = workspace::find_workspace_root();
+
+                        // Install each package
+                        for pkg in &manifest.packages {
+                            println!("  Installing {} v{}...", pkg.name, pkg.version);
+                            client
+                                .install(&pkg.name, Some(&pkg.version))
+                                .map_err(|e| HorusError::Config(e.to_string()))?;
+
+                            // Update horus.yaml if in a workspace
+                            if let Some(ref ws_path) = workspace_path {
+                                let yaml_path = ws_path.join("horus.yaml");
+                                if yaml_path.exists() {
+                                    if let Err(e) = horus_manager::yaml_utils::add_dependency_to_horus_yaml(
+                                        &yaml_path,
+                                        &pkg.name,
+                                        &pkg.version,
+                                    ) {
+                                        eprintln!("  {} Failed to update horus.yaml: {}", "".yellow(), e);
+                                    }
+                                }
+                            }
+                        }
+
+                        println!(" Environment {} restored successfully!", source);
                     }
 
                     Ok(())

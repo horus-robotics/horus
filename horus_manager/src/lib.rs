@@ -11,3 +11,4 @@ pub mod graph;
 pub mod registry;
 pub mod version;
 pub mod workspace;
+pub mod yaml_utils;

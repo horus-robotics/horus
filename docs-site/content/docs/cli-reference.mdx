@@ -201,6 +201,65 @@ fn main() -> HorusResult<()> {
 }
 ```
 
+### Concurrent Multi-Process Execution
+
+HORUS supports running multiple node files concurrently as separate processes using **glob patterns**. This is ideal for distributed robotics systems where nodes need to run independently.
+
+**Basic Usage:**
+```bash
+horus run "nodes/*.py"          # Run all Python nodes concurrently
+horus run "src/*.rs"            # Run all Rust nodes concurrently
+horus run "nodes/*.c"           # Run all C nodes concurrently
+```
+
+**How it works:**
+1. **Phase 1 (Build)**: Builds all files sequentially, respecting Cargo's file lock
+2. **Phase 2 (Execute)**: Spawns all processes concurrently with their own schedulers
+3. Each process communicates via HORUS shared memory IPC
+
+**Features:**
+- ✅ **Color-coded output**: Each node is prefixed with `[node_name]` in a unique color
+- ✅ **Graceful shutdown**: Ctrl+C cleanly terminates all processes
+- ✅ **Multi-language**: Works with Rust, Python, and C
+- ✅ **Automatic detection**: No flags needed, just use glob patterns
+
+**Example output:**
+```bash
+$ horus run "nodes/*.py"
+ Executing 3 files concurrently:
+  1. nodes/sensor.py (python)
+  2. nodes/controller.py (python)
+  3. nodes/logger.py (python)
+
+ Phase 1: Building all files...
+ Phase 2: Starting all processes...
+  ✓ Started [sensor]
+  ✓ Started [controller]
+  ✓ Started [logger]
+
+ All processes running. Press Ctrl+C to stop.
+
+[sensor] Sensor reading: 25.3°C
+[controller] Motor speed: 45%
+[logger] System operational
+[sensor] Sensor reading: 26.1°C
+[controller] Motor speed: 50%
+[logger] System operational
+```
+
+**When to use concurrent execution:**
+- Multi-node systems where each node is in a separate file
+- Distributed control architectures (similar to ROS nodes)
+- Testing multiple nodes simultaneously
+- Microservices-style robotics architectures
+
+**When to use single-process execution:**
+- All nodes in one file (typical for simple projects)
+- Projects requiring deterministic scheduling across all nodes
+- Maximum performance with minimal overhead
+
+**Important:** Each process runs its own scheduler. Nodes communicate through HORUS shared memory topics (`/dev/shm/horus/`), not direct function calls.
+
 ---
 
 ## `horus dashboard` - Monitor Everything

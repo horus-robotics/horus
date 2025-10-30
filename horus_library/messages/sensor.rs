@@ -426,3 +426,15 @@ mod tests {
         assert!(!battery.is_critical());
     }
 }
+
+// Enable iceoryx2 zero-copy IPC
+#[cfg(feature = "iceoryx2")]
+unsafe impl iceoryx2_bb_elementary_traits::zero_copy_send::ZeroCopySend for LaserScan {}
+#[cfg(feature = "iceoryx2")]
+unsafe impl iceoryx2_bb_elementary_traits::zero_copy_send::ZeroCopySend for Imu {}
+#[cfg(feature = "iceoryx2")]
+unsafe impl iceoryx2_bb_elementary_traits::zero_copy_send::ZeroCopySend for Odometry {}
+#[cfg(feature = "iceoryx2")]
+unsafe impl iceoryx2_bb_elementary_traits::zero_copy_send::ZeroCopySend for Range {}
+#[cfg(feature = "iceoryx2")]
+unsafe impl iceoryx2_bb_elementary_traits::zero_copy_send::ZeroCopySend for BatteryState {}
