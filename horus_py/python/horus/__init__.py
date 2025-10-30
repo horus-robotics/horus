@@ -10,6 +10,9 @@ import json
 from collections import defaultdict
 import time
 
+# Maximum size for logged data representation (to prevent buffer overflows)
+MAX_LOG_DATA_SIZE = 200
+
 # Import the Rust extension module
 try:
     from horus._horus import (
@@ -36,6 +39,29 @@ __all__ = [
     "quick",
     "get_version",
 ]
+
+
+def _truncate_for_logging(data: Any, max_size: int = MAX_LOG_DATA_SIZE) -> str:
+    """
+    Safely convert data to string for logging with size limit.
+
+    Args:
+        data: Data to convert to string
+        max_size: Maximum string length
+
+    Returns:
+        Truncated string representation
+    """
+    if isinstance(data, (dict, list)):
+        data_str = str(data)
+    else:
+        data_str = repr(data)
+
+    if len(data_str) > max_size:
+        # Truncate and add indicator
+        return data_str[:max_size-3] + "..."
+
+    return data_str
 
 
 class Node:
@@ -101,6 +127,9 @@ class Node:
 
         # Message queues for subscriptions
         self._msg_queues = defaultdict(list)
+
+        # NodeInfo context (set by scheduler)
+        self.info = None
 
         # Create underlying HORUS components if available
         if _PyNode:
@@ -186,17 +215,31 @@ class Node:
         if self._node and topic in self._hubs:
             hub = self._hubs[topic]
 
+            # Measure IPC timing
+            import time
+            start_ns = time.perf_counter_ns()
+
             # Serialize based on type
             if isinstance(data, bytes):
-                return hub.send_bytes(data)
+                result = hub.send_bytes(data)
             elif isinstance(data, str):
-                return hub.send_bytes(data.encode('utf-8'))
+                result = hub.send_bytes(data.encode('utf-8'))
             elif isinstance(data, (dict, list, tuple, int, float, bool, type(None))):
                 json_bytes = json.dumps(data).encode('utf-8')
-                return hub.send_with_metadata(json_bytes, "json")
+                result = hub.send_with_metadata(json_bytes, "json")
             else:
                 pickled = pickle.dumps(data)
-                return hub.send_with_metadata(pickled, "pickle")
+                result = hub.send_with_metadata(pickled, "pickle")
+
+            end_ns = time.perf_counter_ns()
+            ipc_ns = end_ns - start_ns
+
+            # Log the publish operation if NodeInfo available
+            if self.info:
+                data_repr = _truncate_for_logging(data)
+                self.info.log_pub(topic, data_repr, ipc_ns)
+
+            return result
 
         # Mock mode
         return True
@@ -205,13 +248,19 @@ class Node:
         """Pull messages from hub into queue."""
         if self._node and topic in self._hubs:
             hub = self._hubs[topic]
+            import time
 
             # Receive all available messages
             while True:
+                # Measure IPC timing
+                start_ns = time.perf_counter_ns()
                 result = hub.recv_with_metadata()
+                end_ns = time.perf_counter_ns()
+
                 if result is None:
                     break
 
+                ipc_ns = end_ns - start_ns
                 data_bytes, metadata = result
 
                 # Deserialize
@@ -225,20 +274,33 @@ class Node:
                     except:
                         msg = data_bytes
 
+                # Log the subscribe operation if NodeInfo available
+                if self.info:
+                    data_repr = _truncate_for_logging(msg)
+                    self.info.log_sub(topic, data_repr, ipc_ns)
+
                 self._msg_queues[topic].append(msg)
 
     def _internal_tick(self, info=None):
         """Internal tick called by scheduler."""
-        if self.tick_fn:
-            self.tick_fn(self)
+        # DON'T store info - use a context manager approach
+        old_info = self.info
+        self.info = info
+        try:
+            if self.tick_fn:
+                self.tick_fn(self)
+        finally:
+            self.info = old_info
 
     def _internal_init(self, info=None):
         """Internal init called by scheduler."""
+        self.info = info  # Store info for access in init function
         if self.init_fn:
             self.init_fn(self)
 
     def _internal_shutdown(self, info=None):
         """Internal shutdown called by scheduler."""
+        self.info = info  # Store info for access in shutdown function
         if self.shutdown_fn:
             self.shutdown_fn(self)
 
@@ -255,6 +317,27 @@ class Node:
         """Called by Rust scheduler during shutdown."""
         self._internal_shutdown(info)
 
+    # NodeInfo convenience methods (delegate to info if available)
+    def log_info(self, message: str):
+        """Log an info message (if logging enabled)."""
+        if self.info:
+            self.info.log_info(message)
+
+    def log_warning(self, message: str):
+        """Log a warning message (if logging enabled)."""
+        if self.info:
+            self.info.log_warning(message)
+
+    def log_error(self, message: str):
+        """Log an error message (if logging enabled)."""
+        if self.info:
+            self.info.log_error(message)
+
+    def log_debug(self, message: str):
+        """Log a debug message (if logging enabled)."""
+        if self.info:
+            self.info.log_debug(message)
+
 
 class Scheduler:
     """
@@ -264,6 +347,13 @@ class Scheduler:
         scheduler = Scheduler()
         scheduler.add(node1)
         scheduler.add(node2)
+        scheduler.run()
+
+    Or with priorities (lower = higher priority):
+        scheduler = Scheduler()
+        scheduler.register(sensor_node, priority=0, logging=True)
+        scheduler.register(control_node, priority=1, logging=False)
+        scheduler.register(motor_node, priority=2, logging=True)
         scheduler.run()
     """
 
@@ -275,12 +365,38 @@ class Scheduler:
             self._scheduler = None
         self._nodes = []
 
+    def register(self, node, priority: int, logging: bool = False):
+        """
+        Register a node with explicit priority and logging (matches Rust API).
+
+        Args:
+            node: Node instance to register
+            priority: Priority level (lower number = higher priority, 0 = highest)
+            logging: Enable logging for this node (default: False)
+
+        Example:
+            scheduler.register(sensor_node, 0, True)   # Highest priority, logging on
+            scheduler.register(control_node, 1, False) # Medium priority, logging off
+            scheduler.register(motor_node, 2, True)    # Lowest priority, logging on
+        """
+        self._nodes.append(node)
+
+        if self._scheduler and node._node:
+            # Set up callbacks
+            node._node.set_callback(node)
+            # Register with priority and logging
+            self._scheduler.register(node._node, priority, logging)
+
+        return self
+
     def add(self, *nodes):
         """
-        Add nodes to scheduler.
+        Add nodes to scheduler (uses default priority = insertion order).
 
         Args:
             *nodes: One or more Node instances
+
+        Note: For deterministic execution order, use register() with explicit priorities.
         """
         for node in nodes:
             self._nodes.append(node)
@@ -288,13 +404,8 @@ class Scheduler:
             if self._scheduler and node._node:
                 # Set up callbacks
                 node._node.set_callback(node)
-                # Add to scheduler
+                # Add to scheduler (uses default priority)
                 self._scheduler.add_node(node._node)
-
-                # Set tick rate per node if supported
-                # Note: This might need adjustment based on actual Rust API
-                if hasattr(self._scheduler, 'set_node_rate'):
-                    self._scheduler.set_node_rate(node.name, node.rate)
 
     def run(self, duration: float = None):
         """

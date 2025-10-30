@@ -1,9 +1,20 @@
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
+use horus::NodeInfo as CoreNodeInfo;
+use crate::node::PyNodeInfo;
+
+/// Registered node with priority and logging settings
+struct RegisteredNode {
+    node: PyObject,
+    name: String,
+    priority: u32,
+    logging_enabled: bool,
+    context: Arc<Mutex<CoreNodeInfo>>,
+    cached_info: Option<Py<PyNodeInfo>>, // Cache PyNodeInfo to avoid creating new ones every tick
+}
 
 /// Python wrapper for HORUS Scheduler
 ///
@@ -11,7 +22,7 @@ use std::time::Duration;
 /// handling their lifecycle and coordinating their execution.
 #[pyclass]
 pub struct PyScheduler {
-    nodes: Arc<Mutex<HashMap<String, PyObject>>>,
+    nodes: Arc<Mutex<Vec<RegisteredNode>>>,
     running: Arc<Mutex<bool>>,
     tick_rate_hz: f64,
 }
@@ -21,25 +32,55 @@ impl PyScheduler {
     #[new]
     pub fn new() -> PyResult<Self> {
         Ok(PyScheduler {
-            nodes: Arc::new(Mutex::new(HashMap::new())),
+            nodes: Arc::new(Mutex::new(Vec::new())),
             running: Arc::new(Mutex::new(false)),
             tick_rate_hz: 100.0, // Default 100Hz
         })
     }
 
-    /// Add a node to the scheduler
-    fn add_node(&mut self, py: Python, node: PyObject) -> PyResult<()> {
+    /// Register a node with priority and logging (matches Rust scheduler API)
+    fn register(&mut self, py: Python, node: PyObject, priority: u32, logging_enabled: bool) -> PyResult<()> {
         // Extract node name
         let name: String = node.getattr(py, "name")?.extract(py)?;
 
-        // Store the node
+        // Create NodeInfo context for this node
+        let context = Arc::new(Mutex::new(CoreNodeInfo::new(name.clone(), logging_enabled)));
+
+        // Store the registered node
         let mut nodes = self
             .nodes
             .lock()
             .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
-        nodes.insert(name.clone(), node);
+
+        nodes.push(RegisteredNode {
+            node,
+            name: name.clone(),
+            priority,
+            logging_enabled,
+            context,
+            cached_info: None, // Will be created on first use
+        });
+
+        println!(
+            "Registered node '{}' with priority {} (logging: {})",
+            name, priority, logging_enabled
+        );
 
         Ok(())
+    }
+
+    /// Add a node to the scheduler (backward compatibility - uses default priority)
+    fn add_node(&mut self, py: Python, node: PyObject) -> PyResult<()> {
+        // Use current count as priority to maintain insertion order
+        let priority = {
+            let nodes = self
+                .nodes
+                .lock()
+                .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
+            nodes.len() as u32
+        };
+
+        self.register(py, node, priority, false)
     }
 
     /// Remove a node from the scheduler
@@ -48,7 +89,10 @@ impl PyScheduler {
             .nodes
             .lock()
             .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
-        Ok(nodes.remove(&name).is_some())
+
+        let original_len = nodes.len();
+        nodes.retain(|n| n.name != name);
+        Ok(nodes.len() < original_len)
     }
 
     /// Set the tick rate in Hz
@@ -86,9 +130,17 @@ impl PyScheduler {
                 .lock()
                 .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
 
-            for (name, node) in nodes.iter() {
-                if let Err(e) = node.call_method0(py, "init") {
-                    eprintln!("Failed to initialize node '{}': {:?}", name, e);
+            for registered in nodes.iter() {
+                let py_info = Py::new(py, PyNodeInfo {
+                    inner: registered.context.clone(),
+                })?;
+
+                // Try calling with NodeInfo parameter first, fallback to no-arg version
+                let result = registered.node.call_method1(py, "init", (py_info,))
+                    .or_else(|_| registered.node.call_method0(py, "init"));
+
+                if let Err(e) = result {
+                    eprintln!("Failed to initialize node '{}': {:?}", registered.name, e);
                 }
             }
         }
@@ -107,16 +159,44 @@ impl PyScheduler {
                 }
             }
 
-            // Execute tick for all nodes
+            // Execute tick for all nodes in priority order
             {
-                let nodes = self
+                let mut nodes = self
                     .nodes
                     .lock()
                     .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
 
-                for (name, node) in nodes.iter() {
-                    if let Err(e) = node.call_method0(py, "tick") {
-                        eprintln!("Error in node '{}' tick: {:?}", name, e);
+                // Sort by priority (lower number = higher priority)
+                nodes.sort_by_key(|r| r.priority);
+
+                for registered in nodes.iter_mut() {
+                    // Start tick timing
+                    if let Ok(mut ctx) = registered.context.lock() {
+                        ctx.start_tick();
+                    }
+
+                    // Get or create cached PyNodeInfo
+                    let py_info = if let Some(ref cached) = registered.cached_info {
+                        cached.clone_ref(py)
+                    } else {
+                        let new_info = Py::new(py, PyNodeInfo {
+                            inner: registered.context.clone(),
+                        })?;
+                        registered.cached_info = Some(new_info.clone_ref(py));
+                        new_info
+                    };
+
+                    // Try calling with NodeInfo parameter first, fallback to no-arg version
+                    let result = registered.node.call_method1(py, "tick", (py_info,))
+                        .or_else(|_| registered.node.call_method0(py, "tick"));
+
+                    if let Err(e) = result {
+                        eprintln!("Error in node '{}' tick: {:?}", registered.name, e);
+                    }
+
+                    // Record tick completion
+                    if let Ok(mut ctx) = registered.context.lock() {
+                        ctx.record_tick();
                     }
                 }
             }
@@ -141,9 +221,17 @@ impl PyScheduler {
                 .lock()
                 .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
 
-            for (name, node) in nodes.iter() {
-                if let Err(e) = node.call_method0(py, "shutdown") {
-                    eprintln!("Failed to shutdown node '{}': {:?}", name, e);
+            for registered in nodes.iter() {
+                let py_info = Py::new(py, PyNodeInfo {
+                    inner: registered.context.clone(),
+                })?;
+
+                // Try calling with NodeInfo parameter first, fallback to no-arg version
+                let result = registered.node.call_method1(py, "shutdown", (py_info,))
+                    .or_else(|_| registered.node.call_method0(py, "shutdown"));
+
+                if let Err(e) = result {
+                    eprintln!("Failed to shutdown node '{}': {:?}", registered.name, e);
                 }
             }
         }
@@ -178,9 +266,17 @@ impl PyScheduler {
                 .lock()
                 .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
 
-            for (name, node) in nodes.iter() {
-                if let Err(e) = node.call_method0(py, "init") {
-                    eprintln!("Failed to initialize node '{}': {:?}", name, e);
+            for registered in nodes.iter() {
+                let py_info = Py::new(py, PyNodeInfo {
+                    inner: registered.context.clone(),
+                })?;
+
+                // Try calling with NodeInfo parameter first, fallback to no-arg version
+                let result = registered.node.call_method1(py, "init", (py_info,))
+                    .or_else(|_| registered.node.call_method0(py, "init"));
+
+                if let Err(e) = result {
+                    eprintln!("Failed to initialize node '{}': {:?}", registered.name, e);
                 }
             }
         }
@@ -199,16 +295,44 @@ impl PyScheduler {
                 }
             }
 
-            // Execute tick for all nodes
+            // Execute tick for all nodes in priority order
             {
-                let nodes = self
+                let mut nodes = self
                     .nodes
                     .lock()
                     .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
 
-                for (name, node) in nodes.iter() {
-                    if let Err(e) = node.call_method0(py, "tick") {
-                        eprintln!("Error in node '{}' tick: {:?}", name, e);
+                // Sort by priority (lower number = higher priority)
+                nodes.sort_by_key(|r| r.priority);
+
+                for registered in nodes.iter_mut() {
+                    // Start tick timing
+                    if let Ok(mut ctx) = registered.context.lock() {
+                        ctx.start_tick();
+                    }
+
+                    // Get or create cached PyNodeInfo
+                    let py_info = if let Some(ref cached) = registered.cached_info {
+                        cached.clone_ref(py)
+                    } else {
+                        let new_info = Py::new(py, PyNodeInfo {
+                            inner: registered.context.clone(),
+                        })?;
+                        registered.cached_info = Some(new_info.clone_ref(py));
+                        new_info
+                    };
+
+                    // Try calling with NodeInfo parameter first, fallback to no-arg version
+                    let result = registered.node.call_method1(py, "tick", (py_info,))
+                        .or_else(|_| registered.node.call_method0(py, "tick"));
+
+                    if let Err(e) = result {
+                        eprintln!("Error in node '{}' tick: {:?}", registered.name, e);
+                    }
+
+                    // Record tick completion
+                    if let Ok(mut ctx) = registered.context.lock() {
+                        ctx.record_tick();
                     }
                 }
             }
@@ -227,9 +351,17 @@ impl PyScheduler {
                 .lock()
                 .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
 
-            for (name, node) in nodes.iter() {
-                if let Err(e) = node.call_method0(py, "shutdown") {
-                    eprintln!("Failed to shutdown node '{}': {:?}", name, e);
+            for registered in nodes.iter() {
+                let py_info = Py::new(py, PyNodeInfo {
+                    inner: registered.context.clone(),
+                })?;
+
+                // Try calling with NodeInfo parameter first, fallback to no-arg version
+                let result = registered.node.call_method1(py, "shutdown", (py_info,))
+                    .or_else(|_| registered.node.call_method0(py, "shutdown"));
+
+                if let Err(e) = result {
+                    eprintln!("Failed to shutdown node '{}': {:?}", registered.name, e);
                 }
             }
         }
@@ -262,7 +394,22 @@ impl PyScheduler {
             .nodes
             .lock()
             .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
-        Ok(nodes.keys().cloned().collect())
+        Ok(nodes.iter().map(|n| n.name.clone()).collect())
+    }
+
+    /// Get node information including priority and logging settings
+    fn get_node_info(&self, name: String) -> PyResult<Option<(u32, bool)>> {
+        let nodes = self
+            .nodes
+            .lock()
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
+
+        for registered in nodes.iter() {
+            if registered.name == name {
+                return Ok(Some((registered.priority, registered.logging_enabled)));
+            }
+        }
+        Ok(None)
     }
 
     fn __repr__(&self) -> PyResult<String> {

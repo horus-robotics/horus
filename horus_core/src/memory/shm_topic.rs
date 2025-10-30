@@ -11,6 +11,7 @@ const MAX_CAPACITY: usize = 1_000_000; // Maximum number of elements
 const MIN_CAPACITY: usize = 1; // Minimum number of elements
 const MAX_ELEMENT_SIZE: usize = 1_000_000; // Maximum size per element in bytes
 const MAX_TOTAL_SIZE: usize = 100_000_000; // Maximum total shared memory size (100MB)
+const MAX_CONSUMERS: usize = 16; // Maximum number of consumers per topic (MPMC support)
 
 /// Header for shared memory ring buffer with cache-line alignment
 #[repr(C, align(64))] // Cache-line aligned for optimal performance
@@ -21,6 +22,7 @@ struct RingBufferHeader {
     element_size: AtomicUsize,
     consumer_count: AtomicUsize,
     sequence_number: AtomicUsize, // Global sequence counter
+    consumer_tails: [AtomicUsize; MAX_CONSUMERS], // MPMC FIX: Per-consumer tail positions in shared memory
     _padding: [u8; 24],           // Pad to cache line boundary
 }
 
@@ -31,7 +33,7 @@ pub struct ShmTopic<T> {
     header: NonNull<RingBufferHeader>,
     data_ptr: NonNull<u8>,
     capacity: usize,
-    consumer_tail: AtomicUsize, // Each consumer tracks its own position
+    consumer_id: usize, // MPMC FIX: This consumer's unique ID (index into shared consumer_tails array)
     _phantom: std::marker::PhantomData<T>,
     _padding: [u8; 24], // Pad to prevent false sharing
 }
@@ -186,6 +188,7 @@ impl<T> ShmTopic<T> {
         }
 
         let region = Arc::new(ShmRegion::new(name, total_size)?);
+        let is_owner = region.is_owner();
 
         // Initialize header with safety checks
         let header_ptr = region.as_ptr() as *mut RingBufferHeader;
@@ -208,23 +211,47 @@ impl<T> ShmTopic<T> {
             NonNull::new_unchecked(header_ptr)
         };
 
-        unsafe {
-            (*header.as_ptr())
-                .capacity
-                .store(capacity, Ordering::Relaxed);
-            (*header.as_ptr()).head.store(0, Ordering::Relaxed);
-            (*header.as_ptr()).tail.store(0, Ordering::Relaxed);
-            (*header.as_ptr())
-                .element_size
-                .store(element_size, Ordering::Relaxed);
-            (*header.as_ptr())
-                .consumer_count
-                .store(0, Ordering::Relaxed);
-            (*header.as_ptr())
-                .sequence_number
-                .store(0, Ordering::Relaxed);
-            (*header.as_ptr())._padding = [0; 24]; // Initialize padding for cache alignment
-        }
+        // MPMC CRITICAL FIX: Only initialize header if we're the owner (first creator)
+        // Otherwise, we would reset consumer_count causing duplicate consumer IDs!
+        let actual_capacity = if is_owner {
+            unsafe {
+                (*header.as_ptr())
+                    .capacity
+                    .store(capacity, Ordering::Relaxed);
+                (*header.as_ptr()).head.store(0, Ordering::Relaxed);
+                (*header.as_ptr()).tail.store(0, Ordering::Relaxed);
+                (*header.as_ptr())
+                    .element_size
+                    .store(element_size, Ordering::Relaxed);
+                (*header.as_ptr())
+                    .consumer_count
+                    .store(0, Ordering::Relaxed);
+                (*header.as_ptr())
+                    .sequence_number
+                    .store(0, Ordering::Relaxed);
+                // MPMC FIX: Initialize all consumer tail positions
+                for i in 0..MAX_CONSUMERS {
+                    (*header.as_ptr()).consumer_tails[i].store(0, Ordering::Relaxed);
+                }
+                (*header.as_ptr())._padding = [0; 24]; // Initialize padding for cache alignment
+            }
+            capacity
+        } else {
+            // Not owner - read capacity from existing header
+            let existing_capacity = unsafe {
+                (*header.as_ptr()).capacity.load(Ordering::Relaxed)
+            };
+
+            // Validate that the existing capacity matches what we calculated
+            if existing_capacity != capacity {
+                return Err(format!(
+                    "Topic '{}' capacity mismatch: existing={}, requested={}",
+                    name, existing_capacity, capacity
+                ).into());
+            }
+
+            existing_capacity
+        };
 
         log::info!(
             "SHM_TRUE: Created true shared memory topic '{}' with capacity: {} (size: {} bytes)",
@@ -278,19 +305,34 @@ impl<T> ShmTopic<T> {
             NonNull::new_unchecked(raw_ptr)
         };
 
-        // Register as the first consumer
-        unsafe {
-            (*header.as_ptr())
+        // MPMC FIX: Register this consumer and get a unique ID
+        let consumer_id = unsafe {
+            let id = (*header.as_ptr())
                 .consumer_count
                 .fetch_add(1, Ordering::Relaxed);
-        }
+
+            // Check if we've exceeded max consumers
+            if id >= MAX_CONSUMERS {
+                return Err(format!(
+                    "Maximum number of consumers ({}) exceeded for topic '{}'",
+                    MAX_CONSUMERS, name
+                ).into());
+            }
+
+            // Initialize this consumer's tail position in shared memory
+            // MPMC FIX: Start at current head to avoid reading stale data
+            let current_head = (*header.as_ptr()).head.load(Ordering::Relaxed);
+            (*header.as_ptr()).consumer_tails[id].store(current_head, Ordering::Relaxed);
+
+            id
+        };
 
         Ok(ShmTopic {
             _region: region,
             header,
             data_ptr,
-            capacity,
-            consumer_tail: AtomicUsize::new(0), // Start at beginning
+            capacity: actual_capacity,
+            consumer_id, // MPMC FIX: Store consumer ID instead of local tail
             _phantom: std::marker::PhantomData,
             _padding: [0; 24],
         })
@@ -401,20 +443,34 @@ impl<T> ShmTopic<T> {
             NonNull::new_unchecked(raw_ptr)
         };
 
-        // Register as a new consumer and get current head position to start from
-        unsafe {
-            (*header.as_ptr())
+        // MPMC FIX: Register as a new consumer and get current head position to start from
+        let (consumer_id, current_head) = unsafe {
+            let id = (*header.as_ptr())
                 .consumer_count
                 .fetch_add(1, Ordering::Relaxed);
-        }
-        let current_head = unsafe { (*header.as_ptr()).head.load(Ordering::Relaxed) };
+
+            // Check if we've exceeded max consumers
+            if id >= MAX_CONSUMERS {
+                return Err(format!(
+                    "Maximum number of consumers ({}) exceeded for topic '{}'",
+                    MAX_CONSUMERS, name
+                ).into());
+            }
+
+            let head = (*header.as_ptr()).head.load(Ordering::Relaxed);
+
+            // Initialize this consumer's tail position in shared memory to current head
+            (*header.as_ptr()).consumer_tails[id].store(head, Ordering::Relaxed);
+
+            (id, head)
+        };
 
         Ok(ShmTopic {
             _region: region,
             header,
             data_ptr,
             capacity,
-            consumer_tail: AtomicUsize::new(current_head), // Start from current position
+            consumer_id, // MPMC FIX: Store consumer ID instead of local tail
             _phantom: std::marker::PhantomData,
             _padding: [0; 24],
         })
@@ -493,12 +549,15 @@ impl<T> ShmTopic<T> {
     }
 
     /// Pop a message; returns None if the buffer is empty
-    /// Thread-safe for multiple consumers - each consumer maintains its own position
-    pub fn pop(&self) -> Option<T> {
+    /// MPMC FIX: Thread-safe for multiple consumers - each consumer tracks position in shared memory
+    pub fn pop(&self) -> Option<T>
+    where
+        T: Clone,
+    {
         let header = unsafe { self.header.as_ref() };
 
-        // Get this consumer's current tail position with validation
-        let my_tail = self.consumer_tail.load(Ordering::Relaxed);
+        // MPMC FIX: Get this consumer's current tail position from SHARED MEMORY
+        let my_tail = header.consumer_tails[self.consumer_id].load(Ordering::Relaxed);
         let current_head = header.head.load(Ordering::Acquire);
 
         // Validate tail position is within bounds
@@ -527,8 +586,8 @@ impl<T> ShmTopic<T> {
         // Calculate next position for this consumer
         let next_tail = (my_tail + 1) % self.capacity;
 
-        // Update this consumer's tail position
-        self.consumer_tail.store(next_tail, Ordering::Relaxed);
+        // MPMC FIX: Update this consumer's tail position in SHARED MEMORY
+        header.consumer_tails[self.consumer_id].store(next_tail, Ordering::Relaxed);
 
         // Read the message (non-destructive - message stays for other consumers) with comprehensive bounds checking
         let msg = unsafe {
@@ -543,7 +602,7 @@ impl<T> ShmTopic<T> {
 
             // Calculate byte offset and verify it's within bounds
             let byte_offset = my_tail * mem::size_of::<T>();
-            let slot_ptr = self.data_ptr.as_ptr().add(byte_offset) as *mut T;
+            let slot_ptr = self.data_ptr.as_ptr().add(byte_offset) as *const T;
 
             // Verify the read location is within our data region
             let data_region_size = self.capacity * mem::size_of::<T>();
@@ -552,8 +611,9 @@ impl<T> ShmTopic<T> {
                 return None;
             }
 
-            // Safe to read now that we've verified bounds
-            std::ptr::read(slot_ptr)
+            // MPMC CRITICAL FIX: Clone instead of read (move) to avoid double-free
+            // Multiple consumers must be able to read the same slot
+            (*slot_ptr).clone()
         };
 
         Some(msg)
@@ -634,8 +694,8 @@ impl<T> ShmTopic<T> {
     pub fn receive(&self) -> Option<ConsumerSample<'_, T>> {
         let header = unsafe { self.header.as_ref() };
 
-        // Get this consumer's current tail position
-        let my_tail = self.consumer_tail.load(Ordering::Relaxed);
+        // Get this consumer's current tail position from shared memory
+        let my_tail = header.consumer_tails[self.consumer_id].load(Ordering::Relaxed);
         let current_head = header.head.load(Ordering::Acquire);
 
         // Validate positions
@@ -660,9 +720,9 @@ impl<T> ShmTopic<T> {
             return None;
         }
 
-        // Calculate next position for this consumer
+        // Calculate next position for this consumer and update in shared memory
         let next_tail = (my_tail + 1) % self.capacity;
-        self.consumer_tail.store(next_tail, Ordering::Relaxed);
+        header.consumer_tails[self.consumer_id].store(next_tail, Ordering::Relaxed);
 
         // Return sample pointing to the message in shared memory
         unsafe {

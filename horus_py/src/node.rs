@@ -45,8 +45,9 @@ impl From<&CoreNodeState> for PyNodeState {
 
 /// Python wrapper for NodeInfo
 #[pyclass]
+#[derive(Clone)]
 pub struct PyNodeInfo {
-    inner: Arc<Mutex<CoreNodeInfo>>,
+    pub inner: Arc<Mutex<CoreNodeInfo>>,
 }
 
 #[pymethods]
@@ -77,7 +78,8 @@ impl PyNodeInfo {
     }
 
     fn log_info(&self, message: String) -> PyResult<()> {
-        let mut info = self
+        // Take String (owned) instead of &str (borrowed) to avoid PyO3 borrow issues
+        let info = self
             .inner
             .lock()
             .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock NodeInfo: {}", e)))?;
@@ -86,6 +88,7 @@ impl PyNodeInfo {
     }
 
     fn log_warning(&self, message: String) -> PyResult<()> {
+        // Take String (owned) instead of &str (borrowed) to avoid PyO3 borrow issues
         let mut info = self
             .inner
             .lock()
@@ -95,6 +98,7 @@ impl PyNodeInfo {
     }
 
     fn log_error(&self, message: String) -> PyResult<()> {
+        // Take String (owned) instead of &str (borrowed) to avoid PyO3 borrow issues
         let mut info = self
             .inner
             .lock()
@@ -104,6 +108,7 @@ impl PyNodeInfo {
     }
 
     fn log_debug(&self, message: String) -> PyResult<()> {
+        // Take String (owned) instead of &str (borrowed) to avoid PyO3 borrow issues
         let mut info = self
             .inner
             .lock()
@@ -128,17 +133,122 @@ impl PyNodeInfo {
             .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock NodeInfo: {}", e)))?;
         Ok(info.get_custom_data(&key).cloned())
     }
+
+    /// Get total tick count
+    fn tick_count(&self) -> PyResult<u64> {
+        let info = self
+            .inner
+            .lock()
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock NodeInfo: {}", e)))?;
+        Ok(info.metrics().total_ticks)
+    }
+
+    /// Get error count
+    fn error_count(&self) -> PyResult<u64> {
+        let info = self
+            .inner
+            .lock()
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock NodeInfo: {}", e)))?;
+        Ok(info.metrics().errors_count)
+    }
+
+    /// Transition to error state
+    fn transition_to_error(&self, error_msg: String) -> PyResult<()> {
+        let mut info = self
+            .inner
+            .lock()
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock NodeInfo: {}", e)))?;
+        info.transition_to_error(error_msg);
+        Ok(())
+    }
+
+    /// Log a publish operation with IPC timing
+    fn log_pub(&self, topic: String, data_repr: String, ipc_ns: u64) -> PyResult<()> {
+        // Take String (owned) instead of &str (borrowed) to avoid PyO3 borrow issues
+        let info = self
+            .inner
+            .lock()
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock NodeInfo: {}", e)))?;
+
+        if info.config().enable_logging {
+            // Format everything to owned Strings first to avoid lifetime issues
+            let timestamp = chrono::Local::now().format("%H:%M:%S%.3f").to_string();
+            let node_name = info.name().to_string();
+
+            // Build the log message safely
+            let msg = format!(
+                "\r\n\x1b[36m[{}]\x1b[0m \x1b[32m[IPC: {}ns]\x1b[0m \x1b[33m{}\x1b[0m \x1b[1;32m--PUB-->\x1b[0m \x1b[35m'{}'\x1b[0m = {}\r\n",
+                timestamp,
+                ipc_ns,
+                node_name,
+                topic,
+                data_repr
+            );
+
+            use std::io::{self, Write};
+            let _ = io::stdout().write_all(msg.as_bytes());
+            let _ = io::stdout().flush();
+        }
+
+        Ok(())
+    }
+
+    /// Log a subscribe operation with IPC timing
+    fn log_sub(&self, topic: String, data_repr: String, ipc_ns: u64) -> PyResult<()> {
+        // Take String (owned) instead of &str (borrowed) to avoid PyO3 borrow issues
+        let info = self
+            .inner
+            .lock()
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock NodeInfo: {}", e)))?;
+
+        if info.config().enable_logging {
+            // Format everything to owned Strings first to avoid lifetime issues
+            let timestamp = chrono::Local::now().format("%H:%M:%S%.3f").to_string();
+            let node_name = info.name().to_string();
+
+            // Build the log message safely
+            let msg = format!(
+                "\x1b[36m[{}]\x1b[0m \x1b[32m[IPC: {}ns]\x1b[0m \x1b[33m{}\x1b[0m \x1b[1;34m<--SUB--\x1b[0m \x1b[35m'{}'\x1b[0m = {}\n",
+                timestamp,
+                ipc_ns,
+                node_name,
+                topic,
+                data_repr
+            );
+
+            use std::io::{self, Write};
+            let _ = io::stdout().write_all(msg.as_bytes());
+            let _ = io::stdout().flush();
+        }
+
+        Ok(())
+    }
+
+    fn __repr__(&self) -> PyResult<String> {
+        if let Ok(info) = self.inner.lock() {
+            Ok(format!(
+                "NodeInfo(name='{}', state='{}', ticks={}, errors={})",
+                info.name(),
+                info.state(),
+                info.metrics().total_ticks,
+                info.metrics().errors_count
+            ))
+        } else {
+            Ok("NodeInfo(locked)".to_string())
+        }
+    }
 }
 
 /// Python wrapper for HORUS Node
 ///
 /// This class allows Python code to implement HORUS nodes
 /// by subclassing and implementing the required methods.
+///
+/// NOTE: PyNode no longer creates its own NodeInfo. The scheduler will provide one.
 #[pyclass(subclass)]
 pub struct PyNode {
     #[pyo3(get)]
     pub name: String,
-    pub info: Arc<Mutex<CoreNodeInfo>>,
     pub py_callback: Option<PyObject>,
 }
 
@@ -148,72 +258,34 @@ impl PyNode {
     pub fn new(name: String) -> PyResult<Self> {
         Ok(PyNode {
             name: name.clone(),
-            info: Arc::new(Mutex::new(CoreNodeInfo::new(name, true))),
             py_callback: None,
         })
     }
 
     /// Initialize the node
-    fn init(&mut self, py: Python) -> PyResult<()> {
-        // Call Python init method if it exists
+    /// The scheduler passes NodeInfo, which we forward to the Python callback
+    fn init(&mut self, py: Python, info: PyNodeInfo) -> PyResult<()> {
         if let Some(callback) = &self.py_callback {
-            let info = PyNodeInfo {
-                inner: self.info.clone(),
-            };
             callback.call_method1(py, "init", (info,))?;
         }
         Ok(())
     }
 
     /// Main execution tick
-    fn tick(&mut self, py: Python) -> PyResult<()> {
-        // Start tick timing
-        {
-            let mut info = self
-                .info
-                .lock()
-                .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock NodeInfo: {}", e)))?;
-            info.start_tick();
-        }
-
-        // Call Python tick method if it exists
+    /// The scheduler passes NodeInfo, which we forward to the Python callback
+    fn tick(&mut self, py: Python, info: PyNodeInfo) -> PyResult<()> {
         if let Some(callback) = &self.py_callback {
-            let info = PyNodeInfo {
-                inner: self.info.clone(),
-            };
             callback.call_method1(py, "tick", (info,))?;
         }
-
-        // Record tick completion
-        {
-            let mut info = self
-                .info
-                .lock()
-                .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock NodeInfo: {}", e)))?;
-            info.record_tick();
-        }
-
         Ok(())
     }
 
     /// Shutdown the node
-    fn shutdown(&mut self, py: Python) -> PyResult<()> {
-        // Call Python shutdown method if it exists
+    /// The scheduler passes NodeInfo, which we forward to the Python callback
+    fn shutdown(&mut self, py: Python, info: PyNodeInfo) -> PyResult<()> {
         if let Some(callback) = &self.py_callback {
-            let info = PyNodeInfo {
-                inner: self.info.clone(),
-            };
             callback.call_method1(py, "shutdown", (info,))?;
         }
-
-        {
-            let mut info = self
-                .info
-                .lock()
-                .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock NodeInfo: {}", e)))?;
-            let _ = info.shutdown();
-        }
-
         Ok(())
     }
 
@@ -221,14 +293,6 @@ impl PyNode {
     fn set_callback(&mut self, callback: PyObject) -> PyResult<()> {
         self.py_callback = Some(callback);
         Ok(())
-    }
-
-    /// Get node information
-    #[getter]
-    fn info(&self) -> PyResult<PyNodeInfo> {
-        Ok(PyNodeInfo {
-            inner: self.info.clone(),
-        })
     }
 
     fn __repr__(&self) -> String {
