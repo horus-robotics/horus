@@ -377,7 +377,7 @@ horus pkg remove pid-controller
 **Publish your package to registry**:
 ```bash
 # First login
-horus auth login --github
+horus auth login
 
 # Then publish from your project directory
 horus pkg publish
@@ -437,7 +437,7 @@ horus env restore production.yaml
 
 ```bash
 # Login with GitHub
-horus auth login --github
+horus auth login
 
 # Generate API key (for CI/CD)
 horus auth generate-key
@@ -453,7 +453,7 @@ horus auth logout
 
 **First time setup**:
 ```bash
-horus auth login --github
+horus auth login
 # Opens browser for GitHub login
 ```
 
@@ -552,7 +552,7 @@ horus run --remote production-robot --release
 
 ```bash
 # Login once
-horus auth login --github
+horus auth login
 
 # Publish
 horus pkg publish

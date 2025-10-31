@@ -39,9 +39,19 @@ pub struct LockedPackage {
     pub source: PackageSource,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum PackageSource {
-    Registry,
+    Registry,    // HORUS registry (Rust, Python, C++ curated packages)
+    PyPI,        // Python Package Index (external Python packages)
+    CratesIO,    // Rust crates.io (future)
+    System,      // System packages (apt, brew, etc.)
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum SystemPackageChoice {
+    UseSystem,     // Use existing system package
+    InstallHORUS,  // Install fresh copy to HORUS
+    Cancel,        // Cancel installation
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -112,7 +122,64 @@ impl RegistryClient {
         version: Option<&str>,
         target: crate::workspace::InstallTarget,
     ) -> Result<()> {
-        println!(" Downloading {}...", package_name);
+        // Detect package source
+        let source = self.detect_package_source(package_name)?;
+
+        match source {
+            PackageSource::Registry => {
+                self.install_from_registry(package_name, version, target)
+            }
+            PackageSource::PyPI => {
+                self.install_from_pypi(package_name, version, target)
+            }
+            PackageSource::CratesIO => {
+                self.install_from_cratesio(package_name, version, target)
+            }
+            PackageSource::System => {
+                Err(anyhow!("System packages not supported via horus pkg install"))
+            }
+        }
+    }
+
+    fn detect_package_source(&self, package_name: &str) -> Result<PackageSource> {
+        // Check if it's a HORUS package
+        if package_name.starts_with("horus") {
+            return Ok(PackageSource::Registry);
+        }
+
+        // Try HORUS registry first
+        let url = format!("{}/api/packages/{}", self.base_url, package_name);
+        if let Ok(response) = self.client.get(&url).send() {
+            if response.status().is_success() {
+                return Ok(PackageSource::Registry);
+            }
+        }
+
+        // Check if it's a known Rust package (crates.io)
+        // Common Rust crates: tokio, serde, reqwest, etc.
+        // crates.io requires a User-Agent header
+        let crates_url = format!("https://crates.io/api/v1/crates/{}", package_name);
+        if let Ok(response) = self.client
+            .get(&crates_url)
+            .header("User-Agent", "horus-pkg-manager")
+            .send()
+        {
+            if response.status().is_success() {
+                return Ok(PackageSource::CratesIO);
+            }
+        }
+
+        // Default to PyPI for non-HORUS, non-Rust packages
+        Ok(PackageSource::PyPI)
+    }
+
+    fn install_from_registry(
+        &self,
+        package_name: &str,
+        version: Option<&str>,
+        target: crate::workspace::InstallTarget,
+    ) -> Result<()> {
+        println!(" Downloading {} from HORUS registry...", package_name);
 
         let version_str = version.unwrap_or("latest");
         let url = format!(
@@ -279,6 +346,284 @@ impl RegistryClient {
                 // Recursively install dependencies
                 self.install_dependencies(&deps, &target)?;
             }
+        }
+
+        Ok(())
+    }
+
+    fn install_from_pypi(
+        &self,
+        package_name: &str,
+        version: Option<&str>,
+        target: crate::workspace::InstallTarget,
+    ) -> Result<()> {
+        use std::process::Command;
+        println!(" Installing {} from PyPI...", package_name);
+
+        // Check if package exists in system first
+        if let Ok(Some(system_version)) = self.detect_system_python_package(package_name) {
+            let choice = self.prompt_system_package_choice(package_name, &system_version, "PyPI")?;
+
+            match choice {
+                SystemPackageChoice::Cancel => {
+                    println!("Installation cancelled");
+                    return Ok(());
+                }
+                SystemPackageChoice::UseSystem => {
+                    // Create reference to system package instead of installing
+                    return self.create_system_reference_python(package_name, &system_version, &target);
+                }
+                SystemPackageChoice::InstallHORUS => {
+                    // Continue with installation below
+                    println!("  {} Installing isolated copy to HORUS...", "".blue());
+                }
+            }
+        }
+
+        // Determine installation location based on target
+        use crate::workspace::InstallTarget;
+        let home = dirs::home_dir().ok_or_else(|| anyhow!("Could not find home directory"))?;
+        let global_cache = home.join(".horus/cache");
+
+        let (install_dir, is_global, local_packages_dir) = match &target {
+            InstallTarget::Global => {
+                // Install to global cache
+                fs::create_dir_all(&global_cache)?;
+                let current_local = PathBuf::from(".horus/packages");
+                (global_cache.clone(), true, Some(current_local))
+            }
+            InstallTarget::Local(workspace_path) => {
+                // Install to workspace packages
+                let local_packages = workspace_path.join(".horus/packages");
+                fs::create_dir_all(&local_packages)?;
+                (local_packages.clone(), false, None)
+            }
+        };
+
+        // Create temp venv for pip operations
+        let temp_venv = PathBuf::from(".horus/venv");
+        if !temp_venv.exists() {
+            fs::create_dir_all(&temp_venv)?;
+            let python_cmd = if Command::new("python3").arg("--version").output().is_ok() {
+                "python3"
+            } else {
+                "python"
+            };
+            Command::new(python_cmd)
+                .args(&["-m", "venv", temp_venv.to_str().unwrap()])
+                .status()?;
+        }
+
+        let pip_path = temp_venv.join("bin/pip");
+
+        // Build version string
+        let version_str = version.unwrap_or("latest");
+        let requirement = if version_str == "latest" {
+            package_name.to_string()
+        } else {
+            format!("{}=={}", package_name, version_str)
+        };
+
+        // Install to target directory
+        let pkg_dir = if is_global {
+            install_dir.join(format!("pypi_{}@{}", package_name, version_str))
+        } else {
+            install_dir.join(package_name)
+        };
+
+        if pkg_dir.exists() {
+            fs::remove_dir_all(&pkg_dir)?;
+        }
+        fs::create_dir_all(&pkg_dir)?;
+
+        println!("  {} Installing with pip...", "".cyan());
+        let output = Command::new(&pip_path)
+            .args(&["install", "--target", pkg_dir.to_str().unwrap()])
+            .arg(&requirement)
+            .output()?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(anyhow!("pip install failed:\n{}", stderr));
+        }
+
+        // Create metadata.json
+        let metadata = serde_json::json!({
+            "name": package_name,
+            "version": version_str,
+            "source": "PyPI"
+        });
+        let metadata_path = pkg_dir.join("metadata.json");
+        fs::write(&metadata_path, serde_json::to_string_pretty(&metadata)?)?;
+
+        // If global, create symlink
+        if is_global {
+            if let Some(local_pkg_dir) = local_packages_dir {
+                fs::create_dir_all(&local_pkg_dir)?;
+                let local_link = local_pkg_dir.join(package_name);
+
+                // Remove existing
+                if local_link.exists() || local_link.symlink_metadata().is_ok() {
+                    #[cfg(unix)]
+                    {
+                        if local_link.symlink_metadata()?.is_symlink() {
+                            fs::remove_file(&local_link)?;
+                        } else {
+                            fs::remove_dir_all(&local_link)?;
+                        }
+                    }
+                }
+
+                // Create symlink
+                #[cfg(unix)]
+                std::os::unix::fs::symlink(&pkg_dir, &local_link)?;
+
+                println!(
+                    " Installed {} {} to global cache",
+                    package_name, version_str
+                );
+                println!("   Linked: {} -> {}", local_link.display(), pkg_dir.display());
+            }
+        } else {
+            println!(" Installed {} {} locally", package_name, version_str);
+            println!("   Location: {}", pkg_dir.display());
+        }
+
+        Ok(())
+    }
+
+    fn install_from_cratesio(
+        &self,
+        package_name: &str,
+        version: Option<&str>,
+        target: crate::workspace::InstallTarget,
+    ) -> Result<()> {
+        use std::process::Command;
+        println!(" Installing {} from crates.io...", package_name);
+
+        // Check if cargo is available
+        if Command::new("cargo").arg("--version").output().is_err() {
+            return Err(anyhow!("cargo not found. Please install Rust toolchain from https://rustup.rs"));
+        }
+
+        // Check if binary exists in system first
+        if let Ok(Some(system_version)) = self.detect_system_cargo_binary(package_name) {
+            let choice = self.prompt_system_package_choice(package_name, &system_version, "crates.io")?;
+
+            match choice {
+                SystemPackageChoice::Cancel => {
+                    println!("Installation cancelled");
+                    return Ok(());
+                }
+                SystemPackageChoice::UseSystem => {
+                    // Create reference to system binary instead of installing
+                    return self.create_system_reference_cargo(package_name, &system_version, &target);
+                }
+                SystemPackageChoice::InstallHORUS => {
+                    // Continue with installation below
+                    println!("  {} Installing isolated copy to HORUS...", "".blue());
+                }
+            }
+        }
+
+        // Determine installation location based on target
+        use crate::workspace::InstallTarget;
+        let home = dirs::home_dir().ok_or_else(|| anyhow!("Could not find home directory"))?;
+        let global_cache = home.join(".horus/cache");
+
+        let (install_root, is_global, local_packages_dir) = match &target {
+            InstallTarget::Global => {
+                // Install to global cache
+                fs::create_dir_all(&global_cache)?;
+                let current_local = PathBuf::from(".horus/packages");
+                (global_cache.clone(), true, Some(current_local))
+            }
+            InstallTarget::Local(workspace_path) => {
+                // Install to workspace packages
+                let local_packages = workspace_path.join(".horus/packages");
+                fs::create_dir_all(&local_packages)?;
+                (local_packages.clone(), false, None)
+            }
+        };
+
+        // Build version string
+        let version_str = version.unwrap_or("latest");
+        let crate_spec = if version_str == "latest" {
+            package_name.to_string()
+        } else {
+            format!("{}@{}", package_name, version_str)
+        };
+
+        // Install directory
+        let pkg_dir = if is_global {
+            install_root.join(format!("cratesio_{}@{}", package_name, version_str))
+        } else {
+            install_root.join(package_name)
+        };
+
+        if pkg_dir.exists() {
+            fs::remove_dir_all(&pkg_dir)?;
+        }
+        fs::create_dir_all(&pkg_dir)?;
+
+        println!("  {} Installing with cargo...", "".cyan());
+
+        // Use cargo install with --root to install to specific directory
+        let mut cmd = Command::new("cargo");
+        cmd.arg("install");
+        cmd.arg(&crate_spec);
+        cmd.arg("--root");
+        cmd.arg(&pkg_dir);
+
+        let output = cmd.output()?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(anyhow!("cargo install failed:\n{}", stderr));
+        }
+
+        // Create metadata.json
+        let metadata = serde_json::json!({
+            "name": package_name,
+            "version": version_str,
+            "source": "CratesIO"
+        });
+        let metadata_path = pkg_dir.join("metadata.json");
+        fs::write(&metadata_path, serde_json::to_string_pretty(&metadata)?)?;
+
+        // If global, create symlink
+        if is_global {
+            if let Some(local_pkg_dir) = local_packages_dir {
+                fs::create_dir_all(&local_pkg_dir)?;
+                let local_link = local_pkg_dir.join(package_name);
+
+                // Remove existing
+                if local_link.exists() || local_link.symlink_metadata().is_ok() {
+                    #[cfg(unix)]
+                    {
+                        if local_link.symlink_metadata()?.is_symlink() {
+                            fs::remove_file(&local_link)?;
+                        } else {
+                            fs::remove_dir_all(&local_link)?;
+                        }
+                    }
+                }
+
+                // Create symlink
+                #[cfg(unix)]
+                std::os::unix::fs::symlink(&pkg_dir, &local_link)?;
+
+                println!(
+                    " Installed {} {} to global cache",
+                    package_name, version_str
+                );
+                println!("   Linked: {} -> {}", local_link.display(), pkg_dir.display());
+                println!("   Binaries available in: {}/bin/", pkg_dir.display());
+            }
+        } else {
+            println!(" Installed {} {} locally", package_name, version_str);
+            println!("   Location: {}", pkg_dir.display());
+            println!("   Binaries available in: {}/bin/", pkg_dir.display());
         }
 
         Ok(())
@@ -661,31 +1006,82 @@ impl RegistryClient {
         if packages_dir.exists() {
             for entry in fs::read_dir(&packages_dir)? {
                 let entry = entry?;
-                if entry.file_type()?.is_dir() {
+                let entry_path = entry.path();
+
+                // Check for system package references (*.system.json)
+                if entry_path.extension().and_then(|s| s.to_str()) == Some("json")
+                    && entry_path.to_string_lossy().contains(".system.") {
+                    // This is a system package reference
+                    let content = fs::read_to_string(&entry_path)?;
+                    let metadata: serde_json::Value = serde_json::from_str(&content)?;
+
+                    let name = metadata["name"].as_str().unwrap_or("unknown").to_string();
+                    let version = metadata["version"].as_str().unwrap_or("unknown").to_string();
+
+                    locked_packages.push(LockedPackage {
+                        name,
+                        version,
+                        checksum: String::new(),
+                        source: PackageSource::System,
+                    });
+                    continue;
+                }
+
+                // Check if it's a symlink or directory
+                let is_package = entry.file_type()?.is_dir() || entry.file_type()?.is_symlink();
+
+                if is_package {
                     let package_name = entry.file_name().to_string_lossy().to_string();
 
+                    // Resolve symlink to actual path if needed
+                    let actual_path = if entry_path.is_symlink() {
+                        entry_path.read_link().unwrap_or(entry_path.clone())
+                    } else {
+                        entry_path.clone()
+                    };
+
                     // Try to read package metadata
-                    let metadata_path = entry.path().join("metadata.json");
+                    let metadata_path = actual_path.join("metadata.json");
                     if metadata_path.exists() {
-                        let metadata: PackageMetadata =
-                            serde_json::from_str(&fs::read_to_string(&metadata_path)?)?;
+                        let content = fs::read_to_string(&metadata_path)?;
+                        let metadata_value: serde_json::Value = serde_json::from_str(&content)?;
+
+                        let name = metadata_value["name"].as_str().unwrap_or(&package_name).to_string();
+                        let version = metadata_value["version"].as_str().unwrap_or("unknown").to_string();
+                        let checksum = metadata_value["checksum"].as_str().unwrap_or("").to_string();
+                        let source_str = metadata_value["source"].as_str().unwrap_or("Registry");
+
+                        // Determine package source from metadata or path
+                        let source = if source_str == "PyPI" {
+                            PackageSource::PyPI
+                        } else if actual_path.to_string_lossy().contains("pypi_") {
+                            PackageSource::PyPI
+                        } else {
+                            PackageSource::Registry
+                        };
 
                         locked_packages.push(LockedPackage {
-                            name: metadata.name,
-                            version: metadata.version,
-                            checksum: metadata.checksum.unwrap_or_default(),
-                            source: PackageSource::Registry,
+                            name,
+                            version,
+                            checksum,
+                            source,
                         });
                     } else {
-                        // Fallback: If no metadata.json, try to detect version
-                        let version = detect_package_version(&entry.path())
+                        // Fallback: Determine source from path
+                        let source = if actual_path.to_string_lossy().contains("pypi_") {
+                            PackageSource::PyPI
+                        } else {
+                            PackageSource::Registry
+                        };
+
+                        let version = detect_package_version(&actual_path)
                             .unwrap_or_else(|| "unknown".to_string());
 
                         locked_packages.push(LockedPackage {
                             name: package_name.clone(),
                             version,
                             checksum: String::new(),
-                            source: PackageSource::Registry,
+                            source,
                         });
                     }
                 }
@@ -1570,5 +1966,249 @@ impl PackageProvider for RegistryClient {
                 }
             }
         }
+    }
+
+    // Detect if a Python package exists in system site-packages
+    fn detect_system_python_package(&self, package_name: &str) -> Result<Option<String>> {
+        use std::process::Command;
+
+        // Try to find package using pip show
+        let output = Command::new("python3")
+            .args(&["-m", "pip", "show", package_name])
+            .output();
+
+        if let Ok(output) = output {
+            if output.status.success() {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                // Parse version from pip show output
+                for line in stdout.lines() {
+                    if line.starts_with("Version:") {
+                        let version = line.trim_start_matches("Version:").trim();
+                        return Ok(Some(version.to_string()));
+                    }
+                }
+            }
+        }
+
+        // Fallback: check site-packages directly
+        let site_packages_paths = vec![
+            PathBuf::from(format!("/usr/lib/python3.12/site-packages/{}", package_name)),
+            PathBuf::from(format!("/usr/local/lib/python3.12/site-packages/{}", package_name)),
+            dirs::home_dir()
+                .map(|h| h.join(format!(".local/lib/python3.12/site-packages/{}", package_name))),
+        ];
+
+        for path in site_packages_paths.into_iter().flatten() {
+            if path.exists() {
+                // Try to get version from __init__.py or metadata
+                let version_file = path.join("__init__.py");
+                if version_file.exists() {
+                    // Found package, but version unknown
+                    return Ok(Some("unknown".to_string()));
+                }
+            }
+        }
+
+        Ok(None)
+    }
+
+    // Detect if a Rust binary exists in system cargo bin
+    fn detect_system_cargo_binary(&self, package_name: &str) -> Result<Option<String>> {
+        use std::process::Command;
+
+        // Check ~/.cargo/bin/
+        if let Some(home) = dirs::home_dir() {
+            let cargo_bin = home.join(".cargo/bin").join(package_name);
+            if cargo_bin.exists() {
+                // Try to get version by running --version
+                if let Ok(output) = Command::new(&cargo_bin).arg("--version").output() {
+                    if output.status.success() {
+                        let version_str = String::from_utf8_lossy(&output.stdout);
+                        // Parse version (usually "name version")
+                        let version = version_str
+                            .split_whitespace()
+                            .nth(1)
+                            .unwrap_or("unknown")
+                            .to_string();
+                        return Ok(Some(version));
+                    }
+                }
+                // Binary exists but version unknown
+                return Ok(Some("unknown".to_string()));
+            }
+        }
+
+        Ok(None)
+    }
+
+    // Prompt user for what to do with system package
+    fn prompt_system_package_choice(
+        &self,
+        package_name: &str,
+        system_version: &str,
+        source_type: &str, // "PyPI" or "crates.io"
+    ) -> Result<SystemPackageChoice> {
+        use std::io::{self, Write};
+
+        println!(
+            "\n{} {} {} found in system (version: {})",
+            "".yellow(),
+            source_type,
+            package_name.green(),
+            system_version.cyan()
+        );
+        println!("\nWhat would you like to do?");
+        println!("  [1] {} Use system package (create reference)", "".green());
+        println!(
+            "  [2] {} Install to HORUS (isolated environment)",
+            "".blue()
+        );
+        println!("  [3] {} Cancel installation", "✗".red());
+
+        print!("\nChoice [1-3]: ");
+        io::stdout().flush()?;
+
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+
+        match input.trim() {
+            "1" => Ok(SystemPackageChoice::UseSystem),
+            "2" => Ok(SystemPackageChoice::InstallHORUS),
+            "3" => Ok(SystemPackageChoice::Cancel),
+            _ => {
+                println!("Invalid choice, defaulting to Install to HORUS");
+                Ok(SystemPackageChoice::InstallHORUS)
+            }
+        }
+    }
+
+    // Create reference to system Python package
+    fn create_system_reference_python(
+        &self,
+        package_name: &str,
+        system_version: &str,
+        target: &crate::workspace::InstallTarget,
+    ) -> Result<()> {
+        use std::process::Command;
+        use crate::workspace::InstallTarget;
+
+        println!("  {} Creating reference to system package...", "".green());
+
+        // Find actual system package location
+        let output = Command::new("python3")
+            .args(&["-c", &format!("import {}; print({}.__file__)", package_name, package_name)])
+            .output()?;
+
+        if !output.status.success() {
+            return Err(anyhow!("Failed to locate system package"));
+        }
+
+        let package_file = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let package_path = PathBuf::from(&package_file)
+            .parent()
+            .ok_or_else(|| anyhow!("Invalid package path"))?
+            .to_path_buf();
+
+        // Create metadata file in .horus/packages/ with system reference
+        let packages_dir = match target {
+            InstallTarget::Global => {
+                let current = PathBuf::from(".horus/packages");
+                fs::create_dir_all(&current)?;
+                current
+            }
+            InstallTarget::Local(workspace_path) => {
+                let local = workspace_path.join(".horus/packages");
+                fs::create_dir_all(&local)?;
+                local
+            }
+        };
+
+        let metadata_file = packages_dir.join(format!("{}.system.json", package_name));
+        let metadata = serde_json::json!({
+            "name": package_name,
+            "version": system_version,
+            "source": "System",
+            "system_path": package_path.display().to_string(),
+            "package_type": "PyPI"
+        });
+
+        fs::write(&metadata_file, serde_json::to_string_pretty(&metadata)?)?;
+
+        println!(
+            "  {} Using system package at {}",
+            "✓".green(),
+            package_path.display()
+        );
+        println!("  {} Reference created: {}", "".cyan(), metadata_file.display());
+
+        Ok(())
+    }
+
+    // Create reference to system cargo binary
+    fn create_system_reference_cargo(
+        &self,
+        package_name: &str,
+        system_version: &str,
+        target: &crate::workspace::InstallTarget,
+    ) -> Result<()> {
+        use crate::workspace::InstallTarget;
+
+        println!("  {} Creating reference to system binary...", "".green());
+
+        // Find actual system binary location
+        let home = dirs::home_dir().ok_or_else(|| anyhow!("Could not find home directory"))?;
+        let cargo_bin = home.join(".cargo/bin").join(package_name);
+
+        if !cargo_bin.exists() {
+            return Err(anyhow!("System binary not found at expected location"));
+        }
+
+        // Create metadata file in .horus/packages/ with system reference
+        let packages_dir = match target {
+            InstallTarget::Global => {
+                let current = PathBuf::from(".horus/packages");
+                fs::create_dir_all(&current)?;
+                current
+            }
+            InstallTarget::Local(workspace_path) => {
+                let local = workspace_path.join(".horus/packages");
+                fs::create_dir_all(&local)?;
+                local
+            }
+        };
+
+        let metadata_file = packages_dir.join(format!("{}.system.json", package_name));
+        let metadata = serde_json::json!({
+            "name": package_name,
+            "version": system_version,
+            "source": "System",
+            "system_path": cargo_bin.display().to_string(),
+            "package_type": "CratesIO"
+        });
+
+        fs::write(&metadata_file, serde_json::to_string_pretty(&metadata)?)?;
+
+        // Create symlink in .horus/bin to system binary
+        let bin_dir = match target {
+            InstallTarget::Global => PathBuf::from(".horus/bin"),
+            InstallTarget::Local(workspace_path) => workspace_path.join(".horus/bin"),
+        };
+        fs::create_dir_all(&bin_dir)?;
+
+        let bin_link = bin_dir.join(package_name);
+        if bin_link.exists() {
+            fs::remove_file(&bin_link)?;
+        }
+        std::os::unix::fs::symlink(&cargo_bin, &bin_link)?;
+
+        println!(
+            "  {} Using system binary at {}",
+            "✓".green(),
+            cargo_bin.display()
+        );
+        println!("  {} Reference created: {}", "".cyan(), metadata_file.display());
+        println!("  {} Binary linked: {}", "".cyan(), bin_link.display());
+
+        Ok(())
     }
 }

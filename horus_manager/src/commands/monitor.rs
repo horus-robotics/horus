@@ -591,14 +591,31 @@ lazy_static::lazy_static! {
 fn discover_shared_memory_uncached() -> HorusResult<Vec<SharedMemoryInfo>> {
     let mut topics = Vec::new();
 
-    // Use HORUS paths in /dev/shm/horus for performance
-    let shm_path = Path::new("/dev/shm/horus/topics");
-
-    if !shm_path.exists() {
-        // Try to create HORUS directories if they don't exist
-        let _ = std::fs::create_dir_all(shm_path);
-        return Ok(topics);
+    // Scan all active sessions for session-isolated topics
+    let sessions_dir = Path::new("/dev/shm/horus/sessions");
+    if sessions_dir.exists() {
+        if let Ok(session_entries) = std::fs::read_dir(sessions_dir) {
+            for session_entry in session_entries.flatten() {
+                let session_topics_path = session_entry.path().join("topics");
+                if session_topics_path.exists() {
+                    topics.extend(scan_topics_directory(&session_topics_path)?);
+                }
+            }
+        }
     }
+
+    // Also scan global/legacy path for backward compatibility
+    let global_shm_path = Path::new("/dev/shm/horus/topics");
+    if global_shm_path.exists() {
+        topics.extend(scan_topics_directory(global_shm_path)?);
+    }
+
+    Ok(topics)
+}
+
+/// Scan a specific topics directory for shared memory files
+fn scan_topics_directory(shm_path: &Path) -> HorusResult<Vec<SharedMemoryInfo>> {
+    let mut topics = Vec::new();
 
     // Load registry to get topic metadata
     let registry_topics = load_topic_metadata_from_registry();

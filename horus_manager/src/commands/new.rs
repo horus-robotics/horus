@@ -415,11 +415,115 @@ if __name__ == "__main__":
 }
 
 fn create_main_c(project_path: &Path) -> Result<()> {
-    // C bindings are under development - placeholder template
-    let content = r#"// C bindings for HORUS are under development
-// Please use Rust or Python for now
-// See: https://docs.horus.dev/c-bindings for updates
+    // C++ framework template with Node/Scheduler pattern and rich logging
+    let content = r#"// Mobile robot controller using HORUS C++ Framework
+// Demonstrates Node/Scheduler pattern with rich logging
+
+#include <horus.hpp>
+#include <iostream>
+#include <optional>
+
+// Example sensor node that publishes velocity data
+class SensorNode : public horus::Node {
+public:
+    SensorNode() : horus::Node("sensor_node") {}
+
+    bool init(horus::NodeContext& ctx) override {
+        ctx.log_info("Initializing sensor node");
+
+        // Create publisher with context for rich logging
+        velocity_pub_.emplace(ctx.create_publisher<Twist>("robot/velocity"));
+
+        return true;
+    }
+
+    void tick(horus::NodeContext& ctx) override {
+        // Simulate sensor reading
+        Twist velocity = {
+            .linear = {0.5f, 0.0f, 0.0f},
+            .angular = {0.0f, 0.0f, 0.1f}
+        };
+
+        // Publish with automatic rich logging
+        velocity_pub_->send(velocity);
+    }
+
+    void shutdown(horus::NodeContext& ctx) override {
+        ctx.log_info("Shutting down sensor node");
+    }
+
+private:
+    std::optional<horus::Publisher<Twist>> velocity_pub_;
+};
+
+// Example controller node that receives and processes data
+class ControllerNode : public horus::Node {
+public:
+    ControllerNode() : horus::Node("controller_node") {}
+
+    bool init(horus::NodeContext& ctx) override {
+        ctx.log_info("Initializing controller node");
+
+        // Create subscriber and publisher with context
+        velocity_sub_.emplace(ctx.create_subscriber<Twist>("robot/velocity"));
+        cmd_pub_.emplace(ctx.create_publisher<Twist>("robot/cmd_vel"));
+
+        return true;
+    }
+
+    void tick(horus::NodeContext& ctx) override {
+        Twist velocity;
+
+        // Try to receive velocity data (non-blocking)
+        if (velocity_sub_->try_recv(velocity)) {
+            // Process the data and generate control command
+            Twist cmd = {
+                .linear = {velocity.linear.x * 1.5f, 0.0f, 0.0f},
+                .angular = {0.0f, 0.0f, velocity.angular.z * 2.0f}
+            };
+
+            // Publish command with automatic rich logging
+            cmd_pub_->send(cmd);
+        }
+    }
+
+    void shutdown(horus::NodeContext& ctx) override {
+        ctx.log_info("Shutting down controller node");
+    }
+
+private:
+    std::optional<horus::Subscriber<Twist>> velocity_sub_;
+    std::optional<horus::Publisher<Twist>> cmd_pub_;
+};
+
+int main() {
+    try {
+        // Create scheduler (runs at 60 FPS by default)
+        horus::Scheduler scheduler("main_scheduler");
+
+        // Create nodes
+        SensorNode sensor;
+        ControllerNode controller;
+
+        // Register nodes with priorities
+        // Higher priority nodes run first each tick
+        scheduler.register_node(sensor, horus::Priority::High);
+        scheduler.register_node(controller, horus::Priority::Normal);
+
+        std::cout << "Starting HORUS scheduler...\n";
+        std::cout << "Press Ctrl+C to stop\n\n";
+
+        // Run the scheduler (blocks until shutdown signal)
+        scheduler.run();
+
+    } catch (const horus::HorusException& e) {
+        std::cerr << "HORUS Error: " << e.what() << std::endl;
+        return 1;
+    }
+
+    return 0;
+}
 "#;
-    fs::write(project_path.join("main.c"), content)?;
+    fs::write(project_path.join("main.cpp"), content)?;
     Ok(())
 }

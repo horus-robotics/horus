@@ -10,23 +10,26 @@ Get HORUS up and running in 5 minutes. We'll install Rust, build HORUS, and veri
 
 ## Platform Support
 
-HORUS works on systems with POSIX shared memory support:
+HORUS requires Linux with `/dev/shm` support:
 
 | Platform | Status | Notes |
 |----------|--------|-------|
-| **Ubuntu 20.04+** |  Fully Supported | Recommended for production |
-| **Ubuntu 22.04+** |  Fully Supported | Best performance |
-| **Debian 11+** |  Supported | Tested and working |
-| **Fedora 36+** |  Supported | Use dnf for packages |
-| **Arch Linux** |  Supported | Community maintained |
-| **macOS 11+** |  Supported | Limited shared memory size |
-| **Windows** |  Via WSL Only | Use WSL 2 for best results |
-| **Raspberry Pi** |  Supported | ARM64 tested on Ubuntu |
+| **Ubuntu 20.04+** | ✅ Fully Supported | Recommended for production |
+| **Ubuntu 22.04+** | ✅ Fully Supported | Best performance |
+| **Debian 11+** | ✅ Supported | Tested and working |
+| **Fedora 36+** | ✅ Supported | Use dnf for packages |
+| **Arch Linux** | ✅ Supported | Community maintained |
+| **Raspberry Pi** | ✅ Supported | ARM64 tested on Ubuntu |
+| **Windows** | ✅ Via WSL 2 | Full Linux compatibility |
+| **macOS** | ✅ Via Docker/VM | Use Docker or Linux VM |
+| **Other OS** | ✅ Via Docker/VM | Any OS that runs Linux containers |
 
 ## Prerequisites
 
 **Required:**
-- **Operating System**: Linux (Ubuntu 20.04+) or macOS 11+
+- **Operating System**: Linux (Ubuntu 20.04+ recommended)
+  - For **Windows**: Use WSL 2 (see instructions below)
+  - For **macOS**: Use Docker or Linux VM (see instructions below)
 - **Rust 1.70+**: We'll install this in Step 1
 - **Build Tools**: C compiler, pkg-config, and system libraries
   ```bash
@@ -44,10 +47,6 @@ HORUS works on systems with POSIX shared memory support:
 
   # Arch Linux
   sudo pacman -S base-devel pkg-config systemd openssl alsa-lib
-
-  # macOS
-  xcode-select --install
-  brew install pkg-config openssl
   ```
 - **10-15 minutes**: For first-time installation
 - **Internet connection**: To download dependencies
@@ -100,7 +99,7 @@ If you see `horus 0.3.0` (or similar) and verify.sh shows green checkmarks, you'
 
 HORUS is built with Rust. Don't worry if you've never used it - you don't need to know Rust to use HORUS (Python and C work too!).
 
-**On Linux or macOS:**
+**On Linux (or WSL/Docker):**
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
@@ -120,15 +119,6 @@ cargo --version
 
 You should see version numbers like `rustc 1.75.0`.
 
-**On Windows:**
-Use Windows Subsystem for Linux (WSL):
-```powershell
-# In PowerShell (as Administrator)
-wsl --install
-
-# Then follow Linux instructions inside WSL
-```
-
 ### Step 2: Install Git (If You Don't Have It)
 
 **Check if you have Git:**
@@ -141,11 +131,11 @@ git --version
 # Ubuntu/Debian
 sudo apt install git
 
-# macOS
-xcode-select --install
-
 # Fedora
 sudo dnf install git
+
+# Arch Linux
+sudo pacman -S git
 ```
 
 ### Step 3: Clone HORUS
@@ -284,9 +274,7 @@ cd horus_c
 cargo build --release
 ```
 
-The shared library will be in `target/release/`:
-- `libhorus_c.so` (Linux)
-- `libhorus_c.dylib` (macOS)
+The shared library will be in `target/release/libhorus_c.so`
 
 See [Multi-Language](/multi-language) for C examples.
 
@@ -309,26 +297,49 @@ sudo apt update && sudo apt install \
 
 ```bash
 sudo dnf groupinstall "Development Tools"
+sudo dnf install pkg-config systemd-devel openssl-devel alsa-lib-devel
 ```
 
-### macOS
+### Windows (WSL 2)
 
-Install Xcode Command Line Tools if you haven't:
-
-```bash
-xcode-select --install
-```
-
-**Note:** macOS has smaller shared memory limits than Linux. For most applications this is fine, but if you're moving lots of large messages, Linux is better.
-
-### Windows
-
-Use WSL (Windows Subsystem for Linux):
+HORUS requires Linux's `/dev/shm/`. Use WSL 2 for full compatibility:
 
 1. Open PowerShell as Administrator
 2. Run: `wsl --install`
 3. Restart your computer
 4. Follow the Linux installation steps inside WSL
+
+**WSL gives you:**
+- Full Linux environment on Windows
+- Native `/dev/shm/` support
+- Same performance as native Linux
+
+### macOS (Docker or VM)
+
+HORUS requires Linux's `/dev/shm/`. Choose one option:
+
+**Option 1: Docker**
+- Install Docker Desktop for Mac
+- Run HORUS in any Linux container (Ubuntu, Debian, Fedora, etc.)
+- Ensure `/dev/shm/` is accessible inside the container
+- Follow Linux installation steps inside container
+
+**Option 2: VMware/VirtualBox**
+- Install VMware Fusion, Parallels, or VirtualBox
+- Create a Linux VM (Ubuntu 22.04 recommended)
+- Follow Linux installation steps inside VM
+
+**Option 3: Cloud Linux Instance**
+- Use AWS EC2, DigitalOcean, Linode, or any cloud provider
+- SSH into Linux instance
+- Follow Linux installation steps
+
+### Other Operating Systems
+
+Any OS can run HORUS via Linux containers or VMs:
+- **Docker** - Lightweight, fast, works on any OS
+- **VMware/VirtualBox** - Full VM, traditional approach
+- **Cloud Linux** - Remote development, always accessible
 
 ## Understanding Shared Memory
 

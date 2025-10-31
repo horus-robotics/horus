@@ -322,6 +322,7 @@ impl Scheduler {
 
     /// Create heartbeat directory
     fn setup_heartbeat_directory() {
+        // Heartbeats are intentionally global (not session-isolated) so dashboard can monitor all nodes
         let dir = PathBuf::from("/dev/shm/horus/heartbeats");
         let _ = fs::create_dir_all(&dir);
     }

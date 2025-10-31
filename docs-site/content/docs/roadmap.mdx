@@ -10,24 +10,18 @@ order: 2
 
 ### 1.1 Link Communication Optimization
 
-**Goal**: Improve Link (process-to-process) communication mechanism for multi-process robotics systems
+**Goal**: Improve Link (shared memory IPC) communication for multi-process robotics systems
 
 **Tasks**:
-- [ ] **Reduce Link latency**: Target sub-nanosecond (currently ~10-20μs for network transport)
-  - Optimize TCP socket communication
-  - Benchmark against DDS, ZeroMQ, and raw TCP
 - [ ] **Reliability improvements**:
-  - Connection recovery and automatic reconnection
-  - Heartbeat mechanism for connection health monitoring
+  - Process crash recovery
+  - Heartbeat mechanism for subscriber health monitoring
   - Message acknowledgment and retry logic
-  - Graceful degradation on network issues
-- [ ] **Discovery mechanism**:
-  - Automatic node discovery on local network
-  - Service advertisement and lookup
-- [ ] **Security**:
-  - TLS/SSL encryption for remote connections
-  - Authentication and authorization
-  - Message signing and verification
+  - Graceful degradation on resource exhaustion
+- [ ] **Resource management**:
+  - Automatic cleanup of orphaned shared memory
+  - Memory leak detection
+  - Session isolation improvements
 ---
 
 ### 1.2 Hub Performance & Features
@@ -108,8 +102,8 @@ order: 2
   - Diff between deployed versions
 - [ ] **Multi-target deployment**:
   - Deploy to multiple robots simultaneously
-  - Group deployment (fleet management)
-  - Staged rollout (canary deployments)
+  - Group deployment
+  - Staged rollout
 - [ ] **Health monitoring**:
   - Deployment status tracking
   - Runtime health checks
@@ -154,7 +148,7 @@ order: 2
   - Pandas DataFrame integration
 - [ ] **Package distribution**:
   - PyPI package (`pip install horus-robotics`)
-  - Wheels for Linux/Mac/Windows
+  - Wheels for Linux (x86_64, ARM)
   - Conda package (optional)
 - [ ] **Testing**:
   - pytest test suite
@@ -187,7 +181,7 @@ order: 2
   - pkg-config file
   - Static/dynamic library options
 - [ ] **Examples**:
-  - Arduino/embedded examples
+  - Embedded Linux examples (Raspberry Pi, Jetson)
   - Linux driver examples
   - Real-time system examples
 - [ ] **Documentation**:
@@ -265,8 +259,6 @@ order: 2
 - [ ] Scene editor (GUI)
 - [ ] Recording/playback system
 - [ ] Plugin system
-- [ ] ROS2 bridge (optional interop)
-- [ ] Gazebo world import
 - [ ] Benchmark suite
 
 **Validation**:
@@ -356,7 +348,6 @@ order: 2
   - AprilTag detection
   - Point cloud processing
 - [ ] **Communication**:
-  - ROS1/ROS2 bridge nodes
   - MQTT bridge
   - WebSocket server
   - HTTP API server
@@ -379,7 +370,7 @@ order: 2
   - Multi-publisher scenarios
   - Multi-subscriber scenarios
   - Cross-process (Link) latency
-  - Comparison vs ROS2, ZeroMQ, MQTT
+  - Comparison vs ROS2, Unix pipes
 - [ ] **Throughput benchmarks**:
   - Messages per second per topic
   - Total system throughput
@@ -405,7 +396,6 @@ order: 2
   - x86_64 (Intel, AMD)
   - ARM (Raspberry Pi 4, 5)
   - ARM (Jetson Nano, Xavier, Orin)
-  - RISC-V (future)
 - [ ] **Automated regression testing**:
   - CI/CD performance tests
   - Alerting on performance degradation
@@ -431,15 +421,31 @@ order: 2
 
 **Target**: Maintain &lt;300ns for control messages, &lt;2μs for sensor messages
 
+**Current Performance**:
+- Link (SPSC): ~320 ns median (640 cycles @ 2GHz)
+- Hub (MPMC): ~428 ns median (856 cycles @ 2GHz)
+
 **Optimization Areas**:
-- [ ] **Cache optimization**:
-  - Profile cache miss rates
-  - Optimize data layout
-  - Prefetch critical data
-- [ ] **Lock-free improvements**:
-  - Validate atomic operations
-  - Minimize memory barriers
-  - Compare atomic implementations
+- [x] **Cache optimization**:
+  - Fixed prefetch hints (temporal vs non-temporal) - Link optimized
+  - [x] 64-byte cache line alignment - **59% improvement** over 128-byte (Hub: 2084→856 cycles, Link: 1408→640 cycles)
+  - [x] Profile cache miss rates (perf stat): L1 1.30% miss rate (excellent), LLC 19.29% miss rate (expected for cross-core coherency)
+  - [ ] Further optimize data layout
+- [x] **Lock-free improvements** (tested):
+  - Spin-wait hints: **Rejected** - hurt performance by 40% (aggressive busy-spin is faster)
+  - Branch prediction hints (unlikely): **Rejected** - lost in 20-40% measurement variance
+  - Acquire/Release ordering changes: **Rejected** - hurt performance 13-41%
+  - Removed buggy buffer full check in Hub loan()
+  - **Conclusion**: Current atomic ordering is near-optimal for correctness
+- [ ] **Next steps for sub-100ns target** (currently ~320-437ns, need 70% reduction):
+  - Eliminate compare_exchange loop overhead (40-60 cycles)
+  - Remove all bounds checking in release builds
+  - Use raw pointer operations only
+  - Prefetch next slot: **Rejected** - adds overhead without benefit in ping-pong pattern (next slot not ready yet)
+  - Assembly inner loop for critical path
+  - Huge pages to reduce TLB misses
+  - CPU isolation (isolcpus kernel parameter)
+  - **Note**: 100ns (~200 cycles) is near theoretical limit of ~60 cycles for cross-core cache coherency
 - [ ] **SIMD**:
   - Vectorize large message copies
   - Platform-specific optimizations
@@ -450,7 +456,7 @@ order: 2
 - [ ] **Profiling**:
   - Continuous profiling in production
   - Flamegraph generation
-  - Bottleneck identification
+  - [x] Bottleneck identification (compare_exchange loop, cache coherency, bounds checking)
 
 **Validation**:
 - Maintain current performance on all platforms
@@ -472,7 +478,7 @@ order: 2
 - [ ] **How-to guides**:
   - Migrate from ROS2
   - Debug performance issues
-  - Deploy to embedded systems
+  - Deploy to embedded Linux systems
   - Profile and optimize nodes
   - Integrate with existing systems
   - Build custom simulators
@@ -536,8 +542,6 @@ order: 2
   - x86_64 Linux
   - ARM Linux (Raspberry Pi)
   - ARM Linux (Jetson)
-  - macOS (x86 + ARM)
-  - Windows (future)
 - [ ] **CI/CD**:
   - GitHub Actions for all platforms
   - Automated release process

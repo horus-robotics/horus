@@ -35,7 +35,7 @@ Authentication is required for publishing packages, sharing environments, and ac
 
 ```bash
 # Login with GitHub
-horus auth login --github
+horus auth login
 ```
 
 **What happens:**
@@ -75,7 +75,7 @@ horus auth logout
 **Step-by-step:**
 ```bash
 # 1. Run login command
-horus auth login --github
+horus auth login
 ```
 
 **Output:**
@@ -449,7 +449,7 @@ horus auth whoami
 **Error:**
 ```
 Error: Authentication required
-  Run: horus auth login --github
+  Run: horus auth login
 ```
 
 **Solutions:**
@@ -458,7 +458,7 @@ Error: Authentication required
 horus auth whoami
 
 # Re-authenticate
-horus auth login --github
+horus auth login
 
 # Verify credentials file exists
 ls -la ~/.horus/credentials
@@ -475,7 +475,7 @@ Error: Token expired
 **Solutions:**
 ```bash
 # Re-login (auto-refreshes token)
-horus auth login --github
+horus auth login
 
 # Or use API key instead
 horus auth generate-key
@@ -543,11 +543,8 @@ Error: OAuth authorization failed
 
 **Solutions:**
 ```bash
-# Try manual flow
-horus auth login --github --no-browser
-
-# Output:
-Visit this URL: https://github.com/login/oauth/authorize?client_id=...
+# Re-login
+horus auth login
 
 # Check browser popup blockers
 
@@ -566,7 +563,7 @@ curl https://api.github.com/user \
 export HORUS_REGISTRY_URL=https://registry.company.internal
 
 # Authenticate
-horus auth login --registry https://registry.company.internal
+horus auth login
 
 # Use as normal
 horus pkg publish
@@ -580,7 +577,7 @@ horus pkg publish
 mv ~/.horus/credentials ~/.horus/credentials.account1
 
 # Login with second account
-horus auth login --github
+horus auth login
 
 # Switch back
 mv ~/.horus/credentials ~/.horus/credentials.account2

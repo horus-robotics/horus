@@ -97,6 +97,12 @@ enum Commands {
         command: AuthCommands,
     },
 
+    /// Simulation tools (sim2d, sim3d)
+    Sim {
+        #[command(subcommand)]
+        command: SimCommands,
+    },
+
     /// Generate shell completion scripts
     #[command(hide = true)]
     Completion {
@@ -191,12 +197,8 @@ enum EnvCommands {
 
 #[derive(Subcommand)]
 enum AuthCommands {
-    /// Login to HORUS registry with GitHub
-    Login {
-        /// Use GitHub OAuth authentication
-        #[arg(long)]
-        github: bool,
-    },
+    /// Login to HORUS registry (requires GitHub)
+    Login,
     /// Generate API key after GitHub login
     GenerateKey {
         /// Name for the API key
@@ -210,6 +212,41 @@ enum AuthCommands {
     Logout,
     /// Show current authenticated user
     Whoami,
+}
+
+#[derive(Subcommand)]
+enum SimCommands {
+    /// Run 2D simulator (sim2d)
+    #[command(name = "2d")]
+    Sim2d {
+        /// World configuration file
+        #[arg(long)]
+        world: Option<PathBuf>,
+
+        /// Robot configuration file
+        #[arg(long)]
+        robot: Option<PathBuf>,
+
+        /// HORUS topic for velocity commands
+        #[arg(long, default_value = "cmd_vel")]
+        topic: String,
+
+        /// Robot name for logging
+        #[arg(long, default_value = "robot")]
+        name: String,
+    },
+
+    /// Run 3D simulator (sim3d) - Coming soon
+    #[command(name = "3d")]
+    Sim3d {
+        /// Headless mode (no rendering)
+        #[arg(long)]
+        headless: bool,
+
+        /// Random seed for deterministic simulation
+        #[arg(long)]
+        seed: Option<u64>,
+    },
 }
 
 fn main() {
@@ -856,12 +893,41 @@ fn run_command(command: Commands) -> HorusResult<()> {
         }
 
         Commands::Auth { command } => match command {
-            AuthCommands::Login { github } => commands::github_auth::login(github),
+            AuthCommands::Login => commands::github_auth::login(),
             AuthCommands::GenerateKey { name, environment } => {
                 commands::github_auth::generate_key(name, environment)
             }
             AuthCommands::Logout => commands::github_auth::logout(),
             AuthCommands::Whoami => commands::github_auth::whoami(),
+        },
+
+        Commands::Sim { command } => match command {
+            SimCommands::Sim2d { world, robot, topic, name } => {
+                println!("{} Starting sim2d...", "🎮".cyan());
+                println!("  Topic: {}", topic);
+                println!("  Robot name: {}", name);
+                if let Some(world_path) = world {
+                    println!("  World: {}", world_path.display());
+                }
+                if let Some(robot_path) = robot {
+                    println!("  Robot config: {}", robot_path.display());
+                }
+                println!("\n{}", "⚠️  sim2d integration coming soon!".yellow());
+                println!("For now, use: cd horus_library/tools/sim2d && cargo run --release");
+                Ok(())
+            }
+            SimCommands::Sim3d { headless, seed } => {
+                println!("{} Starting sim3d...", "🎮".cyan());
+                if headless {
+                    println!("  Mode: Headless");
+                }
+                if let Some(s) = seed {
+                    println!("  Seed: {}", s);
+                }
+                println!("\n{}", "⚠️  sim3d is planned for future release!".yellow());
+                println!("See roadmap: https://docs.horus-robotics.dev/roadmap");
+                Ok(())
+            }
         },
 
         Commands::Completion { shell } => {

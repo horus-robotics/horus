@@ -39,10 +39,18 @@ Pub publisher_custom(const char* topic, size_t msg_size);
 Sub subscriber(const char* topic, MessageType type);
 Sub subscriber_custom(const char* topic, size_t msg_size);
 
+// Forward declarations
+typedef struct HorusNodeContext HorusNodeContext;
+
 // Send/Receive
 bool send(Pub pub, const void* data);
 bool recv(Sub sub, void* data);
 bool try_recv(Sub sub, void* data);
+
+// Context-aware pub/sub (with logging support)
+bool node_send(HorusNodeContext* ctx, Pub pub, const void* data);
+bool node_recv(HorusNodeContext* ctx, Sub sub, void* data);
+bool node_try_recv(HorusNodeContext* ctx, Sub sub, void* data);
 
 // Timing
 void sleep_ms(uint32_t ms);
@@ -55,6 +63,60 @@ void log_info(const char* msg);
 void log_warn(const char* msg);
 void log_error(const char* msg);
 void log_debug(const char* msg);
+
+// ============================================================================
+// Framework API - Node/Scheduler integration
+// ============================================================================
+
+// Priority levels (matches Rust NodePriority)
+typedef enum {
+    PRIORITY_CRITICAL = 0,
+    PRIORITY_HIGH = 1,
+    PRIORITY_NORMAL = 2,
+    PRIORITY_LOW = 3,
+    PRIORITY_BACKGROUND = 4,
+} Priority;
+
+// Node lifecycle callbacks
+typedef bool (*NodeInitCallback)(HorusNodeContext* ctx, void* user_data);
+typedef void (*NodeTickCallback)(HorusNodeContext* ctx, void* user_data);
+typedef void (*NodeShutdownCallback)(HorusNodeContext* ctx, void* user_data);
+
+// Node handle type
+typedef uint32_t HorusNode;
+typedef uint32_t HorusScheduler;
+
+// Create a node with callbacks
+HorusNode node_create(const char* name,
+                      NodeInitCallback init_fn,
+                      NodeTickCallback tick_fn,
+                      NodeShutdownCallback shutdown_fn,
+                      void* user_data);
+
+// Destroy a node
+void node_destroy(HorusNode node);
+
+// Create a scheduler
+HorusScheduler scheduler_create(const char* name);
+
+// Register node with scheduler
+bool scheduler_register(HorusScheduler sched, HorusNode node, Priority priority);
+
+// Run scheduler (blocks until shutdown)
+void scheduler_run(HorusScheduler sched);
+
+// Stop scheduler
+void scheduler_stop(HorusScheduler sched);
+
+// Destroy scheduler
+void scheduler_destroy(HorusScheduler sched);
+
+// Context API - for use in callbacks
+Pub node_create_publisher(HorusNodeContext* ctx, const char* topic, MessageType type);
+Sub node_create_subscriber(HorusNodeContext* ctx, const char* topic, MessageType type);
+void node_log_info(HorusNodeContext* ctx, const char* msg);
+void node_log_warn(HorusNodeContext* ctx, const char* msg);
+void node_log_error(HorusNodeContext* ctx, const char* msg);
 
 // Common message structs
 typedef struct {

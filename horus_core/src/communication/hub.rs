@@ -155,58 +155,46 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug> Hub<T> {
     where
         T: std::fmt::Debug + Clone,
     {
-        // Clone message first (application overhead, not IPC)
-        let msg_clone = msg.clone();
+        // Measure IPC timing for logging
+        let ipc_start = Instant::now();
 
-        // Attempt to send message via shared memory using loan (faster!)
-        let ipc_ns = match self.shm_topic.loan() {
+        // Clone message for logging if context is provided
+        let msg_for_log = if ctx.is_some() { Some(msg.clone()) } else { None };
+
+        // Fast path: move message directly (zero-copy, no upfront clone!)
+        // For small messages (<= 16 bytes), this is optimal
+        match self.shm_topic.loan() {
             Ok(mut sample) => {
-                // Measure ONLY the pure IPC operation (write + publish)
-                let ipc_start = Instant::now();
-                sample.write(msg_clone);
-                // Sample automatically publishes when dropped (atomic pointer update)
-                drop(sample); // Explicit drop for clarity
-                let ipc_time = ipc_start.elapsed().as_nanos() as u64;
+                sample.write(msg);
+                drop(sample);
 
-                // Lock-free atomic increment for success metrics (OPTIMIZED)
+                let ipc_ns = ipc_start.elapsed().as_nanos() as u64;
+
                 self.metrics
                     .messages_sent
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-
-                // Lock-free state update (OPTIMIZED)
                 self.state.store(
                     ConnectionState::Connected.into_u8(),
                     std::sync::atomic::Ordering::Relaxed,
                 );
 
-                ipc_time
+                // Log the publish event with IPC timing
+                if let (Some(ctx), Some(msg_log)) = (ctx, msg_for_log) {
+                    ctx.log_pub(&self.topic_name, &msg_log, ipc_ns);
+                }
+
+                Ok(())
             }
             Err(_) => {
-                // Lock-free atomic increment for failure metrics (OPTIMIZED)
                 self.metrics
                     .send_failures
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-
-                // Lock-free state update (OPTIMIZED)
                 self.state.store(
                     ConnectionState::Failed.into_u8(),
                     std::sync::atomic::Ordering::Relaxed,
                 );
-
-                0 // Failed IPC
+                Err(msg) // Return original message on loan failure
             }
-        };
-
-        // Log the publish event with IPC timing
-        if let Some(ctx) = ctx {
-            ctx.log_pub(&self.topic_name, &msg, ipc_ns);
-        }
-
-        // Return result after logging
-        if ipc_ns == 0 {
-            Err(msg)
-        } else {
-            Ok(())
         }
     }
     /// Receive a message from the topic

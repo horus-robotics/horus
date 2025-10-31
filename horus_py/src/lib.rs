@@ -1,6 +1,7 @@
 use pyo3::prelude::*;
 
 mod hub;
+mod messages;  // Phase 3: Typed messages
 mod node;
 mod scheduler;
 mod types;
@@ -27,6 +28,9 @@ fn _horus(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyNodeState>()?;
     m.add_class::<PyNodePriority>()?;
     m.add_class::<PyNodeConfig>()?;
+
+    // Phase 3: Register typed message classes
+    messages::register_messages(m.py(), m)?;
 
     // Module-level functions
     m.add_function(wrap_pyfunction!(create_node, m)?)?;

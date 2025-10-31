@@ -51,6 +51,7 @@ pub struct SharedLogBuffer {
 
 impl SharedLogBuffer {
     pub fn new() -> crate::error::HorusResult<Self> {
+        // Logs are intentionally global (not session-isolated) so dashboard can see all logs
         let path = PathBuf::from("/dev/shm/horus_logs");
 
         // Ensure parent directory exists

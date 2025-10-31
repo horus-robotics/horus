@@ -37,42 +37,36 @@ fn auth_config_path() -> Result<PathBuf> {
 }
 
 /// Login to the HORUS registry with GitHub
-pub fn login(github: bool) -> HorusResult<()> {
+pub fn login() -> HorusResult<()> {
     let registry_url = get_registry_url();
 
-    if github {
-        // GitHub OAuth flow
-        println!("{} Logging in to HORUS registry with GitHub...", "".cyan());
-        println!();
-        println!(
-            "{} Opening browser for GitHub authentication...",
-            "".cyan()
-        );
-        println!("  {} {}/auth/github", "URL:".dimmed(), registry_url);
-        println!();
+    // GitHub OAuth flow
+    println!("{} Logging in to HORUS registry with GitHub...", "".cyan());
+    println!();
+    println!(
+        "{} Opening browser for GitHub authentication...",
+        "".cyan()
+    );
+    println!("  {} {}/auth/github", "URL:".dimmed(), registry_url);
+    println!();
 
-        // Open browser for GitHub OAuth
-        let auth_url = format!("{}/auth/github", registry_url);
-        if open::that(&auth_url).is_err() {
-            println!("{} Could not open browser automatically.", "!".yellow());
-            println!("Please visit: {}", auth_url.cyan());
-        }
-
-        println!();
-        println!(
-            "{} After authenticating with GitHub:",
-            "Next steps:".green()
-        );
-        println!("  1. You'll be redirected back to the registry");
-        println!("  2. Copy the displayed instructions");
-        println!("  3. Run: {}", "horus auth generate-key".cyan());
-        println!();
-        println!("{} GitHub authentication initiated!", "".green());
-    } else {
-        println!("{} GitHub authentication is required.", "!".yellow());
-        println!();
-        println!("Run: {}", "horus auth login --github".cyan());
+    // Open browser for GitHub OAuth
+    let auth_url = format!("{}/auth/github", registry_url);
+    if open::that(&auth_url).is_err() {
+        println!("{} Could not open browser automatically.", "!".yellow());
+        println!("Please visit: {}", auth_url.cyan());
     }
+
+    println!();
+    println!(
+        "{} After authenticating with GitHub:",
+        "Next steps:".green()
+    );
+    println!("  1. You'll be redirected back to the registry");
+    println!("  2. Copy the displayed instructions");
+    println!("  3. Run: {}", "horus auth generate-key".cyan());
+    println!();
+    println!("{} GitHub authentication initiated!", "".green());
 
     Ok(())
 }

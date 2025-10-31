@@ -21,6 +21,8 @@ try:
         PyHub as _PyHub,
         PyScheduler as _PyScheduler,
         get_version,
+        CmdVel,  # Phase 3: Typed messages
+        ImuMsg,  # Phase 3: Typed messages
     )
 except ImportError:
     # Fallback for testing without Rust bindings
@@ -29,6 +31,8 @@ except ImportError:
     _NodeInfo = None
     _PyHub = None
     _PyScheduler = None
+    CmdVel = None
+    ImuMsg = None
     def get_version(): return "0.1.0-mock"
 
 __version__ = "0.1.0"
@@ -38,6 +42,8 @@ __all__ = [
     "run",
     "quick",
     "get_version",
+    "CmdVel",  # Phase 3: Typed messages
+    "ImuMsg",  # Phase 3: Typed messages
 ]
 
 
@@ -128,6 +134,9 @@ class Node:
         # Message queues for subscriptions
         self._msg_queues = defaultdict(list)
 
+        # Phase 2: Message timestamps (topic -> [(msg, timestamp), ...])
+        self._msg_timestamps = defaultdict(list)
+
         # NodeInfo context (set by scheduler)
         self.info = None
 
@@ -179,6 +188,9 @@ class Node:
         self._receive_messages(topic)
 
         if self._msg_queues[topic]:
+            # Phase 2: Pop timestamp along with message
+            if self._msg_timestamps[topic]:
+                self._msg_timestamps[topic].pop(0)
             return self._msg_queues[topic].pop(0)
         return None
 
@@ -196,7 +208,75 @@ class Node:
 
         msgs = self._msg_queues[topic][:]
         self._msg_queues[topic].clear()
+        # Phase 2: Clear timestamps too
+        self._msg_timestamps[topic].clear()
         return msgs
+
+    def get_timestamp(self, topic: str) -> Optional[float]:
+        """
+        Get timestamp of the next message without consuming it (Phase 2).
+
+        Args:
+            topic: Topic to check
+
+        Returns:
+            Unix timestamp in seconds (with microsecond precision) or None
+        """
+        self._receive_messages(topic)
+
+        if self._msg_timestamps[topic]:
+            return self._msg_timestamps[topic][0]
+        return None
+
+    def get_message_age(self, topic: str) -> Optional[float]:
+        """
+        Get age of the next message in seconds (Phase 2).
+
+        Args:
+            topic: Topic to check
+
+        Returns:
+            Message age in seconds or None if no messages
+        """
+        timestamp = self.get_timestamp(topic)
+        if timestamp is not None and timestamp > 0:
+            import time
+            return time.time() - timestamp
+        return None
+
+    def is_stale(self, topic: str, max_age: float) -> bool:
+        """
+        Check if the next message is stale (Phase 2).
+
+        Args:
+            topic: Topic to check
+            max_age: Maximum acceptable age in seconds
+
+        Returns:
+            True if message is older than max_age, False otherwise
+        """
+        age = self.get_message_age(topic)
+        if age is None:
+            return False  # No message = not stale
+        return age > max_age
+
+    def get_with_timestamp(self, topic: str) -> Optional[tuple]:
+        """
+        Get next message with its timestamp (Phase 2).
+
+        Args:
+            topic: Topic to read from
+
+        Returns:
+            Tuple of (message, timestamp) or None if no messages
+        """
+        self._receive_messages(topic)
+
+        if self._msg_queues[topic]:
+            msg = self._msg_queues[topic].pop(0)
+            timestamp = self._msg_timestamps[topic].pop(0) if self._msg_timestamps[topic] else 0.0
+            return (msg, timestamp)
+        return None
 
     def send(self, topic: str, data: Any) -> bool:
         """
@@ -245,7 +325,7 @@ class Node:
         return True
 
     def _receive_messages(self, topic: str):
-        """Pull messages from hub into queue."""
+        """Pull messages from hub into queue (Phase 2: with timestamps)."""
         if self._node and topic in self._hubs:
             hub = self._hubs[topic]
             import time
@@ -261,12 +341,12 @@ class Node:
                     break
 
                 ipc_ns = end_ns - start_ns
-                data_bytes, metadata = result
+                data_bytes, msg_type, timestamp = result  # Phase 2: Now includes timestamp
 
                 # Deserialize
-                if metadata == "json":
+                if msg_type == "json":
                     msg = json.loads(data_bytes.decode('utf-8'))
-                elif metadata == "pickle":
+                elif msg_type == "pickle":
                     msg = pickle.loads(data_bytes)
                 else:
                     try:
@@ -279,7 +359,9 @@ class Node:
                     data_repr = _truncate_for_logging(msg)
                     self.info.log_sub(topic, data_repr, ipc_ns)
 
+                # Phase 2: Store message with timestamp
                 self._msg_queues[topic].append(msg)
+                self._msg_timestamps[topic].append(timestamp)
 
     def _internal_tick(self, info=None):
         """Internal tick called by scheduler."""
@@ -365,27 +447,27 @@ class Scheduler:
             self._scheduler = None
         self._nodes = []
 
-    def register(self, node, priority: int, logging: bool = False):
+    def register(self, node, priority: int, logging: bool = False, rate_hz: float = None):
         """
-        Register a node with explicit priority and logging (matches Rust API).
+        Register a node with explicit priority, logging, and optional rate control.
 
         Args:
             node: Node instance to register
             priority: Priority level (lower number = higher priority, 0 = highest)
             logging: Enable logging for this node (default: False)
+            rate_hz: Execution rate in Hz (default: uses scheduler's tick rate)
 
         Example:
-            scheduler.register(sensor_node, 0, True)   # Highest priority, logging on
-            scheduler.register(control_node, 1, False) # Medium priority, logging off
-            scheduler.register(motor_node, 2, True)    # Lowest priority, logging on
+            scheduler.register(sensor_node, 0, True, 100.0)   # 100Hz, highest priority, logging on
+            scheduler.register(control_node, 1, False, 50.0)  # 50Hz, medium priority, logging off
+            scheduler.register(motor_node, 2, True, 10.0)     # 10Hz, lowest priority, logging on
         """
         self._nodes.append(node)
 
-        if self._scheduler and node._node:
-            # Set up callbacks
-            node._node.set_callback(node)
-            # Register with priority and logging
-            self._scheduler.register(node._node, priority, logging)
+        if self._scheduler:
+            # Register the Python Node wrapper directly, not the internal _node
+            # The Rust scheduler will call node.tick(info) and node.init(info)
+            self._scheduler.register(node, priority, logging, rate_hz)
 
         return self
 
@@ -419,8 +501,9 @@ class Scheduler:
             for node in self._nodes:
                 node._internal_init()
 
-            # Set a default tick rate
-            self._scheduler.set_tick_rate(30.0)  # Default 30Hz
+            # Set scheduler tick rate to a high value to support per-node rate control
+            # The scheduler needs to tick faster than the fastest node
+            self._scheduler.set_tick_rate(1000.0)  # 1000Hz allows fine-grained control
 
             # Run
             if duration:
@@ -451,6 +534,46 @@ class Scheduler:
         """Stop the scheduler."""
         if self._scheduler:
             self._scheduler.stop()
+
+    def set_node_rate(self, node_name: str, rate_hz: float):
+        """
+        Set the execution rate for a specific node at runtime.
+
+        Args:
+            node_name: Name of the node to update
+            rate_hz: New rate in Hz (must be between 0 and 10000)
+
+        Example:
+            scheduler.set_node_rate("sensor", 100.0)  # Run sensor at 100Hz
+            scheduler.set_node_rate("logger", 10.0)   # Run logger at 10Hz
+        """
+        if self._scheduler:
+            self._scheduler.set_node_rate(node_name, rate_hz)
+
+    def get_node_stats(self, node_name: str) -> dict:
+        """
+        Get statistics for a specific node.
+
+        Args:
+            node_name: Name of the node
+
+        Returns:
+            Dictionary with node stats including:
+            - name: Node name
+            - priority: Priority level
+            - rate_hz: Execution rate in Hz
+            - logging_enabled: Whether logging is enabled
+            - total_ticks: Total number of ticks executed
+            - errors_count: Number of errors encountered
+
+        Example:
+            stats = scheduler.get_node_stats("sensor")
+            print(f"Node {stats['name']} running at {stats['rate_hz']}Hz")
+            print(f"Total ticks: {stats['total_ticks']}")
+        """
+        if self._scheduler:
+            return self._scheduler.get_node_stats(node_name)
+        return {}
 
 
 # Convenience functions

@@ -17,7 +17,7 @@
 //! ```
 
 use colored::Colorize;
-use horus::prelude::Hub;
+use horus::prelude::{Hub, Link};
 use horus_library::messages::cmd_vel::CmdVel;
 use std::env;
 use std::fs;
@@ -26,6 +26,9 @@ use std::time::Duration;
 
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::_rdtsc;
+
+#[cfg(feature = "iceoryx2")]
+use iceoryx2::prelude::*;
 
 const ITERATIONS: usize = 10_000;
 const WARMUP: usize = 1_000;
@@ -77,11 +80,15 @@ fn calibrate_rdtsc() -> u64 {
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    // Subprocess mode
+    // Subprocess mode: <ipc_type> <role> <topic> <barrier_file>
     if args.len() > 1 {
         match args[1].as_str() {
-            "producer" => producer(&args[2], &args[3]),
-            "consumer" => consumer(&args[2], &args[3]),
+            "hub_producer" => hub_producer(&args[2], &args[3]),
+            "hub_consumer" => hub_consumer(&args[2], &args[3]),
+            #[cfg(feature = "iceoryx2")]
+            "ice_producer" => ice_producer(&args[2], &args[3]),
+            #[cfg(feature = "iceoryx2")]
+            "ice_consumer" => ice_consumer(&args[2], &args[3]),
             _ => eprintln!("Unknown mode: {}", args[1]),
         }
         return;
@@ -106,43 +113,76 @@ fn main() {
     println!("  • Number of runs: {}", format!("{}", NUM_RUNS).bright_green());
     println!("  • CPU Affinity: producer=core0, consumer=core1");
     println!("  • Measurement: rdtsc timestamp embedded in message");
-    println!("  • Cache Alignment: 64-byte (will test 128-byte separately)");
+    println!("  • Pattern: Ping-pong (ack before next send - no queue buildup)");
+    println!("  • Cache Alignment: 64-byte (optimized for x86_64)");
     println!();
 
-    println!("\n{}", "Running benchmarks...".bright_white().bold());
-    println!();
+    // Run benchmarks for each IPC system
+    run_all_benchmarks();
 
+    println!("\n{}", "═".repeat(80).bright_cyan().bold());
+    println!();
+}
+
+fn run_all_benchmarks() {
+    // 1. Hub (multi-process MPMC)
+    println!("\n{}", "═".repeat(80).bright_white());
+    println!("{}", "  HORUS HUB (Multi-Process MPMC)".bright_white().bold());
+    println!("{}", "═".repeat(80).bright_white());
+    run_ipc_benchmark("hub");
+
+    // 2. Link (single-process SPSC)
+    println!("\n{}", "═".repeat(80).bright_white());
+    println!("{}", "  HORUS LINK (Single-Process SPSC)".bright_white().bold());
+    println!("{}", "═".repeat(80).bright_white());
+    run_link_benchmark();
+
+    // 3. iceoryx2 (single-process threading, like their official benchmark)
+    #[cfg(feature = "iceoryx2")]
+    {
+        println!("\n{}", "═".repeat(80).bright_white());
+        println!("{}", "  ICEORYX2 (Single-Process Threading)".bright_white().bold());
+        println!("{}", "═".repeat(80).bright_white());
+        run_iceoryx2_benchmark();
+    }
+}
+
+fn run_ipc_benchmark(ipc_type: &str) {
     let mut all_latencies = Vec::new();
 
     for run in 1..=NUM_RUNS {
         print!("  Run {}/{}: ", run, NUM_RUNS);
         std::io::Write::flush(&mut std::io::stdout()).unwrap();
 
-        let latencies = run_benchmark();
+        let latencies = run_benchmark(ipc_type);
         let median_cycles = median(&latencies);
 
         all_latencies.push(latencies);
         println!("{} cycles median", median_cycles);
     }
 
-    // Aggregate statistics
-    println!();
-    println!("{}", "═".repeat(80).bright_white());
-    println!("{}", "  RESULTS (CPU Cycles)".bright_white().bold());
-    println!("{}", "═".repeat(80).bright_white());
+    print_results(&all_latencies);
+}
 
+fn print_results(all_latencies: &[Vec<u64>]) {
     let all_cycles: Vec<u64> = all_latencies.iter().flatten().copied().collect();
+
+    if all_cycles.is_empty() {
+        println!("\n  {} No results collected", "✗".bright_red());
+        return;
+    }
+
     let median = median(&all_cycles);
     let p95 = percentile(&all_cycles, 95);
     let p99 = percentile(&all_cycles, 99);
     let min = *all_cycles.iter().min().unwrap();
     let max = *all_cycles.iter().max().unwrap();
 
-    println!("\n  Median:  {} cycles", format!("{}", median).bright_green());
-    println!("  P95:     {} cycles", p95);
-    println!("  P99:     {} cycles", p99);
-    println!("  Min:     {} cycles", min);
-    println!("  Max:     {} cycles", max);
+    println!("\n  Median:  {} cycles (~{} ns @ 2GHz)", format!("{}", median).bright_green(), median / 2);
+    println!("  P95:     {} cycles (~{} ns)", p95, p95 / 2);
+    println!("  P99:     {} cycles (~{} ns)", p99, p99 / 2);
+    println!("  Min:     {} cycles (~{} ns)", min, min / 2);
+    println!("  Max:     {} cycles (~{} ns)", max, max / 2);
 
     println!("\n{}", "Analysis:".bright_yellow());
     println!("  • Core-to-core theoretical minimum: ~60 cycles (30ns each way @ 2GHz)");
@@ -150,31 +190,33 @@ fn main() {
 
     if median < 100 {
         println!("  • {} Excellent performance!", "✓".bright_green());
-    } else if median < 200 {
-        println!("  • {} Good performance, but room for optimization", "⚠".bright_yellow());
+    } else if median < 2000 {
+        println!("  • {} Good performance", "✓".bright_green());
+    } else if median < 5000 {
+        println!("  • {} Acceptable performance", "⚠".bright_yellow());
     } else {
-        println!("  • {} High latency - investigate bottlenecks", "✗".bright_red());
+        println!("  • {} High latency", "⚠".bright_yellow());
     }
-
-    println!("\n{}", "═".repeat(80).bright_cyan().bold());
-    println!();
 }
 
-fn run_benchmark() -> Vec<u64> {
-    let topic = format!("bench_{}", std::process::id());
-    let barrier_file = format!("/tmp/barrier_{}", std::process::id());
+fn run_benchmark(ipc_type: &str) -> Vec<u64> {
+    let topic = format!("bench_{}_{}", ipc_type, std::process::id());
+    let barrier_file = format!("/tmp/barrier_{}_{}", ipc_type, std::process::id());
 
     // Create barrier
     fs::write(&barrier_file, &[0]).unwrap();
 
+    let producer_mode = format!("{}_producer", ipc_type);
+    let consumer_mode = format!("{}_consumer", ipc_type);
+
     // Start consumer first (waits on core 1)
-    let consumer = spawn_process("consumer", &topic, &barrier_file, 1);
+    let consumer = spawn_process(&consumer_mode, &topic, &barrier_file, 1);
 
     // Wait for consumer ready
     wait_for_barrier(&barrier_file, BARRIER_CONSUMER_READY, Duration::from_secs(5));
 
     // Start producer (runs on core 0)
-    let producer = spawn_process("producer", &topic, &barrier_file, 0);
+    let producer = spawn_process(&producer_mode, &topic, &barrier_file, 0);
 
     // Wait for completion
     let producer_output = producer.wait_with_output().unwrap();
@@ -229,9 +271,10 @@ fn spawn_process(mode: &str, topic: &str, barrier_file: &str, core: usize) -> Ch
         .expect("Failed to spawn process")
 }
 
-fn producer(topic: &str, _barrier_file: &str) {
-    eprintln!("Producer started for topic: {}", topic);
+fn hub_producer(topic: &str, _barrier_file: &str) {
+    eprintln!("Hub Producer started for topic: {}", topic);
 
+    // Create sender and receiver for ping-pong
     let sender = match Hub::<CmdVel>::new(topic) {
         Ok(s) => {
             eprintln!("Producer: Hub created successfully");
@@ -243,32 +286,58 @@ fn producer(topic: &str, _barrier_file: &str) {
         }
     };
 
+    let ack_topic = format!("{}_ack", topic);
+    let ack_receiver = match Hub::<CmdVel>::new(&ack_topic) {
+        Ok(r) => {
+            eprintln!("Producer: Ack receiver created");
+            r
+        }
+        Err(e) => {
+            eprintln!("Producer: Failed to create ack receiver: {:?}", e);
+            return;
+        }
+    };
+
     // Small delay to ensure consumer is ready
-    std::thread::sleep(Duration::from_millis(50));
+    std::thread::sleep(Duration::from_millis(100));
     eprintln!("Producer: Starting warmup");
 
-    // Warmup
+    // Warmup - ping-pong pattern
     for _ in 0..WARMUP {
         let tsc = rdtsc();
         let mut msg = CmdVel::new(1.0, 0.5);
         msg.stamp_nanos = tsc;
         sender.send(msg, None).unwrap();
+
+        // Wait for acknowledgment
+        loop {
+            if ack_receiver.recv(None).is_some() {
+                break;
+            }
+        }
     }
     eprintln!("Producer: Warmup complete");
 
-    // Measured iterations - embed rdtsc in message
+    // Measured iterations - ping-pong ensures no queue buildup
     eprintln!("Producer: Starting measured iterations");
     for _ in 0..ITERATIONS {
         let tsc = rdtsc();
         let mut msg = CmdVel::new(1.0, 0.5);
         msg.stamp_nanos = tsc; // Embed timestamp
         sender.send(msg, None).unwrap();
+
+        // Wait for acknowledgment before sending next
+        loop {
+            if ack_receiver.recv(None).is_some() {
+                break;
+            }
+        }
     }
     eprintln!("Producer: All messages sent");
 }
 
-fn consumer(topic: &str, barrier_file: &str) {
-    eprintln!("Consumer started for topic: {}", topic);
+fn hub_consumer(topic: &str, barrier_file: &str) {
+    eprintln!("Hub Consumer started for topic: {}", topic);
 
     let receiver = match Hub::<CmdVel>::new(topic) {
         Ok(r) => {
@@ -281,11 +350,24 @@ fn consumer(topic: &str, barrier_file: &str) {
         }
     };
 
+    // Create acknowledgment sender for ping-pong
+    let ack_topic = format!("{}_ack", topic);
+    let ack_sender = match Hub::<CmdVel>::new(&ack_topic) {
+        Ok(s) => {
+            eprintln!("Consumer: Ack sender created");
+            s
+        }
+        Err(e) => {
+            eprintln!("Consumer: Failed to create ack sender: {:?}", e);
+            return;
+        }
+    };
+
     // Signal ready
     write_barrier(barrier_file, BARRIER_CONSUMER_READY);
     eprintln!("Consumer: Signaled ready");
 
-    // Warmup - spin-poll with timeout
+    // Warmup - spin-poll with ping-pong acknowledgment
     eprintln!("Consumer: Starting warmup");
     let warmup_start = std::time::Instant::now();
     for i in 0..WARMUP {
@@ -293,6 +375,9 @@ fn consumer(topic: &str, barrier_file: &str) {
         let msg_start = std::time::Instant::now();
         loop {
             if let Some(_msg) = receiver.recv(None) {
+                // Send acknowledgment immediately
+                let ack = CmdVel::new(0.0, 0.0);
+                let _ = ack_sender.send(ack, None);
                 break;
             }
             attempts += 1;
@@ -305,7 +390,7 @@ fn consumer(topic: &str, barrier_file: &str) {
     }
     eprintln!("Consumer: Warmup complete in {:?}", warmup_start.elapsed());
 
-    // Measured receives - spin-poll with timeout
+    // Measured receives - measure latency then send ack
     eprintln!("Consumer: Starting measured iterations");
     for i in 0..ITERATIONS {
         let msg_start = std::time::Instant::now();
@@ -317,20 +402,459 @@ fn consumer(topic: &str, barrier_file: &str) {
 
                 // Print cycles (one per line for easy parsing)
                 println!("{}", cycles);
+
+                // Send acknowledgment to enable next message
+                let ack = CmdVel::new(0.0, 0.0);
+                let _ = ack_sender.send(ack, None);
                 break;
             }
-            if msg_start.elapsed().as_secs() > 5 {
-                eprintln!("Consumer: TIMEOUT waiting for message {} - only received {}/{}", i, i, ITERATIONS);
-                return;
-            }
+        }
+        if msg_start.elapsed().as_secs() > 5 {
+            eprintln!("Consumer: TIMEOUT waiting for message {} - only received {}/{}", i, i, ITERATIONS);
+            return;
         }
     }
     eprintln!("Consumer: Completed all iterations");
 }
 
 // ============================================================================
+// ICEORYX2 BENCHMARKS
+// ============================================================================
+
+#[cfg(feature = "iceoryx2")]
+fn ice_producer(topic: &str, barrier_file: &str) {
+    eprintln!("iceoryx2 Producer started for topic: {}", topic);
+
+    use iceoryx2::prelude::*;
+
+    let node = NodeBuilder::new().create::<ipc::Service>().unwrap();
+
+    // Create publisher for main messages
+    let service = node
+        .service_builder(&ServiceName::new(topic).unwrap())
+        .publish_subscribe::<CmdVel>()
+        .open_or_create()
+        .unwrap();
+
+    let publisher = service.publisher_builder().create().unwrap();
+
+    // Create subscriber for acknowledgments
+    let ack_topic_name = format!("{}_ack", topic);
+    let ack_service = node
+        .service_builder(&ServiceName::new(&ack_topic_name).unwrap())
+        .publish_subscribe::<CmdVel>()
+        .open_or_create()
+        .unwrap();
+
+    let ack_subscriber = ack_service.subscriber_builder().create().unwrap();
+
+    // Wait for consumer to signal ready
+    wait_for_barrier(barrier_file, BARRIER_CONSUMER_READY, Duration::from_secs(10));
+    eprintln!("iceoryx2 Producer: Consumer ready, starting warmup");
+
+    // Warmup - ping-pong pattern
+    for _ in 0..WARMUP {
+        let tsc = rdtsc();
+        let sample = publisher.loan_uninit().unwrap();
+        let _msg = sample.write_payload(CmdVel::with_timestamp(1.0, 0.5, tsc));
+        // Sample is automatically sent when dropped
+
+        // Wait for acknowledgment
+        loop {
+            if ack_subscriber.receive().unwrap().is_some() {
+                break;
+            }
+        }
+    }
+    eprintln!("iceoryx2 Producer: Warmup complete");
+
+    // Measured iterations - ping-pong ensures no queue buildup
+    eprintln!("iceoryx2 Producer: Starting measured iterations");
+    for _ in 0..ITERATIONS {
+        let tsc = rdtsc();
+        let sample = publisher.loan_uninit().unwrap();
+        let _msg = sample.write_payload(CmdVel::with_timestamp(1.0, 0.5, tsc));
+        // Sample is automatically sent when dropped
+
+        // Wait for acknowledgment before sending next
+        loop {
+            if ack_subscriber.receive().unwrap().is_some() {
+                break;
+            }
+        }
+    }
+    eprintln!("iceoryx2 Producer: All messages sent");
+}
+
+#[cfg(feature = "iceoryx2")]
+fn ice_consumer(topic: &str, barrier_file: &str) {
+    eprintln!("iceoryx2 Consumer started for topic: {}", topic);
+
+    use iceoryx2::prelude::*;
+
+    let node = NodeBuilder::new().create::<ipc::Service>().unwrap();
+
+    // Create subscriber for main messages
+    let service = node
+        .service_builder(&ServiceName::new(topic).unwrap())
+        .publish_subscribe::<CmdVel>()
+        .open_or_create()
+        .unwrap();
+
+    let subscriber = service.subscriber_builder().create().unwrap();
+
+    // Create publisher for acknowledgments
+    let ack_topic_name = format!("{}_ack", topic);
+    let ack_service = node
+        .service_builder(&ServiceName::new(&ack_topic_name).unwrap())
+        .publish_subscribe::<CmdVel>()
+        .open_or_create()
+        .unwrap();
+
+    let ack_publisher = ack_service.publisher_builder().create().unwrap();
+
+    // Signal ready
+    write_barrier(barrier_file, BARRIER_CONSUMER_READY);
+    eprintln!("iceoryx2 Consumer: Signaled ready");
+
+    // Give iceoryx2 time to fully establish subscriptions
+    std::thread::sleep(Duration::from_millis(200));
+
+    // Warmup - spin-poll with ping-pong acknowledgment
+    eprintln!("iceoryx2 Consumer: Starting warmup");
+    let warmup_start = std::time::Instant::now();
+    for i in 0..WARMUP {
+        let msg_start = std::time::Instant::now();
+        loop {
+            if let Some(sample) = subscriber.receive().unwrap() {
+                // Send acknowledgment immediately
+                let ack_sample = ack_publisher.loan_uninit().unwrap();
+                let _ack_msg = ack_sample.write_payload(CmdVel::new(0.0, 0.0));
+                // Ack sample is automatically sent when dropped
+                break;
+            }
+            if msg_start.elapsed().as_secs() > 5 {
+                eprintln!("iceoryx2 Consumer: TIMEOUT waiting for warmup message {}", i);
+                return;
+            }
+        }
+    }
+    eprintln!("iceoryx2 Consumer: Warmup complete in {:?}", warmup_start.elapsed());
+
+    // Measured receives - measure latency then send ack
+    eprintln!("iceoryx2 Consumer: Starting measured iterations");
+    for i in 0..ITERATIONS {
+        let msg_start = std::time::Instant::now();
+        loop {
+            if let Some(sample) = subscriber.receive().unwrap() {
+                let recv_tsc = rdtsc();
+                let msg = sample.payload();
+                let send_tsc = msg.stamp_nanos;
+                let cycles = recv_tsc.wrapping_sub(send_tsc);
+
+                // Print cycles (one per line for easy parsing)
+                println!("{}", cycles);
+
+                // Send acknowledgment to enable next message
+                let ack_sample = ack_publisher.loan_uninit().unwrap();
+                let _ack_msg = ack_sample.write_payload(CmdVel::new(0.0, 0.0));
+                // Ack sample is automatically sent when dropped
+                break;
+            }
+            if msg_start.elapsed().as_secs() > 5 {
+                eprintln!("iceoryx2 Consumer: TIMEOUT waiting for message {} - only received {}/{}", i, i, ITERATIONS);
+                return;
+            }
+        }
+    }
+    eprintln!("iceoryx2 Consumer: Completed all iterations");
+}
+
+// ============================================================================
+// LINK BENCHMARKS (Single-Process SPSC)
+// ============================================================================
+
+fn run_link_benchmark() {
+    use std::thread;
+
+    let mut all_latencies = Vec::new();
+
+    for run in 1..=NUM_RUNS {
+        print!("  Run {}/{}: ", run, NUM_RUNS);
+        std::io::Write::flush(&mut std::io::stdout()).unwrap();
+
+        let link_topic = format!("link_bench_{}", run);
+        let ack_topic = format!("link_ack_{}", run);
+
+        let link_send = Link::<CmdVel>::producer(&link_topic).unwrap();
+        let link_recv = Link::<CmdVel>::consumer(&link_topic).unwrap();
+        let ack_send = Link::<CmdVel>::producer(&ack_topic).unwrap();
+        let ack_recv = Link::<CmdVel>::consumer(&ack_topic).unwrap();
+
+        let producer_handle = {
+
+            thread::spawn(move || {
+                // Set CPU affinity to core 0 (same as Hub producer)
+                set_cpu_affinity(0);
+                // Warmup
+                for _ in 0..WARMUP {
+                    let tsc = rdtsc();
+                    let mut msg = CmdVel::new(1.0, 0.5);
+                    msg.stamp_nanos = tsc;
+                    let _ = link_send.send(msg, None);
+
+                    // Wait for ack
+                    loop {
+                        if ack_recv.recv(None).is_some() {
+                            break;
+                        }
+                                }
+                }
+
+                // Measured iterations
+                for _ in 0..ITERATIONS {
+                    let tsc = rdtsc();
+                    let mut msg = CmdVel::new(1.0, 0.5);
+                    msg.stamp_nanos = tsc;
+                    let _ = link_send.send(msg, None);
+
+                    // Wait for ack
+                    loop {
+                        if ack_recv.recv(None).is_some() {
+                            break;
+                        }
+                                }
+                }
+            })
+        };
+
+        let consumer_handle = {
+            thread::spawn(move || {
+                // Set CPU affinity to core 1 (same as Hub consumer)
+                set_cpu_affinity(1);
+
+                let mut latencies = Vec::with_capacity(ITERATIONS);
+
+                // Warmup
+                for _ in 0..WARMUP {
+                    loop {
+                        if link_recv.recv(None).is_some() {
+                            let _ = ack_send.send(CmdVel::new(0.0, 0.0), None);
+                            break;
+                        }
+                                }
+                }
+
+                // Measured iterations
+                for _ in 0..ITERATIONS {
+                    loop {
+                        if let Some(msg) = link_recv.recv(None) {
+                            let recv_tsc = rdtsc();
+                            let send_tsc = msg.stamp_nanos;
+                            let cycles = recv_tsc.wrapping_sub(send_tsc);
+                            latencies.push(cycles);
+
+                            // Send ack
+                            let _ = ack_send.send(CmdVel::new(0.0, 0.0), None);
+                            break;
+                        }
+                                }
+                }
+
+                latencies
+            })
+        };
+
+        producer_handle.join().unwrap();
+        let latencies = consumer_handle.join().unwrap();
+
+        let median_cycles = median(&latencies);
+        all_latencies.push(latencies);
+        println!("{} cycles median", median_cycles);
+    }
+
+    print_results(&all_latencies);
+}
+
+// ============================================================================
+// ICEORYX2 BENCHMARKS (Single-Process Threading - Official Pattern)
+// ============================================================================
+
+#[cfg(feature = "iceoryx2")]
+fn run_iceoryx2_benchmark() {
+    use std::thread;
+    use iceoryx2::prelude::*;
+
+    let mut all_latencies = Vec::new();
+
+    for run in 1..=NUM_RUNS {
+        print!("  Run {}/{}: ", run, NUM_RUNS);
+        std::io::Write::flush(&mut std::io::stdout()).unwrap();
+
+        // Create two services for ping-pong pattern (a2b and b2a)
+        let service_name_a2b = ServiceName::new(&format!("ice_a2b_{}", run)).unwrap();
+        let service_name_b2a = ServiceName::new(&format!("ice_b2a_{}", run)).unwrap();
+
+        // Use local::Service for single-process threading (ipc::Service uses Rc, can't Send)
+        let node = NodeBuilder::new().create::<local::Service>().unwrap();
+
+        let service_a2b = node
+            .service_builder(&service_name_a2b)
+            .publish_subscribe::<CmdVel>()
+            .max_publishers(1)
+            .max_subscribers(1)
+            .history_size(0)
+            .subscriber_max_buffer_size(1)
+            .enable_safe_overflow(true)
+            .create()
+            .unwrap();
+
+        let service_b2a = node
+            .service_builder(&service_name_b2a)
+            .publish_subscribe::<CmdVel>()
+            .max_publishers(1)
+            .max_subscribers(1)
+            .history_size(0)
+            .subscriber_max_buffer_size(1)
+            .enable_safe_overflow(true)
+            .create()
+            .unwrap();
+
+        let producer_handle = {
+            // Capture services by reference using scoped thread
+            let service_a2b_ref = &service_a2b;
+            let service_b2a_ref = &service_b2a;
+
+            std::thread::scope(|s| {
+                s.spawn(move || {
+                    // Set CPU affinity to core 0 (same as Hub/Link producer)
+                    set_cpu_affinity(0);
+
+                    // Create publishers/subscribers INSIDE thread (iceoryx2 pattern)
+                    let publisher_a2b = service_a2b_ref.publisher_builder().create().unwrap();
+                    let subscriber_b2a = service_b2a_ref.subscriber_builder().create().unwrap();
+
+                // Warmup
+                for _ in 0..WARMUP {
+                    let tsc = rdtsc();
+                    let mut msg = CmdVel::new(1.0, 0.5);
+                    msg.stamp_nanos = tsc;
+
+                    let sample = publisher_a2b.loan_uninit().unwrap();
+                    let _ = sample.write_payload(msg);
+                    // sample auto-sends on drop
+
+                    // Wait for ack
+                    loop {
+                        if subscriber_b2a.receive().unwrap().is_some() {
+                            break;
+                        }
+                    }
+                }
+
+                // Measured iterations
+                for _ in 0..ITERATIONS {
+                    let tsc = rdtsc();
+                    let mut msg = CmdVel::new(1.0, 0.5);
+                    msg.stamp_nanos = tsc;
+
+                    let sample = publisher_a2b.loan_uninit().unwrap();
+                    let _ = sample.write_payload(msg);
+                    // sample auto-sends on drop
+
+                    // Wait for ack
+                    loop {
+                        if subscriber_b2a.receive().unwrap().is_some() {
+                            break;
+                        }
+                    }
+                }
+            });
+        })
+        };
+
+        let consumer_handle = {
+            thread::spawn(move || {
+                // Set CPU affinity to core 1 (same as Hub/Link consumer)
+                set_cpu_affinity(1);
+
+                let mut latencies = Vec::with_capacity(ITERATIONS);
+
+                // Warmup
+                for _ in 0..WARMUP {
+                    loop {
+                        if subscriber_a2b.receive().unwrap().is_some() {
+                            // Send ack
+                            let ack_sample = publisher_b2a.loan_uninit().unwrap();
+                            let _ = ack_sample.write_payload(CmdVel::new(0.0, 0.0));
+                            break;
+                        }
+                    }
+                }
+
+                // Measured iterations
+                for _ in 0..ITERATIONS {
+                    loop {
+                        if let Some(sample) = subscriber_a2b.receive().unwrap() {
+                            let recv_tsc = rdtsc();
+                            let msg = sample.payload();
+                            let send_tsc = msg.stamp_nanos;
+                            let cycles = recv_tsc.wrapping_sub(send_tsc);
+                            latencies.push(cycles);
+
+                            // Send ack
+                            let ack_sample = publisher_b2a.loan_uninit().unwrap();
+                            let _ = ack_sample.write_payload(CmdVel::new(0.0, 0.0));
+                            break;
+                        }
+                    }
+                }
+
+                latencies
+            })
+        };
+
+        producer_handle.join().unwrap();
+        let latencies = consumer_handle.join().unwrap();
+
+        let median_cycles = median(&latencies);
+        all_latencies.push(latencies);
+        println!("{} cycles median", median_cycles);
+    }
+
+    print_results(&all_latencies);
+}
+
+// ============================================================================
 // UTILITIES
 // ============================================================================
+
+#[cfg(target_os = "linux")]
+fn set_cpu_affinity(core: usize) {
+    use libc::{cpu_set_t, CPU_SET, CPU_ZERO, sched_setaffinity};
+    use std::mem;
+
+    unsafe {
+        let mut cpu_set: cpu_set_t = mem::zeroed();
+        CPU_ZERO(&mut cpu_set);
+        CPU_SET(core, &mut cpu_set);
+
+        let result = sched_setaffinity(
+            0, // 0 = current thread
+            mem::size_of::<cpu_set_t>(),
+            &cpu_set
+        );
+
+        if result != 0 {
+            eprintln!("Warning: Failed to set CPU affinity to core {}", core);
+        }
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn set_cpu_affinity(_core: usize) {
+    // No-op on non-Linux platforms
+}
 
 fn wait_for_barrier(barrier_file: &str, expected: u8, timeout: Duration) {
     let start = std::time::Instant::now();

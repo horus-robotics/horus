@@ -223,6 +223,187 @@ node = horus.Node(
 
 ## Advanced Features
 
+### ✨ Phase 1-3 Enhancements (NEW!)
+
+HORUS Python now includes production-grade features from the Rust implementation:
+
+#### Per-Node Rate Control (Phase 1)
+
+Each node can run at its own independent rate:
+
+```python
+scheduler = horus.Scheduler()
+
+# Different nodes, different rates
+scheduler.register(sensor_node, priority=0, logging=True, rate_hz=100.0)   # 100Hz sensor
+scheduler.register(control_node, priority=1, logging=False, rate_hz=50.0)  # 50Hz control
+scheduler.register(logger_node, priority=2, logging=True, rate_hz=10.0)    # 10Hz logging
+
+# Change rate at runtime
+scheduler.set_node_rate("sensor", 200.0)
+
+# Get node statistics
+stats = scheduler.get_node_stats("sensor")
+print(f"Node running at {stats['rate_hz']}Hz, {stats['total_ticks']} ticks executed")
+```
+
+#### Automatic Message Timestamps (Phase 2)
+
+All messages get automatic timestamps with microsecond precision:
+
+```python
+def control_tick(node):
+    # Check message age
+    if node.has_msg("sensor_data"):
+        age = node.get_message_age("sensor_data")
+        if age > 0.1:  # More than 100ms old
+            node.log_warning(f"Stale data: {age*1000:.1f}ms old")
+            return
+
+        # Or use built-in staleness detection
+        if node.is_stale("sensor_data", max_age=0.1):
+            return  # Skip stale data
+
+        # Get message with timestamp
+        msg, timestamp = node.get_with_timestamp("sensor_data")
+        latency = time.time() - timestamp
+```
+
+#### Typed Messages (Phase 3)
+
+Use Rust message types for better performance and type safety:
+
+```python
+import horus
+
+# Create typed messages
+cmd = horus.CmdVel(linear=1.5, angular=0.8)
+print(cmd)  # "linear: 1.50 m/s, angular: 0.80 rad/s"
+
+# Messages have automatic timestamps
+print(f"Message age: {cmd.age():.3f}s")
+
+# IMU data
+imu = horus.ImuMsg(
+    accel_x=1.0, accel_y=2.0, accel_z=3.0,
+    gyro_x=0.1, gyro_y=0.2, gyro_z=0.3
+)
+
+# Send typed messages (or still use dicts - backward compatible!)
+node.send("cmd_vel", cmd)
+node.send("imu_data", imu)
+```
+
+**Available message types:**
+- `horus.CmdVel` - Robot velocity commands (linear, angular)
+- `horus.ImuMsg` - IMU sensor data (accel, gyro)
+
+#### Multiprocess Execution (Phase 4)
+
+Python nodes can run in separate processes and communicate via shared memory:
+
+```bash
+# Run multiple Python files as separate processes
+horus run node1.py node2.py node3.py
+
+# Mix Python and Rust nodes
+horus run sensor.rs controller.py visualizer.py
+```
+
+All nodes in the same `horus run` session automatically share topics via shared memory. No configuration needed!
+
+**Example - Distributed System:**
+
+```python
+# sensor_node.py
+import horus
+
+def sensor_tick(node):
+    data = read_lidar()  # Your sensor code
+    node.send("lidar_data", data)
+
+sensor = horus.Node(name="lidar", pubs="lidar_data", tick=sensor_tick)
+horus.run(sensor)
+```
+
+```python
+# controller_node.py
+import horus
+
+def control_tick(node):
+    if node.has_msg("lidar_data"):
+        data = node.get("lidar_data")
+        cmd = compute_control(data)
+        node.send("motor_cmd", cmd)
+
+controller = horus.Node(
+    name="controller",
+    subs="lidar_data",
+    pubs="motor_cmd",
+    tick=control_tick
+)
+horus.run(controller)
+```
+
+```bash
+# Run both in separate processes
+horus run sensor_node.py controller_node.py
+```
+
+**Benefits:**
+- **Process isolation**: One crash doesn't kill everything
+- **Multi-language**: Mix Python, Rust, and C nodes
+- **Parallel execution**: True multicore utilization
+- **Zero configuration**: Shared memory IPC automatically set up
+
+#### Complete Example: All Features Together
+
+```python
+import horus
+import time
+
+def sensor_tick(node):
+    """High-frequency sensor (100Hz)"""
+    imu = horus.ImuMsg(accel_x=1.0, accel_y=0.0, accel_z=9.8)
+    node.send("imu_data", imu)
+
+def control_tick(node):
+    """Medium-frequency control (50Hz)"""
+    if node.has_msg("imu_data"):
+        # Check for stale data
+        if node.is_stale("imu_data", max_age=0.05):
+            node.log_warning("Stale IMU data!")
+            return
+
+        imu = node.get("imu_data")
+        cmd = horus.CmdVel(linear=1.0, angular=0.0)
+        node.send("cmd_vel", cmd)
+
+def logger_tick(node):
+    """Low-frequency logging (10Hz)"""
+    if node.has_msg("cmd_vel"):
+        msg, timestamp = node.get_with_timestamp("cmd_vel")
+        latency = (time.time() - timestamp) * 1000
+        node.log_info(f"Command latency: {latency:.1f}ms")
+
+# Create nodes
+sensor = horus.Node(name="imu", pubs="imu_data", tick=sensor_tick)
+controller = horus.Node(name="ctrl", subs="imu_data", pubs="cmd_vel", tick=control_tick)
+logger = horus.Node(name="log", subs="cmd_vel", tick=logger_tick)
+
+# Configure with different rates and priorities
+scheduler = horus.Scheduler()
+scheduler.register(sensor, priority=0, logging=True, rate_hz=100.0)
+scheduler.register(controller, priority=1, logging=False, rate_hz=50.0)
+scheduler.register(logger, priority=2, logging=True, rate_hz=10.0)
+
+scheduler.run(duration=5.0)
+
+# Check statistics
+stats = scheduler.get_node_stats("imu")
+print(f"Sensor: {stats['total_ticks']} ticks in 5 seconds")
+```
+
 ### Priority-based Execution (Deterministic)
 
 For robotics applications where execution order matters, use explicit priorities:
@@ -320,10 +501,16 @@ The HORUS Python API is designed for simplicity and productivity:
 
 ## Performance Tips
 
-1. **Use appropriate tick rates**: Higher rates increase CPU usage
-2. **Batch operations**: Process multiple messages per tick when possible
-3. **Keep tick() fast**: Avoid blocking operations
-4. **Use mock mode**: Test without Rust bindings using the built-in mock
+1. **Use per-node rate control**: Set different rates for different nodes
+   ```python
+   scheduler.register(sensor, priority=0, rate_hz=100.0)  # High-frequency sensor
+   scheduler.register(logger, priority=1, rate_hz=10.0)   # Low-frequency logger
+   ```
+2. **Monitor staleness**: Use `is_stale()` to detect and skip old data
+3. **Use typed messages**: `CmdVel` and `ImuMsg` are more efficient than dicts
+4. **Batch operations**: Process multiple messages per tick when possible
+5. **Keep tick() fast**: Avoid blocking operations
+6. **Check statistics**: Use `get_node_stats()` to monitor performance
 
 ## Development
 
@@ -343,10 +530,13 @@ maturin build --release
 ### Running Tests
 
 ```bash
-# Install test dependencies
-pip install pytest
+# Run all tests
+python3 tests/test_rate_control.py      # Phase 1: Per-node rates
+python3 tests/test_timestamps.py        # Phase 2: Timestamps
+python3 tests/test_typed_messages.py    # Phase 3: Typed messages
 
-# Run tests
+# Or use pytest
+pip install pytest
 pytest tests/
 ```
 

@@ -26,11 +26,17 @@ horus new my-project
 
 ### Python
 
-> **🚧 Under Development**: Python bindings are currently under active development.
+> **✅ Production-Ready**: Full-featured Python API with advanced capabilities
 
 **Best for:** Rapid prototyping, AI/ML integration, data processing, visualization
 
-Python bindings provide a simple, Pythonic API for HORUS. Perfect for integrating with NumPy, PyTorch, TensorFlow, and other Python libraries.
+Python bindings provide a simple, Pythonic API for HORUS with production-grade features:
+- **Per-node rate control** - Different rates for different nodes (100Hz sensor, 10Hz logger)
+- **Automatic timestamps** - Built-in message timing and staleness detection
+- **Typed messages** - Optional type-safe messages from Rust (CmdVel, ImuMsg)
+- **Multiprocess support** - Process isolation and multi-language systems
+
+Perfect for integrating with NumPy, PyTorch, TensorFlow, and other Python libraries.
 
 **Getting Started:**
 ```bash

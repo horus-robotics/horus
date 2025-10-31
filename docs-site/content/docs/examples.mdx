@@ -610,34 +610,88 @@ fn main() -> HorusResult<()> {
 
 ## Python Example
 
-HORUS supports Python with the same performance characteristics.
+HORUS Python provides a simple, functional API with production-ready features.
+
+### Basic Publisher-Subscriber
 
 ```python
 import horus
+import math
 
-class SensorNode(horus.Node):
-    def __init__(self):
-        self.data_pub = horus.Hub("sensor_data", float)
-        self.counter = 0.0
+# Publisher node
+def sensor_tick(node):
+    """Simulate sensor reading"""
+    counter = getattr(sensor_tick, 'counter', 0.0)
+    reading = math.sin(counter) * 10.0
+    node.send("sensor_data", reading)
+    sensor_tick.counter = counter + 0.1
 
-    def name(self):
-        return "PySensorNode"
+sensor = horus.Node(
+    name="PySensorNode",
+    pubs="sensor_data",
+    tick=sensor_tick,
+    rate=30
+)
 
-    def tick(self, ctx):
-        # Read sensor
-        import math
-        reading = math.sin(self.counter) * 10.0
+# Subscriber node
+def processor_tick(node):
+    """Process sensor data"""
+    if node.has_msg("sensor_data"):
+        data = node.get("sensor_data")
+        processed = data * 2.0
+        print(f"Processed: {processed:.2f}")
 
-        # Publish
-        self.data_pub.send(reading, ctx)
+processor = horus.Node(
+    name="PyProcessorNode",
+    subs="sensor_data",
+    tick=processor_tick
+)
 
-        self.counter += 0.1
-
-# Run node
+# Run both nodes
 if __name__ == "__main__":
-    scheduler = horus.Scheduler()
-    scheduler.register(SensorNode())
-    scheduler.tick_all()
+    horus.run(sensor, processor, duration=5)
+```
+
+### Advanced Features: Per-Node Rates & Timestamps
+
+```python
+import horus
+import time
+
+def high_freq_sensor(node):
+    """100Hz sensor"""
+    imu = horus.ImuMsg(accel_x=1.0, accel_y=0.0, accel_z=9.8)
+    node.send("imu_data", imu)
+
+def control_loop(node):
+    """50Hz controller with staleness detection"""
+    if node.has_msg("imu_data"):
+        # Skip stale data
+        if node.is_stale("imu_data", max_age=0.1):
+            node.log_warning("Skipping stale IMU data")
+            return
+
+        imu = node.get("imu_data")
+        cmd = horus.CmdVel(linear=1.0, angular=0.5)
+        node.send("cmd_vel", cmd)
+
+def logger(node):
+    """10Hz logger"""
+    if node.has_msg("cmd_vel"):
+        msg, timestamp = node.get_with_timestamp("cmd_vel")
+        latency = (time.time() - timestamp) * 1000
+        print(f"Command latency: {latency:.1f}ms")
+
+# Create scheduler with per-node rates
+scheduler = horus.Scheduler()
+scheduler.register(horus.Node("sensor", pubs="imu_data", tick=high_freq_sensor),
+                   priority=0, rate_hz=100.0)
+scheduler.register(horus.Node("control", subs="imu_data", pubs="cmd_vel", tick=control_loop),
+                   priority=1, rate_hz=50.0)
+scheduler.register(horus.Node("log", subs="cmd_vel", tick=logger),
+                   priority=2, rate_hz=10.0)
+
+scheduler.run(duration=5.0)
 ```
 
 ## Testing Pattern

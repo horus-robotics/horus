@@ -601,19 +601,19 @@ sudo mount -o remount,size=4G /dev/shm
 
 ### macOS
 
-HORUS works on macOS with limitations:
+HORUS requires Linux's `/dev/shm/`. On macOS, use:
 
-**Different implementation**: macOS uses different shared memory primitives
+**Docker**: Run HORUS in Linux container
 
-**Size limits**: Smaller default limits than Linux
+**VMware/VirtualBox**: Run Linux VM
 
-**Performance**: May vary compared to Linux
+**Cloud Linux**: Use remote Linux instance
 
-**Recommendation**: Use Linux for production
+See [Installation Guide](/getting-started/installation) for detailed setup instructions.
 
 ### Windows (WSL)
 
-Use Windows Subsystem for Linux:
+HORUS requires Linux's `/dev/shm/`. Use Windows Subsystem for Linux:
 
 ```powershell
 # Install WSL2
@@ -621,6 +621,8 @@ wsl --install
 
 # Inside WSL, HORUS works like native Linux
 ```
+
+WSL 2 provides full Linux compatibility including native `/dev/shm/` support.
 
 ## Best Practices
 

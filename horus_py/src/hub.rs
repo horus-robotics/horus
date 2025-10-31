@@ -4,6 +4,36 @@ use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+/// Structured message metadata (Phase 2: Timestamps)
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MessageMetadata {
+    pub msg_type: String,  // Serialization type: "json", "pickle", etc.
+    pub timestamp: f64,     // Unix timestamp in seconds (with microsecond precision)
+}
+
+impl MessageMetadata {
+    pub fn new(msg_type: String) -> Self {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs_f64();
+
+        Self {
+            msg_type,
+            timestamp,
+        }
+    }
+
+    pub fn to_json(&self) -> String {
+        serde_json::to_string(self).unwrap_or_default()
+    }
+
+    pub fn from_json(json: &str) -> Option<Self> {
+        serde_json::from_str(json).ok()
+    }
+}
 
 /// Generic message type that can be serialized between Rust and Python
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -95,11 +125,14 @@ impl PyHub {
         }
     }
 
-    /// Send with metadata
-    fn send_with_metadata(&self, data: Vec<u8>, metadata: String) -> PyResult<bool> {
+    /// Send with metadata (Phase 2: Automatically adds timestamp)
+    fn send_with_metadata(&self, data: Vec<u8>, msg_type: String) -> PyResult<bool> {
+        // Create metadata with automatic timestamp
+        let metadata = MessageMetadata::new(msg_type);
+
         let msg = GenericMessage {
             data,
-            metadata: Some(metadata),
+            metadata: Some(metadata.to_json()),
         };
 
         let hub = self
@@ -129,8 +162,9 @@ impl PyHub {
         }
     }
 
-    /// Try to receive a message with metadata
-    fn recv_with_metadata(&self, py: Python) -> PyResult<Option<(PyObject, Option<String>)>> {
+    /// Try to receive a message with metadata (Phase 2: Returns timestamp)
+    /// Returns: Option<(data_bytes, msg_type, timestamp)>
+    fn recv_with_metadata(&self, py: Python) -> PyResult<Option<(PyObject, String, f64)>> {
         let hub = self
             .hub
             .lock()
@@ -138,7 +172,20 @@ impl PyHub {
 
         if let Some(msg) = hub.recv(None) {
             let bytes = PyBytes::new_bound(py, &msg.data);
-            Ok(Some((bytes.into(), msg.metadata)))
+
+            // Parse structured metadata if available
+            let (msg_type, timestamp) = if let Some(ref metadata_str) = msg.metadata {
+                if let Some(metadata) = MessageMetadata::from_json(metadata_str) {
+                    (metadata.msg_type, metadata.timestamp)
+                } else {
+                    // Fallback for old-style metadata (just a string)
+                    (metadata_str.clone(), 0.0)
+                }
+            } else {
+                ("unknown".to_string(), 0.0)
+            };
+
+            Ok(Some((bytes.into(), msg_type, timestamp)))
         } else {
             Ok(None)
         }

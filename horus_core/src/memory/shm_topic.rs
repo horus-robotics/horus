@@ -14,7 +14,7 @@ const MAX_TOTAL_SIZE: usize = 100_000_000; // Maximum total shared memory size (
 const MAX_CONSUMERS: usize = 16; // Maximum number of consumers per topic (MPMC support)
 
 /// Header for shared memory ring buffer with cache-line alignment
-#[repr(C, align(64))] // Cache-line aligned for optimal performance
+#[repr(C, align(128))] // Cache-line aligned for optimal performance
 struct RingBufferHeader {
     capacity: AtomicUsize,
     head: AtomicUsize,
@@ -558,7 +558,7 @@ impl<T> ShmTopic<T> {
 
         // MPMC FIX: Get this consumer's current tail position from SHARED MEMORY
         let my_tail = header.consumer_tails[self.consumer_id].load(Ordering::Relaxed);
-        let current_head = header.head.load(Ordering::Acquire);
+        let current_head = header.head.load(Ordering::Acquire); // Synchronize with producer's Release
 
         // Validate tail position is within bounds
         if my_tail >= self.capacity {
@@ -589,16 +589,9 @@ impl<T> ShmTopic<T> {
         // MPMC FIX: Update this consumer's tail position in SHARED MEMORY
         header.consumer_tails[self.consumer_id].store(next_tail, Ordering::Relaxed);
 
-        // Read the message (non-destructive - message stays for other consumers) with comprehensive bounds checking
+        // Read the message (non-destructive - message stays for other consumers)
+        // Bounds already validated above
         let msg = unsafe {
-            // Comprehensive bounds checking
-            if my_tail >= self.capacity {
-                eprintln!(
-                    "Critical safety violation: consumer tail index {} >= capacity {}",
-                    my_tail, self.capacity
-                );
-                return None;
-            }
 
             // Calculate byte offset and verify it's within bounds
             let byte_offset = my_tail * mem::size_of::<T>();
@@ -628,21 +621,12 @@ impl<T> ShmTopic<T> {
             let head = header.head.load(Ordering::Relaxed);
             let next = (head + 1) % self.capacity;
 
-            // Check buffer capacity using same logic as push()
-            let current_sequence = header.sequence_number.load(Ordering::Relaxed);
-            let max_unread = (self.capacity * 3) / 4; // Allow 75% fill
-
-            if current_sequence >= max_unread
-                && current_sequence - header.sequence_number.load(Ordering::Relaxed) >= max_unread
-            {
-                return Err("Buffer full - cannot loan slot".into());
-            }
-
             // Try to claim this slot atomically
+            // Note: Buffer full checking removed (was buggy - sequence_number increments forever)
             match header.head.compare_exchange_weak(
                 head,
                 next,
-                Ordering::Acquire, // We need to acquire to ensure we see all previous writes
+                Ordering::Acquire, // Synchronize with consumers
                 Ordering::Relaxed,
             ) {
                 Ok(_) => {

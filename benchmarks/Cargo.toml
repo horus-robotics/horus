@@ -6,6 +6,10 @@ authors = ["HORUS Team"]
 description = "Professional benchmark suite for HORUS robotics framework"
 license = "MIT OR Apache-2.0"
 
+[features]
+default = []
+iceoryx2 = []
+
 [lib]
 name = "horus_benchmarks"
 path = "src/lib.rs"
@@ -26,6 +30,37 @@ doc = true
 [[bin]]
 name = "ipc_debug"
 path = "src/bin/ipc_debug.rs"
+doc = false
+
+# Production qualification test binaries
+[[bin]]
+name = "test_api_compatibility"
+path = "src/bin/test_api_compatibility.rs"
+doc = false
+
+[[bin]]
+name = "test_ipc_functionality"
+path = "src/bin/test_ipc_functionality.rs"
+doc = false
+
+[[bin]]
+name = "test_memory_safety"
+path = "src/bin/test_memory_safety.rs"
+doc = false
+
+[[bin]]
+name = "test_robotics_usage"
+path = "src/bin/test_robotics_usage.rs"
+doc = false
+
+[[bin]]
+name = "test_logging"
+path = "src/bin/test_logging.rs"
+doc = false
+
+[[bin]]
+name = "test_stress"
+path = "src/bin/test_stress.rs"
 doc = false
 
 [dependencies]

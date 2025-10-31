@@ -63,7 +63,7 @@ fn main() {
 
 ```bash
 # 1. Authenticate first (one-time)
-horus auth login --github
+horus auth login
 
 # 2. Navigate to your project
 cd my-awesome-controller
@@ -342,7 +342,7 @@ Before publishing:
 
 1. **Authenticate** with the registry:
    ```bash
-   horus auth login --github
+   horus auth login
    ```
 
 2. **Complete Cargo.toml** metadata:
@@ -842,7 +842,7 @@ mkdir examples
 horus run examples/demo.rs
 
 # 6. Publish
-horus auth login --github
+horus auth login
 horus pkg publish
 ```
 
@@ -948,12 +948,12 @@ horus pkg install dependency-name
 **Error:**
 ```
 Error: Authentication required to publish packages
-Run: horus auth login --github
+Run: horus auth login
 ```
 
 **Solution:**
 ```bash
-horus auth login --github
+horus auth login
 # Opens browser for GitHub OAuth
 ```
 

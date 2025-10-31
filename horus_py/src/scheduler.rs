@@ -1,12 +1,13 @@
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
+use pyo3::types::PyDict;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use horus::NodeInfo as CoreNodeInfo;
 use crate::node::PyNodeInfo;
 
-/// Registered node with priority and logging settings
+/// Registered node with priority, logging, and per-node rate control
 struct RegisteredNode {
     node: PyObject,
     name: String,
@@ -14,17 +15,20 @@ struct RegisteredNode {
     logging_enabled: bool,
     context: Arc<Mutex<CoreNodeInfo>>,
     cached_info: Option<Py<PyNodeInfo>>, // Cache PyNodeInfo to avoid creating new ones every tick
+    rate_hz: f64,  // Phase 1: Per-node rate control
+    last_tick: Instant, // Phase 1: Track last execution time
 }
 
-/// Python wrapper for HORUS Scheduler
+/// Python wrapper for HORUS Scheduler with per-node rate control
 ///
 /// The scheduler manages the execution of multiple nodes,
 /// handling their lifecycle and coordinating their execution.
+/// Supports per-node rate control for flexible scheduling.
 #[pyclass]
 pub struct PyScheduler {
     nodes: Arc<Mutex<Vec<RegisteredNode>>>,
     running: Arc<Mutex<bool>>,
-    tick_rate_hz: f64,
+    tick_rate_hz: f64, // Global scheduler tick rate
 }
 
 #[pymethods]
@@ -38,13 +42,17 @@ impl PyScheduler {
         })
     }
 
-    /// Register a node with priority and logging (matches Rust scheduler API)
-    fn register(&mut self, py: Python, node: PyObject, priority: u32, logging_enabled: bool) -> PyResult<()> {
+    /// Register a node with priority, logging, and optional rate control
+    #[pyo3(signature = (node, priority, logging_enabled, rate_hz=None))]
+    fn register(&mut self, py: Python, node: PyObject, priority: u32, logging_enabled: bool, rate_hz: Option<f64>) -> PyResult<()> {
         // Extract node name
         let name: String = node.getattr(py, "name")?.extract(py)?;
 
         // Create NodeInfo context for this node
         let context = Arc::new(Mutex::new(CoreNodeInfo::new(name.clone(), logging_enabled)));
+
+        // Use provided rate or default to global scheduler rate
+        let node_rate = rate_hz.unwrap_or(self.tick_rate_hz);
 
         // Store the registered node
         let mut nodes = self
@@ -59,11 +67,13 @@ impl PyScheduler {
             logging_enabled,
             context,
             cached_info: None, // Will be created on first use
+            rate_hz: node_rate, // Phase 1: Per-node rate
+            last_tick: Instant::now(), // Phase 1: Initialize timestamp
         });
 
         println!(
-            "Registered node '{}' with priority {} (logging: {})",
-            name, priority, logging_enabled
+            "Registered node '{}' with priority {} (logging: {}, rate: {}Hz)",
+            name, priority, logging_enabled, node_rate
         );
 
         Ok(())
@@ -80,7 +90,66 @@ impl PyScheduler {
             nodes.len() as u32
         };
 
-        self.register(py, node, priority, false)
+        self.register(py, node, priority, false, None)
+    }
+
+    /// Phase 1: Set per-node rate control
+    fn set_node_rate(&mut self, node_name: String, rate_hz: f64) -> PyResult<()> {
+        if rate_hz <= 0.0 || rate_hz > 10000.0 {
+            return Err(PyRuntimeError::new_err(
+                "Rate must be between 0 and 10000 Hz",
+            ));
+        }
+
+        let mut nodes = self
+            .nodes
+            .lock()
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
+
+        for registered in nodes.iter_mut() {
+            if registered.name == node_name {
+                registered.rate_hz = rate_hz;
+                println!("Set node '{}' rate to {}Hz", node_name, rate_hz);
+                return Ok(());
+            }
+        }
+
+        Err(PyRuntimeError::new_err(format!(
+            "Node '{}' not found",
+            node_name
+        )))
+    }
+
+    /// Phase 1: Get node statistics
+    fn get_node_stats(&self, py: Python, node_name: String) -> PyResult<PyObject> {
+        let nodes = self
+            .nodes
+            .lock()
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
+
+        for registered in nodes.iter() {
+            if registered.name == node_name {
+                let dict = PyDict::new_bound(py);
+                dict.set_item("name", &registered.name)?;
+                dict.set_item("priority", registered.priority)?;
+                dict.set_item("rate_hz", registered.rate_hz)?;
+                dict.set_item("logging_enabled", registered.logging_enabled)?;
+
+                // Get metrics from NodeInfo
+                if let Ok(ctx) = registered.context.lock() {
+                    let metrics = ctx.metrics();
+                    dict.set_item("total_ticks", metrics.total_ticks)?;
+                    dict.set_item("errors_count", metrics.errors_count)?;
+                }
+
+                return Ok(dict.into());
+            }
+        }
+
+        Err(PyRuntimeError::new_err(format!(
+            "Node '{}' not found",
+            node_name
+        )))
     }
 
     /// Remove a node from the scheduler
@@ -170,6 +239,19 @@ impl PyScheduler {
                 nodes.sort_by_key(|r| r.priority);
 
                 for registered in nodes.iter_mut() {
+                    // Phase 1: Check if enough time has elapsed for this node's rate
+                    let now = Instant::now();
+                    let elapsed_secs = (now - registered.last_tick).as_secs_f64();
+                    let period_secs = 1.0 / registered.rate_hz;
+
+                    // Skip this node if not enough time has passed
+                    if elapsed_secs < period_secs {
+                        continue;
+                    }
+
+                    // Update last tick time
+                    registered.last_tick = now;
+
                     // Start tick timing
                     if let Ok(mut ctx) = registered.context.lock() {
                         ctx.start_tick();
@@ -306,6 +388,19 @@ impl PyScheduler {
                 nodes.sort_by_key(|r| r.priority);
 
                 for registered in nodes.iter_mut() {
+                    // Phase 1: Check if enough time has elapsed for this node's rate
+                    let now = Instant::now();
+                    let elapsed_secs = (now - registered.last_tick).as_secs_f64();
+                    let period_secs = 1.0 / registered.rate_hz;
+
+                    // Skip this node if not enough time has passed
+                    if elapsed_secs < period_secs {
+                        continue;
+                    }
+
+                    // Update last tick time
+                    registered.last_tick = now;
+
                     // Start tick timing
                     if let Ok(mut ctx) = registered.context.lock() {
                         ctx.start_tick();

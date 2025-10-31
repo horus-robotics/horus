@@ -13,7 +13,7 @@ ifeq ($(UNAME_S),Darwin)
 endif
 
 # Examples
-EXAMPLES = lidar_driver camera_driver robot_arm_driver
+EXAMPLES = lidar_driver camera_driver robot_arm_driver framework_demo
 
 .PHONY: all clean build examples
 
@@ -33,6 +33,9 @@ camera_driver: build examples/camera_driver.cpp
 robot_arm_driver: build examples/robot_arm_driver.cpp
 	$(CXX) $(CXXFLAGS) examples/robot_arm_driver.cpp -o robot_arm_driver $(LDFLAGS)
 
+framework_demo: build examples/framework_demo.cpp
+	$(CXX) $(CXXFLAGS) examples/framework_demo.cpp -o framework_demo $(LDFLAGS)
+
 clean:
 	rm -f $(EXAMPLES)
 	cargo clean
@@ -47,6 +50,9 @@ run-camera: camera_driver
 run-robot: robot_arm_driver
 	./robot_arm_driver
 
+run-framework: framework_demo
+	./framework_demo
+
 help:
 	@echo "HORUS C++ API Build"
 	@echo "==================="
@@ -56,6 +62,7 @@ help:
 	@echo "make clean     - Clean all builds"
 	@echo ""
 	@echo "Run examples:"
-	@echo "make run-lidar   - Run LiDAR driver"
-	@echo "make run-camera  - Run camera driver"
-	@echo "make run-robot   - Run robot arm driver"
+	@echo "make run-lidar     - Run LiDAR driver"
+	@echo "make run-camera    - Run camera driver"
+	@echo "make run-robot     - Run robot arm driver"
+	@echo "make run-framework - Run framework demo (Node/Scheduler)"

@@ -1,20 +1,22 @@
 ---
 title: Python Bindings
-description: Simple & intuitive Python API for HORUS robotics
+description: Production-ready Python API for HORUS robotics with advanced features
 order: 14
 ---
 
 # HORUS Python Bindings
 
-> **🚧 Under Development**: HORUS Python bindings are currently under active development. Features and APIs may change. Check back for updates!
-
-**Simple & Intuitive Python API** for the HORUS robotics framework - makes creating distributed robotic systems as easy as writing a function.
+**Production-Ready Python API** for the HORUS robotics framework - combines simplicity with advanced features for professional robotics applications.
 
 ## Why HORUS Python?
 
 - **Zero Boilerplate**: Working node in 10 lines
 - **Functional API**: No class inheritance required
 - **Production Performance**: ~500ns latency (same shared memory as Rust)
+- **Per-Node Rate Control**: Different nodes at different frequencies (100Hz sensor, 10Hz logger)
+- **Automatic Timestamps**: Built-in message timing and staleness detection
+- **Typed Messages**: Optional type-safe messages from Rust
+- **Multiprocess Support**: Process isolation and multi-language nodes
 - **Pythonic**: Feels like native Python, not wrapped C++
 - **Rich Ecosystem**: Use NumPy, OpenCV, scikit-learn, etc.
 
@@ -341,6 +343,263 @@ horus.merge(["sensor1", "sensor2", "sensor3"], "all_sensors")
 
 ---
 
+## Advanced Features (Production-Ready)
+
+HORUS Python includes advanced features that match or exceed ROS2 capabilities while maintaining simplicity.
+
+### Per-Node Rate Control (Phase 1)
+
+Each node can run at its own independent rate, enabling optimal performance for different tasks:
+
+```python
+import horus
+
+# Create scheduler with per-node rates
+scheduler = horus.Scheduler()
+
+# High-frequency sensor (100Hz)
+scheduler.register(sensor_node, priority=0, logging=True, rate_hz=100.0)
+
+# Medium-frequency controller (50Hz)
+scheduler.register(control_node, priority=1, logging=False, rate_hz=50.0)
+
+# Low-frequency logger (10Hz)
+scheduler.register(logger_node, priority=2, logging=True, rate_hz=10.0)
+
+scheduler.run()
+```
+
+**Runtime Rate Adjustment:**
+
+```python
+# Change node rate while running
+scheduler.set_node_rate("sensor", 200.0)  # Increase to 200Hz
+
+# Get node statistics
+stats = scheduler.get_node_stats("sensor")
+print(f"Node: {stats['name']}")
+print(f"Rate: {stats['rate_hz']}Hz")
+print(f"Total ticks: {stats['total_ticks']}")
+print(f"Errors: {stats['errors_count']}")
+```
+
+**Priority-Based Execution:**
+
+Lower priority numbers execute first, ensuring correct data flow:
+
+```python
+scheduler.register(sensor, priority=0)     # Executes FIRST
+scheduler.register(controller, priority=1) # Executes SECOND
+scheduler.register(actuator, priority=2)   # Executes THIRD
+```
+
+### Automatic Timestamps (Phase 2)
+
+All messages automatically get microsecond-precision timestamps:
+
+```python
+import horus
+import time
+
+def control_tick(node):
+    if node.has_msg("sensor_data"):
+        # Check message age
+        age = node.get_message_age("sensor_data")
+        if age > 0.1:  # More than 100ms old
+            node.log_warning(f"Stale data: {age*1000:.1f}ms old")
+            return
+
+        # Or use built-in staleness detection
+        if node.is_stale("sensor_data", max_age=0.1):
+            return  # Skip stale data
+
+        # Get message with timestamp
+        msg, timestamp = node.get_with_timestamp("sensor_data")
+        latency = time.time() - timestamp
+        print(f"Latency: {latency*1000:.1f}ms")
+
+        # Process fresh data
+        data = node.get("sensor_data")
+        process(data)
+```
+
+**Timestamp Methods:**
+
+- `node.get_message_age(topic)` - Get age of next message in seconds
+- `node.is_stale(topic, max_age)` - Check if message is too old
+- `node.get_timestamp(topic)` - Peek at timestamp without consuming
+- `node.get_with_timestamp(topic)` - Get message and timestamp together
+
+### Typed Messages (Phase 3)
+
+Use Rust message types for better performance and type safety:
+
+```python
+import horus
+
+# Create typed messages
+cmd = horus.CmdVel(linear=1.5, angular=0.8)
+print(cmd)  # "linear: 1.50 m/s, angular: 0.80 rad/s"
+
+# Messages have automatic timestamps
+print(f"Message age: {cmd.age():.3f}s")
+
+# IMU data
+imu = horus.ImuMsg(
+    accel_x=1.0, accel_y=2.0, accel_z=3.0,
+    gyro_x=0.1, gyro_y=0.2, gyro_z=0.3
+)
+
+# Send typed messages
+node.send("cmd_vel", cmd)
+node.send("imu_data", imu)
+
+# Still backward compatible with dicts!
+node.send("cmd_vel", {"linear": 1.0, "angular": 0.5})
+```
+
+**Available Message Types:**
+
+- `horus.CmdVel(linear, angular)` - Robot velocity commands
+- `horus.ImuMsg(accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z)` - IMU sensor data
+
+**Message Features:**
+
+```python
+cmd = horus.CmdVel(linear=2.0, angular=1.0)
+
+# Access fields
+print(cmd.linear, cmd.angular)
+
+# Get timestamp
+print(cmd.timestamp)
+
+# Check age
+if cmd.age() > 0.1:
+    print("Message is stale")
+
+# Convert to dict for compatibility
+d = cmd.to_dict()
+
+# Create from dict
+cmd2 = horus.CmdVel.from_dict(d)
+
+# Factory methods
+stop = horus.CmdVel.zero()  # Create stop command
+```
+
+### Multiprocess Execution (Phase 4)
+
+Run Python nodes in separate processes for isolation and multi-language support:
+
+```bash
+# Run multiple Python files as separate processes
+horus run node1.py node2.py node3.py
+
+# Mix Python and Rust nodes
+horus run sensor.rs controller.py visualizer.py
+
+# Mix all languages
+horus run lidar_driver.c planner.py motor_control.rs
+```
+
+All nodes in the same `horus run` session automatically communicate via shared memory!
+
+**Example - Distributed System:**
+
+```python
+# sensor_node.py
+import horus
+
+def sensor_tick(node):
+    data = read_lidar()  # Your sensor code
+    node.send("lidar_data", data)
+
+sensor = horus.Node(name="lidar", pubs="lidar_data", tick=sensor_tick)
+horus.run(sensor)
+```
+
+```python
+# controller_node.py
+import horus
+
+def control_tick(node):
+    if node.has_msg("lidar_data"):
+        data = node.get("lidar_data")
+        cmd = compute_control(data)
+        node.send("motor_cmd", cmd)
+
+controller = horus.Node(
+    name="controller",
+    subs="lidar_data",
+    pubs="motor_cmd",
+    tick=control_tick
+)
+horus.run(controller)
+```
+
+```bash
+# Run both in separate processes
+horus run sensor_node.py controller_node.py
+```
+
+**Benefits:**
+- **Process isolation**: One crash doesn't kill everything
+- **Multi-language**: Mix Python, Rust, and C nodes seamlessly
+- **Parallel execution**: True multicore utilization
+- **Zero configuration**: Shared memory IPC automatically set up
+
+### Complete Example: All Features Together
+
+```python
+import horus
+import time
+
+def sensor_tick(node):
+    """High-frequency sensor (100Hz)"""
+    imu = horus.ImuMsg(accel_x=1.0, accel_y=0.0, accel_z=9.8)
+    node.send("imu_data", imu)
+    node.log_info(f"Published IMU (age: {imu.age():.3f}s)")
+
+def control_tick(node):
+    """Medium-frequency control (50Hz)"""
+    if node.has_msg("imu_data"):
+        # Check for stale data
+        if node.is_stale("imu_data", max_age=0.05):
+            node.log_warning("Stale IMU data!")
+            return
+
+        imu = node.get("imu_data")
+        cmd = horus.CmdVel(linear=1.0, angular=0.0)
+        node.send("cmd_vel", cmd)
+
+def logger_tick(node):
+    """Low-frequency logging (10Hz)"""
+    if node.has_msg("cmd_vel"):
+        msg, timestamp = node.get_with_timestamp("cmd_vel")
+        latency = (time.time() - timestamp) * 1000
+        node.log_info(f"Command latency: {latency:.1f}ms")
+
+# Create nodes
+sensor = horus.Node(name="imu", pubs="imu_data", tick=sensor_tick)
+controller = horus.Node(name="ctrl", subs="imu_data", pubs="cmd_vel", tick=control_tick)
+logger = horus.Node(name="log", subs="cmd_vel", tick=logger_tick)
+
+# Configure with different rates and priorities
+scheduler = horus.Scheduler()
+scheduler.register(sensor, priority=0, logging=True, rate_hz=100.0)
+scheduler.register(controller, priority=1, logging=False, rate_hz=50.0)
+scheduler.register(logger, priority=2, logging=True, rate_hz=10.0)
+
+scheduler.run(duration=5.0)
+
+# Check statistics
+stats = scheduler.get_node_stats("imu")
+print(f"Sensor: {stats['total_ticks']} ticks in 5 seconds")
+```
+
+---
+
 ## Integration with Python Ecosystem
 
 ### NumPy Integration
@@ -511,21 +770,59 @@ processor = horus.Node(
 
 ## Performance Tips
 
-### 1. Use Appropriate Tick Rates
+### 1. Use Per-Node Rate Control
 
 ```python
-# High-frequency control loop
-controller = horus.Node(tick=control_fn, rate=100)  # 100Hz
+# NEW: Use scheduler with per-node rates for optimal performance
+scheduler = horus.Scheduler()
 
-# Low-frequency monitoring
-monitor = horus.Node(tick=monitor_fn, rate=1)  # 1Hz
+# High-frequency sensor (100Hz)
+scheduler.register(sensor, priority=0, rate_hz=100.0)
+
+# Medium-frequency control (50Hz)
+scheduler.register(controller, priority=1, rate_hz=50.0)
+
+# Low-frequency logging (10Hz)
+scheduler.register(logger, priority=2, rate_hz=10.0)
+
+scheduler.run()
+
+# Monitor performance with get_node_stats()
+stats = scheduler.get_node_stats("sensor")
+print(f"Sensor executed {stats['total_ticks']} ticks")
 ```
 
-### 2. Batch Processing
+### 2. Monitor Message Staleness
+
+```python
+def control_tick(node):
+    # Skip stale data to maintain real-time performance
+    if node.is_stale("sensor_data", max_age=0.1):
+        node.log_warning("Skipping stale sensor data")
+        return
+
+    # Process fresh data only
+    data = node.get("sensor_data")
+    process(data)
+```
+
+### 3. Use Typed Messages
+
+```python
+# Typed messages are more efficient than dicts
+cmd = horus.CmdVel(linear=1.5, angular=0.8)
+node.send("cmd_vel", cmd)
+
+# Check message age efficiently
+if cmd.age() > 0.1:
+    print("Message is stale")
+```
+
+### 4. Batch Processing
 
 ```python
 def batch_processor(node):
-    # Process all available messages
+    # Process all available messages at once
     messages = node.get_all("input")
     if messages:
         results = [process(msg) for msg in messages]
@@ -533,7 +830,7 @@ def batch_processor(node):
             node.send("output", result)
 ```
 
-### 3. Keep tick() Fast
+### 5. Keep tick() Fast
 
 ```python
 # GOOD: Fast tick
@@ -549,7 +846,7 @@ def bad_tick(node):
     data = requests.get("http://api.example.com")  # Don't do I/O!
 ```
 
-### 4. Offload Heavy Processing
+### 6. Offload Heavy Processing
 
 ```python
 from concurrent.futures import ThreadPoolExecutor
@@ -564,6 +861,15 @@ def heavy_processing_node(node):
         # Don't block - check result later or use callback
 ```
 
+### 7. Use Multiprocess for CPU-Intensive Tasks
+
+```bash
+# Isolate heavy processing in separate processes
+horus run sensor.py heavy_vision.py light_controller.py
+
+# Each node gets its own CPU core
+```
+
 ---
 
 ## Development
@@ -572,6 +878,7 @@ def heavy_processing_node(node):
 
 ```bash
 # Debug build (fast compile, slow runtime)
+cd horus_py
 maturin develop
 
 # Release build (slow compile, fast runtime)
@@ -587,11 +894,19 @@ maturin build --release
 # Install test dependencies
 pip install pytest
 
-# Run tests
+# Run all tests
 pytest tests/
+
+# Run specific feature tests
+python3 tests/test_rate_control.py    # Phase 1: Per-node rates
+python3 tests/test_timestamps.py      # Phase 2: Timestamps
+python3 tests/test_typed_messages.py  # Phase 3: Typed messages
 
 # With coverage
 pytest --cov=horus tests/
+
+# Test multiprocess execution (Phase 4)
+horus run tests/multiprocess_publisher.py tests/multiprocess_subscriber.py
 ```
 
 ### Mock Mode
@@ -603,6 +918,23 @@ HORUS Python includes a mock mode for testing without Rust bindings:
 # You'll see: "Warning: Rust bindings not available. Running in mock mode."
 
 # Use for unit testing Python logic without HORUS running
+```
+
+### Debugging Tips
+
+```python
+# Enable logging for specific nodes
+scheduler = horus.Scheduler()
+scheduler.register(my_node, priority=0, logging=True)  # Enable logs
+
+# Check node statistics
+stats = scheduler.get_node_stats("my_node")
+print(f"Ticks: {stats['total_ticks']}, Errors: {stats['errors_count']}")
+
+# Monitor message timestamps
+msg, timestamp = node.get_with_timestamp("topic")
+age = time.time() - timestamp
+print(f"Message age: {age*1000:.1f}ms")
 ```
 
 ---
