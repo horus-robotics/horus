@@ -1,7 +1,8 @@
-//! Sensor data message types for robotics
-//!
-//! This module provides standard sensor data formats for common
-//! robotics sensors including lidar, IMU, cameras, and odometry.
+use horus_core::core::LogSummary;
+// Sensor data message types for robotics
+//
+// This module provides standard sensor data formats for common
+// robotics sensors including lidar, IMU, cameras, and odometry.
 
 use crate::messages::geometry::{Pose2D, Quaternion, Twist, Vector3};
 use serde::{Deserialize, Serialize};
@@ -388,6 +389,41 @@ impl BatteryState {
         } else {
             None
         }
+    }
+}
+
+
+impl LogSummary for LaserScan {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for Imu {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for Odometry {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for Range {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for BatteryState {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
     }
 }
 

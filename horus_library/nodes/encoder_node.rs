@@ -1,5 +1,8 @@
 use crate::Odometry;
 use horus_core::error::HorusResult;
+
+// Type alias for cleaner signatures
+type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -30,12 +33,12 @@ pub struct EncoderNode {
 
 impl EncoderNode {
     /// Create a new encoder node with default topic "odom"
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         Self::new_with_topic("odom")
     }
 
     /// Create a new encoder node with custom topic
-    pub fn new_with_topic(topic: &str) -> HorusResult<Self> {
+    pub fn new_with_topic(topic: &str) -> Result<Self> {
         Ok(Self {
             publisher: Hub::new(topic)?,
             frame_id: "odom".to_string(),

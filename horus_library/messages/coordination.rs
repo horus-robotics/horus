@@ -1,7 +1,8 @@
-//! Multi-robot coordination and fleet management message types
-//!
-//! This module provides messages for coordinating multiple robots,
-//! task assignment, swarm behavior, and fleet management systems.
+use horus_core::core::LogSummary;
+// Multi-robot coordination and fleet management message types
+//
+// This module provides messages for coordinating multiple robots,
+// task assignment, swarm behavior, and fleet management systems.
 
 use crate::messages::diagnostics::StatusLevel;
 use crate::messages::geometry::{Pose2D, Twist};
@@ -761,6 +762,90 @@ impl AuctionBid {
         // Combine bid value, time, capability, and availability
         self.bid_value * (1.0 + self.estimated_time)
             / (self.capability_score as f64 * self.availability as f64).max(0.1)
+    }
+}
+
+
+impl LogSummary for RobotState {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for FleetStatus {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for TaskAssignment {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for FormationControl {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for AuctionBid {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for RobotType {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for RobotCapability {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for CoordinationMode {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for TaskType {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for TaskStatus {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for FormationType {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for BidStatus {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
     }
 }
 

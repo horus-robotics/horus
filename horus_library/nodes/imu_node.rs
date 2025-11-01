@@ -1,5 +1,8 @@
 use crate::Imu;
 use horus_core::error::HorusResult;
+
+// Type alias for cleaner signatures
+type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -25,12 +28,12 @@ pub struct ImuNode {
 
 impl ImuNode {
     /// Create a new IMU node with default topic "imu"
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         Self::new_with_topic("imu")
     }
 
     /// Create a new IMU node with custom topic
-    pub fn new_with_topic(topic: &str) -> HorusResult<Self> {
+    pub fn new_with_topic(topic: &str) -> Result<Self> {
         Ok(Self {
             publisher: Hub::new(topic)?,
             frame_id: "imu_link".to_string(),

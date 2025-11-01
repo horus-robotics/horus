@@ -1,6 +1,7 @@
-//! Joystick/gamepad input message type for HORUS framework
-//!
-//! Provides a standardized way to represent gamepad and joystick events across all HORUS components.
+use horus_core::core::LogSummary;
+// Joystick/gamepad input message type for HORUS framework
+//
+// Provides a standardized way to represent gamepad and joystick events across all HORUS components.
 
 use serde::{Deserialize, Serialize};
 
@@ -194,5 +195,12 @@ impl JoystickInput {
 
     pub fn is_connected(&self) -> bool {
         self.is_connection_event() && self.value > 0.0
+    }
+}
+
+
+impl LogSummary for JoystickInput {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
     }
 }

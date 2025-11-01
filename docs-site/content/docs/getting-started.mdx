@@ -16,7 +16,7 @@ HORUS is a **framework for building applications with multiple independent compo
 
 HORUS is written in Rust, which gives you:
 
-- **Speed** - Sub-microsecond communication latency (296ns-2.8µs)
+- **Speed** - Sub-microsecond communication latency (312ns-481ns)
 - **Safety** - Compile-time checks prevent common bugs
 - **Clean APIs** - Well-designed interfaces that leverage Rust's type system
 - **Reliability** - Production-ready from day one
@@ -33,7 +33,7 @@ Don't know Rust? No problem! HORUS works with:
 
 ### 1. Extremely Fast Communication
 
-**HORUS**: Messages arrive in **366-1,580 nanoseconds**
+**HORUS**: Messages arrive in **312-481 nanoseconds**
 **Other frameworks**: Messages take **40,000-100,000 nanoseconds**
 
 **What this means**: Your components can talk to each other 100-270x faster. This matters for:
@@ -225,7 +225,7 @@ impl TemperatureSensor {
 }
 
 impl Node for TemperatureSensor {
-    fn name(&self) -> &'static str { "TemperatureSensor" }
+    fn name(&self) -> &'static str { "temp_sensor" }
 
     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         // Simulate temperature changes
@@ -249,7 +249,7 @@ impl TemperatureDisplay {
 }
 
 impl Node for TemperatureDisplay {
-    fn name(&self) -> &'static str { "TemperatureDisplay" }
+    fn name(&self) -> &'static str { "temp_display" }
 
     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         if let Some(temp) = self.subscriber.recv(ctx) {
@@ -302,7 +302,7 @@ Current temperature: 20.3°C
 - Designed for distributed systems over networks
 
 **HORUS**: Shared memory-based
-- 296ns-2.8µs latency (sub-microsecond)
+- 312ns-2.8µs latency (sub-microsecond)
 - Minimal configuration required
 - Optimized for single-machine, multi-process communication
 
@@ -319,14 +319,15 @@ Current temperature: 20.3°C
 6. [Scheduler](/core-concepts-scheduler) - Run your application
 
 **Practical Features** (3 hours)
-7. [node! Macro](/node-macro) - Eliminate boilerplate
-8. [Message Types](/message-types) - Work with data safely
-9. [Dashboard](/dashboard) - Monitor and debug
+7. [node! Macro](/node-macro) - Eliminate node boilerplate
+8. [message! Macro](/message-macro) - Define custom messages in one line
+9. [Message Types](/message-types) - Work with data safely
+10. [Dashboard](/dashboard) - Monitor and debug
 
 **Advanced** (When you need it)
-10. [Multi-Language](/multi-language) - Python and C
-11. [Performance](/performance) - Optimize for speed
-12. [Examples](/examples) - Real projects
+11. [Multi-Language](/multi-language) - Python and C
+12. [Performance](/performance) - Optimize for speed
+13. [Examples](/examples) - Real projects
 
 ## When to Use HORUS
 

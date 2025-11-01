@@ -1,5 +1,8 @@
 use crate::DigitalIO;
 use horus_core::error::HorusResult;
+
+// Type alias for cleaner signatures
+type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -37,7 +40,7 @@ pub struct DigitalIONode {
 
 impl DigitalIONode {
     /// Create a new digital I/O node with default topics
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         Self::new_with_topics("digital_input", "digital_output", "io_status")
     }
 
@@ -46,7 +49,7 @@ impl DigitalIONode {
         input_topic: &str,
         output_topic: &str,
         status_topic: &str,
-    ) -> HorusResult<Self> {
+    ) -> Result<Self> {
         Ok(Self {
             input_publisher: Hub::new(input_topic)?,
             output_subscriber: Hub::new(output_topic)?,

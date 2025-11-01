@@ -209,7 +209,13 @@ if [ -n "$NEEDS_REBUILD" ]; then
         if [ "$OLD_CACHED_VERSION" != "$NEW_VERSION" ]; then
             echo -e "${YELLOW}${NC} Version changed: $OLD_CACHED_VERSION  $NEW_VERSION"
             echo -e "${CYAN}${NC} Cleaning old cache..."
-            rm -rf "$CACHE_DIR"/*@"$OLD_CACHED_VERSION" 2>/dev/null || true
+            rm -rf "$CACHE_DIR"/horus@"$OLD_CACHED_VERSION" 2>/dev/null || true
+            rm -rf "$CACHE_DIR"/horus_core@"$OLD_CACHED_VERSION" 2>/dev/null || true
+            rm -rf "$CACHE_DIR"/horus_macros@"$OLD_CACHED_VERSION" 2>/dev/null || true
+            rm -rf "$CACHE_DIR"/horus_library@"$OLD_CACHED_VERSION" 2>/dev/null || true
+            rm -rf "$CACHE_DIR"/horus_c@"$OLD_CACHED_VERSION" 2>/dev/null || true
+            rm -rf "$CACHE_DIR"/horus_cpp@"$OLD_CACHED_VERSION" 2>/dev/null || true
+            rm -rf "$CACHE_DIR"/horus_py@"$OLD_CACHED_VERSION" 2>/dev/null || true
         fi
     fi
 
@@ -256,6 +262,33 @@ if [ -n "$NEEDS_REBUILD" ]; then
         cp horus_c/horus.h "$HORUS_C_DIR/include/"
     elif [ -f "target/horus.h" ]; then
         cp target/horus.h "$HORUS_C_DIR/include/"
+    fi
+
+    # Update horus_cpp (C++ Framework)
+    HORUS_CPP_DIR="$CACHE_DIR/horus_cpp@$HORUS_C_VERSION"
+    mkdir -p "$HORUS_CPP_DIR/lib"
+    mkdir -p "$HORUS_CPP_DIR/include"
+
+    # Build the C++ library if not already built
+    if [ ! -f "target/release/libhorus_cpp.so" ] && [ ! -f "target/release/libhorus_cpp.dylib" ]; then
+        echo -e "${CYAN}  ${NC} Building C++ framework library..."
+        cd horus_cpp
+        cargo build --release --quiet
+        cd ..
+    fi
+
+    cp -r target/release/libhorus_cpp.so "$HORUS_CPP_DIR/lib/" 2>/dev/null || true
+    cp -r target/release/libhorus_cpp.a "$HORUS_CPP_DIR/lib/" 2>/dev/null || true
+    cp -r target/release/libhorus_cpp.dylib "$HORUS_CPP_DIR/lib/" 2>/dev/null || true
+
+    if [ -f "horus_cpp/include/horus.hpp" ]; then
+        cp horus_cpp/include/horus.hpp "$HORUS_CPP_DIR/include/"
+    fi
+
+    if [ -f "$HORUS_C_DIR/include/horus.h" ]; then
+        cp "$HORUS_C_DIR/include/horus.h" "$HORUS_CPP_DIR/include/"
+    elif [ -f "horus_c/include/horus.h" ]; then
+        cp horus_c/include/horus.h "$HORUS_CPP_DIR/include/"
     fi
 
     # Update horus_py (Python bindings) if Python is available

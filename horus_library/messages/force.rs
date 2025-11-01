@@ -1,7 +1,8 @@
-//! Force and tactile feedback message types for robotics
-//!
-//! This module provides messages for force sensors, tactile arrays,
-//! impedance control, and haptic feedback systems.
+use horus_core::core::LogSummary;
+// Force and tactile feedback message types for robotics
+//
+// This module provides messages for force sensors, tactile arrays,
+// impedance control, and haptic feedback systems.
 
 use crate::messages::geometry::{Point3, Vector3};
 use serde::{Deserialize, Serialize};
@@ -542,6 +543,55 @@ impl HapticFeedback {
             pattern_type: Self::PATTERN_PULSE,
             ..Self::vibration(intensity, frequency, duration)
         }
+    }
+}
+
+
+impl LogSummary for WrenchStamped {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for TactileArray {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for ImpedanceParameters {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for ForceCommand {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for ContactInfo {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for HapticFeedback {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for ContactState {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
     }
 }
 

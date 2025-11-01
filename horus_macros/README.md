@@ -156,7 +156,7 @@ pub struct MyRobotNode {
 }
 
 impl MyRobotNode {
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         // Creates all Hubs with proper error handling
     }
 }
@@ -257,7 +257,7 @@ pub struct MyNode {
 }
 
 impl MyNode {
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         Ok(Self {
             pub_topic: Hub::new("output")?,
             sub_topic: Hub::new("input")?,

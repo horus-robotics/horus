@@ -539,13 +539,13 @@ pub struct CInteropMessage {
 
 ### Typical Message Sizes
 
-| Message Type | Size | Latency (measured) |
-|--------------|------|-------------------|
-| CmdVel | 16B | 296ns |
-| Pose2D | 32B | ~400ns |
-| IMU | 304B | 718ns |
-| LaserScan | 1.5KB | 1.31µs |
-| Image (640x480 RGB) | ~1MB | Variable |
+| Message Type | Size | Latency (Hub) | Latency (Link) |
+|--------------|------|---------------|----------------|
+| CmdVel | 16B | ~500ns | 312ns |
+| Pose2D | 32B | ~520ns | ~350ns |
+| IMU | 304B | ~940ns | ~400ns |
+| LaserScan | 1.5KB | ~2.2µs | ~900ns |
+| Image (640x480 RGB) | ~1MB | Variable | Variable |
 
 **Key insight**: Latency scales linearly with message size.
 

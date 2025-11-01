@@ -15,10 +15,23 @@ pub struct ResolvedDependency {
     pub version: Version,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum DependencySource {
+    Registry,                    // HORUS registry (default)
+    Path(std::path::PathBuf),   // Local filesystem path
+}
+
+impl Default for DependencySource {
+    fn default() -> Self {
+        Self::Registry
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct DependencySpec {
     pub name: String,
     pub requirement: VersionReq, // Semver requirement like "^1.2.3"
+    pub source: DependencySource, // Where to get this dependency
 }
 
 impl fmt::Display for DependencySpec {
@@ -29,7 +42,7 @@ impl fmt::Display for DependencySpec {
 
 impl DependencySpec {
     pub fn parse(spec: &str) -> Result<Self> {
-        // Parse "name@constraint" or just "name"
+        // Parse "name@constraint" or just "name" (simple string format from YAML list)
         if let Some(pos) = spec.find('@') {
             let name = spec[..pos].to_string();
             let constraint = &spec[pos + 1..];
@@ -42,12 +55,79 @@ impl DependencySpec {
                     .map_err(|e| anyhow!("Invalid version constraint '{}': {}", constraint, e))?
             };
 
-            Ok(Self { name, requirement })
+            Ok(Self {
+                name,
+                requirement,
+                source: DependencySource::Registry,
+            })
         } else {
             Ok(Self {
                 name: spec.to_string(),
                 requirement: VersionReq::STAR, // Any version
+                source: DependencySource::Registry,
             })
+        }
+    }
+
+    /// Parse from structured YAML (supports path, git, etc.)
+    pub fn from_yaml_value(name: String, value: &serde_yaml::Value) -> Result<Self> {
+        use serde_yaml::Value;
+
+        match value {
+            // Simple version string: "package: '1.0.0'" or "package: '*'"
+            Value::String(version_str) => {
+                let requirement = if version_str == "latest" || version_str == "*" {
+                    VersionReq::STAR
+                } else {
+                    VersionReq::parse(version_str)
+                        .map_err(|e| anyhow!("Invalid version '{}': {}", version_str, e))?
+                };
+                Ok(Self {
+                    name,
+                    requirement,
+                    source: DependencySource::Registry,
+                })
+            }
+
+            // Structured dependency: path or registry
+            Value::Mapping(map) => {
+                // Check for path dependency
+                if let Some(Value::String(path_str)) = map.get(&Value::String("path".to_string())) {
+                    let path = std::path::PathBuf::from(path_str);
+                    Ok(Self {
+                        name,
+                        requirement: VersionReq::STAR, // Path deps don't use versions
+                        source: DependencySource::Path(path),
+                    })
+                }
+                // Check for git dependency (not supported - provide helpful error)
+                else if map.get(&Value::String("git".to_string())).is_some() {
+                    Err(anyhow!(
+                        "Git dependencies are not supported in horus.yaml.\n\
+                         Instead, clone the repository and use a path dependency:\n\
+                         \n\
+                         1. Clone: git clone <url> ./libs/{}\n\
+                         2. Use path dependency:\n\
+                         {}:\n\
+                           path: \"./libs/{}\"",
+                        name, name, name
+                    ))
+                }
+                // Registry with explicit version
+                else if let Some(Value::String(version_str)) = map.get(&Value::String("version".to_string())) {
+                    let requirement = VersionReq::parse(version_str)
+                        .map_err(|e| anyhow!("Invalid version '{}': {}", version_str, e))?;
+                    Ok(Self {
+                        name,
+                        requirement,
+                        source: DependencySource::Registry,
+                    })
+                } else {
+                    Err(anyhow!("Invalid dependency specification for '{}'", name))
+                }
+            }
+
+            _ => Err(anyhow!("Invalid dependency format for '{}'", name)),
         }
     }
 

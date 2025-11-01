@@ -118,9 +118,13 @@ impl<T> Hub<T> {
 - POSIX shared memory via `/dev/shm/horus/`
 - Default capacity: 1024 slots per topic
 
-**Performance:**
-- 85-167ns latency for native Hub
-- Sub-microsecond messaging
+**Performance (on modern x86_64 systems):**
+- **Link (SPSC)**: 312ns median latency, 6M+ msg/s throughput
+- **Hub (MPMC)**: 481ns median latency, flexible pub/sub
+- Link is 29% faster than Hub in 1P1C scenarios
+- Production-validated with 6.2M+ test messages
+
+*Performance varies by hardware. See `benchmarks/` directory for detailed results.*
 
 ### 4. Scheduler
 
@@ -254,9 +258,26 @@ fn main() -> HorusResult<()> {
 
 ### Communication Latency
 
-- **Hub (native)**: 85-167 nanoseconds
-- **Small messages (16-104B)**: Sub-microsecond latency
-- **Ultra-low latency IPC**: Optimized for real-time robotics
+**HORUS provides two IPC mechanisms optimized for different use cases:**
+
+**Link (SPSC) - Cross-Core:**
+- Median latency: 312ns (624 cycles @ 2GHz)
+- P95 latency: 444ns, P99 latency: 578ns
+- Burst throughput: 6.05 MHz (6M+ msg/s)
+- Bandwidth: Up to 369 MB/s
+- **Best for**: Point-to-point communication, control loops
+
+**Hub (MPMC) - Cross-Core:**
+- Median latency: 481ns (962 cycles @ 2GHz)
+- P95 latency: 653ns
+- Flexible pub/sub architecture
+- **Best for**: Multi-subscriber topics, sensor broadcasting
+
+**Key Results:**
+- Link is 29% faster than Hub in 1P1C scenarios
+- Sub-microsecond latency on modern x86_64 systems
+- Production-validated with 6.2M+ test messages
+- Zero corruptions detected
 
 ### Memory Layout
 

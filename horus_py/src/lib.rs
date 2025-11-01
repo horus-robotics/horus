@@ -1,15 +1,13 @@
 use pyo3::prelude::*;
 
 mod hub;
-mod messages;  // Phase 3: Typed messages
 mod node;
 mod scheduler;
-mod types;
+// mod types; // Internal types no longer exposed to Python
 
 use hub::PyHub;
 use node::{PyNode, PyNodeInfo, PyNodeState};
 use scheduler::PyScheduler;
-use types::{PyMessage, PyNodeConfig, PyNodePriority};
 
 /// HORUS Python Bindings
 ///
@@ -17,47 +15,22 @@ use types::{PyMessage, PyNodeConfig, PyNodePriority};
 /// allowing Python developers to create and run distributed robotic systems.
 #[pymodule]
 fn _horus(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    // Core classes
+    // ✅ USER-FACING: Core classes that users interact with
     m.add_class::<PyNode>()?;
     m.add_class::<PyNodeInfo>()?;
     m.add_class::<PyHub>()?;
     m.add_class::<PyScheduler>()?;
-
-    // Type classes
-    m.add_class::<PyMessage>()?;
     m.add_class::<PyNodeState>()?;
-    m.add_class::<PyNodePriority>()?;
-    m.add_class::<PyNodeConfig>()?;
 
-    // Phase 3: Register typed message classes
-    messages::register_messages(m.py(), m)?;
+    // ❌ REMOVED: Internal implementation types
+    // - PyMessage (internal wrapper)
+    // - PyNodePriority (users pass int, not enum)
+    // - PyNodeConfig (internal configuration)
 
-    // Module-level functions
-    m.add_function(wrap_pyfunction!(create_node, m)?)?;
-    m.add_function(wrap_pyfunction!(create_hub, m)?)?;
-    m.add_function(wrap_pyfunction!(create_scheduler, m)?)?;
+    // ✅ VERSION: Utility function
     m.add_function(wrap_pyfunction!(get_version, m)?)?;
 
     Ok(())
-}
-
-/// Create a new Python node
-#[pyfunction]
-fn create_node(name: String) -> PyResult<PyNode> {
-    PyNode::new(name)
-}
-
-/// Create a new communication hub
-#[pyfunction]
-#[pyo3(signature = (topic, capacity=None))]
-fn create_hub(topic: String, capacity: Option<usize>) -> PyResult<PyHub> {
-    PyHub::new(topic, capacity.unwrap_or(1024))
-}
-
-/// Create a new scheduler for running nodes
-#[pyfunction]
-fn create_scheduler() -> PyResult<PyScheduler> {
-    PyScheduler::new()
 }
 
 /// Get HORUS version information

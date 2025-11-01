@@ -1,5 +1,8 @@
 use crate::{Imu, LaserScan, Odometry};
 use horus_core::error::HorusResult;
+
+// Type alias for cleaner signatures
+type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -39,7 +42,7 @@ pub struct LocalizationNode {
 
 impl LocalizationNode {
     /// Create a new localization node with default topic "pose"
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         Self::new_with_topics("pose", "odom", "imu", "lidar_scan")
     }
 
@@ -49,7 +52,7 @@ impl LocalizationNode {
         odom_topic: &str,
         imu_topic: &str,
         lidar_topic: &str,
-    ) -> HorusResult<Self> {
+    ) -> Result<Self> {
         let mut node = Self {
             pose_publisher: Hub::new(pose_topic)?,
             odometry_subscriber: Hub::new(odom_topic)?,

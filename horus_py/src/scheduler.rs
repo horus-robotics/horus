@@ -42,9 +42,9 @@ impl PyScheduler {
         })
     }
 
-    /// Register a node with priority, logging, and optional rate control
+    /// Add a node with priority, logging, and optional rate control
     #[pyo3(signature = (node, priority, logging_enabled, rate_hz=None))]
-    fn register(&mut self, py: Python, node: PyObject, priority: u32, logging_enabled: bool, rate_hz: Option<f64>) -> PyResult<()> {
+    fn add(&mut self, py: Python, node: PyObject, priority: u32, logging_enabled: bool, rate_hz: Option<f64>) -> PyResult<()> {
         // Extract node name
         let name: String = node.getattr(py, "name")?.extract(py)?;
 
@@ -72,26 +72,13 @@ impl PyScheduler {
         });
 
         println!(
-            "Registered node '{}' with priority {} (logging: {}, rate: {}Hz)",
+            "Added node '{}' with priority {} (logging: {}, rate: {}Hz)",
             name, priority, logging_enabled, node_rate
         );
 
         Ok(())
     }
 
-    /// Add a node to the scheduler (backward compatibility - uses default priority)
-    fn add_node(&mut self, py: Python, node: PyObject) -> PyResult<()> {
-        // Use current count as priority to maintain insertion order
-        let priority = {
-            let nodes = self
-                .nodes
-                .lock()
-                .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
-            nodes.len() as u32
-        };
-
-        self.register(py, node, priority, false, None)
-    }
 
     /// Phase 1: Set per-node rate control
     fn set_node_rate(&mut self, node_name: String, rate_hz: f64) -> PyResult<()> {
@@ -483,7 +470,295 @@ impl PyScheduler {
         Ok(*running)
     }
 
-    /// Get list of registered node names
+    /// Run specific nodes by name (continuously until stop() is called)
+    fn tick(&mut self, py: Python, node_names: Vec<String>) -> PyResult<()> {
+        let tick_duration = Duration::from_secs_f64(1.0 / self.tick_rate_hz);
+
+        // Set running flag
+        {
+            let mut running = self.running.lock().map_err(|e| {
+                PyRuntimeError::new_err(format!("Failed to lock running flag: {}", e))
+            })?;
+            *running = true;
+        }
+
+        // Initialize filtered nodes
+        {
+            let nodes = self
+                .nodes
+                .lock()
+                .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
+
+            for registered in nodes.iter() {
+                if node_names.contains(&registered.name) {
+                    let py_info = Py::new(py, PyNodeInfo {
+                        inner: registered.context.clone(),
+                    })?;
+
+                    let result = registered.node.call_method1(py, "init", (py_info,))
+                        .or_else(|_| registered.node.call_method0(py, "init"));
+
+                    if let Err(e) = result {
+                        eprintln!("Failed to initialize node '{}': {:?}", registered.name, e);
+                    }
+                }
+            }
+        }
+
+        // Main execution loop
+        loop {
+            let tick_start = std::time::Instant::now();
+
+            // Check if we should stop
+            {
+                let running = self.running.lock().map_err(|e| {
+                    PyRuntimeError::new_err(format!("Failed to lock running flag: {}", e))
+                })?;
+                if !*running {
+                    break;
+                }
+            }
+
+            // Execute tick for filtered nodes in priority order
+            {
+                let mut nodes = self
+                    .nodes
+                    .lock()
+                    .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
+
+                nodes.sort_by_key(|r| r.priority);
+
+                for registered in nodes.iter_mut() {
+                    // Skip nodes not in the filter list
+                    if !node_names.contains(&registered.name) {
+                        continue;
+                    }
+
+                    // Check rate control
+                    let now = Instant::now();
+                    let elapsed_secs = (now - registered.last_tick).as_secs_f64();
+                    let period_secs = 1.0 / registered.rate_hz;
+
+                    if elapsed_secs < period_secs {
+                        continue;
+                    }
+
+                    registered.last_tick = now;
+
+                    // Start tick timing
+                    if let Ok(mut ctx) = registered.context.lock() {
+                        ctx.start_tick();
+                    }
+
+                    // Get or create cached PyNodeInfo
+                    let py_info = if let Some(ref cached) = registered.cached_info {
+                        cached.clone_ref(py)
+                    } else {
+                        let new_info = Py::new(py, PyNodeInfo {
+                            inner: registered.context.clone(),
+                        })?;
+                        registered.cached_info = Some(new_info.clone_ref(py));
+                        new_info
+                    };
+
+                    let result = registered.node.call_method1(py, "tick", (py_info,))
+                        .or_else(|_| registered.node.call_method0(py, "tick"));
+
+                    if let Err(e) = result {
+                        eprintln!("Error in node '{}' tick: {:?}", registered.name, e);
+                    }
+
+                    // Record tick completion
+                    if let Ok(mut ctx) = registered.context.lock() {
+                        ctx.record_tick();
+                    }
+                }
+            }
+
+            // Sleep for remainder of tick period
+            let elapsed = tick_start.elapsed();
+            if elapsed < tick_duration {
+                thread::sleep(tick_duration - elapsed);
+            }
+        }
+
+        // Shutdown filtered nodes
+        {
+            let nodes = self
+                .nodes
+                .lock()
+                .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
+
+            for registered in nodes.iter() {
+                if node_names.contains(&registered.name) {
+                    let py_info = Py::new(py, PyNodeInfo {
+                        inner: registered.context.clone(),
+                    })?;
+
+                    let result = registered.node.call_method1(py, "shutdown", (py_info,))
+                        .or_else(|_| registered.node.call_method0(py, "shutdown"));
+
+                    if let Err(e) = result {
+                        eprintln!("Failed to shutdown node '{}': {:?}", registered.name, e);
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Run specific nodes for a specified duration (in seconds)
+    fn tick_for(&mut self, py: Python, node_names: Vec<String>, duration_seconds: f64) -> PyResult<()> {
+        if duration_seconds <= 0.0 {
+            return Err(PyRuntimeError::new_err("Duration must be positive"));
+        }
+
+        let tick_duration = Duration::from_secs_f64(1.0 / self.tick_rate_hz);
+        let start_time = Instant::now();
+        let max_duration = Duration::from_secs_f64(duration_seconds);
+
+        // Set running flag
+        {
+            let mut running = self.running.lock().map_err(|e| {
+                PyRuntimeError::new_err(format!("Failed to lock running flag: {}", e))
+            })?;
+            *running = true;
+        }
+
+        // Initialize filtered nodes
+        {
+            let nodes = self
+                .nodes
+                .lock()
+                .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
+
+            for registered in nodes.iter() {
+                if node_names.contains(&registered.name) {
+                    let py_info = Py::new(py, PyNodeInfo {
+                        inner: registered.context.clone(),
+                    })?;
+
+                    let result = registered.node.call_method1(py, "init", (py_info,))
+                        .or_else(|_| registered.node.call_method0(py, "init"));
+
+                    if let Err(e) = result {
+                        eprintln!("Failed to initialize node '{}': {:?}", registered.name, e);
+                    }
+                }
+            }
+        }
+
+        // Main execution loop with time limit
+        loop {
+            let tick_start = std::time::Instant::now();
+
+            // Check if duration exceeded
+            if start_time.elapsed() >= max_duration {
+                println!("Reached time limit of {} seconds", duration_seconds);
+                break;
+            }
+
+            // Check if we should stop
+            {
+                let running = self.running.lock().map_err(|e| {
+                    PyRuntimeError::new_err(format!("Failed to lock running flag: {}", e))
+                })?;
+                if !*running {
+                    break;
+                }
+            }
+
+            // Execute tick for filtered nodes in priority order
+            {
+                let mut nodes = self
+                    .nodes
+                    .lock()
+                    .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
+
+                nodes.sort_by_key(|r| r.priority);
+
+                for registered in nodes.iter_mut() {
+                    // Skip nodes not in the filter list
+                    if !node_names.contains(&registered.name) {
+                        continue;
+                    }
+
+                    // Check rate control
+                    let now = Instant::now();
+                    let elapsed_secs = (now - registered.last_tick).as_secs_f64();
+                    let period_secs = 1.0 / registered.rate_hz;
+
+                    if elapsed_secs < period_secs {
+                        continue;
+                    }
+
+                    registered.last_tick = now;
+
+                    // Start tick timing
+                    if let Ok(mut ctx) = registered.context.lock() {
+                        ctx.start_tick();
+                    }
+
+                    // Get or create cached PyNodeInfo
+                    let py_info = if let Some(ref cached) = registered.cached_info {
+                        cached.clone_ref(py)
+                    } else {
+                        let new_info = Py::new(py, PyNodeInfo {
+                            inner: registered.context.clone(),
+                        })?;
+                        registered.cached_info = Some(new_info.clone_ref(py));
+                        new_info
+                    };
+
+                    let result = registered.node.call_method1(py, "tick", (py_info,))
+                        .or_else(|_| registered.node.call_method0(py, "tick"));
+
+                    if let Err(e) = result {
+                        eprintln!("Error in node '{}' tick: {:?}", registered.name, e);
+                    }
+
+                    // Record tick completion
+                    if let Ok(mut ctx) = registered.context.lock() {
+                        ctx.record_tick();
+                    }
+                }
+            }
+
+            // Sleep for remainder of tick period
+            let elapsed = tick_start.elapsed();
+            if elapsed < tick_duration {
+                thread::sleep(tick_duration - elapsed);
+            }
+        }
+
+        // Shutdown filtered nodes
+        {
+            let nodes = self
+                .nodes
+                .lock()
+                .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
+
+            for registered in nodes.iter() {
+                if node_names.contains(&registered.name) {
+                    let py_info = Py::new(py, PyNodeInfo {
+                        inner: registered.context.clone(),
+                    })?;
+
+                    let result = registered.node.call_method1(py, "shutdown", (py_info,))
+                        .or_else(|_| registered.node.call_method0(py, "shutdown"));
+
+                    if let Err(e) = result {
+                        eprintln!("Failed to shutdown node '{}': {:?}", registered.name, e);
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Get list of added node names
     fn get_nodes(&self) -> PyResult<Vec<String>> {
         let nodes = self
             .nodes

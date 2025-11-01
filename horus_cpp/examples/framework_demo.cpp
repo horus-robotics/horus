@@ -80,7 +80,7 @@ public:
         Twist current_velocity;
 
         // Non-blocking receive
-        if (velocity_sub_.value().try_recv(current_velocity)) {
+        if (velocity_sub_.value().recv(current_velocity)) {
             messages_received_++;
 
             // Simple control logic: limit velocity
@@ -145,7 +145,7 @@ public:
         // Critical safety checks run at highest priority
 
         Twist command;
-        if (command_sub_.value().try_recv(command)) {
+        if (command_sub_.value().recv(command)) {
             // Check for safety violations
             float linear_mag = std::sqrt(
                 command.linear.x * command.linear.x +

@@ -20,5 +20,6 @@ pub mod node;
 
 pub use log_buffer::{LogEntry, LogType, SharedLogBuffer, GLOBAL_LOG_BUFFER};
 pub use node::{
-    HealthStatus, Node, NodeConfig, NodeHeartbeat, NodeInfo, NodeMetrics, NodePriority, NodeState,
+    HealthStatus, LogSummary, Node, NodeConfig, NodeHeartbeat, NodeInfo, NodeMetrics, NodePriority,
+    NodeState,
 };

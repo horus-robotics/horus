@@ -42,17 +42,17 @@ fn main() -> AnyResult<()> {
     let mut scheduler = Scheduler::new().name("TankSimScheduler");
 
     // 1. Keyboard Input Node (Priority 0 - highest, captures input first)
-    println!(" Registering KeyboardInputNode...");
+    println!(" Adding KeyboardInputNode...");
     let keyboard_node = KeyboardInputNode::new_with_topic("keyboard_input")?;
-    scheduler.register(Box::new(keyboard_node), 0, Some(true));
+    scheduler.add(Box::new(keyboard_node), 0, Some(true));
 
     // 2. Tank Controller Node (Priority 1 - converts keyboard to tank commands)
-    println!("[>] Registering TankControllerNode...");
+    println!("[>] Adding TankControllerNode...");
     let controller_node = TankControllerNode::new()
         .map_err(|e| HorusError::Config(format!("Failed to create controller node: {}", e)))?;
-    scheduler.register(Box::new(controller_node), 1, Some(true));
+    scheduler.add(Box::new(controller_node), 1, Some(true));
 
-    println!("\n All nodes registered successfully!\n");
+    println!("\n All nodes added successfully!\n");
     println!("\n");
     println!(" TIP: Run sim2d in another terminal to visualize:");
     println!("   cd horus_library/tools/sim2d");
@@ -61,7 +61,7 @@ fn main() -> AnyResult<()> {
     println!("🏁 Starting simulation... (Press Ctrl+C to stop)\n");
 
     // Run the scheduler
-    let _ = scheduler.tick_all();
+    let _ = scheduler.run();
 
     println!("\n🛑 TankSim shutdown complete.\n");
 

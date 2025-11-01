@@ -1,5 +1,8 @@
 use crate::{DifferentialDriveCommand, Odometry, Twist};
 use horus_core::error::HorusResult;
+
+// Type alias for cleaner signatures
+type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -31,7 +34,7 @@ pub struct DifferentialDriveNode {
 
 impl DifferentialDriveNode {
     /// Create a new differential drive node with default topics
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         Self::new_with_topics("cmd_vel", "drive_command", "odom")
     }
 
@@ -40,7 +43,7 @@ impl DifferentialDriveNode {
         cmd_topic: &str,
         drive_topic: &str,
         odom_topic: &str,
-    ) -> HorusResult<Self> {
+    ) -> Result<Self> {
         Ok(Self {
             drive_publisher: Hub::new(drive_topic)?,
             odom_publisher: Hub::new(odom_topic)?,

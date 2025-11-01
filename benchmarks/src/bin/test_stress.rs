@@ -131,7 +131,7 @@ fn test_many_nodes() -> bool {
     for i in 0..channel_count {
         let topic = format!("stress_channel_{}_{}", process::id(), i);
 
-        let sender = match Link::<CmdVel>::producer_with_capacity(&topic, 64) {
+        let sender = match Link::<CmdVel>::producer(&topic) {
             Ok(s) => s,
             Err(e) => {
                 eprintln!("Failed to create sender {}: {:?}", i, e);
@@ -198,7 +198,7 @@ fn test_sustained_high_freq() -> bool {
 
     let topic = format!("stress_highfreq_{}", process::id());
 
-    let sender = match Link::<CmdVel>::producer_with_capacity(&topic, 4096) {
+    let sender = match Link::<CmdVel>::producer(&topic) {
         Ok(s) => s,
         Err(e) => {
             eprintln!("Failed to create sender: {}", e);
@@ -364,7 +364,7 @@ fn test_long_running() -> bool {
 
     let topic = format!("stress_longrun_{}", process::id());
 
-    let sender = match Link::<CmdVel>::producer_with_capacity(&topic, 2048) {
+    let sender = match Link::<CmdVel>::producer(&topic) {
         Ok(s) => s,
         Err(e) => {
             eprintln!("Failed to create sender: {}", e);

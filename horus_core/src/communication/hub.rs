@@ -151,36 +151,44 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug> Hub<T> {
     /// High-performance send using zero-copy loan pattern internally
     /// This method now uses the loan() backend for optimal performance (~200ns latency)
     /// The API remains simple while delivering the best possible performance
+    #[inline(always)]
     pub fn send(&self, msg: T, ctx: Option<&mut NodeInfo>) -> Result<(), T>
     where
-        T: std::fmt::Debug + Clone,
+        T: crate::core::LogSummary,
     {
-        // Measure IPC timing for logging
-        let ipc_start = Instant::now();
-
-        // Clone message for logging if context is provided
-        let msg_for_log = if ctx.is_some() { Some(msg.clone()) } else { None };
-
-        // Fast path: move message directly (zero-copy, no upfront clone!)
-        // For small messages (<= 16 bytes), this is optimal
         match self.shm_topic.loan() {
             Ok(mut sample) => {
-                sample.write(msg);
-                drop(sample);
+                // Fast path: when ctx is None (benchmarks), bypass logging completely
+                if let Some(ctx) = ctx {
+                    // Logging enabled: get lightweight summary BEFORE moving msg
+                    let summary = msg.log_summary();
+                    let ipc_start = Instant::now();
 
-                let ipc_ns = ipc_start.elapsed().as_nanos() as u64;
+                    sample.write(msg);
+                    drop(sample);
 
-                self.metrics
-                    .messages_sent
-                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                self.state.store(
-                    ConnectionState::Connected.into_u8(),
-                    std::sync::atomic::Ordering::Relaxed,
-                );
+                    self.metrics
+                        .messages_sent
+                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    self.state.store(
+                        ConnectionState::Connected.into_u8(),
+                        std::sync::atomic::Ordering::Relaxed,
+                    );
 
-                // Log the publish event with IPC timing
-                if let (Some(ctx), Some(msg_log)) = (ctx, msg_for_log) {
-                    ctx.log_pub(&self.topic_name, &msg_log, ipc_ns);
+                    let ipc_ns = ipc_start.elapsed().as_nanos() as u64;
+                    ctx.log_pub_summary(&self.topic_name, &summary, ipc_ns);
+                } else {
+                    // No logging: zero overhead path for benchmarks
+                    sample.write(msg);
+                    drop(sample);
+
+                    self.metrics
+                        .messages_sent
+                        .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    self.state.store(
+                        ConnectionState::Connected.into_u8(),
+                        std::sync::atomic::Ordering::Relaxed,
+                    );
                 }
 
                 Ok(())
@@ -193,25 +201,25 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug> Hub<T> {
                     ConnectionState::Failed.into_u8(),
                     std::sync::atomic::Ordering::Relaxed,
                 );
-                Err(msg) // Return original message on loan failure
+                Err(msg)
             }
         }
     }
     /// Receive a message from the topic
+    #[inline(always)]
     pub fn recv(&self, ctx: Option<&mut NodeInfo>) -> Option<T>
     where
-        T: std::fmt::Debug,
+        T: crate::core::LogSummary,
     {
-        // Measure ONLY the pure IPC operation (pop from shared memory)
-        let ipc_start = Instant::now();
-        let result = self.shm_topic.pop();
-        let ipc_ns = ipc_start.elapsed().as_nanos() as u64;
-
-        match result {
+        match self.shm_topic.pop() {
             Some(msg) => {
-                // Log the subscribe event with IPC timing
+                // Fast path: when ctx is None, bypass logging completely (benchmarks + production)
                 if let Some(ctx) = ctx {
-                    ctx.log_sub(&self.topic_name, &msg, ipc_ns);
+                    // Logging enabled: get summary and measure IPC timing
+                    let summary = msg.log_summary();
+                    let ipc_start = Instant::now();
+                    let ipc_ns = ipc_start.elapsed().as_nanos() as u64;
+                    ctx.log_sub_summary(&self.topic_name, &summary, ipc_ns);
                 }
 
                 // Lock-free atomic increment for success metrics

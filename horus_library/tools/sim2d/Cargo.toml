@@ -3,7 +3,7 @@
 
 [package]
 name = "sim2d"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Simple 2D robotics simulator with physics"
 
@@ -29,6 +29,8 @@ rfd = "0.15"  # File picker dialog
 anyhow = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_yaml = "0.9"
+toml = "0.8"
+image = { version = "0.24", features = ["png", "jpeg"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 bytemuck = { version = "1.0", features = ["derive"] }

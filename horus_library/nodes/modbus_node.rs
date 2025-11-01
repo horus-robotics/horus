@@ -1,5 +1,8 @@
 use crate::{ModbusMessage, NetworkStatus};
 use horus_core::error::HorusResult;
+
+// Type alias for cleaner signatures
+type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -28,7 +31,7 @@ pub struct ModbusNode {
 
 impl ModbusNode {
     /// Create a new Modbus node with default topics
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         Self::new_with_topics("modbus_request", "modbus_response", "modbus_status")
     }
 
@@ -37,7 +40,7 @@ impl ModbusNode {
         request_topic: &str,
         response_topic: &str,
         status_topic: &str,
-    ) -> HorusResult<Self> {
+    ) -> Result<Self> {
         Ok(Self {
             publisher: Hub::new(response_topic)?,
             status_publisher: Hub::new(status_topic)?,

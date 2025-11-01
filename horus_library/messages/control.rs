@@ -1,7 +1,8 @@
-//! Control message types for robotics
-//!
-//! This module provides messages for controlling actuators,
-//! motors, servos, and other controllable components.
+use horus_core::core::LogSummary;
+// Control message types for robotics
+//
+// This module provides messages for controlling actuators,
+// motors, servos, and other controllable components.
 
 use serde::{Deserialize, Serialize};
 use serde_arrays;
@@ -431,6 +432,48 @@ impl JointCommand {
         self.joint_count += 1;
 
         Ok(())
+    }
+}
+
+
+impl LogSummary for MotorCommand {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for DifferentialDriveCommand {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for ServoCommand {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for PidConfig {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for TrajectoryPoint {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for JointCommand {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
     }
 }
 

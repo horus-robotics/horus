@@ -28,7 +28,7 @@ struct TestNode {
 impl Node for TestNode {
     fn name(&self) -> &'static str { "TestNode" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         self.init_called.store(true, Ordering::SeqCst);
         Ok(())
     }
@@ -37,7 +37,7 @@ impl Node for TestNode {
         self.tick_count.fetch_add(1, Ordering::SeqCst);
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         self.shutdown_called.store(true, Ordering::SeqCst);
         Ok(())
     }
@@ -61,7 +61,7 @@ assert!(shutdown_called);
 
 **Acceptance Criteria:**
 ```rust
-fn init(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
     Err(HorusError::config("Initialization failed"))
 }
 
@@ -256,7 +256,7 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 
 **Acceptance Criteria:**
 ```rust
-fn init(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
     ctx.log_info("Node initialized");
     ctx.log_warning("This is a warning");
     ctx.log_error("This is an error");

@@ -47,9 +47,9 @@ impl Scheduler {
         }
     }
 
-    /// Register a node under numeric `priority` (0 = highest).
-    /// If users only use register(node, priority) then logging defaults to false
-    pub fn register(
+    /// Add a node under numeric `priority` (0 = highest).
+    /// If users only use add(node, priority) then logging defaults to false
+    pub fn add(
         &mut self,
         node: Box<dyn Node>,
         priority: u32,
@@ -69,7 +69,7 @@ impl Scheduler {
         });
 
         println!(
-            "Registered node '{}' with priority {} (logging: {})",
+            "Added node '{}' with priority {} (logging: {})",
             node_name, priority, logging_enabled
         );
 
@@ -83,9 +83,9 @@ impl Scheduler {
     }
 
     /// Tick specific nodes by name (runs continuously with the specified nodes)
-    pub fn tick_node(&mut self, node_names: &[&str]) -> HorusResult<()> {
-        // Use the same pattern as tick_all() but with node filtering
-        self.run_with_filter(Some(node_names))
+    pub fn tick(&mut self, node_names: &[&str]) -> HorusResult<()> {
+        // Use the same pattern as run() but with node filtering
+        self.run_with_filter(Some(node_names), None)
     }
 
     /// Check if the scheduler is running
@@ -105,18 +105,31 @@ impl Scheduler {
     }
 
     /// Main loop with automatic signal handling and cleanup
-    pub fn tick_all(&mut self) -> HorusResult<()> {
-        self.run_with_filter(None)
+    pub fn run(&mut self) -> HorusResult<()> {
+        self.run_with_filter(None, None)
     }
 
-    /// Internal method to run scheduler with optional node filtering
-    fn run_with_filter(&mut self, node_filter: Option<&[&str]>) -> HorusResult<()> {
+    /// Run all nodes for a specified duration, then shutdown gracefully
+    pub fn run_for(&mut self, duration: Duration) -> HorusResult<()> {
+        self.run_with_filter(None, Some(duration))
+    }
+
+    /// Run specific nodes for a specified duration, then shutdown gracefully
+    pub fn tick_for(&mut self, node_names: &[&str], duration: Duration) -> HorusResult<()> {
+        self.run_with_filter(Some(node_names), Some(duration))
+    }
+
+    /// Internal method to run scheduler with optional node filtering and duration
+    fn run_with_filter(&mut self, node_filter: Option<&[&str]>, duration: Option<Duration>) -> HorusResult<()> {
         // Create tokio runtime for nodes that need async
         let rt = tokio::runtime::Runtime::new().map_err(|e| {
             crate::error::HorusError::Internal(format!("Failed to create tokio runtime: {}", e))
         })?;
 
         rt.block_on(async {
+            // Track start time for duration-limited runs
+            let start_time = Instant::now();
+
             // Set up signal handling
             let running = self.running.clone();
             if let Err(e) = ctrlc::set_handler(move || {
@@ -162,6 +175,14 @@ impl Scheduler {
 
             // Main tick loop
             while self.is_running() {
+                // Check if duration limit has been reached
+                if let Some(max_duration) = duration {
+                    if start_time.elapsed() >= max_duration {
+                        println!("Scheduler reached time limit of {:?}", max_duration);
+                        break;
+                    }
+                }
+
                 let now = Instant::now();
                 self.last_instant = now;
 
@@ -174,10 +195,57 @@ impl Scheduler {
                     if should_run && registered.initialized {
                         if let Some(ref mut context) = registered.context {
                             context.start_tick();
-                            registered.node.tick(Some(context));
-                            context.record_tick();
 
-                            // Write heartbeat after each tick
+                            // Catch panics during tick execution
+                            let tick_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                                registered.node.tick(Some(context));
+                            }));
+
+                            match tick_result {
+                                Ok(_) => {
+                                    // Successful tick
+                                    context.record_tick();
+                                }
+                                Err(panic_err) => {
+                                    // Node panicked - handle error
+                                    let error_msg = if let Some(s) = panic_err.downcast_ref::<&str>() {
+                                        format!("Node panicked: {}", s)
+                                    } else if let Some(s) = panic_err.downcast_ref::<String>() {
+                                        format!("Node panicked: {}", s)
+                                    } else {
+                                        "Node panicked with unknown error".to_string()
+                                    };
+
+                                    context.record_tick_failure(error_msg.clone());
+                                    eprintln!("❌ {} failed: {}", node_name, error_msg);
+
+                                    // Call the node's error handler
+                                    registered.node.on_error(&error_msg, context);
+
+                                    // Check if auto-restart is enabled
+                                    if context.config().restart_on_failure {
+                                        match context.restart() {
+                                            Ok(_) => {
+                                                println!("🔄 Node '{}' restarted successfully (attempt {}/{})",
+                                                    node_name,
+                                                    context.metrics().errors_count,
+                                                    context.config().max_restart_attempts);
+                                                registered.initialized = true; // Mark as initialized after restart
+                                            }
+                                            Err(e) => {
+                                                eprintln!("💀 Node '{}' exceeded max restart attempts: {}", node_name, e);
+                                                context.transition_to_crashed(format!("Max restarts exceeded: {}", e));
+                                                registered.initialized = false; // Stop running this node
+                                            }
+                                        }
+                                    } else {
+                                        // No auto-restart - transition to error state
+                                        context.transition_to_error(error_msg);
+                                    }
+                                }
+                            }
+
+                            // Write heartbeat after each tick (success or failure)
                             Self::write_heartbeat(node_name, context);
                         }
                     }

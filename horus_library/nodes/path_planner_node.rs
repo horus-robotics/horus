@@ -1,5 +1,8 @@
 use crate::{LaserScan, Odometry, PathPlan};
 use horus_core::error::HorusResult;
+
+// Type alias for cleaner signatures
+type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo};
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap, HashSet};
@@ -84,7 +87,7 @@ impl PartialOrd for AStarNode {
 
 impl PathPlannerNode {
     /// Create a new path planner node with default topics
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         Self::new_with_topics("path_plan", "odom", "lidar_scan", "goal")
     }
 
@@ -94,7 +97,7 @@ impl PathPlannerNode {
         odom_topic: &str,
         lidar_topic: &str,
         goal_topic: &str,
-    ) -> HorusResult<Self> {
+    ) -> Result<Self> {
         Ok(Self {
             plan_publisher: Hub::new(plan_topic)?,
             odometry_subscriber: Hub::new(odom_topic)?,

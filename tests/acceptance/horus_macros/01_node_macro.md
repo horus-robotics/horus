@@ -209,7 +209,7 @@ pub struct MyNode {
 **When:** new() method is called
 **Then:**
 - [ ] All Hubs created with Hub::new()
-- [ ] Returns HorusResult<Self>
+- [ ] Returns Result<Self>
 - [ ] Error propagation with ?
 
 **Acceptance Criteria:**
@@ -222,7 +222,7 @@ node! {
 
 // Generated new():
 impl TestNode {
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         Ok(Self {
             output: Hub::new("test")?,
         })

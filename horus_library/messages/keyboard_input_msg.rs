@@ -1,6 +1,7 @@
-//! Keyboard input message type for HORUS framework
-//!
-//! Provides a standardized way to represent keyboard events across all HORUS components.
+use horus_core::core::LogSummary;
+// Keyboard input message type for HORUS framework
+//
+// Provides a standardized way to represent keyboard events across all HORUS components.
 
 use serde::{Deserialize, Serialize};
 
@@ -146,5 +147,12 @@ impl KeyboardInput {
 
     pub fn is_alt(&self) -> bool {
         self.has_modifier("Alt")
+    }
+}
+
+
+impl LogSummary for KeyboardInput {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
     }
 }

@@ -1,9 +1,9 @@
 [package]
 name = "snakesim_gui"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 
 [dependencies]
 eframe = "0.27"
 egui = "0.27"
-horus = { version = "0.1.0", path = "../../../../horus" }
+horus = { version = "0.1.1", path = "../../../../horus" }

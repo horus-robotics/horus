@@ -1,19 +1,19 @@
-//! Message types for the HORUS robotics framework
-//!
-//! This module contains all standardized message types used for communication
-//! between HORUS components (nodes, algorithms, and applications).
-//!
-//! # Message Organization
-//!
-//! Messages are organized by domain:
-//! - Geometry: Spatial primitives (Twist, Pose2D, Transform, etc.)
-//! - Sensor: Sensor data formats (LaserScan, Imu, Odometry, etc.)
-//! - Control: Actuator commands (MotorCommand, ServoCommand, PID, etc.)
-//! - Diagnostics: System health (Status, Heartbeat, EmergencyStop, etc.)
-//! - Input: User input (KeyboardInput, JoystickInput)
-//! - Application: App-specific messages (SnakeState, Direction, etc.)
-//!
-//! All message types are re-exported at the crate root for convenience.
+// Message types for the HORUS robotics framework
+//
+// This module contains all standardized message types used for communication
+// between HORUS components (nodes, algorithms, and applications).
+//
+// # Message Organization
+//
+// Messages are organized by domain:
+// - Geometry: Spatial primitives (Twist, Pose2D, Transform, etc.)
+// - Sensor: Sensor data formats (LaserScan, Imu, Odometry, etc.)
+// - Control: Actuator commands (MotorCommand, ServoCommand, PID, etc.)
+// - Diagnostics: System health (Status, Heartbeat, EmergencyStop, etc.)
+// - Input: User input (KeyboardInput, JoystickInput)
+// - Application: App-specific messages (SnakeState, Direction, etc.)
+//
+// All message types are re-exported at the crate root for convenience.
 
 // Core message modules
 pub mod control;

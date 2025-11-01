@@ -2,7 +2,7 @@
 // Keeps complexity low - just HTTP calls to registry
 
 use crate::dependency_resolver::{DependencySpec, PackageProvider};
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 use chrono::{DateTime, Utc};
 use colored::*;
 use flate2::read::GzDecoder;
@@ -45,6 +45,9 @@ pub enum PackageSource {
     PyPI,        // Python Package Index (external Python packages)
     CratesIO,    // Rust crates.io (future)
     System,      // System packages (apt, brew, etc.)
+    Path {       // Local filesystem path (for development)
+        path: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -138,6 +141,12 @@ impl RegistryClient {
             PackageSource::System => {
                 Err(anyhow!("System packages not supported via horus pkg install"))
             }
+            PackageSource::Path { .. } => {
+                Err(anyhow!(
+                    "Path dependencies must be specified in horus.yaml.\n\
+                     Use 'horus run' to install dependencies from horus.yaml."
+                ))
+            }
         }
     }
 
@@ -155,22 +164,103 @@ impl RegistryClient {
             }
         }
 
-        // Check if it's a known Rust package (crates.io)
-        // Common Rust crates: tokio, serde, reqwest, etc.
-        // crates.io requires a User-Agent header
+        // Check BOTH PyPI and crates.io to detect ambiguity
+        let in_pypi = self.check_pypi_exists(package_name);
+        let in_crates = self.check_crates_exists(package_name);
+
+        // Handle ambiguity - package exists in both registries
+        if in_pypi && in_crates {
+            println!("\n{} Package '{}' found in BOTH PyPI and crates.io", "⚠".yellow(), package_name.green());
+            return self.prompt_package_source_choice(package_name);
+        }
+
+        // Package only in crates.io
+        if in_crates {
+            return Ok(PackageSource::CratesIO);
+        }
+
+        // Package only in PyPI or not found (default to PyPI)
+        Ok(PackageSource::PyPI)
+    }
+
+    fn check_pypi_exists(&self, package_name: &str) -> bool {
+        // Check PyPI API
+        let pypi_url = format!("https://pypi.org/pypi/{}/json", package_name);
+        if let Ok(response) = self.client.get(&pypi_url).send() {
+            return response.status().is_success();
+        }
+        false
+    }
+
+    fn check_crates_exists(&self, package_name: &str) -> bool {
+        // Check crates.io API
         let crates_url = format!("https://crates.io/api/v1/crates/{}", package_name);
         if let Ok(response) = self.client
             .get(&crates_url)
             .header("User-Agent", "horus-pkg-manager")
             .send()
         {
-            if response.status().is_success() {
-                return Ok(PackageSource::CratesIO);
+            return response.status().is_success();
+        }
+        false
+    }
+
+    fn prompt_package_source_choice(&self, package_name: &str) -> Result<PackageSource> {
+        use std::io::{self, Write};
+
+        println!("\nWhich package source do you want to use?");
+        println!("  [1] {} PyPI (Python package)", "🐍".cyan());
+        println!("  [2] {} crates.io (Rust binary)", "🦀".cyan());
+        println!("  [3] {} Cancel installation", "✗".red());
+
+        print!("\nChoice [1-3]: ");
+        io::stdout().flush()?;
+
+        let mut input = String::new();
+        io::stdin().read_line(&mut input)?;
+
+        match input.trim() {
+            "1" => {
+                println!("  → Using PyPI (Python)");
+                Ok(PackageSource::PyPI)
+            }
+            "2" => {
+                println!("  → Using crates.io (Rust)");
+                Ok(PackageSource::CratesIO)
+            }
+            "3" => {
+                bail!("Installation cancelled by user")
+            }
+            _ => {
+                println!("Invalid choice, defaulting to PyPI");
+                Ok(PackageSource::PyPI)
             }
         }
+    }
 
-        // Default to PyPI for non-HORUS, non-Rust packages
-        Ok(PackageSource::PyPI)
+    // Install a dependency from DependencySpec (supports path and registry)
+    pub fn install_dependency_spec(
+        &self,
+        spec: &crate::dependency_resolver::DependencySpec,
+        target: crate::workspace::InstallTarget,
+        base_dir: Option<&Path>,
+    ) -> Result<()> {
+        use crate::dependency_resolver::DependencySource;
+
+        match &spec.source {
+            DependencySource::Registry => {
+                // For registry dependencies, use version from requirement if specific
+                let version_str = if spec.requirement.to_string() != "*" {
+                    Some(spec.requirement.to_string())
+                } else {
+                    None
+                };
+                self.install_from_registry(&spec.name, version_str.as_deref(), target)
+            }
+            DependencySource::Path(path) => {
+                self.install_from_path(&spec.name, path, target, base_dir)
+            }
+        }
     }
 
     fn install_from_registry(
@@ -767,6 +857,39 @@ impl RegistryClient {
         // Simple detection - just get name, version, description, license
         let (name, version, description, license) = detect_package_info(current_dir)?;
 
+        // Validate dependencies - check for path/git deps before publishing
+        let yaml_path = current_dir.join("horus.yaml");
+        if yaml_path.exists() {
+            use crate::commands::run::parse_horus_yaml_dependencies_v2;
+            use crate::dependency_resolver::DependencySource;
+
+            match parse_horus_yaml_dependencies_v2(yaml_path.to_str().unwrap()) {
+                Ok(deps) => {
+                    let mut has_path_deps = false;
+
+                    for dep in deps {
+                        match dep.source {
+                            DependencySource::Path(p) => {
+                                println!("\n{} Cannot publish package with path dependencies!", "Error:".red());
+                                println!("  Path dependency: {} -> {}", dep.name, p.display());
+                                println!("\n{}", "Path dependencies are not reproducible and cannot be published.".yellow());
+                                println!("{}", "Please publish the path dependency to the registry first, then update horus.yaml.".yellow());
+                                has_path_deps = true;
+                            }
+                            _ => {}
+                        }
+                    }
+
+                    if has_path_deps {
+                        return Err(anyhow!("Cannot publish package with path dependencies"));
+                    }
+                }
+                Err(_) => {
+                    // If parsing fails, continue (might be old format or no deps)
+                }
+            }
+        }
+
         println!(" Publishing {} v{}...", name, version);
 
         // Read API key from auth config (with helpful error message)
@@ -1007,6 +1130,26 @@ impl RegistryClient {
             for entry in fs::read_dir(&packages_dir)? {
                 let entry = entry?;
                 let entry_path = entry.path();
+
+                // Check for path package metadata (*.path.json)
+                if entry_path.extension().and_then(|s| s.to_str()) == Some("json")
+                    && entry_path.to_string_lossy().contains(".path.") {
+                    let content = fs::read_to_string(&entry_path)?;
+                    let metadata: serde_json::Value = serde_json::from_str(&content)?;
+
+                    let name = metadata["name"].as_str().unwrap_or("unknown").to_string();
+                    let version = metadata["version"].as_str().unwrap_or("dev").to_string();
+                    let path = metadata["source_path"].as_str().unwrap_or("").to_string();
+
+                    locked_packages.push(LockedPackage {
+                        name,
+                        version,
+                        checksum: String::new(), // Path deps don't have checksums
+                        source: PackageSource::Path { path },
+                    });
+                    continue;
+                }
+
 
                 // Check for system package references (*.system.json)
                 if entry_path.extension().and_then(|s| s.to_str()) == Some("json")
@@ -1967,7 +2110,118 @@ impl PackageProvider for RegistryClient {
             }
         }
     }
+}
 
+// Additional methods for path and git dependencies
+impl RegistryClient {
+    // Install a package from local filesystem path
+    pub fn install_from_path(
+        &self,
+        package_name: &str,
+        path: &Path,
+        target: crate::workspace::InstallTarget,
+        base_dir: Option<&Path>,
+    ) -> Result<()> {
+        use crate::workspace::InstallTarget;
+
+        println!(" Installing {} from path: {}...", package_name, path.display());
+
+        // Resolve relative path to absolute
+        let source_path = if path.is_absolute() {
+            path.to_path_buf()
+        } else {
+            // Resolve relative to base_dir (horus.yaml location) or current directory
+            let base = base_dir
+                .map(|p| p.to_path_buf())
+                .or_else(|| std::env::current_dir().ok())
+                .unwrap_or_else(|| PathBuf::from("."));
+            base.join(path)
+        };
+
+        if !source_path.exists() {
+            return Err(anyhow!(
+                "Path does not exist: {}",
+                source_path.display()
+            ));
+        }
+
+        if !source_path.is_dir() {
+            return Err(anyhow!(
+                "Path is not a directory: {}",
+                source_path.display()
+            ));
+        }
+
+        // Detect version from package manifest
+        let version = detect_package_version(&source_path)
+            .unwrap_or_else(|| "dev".to_string());
+
+        // Determine packages directory based on target
+        let packages_dir = match &target {
+            InstallTarget::Global => {
+                let current = PathBuf::from(".horus/packages");
+                fs::create_dir_all(&current)?;
+                current
+            }
+            InstallTarget::Local(workspace_path) => {
+                let local = workspace_path.join(".horus/packages");
+                fs::create_dir_all(&local)?;
+                local
+            }
+        };
+
+        let link_path = packages_dir.join(package_name);
+
+        // Remove existing symlink/directory if present
+        if link_path.exists() || link_path.symlink_metadata().is_ok() {
+            #[cfg(unix)]
+            {
+                if link_path.symlink_metadata()?.is_symlink() {
+                    fs::remove_file(&link_path)?;
+                } else {
+                    fs::remove_dir_all(&link_path)?;
+                }
+            }
+            #[cfg(windows)]
+            {
+                if link_path.is_dir() {
+                    fs::remove_dir_all(&link_path)?;
+                } else {
+                    fs::remove_file(&link_path)?;
+                }
+            }
+        }
+
+        // Create symlink to source path
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(&source_path, &link_path)?;
+        #[cfg(windows)]
+        std::os::windows::fs::symlink_dir(&source_path, &link_path)?;
+
+        // Create metadata for tracking
+        let metadata = serde_json::json!({
+            "name": package_name,
+            "version": version,
+            "source": "Path",
+            "source_path": source_path.display().to_string()
+        });
+
+        let metadata_file = packages_dir.join(format!("{}.path.json", package_name));
+        fs::write(&metadata_file, serde_json::to_string_pretty(&metadata)?)?;
+
+        println!(
+            " Installed {} v{} from path",
+            package_name, version
+        );
+        println!("   Link: {} -> {}", link_path.display(), source_path.display());
+        println!("   {} Path dependencies are live-linked - changes take effect immediately", "ℹ".cyan());
+
+        Ok(())
+    }
+}
+
+// Helper methods for system package detection (not part of PackageProvider trait)
+impl RegistryClient {
     // Detect if a Python package exists in system site-packages
     fn detect_system_python_package(&self, package_name: &str) -> Result<Option<String>> {
         use std::process::Command;
@@ -1991,14 +2245,16 @@ impl PackageProvider for RegistryClient {
         }
 
         // Fallback: check site-packages directly
-        let site_packages_paths = vec![
+        let mut site_packages_paths = vec![
             PathBuf::from(format!("/usr/lib/python3.12/site-packages/{}", package_name)),
             PathBuf::from(format!("/usr/local/lib/python3.12/site-packages/{}", package_name)),
-            dirs::home_dir()
-                .map(|h| h.join(format!(".local/lib/python3.12/site-packages/{}", package_name))),
         ];
 
-        for path in site_packages_paths.into_iter().flatten() {
+        if let Some(home) = dirs::home_dir() {
+            site_packages_paths.push(home.join(format!(".local/lib/python3.12/site-packages/{}", package_name)));
+        }
+
+        for path in site_packages_paths {
             if path.exists() {
                 // Try to get version from __init__.py or metadata
                 let version_file = path.join("__init__.py");

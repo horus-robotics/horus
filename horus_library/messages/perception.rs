@@ -1,9 +1,10 @@
-//! 3D perception and point cloud message types for robotics
-//!
-//! This module provides messages for 3D sensors, point clouds,
-//! object detection, and spatial understanding systems.
+// 3D perception and point cloud message types for robotics
+//
+// This module provides messages for 3D sensors, point clouds,
+// object detection, and spatial understanding systems.
 
 use crate::messages::geometry::{Point3, Quaternion, Vector3};
+use horus_core::core::LogSummary;
 use serde::{Deserialize, Serialize};
 use serde_arrays;
 
@@ -626,6 +627,78 @@ pub struct PlaneArray {
     pub algorithm: [u8; 32],
     /// Timestamp in nanoseconds since epoch
     pub timestamp: u64,
+}
+
+// ============================================================================
+// LogSummary Implementations - Zero-copy logging support
+// ============================================================================
+
+impl LogSummary for PointCloud {
+    fn log_summary(&self) -> String {
+        format!(
+            "PointCloud({} points, {} fields, {} bytes)",
+            self.point_count(),
+            self.field_count,
+            self.data.len()
+        )
+    }
+}
+
+impl LogSummary for PointField {
+    fn log_summary(&self) -> String {
+        format!("PointField('{}', {:?})", self.name_str(), self.datatype)
+    }
+}
+
+impl LogSummary for PointFieldType {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+impl LogSummary for BoundingBox3D {
+    fn log_summary(&self) -> String {
+        format!(
+            "BBox3D('{}', conf={:.2}, vol={:.2})",
+            self.label_str(),
+            self.confidence,
+            self.volume()
+        )
+    }
+}
+
+impl LogSummary for BoundingBoxArray3D {
+    fn log_summary(&self) -> String {
+        format!("BBoxArray3D({} boxes)", self.count)
+    }
+}
+
+impl LogSummary for DepthImage {
+    fn log_summary(&self) -> String {
+        format!(
+            "DepthImage({}x{}, {} bytes)",
+            self.width,
+            self.height,
+            self.depths.len() * 2
+        )
+    }
+}
+
+impl LogSummary for PlaneDetection {
+    fn log_summary(&self) -> String {
+        format!(
+            "Plane('{}', {} inliers, conf={:.2})",
+            self.plane_type_str(),
+            self.inlier_count,
+            self.confidence
+        )
+    }
+}
+
+impl LogSummary for PlaneArray {
+    fn log_summary(&self) -> String {
+        format!("PlaneArray({} planes)", self.count)
+    }
 }
 
 #[cfg(test)]

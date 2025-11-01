@@ -14,7 +14,7 @@ const MAX_TOTAL_SIZE: usize = 100_000_000; // Maximum total shared memory size (
 const MAX_CONSUMERS: usize = 16; // Maximum number of consumers per topic (MPMC support)
 
 /// Header for shared memory ring buffer with cache-line alignment
-#[repr(C, align(128))] // Cache-line aligned for optimal performance
+#[repr(C, align(64))] // Cache-line aligned for optimal performance (x86_64 cache line = 64 bytes)
 struct RingBufferHeader {
     capacity: AtomicUsize,
     head: AtomicUsize,
@@ -22,8 +22,7 @@ struct RingBufferHeader {
     element_size: AtomicUsize,
     consumer_count: AtomicUsize,
     sequence_number: AtomicUsize, // Global sequence counter
-    consumer_tails: [AtomicUsize; MAX_CONSUMERS], // MPMC FIX: Per-consumer tail positions in shared memory
-    _padding: [u8; 24],           // Pad to cache line boundary
+    _padding: [u8; 16],           // Pad to 64-byte cache line boundary (6 * 8 + 16 = 64)
 }
 
 /// Lock-free ring buffer in real shared memory using mmap with cache optimization
@@ -33,9 +32,10 @@ pub struct ShmTopic<T> {
     header: NonNull<RingBufferHeader>,
     data_ptr: NonNull<u8>,
     capacity: usize,
-    consumer_id: usize, // MPMC FIX: This consumer's unique ID (index into shared consumer_tails array)
+    consumer_id: usize, // MPMC: Consumer ID for registration (not used for tail tracking)
+    consumer_tail: AtomicUsize, // MPMC OPTIMIZED: Each consumer tracks tail in LOCAL memory (not shared)
     _phantom: std::marker::PhantomData<T>,
-    _padding: [u8; 24], // Pad to prevent false sharing
+    _padding: [u8; 16], // Pad to prevent false sharing
 }
 
 unsafe impl<T: Send> Send for ShmTopic<T> {}
@@ -229,11 +229,8 @@ impl<T> ShmTopic<T> {
                 (*header.as_ptr())
                     .sequence_number
                     .store(0, Ordering::Relaxed);
-                // MPMC FIX: Initialize all consumer tail positions
-                for i in 0..MAX_CONSUMERS {
-                    (*header.as_ptr()).consumer_tails[i].store(0, Ordering::Relaxed);
-                }
-                (*header.as_ptr())._padding = [0; 24]; // Initialize padding for cache alignment
+                // MPMC OPTIMIZED: Consumer tails now tracked in local memory (not in header)
+                (*header.as_ptr())._padding = [0; 16]; // Initialize padding for cache alignment
             }
             capacity
         } else {
@@ -306,7 +303,7 @@ impl<T> ShmTopic<T> {
         };
 
         // MPMC FIX: Register this consumer and get a unique ID
-        let consumer_id = unsafe {
+        let (consumer_id, current_head) = unsafe {
             let id = (*header.as_ptr())
                 .consumer_count
                 .fetch_add(1, Ordering::Relaxed);
@@ -319,12 +316,10 @@ impl<T> ShmTopic<T> {
                 ).into());
             }
 
-            // Initialize this consumer's tail position in shared memory
-            // MPMC FIX: Start at current head to avoid reading stale data
+            // MPMC OPTIMIZED: Consumer tail will be initialized in local memory below
             let current_head = (*header.as_ptr()).head.load(Ordering::Relaxed);
-            (*header.as_ptr()).consumer_tails[id].store(current_head, Ordering::Relaxed);
 
-            id
+            (id, current_head)
         };
 
         Ok(ShmTopic {
@@ -332,9 +327,10 @@ impl<T> ShmTopic<T> {
             header,
             data_ptr,
             capacity: actual_capacity,
-            consumer_id, // MPMC FIX: Store consumer ID instead of local tail
+            consumer_id, // MPMC: Consumer ID for registration
+            consumer_tail: AtomicUsize::new(current_head), // MPMC OPTIMIZED: Local tail tracking
             _phantom: std::marker::PhantomData,
-            _padding: [0; 24],
+            _padding: [0; 16],
         })
     }
 
@@ -459,8 +455,7 @@ impl<T> ShmTopic<T> {
 
             let head = (*header.as_ptr()).head.load(Ordering::Relaxed);
 
-            // Initialize this consumer's tail position in shared memory to current head
-            (*header.as_ptr()).consumer_tails[id].store(head, Ordering::Relaxed);
+            // MPMC OPTIMIZED: Consumer tail will be initialized in local memory below
 
             (id, head)
         };
@@ -470,9 +465,10 @@ impl<T> ShmTopic<T> {
             header,
             data_ptr,
             capacity,
-            consumer_id, // MPMC FIX: Store consumer ID instead of local tail
+            consumer_id, // MPMC: Consumer ID for registration
+            consumer_tail: AtomicUsize::new(current_head), // MPMC OPTIMIZED: Local tail tracking
             _phantom: std::marker::PhantomData,
-            _padding: [0; 24],
+            _padding: [0; 16],
         })
     }
 
@@ -556,8 +552,8 @@ impl<T> ShmTopic<T> {
     {
         let header = unsafe { self.header.as_ref() };
 
-        // MPMC FIX: Get this consumer's current tail position from SHARED MEMORY
-        let my_tail = header.consumer_tails[self.consumer_id].load(Ordering::Relaxed);
+        // MPMC OPTIMIZED: Get this consumer's current tail position from LOCAL MEMORY
+        let my_tail = self.consumer_tail.load(Ordering::Relaxed);
         let current_head = header.head.load(Ordering::Acquire); // Synchronize with producer's Release
 
         // Validate tail position is within bounds
@@ -586,8 +582,8 @@ impl<T> ShmTopic<T> {
         // Calculate next position for this consumer
         let next_tail = (my_tail + 1) % self.capacity;
 
-        // MPMC FIX: Update this consumer's tail position in SHARED MEMORY
-        header.consumer_tails[self.consumer_id].store(next_tail, Ordering::Relaxed);
+        // MPMC OPTIMIZED: Update this consumer's tail position in LOCAL MEMORY
+        self.consumer_tail.store(next_tail, Ordering::Relaxed);
 
         // Read the message (non-destructive - message stays for other consumers)
         // Bounds already validated above
@@ -648,6 +644,13 @@ impl<T> ShmTopic<T> {
                         let byte_offset = head * mem::size_of::<T>();
                         let data_ptr = self.data_ptr.as_ptr().add(byte_offset) as *mut T;
 
+                        // Prefetch the data slot we're about to write to (reduces write latency)
+                        #[cfg(target_arch = "x86_64")]
+                        {
+                            use std::arch::x86_64::{_mm_prefetch, _MM_HINT_T0};
+                            _mm_prefetch(data_ptr as *const i8, _MM_HINT_T0);
+                        }
+
                         // Verify bounds
                         let data_region_size = self.capacity * mem::size_of::<T>();
                         if byte_offset + mem::size_of::<T>() > data_region_size {
@@ -678,8 +681,8 @@ impl<T> ShmTopic<T> {
     pub fn receive(&self) -> Option<ConsumerSample<'_, T>> {
         let header = unsafe { self.header.as_ref() };
 
-        // Get this consumer's current tail position from shared memory
-        let my_tail = header.consumer_tails[self.consumer_id].load(Ordering::Relaxed);
+        // MPMC OPTIMIZED: Get this consumer's current tail position from LOCAL MEMORY
+        let my_tail = self.consumer_tail.load(Ordering::Relaxed);
         let current_head = header.head.load(Ordering::Acquire);
 
         // Validate positions
@@ -704,14 +707,21 @@ impl<T> ShmTopic<T> {
             return None;
         }
 
-        // Calculate next position for this consumer and update in shared memory
+        // Calculate next position for this consumer and update in local memory
         let next_tail = (my_tail + 1) % self.capacity;
-        header.consumer_tails[self.consumer_id].store(next_tail, Ordering::Relaxed);
+        self.consumer_tail.store(next_tail, Ordering::Relaxed);
 
         // Return sample pointing to the message in shared memory
         unsafe {
             let byte_offset = my_tail * mem::size_of::<T>();
             let data_ptr = self.data_ptr.as_ptr().add(byte_offset) as *const T;
+
+            // Prefetch the data we're about to read (reduces read latency)
+            #[cfg(target_arch = "x86_64")]
+            {
+                use std::arch::x86_64::{_mm_prefetch, _MM_HINT_T0};
+                _mm_prefetch(data_ptr as *const i8, _MM_HINT_T0);
+            }
 
             // Verify bounds
             let data_region_size = self.capacity * mem::size_of::<T>();

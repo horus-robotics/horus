@@ -134,7 +134,7 @@ int main(int argc, char** argv) {
             }
 
             // Check for joint commands (non-blocking)
-            if (joint_cmd_sub.try_recv(cmd)) {
+            if (joint_cmd_sub.recv(cmd)) {
                 horus::Log::info("Received joint command");
 
                 // Copy command data

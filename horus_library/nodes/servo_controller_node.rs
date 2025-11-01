@@ -1,5 +1,8 @@
 use crate::{JointCommand, ServoCommand};
 use horus_core::error::HorusResult;
+
+// Type alias for cleaner signatures
+type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -33,7 +36,7 @@ pub struct ServoControllerNode {
 
 impl ServoControllerNode {
     /// Create a new servo controller node with default topics
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         Self::new_with_topics("servo_command", "joint_command", "joint_states")
     }
 
@@ -42,7 +45,7 @@ impl ServoControllerNode {
         servo_topic: &str,
         joint_topic: &str,
         status_topic: &str,
-    ) -> HorusResult<Self> {
+    ) -> Result<Self> {
         Ok(Self {
             servo_subscriber: Hub::new(servo_topic)?,
             joint_subscriber: Hub::new(joint_topic)?,

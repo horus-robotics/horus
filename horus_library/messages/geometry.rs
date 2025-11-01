@@ -1,7 +1,8 @@
-//! Geometric and spatial message types for robotics
-//!
-//! This module provides fundamental geometric primitives used throughout
-//! robotics applications for representing position, orientation, and motion.
+use horus_core::core::LogSummary;
+// Geometric and spatial message types for robotics
+//
+// This module provides fundamental geometric primitives used throughout
+// robotics applications for representing position, orientation, and motion.
 
 use serde::{Deserialize, Serialize};
 
@@ -291,6 +292,48 @@ impl Quaternion {
 
     pub fn is_valid(&self) -> bool {
         self.x.is_finite() && self.y.is_finite() && self.z.is_finite() && self.w.is_finite()
+    }
+}
+
+
+impl LogSummary for Twist {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for Pose2D {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for Transform {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for Point3 {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for Vector3 {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for Quaternion {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
     }
 }
 

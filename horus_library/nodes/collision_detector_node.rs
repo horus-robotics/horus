@@ -1,5 +1,8 @@
 use crate::{DigitalIO, EmergencyStop, LaserScan, Odometry};
 use horus_core::error::HorusResult;
+
+// Type alias for cleaner signatures
+type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo};
 use std::collections::VecDeque;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -54,7 +57,7 @@ pub struct CollisionDetectorNode {
 
 impl CollisionDetectorNode {
     /// Create a new collision detector node with default topics
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         Self::new_with_topics("emergency_stop", "lidar_scan", "odom", "digital_input")
     }
 
@@ -64,7 +67,7 @@ impl CollisionDetectorNode {
         lidar_topic: &str,
         odom_topic: &str,
         io_topic: &str,
-    ) -> HorusResult<Self> {
+    ) -> Result<Self> {
         Ok(Self {
             emergency_publisher: Hub::new(emergency_topic)?,
             lidar_subscriber: Hub::new(lidar_topic)?,

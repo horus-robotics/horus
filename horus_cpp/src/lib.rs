@@ -1,5 +1,5 @@
 // HORUS C++ FFI - Handle-based safe API implementation
-use horus_core::{Hub, Node, NodeInfo, NodePriority, Scheduler, HorusResult, HorusError};
+use horus_core::{Hub, Node, NodeInfo, Scheduler, HorusResult, HorusError};
 use std::collections::HashMap;
 use std::ffi::{c_char, c_void, CStr, CString};
 use std::sync::{
@@ -18,7 +18,6 @@ trait PubHandle: Send {
 
 trait SubHandle: Send {
     fn recv(&self, data: *mut c_void, node_info: Option<&mut NodeInfo>) -> bool;
-    fn try_recv(&self, data: *mut c_void, node_info: Option<&mut NodeInfo>) -> bool;
 }
 
 // Implement for Twist
@@ -48,11 +47,6 @@ impl SubHandle for Hub<Twist> {
             false
         }
     }
-
-    fn try_recv(&self, data: *mut c_void, node_info: Option<&mut NodeInfo>) -> bool {
-        // Non-blocking version (Hub::recv is non-blocking, just call recv trait method)
-        SubHandle::recv(self, data, node_info)
-    }
 }
 
 // Implement for Pose
@@ -81,11 +75,6 @@ impl SubHandle for Hub<Pose> {
         } else {
             false
         }
-    }
-
-    fn try_recv(&self, data: *mut c_void, node_info: Option<&mut NodeInfo>) -> bool {
-        // Non-blocking version (Hub::recv is non-blocking, just call recv trait method)
-        SubHandle::recv(self, data, node_info)
     }
 }
 
@@ -182,12 +171,6 @@ pub extern "C" fn publisher(topic: *const c_char, msg_type: MessageType) -> u32 
     handle
 }
 
-#[no_mangle]
-pub extern "C" fn publisher_custom(_topic: *const c_char, _msg_size: usize) -> u32 {
-    // Custom message types not yet supported with logging
-    // TODO: Implement PubHandle trait for custom messages
-    0
-}
 
 // Subscriber creation
 #[no_mangle]
@@ -223,12 +206,6 @@ pub extern "C" fn subscriber(topic: *const c_char, msg_type: MessageType) -> u32
     handle
 }
 
-#[no_mangle]
-pub extern "C" fn subscriber_custom(_topic: *const c_char, _msg_size: usize) -> u32 {
-    // Custom message types not yet supported with logging
-    // TODO: Implement SubHandle trait for custom messages
-    0
-}
 
 // Send message (without logging - for backwards compatibility)
 #[no_mangle]
@@ -245,7 +222,7 @@ pub extern "C" fn send(pub_handle: u32, data: *const c_void) -> bool {
     }
 }
 
-// Receive message (blocking, without logging)
+// Receive message (non-blocking, without logging)
 #[no_mangle]
 pub extern "C" fn recv(sub_handle: u32, data: *mut c_void) -> bool {
     if data.is_null() {
@@ -260,25 +237,10 @@ pub extern "C" fn recv(sub_handle: u32, data: *mut c_void) -> bool {
     }
 }
 
-// Try receive message (non-blocking, without logging)
-#[no_mangle]
-pub extern "C" fn try_recv(sub_handle: u32, data: *mut c_void) -> bool {
-    if data.is_null() {
-        return false;
-    }
-
-    let subs = SUBSCRIBERS.lock().unwrap();
-    if let Some(subscriber) = subs.get(&sub_handle) {
-        subscriber.try_recv(data, None)  // No logging
-    } else {
-        false
-    }
-}
-
 // Context-aware send (with logging when in node context)
 #[no_mangle]
 pub extern "C" fn node_send(
-    ctx: *mut HorusNodeContext,
+    ctx: *mut NodeContext,
     pub_handle: u32,
     data: *const c_void,
 ) -> bool {
@@ -304,7 +266,7 @@ pub extern "C" fn node_send(
 // Context-aware recv (with logging when in node context)
 #[no_mangle]
 pub extern "C" fn node_recv(
-    ctx: *mut HorusNodeContext,
+    ctx: *mut NodeContext,
     sub_handle: u32,
     data: *mut c_void,
 ) -> bool {
@@ -327,31 +289,6 @@ pub extern "C" fn node_recv(
     }
 }
 
-// Context-aware try_recv (with logging when in node context)
-#[no_mangle]
-pub extern "C" fn node_try_recv(
-    ctx: *mut HorusNodeContext,
-    sub_handle: u32,
-    data: *mut c_void,
-) -> bool {
-    if data.is_null() || ctx.is_null() {
-        return false;
-    }
-
-    let node_info_ptr = unsafe { (*ctx).node_info };
-    let node_info_opt = if node_info_ptr.is_null() {
-        None
-    } else {
-        Some(unsafe { &mut *node_info_ptr })
-    };
-
-    let subs = SUBSCRIBERS.lock().unwrap();
-    if let Some(subscriber) = subs.get(&sub_handle) {
-        subscriber.try_recv(data, node_info_opt)
-    } else {
-        false
-    }
-}
 
 // Timing utilities
 #[no_mangle]
@@ -458,6 +395,22 @@ pub struct Pose {
     pub orientation: Quaternion,
 }
 
+impl horus_core::core::LogSummary for Twist {
+    fn log_summary(&self) -> String {
+        format!("lin:({:.2},{:.2},{:.2}) ang:({:.2},{:.2},{:.2})",
+                self.linear.x, self.linear.y, self.linear.z,
+                self.angular.x, self.angular.y, self.angular.z)
+    }
+}
+
+impl horus_core::core::LogSummary for Pose {
+    fn log_summary(&self) -> String {
+        format!("pos:({:.2},{:.2},{:.2}) ori:({:.2},{:.2},{:.2},{:.2})",
+                self.position.x, self.position.y, self.position.z,
+                self.orientation.x, self.orientation.y, self.orientation.z, self.orientation.w)
+    }
+}
+
 #[repr(C)]
 pub struct IMU {
     pub linear_acceleration: Vector3,
@@ -483,37 +436,17 @@ pub struct LaserScan {
 // Framework API - Node/Scheduler integration
 // ============================================================================
 
-// Priority enum matching C
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub enum Priority {
-    Critical = 0,
-    High = 1,
-    Normal = 2,
-    Low = 3,
-    Background = 4,
-}
-
-impl From<Priority> for NodePriority {
-    fn from(p: Priority) -> Self {
-        match p {
-            Priority::Critical => NodePriority::Critical,
-            Priority::High => NodePriority::High,
-            Priority::Normal => NodePriority::Normal,
-            Priority::Low => NodePriority::Low,
-            Priority::Background => NodePriority::Background,
-        }
-    }
-}
+// Priority is now just a plain u32 (0=Critical, 1=High, 2=Normal, 3=Low, 4=Background)
+// C++ passes it directly as uint32_t, no enum needed
 
 // C callback function types
-type NodeInitCallback = extern "C" fn(*mut HorusNodeContext, *mut c_void) -> bool;
-type NodeTickCallback = extern "C" fn(*mut HorusNodeContext, *mut c_void);
-type NodeShutdownCallback = extern "C" fn(*mut HorusNodeContext, *mut c_void);
+type NodeInitCallback = extern "C" fn(*mut NodeContext, *mut c_void) -> bool;
+type NodeTickCallback = extern "C" fn(*mut NodeContext, *mut c_void);
+type NodeShutdownCallback = extern "C" fn(*mut NodeContext, *mut c_void);
 
 // Node context passed to C++ callbacks
 #[repr(C)]
-pub struct HorusNodeContext {
+pub struct NodeContext {
     node_name: *const c_char,
     node_info: *mut NodeInfo, // Pointer to NodeInfo for creating logged pub/sub
 }
@@ -531,7 +464,7 @@ pub struct CNodeWrapper {
     tick_fn: NodeTickCallback,
     shutdown_fn: Option<NodeShutdownCallback>,
     user_data: *mut c_void,
-    context: HorusNodeContext,
+    context: NodeContext,
 }
 
 unsafe impl Send for CNodeWrapper {}
@@ -545,7 +478,7 @@ impl CNodeWrapper {
         user_data: *mut c_void,
     ) -> Self {
         let name_cstr = CString::new(name.clone()).unwrap();
-        let context = HorusNodeContext {
+        let context = NodeContext {
             node_name: name_cstr.as_ptr(),
             node_info: std::ptr::null_mut(), // Will be set during callbacks
         };
@@ -661,7 +594,7 @@ pub extern "C" fn scheduler_create(name: *const c_char) -> u32 {
 }
 
 #[no_mangle]
-pub extern "C" fn scheduler_register(sched_handle: u32, node_handle: u32, priority: Priority) -> bool {
+pub extern "C" fn scheduler_add(sched_handle: u32, node_handle: u32, priority: u32, enable_logging: bool) -> bool {
     let mut nodes = NODES.lock().unwrap();
     let schedulers = SCHEDULERS.lock().unwrap();
 
@@ -669,11 +602,10 @@ pub extern "C" fn scheduler_register(sched_handle: u32, node_handle: u32, priori
     {
         let mut sched = sched_arc.lock().unwrap();
 
-        // Convert Priority enum to u32 (0 = Critical, 4 = Background)
-        let priority_u32 = priority as u32;
-
+        // Priority is already u32 (0 = Critical, 4 = Background)
         // CNodeWrapper implements Node trait, so we can pass it as Box<dyn Node>
-        sched.register(node as Box<dyn Node>, priority_u32, Some(true));
+        // Use the enable_logging parameter from C++
+        sched.add(node as Box<dyn Node>, priority, Some(enable_logging));
         true
     } else {
         false
@@ -688,7 +620,36 @@ pub extern "C" fn scheduler_run(sched_handle: u32) {
         drop(schedulers); // Release lock before running
 
         let mut sched = sched_arc.lock().unwrap();
-        if let Err(e) = sched.tick_all() {
+        if let Err(e) = sched.run() {
+            eprintln!("[HORUS] Scheduler error: {:?}", e);
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn scheduler_tick(sched_handle: u32, node_names: *const *const c_char, count: usize) {
+    let schedulers = SCHEDULERS.lock().unwrap();
+
+    if let Some(sched_arc) = schedulers.get(&sched_handle).cloned() {
+        drop(schedulers); // Release lock before running
+
+        // Convert C string array to Rust Vec<&str>
+        let mut names: Vec<&str> = Vec::new();
+        if !node_names.is_null() {
+            for i in 0..count {
+                unsafe {
+                    let name_ptr = *node_names.add(i);
+                    if !name_ptr.is_null() {
+                        if let Ok(name) = std::ffi::CStr::from_ptr(name_ptr).to_str() {
+                            names.push(name);
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut sched = sched_arc.lock().unwrap();
+        if let Err(e) = sched.tick(&names) {
             eprintln!("[HORUS] Scheduler error: {:?}", e);
         }
     }
@@ -714,7 +675,7 @@ pub extern "C" fn scheduler_destroy(sched_handle: u32) {
 
 #[no_mangle]
 pub extern "C" fn node_create_publisher(
-    _ctx: *mut HorusNodeContext,
+    _ctx: *mut NodeContext,
     topic: *const c_char,
     msg_type: MessageType,
 ) -> u32 {
@@ -723,7 +684,7 @@ pub extern "C" fn node_create_publisher(
 
 #[no_mangle]
 pub extern "C" fn node_create_subscriber(
-    _ctx: *mut HorusNodeContext,
+    _ctx: *mut NodeContext,
     topic: *const c_char,
     msg_type: MessageType,
 ) -> u32 {
@@ -731,16 +692,16 @@ pub extern "C" fn node_create_subscriber(
 }
 
 #[no_mangle]
-pub extern "C" fn node_log_info(_ctx: *mut HorusNodeContext, msg: *const c_char) {
+pub extern "C" fn node_log_info(_ctx: *mut NodeContext, msg: *const c_char) {
     log_info(msg);
 }
 
 #[no_mangle]
-pub extern "C" fn node_log_warn(_ctx: *mut HorusNodeContext, msg: *const c_char) {
+pub extern "C" fn node_log_warn(_ctx: *mut NodeContext, msg: *const c_char) {
     log_warn(msg);
 }
 
 #[no_mangle]
-pub extern "C" fn node_log_error(_ctx: *mut HorusNodeContext, msg: *const c_char) {
+pub extern "C" fn node_log_error(_ctx: *mut NodeContext, msg: *const c_char) {
     log_error(msg);
 }

@@ -19,7 +19,7 @@ struct SnakeControlNode {
 }
 
 impl SnakeControlNode {
-    fn new() -> HorusResult<Self> {
+    fn new() -> Result<Self> {
         Ok(Self {
             keyboard_subscriber: Hub::new("snakeinput")?,
             joystick_subscriber: Hub::new("snakeinput")?,
@@ -64,7 +64,7 @@ impl Node for SnakeControlNode {
     }
 }
 
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     println!("=== Snake Game Controller ===");
     println!("Starting snake scheduler with keyboard input support...");
     println!("\nControls:");
@@ -84,10 +84,10 @@ fn main() -> HorusResult<()> {
     // Snake control node subscribes to snakeinput topic for both keyboard and joystick messages
     let snake_control_node = SnakeControlNode::new()?;
 
-    sched.register(Box::new(keyboard_input_node), 0, Some(true));
-    sched.register(Box::new(joystick_input_node), 1, None);
-    sched.register(Box::new(snake_control_node), 2, Some(true));
+    sched.add(Box::new(keyboard_input_node), 0, Some(true));
+    sched.add(Box::new(joystick_input_node), 1, None);
+    sched.add(Box::new(snake_control_node), 2, Some(true));
 
     // Run the scheduler loop - continuously ticks all nodes
-    sched.tick_node(&["KeyboardInputNode", "JoystickInputNode", "SnakeControlNode"])
+    sched.tick(&["KeyboardInputNode", "JoystickInputNode", "SnakeControlNode"])
 }

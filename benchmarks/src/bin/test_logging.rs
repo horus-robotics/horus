@@ -197,7 +197,7 @@ fn test_performance() -> bool {
     let topic_baseline = format!("test_perf_baseline_{}", process::id());
 
     // Baseline: Measure without heavy logging
-    let sender = match Link::<CmdVel>::producer_with_capacity(&topic_baseline, 1024) {
+    let sender = match Link::<CmdVel>::producer(&topic_baseline) {
         Ok(s) => s,
         Err(e) => {
             eprintln!("Failed to create sender: {}", e);

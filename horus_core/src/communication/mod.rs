@@ -47,6 +47,7 @@ where
         + std::fmt::Debug
         + serde::Serialize
         + serde::de::DeserializeOwned
+        + crate::core::LogSummary
         + 'static,
 {
     fn send(&self, msg: T) -> crate::error::HorusResult<()> {
@@ -65,6 +66,7 @@ where
         + std::fmt::Debug
         + serde::Serialize
         + serde::de::DeserializeOwned
+        + crate::core::LogSummary
         + 'static,
 {
     fn recv(&self) -> Option<T> {
@@ -75,7 +77,7 @@ where
 // Implement common traits for Link
 impl<T> PublisherTrait<T> for Link<T>
 where
-    T: Send + Sync + Clone + std::fmt::Debug + 'static,
+    T: Send + Sync + Clone + std::fmt::Debug + crate::core::LogSummary + 'static,
 {
     fn send(&self, msg: T) -> crate::error::HorusResult<()> {
         Link::send(self, msg, None).map_err(|_| {
@@ -90,7 +92,7 @@ where
 
 impl<T> SubscriberTrait<T> for Link<T>
 where
-    T: Send + Sync + Clone + std::fmt::Debug + 'static,
+    T: Send + Sync + Clone + std::fmt::Debug + crate::core::LogSummary + 'static,
 {
     fn recv(&self) -> Option<T> {
         Link::recv(self, None)

@@ -168,27 +168,7 @@ robot = horus.Node(
 )
 ```
 
-### 3. Using Quick Helpers
-
-```python
-# One-line transform node
-node = horus.quick(
-    sub="celsius",
-    pub="fahrenheit",
-    fn=lambda c: c * 9/5 + 32
-)
-
-# Run a simple pipe
-horus.pipe("input", "output", lambda x: x ** 2)
-
-# Echo data between topics
-horus.echo("sensor_raw", "sensor_backup")
-
-# Filter messages
-horus.filter_node("all_data", "positive_only", lambda x: x > 0)
-```
-
-### 4. Lifecycle Management
+### 3. Lifecycle Management
 
 ```python
 class Context:
@@ -269,35 +249,6 @@ def control_tick(node):
         latency = time.time() - timestamp
 ```
 
-#### Typed Messages (Phase 3)
-
-Use Rust message types for better performance and type safety:
-
-```python
-import horus
-
-# Create typed messages
-cmd = horus.CmdVel(linear=1.5, angular=0.8)
-print(cmd)  # "linear: 1.50 m/s, angular: 0.80 rad/s"
-
-# Messages have automatic timestamps
-print(f"Message age: {cmd.age():.3f}s")
-
-# IMU data
-imu = horus.ImuMsg(
-    accel_x=1.0, accel_y=2.0, accel_z=3.0,
-    gyro_x=0.1, gyro_y=0.2, gyro_z=0.3
-)
-
-# Send typed messages (or still use dicts - backward compatible!)
-node.send("cmd_vel", cmd)
-node.send("imu_data", imu)
-```
-
-**Available message types:**
-- `horus.CmdVel` - Robot velocity commands (linear, angular)
-- `horus.ImuMsg` - IMU sensor data (accel, gyro)
-
 #### Multiprocess Execution (Phase 4)
 
 Python nodes can run in separate processes and communicate via shared memory:
@@ -364,7 +315,7 @@ import time
 
 def sensor_tick(node):
     """High-frequency sensor (100Hz)"""
-    imu = horus.ImuMsg(accel_x=1.0, accel_y=0.0, accel_z=9.8)
+    imu = {"accel_x": 1.0, "accel_y": 0.0, "accel_z": 9.8}
     node.send("imu_data", imu)
 
 def control_tick(node):
@@ -376,7 +327,7 @@ def control_tick(node):
             return
 
         imu = node.get("imu_data")
-        cmd = horus.CmdVel(linear=1.0, angular=0.0)
+        cmd = {"linear": 1.0, "angular": 0.0}
         node.send("cmd_vel", cmd)
 
 def logger_tick(node):
@@ -386,16 +337,16 @@ def logger_tick(node):
         latency = (time.time() - timestamp) * 1000
         node.log_info(f"Command latency: {latency:.1f}ms")
 
-# Create nodes
-sensor = horus.Node(name="imu", pubs="imu_data", tick=sensor_tick)
-controller = horus.Node(name="ctrl", subs="imu_data", pubs="cmd_vel", tick=control_tick)
-logger = horus.Node(name="log", subs="cmd_vel", tick=logger_tick)
+# Create nodes with per-node rate control
+sensor = horus.Node(name="imu", pubs="imu_data", tick=sensor_tick, rate=100)
+controller = horus.Node(name="ctrl", subs="imu_data", pubs="cmd_vel", tick=control_tick, rate=50)
+logger = horus.Node(name="log", subs="cmd_vel", tick=logger_tick, rate=10)
 
-# Configure with different rates and priorities
+# Configure with priorities and logging
 scheduler = horus.Scheduler()
-scheduler.register(sensor, priority=0, logging=True, rate_hz=100.0)
-scheduler.register(controller, priority=1, logging=False, rate_hz=50.0)
-scheduler.register(logger, priority=2, logging=True, rate_hz=10.0)
+scheduler.add(sensor, priority=0, logging=True)
+scheduler.add(controller, priority=1, logging=False)
+scheduler.add(logger, priority=2, logging=True)
 
 scheduler.run(duration=5.0)
 
@@ -445,16 +396,6 @@ scheduler.run()
 - **Reproducible behavior**: Same input produces same output every time
 - **Debugging**: Easier to reason about system behavior
 
-### Broadcast (Fanout)
-```python
-horus.fanout("sensor", ["log", "display", "storage"])
-```
-
-### Merge Multiple Inputs
-```python
-horus.merge(["sensor1", "sensor2", "sensor3"], "all_sensors")
-```
-
 ### Chainable Registration
 ```python
 scheduler = horus.Scheduler()
@@ -503,14 +444,15 @@ The HORUS Python API is designed for simplicity and productivity:
 
 1. **Use per-node rate control**: Set different rates for different nodes
    ```python
-   scheduler.register(sensor, priority=0, rate_hz=100.0)  # High-frequency sensor
-   scheduler.register(logger, priority=1, rate_hz=10.0)   # Low-frequency logger
+   sensor = horus.Node(name="sensor", tick=sensor_fn, rate=100)  # High-frequency sensor
+   logger = horus.Node(name="logger", tick=logger_fn, rate=10)   # Low-frequency logger
+   scheduler.add(sensor, priority=0)
+   scheduler.add(logger, priority=1)
    ```
 2. **Monitor staleness**: Use `is_stale()` to detect and skip old data
-3. **Use typed messages**: `CmdVel` and `ImuMsg` are more efficient than dicts
-4. **Batch operations**: Process multiple messages per tick when possible
-5. **Keep tick() fast**: Avoid blocking operations
-6. **Check statistics**: Use `get_node_stats()` to monitor performance
+3. **Batch operations**: Process multiple messages per tick when possible
+4. **Keep tick() fast**: Avoid blocking operations
+5. **Check statistics**: Use `get_node_stats()` to monitor performance
 
 ## Development
 
@@ -533,7 +475,6 @@ maturin build --release
 # Run all tests
 python3 tests/test_rate_control.py      # Phase 1: Per-node rates
 python3 tests/test_timestamps.py        # Phase 2: Timestamps
-python3 tests/test_typed_messages.py    # Phase 3: Typed messages
 
 # Or use pytest
 pip install pytest

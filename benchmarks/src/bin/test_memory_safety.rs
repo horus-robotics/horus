@@ -98,7 +98,7 @@ fn test_bounds_checking() -> bool {
     let topic = format!("test_bounds_{}", process::id());
 
     // Create a small Link to test bounds
-    let sender = match Link::<CmdVel>::producer_with_capacity(&topic, 16) {
+    let sender = match Link::<CmdVel>::producer(&topic) {
         Ok(s) => s,
         Err(e) => {
             eprintln!("Failed to create sender: {}", e);
@@ -164,7 +164,7 @@ fn test_bounds_checking() -> bool {
     println!("  ✓ Drained buffer successfully");
 
     // Try to read from empty buffer (should return None, not crash)
-    match .recv(None) {
+    match receiver.recv(None) {
         Some(_) => {
             eprintln!("Received message from empty buffer");
             return false;
@@ -361,10 +361,10 @@ fn test_overflow_protection() -> bool {
     for &size in &buffer_sizes {
         let topic = format!("test_overflow_{}_{}", process::id(), size);
 
-        let sender = match Link::<CmdVel>::producer_with_capacity(&topic, size) {
+        let sender = match Link::<CmdVel>::producer(&topic) {
             Ok(s) => s,
             Err(e) => {
-                eprintln!("Failed to create sender with size {}: {:?}", size, e);
+                eprintln!("Failed to create sender: {:?}", e);
                 return false;
             }
         };

@@ -1,50 +1,47 @@
 #!/usr/bin/env node
 
 /**
- * Generate favicon SVG
- * This creates a simple 'H' logo that can be converted to various sizes
+ * Generate favicon from HORUS logo
+ * Run with: node scripts/generate-favicons.js
  */
 
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
-const faviconSvg = `<svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background -->
-  <rect width="512" height="512" fill="#16181c" rx="64"/>
+const publicDir = path.join(__dirname, '../public');
+const logoPath = path.join(publicDir, 'horus_logo.png');
 
-  <!-- Accent border -->
-  <rect x="0" y="0" width="512" height="8" fill="#00d9ff"/>
+if (!fs.existsSync(logoPath)) {
+  console.error('Error: horus_logo.png not found in public/');
+  process.exit(1);
+}
 
-  <!-- Letter H -->
-  <g transform="translate(256, 256)">
-    <text
-      x="0"
-      y="0"
-      font-family="monospace"
-      font-size="320"
-      font-weight="bold"
-      fill="#ffffff"
-      text-anchor="middle"
-      dominant-baseline="middle"
-    >
-      H
-    </text>
-  </g>
-</svg>`;
+console.log('Generating favicons from HORUS logo...');
 
-const outputPath = path.join(__dirname, '../public/favicon.svg');
-fs.writeFileSync(outputPath, faviconSvg);
-console.log('✓ Generated favicon.svg');
-console.log('\nGenerating PNG versions...');
+// Change to public directory
+process.chdir(publicDir);
 
-// Generate conversion commands
 const sizes = [
   { size: 16, name: 'favicon-16x16.png' },
   { size: 32, name: 'favicon-32x32.png' },
   { size: 180, name: 'apple-touch-icon.png' },
 ];
 
-console.log('\nConverting to PNG sizes...');
-sizes.forEach(({ size, name }) => {
-  console.log(`  ${name} (${size}x${size})`);
-});
+try {
+  sizes.forEach(({ size, name }) => {
+    execSync(`convert horus_logo.png -resize ${size}x${size} ${name}`);
+    const stats = fs.statSync(path.join(publicDir, name));
+    console.log(`✓ Generated ${name} (${Math.round(stats.size / 1024)}KB)`);
+  });
+
+  // Generate .ico file
+  execSync(`convert horus_logo.png -resize 32x32 favicon.ico`);
+  const icoStats = fs.statSync(path.join(publicDir, 'favicon.ico'));
+  console.log(`✓ Generated favicon.ico (${Math.round(icoStats.size / 1024)}KB)`);
+
+  console.log('\n✓ All favicons generated successfully!');
+} catch (error) {
+  console.error('Failed to generate favicons:', error.message);
+  process.exit(1);
+}

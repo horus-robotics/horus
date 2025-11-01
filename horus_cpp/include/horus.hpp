@@ -8,6 +8,7 @@
 #include <functional>
 #include <stdexcept>
 #include <cstring>
+#include <vector>
 
 namespace horus {
 
@@ -58,68 +59,20 @@ private:
     bool moved_from_ = false;
 };
 
-// Template publisher with RAII
-template<typename T>
-class Publisher {
-public:
-    Publisher(const std::string& topic, MessageType type = MSG_CUSTOM)
-        : handle_(0) {
-        if constexpr (std::is_same_v<T, void>) {
-            throw HorusException("Cannot create publisher with void type");
-        } else {
-            handle_ = publisher_custom(topic.c_str(), sizeof(T));
-            if (handle_ == 0) {
-                throw HorusException("Failed to create publisher for topic: " + topic);
-            }
-        }
-    }
+// Publisher specializations for standard message types
+// Note: C++ API only supports built-in message types (Twist, Pose, etc.)
+// For custom types, use the Rust API directly
 
-    ~Publisher() {
-        // Handle cleanup happens in Rust when handle is dropped
-    }
+template<typename T> class Publisher;  // Forward declaration (no definition - only specializations exist)
 
-    // Non-copyable
-    Publisher(const Publisher&) = delete;
-    Publisher& operator=(const Publisher&) = delete;
-
-    // Moveable
-    Publisher(Publisher&& other) noexcept : handle_(other.handle_) {
-        other.handle_ = 0;
-    }
-
-    Publisher& operator=(Publisher&& other) noexcept {
-        if (this != &other) {
-            handle_ = other.handle_;
-            other.handle_ = 0;
-        }
-        return *this;
-    }
-
-    bool send(const T& data) {
-        if (handle_ == 0) {
-            throw HorusException("Cannot send on moved-from publisher");
-        }
-        return ::send(handle_, &data);
-    }
-
-    // Operator overload for convenient publishing
-    Publisher& operator<<(const T& data) {
-        send(data);
-        return *this;
-    }
-
-    bool valid() const { return handle_ != 0; }
-
-private:
-    Pub handle_;
-};
-
-// Specialization for known message types
 template<>
 class Publisher<Twist> {
 public:
+    // Default constructor - creates invalid publisher
+    Publisher() : handle_(0), ctx_(nullptr) {}
+
     // Constructor for use within NodeContext (with logging)
-    explicit Publisher(const std::string& topic, HorusNodeContext* ctx = nullptr)
+    explicit Publisher(const std::string& topic, NodeContext* ctx = nullptr)
         : handle_(publisher(topic.c_str(), MSG_TWIST)), ctx_(ctx) {
         if (handle_ == 0) {
             throw HorusException("Failed to create Twist publisher");
@@ -163,14 +116,17 @@ public:
 
 private:
     Pub handle_;
-    HorusNodeContext* ctx_;
+    NodeContext* ctx_;
 };
 
 template<>
 class Publisher<Pose> {
 public:
+    // Default constructor - creates invalid publisher
+    Publisher() : handle_(0), ctx_(nullptr) {}
+
     // Constructor for use within NodeContext (with logging)
-    explicit Publisher(const std::string& topic, HorusNodeContext* ctx = nullptr)
+    explicit Publisher(const std::string& topic, NodeContext* ctx = nullptr)
         : handle_(publisher(topic.c_str(), MSG_POSE)), ctx_(ctx) {
         if (handle_ == 0) {
             throw HorusException("Failed to create Pose publisher");
@@ -214,76 +170,24 @@ public:
 
 private:
     Pub handle_;
-    HorusNodeContext* ctx_;
+    NodeContext* ctx_;
 };
 
-// Template subscriber with RAII
-template<typename T>
-class Subscriber {
-public:
-    Subscriber(const std::string& topic, MessageType type = MSG_CUSTOM)
-        : handle_(0) {
-        if constexpr (std::is_same_v<T, void>) {
-            throw HorusException("Cannot create subscriber with void type");
-        } else {
-            handle_ = subscriber_custom(topic.c_str(), sizeof(T));
-            if (handle_ == 0) {
-                throw HorusException("Failed to create subscriber for topic: " + topic);
-            }
-        }
-    }
+// Subscriber specializations for standard message types
+// Note: C++ API only supports built-in message types (Twist, Pose, etc.)
+// For custom types, use the Rust API directly
 
-    ~Subscriber() = default;
-
-    // Non-copyable
-    Subscriber(const Subscriber&) = delete;
-    Subscriber& operator=(const Subscriber&) = delete;
-
-    // Moveable
-    Subscriber(Subscriber&& other) noexcept : handle_(other.handle_) {
-        other.handle_ = 0;
-    }
-
-    Subscriber& operator=(Subscriber&& other) noexcept {
-        if (this != &other) {
-            handle_ = other.handle_;
-            other.handle_ = 0;
-        }
-        return *this;
-    }
-
-    bool recv(T& data) {
-        if (handle_ == 0) {
-            throw HorusException("Cannot receive on moved-from subscriber");
-        }
-        return ::recv(handle_, &data);
-    }
-
-    bool try_recv(T& data) {
-        if (handle_ == 0) {
-            throw HorusException("Cannot receive on moved-from subscriber");
-        }
-        return ::try_recv(handle_, &data);
-    }
-
-    // Operator overload for convenient receiving
-    Subscriber& operator>>(T& data) {
-        recv(data);
-        return *this;
-    }
-
-    bool valid() const { return handle_ != 0; }
-
-private:
-    Sub handle_;
-};
+template<typename T> class Subscriber;  // Forward declaration (no definition - only specializations exist)
 
 // Specializations for known types
 template<>
 class Subscriber<Twist> {
 public:
+    // Default constructor - creates invalid subscriber
+    Subscriber() : handle_(0), ctx_(nullptr) {}
+
     // Constructor for use within NodeContext (with logging)
-    explicit Subscriber(const std::string& topic, HorusNodeContext* ctx = nullptr)
+    explicit Subscriber(const std::string& topic, NodeContext* ctx = nullptr)
         : handle_(subscriber(topic.c_str(), MSG_TWIST)), ctx_(ctx) {
         if (handle_ == 0) {
             throw HorusException("Failed to create Twist subscriber");
@@ -320,17 +224,6 @@ public:
         }
     }
 
-    bool try_recv(Twist& data) {
-        if (handle_ == 0) throw HorusException("Invalid subscriber");
-
-        // Use context-aware try_recv for logging if context available
-        if (ctx_) {
-            return ::node_try_recv(ctx_, handle_, &data);
-        } else {
-            return ::try_recv(handle_, &data);
-        }
-    }
-
     Subscriber& operator>>(Twist& data) {
         recv(data);
         return *this;
@@ -338,14 +231,17 @@ public:
 
 private:
     Sub handle_;
-    HorusNodeContext* ctx_;
+    NodeContext* ctx_;
 };
 
 template<>
 class Subscriber<Pose> {
 public:
+    // Default constructor - creates invalid subscriber
+    Subscriber() : handle_(0), ctx_(nullptr) {}
+
     // Constructor for use within NodeContext (with logging)
-    explicit Subscriber(const std::string& topic, HorusNodeContext* ctx = nullptr)
+    explicit Subscriber(const std::string& topic, NodeContext* ctx = nullptr)
         : handle_(subscriber(topic.c_str(), MSG_POSE)), ctx_(ctx) {
         if (handle_ == 0) {
             throw HorusException("Failed to create Pose subscriber");
@@ -382,17 +278,6 @@ public:
         }
     }
 
-    bool try_recv(Pose& data) {
-        if (handle_ == 0) throw HorusException("Invalid subscriber");
-
-        // Use context-aware try_recv for logging if context available
-        if (ctx_) {
-            return ::node_try_recv(ctx_, handle_, &data);
-        } else {
-            return ::try_recv(handle_, &data);
-        }
-    }
-
     Subscriber& operator>>(Pose& data) {
         recv(data);
         return *this;
@@ -400,7 +285,7 @@ public:
 
 private:
     Sub handle_;
-    HorusNodeContext* ctx_;
+    NodeContext* ctx_;
 };
 
 // Utility functions in namespace
@@ -437,19 +322,13 @@ inline Pose make_pose(Vector3 position, Quaternion orientation) {
 // Framework API - Node and Scheduler integration with HORUS
 // ============================================================================
 
-// Priority levels for node execution
-enum class Priority {
-    Critical = PRIORITY_CRITICAL,
-    High = PRIORITY_HIGH,
-    Normal = PRIORITY_NORMAL,
-    Low = PRIORITY_LOW,
-    Background = PRIORITY_BACKGROUND
-};
+// Priority levels for node execution (0=Critical, 1=High, 2=Normal, 3=Low, 4=Background)
+// Lower numbers = higher priority (executed first)
 
 // NodeContext provides access to HORUS services within node callbacks
 class NodeContext {
 public:
-    explicit NodeContext(HorusNodeContext* ctx) : ctx_(ctx) {}
+    explicit NodeContext(NodeContext* ctx) : ctx_(ctx) {}
 
     // Create publishers within node context (with logging enabled)
     template<typename T>
@@ -462,6 +341,17 @@ public:
     template<typename T>
     Subscriber<T> create_subscriber(const std::string& topic) {
         // Pass context pointer to enable rich logging
+        return Subscriber<T>(topic, ctx_);
+    }
+
+    // Shorter aliases
+    template<typename T>
+    Publisher<T> pub(const std::string& topic) {
+        return Publisher<T>(topic, ctx_);
+    }
+
+    template<typename T>
+    Subscriber<T> sub(const std::string& topic) {
         return Subscriber<T>(topic, ctx_);
     }
 
@@ -479,7 +369,7 @@ public:
     }
 
 private:
-    HorusNodeContext* ctx_;
+    NodeContext* ctx_;
 };
 
 // Abstract Node class - inherit from this to create HORUS nodes
@@ -498,7 +388,7 @@ public:
     const std::string& name() const { return name_; }
 
     // Internal: get handle for registration
-    HorusNode create_handle() {
+    ::Node create_handle() {
         return node_create(
             name_.c_str(),
             &Node::init_callback,
@@ -513,19 +403,19 @@ private:
     void* user_data_;
 
     // Static C callbacks that forward to virtual methods
-    static bool init_callback(HorusNodeContext* ctx, void* user_data) {
+    static bool init_callback(NodeContext* ctx, void* user_data) {
         Node* node = static_cast<Node*>(user_data);
         NodeContext cpp_ctx(ctx);
         return node->init(cpp_ctx);
     }
 
-    static void tick_callback(HorusNodeContext* ctx, void* user_data) {
+    static void tick_callback(NodeContext* ctx, void* user_data) {
         Node* node = static_cast<Node*>(user_data);
         NodeContext cpp_ctx(ctx);
         node->tick(cpp_ctx);
     }
 
-    static void shutdown_callback(HorusNodeContext* ctx, void* user_data) {
+    static void shutdown_callback(NodeContext* ctx, void* user_data) {
         Node* node = static_cast<Node*>(user_data);
         NodeContext cpp_ctx(ctx);
         node->shutdown(cpp_ctx);
@@ -568,26 +458,44 @@ public:
         return *this;
     }
 
-    // Register a node with the scheduler
+    // Add a node to the scheduler
+    // priority: 0=Critical, 1=High, 2=Normal (default), 3=Low, 4=Background
+    // enable_logging: true=rich logging with timestamps/IPC timing, false=no logging
     template<typename NodeType>
-    bool register_node(NodeType& node, Priority priority = Priority::Normal) {
+    bool add(NodeType& node, uint32_t priority = 2, bool enable_logging = true) {
         static_assert(std::is_base_of<Node, NodeType>::value,
                      "NodeType must inherit from horus::Node");
 
-        HorusNode node_handle = node.create_handle();
+        ::Node node_handle = node.create_handle();
         if (node_handle == 0) {
             return false;
         }
 
-        return scheduler_register(handle_, node_handle, static_cast<::Priority>(priority));
+        return scheduler_add(handle_, node_handle, priority, enable_logging);
     }
 
-    // Run the scheduler (blocks until stopped)
+    // Run the scheduler with all nodes (blocks until stopped)
     void run() {
         if (handle_ == 0) {
             throw HorusException("Cannot run invalid scheduler");
         }
         scheduler_run(handle_);
+    }
+
+    // Run the scheduler with specific nodes only (blocks until stopped)
+    void tick(const std::vector<std::string>& node_names) {
+        if (handle_ == 0) {
+            throw HorusException("Cannot run invalid scheduler");
+        }
+
+        // Convert std::vector<std::string> to const char**
+        std::vector<const char*> c_names;
+        c_names.reserve(node_names.size());
+        for (const auto& name : node_names) {
+            c_names.push_back(name.c_str());
+        }
+
+        scheduler_tick(handle_, c_names.data(), c_names.size());
     }
 
     // Stop the scheduler
@@ -600,7 +508,7 @@ public:
     bool valid() const { return handle_ != 0; }
 
 private:
-    HorusScheduler handle_;
+    ::Scheduler handle_;
 };
 
 } // namespace horus

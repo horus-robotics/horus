@@ -1,5 +1,8 @@
 use crate::{EmergencyStop, SafetyStatus};
 use horus_core::error::HorusResult;
+
+// Type alias for cleaner signatures
+type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -26,12 +29,12 @@ pub struct EmergencyStopNode {
 
 impl EmergencyStopNode {
     /// Create a new emergency stop node with default topic "emergency_stop"
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         Self::new_with_topic("emergency_stop")
     }
 
     /// Create a new emergency stop node with custom topic
-    pub fn new_with_topic(topic: &str) -> HorusResult<Self> {
+    pub fn new_with_topic(topic: &str) -> Result<Self> {
         let safety_topic = format!("{}_safety", topic);
         Ok(Self {
             publisher: Hub::new(topic)?,

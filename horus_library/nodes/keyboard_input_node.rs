@@ -1,6 +1,9 @@
 use crate::KeyboardInput;
-use horus_core::error::HorusResult;
 use horus_core::{Hub, Node, NodeInfo};
+use horus_core::error::HorusResult;
+
+// Type alias for cleaner signatures
+type Result<T> = HorusResult<T>;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -148,12 +151,12 @@ pub struct KeyboardInputNode {
 
 impl KeyboardInputNode {
     /// Create a new keyboard input node with default topic "keyboard_input"
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         Self::new_with_topic("keyboard_input")
     }
 
     /// Create a new keyboard input node with custom topic
-    pub fn new_with_topic(topic: &str) -> HorusResult<Self> {
+    pub fn new_with_topic(topic: &str) -> Result<Self> {
         let mut node = Self {
             publisher: Hub::new(topic)?,
             custom_mapping: Arc::new(Mutex::new(HashMap::new())),

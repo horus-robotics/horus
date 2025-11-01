@@ -1,5 +1,8 @@
 use crate::{MotorCommand, PidConfig};
 use horus_core::error::HorusResult;
+
+// Type alias for cleaner signatures
+type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -40,7 +43,7 @@ pub struct PidControllerNode {
 
 impl PidControllerNode {
     /// Create a new PID controller node with default topics
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         Self::new_with_topics("setpoint", "feedback", "pid_output", "pid_config")
     }
 
@@ -50,7 +53,7 @@ impl PidControllerNode {
         feedback_topic: &str,
         output_topic: &str,
         config_topic: &str,
-    ) -> HorusResult<Self> {
+    ) -> Result<Self> {
         Ok(Self {
             output_publisher: Hub::new(output_topic)?,
             setpoint_subscriber: Hub::new(setpoint_topic)?,

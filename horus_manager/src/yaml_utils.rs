@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use std::fs;
 use std::path::Path;
 
@@ -141,4 +141,128 @@ pub fn remove_dependency_from_horus_yaml(
 
     fs::write(horus_yaml_path, new_lines.join("\n") + "\n")?;
     Ok(())
+}
+
+/// Add a path dependency to horus.yaml in structured format
+pub fn add_path_dependency_to_horus_yaml(
+    horus_yaml_path: &Path,
+    package_name: &str,
+    path: &str,
+) -> Result<()> {
+    let content = fs::read_to_string(horus_yaml_path)?;
+    let mut lines: Vec<String> = content.lines().map(|s| s.to_string()).collect();
+
+    // Find the dependencies section
+    let mut deps_line_idx = None;
+    for (i, line) in lines.iter().enumerate() {
+        if line.trim().starts_with("dependencies:") {
+            deps_line_idx = Some(i);
+            break;
+        }
+    }
+
+    let deps_idx = deps_line_idx
+        .ok_or_else(|| anyhow!("No dependencies section found in horus.yaml"))?;
+
+    // Check if it's an empty array: dependencies: []
+    let deps_line = &lines[deps_idx];
+    let is_empty_array = deps_line.trim() == "dependencies: []";
+
+    // Build path dependency in structured format
+    let dependency_entry = vec![
+        format!("  {}:", package_name),
+        format!("    path: \"{}\"", path),
+    ];
+
+    // Check for duplicates
+    let already_exists = lines.iter().any(|line| {
+        line.trim().starts_with(&format!("{}:", package_name))
+    });
+
+    if already_exists {
+        println!(
+            "  Dependency {} already exists in horus.yaml",
+            package_name
+        );
+        return Ok(());
+    }
+
+    if is_empty_array {
+        // Convert empty array to structured format
+        lines[deps_idx] = "dependencies:".to_string();
+        for entry in dependency_entry {
+            lines.insert(deps_idx + 1, entry);
+        }
+    } else {
+        // Find where to insert (after last dependency entry)
+        let mut insert_idx = deps_idx + 1;
+        while insert_idx < lines.len() {
+            let line = &lines[insert_idx];
+            let trimmed = line.trim();
+            if trimmed.starts_with("- ")
+                || trimmed.starts_with("#")
+                || trimmed.is_empty()
+                || (trimmed.ends_with(":") && !trimmed.starts_with("dependencies:"))
+                || trimmed.starts_with("path:")
+                || trimmed.starts_with("version:") {
+                insert_idx += 1;
+            } else {
+                break;
+            }
+        }
+
+        // Insert in reverse order to maintain correct sequence
+        for entry in dependency_entry.iter().rev() {
+            lines.insert(insert_idx, entry.clone());
+        }
+    }
+
+    fs::write(horus_yaml_path, lines.join("\n") + "\n")?;
+    Ok(())
+}
+
+/// Detect if a string looks like a path (contains /, ./, ../, or starts with /)
+pub fn is_path_like(input: &str) -> bool {
+    input.contains('/') || input.starts_with("./") || input.starts_with("../")
+}
+
+/// Read package name from a directory by checking horus.yaml, Cargo.toml, or package.json
+pub fn read_package_name_from_path(path: &Path) -> Result<String> {
+    // Try horus.yaml first
+    let horus_yaml = path.join("horus.yaml");
+    if horus_yaml.exists() {
+        let content = fs::read_to_string(&horus_yaml)?;
+        let yaml: serde_yaml::Value = serde_yaml::from_str(&content)?;
+        if let Some(name) = yaml.get("name").and_then(|v| v.as_str()) {
+            return Ok(name.to_string());
+        }
+    }
+
+    // Try Cargo.toml (Rust)
+    let cargo_toml = path.join("Cargo.toml");
+    if cargo_toml.exists() {
+        let content = fs::read_to_string(&cargo_toml)?;
+        if let Ok(toml) = content.parse::<toml::Value>() {
+            if let Some(name) = toml.get("package")
+                .and_then(|p| p.get("name"))
+                .and_then(|n| n.as_str()) {
+                return Ok(name.to_string());
+            }
+        }
+    }
+
+    // Try package.json (Python/Node)
+    let package_json = path.join("package.json");
+    if package_json.exists() {
+        let content = fs::read_to_string(&package_json)?;
+        let json: serde_json::Value = serde_json::from_str(&content)?;
+        if let Some(name) = json.get("name").and_then(|v| v.as_str()) {
+            return Ok(name.to_string());
+        }
+    }
+
+    Err(anyhow!(
+        "Could not determine package name from path: {}\nMake sure the directory contains horus.yaml, Cargo.toml, or package.json",
+        path.display()
+    ))
 }

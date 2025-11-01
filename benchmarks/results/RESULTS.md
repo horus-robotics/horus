@@ -1,10 +1,44 @@
 # HORUS Production Benchmark Results
 
-**Generated**: October 3, 2025
+**Last Updated**: October 31, 2025
 
-## Quick Results
+## Production-Validated IPC Performance
 
-### Production Performance Summary
+### Link (SPSC) - Cross-Core Latency
+
+**Optimized single-producer, single-consumer channel:**
+- **Median latency**: 312ns (624 cycles @ 2GHz)
+- **P95 latency**: 444ns
+- **P99 latency**: 578ns
+- **Burst throughput**: 6.05 MHz (6M+ msg/s)
+- **Bandwidth**: Up to 369 MB/s for burst messages
+- **Large messages**: 480 msg/s for 16KB, 7.5 MB/s bandwidth
+
+### Hub (MPMC) - Cross-Core Latency
+
+**Flexible multi-producer, multi-consumer pub/sub:**
+- **Median latency**: 481ns (962 cycles @ 2GHz)
+- **P95 latency**: 653ns
+- **Flexible architecture**: Multiple publishers and subscribers
+
+### Key Performance Results
+
+**Link is 29% faster than Hub** in 1P1C scenarios
+- Best for point-to-point communication
+- Lowest latency for control loops
+
+**Production-validated reliability:**
+- 6.2M+ test messages with zero corruptions
+- Comprehensive validation test suite
+
+**Performance characteristics:**
+- Sub-microsecond latency on modern x86_64 systems
+- Linear scaling with message size
+- Massive headroom for typical robotics frequencies
+
+### Legacy Message Type Benchmarks (Hub)
+
+*Note: These measurements use Hub (MPMC). Link (SPSC) shows 29% better performance.*
 
 | Message Type | Size | Avg Latency | Throughput | Use Case |
 |--------------|------|-------------|------------|----------|
@@ -13,13 +47,6 @@
 | **Odometry** | 736 B | **~1.1 μs** | 1.3M msg/s | Localization @ 50Hz |
 | **LaserScan** | 1.5 KB | **~2.2 μs** | 633K msg/s | 2D Lidar @ 10Hz |
 | **PointCloud (10K)** | 120 KB | **~360 μs** | 4.7K msg/s | 3D Perception @ 30Hz |
-
-### Performance Highlights
-
- **Sub-microsecond latency** for control messages (CmdVel: 296-643ns)
- **Low-microsecond latency** for sensor data (LaserScan: 1.31-2.81μs)
- **Linear scaling** with message size
- **Massive headroom** for all typical robotics frequencies
 
 ## Latest Run
 
@@ -40,21 +67,50 @@ See [`latest_run.txt`](latest_run.txt) for most recent benchmark output.
 
 ```
 
-## Comparison with traditional frameworks
+## Comparison with ROS2
 
-| Framework | Small Msg | Medium Msg | Large Msg | Speedup |
-|-----------|-----------|------------|-----------|---------|
-| **HORUS** | **500 ns** | **940 ns** | **2.2 μs** | Baseline |
-| traditional frameworks (DDS) | 50-100 μs | 100-500 μs | 1-10 ms | **100-270x slower** |
-| traditional frameworks (FastDDS) | 20-50 μs | 50-200 μs | 500 μs-5 ms | **40-150x slower** |
+| Framework | Small Msg | Medium Msg | Large Msg | HORUS Speedup |
+|-----------|-----------|------------|-----------|---------------|
+| **HORUS Link (SPSC)** | **312 ns** | **~400 ns** | **~900 ns** | Baseline (Fastest) |
+| **HORUS Hub (MPMC)** | **481 ns** | **~620 ns** | **~1.4 μs** | Flexible pub/sub |
+| ROS2 (DDS) | 50-100 μs | 100-500 μs | 1-10 ms | **64-320x slower** |
+| ROS2 (FastDDS) | 20-50 μs | 50-200 μs | 500 μs-5 ms | **50-250x slower** |
 
 ## Methodology
 
-- **Iterations**: 10,000 per test (warmup: 100)
+### Benchmark Pattern: Ping-Pong
+
+HORUS uses the **industry-standard ping-pong pattern** for IPC latency measurement:
+
+**Pattern:**
+1. Producer sends message with RDTSC timestamp (Core 0)
+2. Consumer receives, reads RDTSC, calculates latency (Core 1)
+3. Consumer sends ACK back to producer
+4. Producer waits for ACK before sending next message
+5. Repeat for 10,000 iterations
+
+**Why Ping-Pong?**
+- Industry standard (ROS2, iceoryx2, ZeroMQ all use this)
+- Prevents queue buildup (realistic backpressure)
+- Measures true round-trip latency
+- Comparable across frameworks
+- Conservative measurement (includes synchronization)
+
+**Measurement Details:**
+- **Iterations**: 10,000 per test (warmup: 1,000)
 - **Messages**: Real HORUS library types with serde serialization
 - **Build**: `cargo build --release` with full optimizations
 - **IPC**: Native HORUS shared memory
 - **Serialization**: Bincode (optimized)
+- **CPU Affinity**: Producer on Core 0, Consumer on Core 1
+- **Timestamp**: RDTSC cycle-accurate (embedded in message)
+- **Calibration**: RDTSC null cost ~36 cycles
+
+**Cross-Core Testing:**
+- Producer and consumer on different CPU cores
+- Includes cache coherency overhead
+- Simulates real multi-process robotics systems
+- Theoretical minimum: ~60 cycles for cross-core communication
 
 ## Running Benchmarks
 
@@ -101,11 +157,21 @@ See [`../README.md`](../README.md) and [`../SUMMARY.md`](../SUMMARY.md) for:
 
 ## Conclusion
 
-**HORUS delivers production-grade performance:**
+**HORUS delivers production-grade, sub-microsecond IPC performance:**
 
- **296ns-643ns** - CmdVel (motor control)
- **718ns-1.37μs** - IMU (sensor fusion)
- **1.31-2.81μs** - LaserScan (2D lidar)
- **650ns-1.43μs** - Odometry (localization)
- **215-507μs** - PointCloud (10K points)
+**IPC Mechanisms:**
+- **Link (SPSC)**: 312ns median - Fastest for point-to-point
+- **Hub (MPMC)**: 481ns median - Flexible pub/sub
+- **29% performance advantage** with Link in 1P1C scenarios
+
+**Production Validation:**
+- 6.2M+ test messages with zero corruptions
+- Comprehensive validation test suite
+- Tested on modern x86_64 systems
+
+**Use Case Guidelines:**
+- **Link**: Control loops, direct node-to-node communication
+- **Hub**: Multi-subscriber topics, sensor broadcasting
+
+*Performance varies by hardware. Run `cargo test --release` to benchmark on your system.*
 

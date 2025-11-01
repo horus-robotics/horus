@@ -42,6 +42,12 @@ pub struct GenericMessage {
     pub metadata: Option<String>,
 }
 
+impl horus::core::LogSummary for GenericMessage {
+    fn log_summary(&self) -> String {
+        format!("<data: {} bytes>", self.data.len())
+    }
+}
+
 /// Python wrapper for HORUS Hub (Publisher)
 ///
 /// This class provides publish/subscribe communication between nodes.

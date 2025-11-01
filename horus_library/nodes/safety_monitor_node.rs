@@ -1,5 +1,8 @@
 use crate::{BatteryState, EmergencyStop, ResourceUsage, SafetyStatus, StatusLevel};
 use horus_core::error::HorusResult;
+
+// Type alias for cleaner signatures
+type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -48,12 +51,12 @@ struct SafetyCheck {
 
 impl SafetyMonitorNode {
     /// Create a new safety monitor node with default topic "safety_status"
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         Self::new_with_topic("safety_status")
     }
 
     /// Create a new safety monitor node with custom topic
-    pub fn new_with_topic(topic: &str) -> HorusResult<Self> {
+    pub fn new_with_topic(topic: &str) -> Result<Self> {
         Ok(Self {
             publisher: Hub::new(topic)?,
             emergency_subscriber: Hub::new("emergency_stop")?,

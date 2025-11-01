@@ -161,7 +161,7 @@ fn test_link_sendrecv() -> bool {
     let topic = format!("test_link_{}", process::id());
 
     // Create link (sender will be created implicitly)
-    let sender = match Link::<CmdVel>::producer_with_capacity(&topic, 1024) {
+    let sender = match Link::<CmdVel>::producer(&topic) {
         Ok(s) => s,
         Err(e) => {
             eprintln!("Failed to create sender: {}", e);
@@ -179,13 +179,30 @@ fn test_link_sendrecv() -> bool {
     };
     println!("  ✓ Receiver created");
 
-    // Send messages
+    // Test 1: Send and receive a single message
     let test_msg = CmdVel {
         linear: 2.0,
         angular: 1.0,
         stamp_nanos: 54321,
     };
 
+    if let Err(e) = sender.send(test_msg.clone(), None) {
+        eprintln!("Failed to send message: {:?}", e);
+        return false;
+    }
+
+    // Give time for message to propagate
+    thread::sleep(Duration::from_micros(100));
+
+    let received = receiver.recv(None);
+    if received.is_none() {
+        eprintln!("Failed to receive message");
+        return false;
+    }
+    println!("  ✓ Basic send/receive works");
+
+    // Test 2: Latest-value semantics (single-slot overwrite)
+    // Send multiple messages rapidly, consumer should get the LATEST value
     for i in 0..100 {
         let mut msg = test_msg.clone();
         msg.stamp_nanos = i;
@@ -196,26 +213,22 @@ fn test_link_sendrecv() -> bool {
     }
     println!("  ✓ Sent 100 messages");
 
-    // Receive messages
-    let mut received = 0;
-    let start = Instant::now();
-    while received < 100 && start.elapsed() < Duration::from_secs(1) {
-        if let Some(msg) = receiver.recv(None) {
-            if msg.stamp_nanos != received {
-                eprintln!("Message order error: expected {}, got {}", received, msg.stamp_nanos);
-                return false;
-            }
-            received += 1;
+    // Give time for last message to propagate
+    thread::sleep(Duration::from_micros(100));
+
+    // Consumer should get the LATEST value (stamp_nanos = 99)
+    if let Some(msg) = receiver.recv(None) {
+        if msg.stamp_nanos != 99 {
+            eprintln!("Expected latest value (99), got {}", msg.stamp_nanos);
+            return false;
         }
+        println!("  ✓ Latest-value semantics work correctly (got message 99)");
+    } else {
+        eprintln!("Failed to receive latest message");
+        return false;
     }
 
-    if received == 100 {
-        println!("  ✓ Received all 100 messages in correct order");
-        true
-    } else {
-        eprintln!("Only received {} out of 100 messages", received);
-        false
-    }
+    true
 }
 
 /// Test 4: Scheduler

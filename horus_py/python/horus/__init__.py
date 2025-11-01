@@ -20,9 +20,8 @@ try:
         PyNodeInfo as _NodeInfo,
         PyHub as _PyHub,
         PyScheduler as _PyScheduler,
+        PyNodeState as NodeState,
         get_version,
-        CmdVel,  # Phase 3: Typed messages
-        ImuMsg,  # Phase 3: Typed messages
     )
 except ImportError:
     # Fallback for testing without Rust bindings
@@ -31,19 +30,24 @@ except ImportError:
     _NodeInfo = None
     _PyHub = None
     _PyScheduler = None
-    CmdVel = None
-    ImuMsg = None
+    # Mock NodeState for testing
+    class NodeState:
+        UNINITIALIZED = "uninitialized"
+        INITIALIZING = "initializing"
+        RUNNING = "running"
+        PAUSED = "paused"
+        STOPPING = "stopping"
+        STOPPED = "stopped"
+        ERROR = "error"
+        CRASHED = "crashed"
     def get_version(): return "0.1.0-mock"
 
 __version__ = "0.1.0"
 __all__ = [
     "Node",
     "Scheduler",
+    "NodeState",
     "run",
-    "quick",
-    "get_version",
-    "CmdVel",  # Phase 3: Typed messages
-    "ImuMsg",  # Phase 3: Typed messages
 ]
 
 
@@ -75,7 +79,7 @@ class Node:
     Simple node for HORUS - no inheritance required!
 
     Example:
-        def process(node):
+        def process(node: Node) -> None:
             if node.has_msg("input"):
                 data = node.get("input")
                 node.send("output", data * 2)
@@ -92,13 +96,14 @@ class Node:
     """
 
     def __init__(self,
-                 name: str = None,
-                 pubs: Union[List[str], str] = None,
-                 subs: Union[List[str], str] = None,
-                 tick: Callable = None,
+                 name: Optional[str] = None,
+                 pubs: Optional[Union[List[str], str]] = None,
+                 subs: Optional[Union[List[str], str]] = None,
+                 tick: Optional[Callable[['Node'], None]] = None,
                  rate: float = 30,
-                 init: Callable = None,
-                 shutdown: Callable = None):
+                 init: Optional[Callable[['Node'], None]] = None,
+                 shutdown: Optional[Callable[['Node'], None]] = None,
+                 on_error: Optional[Callable[['Node', Exception], None]] = None):
         """
         Create a simple HORUS node.
 
@@ -110,6 +115,7 @@ class Node:
             rate: Tick rate in Hz (default 30)
             init: Optional init function - signature: init(node)
             shutdown: Optional shutdown function - signature: shutdown(node)
+            on_error: Optional error handler - signature: on_error(node, exception)
         """
         # Auto-generate name if not provided
         if name is None:
@@ -120,7 +126,9 @@ class Node:
         self.tick_fn = tick
         self.init_fn = init
         self.shutdown_fn = shutdown
+        self.on_error_fn = on_error
         self.rate = rate
+        self.error_count = 0
 
         # Normalize pub/sub to lists
         if isinstance(pubs, str):
@@ -363,7 +371,7 @@ class Node:
                 self._msg_queues[topic].append(msg)
                 self._msg_timestamps[topic].append(timestamp)
 
-    def _internal_tick(self, info=None):
+    def _internal_tick(self, info: Optional[Any] = None) -> None:
         """Internal tick called by scheduler."""
         # DON'T store info - use a context manager approach
         old_info = self.info
@@ -371,54 +379,103 @@ class Node:
         try:
             if self.tick_fn:
                 self.tick_fn(self)
+        except Exception as e:
+            # Increment error count
+            self.error_count += 1
+
+            # Log error if info available
+            if self.info:
+                self.info.log_error(f"Tick failed: {e}")
+                # Transition to error state if too many errors
+                if self.error_count > 10:
+                    self.info.transition_to_error(f"Too many errors ({self.error_count})")
+
+            # Call user's error handler if provided
+            if self.on_error_fn:
+                try:
+                    self.on_error_fn(self, e)
+                except Exception as handler_error:
+                    # Error handler itself failed - just log it
+                    if self.info:
+                        self.info.log_error(f"Error handler failed: {handler_error}")
+            else:
+                # No error handler - re-raise
+                raise
         finally:
             self.info = old_info
 
-    def _internal_init(self, info=None):
+    def _internal_init(self, info: Optional[Any] = None) -> None:
         """Internal init called by scheduler."""
         self.info = info  # Store info for access in init function
         if self.init_fn:
             self.init_fn(self)
 
-    def _internal_shutdown(self, info=None):
+    def _internal_shutdown(self, info: Optional[Any] = None) -> None:
         """Internal shutdown called by scheduler."""
         self.info = info  # Store info for access in shutdown function
         if self.shutdown_fn:
             self.shutdown_fn(self)
 
     # Public methods for Rust bindings to call
-    def init(self, info=None):
+    def init(self, info: Optional[Any] = None) -> None:
         """Called by Rust scheduler during initialization."""
         self._internal_init(info)
 
-    def tick(self, info=None):
+    def tick(self, info: Optional[Any] = None) -> None:
         """Called by Rust scheduler on each tick."""
         self._internal_tick(info)
 
-    def shutdown(self, info=None):
+    def shutdown(self, info: Optional[Any] = None) -> None:
         """Called by Rust scheduler during shutdown."""
         self._internal_shutdown(info)
 
     # NodeInfo convenience methods (delegate to info if available)
-    def log_info(self, message: str):
+    def log_info(self, message: str) -> None:
         """Log an info message (if logging enabled)."""
         if self.info:
             self.info.log_info(message)
 
-    def log_warning(self, message: str):
+    def log_warning(self, message: str) -> None:
         """Log a warning message (if logging enabled)."""
         if self.info:
             self.info.log_warning(message)
 
-    def log_error(self, message: str):
+    def log_error(self, message: str) -> None:
         """Log an error message (if logging enabled)."""
         if self.info:
             self.info.log_error(message)
 
-    def log_debug(self, message: str):
+    def log_debug(self, message: str) -> None:
         """Log a debug message (if logging enabled)."""
         if self.info:
             self.info.log_debug(message)
+
+    # Topic introspection methods
+    def get_publishers(self) -> List[str]:
+        """
+        Get list of topics this node publishes to.
+
+        Returns:
+            List of publisher topic names
+
+        Example:
+            topics = node.get_publishers()
+            print(f"Publishing to: {topics}")
+        """
+        return self.pub_topics.copy()
+
+    def get_subscribers(self) -> List[str]:
+        """
+        Get list of topics this node subscribes to.
+
+        Returns:
+            List of subscriber topic names
+
+        Example:
+            topics = node.get_subscribers()
+            print(f"Subscribed to: {topics}")
+        """
+        return self.sub_topics.copy()
 
 
 class Scheduler:
@@ -427,16 +484,13 @@ class Scheduler:
 
     Example:
         scheduler = Scheduler()
-        scheduler.add(node1)
-        scheduler.add(node2)
+        scheduler.add(sensor_node, 0, True)   # priority=0, logging=True
+        scheduler.add(control_node, 1, False)  # priority=1, logging=False
+        scheduler.add(motor_node, 2, True)     # priority=2, logging=True
         scheduler.run()
 
-    Or with priorities (lower = higher priority):
-        scheduler = Scheduler()
-        scheduler.register(sensor_node, priority=0, logging=True)
-        scheduler.register(control_node, priority=1, logging=False)
-        scheduler.register(motor_node, priority=2, logging=True)
-        scheduler.run()
+        # Or chainable:
+        scheduler.add(node1, 0, True).add(node2, 1, False).run()
     """
 
     def __init__(self):
@@ -447,49 +501,36 @@ class Scheduler:
             self._scheduler = None
         self._nodes = []
 
-    def register(self, node, priority: int, logging: bool = False, rate_hz: float = None):
+    def add(self, node: 'Node', priority: int, logging: bool = False) -> 'Scheduler':
         """
-        Register a node with explicit priority, logging, and optional rate control.
+        Add a node to the scheduler.
 
         Args:
-            node: Node instance to register
+            node: Node instance to add
             priority: Priority level (lower number = higher priority, 0 = highest)
             logging: Enable logging for this node (default: False)
-            rate_hz: Execution rate in Hz (default: uses scheduler's tick rate)
+
+        Returns:
+            self (for method chaining)
 
         Example:
-            scheduler.register(sensor_node, 0, True, 100.0)   # 100Hz, highest priority, logging on
-            scheduler.register(control_node, 1, False, 50.0)  # 50Hz, medium priority, logging off
-            scheduler.register(motor_node, 2, True, 10.0)     # 10Hz, lowest priority, logging on
+            scheduler.add(sensor_node, 0, True)   # Highest priority, logging on
+            scheduler.add(control_node, 1, False)  # Medium priority, logging off
+            scheduler.add(motor_node, 2, True)     # Lowest priority, logging on
+
+            # Chainable:
+            scheduler.add(node1, 0, True).add(node2, 1, False).run()
         """
         self._nodes.append(node)
 
         if self._scheduler:
             # Register the Python Node wrapper directly, not the internal _node
             # The Rust scheduler will call node.tick(info) and node.init(info)
-            self._scheduler.register(node, priority, logging, rate_hz)
+            self._scheduler.register(node, priority, logging, None)
 
         return self
 
-    def add(self, *nodes):
-        """
-        Add nodes to scheduler (uses default priority = insertion order).
-
-        Args:
-            *nodes: One or more Node instances
-
-        Note: For deterministic execution order, use register() with explicit priorities.
-        """
-        for node in nodes:
-            self._nodes.append(node)
-
-            if self._scheduler and node._node:
-                # Set up callbacks
-                node._node.set_callback(node)
-                # Add to scheduler (uses default priority)
-                self._scheduler.add_node(node._node)
-
-    def run(self, duration: float = None):
+    def run(self, duration: Optional[float] = None) -> None:
         """
         Run the scheduler.
 
@@ -530,27 +571,12 @@ class Scheduler:
             for node in self._nodes:
                 node._internal_shutdown()
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop the scheduler."""
         if self._scheduler:
             self._scheduler.stop()
 
-    def set_node_rate(self, node_name: str, rate_hz: float):
-        """
-        Set the execution rate for a specific node at runtime.
-
-        Args:
-            node_name: Name of the node to update
-            rate_hz: New rate in Hz (must be between 0 and 10000)
-
-        Example:
-            scheduler.set_node_rate("sensor", 100.0)  # Run sensor at 100Hz
-            scheduler.set_node_rate("logger", 10.0)   # Run logger at 10Hz
-        """
-        if self._scheduler:
-            self._scheduler.set_node_rate(node_name, rate_hz)
-
-    def get_node_stats(self, node_name: str) -> dict:
+    def get_node_stats(self, node_name: str) -> Dict[str, Any]:
         """
         Get statistics for a specific node.
 
@@ -561,14 +587,13 @@ class Scheduler:
             Dictionary with node stats including:
             - name: Node name
             - priority: Priority level
-            - rate_hz: Execution rate in Hz
             - logging_enabled: Whether logging is enabled
             - total_ticks: Total number of ticks executed
             - errors_count: Number of errors encountered
 
         Example:
             stats = scheduler.get_node_stats("sensor")
-            print(f"Node {stats['name']} running at {stats['rate_hz']}Hz")
+            print(f"Node {stats['name']} at priority {stats['priority']}")
             print(f"Total ticks: {stats['total_ticks']}")
         """
         if self._scheduler:
@@ -578,7 +603,7 @@ class Scheduler:
 
 # Convenience functions
 
-def run(*nodes, duration=None):
+def run(*nodes: Node, duration: Optional[float] = None) -> None:
     """
     Quick run helper - create scheduler and run nodes.
 
@@ -591,154 +616,7 @@ def run(*nodes, duration=None):
         run(node, duration=5)
     """
     scheduler = Scheduler()
-    scheduler.add(*nodes)
+    # Add nodes with priority based on insertion order (0, 1, 2, ...)
+    for i, node in enumerate(nodes):
+        scheduler.add(node, priority=i, logging=False)
     scheduler.run(duration)
-
-
-def quick(name: str = None,
-          sub: str = None,
-          pub: str = None,
-          fn: Callable = None,
-          rate: float = 30) -> Node:
-    """
-    Create a simple transform node quickly.
-
-    Args:
-        name: Node name
-        sub: Input topic
-        pub: Output topic
-        fn: Transform function - signature: fn(data) -> result
-        rate: Tick rate
-
-    Returns:
-        Configured Node
-
-    Example:
-        # Double the input
-        node = quick(sub="numbers", pub="doubled", fn=lambda x: x * 2)
-        run(node)
-    """
-    def tick(node):
-        if node.has_msg(sub):
-            data = node.get(sub)
-            if fn:
-                result = fn(data)
-                if result is not None:
-                    node.send(pub, result)
-            else:
-                node.send(pub, data)
-
-    return Node(
-        name=name or f"quick_{sub}_to_{pub}",
-        subs=[sub] if sub else [],
-        pubs=[pub] if pub else [],
-        tick=tick,
-        rate=rate
-    )
-
-
-def pipe(input_topic: str, output_topic: str, transform: Callable = None):
-    """
-    Create and run a simple pipe node.
-
-    Args:
-        input_topic: Topic to read from
-        output_topic: Topic to write to
-        transform: Optional transform function
-
-    Example:
-        # Echo input to output
-        pipe("raw_sensor", "processed_sensor")
-
-        # Transform data
-        pipe("celsius", "fahrenheit", lambda c: c * 9/5 + 32)
-    """
-    node = quick(sub=input_topic, pub=output_topic, fn=transform)
-    run(node)
-
-
-def echo(input_topic: str, output_topic: str):
-    """
-    Simple echo node - copy input to output.
-
-    Example:
-        echo("sensor_raw", "sensor_copy")
-    """
-    pipe(input_topic, output_topic)
-
-
-def filter_node(input_topic: str, output_topic: str, predicate: Callable):
-    """
-    Filter messages based on predicate.
-
-    Args:
-        predicate: Function that returns True to pass message
-
-    Example:
-        # Only pass positive values
-        filter_node("all_values", "positive_values", lambda x: x > 0)
-    """
-    def filter_fn(data):
-        if predicate(data):
-            return data
-        return None
-
-    node = quick(sub=input_topic, pub=output_topic, fn=filter_fn)
-    run(node)
-
-
-def map_node(input_topic: str, output_topic: str, mapper: Callable):
-    """
-    Map/transform messages.
-
-    Example:
-        # Square all numbers
-        map_node("numbers", "squared", lambda x: x ** 2)
-    """
-    pipe(input_topic, output_topic, mapper)
-
-
-# Multi-node helpers
-
-def fanout(input_topic: str, output_topics: List[str]):
-    """
-    Broadcast input to multiple outputs.
-
-    Example:
-        fanout("sensor", ["log", "display", "storage"])
-    """
-    def tick(node):
-        if node.has_msg(input_topic):
-            data = node.get(input_topic)
-            for topic in output_topics:
-                node.send(topic, data)
-
-    node = Node(
-        name=f"fanout_{input_topic}",
-        subs=input_topic,
-        pubs=output_topics,
-        tick=tick
-    )
-    run(node)
-
-
-def merge(input_topics: List[str], output_topic: str):
-    """
-    Merge multiple inputs into single output.
-
-    Example:
-        merge(["sensor1", "sensor2", "sensor3"], "all_sensors")
-    """
-    def tick(node):
-        for topic in input_topics:
-            while node.has_msg(topic):
-                data = node.get(topic)
-                node.send(output_topic, {"source": topic, "data": data})
-
-    node = Node(
-        name=f"merge_to_{output_topic}",
-        subs=input_topics,
-        pubs=output_topic,
-        tick=tick
-    )
-    run(node)

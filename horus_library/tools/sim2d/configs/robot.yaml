@@ -1,0 +1,5 @@
+# Robot configuration for sim2d
+width: 0.5        # Robot width in meters
+length: 0.8       # Robot length in meters
+max_speed: 2.0    # Maximum velocity in m/s
+color: [0.2, 0.8, 0.2]  # RGB color [0.0-1.0] - Green

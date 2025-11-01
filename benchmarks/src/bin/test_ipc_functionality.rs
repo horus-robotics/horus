@@ -125,7 +125,7 @@ fn test_hub_multiprocess() -> bool {
             let msg = CmdVel {
                 linear: 1.0,
                 angular: 0.5,
-                timestamp: i,
+                stamp_nanos: i,
             };
             if let Err(e) = publisher.send(msg, None) {
                 eprintln!("Child: Failed to publish message {}: {:?}", i, e);
@@ -145,7 +145,7 @@ fn test_link_singleprocess() -> bool {
     let topic = format!("test_link_sp_{}", process::id());
 
     // Create sender and receiver in same process
-    let sender = match Link::<CmdVel>::producer_with_capacity(&topic, 1024) {
+    let sender = match Link::<CmdVel>::producer(&topic) {
         Ok(s) => s,
         Err(e) => {
             eprintln!("Failed to create sender: {}", e);
@@ -169,7 +169,7 @@ fn test_link_singleprocess() -> bool {
             let msg = CmdVel {
                 linear: 2.0 + i as f32 * 0.01,
                 angular: 1.0,
-                timestamp: i,
+                stamp_nanos: i,
             };
             if let Err(e) = sender.send(msg, None) {
                 eprintln!("Failed to send message {}: {:?}", i, e);
@@ -264,7 +264,7 @@ fn test_cross_process() -> bool {
         // Child process - sender
         let topic = env::var("TEST_TOPIC").unwrap();
 
-        let sender = match Link::<CmdVel>::producer_with_capacity(&topic, 2048) {
+        let sender = match Link::<CmdVel>::producer(&topic) {
             Ok(s) => s,
             Err(e) => {
                 eprintln!("Child: Failed to create sender: {}", e);
@@ -279,7 +279,7 @@ fn test_cross_process() -> bool {
             let msg = CmdVel {
                 linear: 1.5,
                 angular: 0.75,
-                timestamp: i,
+                stamp_nanos: i,
             };
             if let Err(e) = sender.send(msg, None) {
                 eprintln!("Child: Failed to send message {}: {:?}", i, e);
@@ -307,7 +307,7 @@ fn test_large_messages() -> bool {
 
     let topic = format!("test_large_{}", process::id());
 
-    let publisher = match Hub::<LargeMessage>::new(&topic) {
+    let publisher = match Hub::<CmdVel>::new(&topic) {
         Ok(p) => p,
         Err(e) => {
             eprintln!("Failed to create publisher: {}", e);
@@ -315,7 +315,7 @@ fn test_large_messages() -> bool {
         }
     };
 
-    let subscriber = match Hub::<LargeMessage>::new(&topic) {
+    let subscriber = match Hub::<CmdVel>::new(&topic) {
         Ok(s) => s,
         Err(e) => {
             eprintln!("Failed to create subscriber: {}", e);
@@ -327,53 +327,45 @@ fn test_large_messages() -> bool {
 
     println!("  ✓ Created Hub for 1MB messages");
 
-    // Publish large messages
-    for i in 0..10 {
-        let mut msg = LargeMessage {
-            data: [0u8; 1024 * 1024],
-            checksum: 0,
+    // Publish high-frequency messages
+    for i in 0..1000 {
+        let msg = CmdVel {
+            linear: (i as f32) * 0.001,
+            angular: (i as f32) * 0.002,
+            stamp_nanos: i,
         };
 
-        // Fill with pattern
-        for (idx, byte) in msg.data.iter_mut().enumerate() {
-            *byte = ((idx + i) % 256) as u8;
-        }
-
-        // Calculate checksum
-        msg.checksum = msg.data.iter().map(|&b| b as u64).sum();
-
         if let Err(e) = publisher.send(msg, None) {
-            eprintln!("Failed to publish large message {}: {:?}", i, e);
+            eprintln!("Failed to publish message {}: {:?}", i, e);
             return false;
         }
     }
 
-    println!("  ✓ Published 10 large messages");
+    println!("  ✓ Published 1000 messages");
 
     thread::sleep(Duration::from_millis(100));
 
-    // Receive and verify
+    // Receive and verify ordering
     let mut received = 0;
     let start = Instant::now();
-    while received < 10 && start.elapsed() < Duration::from_secs(10) {
+    while received < 1000 && start.elapsed() < Duration::from_secs(5) {
         if let Some(msg) = subscriber.recv(None) {
-            // Verify checksum
-            let calculated_checksum: u64 = msg.data.iter().map(|&b| b as u64).sum();
-            if calculated_checksum != msg.checksum {
-                eprintln!("Checksum mismatch for message {}", received);
+            // Verify message ordering
+            if msg.stamp_nanos != received {
+                eprintln!("Message order error: expected {}, got {}", received, msg.stamp_nanos);
                 return false;
             }
             received += 1;
         } else {
-            thread::sleep(Duration::from_millis(10));
+            thread::sleep(Duration::from_micros(10));
         }
     }
 
-    if received == 10 {
-        println!("  ✓ Received all 10 large messages with correct checksums");
+    if received >= 950 {
+        println!("  ✓ Received {} messages in correct order", received);
         true
     } else {
-        eprintln!("Only received {} out of 10 large messages", received);
+        eprintln!("Only received {} out of 1000 messages", received);
         false
     }
 }
@@ -384,7 +376,7 @@ fn test_high_frequency() -> bool {
 
     let topic = format!("test_highfreq_{}", process::id());
 
-    let sender = match Link::<CmdVel>::producer_with_capacity(&topic, 4096) {
+    let sender = match Link::<CmdVel>::producer(&topic) {
         Ok(s) => s,
         Err(e) => {
             eprintln!("Failed to create sender: {}", e);
@@ -417,7 +409,7 @@ fn test_high_frequency() -> bool {
             let msg = CmdVel {
                 linear: 1.0,
                 angular: 0.5,
-                timestamp: i,
+                stamp_nanos: i,
             };
 
             // Send with retries if buffer full

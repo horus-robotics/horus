@@ -15,6 +15,7 @@ mod ui;
 
 use anyhow::Result;
 use bevy::prelude::*;
+use bevy::app::PluginGroupBuilder;
 use bevy_egui::EguiPlugin;
 use clap::Parser;
 use horus_core::{communication::Hub, core::NodeInfo};
@@ -36,6 +37,18 @@ pub struct Args {
     #[arg(long)]
     world: Option<String>,
 
+    /// World image file (PNG, JPG, PGM) - occupancy grid
+    #[arg(long)]
+    world_image: Option<String>,
+
+    /// Resolution in meters per pixel (for world image)
+    #[arg(long, default_value = "0.05")]
+    resolution: f32,
+
+    /// Obstacle threshold (0-255, pixels darker than this are obstacles)
+    #[arg(long, default_value = "128")]
+    threshold: u8,
+
     /// Control topic name
     #[arg(long, default_value = "/robot/cmd_vel")]
     topic: String,
@@ -43,6 +56,10 @@ pub struct Args {
     /// Robot name
     #[arg(long, default_value = "robot")]
     name: String,
+
+    /// Run in headless mode (no GUI)
+    #[arg(long)]
+    headless: bool,
 }
 
 /// Robot configuration
@@ -177,10 +194,22 @@ impl AppConfig {
             RobotConfig::default()
         };
 
-        // Load world config
-        let world_config = if let Some(world_file) = &args.world {
+        // Load world config - prioritize image over config file
+        let world_config = if let Some(image_file) = &args.world_image {
+            // Load from image
+            match Self::load_world_from_image(image_file, args.resolution, args.threshold) {
+                Ok(config) => config,
+                Err(e) => {
+                    warn!("Failed to load world from image: {}", e);
+                    warn!("Falling back to default world");
+                    WorldConfig::default()
+                }
+            }
+        } else if let Some(world_file) = &args.world {
+            // Load from config file
             Self::load_world_config(world_file).unwrap_or_default()
         } else {
+            // Use default
             WorldConfig::default()
         };
 
@@ -205,12 +234,82 @@ impl AppConfig {
 
     pub fn load_robot_config(path: &str) -> Result<RobotConfig> {
         let content = std::fs::read_to_string(path)?;
-        Ok(serde_yaml::from_str(&content)?)
+
+        // Auto-detect format from file extension
+        if path.ends_with(".toml") {
+            Ok(toml::from_str(&content)?)
+        } else {
+            // Default to YAML for .yaml, .yml, or no extension
+            Ok(serde_yaml::from_str(&content)?)
+        }
     }
 
     pub fn load_world_config(path: &str) -> Result<WorldConfig> {
         let content = std::fs::read_to_string(path)?;
-        Ok(serde_yaml::from_str(&content)?)
+
+        // Auto-detect format from file extension
+        if path.ends_with(".toml") {
+            Ok(toml::from_str(&content)?)
+        } else {
+            // Default to YAML for .yaml, .yml, or no extension
+            Ok(serde_yaml::from_str(&content)?)
+        }
+    }
+
+    pub fn load_world_from_image(image_path: &str, resolution: f32, threshold: u8) -> Result<WorldConfig> {
+        use image::GenericImageView;
+
+        info!("📷 Loading world from image: {}", image_path);
+        info!("   Resolution: {} m/pixel", resolution);
+        info!("   Threshold: {} (darker = obstacle)", threshold);
+
+        // Load image
+        let img = image::open(image_path)?;
+        let (width_px, height_px) = img.dimensions();
+
+        info!("   Image size: {}x{} pixels", width_px, height_px);
+
+        // Convert to grayscale
+        let gray_img = img.to_luma8();
+
+        // Calculate world dimensions in meters
+        let world_width = width_px as f32 * resolution;
+        let world_height = height_px as f32 * resolution;
+
+        info!("   World size: {:.2}m x {:.2}m", world_width, world_height);
+
+        // Convert pixels to obstacles
+        // Use a grid-based approach: group adjacent obstacle pixels into rectangles
+        let mut obstacles = Vec::new();
+
+        // Simple approach: create small square obstacles for each occupied pixel
+        // This can be optimized later to merge adjacent pixels
+        for y in 0..height_px {
+            for x in 0..width_px {
+                let pixel = gray_img.get_pixel(x, y)[0];
+
+                // If pixel is darker than threshold, it's an obstacle
+                if pixel < threshold {
+                    // Convert pixel coordinates to world coordinates
+                    // Image origin (0,0) is top-left, world origin is center
+                    let world_x = (x as f32 - width_px as f32 / 2.0) * resolution;
+                    let world_y = -(y as f32 - height_px as f32 / 2.0) * resolution; // Flip Y
+
+                    obstacles.push(Obstacle {
+                        pos: [world_x, world_y],
+                        size: [resolution, resolution], // Square obstacle per pixel
+                    });
+                }
+            }
+        }
+
+        info!("   Generated {} obstacle cells", obstacles.len());
+
+        Ok(WorldConfig {
+            width: world_width,
+            height: world_height,
+            obstacles,
+        })
     }
 }
 
@@ -490,8 +589,15 @@ fn main() -> Result<()> {
     // Parse command line arguments
     let args = Args::parse();
 
-    info!(" Starting sim2d - Simple 2D Robotics Simulator");
-    info!("   One command, physics + visualization!");
+    let headless = args.headless;
+
+    if headless {
+        info!(" Starting sim2d - Headless Mode");
+        info!("   Physics only, no visualization");
+    } else {
+        info!(" Starting sim2d - Simple 2D Robotics Simulator");
+        info!("   One command, physics + visualization!");
+    }
 
     // Create app configuration
     let app_config = AppConfig::new(args);
@@ -500,9 +606,19 @@ fn main() -> Result<()> {
     info!("   cargo run -p simple_driver");
     info!("   (publishes to: {})", app_config.args.topic);
 
-    // Run Bevy app
-    App::new()
-        .add_plugins(
+    // Build app based on mode
+    let mut app = App::new();
+
+    if headless {
+        // Headless mode - minimal plugins, no rendering
+        app.add_plugins(MinimalPlugins)
+            .insert_resource(app_config)
+            .insert_resource(PhysicsWorld::default())
+            .add_systems(Startup, setup)
+            .add_systems(Update, (horus_system, physics_system));
+    } else {
+        // GUI mode - full visualization
+        app.add_plugins(
             DefaultPlugins
                 .set(WindowPlugin {
                     primary_window: Some(Window {
@@ -528,8 +644,11 @@ fn main() -> Result<()> {
                 physics_system,
                 visual_sync_system,
             ),
-        )
-        .run();
+        );
+    }
+
+    // Run the app
+    app.run();
 
     Ok(())
 }

@@ -151,8 +151,6 @@ pub struct PyNodeConfig {
     #[pyo3(get, set)]
     pub restart_delay_ms: u64,
     #[pyo3(get, set)]
-    pub enable_profiling: bool,
-    #[pyo3(get, set)]
     pub enable_logging: bool,
     #[pyo3(get, set)]
     pub log_level: String,
@@ -170,7 +168,6 @@ impl PyNodeConfig {
             restart_on_failure: config.restart_on_failure,
             max_restart_attempts: config.max_restart_attempts,
             restart_delay_ms: config.restart_delay_ms,
-            enable_profiling: config.enable_profiling,
             enable_logging: config.enable_logging,
             log_level: config.log_level,
             custom_params: config.custom_params,
@@ -187,8 +184,8 @@ impl PyNodeConfig {
 
     fn __repr__(&self) -> String {
         format!(
-            "NodeConfig(logging={}, profiling={}, log_level='{}')",
-            self.enable_logging, self.enable_profiling, self.log_level
+            "NodeConfig(logging={}, log_level='{}')",
+            self.enable_logging, self.log_level
         )
     }
 }
@@ -200,7 +197,6 @@ impl From<PyNodeConfig> for CoreNodeConfig {
             restart_on_failure: py_config.restart_on_failure,
             max_restart_attempts: py_config.max_restart_attempts,
             restart_delay_ms: py_config.restart_delay_ms,
-            enable_profiling: py_config.enable_profiling,
             enable_logging: py_config.enable_logging,
             log_level: py_config.log_level,
             custom_params: py_config.custom_params,

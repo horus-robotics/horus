@@ -1,7 +1,8 @@
-//! Time synchronization and scheduling message types for robotics
-//!
-//! This module provides messages for time synchronization across distributed
-//! systems, scheduling, and temporal coordination in multi-robot systems.
+use horus_core::core::LogSummary;
+// Time synchronization and scheduling message types for robotics
+//
+// This module provides messages for time synchronization across distributed
+// systems, scheduling, and temporal coordination in multi-robot systems.
 
 use serde::{Deserialize, Serialize};
 use serde_arrays;
@@ -625,6 +626,62 @@ impl ClockStats {
             SyncQuality::Poor => 10_000_000,  // 10 milliseconds
             SyncQuality::None => u64::MAX,
         }
+    }
+}
+
+
+impl LogSummary for TimeSync {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for ScheduledEvent {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for Timeline {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for ClockStats {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for SyncQuality {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for EventType {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for EventStatus {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for TimelineStatus {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
     }
 }
 

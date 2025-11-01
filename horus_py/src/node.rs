@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 
 /// Python wrapper for NodeState
 #[pyclass]
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct PyNodeState {
     #[pyo3(get)]
     pub name: String,
@@ -18,12 +18,48 @@ impl PyNodeState {
         PyNodeState { name }
     }
 
+    /// Uninitialized state constant
+    #[classattr]
+    const UNINITIALIZED: &'static str = "uninitialized";
+
+    /// Initializing state constant
+    #[classattr]
+    const INITIALIZING: &'static str = "initializing";
+
+    /// Running state constant
+    #[classattr]
+    const RUNNING: &'static str = "running";
+
+    /// Paused state constant
+    #[classattr]
+    const PAUSED: &'static str = "paused";
+
+    /// Stopping state constant
+    #[classattr]
+    const STOPPING: &'static str = "stopping";
+
+    /// Stopped state constant
+    #[classattr]
+    const STOPPED: &'static str = "stopped";
+
+    /// Error state constant
+    #[classattr]
+    const ERROR: &'static str = "error";
+
+    /// Crashed state constant
+    #[classattr]
+    const CRASHED: &'static str = "crashed";
+
     fn __repr__(&self) -> String {
         format!("NodeState('{}')", self.name)
     }
 
     fn __str__(&self) -> String {
         self.name.clone()
+    }
+
+    fn __eq__(&self, other: &Self) -> bool {
+        self.name == other.name
     }
 }
 
@@ -222,6 +258,64 @@ impl PyNodeInfo {
         }
 
         Ok(())
+    }
+
+    /// Get comprehensive metrics dictionary
+    fn get_metrics(&self) -> PyResult<std::collections::HashMap<String, f64>> {
+        let info = self
+            .inner
+            .lock()
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock NodeInfo: {}", e)))?;
+
+        let metrics = info.metrics();
+        let mut result = std::collections::HashMap::new();
+
+        result.insert("total_ticks".to_string(), metrics.total_ticks as f64);
+        result.insert("successful_ticks".to_string(), metrics.successful_ticks as f64);
+        result.insert("failed_ticks".to_string(), metrics.failed_ticks as f64);
+        result.insert("errors_count".to_string(), metrics.errors_count as f64);
+        result.insert("avg_tick_duration_ms".to_string(), metrics.avg_tick_duration_ms);
+        result.insert("min_tick_duration_ms".to_string(), metrics.min_tick_duration_ms);
+        result.insert("max_tick_duration_ms".to_string(), metrics.max_tick_duration_ms);
+        result.insert("last_tick_duration_ms".to_string(), metrics.last_tick_duration_ms);
+
+        Ok(result)
+    }
+
+    /// Get node uptime in seconds
+    fn get_uptime(&self) -> PyResult<f64> {
+        let info = self
+            .inner
+            .lock()
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock NodeInfo: {}", e)))?;
+        Ok(info.uptime().as_secs_f64())
+    }
+
+    /// Get average tick duration in milliseconds
+    fn avg_tick_duration_ms(&self) -> PyResult<f64> {
+        let info = self
+            .inner
+            .lock()
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock NodeInfo: {}", e)))?;
+        Ok(info.metrics().avg_tick_duration_ms)
+    }
+
+    /// Get number of failed ticks
+    fn failed_ticks(&self) -> PyResult<u64> {
+        let info = self
+            .inner
+            .lock()
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock NodeInfo: {}", e)))?;
+        Ok(info.metrics().failed_ticks)
+    }
+
+    /// Get successful ticks
+    fn successful_ticks(&self) -> PyResult<u64> {
+        let info = self
+            .inner
+            .lock()
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock NodeInfo: {}", e)))?;
+        Ok(info.metrics().successful_ticks)
     }
 
     fn __repr__(&self) -> PyResult<String> {

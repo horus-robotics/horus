@@ -4,6 +4,18 @@ use std::fmt;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+/// Trait for providing lightweight logging summaries of message types
+///
+/// This trait allows large data structures (images, point clouds) to provide
+/// compact string representations for logging without cloning the entire data.
+///
+/// For small types: implementation can use Debug formatting
+/// For large types: implementation should only include metadata
+pub trait LogSummary {
+    /// Return a compact string representation suitable for logging
+    fn log_summary(&self) -> String;
+}
+
 /// Node states for monitoring and lifecycle management
 #[derive(Debug, Clone, PartialEq)]
 pub enum NodeState {
@@ -214,8 +226,6 @@ pub struct NodeMetrics {
     pub max_tick_duration_ms: f64,
     pub min_tick_duration_ms: f64,
     pub last_tick_duration_ms: f64,
-    pub cpu_usage_percent: f64,
-    pub memory_usage_bytes: u64,
     pub messages_sent: u64,
     pub messages_received: u64,
     pub errors_count: u64,
@@ -230,7 +240,6 @@ pub struct NodeConfig {
     pub restart_on_failure: bool,
     pub max_restart_attempts: u32,
     pub restart_delay_ms: u64,
-    pub enable_profiling: bool,
     pub enable_logging: bool,
     pub log_level: String,
     pub custom_params: HashMap<String, String>,
@@ -243,23 +252,11 @@ impl Default for NodeConfig {
             restart_on_failure: true,
             max_restart_attempts: 3,
             restart_delay_ms: 1000,
-            enable_profiling: false,
             enable_logging: true,
             log_level: "INFO".to_string(), // Development default: includes info logging
             custom_params: HashMap::new(),
         }
     }
-}
-
-/// Resource usage tracking
-#[derive(Debug, Clone, Default)]
-pub struct ResourceUsage {
-    pub cpu_percentage: f64,
-    pub memory_bytes: u64,
-    pub disk_io_bytes: u64,
-    pub network_io_bytes: u64,
-    pub open_file_descriptors: u32,
-    pub thread_count: u32,
 }
 
 /// Comprehensive context and information for Horus nodes
@@ -280,7 +277,6 @@ pub struct NodeInfo {
 
     // Performance tracking
     metrics: NodeMetrics,
-    resource_usage: ResourceUsage,
 
     // Timing information
     creation_time: Instant,
@@ -296,8 +292,7 @@ pub struct NodeInfo {
     published_topics: HashMap<String, u64>, // topic -> message count
     subscribed_topics: HashMap<String, u64>, // topic -> message count
 
-    // Profiling and debugging
-    call_stack: Vec<String>,
+    // Debugging
     custom_data: HashMap<String, String>,
 
     // Thread safety for metrics updates
@@ -335,7 +330,6 @@ impl NodeInfo {
             config,
             priority: NodePriority::Normal,
             metrics: NodeMetrics::default(),
-            resource_usage: ResourceUsage::default(),
             creation_time: now,
             last_tick_time: None,
             tick_start_time: None,
@@ -344,7 +338,6 @@ impl NodeInfo {
             warning_history: Vec::new(),
             published_topics: HashMap::new(),
             subscribed_topics: HashMap::new(),
-            call_stack: Vec::new(),
             custom_data: HashMap::new(),
             metrics_lock: Arc::new(Mutex::new(())),
             params: RuntimeParams::default(),
@@ -481,7 +474,19 @@ impl NodeInfo {
 
     // Logging Methods - Production-Ready with IPC Timing
     // ALWAYS requires IPC timing measurement - no fallback
-    pub fn log_pub<T: std::fmt::Debug>(&mut self, topic: &str, data: &T, ipc_ns: u64) {
+    pub fn log_pub<T: LogSummary>(&mut self, topic: &str, data: &T, ipc_ns: u64) {
+        let summary = data.log_summary();
+        self.log_pub_summary(topic, &summary, ipc_ns);
+    }
+
+    pub fn log_sub<T: LogSummary>(&mut self, topic: &str, data: &T, ipc_ns: u64) {
+        let summary = data.log_summary();
+        self.log_sub_summary(topic, &summary, ipc_ns);
+    }
+
+    /// Internal logging method that accepts a pre-computed summary string
+    /// Used by Hub::send() to avoid needing message reference after move
+    pub fn log_pub_summary(&mut self, topic: &str, summary: &str, ipc_ns: u64) {
         let now = chrono::Local::now();
         let current_tick_us = if let Some(start_time) = self.tick_start_time {
             start_time.elapsed().as_micros() as u64
@@ -492,11 +497,11 @@ impl NodeInfo {
         if self.config.enable_logging {
             // Color-coded logging for readability
             // Cyan timestamp | Green metrics | Yellow node | Bold Green PUB arrow | Magenta topic | White data
-            print!("\r\n\x1b[36m[{}]\x1b[0m \x1b[32m[IPC: {}ns | Tick: {}μs]\x1b[0m \x1b[33m{}\x1b[0m \x1b[1;32m--PUB-->\x1b[0m \x1b[35m'{}'\x1b[0m = {:?}\r\n",
+            print!("\r\n\x1b[36m[{}]\x1b[0m \x1b[32m[IPC: {}ns | Tick: {}μs]\x1b[0m \x1b[33m{}\x1b[0m \x1b[1;32m--PUB-->\x1b[0m \x1b[35m'{}'\x1b[0m = {}\r\n",
                    now.format("%H:%M:%S%.3f"),
                    ipc_ns,
                    current_tick_us,
-                   self.name, topic, data);
+                   self.name, topic, summary);
             use std::io::{self, Write};
             let _ = io::stdout().flush();
         }
@@ -508,7 +513,7 @@ impl NodeInfo {
             node_name: self.name.clone(),
             log_type: LogType::Publish,
             topic: Some(topic.to_string()),
-            message: format!("{:?}", data),
+            message: summary.to_string(),
             tick_us: current_tick_us,
             ipc_ns,
         });
@@ -517,7 +522,9 @@ impl NodeInfo {
         self.metrics.messages_sent += 1;
     }
 
-    pub fn log_sub<T: std::fmt::Debug>(&mut self, topic: &str, data: &T, ipc_ns: u64) {
+    /// Internal logging method that accepts a pre-computed summary string
+    /// Used by Hub::recv() to avoid needing message reference after move
+    pub fn log_sub_summary(&mut self, topic: &str, summary: &str, ipc_ns: u64) {
         let now = chrono::Local::now();
         let current_tick_us = if let Some(start_time) = self.tick_start_time {
             start_time.elapsed().as_micros() as u64
@@ -528,11 +535,11 @@ impl NodeInfo {
         if self.config.enable_logging {
             // Color-coded logging for readability
             // Cyan timestamp | Green metrics | Yellow node | Bold Blue SUB arrow | Magenta topic | White data
-            println!("\x1b[36m[{}]\x1b[0m \x1b[32m[IPC: {}ns | Tick: {}μs]\x1b[0m \x1b[33m{}\x1b[0m \x1b[1;34m<--SUB--\x1b[0m \x1b[35m'{}'\x1b[0m = {:?}",
+            println!("\x1b[36m[{}]\x1b[0m \x1b[32m[IPC: {}ns | Tick: {}μs]\x1b[0m \x1b[33m{}\x1b[0m \x1b[1;34m<--SUB--\x1b[0m \x1b[35m'{}'\x1b[0m = {}",
                    now.format("%H:%M:%S%.3f"),
                    ipc_ns,
                    current_tick_us,
-                   self.name, topic, data);
+                   self.name, topic, summary);
             use std::io::{self, Write};
             let _ = io::stdout().flush();
         }
@@ -544,7 +551,7 @@ impl NodeInfo {
             node_name: self.name.clone(),
             log_type: LogType::Subscribe,
             topic: Some(topic.to_string()),
-            message: format!("{:?}", data),
+            message: summary.to_string(),
             tick_us: current_tick_us,
             ipc_ns,
         });
@@ -635,23 +642,6 @@ impl NodeInfo {
         }
     }
 
-    // Profiling and Debugging
-    pub fn push_call(&mut self, function_name: &str) {
-        if self.config.enable_profiling {
-            self.call_stack.push(function_name.to_string());
-        }
-    }
-
-    pub fn pop_call(&mut self) {
-        if self.config.enable_profiling {
-            self.call_stack.pop();
-        }
-    }
-
-    pub fn get_call_stack(&self) -> &[String] {
-        &self.call_stack
-    }
-
     // Getters
     pub fn name(&self) -> &str {
         &self.name
@@ -670,9 +660,6 @@ impl NodeInfo {
     }
     pub fn metrics(&self) -> &NodeMetrics {
         &self.metrics
-    }
-    pub fn resource_usage(&self) -> &ResourceUsage {
-        &self.resource_usage
     }
     pub fn published_topics(&self) -> &HashMap<String, u64> {
         &self.published_topics
@@ -693,9 +680,6 @@ impl NodeInfo {
     }
     pub fn set_config(&mut self, config: NodeConfig) {
         self.config = config;
-    }
-    pub fn update_resource_usage(&mut self, usage: ResourceUsage) {
-        self.resource_usage = usage;
     }
 
     // Custom data management
@@ -767,5 +751,60 @@ pub trait Node: Send {
     /// Health check (optional override)
     fn is_healthy(&self) -> bool {
         true
+    }
+}
+
+// LogSummary implementations for primitive types
+impl LogSummary for f32 {
+    fn log_summary(&self) -> String {
+        format!("{:.3}", self)
+    }
+}
+
+impl LogSummary for f64 {
+    fn log_summary(&self) -> String {
+        format!("{:.3}", self)
+    }
+}
+
+impl LogSummary for i32 {
+    fn log_summary(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl LogSummary for i64 {
+    fn log_summary(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl LogSummary for u32 {
+    fn log_summary(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl LogSummary for u64 {
+    fn log_summary(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl LogSummary for usize {
+    fn log_summary(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl LogSummary for bool {
+    fn log_summary(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl LogSummary for String {
+    fn log_summary(&self) -> String {
+        self.clone()
     }
 }

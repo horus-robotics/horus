@@ -1,7 +1,8 @@
-//! Navigation and path planning message types for robotics
-//!
-//! This module provides messages for autonomous navigation, path planning,
-//! mapping, and localization systems.
+use horus_core::core::LogSummary;
+// Navigation and path planning message types for robotics
+//
+// This module provides messages for autonomous navigation, path planning,
+// mapping, and localization systems.
 
 use crate::messages::geometry::{Pose2D, Twist};
 use serde::{Deserialize, Serialize};
@@ -535,6 +536,76 @@ pub struct VelocityObstacles {
     pub count: u8,
     /// Timestamp in nanoseconds since epoch
     pub timestamp: u64,
+}
+
+
+impl LogSummary for Goal {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for GoalResult {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for Waypoint {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for Path {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for OccupancyGrid {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for CostMap {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for VelocityObstacle {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for VelocityObstacles {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for PathPlan {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for GoalStatus {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
 }
 
 #[cfg(test)]

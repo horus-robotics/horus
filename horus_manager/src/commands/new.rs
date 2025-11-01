@@ -72,7 +72,7 @@ pub fn create_new_project(
             create_main_rs(&project_path, use_macro)?;
         }
         "python" => create_main_py(&project_path)?,
-        "c" => create_main_c(&project_path)?,
+        "cpp" => create_main_cpp(&project_path)?,
         _ => unreachable!(),
     }
 
@@ -88,7 +88,7 @@ fn prompt_language() -> Result<String> {
     println!("\n{} Select language:", "?".yellow().bold());
     println!("  {} Python", "1.".cyan());
     println!("  {} Rust", "2.".cyan());
-    println!("  {} C", "3.".cyan());
+    println!("  {} C++", "3.".cyan());
 
     print!("{} [1-3] (default: 2): ", ">".cyan().bold());
     io::stdout().flush()?;
@@ -102,7 +102,7 @@ fn prompt_language() -> Result<String> {
     let language = match choice {
         "1" => "python",
         "2" => "rust",
-        "3" => "c",
+        "3" => "cpp",
         _ => {
             println!("{} Invalid choice, defaulting to Rust", "".yellow());
             "rust"
@@ -182,7 +182,6 @@ fn create_gitignore(project_path: &Path, language: &str) -> Result<()> {
 .horus/lib/
 .horus/include/
 .horus/cache/
-.horus/build/
 .horus/target/
 .horus/Cargo.toml
 .horus/Cargo.lock
@@ -215,10 +214,10 @@ build/
 "#,
             );
         }
-        "c" => {
+        "cpp" => {
             gitignore_content.push_str(
                 r#"
-# C
+# C++
 *.o
 *.so
 *.a
@@ -250,11 +249,19 @@ fn create_horus_yaml(
   - horus@0.1.0
   - horus_macros@0.1.0
   - horus_library@0.1.0  # Standard robotics messages (CmdVel, etc.)
+
+  # For path dependencies (local development):
+  # my_driver:
+  #   path: "./drivers/my_driver"
 "#
             } else {
                 r#"dependencies:
   - horus@0.1.0
   - horus_library@0.1.0  # Standard robotics messages (CmdVel, etc.)
+
+  # For path dependencies (local development):
+  # my_driver:
+  #   path: "./drivers/my_driver"
 "#
             }
         }
@@ -262,12 +269,20 @@ fn create_horus_yaml(
             r#"dependencies:
   - horus_py@0.1.0
   # Add Python packages as needed
+
+  # For path dependencies (local development):
+  # my_module:
+  #   path: "./my_module"
 "#
         }
-        "c" => {
+        "cpp" => {
             r#"dependencies:
-  - horus_c@0.1.0
-  # Add C libraries as needed
+  - horus_cpp@0.1.0
+  # Add C++ libraries as needed
+
+  # For path dependencies (local development):
+  # my_library:
+  #   path: "./libs/my_library"
 "#
         }
         _ => "",
@@ -414,25 +429,23 @@ if __name__ == "__main__":
     Ok(())
 }
 
-fn create_main_c(project_path: &Path) -> Result<()> {
+fn create_main_cpp(project_path: &Path) -> Result<()> {
     // C++ framework template with Node/Scheduler pattern and rich logging
     let content = r#"// Mobile robot controller using HORUS C++ Framework
 // Demonstrates Node/Scheduler pattern with rich logging
 
 #include <horus.hpp>
 #include <iostream>
-#include <optional>
 
 // Example sensor node that publishes velocity data
-class SensorNode : public horus::Node {
-public:
+struct SensorNode : horus::Node {
     SensorNode() : horus::Node("sensor_node") {}
 
     bool init(horus::NodeContext& ctx) override {
         ctx.log_info("Initializing sensor node");
 
-        // Create publisher with context for rich logging
-        velocity_pub_.emplace(ctx.create_publisher<Twist>("robot/velocity"));
+        // Create publisher - clean syntax!
+        velocity_pub = ctx.pub<Twist>("robot/velocity");
 
         return true;
     }
@@ -445,7 +458,7 @@ public:
         };
 
         // Publish with automatic rich logging
-        velocity_pub_->send(velocity);
+        velocity_pub.send(velocity);
     }
 
     void shutdown(horus::NodeContext& ctx) override {
@@ -453,20 +466,19 @@ public:
     }
 
 private:
-    std::optional<horus::Publisher<Twist>> velocity_pub_;
+    horus::Publisher<Twist> velocity_pub;
 };
 
 // Example controller node that receives and processes data
-class ControllerNode : public horus::Node {
-public:
+struct ControllerNode : horus::Node {
     ControllerNode() : horus::Node("controller_node") {}
 
     bool init(horus::NodeContext& ctx) override {
         ctx.log_info("Initializing controller node");
 
-        // Create subscriber and publisher with context
-        velocity_sub_.emplace(ctx.create_subscriber<Twist>("robot/velocity"));
-        cmd_pub_.emplace(ctx.create_publisher<Twist>("robot/cmd_vel"));
+        // Create subscriber and publisher - clean syntax!
+        velocity_sub = ctx.sub<Twist>("robot/velocity");
+        cmd_pub = ctx.pub<Twist>("robot/cmd_vel");
 
         return true;
     }
@@ -474,8 +486,8 @@ public:
     void tick(horus::NodeContext& ctx) override {
         Twist velocity;
 
-        // Try to receive velocity data (non-blocking)
-        if (velocity_sub_->try_recv(velocity)) {
+        // Receive velocity data (non-blocking)
+        if (velocity_sub.recv(velocity)) {
             // Process the data and generate control command
             Twist cmd = {
                 .linear = {velocity.linear.x * 1.5f, 0.0f, 0.0f},
@@ -483,7 +495,7 @@ public:
             };
 
             // Publish command with automatic rich logging
-            cmd_pub_->send(cmd);
+            cmd_pub.send(cmd);
         }
     }
 
@@ -492,8 +504,8 @@ public:
     }
 
 private:
-    std::optional<horus::Subscriber<Twist>> velocity_sub_;
-    std::optional<horus::Publisher<Twist>> cmd_pub_;
+    horus::Subscriber<Twist> velocity_sub;
+    horus::Publisher<Twist> cmd_pub;
 };
 
 int main() {
@@ -505,10 +517,12 @@ int main() {
         SensorNode sensor;
         ControllerNode controller;
 
-        // Register nodes with priorities
-        // Higher priority nodes run first each tick
-        scheduler.register_node(sensor, horus::Priority::High);
-        scheduler.register_node(controller, horus::Priority::Normal);
+        // Add nodes to scheduler
+        // Priority: 0=Critical, 1=High, 2=Normal, 3=Low, 4=Background
+        // Lower numbers = higher priority (executed first)
+        // Third param: enable_logging (true=rich logging with timestamps, false=no logging)
+        scheduler.add(sensor, 1, true);       // High priority, logging ON
+        scheduler.add(controller, 2, true);   // Normal priority, logging ON
 
         std::cout << "Starting HORUS scheduler...\n";
         std::cout << "Press Ctrl+C to stop\n\n";

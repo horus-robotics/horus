@@ -1,7 +1,8 @@
-//! Diagnostic and system health message types
-//!
-//! This module provides messages for system monitoring, health checks,
-//! error reporting, and general diagnostics.
+use horus_core::core::LogSummary;
+// Diagnostic and system health message types
+//
+// This module provides messages for system monitoring, health checks,
+// error reporting, and general diagnostics.
 
 use serde::{Deserialize, Serialize};
 use serde_arrays;
@@ -722,6 +723,83 @@ impl SafetyStatus {
     pub fn clear_faults(&mut self) {
         self.fault_code = 0;
         self.mode = Self::MODE_NORMAL;
+    }
+}
+
+
+impl LogSummary for Heartbeat {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for Status {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for EmergencyStop {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for ResourceUsage {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for DiagnosticValue {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for DiagnosticReport {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for NodeHeartbeat {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for SafetyStatus {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for StatusLevel {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for NodeState {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for HealthStatus {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
     }
 }
 

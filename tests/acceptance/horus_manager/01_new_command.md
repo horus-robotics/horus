@@ -18,7 +18,7 @@ As a robotics developer, I want to quickly create a new HORUS project with prope
 - [x] `.horus/` directory is created
 - [x] Success message is displayed with instructions
 - [x] Project builds and runs: `cd my_robot && horus run` succeeds
-- [x] Generated code uses `HorusResult<T>` (not `Result<T>`)
+- [x] Generated code uses `Result<T>` (previously was `HorusResult<T>`)
 - [x] No `std::thread::sleep()` in generated code
 
 **Acceptance Criteria:**

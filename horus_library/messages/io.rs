@@ -1,7 +1,8 @@
-//! Industrial I/O and communication message types for robotics
-//!
-//! This module provides messages for digital/analog I/O, industrial protocols,
-//! and integration with PLCs, SCADA systems, and factory automation.
+use horus_core::core::LogSummary;
+// Industrial I/O and communication message types for robotics
+//
+// This module provides messages for digital/analog I/O, industrial protocols,
+// and integration with PLCs, SCADA systems, and factory automation.
 
 use serde::{Deserialize, Serialize};
 use serde_arrays;
@@ -596,6 +597,48 @@ impl SafetyRelayStatus {
     /// Get active input count
     pub fn active_input_count(&self) -> u8 {
         self.input_channels.iter().filter(|&&state| state).count() as u8
+    }
+}
+
+
+impl LogSummary for DigitalIO {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for AnalogIO {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for ModbusMessage {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for EtherNetIPMessage {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for NetworkStatus {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+
+impl LogSummary for SafetyRelayStatus {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
     }
 }
 

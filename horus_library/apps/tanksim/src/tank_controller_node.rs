@@ -2,7 +2,7 @@
 //!
 //! Subscribes to keyboard input and publishes CmdVel for a single tank.
 
-use horus_core::{Hub, Node, NodeInfo};
+use horus::prelude::*;
 use horus_library::messages::{CmdVel, KeyboardInput};
 
 pub struct TankControllerNode {
@@ -107,7 +107,7 @@ impl Node for TankControllerNode {
         "TankControllerNode"
     }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> horus_core::error::HorusResult<()> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info(&format!(
             "TankControllerNode initialized - controlling {}",
             self.tank_id
@@ -135,7 +135,7 @@ impl Node for TankControllerNode {
         let _ = self.cmd_vel_pub.send(cmd, ctx);
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> horus_core::error::HorusResult<()> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("TankControllerNode shutting down");
         Ok(())
     }

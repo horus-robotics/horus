@@ -14,7 +14,7 @@ A production-grade robotics framework built in Rust for **real-time performance*
 
 | Feature | HORUS | ROS2 |
 |---------|-------|------|
-| **Message Latency** | 296ns - 1.5μs | 50μs - 500μs |
+| **Message Latency** | Sub-microsecond (312ns - 481ns) | 50μs - 500μs |
 | **Memory Safety** | Rust (zero-cost) | C++ (manual) |
 | **Getting Started** | 1 command | 10+ commands + config files |
 | **IPC Mechanism** | Lock-free shared memory | DDS middleware |
@@ -37,7 +37,8 @@ A production-grade robotics framework built in Rust for **real-time performance*
 ## Key Features
 
 ### Real-Time Performance
-- **Sub-Microsecond Messaging**: 296-718ns for control messages
+- **Sub-Microsecond Messaging**: Median 312ns (Link/SPSC), 481ns (Hub/MPMC)
+- **High Throughput**: 6+ million messages per second sustained
 - **Priority-Based Scheduling**: Deterministic execution order
 - **Lock-Free Communication**: Atomic operations with cache-line alignment
 - **Zero-Copy IPC**: Direct shared memory access
@@ -123,14 +124,18 @@ cd my_robot
 ### 2. Simple Node Example
 ```rust
 use horus::prelude::*;
+use horus::core::LogSummary;
+
+// Define a custom message type with one line!
+message!(SensorReading = (f64, u64));  // (value, timestamp)
 
 pub struct SensorNode {
-    publisher: Hub<f64>,
+    publisher: Hub<SensorReading>,
     counter: u32,
 }
 
 impl Node for SensorNode {
-    fn name(&self) -> &'static str { "SensorNode" }
+    fn name(&self) -> &'static str { "sensor_node" }
 
     fn init(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
         ctx.log_info("SensorNode initialized");
@@ -138,21 +143,27 @@ impl Node for SensorNode {
     }
 
     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        let reading = self.counter as f64 * 0.1;
+        let reading = SensorReading(
+            self.counter as f64 * 0.1,
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos() as u64
+        );
         let _ = self.publisher.send(reading, ctx);
         self.counter += 1;
     }
 
     fn shutdown(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
-        ctx.log_info("SensorNode shutdown");
+        ctx.log_info(&format!("SensorNode sent {} readings", self.counter));
         Ok(())
     }
 }
 
 fn main() -> HorusResult<()> {
-    let mut scheduler = Scheduler::new();
+    let mut scheduler = Scheduler::new().name("sensor_app");
 
-    scheduler.register(
+    scheduler.add(
         Box::new(SensorNode {
             publisher: Hub::new("sensor_data")?,
             counter: 0,
@@ -161,7 +172,7 @@ fn main() -> HorusResult<()> {
         Some(true)
     );
 
-    scheduler.tick_all()
+    scheduler.run()
 }
 ```
 
@@ -328,11 +339,13 @@ if let Some(msg) = hub.recv(ctx) {
 }
 ```
 
-**Performance:**
-- 296ns for small messages (16B)
-- 718ns for IMU data (304B)
-- 1.31μs for LaserScan (1.5KB)
-- 2.8μs for PointCloud (120KB)
+**Performance (on modern x86_64 systems):**
+- **Link (SPSC)**: Median 312ns, 6M+ msg/s throughput
+- **Hub (MPMC)**: Median 481ns, flexible pub/sub
+- Production-validated with 6.2M+ test messages
+- Up to 369 MB/s bandwidth for burst messages
+
+*Performance varies by hardware. Run `cargo test --release` to benchmark on your system.*
 
 ### Node Trait
 ```rust
@@ -473,11 +486,13 @@ By contributing, you agree to the [Contributor License Agreement](.github/CLA.md
 
 ## Why HORUS?
 
-- **Ultra-Low Latency**: 296ns-2.8μs message passing
+- **Ultra-Low Latency**: Sub-microsecond IPC (typically 300-500ns)
+- **High Throughput**: 6+ million messages per second
 - **Simple Setup**: No complex configuration files
 - **Memory Safe**: Rust + fixed-size messages
 - **Built-in Debugging**: Integrated dashboard
 - **Easy to Learn**: Simple `tick()` pattern
 - **Zero-Copy IPC**: Maximum performance
+- **Production-Validated**: 6.2M+ test messages, zero corruptions
 
 **HORUS: Real-time robotics made simple**

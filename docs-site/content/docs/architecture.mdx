@@ -102,7 +102,7 @@ The heart of the HORUS framework. Implements all core functionality including co
 
 #### `communication/`
 - **hub.rs**: Generic `Hub<T>` implementation with backend abstraction
-- **horus_backend.rs**: Shared memory IPC with serde serialization (296ns-215μs)
+- **horus_backend.rs**: Shared memory IPC with serde serialization (312ns-481ns)
 - **message.rs**: Message trait and safety primitives
 
 #### `scheduling/`
@@ -127,11 +127,11 @@ The heart of the HORUS framework. Implements all core functionality including co
 - **backend.rs**: Backend trait for pluggable communication
 
 **Performance:**
-- CmdVel (16B): **296ns**
-- LaserScan (1.5KB): **1.31μs**
-- IMU (304B): **718ns**
-- Odometry (736B): **650ns**
-- PointCloud (120KB): **215μs**
+- CmdVel (16B): **481ns** (Hub) / **312ns** (Link)
+- IMU (304B): **940ns** (Hub)
+- Odometry (736B): **1.1μs** (Hub)
+- LaserScan (1.5KB): **2.2μs** (Hub)
+- PointCloud (120KB): **360μs** (Hub)
 
 **Location:** `/horus_core/`
 
@@ -281,14 +281,14 @@ All messages use **fixed-size arrays** (`[u8; N]`) instead of `String` for cross
 pub struct CmdVel {
     pub linear: f64,      // m/s
     pub angular: f64,     // rad/s
-}  // 16 bytes  296ns latency
+}  // 16 bytes - 481ns (Hub) / 312ns (Link)
 
 pub struct LaserScan {
     pub ranges: [f32; 360],
     pub angle_min: f32,
     pub angle_max: f32,
     pub angle_increment: f32,
-}  // 1.5KB  1.31μs latency
+}  // 1.5KB - 2.2μs (Hub)
 ```
 
 **Location:** `/horus_library/`
@@ -376,13 +376,13 @@ struct SharedChannel<T> {
 - Serialization happens once (serde)
 - Lock-free atomic operations
 
-**Latency Breakdown:**
+**Latency Breakdown (Hub MPMC):**
 ```
-Total: 296ns (CmdVel 16B)
-── Serialization (serde):  ~80ns
-── Shared memory write:    ~120ns
-── Atomic operations:       ~40ns
-── Cache coherency:         ~56ns
+Total: 481ns (CmdVel 16B)
+── Serialization (serde):  ~100ns
+── Shared memory write:    ~180ns
+── Atomic operations:       ~80ns
+── Cache coherency:        ~121ns
 ```
 
 ---
@@ -393,8 +393,8 @@ HORUS uses native shared memory IPC for ultra-low latency communication:
 
 | Component | Latency | Use Case |
 |-----------|---------|----------|
-| **Link** (SPSC) | 85-167ns | Ultra-low latency point-to-point |
-| **Hub** (MPMC) | 167-6994ns | General purpose pub/sub |
+| **Link** (SPSC) | 312ns | Ultra-low latency point-to-point |
+| **Hub** (MPMC) | 481ns | General purpose pub/sub |
 
 **Performance:**
 - Zero-copy shared memory
@@ -703,9 +703,9 @@ See [CLI Reference - horus run](/cli-reference#horus-run---build-and-run) for us
                                         2. send()
                                        ▼
                               ──────────────────
-                               Shared Memory                 
-                               /dev/shm/         296ns-1.31μs
-                               horus_sensors                 
+                               Shared Memory
+                               /dev/shm/         312ns-481ns
+                               horus_sensors
                               ─────────────────
                                         3. try_recv()
                                        ▼
@@ -727,15 +727,15 @@ See [CLI Reference - horus run](/cli-reference#horus-run---build-and-run) for us
 ──────────────────
 ```
 
-**Latency Budget:**
+**Latency Budget (Hub MPMC):**
 ```
-Total: ~2-5μs for 3-node pipeline
-── SensorNode publish:     296ns
-── Shared memory write:    120ns
-── ControlNode receive:    296ns
-── Processing:             1000ns (user code)
-── ControlNode publish:    296ns
-── MotorNode receive:      296ns
+Total: ~3-5μs for 3-node pipeline
+── SensorNode publish:     481ns
+── Shared memory write:    180ns
+── ControlNode receive:    481ns
+── Processing:            1000ns (user code)
+── ControlNode publish:    481ns
+── MotorNode receive:      481ns
 ```
 
 ---
@@ -760,26 +760,26 @@ Total: ~2-5μs for 3-node pipeline
 ### Latency vs Message Size
 
 ```
-Message Size    Latency     Example
-────────────────────────────────────────
-16B             296ns       CmdVel
-304B            718ns       IMU
-736B            650ns       Odometry
-1.5KB           1.31μs      LaserScan
-120KB           215μs       PointCloud (10K points)
+Message Size    Latency (Hub)    Latency (Link)    Example
+──────────────────────────────────────────────────────────
+16B             481ns            312ns             CmdVel
+304B            940ns            ~400ns            IMU
+736B            1.1μs            ~600ns            Odometry
+1.5KB           2.2μs            ~900ns            LaserScan
+120KB           360μs            ~120μs            PointCloud (10K points)
 ```
 
 **Scaling:** Linear with message size (~1.8ns/byte)
 
 ### Comparison to traditional frameworks
 
-| Metric | HORUS | traditional frameworks (DDS) | Improvement |
-|--------|-------|------------|-------------|
-| **CmdVel latency** | 296ns | 50-100μs | **169-338x faster** |
-| **LaserScan latency** | 1.31μs | 200-500μs | **153-382x faster** |
-| **Setup complexity** | 2 lines | ~50 lines (launch files) | **25x simpler** |
-| **Memory safety** | Guaranteed (Rust) | Manual (C++) | **Zero segfaults** |
-| **Monitoring** | Built-in | External (rviz/rqt) | **Zero config** |
+| Metric | HORUS (Link) | HORUS (Hub) | ROS2 (DDS) | Improvement |
+|--------|--------------|-------------|------------|-------------|
+| **CmdVel latency** | 312ns | 481ns | 50-100μs | **104-320x faster** |
+| **LaserScan latency** | ~900ns | 2.2μs | 200-500μs | **91-556x faster** |
+| **Setup complexity** | 2 lines | 2 lines | ~50 lines | **25x simpler** |
+| **Memory safety** | Guaranteed (Rust) | Guaranteed (Rust) | Manual (C++) | **Zero segfaults** |
+| **Monitoring** | Built-in | Built-in | External (rviz/rqt) | **Zero config** |
 
 ---
 

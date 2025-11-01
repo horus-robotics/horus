@@ -1,8 +1,9 @@
-//! Vision and camera message types for robotics
-//!
-//! This module provides comprehensive vision processing messages for
-//! cameras, images, and visual perception systems.
+// Vision and camera message types for robotics
+//
+// This module provides comprehensive vision processing messages for
+// cameras, images, and visual perception systems.
 
+use horus_core::core::LogSummary;
 use serde::{Deserialize, Serialize};
 use serde_arrays;
 
@@ -492,6 +493,83 @@ impl StereoInfo {
             return 0.0;
         }
         (self.baseline * self.left_camera.focal_lengths().0) as f32 / depth
+    }
+}
+
+// ============================================================================
+// LogSummary Implementations - Zero-copy logging support
+// ============================================================================
+
+impl LogSummary for Image {
+    fn log_summary(&self) -> String {
+        format!(
+            "Image({}x{}, {:?}, {} bytes)",
+            self.width,
+            self.height,
+            self.encoding,
+            self.data.len()
+        )
+    }
+}
+
+impl LogSummary for CompressedImage {
+    fn log_summary(&self) -> String {
+        format!(
+            "CompressedImage({}, {}x{}, {} bytes)",
+            self.format_str(),
+            self.width,
+            self.height,
+            self.data.len()
+        )
+    }
+}
+
+impl LogSummary for CameraInfo {
+    fn log_summary(&self) -> String {
+        let (fx, fy) = self.focal_lengths();
+        format!("CameraInfo({}x{}, f={:.1}/{:.1})", self.width, self.height, fx, fy)
+    }
+}
+
+impl LogSummary for RegionOfInterest {
+    fn log_summary(&self) -> String {
+        format!(
+            "ROI(x={}, y={}, {}x{})",
+            self.x_offset, self.y_offset, self.width, self.height
+        )
+    }
+}
+
+impl LogSummary for Detection {
+    fn log_summary(&self) -> String {
+        format!(
+            "Detection('{}', conf={:.2}, bbox={}x{})",
+            self.class_str(),
+            self.confidence,
+            self.bbox.width,
+            self.bbox.height
+        )
+    }
+}
+
+impl LogSummary for DetectionArray {
+    fn log_summary(&self) -> String {
+        format!("DetectionArray({} detections)", self.count)
+    }
+}
+
+impl LogSummary for StereoInfo {
+    fn log_summary(&self) -> String {
+        format!(
+            "StereoInfo({}x{}, baseline={:.3}m)",
+            self.left_camera.width, self.left_camera.height, self.baseline
+        )
+    }
+}
+
+impl LogSummary for ImageEncoding {
+    fn log_summary(&self) -> String {
+        format!("{:?}", self)
     }
 }
 

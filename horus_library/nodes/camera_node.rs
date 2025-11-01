@@ -1,6 +1,9 @@
 use crate::vision::ImageEncoding;
 use crate::{CameraInfo, Image};
 use horus_core::error::HorusResult;
+
+// Type alias for cleaner signatures
+type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -32,12 +35,12 @@ pub struct CameraNode {
 
 impl CameraNode {
     /// Create a new camera node with default topic "camera/image"
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         Self::new_with_topic("camera")
     }
 
     /// Create a new camera node with custom topic prefix
-    pub fn new_with_topic(topic_prefix: &str) -> HorusResult<Self> {
+    pub fn new_with_topic(topic_prefix: &str) -> Result<Self> {
         let image_topic = format!("{}/image", topic_prefix);
         let info_topic = format!("{}/camera_info", topic_prefix);
 

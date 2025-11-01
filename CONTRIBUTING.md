@@ -108,7 +108,7 @@ Follow standard conventions:
 /// ```
 /// let hub = Hub::<f32>::new("temperature")?;
 /// ```
-pub fn new(topic: &str) -> HorusResult<Self> {
+pub fn new(topic: &str) -> Result<Self> {
     // implementation
 }
 ```

@@ -1,6 +1,6 @@
 [package]
 name = "horus_benchmarks"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["HORUS Team"]
 description = "Professional benchmark suite for HORUS robotics framework"
@@ -63,11 +63,22 @@ name = "test_stress"
 path = "src/bin/test_stress.rs"
 doc = false
 
+[[bin]]
+name = "test_robotics_production"
+path = "src/bin/test_robotics_production.rs"
+doc = false
+
+[[bin]]
+name = "test_critical_production"
+path = "src/bin/test_critical_production.rs"
+doc = false
+
 [dependencies]
 horus = { path = "../horus" }
 horus_library = { path = "../horus_library", features = ["iceoryx2"] }
 serde.workspace = true
 serde_bytes = "0.11"
+serde_arrays = "0.1"
 colored = "2.0"
 anyhow = "1.0"
 iceoryx2 = "0.7.0"
