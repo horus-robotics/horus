@@ -898,7 +898,7 @@ impl RegistryClient {
             Err(_) => {
                 println!("\n Not authenticated with HORUS registry.");
                 println!("\nTo publish packages, you need to authenticate:");
-                println!("  1. Run: horus auth login --github");
+                println!("  1. Run: horus auth login");
                 println!("  2. Authorize in your browser");
                 println!("  3. The registry will show your API key");
                 println!("  4. Save it to ~/.horus/auth.json");
@@ -957,7 +957,7 @@ impl RegistryClient {
                 println!("\n Authentication failed!");
                 println!("\nYour API key may be invalid or expired.");
                 println!("\nTo fix this:");
-                println!("  1. Run: horus auth login --github");
+                println!("  1. Run: horus auth login");
                 println!("  2. Get a new API key from the registry");
                 println!("  3. Try publishing again");
                 return Err(anyhow!("Unauthorized - invalid or expired API key"));
@@ -1039,7 +1039,7 @@ impl RegistryClient {
             Err(_) => {
                 println!("\n Not authenticated with HORUS registry.");
                 println!("\nTo unpublish packages, you need to authenticate:");
-                println!("  1. Run: horus auth login --github");
+                println!("  1. Run: horus auth login");
                 println!("  2. Authorize in your browser");
                 println!("  3. The registry will show your API key");
                 println!("  4. Save it to ~/.horus/auth.json");
@@ -1714,7 +1714,7 @@ fn get_api_key() -> Result<String> {
 
     if !auth_file.exists() {
         return Err(anyhow!(
-            "Not authenticated. Please run: horus auth login --github"
+            "Not authenticated. Please run: horus auth login"
         ));
     }
 

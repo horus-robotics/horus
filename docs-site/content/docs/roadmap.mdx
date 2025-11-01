@@ -31,32 +31,35 @@ order: 2
 
 ## 2. Language Bindings (HIGH PRIORITY)
 
-### 2.1 Python Bindings (40% of beta effort)
+### 2.1 Python Bindings (25% of beta effort)
 
-**Critical for Beta**:
-- [ ] **Type hints**: Full `.pyi` stub files for IDE autocomplete (VSCode, PyCharm)
-- [ ] **Documentation**: Docstrings for all functions, basic API reference
-- [ ] **Package distribution**: PyPI package (`pip install horus-robotics`)
-- [ ] **Wheels**: Linux x86_64, ARM (Raspberry Pi, Jetson)
+**Critical for Beta:**
+
+- [x] **Type hints**: Inline type annotations for IDE autocomplete (VSCode, PyCharm)
+- [x] **Documentation**: Docstrings for all functions, comprehensive API guides
 - [ ] **Testing**: pytest test suite with cross-language integration tests
+- [ ] **Validation**: Works on real Python robotics projects
 
-**Validation**:
-- Type hint coverage >80%
-- Documentation coverage >70%
-- Works on real Python projects
+**Validation:**
+
+- Type hint coverage >80% ✅ (100% complete)
+- Documentation coverage >70% ✅ (~100% complete)
+- Works on real Python projects ⏳ (needs testing)
 
 ---
 
 ### 2.2 C Bindings (25% of beta effort)
 
-**Critical for Beta**:
+**Critical for Beta:**
+
 - [ ] **Complete API coverage**: Node API, Scheduler API, all message types
 - [ ] **Error handling**: Proper error codes and resource cleanup
 - [ ] **Build system**: CMake support, pkg-config file
 - [ ] **Examples**: Embedded Linux examples (Raspberry Pi, Jetson)
 - [ ] **Documentation**: Basic C API reference guide
 
-**Validation**:
+**Validation:**
+
 - Compiles on embedded Linux (RPi, Jetson)
 - Performance parity with Rust API
 
@@ -64,16 +67,17 @@ order: 2
 
 ## 3. Documentation (25% of beta effort)
 
-**Critical for Beta**:
-- [ ] **Tutorials**:
+**Critical for Beta:**
+
+- [ ] **Tutorials:**
   - Beginner: First robot in 30 minutes
   - Intermediate: Multi-node system
   - Advanced: Real-time control
-- [ ] **How-to guides**:
+- [ ] **How-to guides:**
   - Migrate from ROS2
   - Deploy to embedded Linux (Raspberry Pi, Jetson)
   - Debug performance issues
-- [ ] **API Reference**:
+- [ ] **API Reference:**
   - Complete API documentation for all public APIs
   - Message type reference
   - Error code reference
@@ -82,7 +86,8 @@ order: 2
   - Quadcopter flight controller
   - Autonomous rover
 
-**Validation**:
+**Validation:**
+
 - Documentation coverage >70%
 - User testing with newcomers
 - All examples run successfully
@@ -91,23 +96,25 @@ order: 2
 
 ## 4. Testing (10% of beta effort)
 
-**Critical for Beta**:
+**Critical for Beta:**
+
 - [ ] **Unit tests**: 80%+ code coverage for core framework
-- [ ] **Integration tests**:
+- [ ] **Integration tests:**
   - Multi-node scenarios
   - Cross-language tests (Rust ↔ Python ↔ C)
   - Long-running stress tests (24+ hours)
-- [ ] **Performance regression tests**:
+- [ ] **Performance regression tests:**
   - Latency benchmarks (Link/Hub)
   - Run on every commit
   - Alert on >10% regression
-- [ ] **Platform tests**:
+- [ ] **Platform tests:**
   - x86_64 Linux (Intel, AMD)
   - ARM Linux (Raspberry Pi 4/5, Jetson)
 
-**Validation**:
+**Validation:**
+
 - All tests passing on all platforms
-- CI/CD pipeline <5 minutes
+- CI/CD pipeline &lt;5 minutes
 - Zero tolerance for flaky tests
 
 ---
@@ -132,6 +139,12 @@ order: 2
 - Dashboard enhancements (recording/playback, profiling, log search)
 - Remote deployment daemon (versioning, rollback, multi-target, CI/CD integration)
 
+### Language Bindings Enhancements
+- PyPI package distribution (Python-only users)
+- Pre-built wheels for x86_64 and ARM (Raspberry Pi, Jetson)
+- .pyi stub files for Python (enhanced IDE support)
+- CI/CD automation for wheel building
+
 ### Simulation
 - sim2d enhancements (advanced physics, sensors, visualization)
 - sim3d (complete 3D simulator with RL support)
@@ -152,14 +165,17 @@ order: 2
 
 ## Beta Roadmap Summary
 
-**Total TODO items**: ~25-30 critical tasks
+**Total TODO items**: ~15-20 critical tasks
 
-**Effort distribution**:
-- Python bindings: 40%
+**Effort distribution:**
+
+- Python bindings: 25% (type hints ✅, docs ✅, testing & validation TODO)
 - C bindings: 25%
-- Documentation: 25%
-- Testing: 10%
+- Documentation: 35%
+- Testing: 15%
 
 **Core framework status**: ✅ COMPLETE (312ns Link, 481ns Hub, production-validated)
 
 **Beta focus**: Developer experience - make HORUS easy to use from Python/C with great docs and examples.
+
+**Note**: PyPI packaging, pre-built wheels, and .pyi stubs are deferred to post-beta as users install HORUS via `./install.sh` which builds bindings locally.

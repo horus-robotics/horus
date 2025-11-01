@@ -3,12 +3,24 @@ requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "horus"
+name = "horus-robotics"
 version = "0.1.1"
-description = "Simple & intuitive Python API for HORUS robotics framework"
+description = "Simple & intuitive Python API for HORUS robotics framework - ultra-low latency IPC and real-time scheduling"
 readme = "README.md"
 requires-python = ">=3.9"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "HORUS Contributors"}
+]
+maintainers = [
+    {name = "HORUS Contributors"}
+]
 classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: POSIX :: Linux",
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: 3",
@@ -18,9 +30,16 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    "Topic :: Scientific/Engineering :: Robotics"
+    "Topic :: Scientific/Engineering :: Robotics",
+    "Topic :: System :: Hardware"
 ]
-keywords = ["robotics", "real-time", "distributed", "ipc", "horus"]
+keywords = ["robotics", "real-time", "distributed", "ipc", "horus", "shared-memory", "low-latency"]
+
+[project.urls]
+Homepage = "https://github.com/horus-org/horus"
+Documentation = "https://docs.horus.rs"
+Repository = "https://github.com/horus-org/horus"
+Issues = "https://github.com/horus-org/horus/issues"
 
 # No optional dependencies needed for simple API
 

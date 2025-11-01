@@ -466,6 +466,28 @@ async fn packages_environments_handler() -> impl IntoResponse {
                         let env_name = entry.file_name().to_string_lossy().to_string();
                         let env_path = entry.path();
 
+                        // Try to read dependencies from horus.yaml
+                        let horus_yaml_path = env_path.join("horus.yaml");
+                        let yaml_dependencies = if horus_yaml_path.exists() {
+                            fs::read_to_string(&horus_yaml_path)
+                                .ok()
+                                .and_then(|content| {
+                                    serde_yaml::from_str::<serde_yaml::Value>(&content).ok()
+                                })
+                                .and_then(|yaml| {
+                                    yaml.get("dependencies")
+                                        .and_then(|deps| deps.as_sequence())
+                                        .map(|seq| {
+                                            seq.iter()
+                                                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                                .collect::<Vec<String>>()
+                                        })
+                                })
+                                .unwrap_or_default()
+                        } else {
+                            Vec::new()
+                        };
+
                         // Get packages inside this environment
                         let packages_dir = horus_dir.join("packages");
                         let mut packages = Vec::new();
@@ -537,11 +559,46 @@ async fn packages_environments_handler() -> impl IntoResponse {
                             }
                         }
 
+                        // Map yaml_dependencies to installed packages with version info
+                        let workspace_dependencies: Vec<serde_json::Value> = yaml_dependencies.iter()
+                            .filter_map(|dep_str| {
+                                // dependency format: "package_name@version" or just "package_name"
+                                let dep_path = packages_dir.join(dep_str);
+                                if dep_path.exists() || dep_path.read_link().is_ok() {
+                                    // Try to read metadata.json (follow symlinks)
+                                    let mut metadata_path = dep_path.join("metadata.json");
+
+                                    // Follow symlink if necessary
+                                    if let Ok(real_path) = std::fs::canonicalize(&dep_path) {
+                                        metadata_path = real_path.join("metadata.json");
+                                    }
+
+                                    let version = if metadata_path.exists() {
+                                        fs::read_to_string(&metadata_path)
+                                            .ok()
+                                            .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+                                            .and_then(|j| j.get("version").and_then(|v| v.as_str()).map(|s| s.to_string()))
+                                            .unwrap_or_else(|| dep_str.split('@').nth(1).unwrap_or("unknown").to_string())
+                                    } else {
+                                        dep_str.split('@').nth(1).unwrap_or("unknown").to_string()
+                                    };
+
+                                    Some(serde_json::json!({
+                                        "name": dep_str.split('@').next().unwrap_or(dep_str),
+                                        "version": version,
+                                    }))
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect();
+
                         local_envs.push(serde_json::json!({
                             "name": env_name,
                             "path": env_path.to_string_lossy(),
                             "packages": packages,
                             "package_count": packages.len(),
+                            "dependencies": workspace_dependencies,
                         }));
                     }
                 }
@@ -4167,62 +4224,53 @@ fn generate_html(port: u16) -> String {
                 if (data.local && data.local.length > 0) {{
                     html += data.local.map((env, index) => {{
                         let expandableContent = '';
-                        if (env.packages && env.packages.length > 0) {{
+
+                        const hasDependencies = env.dependencies && env.dependencies.length > 0;
+
+                        if (hasDependencies) {{
                             expandableContent = `
                                 <div id="env-details-${{index}}" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);">
-                                    <div style="color: var(--text-secondary); margin-bottom: 8px; font-size: 0.9em;">
-                                        Packages in this environment:
+                                    <div style="color: var(--text-secondary); margin-bottom: 8px; font-size: 0.9em; font-weight: 600;">
+                                        Dependencies (horus.yaml):
                                     </div>
-                                    ${{env.packages.map((p, pidx) => `
-                                        <div style="margin-bottom: 6px;">
-                                            <div onclick="togglePackageDetails(${{index}}, ${{pidx}})" style="padding: 8px 12px; background: var(--primary); border: 1px solid var(--border); border-radius: 4px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s;">
-                                                <div style="display: flex; align-items: center; gap: 8px;">
-                                                    <span id="pkg-arrow-${{index}}-${{pidx}}" style="color: var(--accent); font-size: 0.8em;">▶</span>
-                                                    <span style="font-weight: 500;">${{p.name}}</span>
+                                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                                        ${{env.dependencies.map(dep => `
+                                            <div style="padding: 6px 10px; background: var(--surface); border: 1px solid var(--success, #4ade80); border-radius: 4px; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                                                <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+                                                    <span style="color: var(--text-primary); font-size: 0.85em;">${{dep.name}}</span>
+                                                    <span style="color: var(--text-tertiary); font-size: 0.75em;">v${{dep.version}}</span>
                                                 </div>
-                                                <span style="color: var(--text-secondary); font-size: 0.85em;">v${{p.version}}</span>
+                                                <span style="color: var(--text-tertiary); font-size: 0.7em;">installed</span>
                                             </div>
-                                            <div id="pkg-details-${{index}}-${{pidx}}" style="display: none; padding: 10px 12px; margin-left: 20px; background: var(--dark-bg); border-left: 2px solid var(--accent); border-radius: 4px; margin-top: 4px;">
-                                                <div style="color: var(--text-secondary); font-size: 0.85em; margin-bottom: 8px;"><strong>Installed Packages (${{p.installed_packages?.length || 0}}):</strong></div>
-                                                ${{p.installed_packages && p.installed_packages.length > 0 ? `
-                                                    <div style="display: flex; flex-direction: column; gap: 4px;">
-                                                        ${{p.installed_packages.map(pkg => `
-                                                            <div style="padding: 6px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
-                                                                <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
-                                                                    <span style="color: var(--text-primary); font-size: 0.85em;">${{pkg.name}}</span>
-                                                                    <span style="color: var(--text-tertiary); font-size: 0.75em;">v${{pkg.version}}</span>
-                                                                </div>
-                                                                <button
-                                                                    onclick="uninstallPackage('${{p.name}}', '${{pkg.name}}', event)"
-                                                                    style="padding: 4px 10px; background: var(--error, #ff4444); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75em; font-weight: 600; transition: opacity 0.2s;"
-                                                                    onmouseover="this.style.opacity='0.8'"
-                                                                    onmouseout="this.style.opacity='1'"
-                                                                >
-                                                                    Uninstall
-                                                                </button>
-                                                            </div>
-                                                        `).join('')}}
-                                                    </div>
-                                                ` : '<div style="color: var(--text-tertiary); font-size: 0.85em;">No packages installed</div>'}}
-                                            </div>
-                                        </div>
-                                    `).join('')}}
+                                        `).join('')}}
+                                    </div>
+                                </div>
+                            `;
+                        }} else {{
+                            expandableContent = `
+                                <div id="env-details-${{index}}" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);">
+                                    <div style="color: var(--text-tertiary); font-size: 0.85em; font-style: italic;">
+                                        No dependencies declared in horus.yaml
+                                    </div>
                                 </div>
                             `;
                         }}
 
+                        const depCount = env.dependencies?.length || 0;
+                        const hasContent = depCount > 0;
+
                         return `
-                            <div class="package-item" style="padding: 15px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; ${{env.package_count > 0 ? 'cursor: pointer;' : ''}}">
-                                <div style="display: flex; justify-content: space-between; align-items: center;" onclick="${{env.package_count > 0 ? `toggleEnvDetails(${{index}})` : ''}}">
+                            <div class="package-item" style="padding: 15px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; ${{hasContent ? 'cursor: pointer;' : ''}}">
+                                <div style="display: flex; justify-content: space-between; align-items: center;" onclick="${{hasContent ? `toggleEnvDetails(${{index}})` : ''}}">
                                     <div style="flex: 1;">
                                         <div style="display: flex; align-items: center; gap: 8px;">
                                             <span style="font-weight: 600; color: var(--text-primary); font-size: 1.05em;">
                                                 ${{env.name}}
                                             </span>
-                                            ${{env.package_count > 0 ? '<span id="arrow-' + index + '" style="color: var(--accent); font-size: 0.9em;">▶</span>' : ''}}
+                                            ${{hasContent ? '<span id="arrow-' + index + '" style="color: var(--accent); font-size: 0.9em;">▶</span>' : ''}}
                                         </div>
                                         <div style="color: var(--text-secondary); margin-top: 5px; font-size: 0.85em;">
-                                            ${{env.path}} • ${{env.package_count}} package(s)
+                                            ${{env.path}} • ${{depCount}} dependencies
                                         </div>
                                     </div>
                                 </div>
@@ -4533,62 +4581,53 @@ fn generate_html(port: u16) -> String {
                 if (data.local && data.local.length > 0) {{
                     const html = data.local.map((env, index) => {{
                         let expandableContent = '';
-                        if (env.packages && env.packages.length > 0) {{
+
+                        const hasDependencies = env.dependencies && env.dependencies.length > 0;
+
+                        if (hasDependencies) {{
                             expandableContent = `
                                 <div id="env-details-${{index}}" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);">
-                                    <div style="color: var(--text-secondary); margin-bottom: 8px; font-size: 0.9em;">
-                                         Packages in this environment:
+                                    <div style="color: var(--text-secondary); margin-bottom: 8px; font-size: 0.9em; font-weight: 600;">
+                                        Dependencies (horus.yaml):
                                     </div>
-                                    ${{env.packages.map((p, pidx) => `
-                                        <div style="margin-bottom: 6px;">
-                                            <div onclick="togglePackageDetails(${{index}}, ${{pidx}})" style="padding: 8px 12px; background: var(--primary); border: 1px solid var(--border); border-radius: 4px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s;">
-                                                <div style="display: flex; align-items: center; gap: 8px;">
-                                                    <span id="pkg-arrow-${{index}}-${{pidx}}" style="color: var(--accent); font-size: 0.8em;">▶</span>
-                                                    <span style="font-weight: 500;">${{p.name}}</span>
+                                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                                        ${{env.dependencies.map(dep => `
+                                            <div style="padding: 6px 10px; background: var(--surface); border: 1px solid var(--success, #4ade80); border-radius: 4px; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                                                <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
+                                                    <span style="color: var(--text-primary); font-size: 0.85em;">${{dep.name}}</span>
+                                                    <span style="color: var(--text-tertiary); font-size: 0.75em;">v${{dep.version}}</span>
                                                 </div>
-                                                <span style="color: var(--text-secondary); font-size: 0.85em;">v${{p.version}}</span>
+                                                <span style="color: var(--text-tertiary); font-size: 0.7em;">installed</span>
                                             </div>
-                                            <div id="pkg-details-${{index}}-${{pidx}}" style="display: none; padding: 10px 12px; margin-left: 20px; background: var(--dark-bg); border-left: 2px solid var(--accent); border-radius: 4px; margin-top: 4px;">
-                                                <div style="color: var(--text-secondary); font-size: 0.85em; margin-bottom: 8px;"><strong>Installed Packages (${{p.installed_packages?.length || 0}}):</strong></div>
-                                                ${{p.installed_packages && p.installed_packages.length > 0 ? `
-                                                    <div style="display: flex; flex-direction: column; gap: 4px;">
-                                                        ${{p.installed_packages.map(pkg => `
-                                                            <div style="padding: 6px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
-                                                                <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
-                                                                    <span style="color: var(--text-primary); font-size: 0.85em;">${{pkg.name}}</span>
-                                                                    <span style="color: var(--text-tertiary); font-size: 0.75em;">v${{pkg.version}}</span>
-                                                                </div>
-                                                                <button
-                                                                    onclick="uninstallPackage('${{p.name}}', '${{pkg.name}}', event)"
-                                                                    style="padding: 4px 10px; background: var(--error, #ff4444); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75em; font-weight: 600; transition: opacity 0.2s;"
-                                                                    onmouseover="this.style.opacity='0.8'"
-                                                                    onmouseout="this.style.opacity='1'"
-                                                                >
-                                                                    Uninstall
-                                                                </button>
-                                                            </div>
-                                                        `).join('')}}
-                                                    </div>
-                                                ` : '<div style="color: var(--text-tertiary); font-size: 0.85em;">No packages installed</div>'}}
-                                            </div>
-                                        </div>
-                                    `).join('')}}
+                                        `).join('')}}
+                                    </div>
+                                </div>
+                            `;
+                        }} else {{
+                            expandableContent = `
+                                <div id="env-details-${{index}}" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);">
+                                    <div style="color: var(--text-tertiary); font-size: 0.85em; font-style: italic;">
+                                        No dependencies declared in horus.yaml
+                                    </div>
                                 </div>
                             `;
                         }}
 
+                        const depCount = env.dependencies?.length || 0;
+                        const hasContent = depCount > 0;
+
                         return `
-                            <div class="package-item" style="padding: 15px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; ${{env.package_count > 0 ? 'cursor: pointer;' : ''}}">
-                                <div style="display: flex; justify-content: space-between; align-items: center;" onclick="${{env.package_count > 0 ? `toggleEnvDetails(${{index}})` : ''}}">
+                            <div class="package-item" style="padding: 15px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; ${{hasContent ? 'cursor: pointer;' : ''}}">
+                                <div style="display: flex; justify-content: space-between; align-items: center;" onclick="${{hasContent ? `toggleEnvDetails(${{index}})` : ''}}">
                                     <div style="flex: 1;">
                                         <div style="display: flex; align-items: center; gap: 8px;">
                                             <span style="font-weight: 600; color: var(--text-primary); font-size: 1.05em;">
                                                 ${{env.name}}
                                             </span>
-                                            ${{env.package_count > 0 ? '<span id="arrow-' + index + '" style="color: var(--accent); font-size: 0.9em;">▶</span>' : ''}}
+                                            ${{hasContent ? '<span id="arrow-' + index + '" style="color: var(--accent); font-size: 0.9em;">▶</span>' : ''}}
                                         </div>
                                         <div style="color: var(--text-secondary); margin-top: 5px; font-size: 0.85em;">
-                                            ${{env.path}} • ${{env.package_count}} package(s)
+                                            ${{env.path}} • ${{depCount}} dependencies
                                         </div>
                                     </div>
                                 </div>

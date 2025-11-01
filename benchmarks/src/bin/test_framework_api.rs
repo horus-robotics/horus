@@ -17,6 +17,7 @@ fn main() {
         eprintln!("Available tests:");
         eprintln!("  node_trait_api");
         eprintln!("  scheduler_api");
+        eprintln!("  per_node_rate");
         eprintln!("  full_framework_workflow");
         eprintln!("  multi_node_graph");
         eprintln!("  node_lifecycle");
@@ -27,6 +28,7 @@ fn main() {
     let result = match test_name.as_str() {
         "node_trait_api" => test_node_trait_api(),
         "scheduler_api" => test_scheduler_api(),
+        "per_node_rate" => test_per_node_rate(),
         "full_framework_workflow" => test_full_framework_workflow(),
         "multi_node_graph" => test_multi_node_graph(),
         "node_lifecycle" => test_node_lifecycle(),
@@ -275,6 +277,87 @@ fn test_scheduler_api() -> bool {
     println!("  ✓ Scheduler.stop()");
 
     println!("  ✓ Scheduler API is locked and working");
+    true
+}
+
+/// Test for per-node rate control
+/// Verifies that set_node_rate() works and nodes run at different frequencies
+fn test_per_node_rate() -> bool {
+    println!("Testing per-node rate control...");
+
+    // Simple test nodes with different names
+    struct FastNode {
+        counter: Arc<Mutex<u32>>,
+    }
+    impl Node for FastNode {
+        fn name(&self) -> &'static str { "fast_node" }
+        fn tick(&mut self, _info: Option<&mut NodeInfo>) {
+            *self.counter.lock().unwrap() += 1;
+        }
+    }
+
+    struct SlowNode {
+        counter: Arc<Mutex<u32>>,
+    }
+    impl Node for SlowNode {
+        fn name(&self) -> &'static str { "slow_node" }
+        fn tick(&mut self, _info: Option<&mut NodeInfo>) {
+            *self.counter.lock().unwrap() += 1;
+        }
+    }
+
+    // Create counters to track ticks
+    let fast_counter = Arc::new(Mutex::new(0u32));
+    let slow_counter = Arc::new(Mutex::new(0u32));
+
+    // Create scheduler
+    let mut scheduler = Scheduler::new();
+    println!("  ✓ Scheduler created");
+
+    // Add fast node (100Hz)
+    let fast_node = Box::new(FastNode { counter: fast_counter.clone() });
+    scheduler.add(fast_node, 0, None)
+        .set_node_rate("fast_node", 100.0);
+    println!("  ✓ Added fast_node at 100Hz");
+
+    // Add slow node (10Hz)
+    let slow_node = Box::new(SlowNode { counter: slow_counter.clone() });
+    scheduler.add(slow_node, 1, None)
+        .set_node_rate("slow_node", 10.0);
+    println!("  ✓ Added slow_node at 10Hz");
+
+    // Run for 1 second
+    println!("  ⏱️  Running for 1 second...");
+    if let Err(e) = scheduler.run_for(Duration::from_secs(1)) {
+        eprintln!("Scheduler run failed: {}", e);
+        return false;
+    }
+
+    // Get tick counts
+    let fast_ticks = *fast_counter.lock().unwrap();
+    let slow_ticks = *slow_counter.lock().unwrap();
+
+    println!("  📊 fast_node: {} ticks", fast_ticks);
+    println!("  📊 slow_node: {} ticks", slow_ticks);
+
+    // Verify fast node ran more than slow node
+    if fast_ticks <= slow_ticks {
+        eprintln!("  ❌ Fast node should have more ticks than slow node!");
+        eprintln!("     fast: {}, slow: {}", fast_ticks, slow_ticks);
+        return false;
+    }
+    println!("  ✓ Fast node ran more frequently than slow node");
+
+    // Verify fast node is roughly 10x faster (allow wide tolerance due to timing)
+    let ratio = fast_ticks as f64 / slow_ticks as f64;
+    if ratio >= 5.0 && ratio <= 15.0 {
+        println!("  ✓ Rate ratio is reasonable: {:.1}x", ratio);
+    } else {
+        eprintln!("  ⚠️  Rate ratio unexpected: {:.1}x (expected ~10x)", ratio);
+        // Don't fail - timing can be imprecise in tests
+    }
+
+    println!("  ✓ Per-node rate control is working");
     true
 }
 

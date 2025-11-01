@@ -6,13 +6,15 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-/// Enhanced node registration info with lifecycle tracking
+/// Enhanced node registration info with lifecycle tracking and per-node rate control
 struct RegisteredNode {
     node: Box<dyn Node>,
     priority: u32,
     logging_enabled: bool,
     initialized: bool,
     context: Option<NodeInfo>,
+    rate_hz: Option<f64>,      // Per-node rate control (None = use global scheduler rate)
+    last_tick: Option<Instant>, // Last tick time for rate limiting
 }
 
 /// Central orchestrator: holds nodes, drives the tick loop.
@@ -66,6 +68,8 @@ impl Scheduler {
             logging_enabled,
             initialized: false,
             context: Some(context),
+            rate_hz: None,        // Use global scheduler rate by default
+            last_tick: None,      // Will be set on first tick
         });
 
         println!(
@@ -102,6 +106,32 @@ impl Scheduler {
         if let Ok(mut running) = self.running.lock() {
             *running = false;
         }
+    }
+
+    /// Set per-node rate control (chainable)
+    ///
+    /// Allows individual nodes to run at different frequencies independent of the global scheduler rate.
+    /// If a node's rate is not set, it will tick at the global scheduler frequency.
+    ///
+    /// # Arguments
+    /// * `name` - The name of the node
+    /// * `rate_hz` - The desired rate in Hz (ticks per second)
+    ///
+    /// # Example
+    /// ```
+    /// scheduler.add(sensor, 0, Some(true))
+    ///     .set_node_rate("sensor", 100.0);  // Run sensor at 100Hz
+    /// ```
+    pub fn set_node_rate(&mut self, name: &str, rate_hz: f64) -> &mut Self {
+        for registered in self.nodes.iter_mut() {
+            if registered.node.name() == name {
+                registered.rate_hz = Some(rate_hz);
+                registered.last_tick = Some(Instant::now());
+                println!("Set node '{}' rate to {:.1} Hz", name, rate_hz);
+                break;
+            }
+        }
+        self
     }
 
     /// Main loop with automatic signal handling and cleanup
@@ -191,6 +221,21 @@ impl Scheduler {
                 for registered in self.nodes.iter_mut() {
                     let node_name = registered.node.name();
                     let should_run = node_filter.is_none_or(|filter| filter.contains(&node_name));
+
+                    // Per-node rate control: Check if enough time has elapsed for this node
+                    if let Some(rate_hz) = registered.rate_hz {
+                        let current_time = Instant::now();
+                        if let Some(last_tick) = registered.last_tick {
+                            let elapsed_secs = (current_time - last_tick).as_secs_f64();
+                            let period_secs = 1.0 / rate_hz;
+
+                            if elapsed_secs < period_secs {
+                                continue;  // Skip this node - not enough time has passed
+                            }
+                        }
+                        // Update last tick time
+                        registered.last_tick = Some(current_time);
+                    }
 
                     if should_run && registered.initialized {
                         if let Some(ref mut context) = registered.context {

@@ -91,7 +91,7 @@ pub fn generate_key(name: Option<String>, environment: Option<String>) -> HorusR
     );
     println!(
         "  If you haven't logged in yet, run: {}",
-        "horus auth login --github".cyan()
+        "horus auth login".cyan()
     );
     println!();
 
@@ -183,7 +183,7 @@ pub fn whoami() -> HorusResult<()> {
         println!("{} Not logged in", "!".yellow());
         println!();
         println!("To authenticate:");
-        println!("  1. Run: {}", "horus auth login --github".cyan());
+        println!("  1. Run: {}", "horus auth login".cyan());
         println!("  2. Then: {}", "horus auth generate-key".cyan());
         return Ok(());
     }

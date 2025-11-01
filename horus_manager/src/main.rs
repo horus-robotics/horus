@@ -74,9 +74,9 @@ enum Commands {
         #[arg(value_name = "FILE")]
         file: Option<PathBuf>,
 
-        /// Show warnings as well as errors
-        #[arg(short = 'w', long = "warnings")]
-        warnings: bool,
+        /// Only show errors, suppress warnings
+        #[arg(short = 'q', long = "quiet")]
+        quiet: bool,
     },
 
     /// Open the unified HORUS dashboard (web-based, auto-opens browser)
@@ -121,9 +121,6 @@ enum Commands {
         #[arg(value_enum)]
         shell: clap_complete::Shell,
     },
-
-    /// Show version information
-    Version,
 }
 
 #[derive(Subcommand)]
@@ -334,8 +331,9 @@ fn run_command(command: Commands) -> HorusResult<()> {
             }
         }
 
-        Commands::Check { file, warnings } => {
+        Commands::Check { file, quiet } => {
             use horus_manager::commands::run::parse_horus_yaml_dependencies_v2;
+            use horus_manager::dependency_resolver::DependencySource;
             use std::collections::HashSet;
 
             let horus_yaml_path = file.unwrap_or_else(|| PathBuf::from("horus.yaml"));
@@ -397,7 +395,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 }
 
                 // Optional fields warning
-                if warnings {
+                if !quiet {
                     if yaml.get("description").is_none() {
                         warn_msgs.push("Optional field missing: description".to_string());
                     }
@@ -457,7 +455,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     if name_issues.is_empty() {
                         println!("{}", "".green());
                         // Warn if uppercase
-                        if warnings && name.chars().any(|c| c.is_uppercase()) {
+                        if !quiet && name.chars().any(|c| c.is_uppercase()) {
                             warn_msgs.push(format!("Project name '{}' contains uppercase - consider using lowercase", name));
                         }
                     } else {
@@ -490,7 +488,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
 
                     if !found && !main_files.is_empty() {
                         println!("{}", "".yellow());
-                        if warnings {
+                        if !quiet {
                             warn_msgs.push(format!(
                                 "No main file found - expected one of: {}",
                                 main_files.join(", ")
@@ -620,7 +618,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 // If it parsed successfully, it's valid
                 // But we can check for common mistakes
                 if spec.requirement.to_string() == "*" {
-                    if warnings {
+                    if !quiet {
                         warn_msgs.push(format!("Dependency '{}' uses wildcard version (*) - consider pinning to a specific version", spec.name));
                     }
                 }
@@ -628,9 +626,350 @@ fn run_command(command: Commands) -> HorusResult<()> {
 
             println!("{}", "".green());
 
+            // 8. Workspace Structure Check
+            print!("\n  {} Checking workspace structure... ", "".cyan());
+            let base_dir = horus_yaml_path.parent().unwrap_or_else(|| Path::new("."));
+            let horus_dir = base_dir.join(".horus");
+
+            if horus_dir.exists() && horus_dir.is_dir() {
+                println!("{}", "".green());
+            } else {
+                println!("{}", "".yellow());
+                if !quiet {
+                    warn_msgs.push("No .horus/ workspace directory found - will be created on first run".to_string());
+                }
+            }
+
+            // 9. Dependency Installation Check
+            print!("  {} Checking installed dependencies... ", "".cyan());
+            if horus_dir.exists() {
+                let packages_dir = horus_dir.join("packages");
+                if packages_dir.exists() {
+                    let mut missing_deps = Vec::new();
+
+                    for spec in &dep_specs {
+                        match &spec.source {
+                            DependencySource::Registry => {
+                                let package_dir = packages_dir.join(&spec.name);
+                                if !package_dir.exists() {
+                                    missing_deps.push(spec.name.clone());
+                                }
+                            }
+                            DependencySource::Path(_) => {
+                                // Path deps checked separately
+                            }
+                        }
+                    }
+
+                    if missing_deps.is_empty() {
+                        println!("{}", "".green());
+                    } else {
+                        println!("{}", "".yellow());
+                        if !missing_deps.is_empty() {
+                            if !quiet {
+                                warn_msgs.push(format!("Missing dependencies: {} (run 'horus run' to install)", missing_deps.join(", ")));
+                            }
+                        }
+                    }
+                } else {
+                    println!("{}", "".yellow());
+                    if !quiet {
+                        warn_msgs.push("No packages directory - dependencies not installed yet".to_string());
+                    }
+                }
+            } else {
+                println!("{}", "⊘".dimmed());
+            }
+
+            // 10. Toolchain Check
+            print!("  {} Checking toolchain... ", "".cyan());
+            if let Some(ref yaml) = yaml_value {
+                if let Some(language) = yaml.get("language").and_then(|l| l.as_str()) {
+                let toolchain_available = match language {
+                    "rust" => {
+                        std::process::Command::new("rustc")
+                            .arg("--version")
+                            .output()
+                            .map(|o| o.status.success())
+                            .unwrap_or(false)
+                    }
+                    "python" => {
+                        std::process::Command::new("python3")
+                            .arg("--version")
+                            .output()
+                            .map(|o| o.status.success())
+                            .unwrap_or(false)
+                    }
+                    "cpp" => {
+                        std::process::Command::new("g++")
+                            .arg("--version")
+                            .output()
+                            .map(|o| o.status.success())
+                            .unwrap_or(false)
+                    }
+                    _ => false,
+                };
+
+                if toolchain_available {
+                    println!("{}", "".green());
+                } else {
+                    println!("{}", "".red());
+                    errors.push(format!("Required toolchain for '{}' not found in PATH", language));
+                }
+                } else {
+                    println!("{}", "⊘".dimmed());
+                }
+            } else {
+                println!("{}", "⊘".dimmed());
+            }
+
+            // 11. Code Validation (optional, can be slow)
+            print!("  {} Validating code syntax... ", "".cyan());
+            if let Some(ref yaml) = yaml_value {
+                if let Some(language) = yaml.get("language").and_then(|l| l.as_str()) {
+                match language {
+                    "rust" => {
+                        // Check for Cargo.toml or main.rs
+                        let has_cargo = base_dir.join("Cargo.toml").exists();
+                        let has_main = base_dir.join("main.rs").exists() || base_dir.join("src/main.rs").exists();
+
+                        if has_cargo || has_main {
+                            let check_result = std::process::Command::new("cargo")
+                                .arg("check")
+                                .arg("--quiet")
+                                .current_dir(base_dir)
+                                .output();
+
+                            match check_result {
+                                Ok(output) if output.status.success() => {
+                                    println!("{}", "".green());
+                                }
+                                Ok(_) => {
+                                    println!("{}", "".red());
+                                    errors.push("Rust code has compilation errors (run 'cargo check' for details)".to_string());
+                                }
+                                Err(_) => {
+                                    println!("{}", "".yellow());
+                                    if !quiet {
+                                        warn_msgs.push("Could not run 'cargo check' - skipping code validation".to_string());
+                                    }
+                                }
+                            }
+                        } else {
+                            println!("{}", "⊘".dimmed());
+                        }
+                    }
+                    "python" => {
+                        // Check main.py syntax
+                        let main_py = base_dir.join("main.py");
+                        if main_py.exists() {
+                            let check_result = std::process::Command::new("python3")
+                                .arg("-m")
+                                .arg("py_compile")
+                                .arg(&main_py)
+                                .output();
+
+                            match check_result {
+                                Ok(output) if output.status.success() => {
+                                    println!("{}", "".green());
+                                }
+                                Ok(_) => {
+                                    println!("{}", "".red());
+                                    errors.push("Python code has syntax errors".to_string());
+                                }
+                                Err(_) => {
+                                    println!("{}", "".yellow());
+                                    if !quiet {
+                                        warn_msgs.push("Could not validate Python syntax".to_string());
+                                    }
+                                }
+                            }
+                        } else {
+                            println!("{}", "⊘".dimmed());
+                        }
+                    }
+                    "cpp" => {
+                        // Skip C++ compilation check (too slow)
+                        println!("{}", "⊘".dimmed());
+                        if !quiet {
+                            warn_msgs.push("C++ code validation skipped (compile to verify)".to_string());
+                        }
+                    }
+                    _ => {
+                        println!("{}", "⊘".dimmed());
+                    }
+                }
+                } else {
+                    println!("{}", "⊘".dimmed());
+                }
+            } else {
+                println!("{}", "⊘".dimmed());
+            }
+
+            // 12. HORUS System Check
+            print!("\n  {} Checking HORUS installation... ", "".cyan());
+            let horus_version = env!("CARGO_PKG_VERSION");
+            println!("v{}", horus_version.dimmed());
+
+            // 13. Registry Connectivity
+            print!("  {} Checking registry connectivity... ", "".cyan());
+            // Simple connectivity check - try to connect to registry
+            let registry_available = std::process::Command::new("ping")
+                .arg("-c")
+                .arg("1")
+                .arg("-W")
+                .arg("1")
+                .arg("registry.horus.rs")
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false);
+
+            if registry_available {
+                println!("{}", "".green());
+            } else {
+                println!("{}", "⊘".dimmed());
+                if !quiet {
+                    warn_msgs.push("Registry not reachable - package installation may fail".to_string());
+                }
+            }
+
+            // 14. System Requirements Check
+            print!("  {} Checking system requirements... ", "".cyan());
+            let mut sys_issues = Vec::new();
+
+            // Check /dev/shm for shared memory
+            #[cfg(target_os = "linux")]
+            {
+                let shm_path = std::path::Path::new("/dev/shm");
+                if !shm_path.exists() {
+                    sys_issues.push("/dev/shm not available");
+                } else if let Ok(metadata) = std::fs::metadata(shm_path) {
+                    use std::os::unix::fs::PermissionsExt;
+                    let mode = metadata.permissions().mode();
+                    if mode & 0o777 != 0o777 {
+                        sys_issues.push("/dev/shm permissions restrictive");
+                    }
+                }
+            }
+
+            if sys_issues.is_empty() {
+                println!("{}", "".green());
+            } else {
+                println!("{}", "".yellow());
+                for issue in sys_issues {
+                    if !quiet {
+                        warn_msgs.push(format!("System issue: {}", issue));
+                    }
+                }
+            }
+
+            // 15. API Usage Check (basic pattern matching)
+            print!("  {} Checking API usage... ", "".cyan());
+            if let Some(ref yaml) = yaml_value {
+                if let Some(language) = yaml.get("language").and_then(|l| l.as_str()) {
+                    match language {
+                        "rust" => {
+                            // Check if using HORUS dependencies
+                            let uses_horus = dep_specs.iter().any(|spec| {
+                                spec.name == "horus" || spec.name == "horus_macros"
+                            });
+
+                            if uses_horus {
+                                // Quick check for common patterns in main.rs or src/main.rs
+                                let main_paths = vec![
+                                    base_dir.join("main.rs"),
+                                    base_dir.join("src/main.rs"),
+                                ];
+
+                                let mut has_scheduler = false;
+                                for main_path in main_paths {
+                                    if main_path.exists() {
+                                        if let Ok(content) = std::fs::read_to_string(&main_path) {
+                                            has_scheduler = content.contains("Scheduler::new") ||
+                                                          content.contains("scheduler.register");
+                                            if has_scheduler {
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if has_scheduler {
+                                    println!("{}", "".green());
+                                } else {
+                                    println!("{}", "".yellow());
+                                    if !quiet {
+                                        warn_msgs.push("HORUS dependency found but no Scheduler usage detected".to_string());
+                                    }
+                                }
+                            } else {
+                                println!("{}", "⊘".dimmed());
+                            }
+                        }
+                        "python" => {
+                            let uses_horus = dep_specs.iter().any(|spec| spec.name == "horus_py");
+
+                            if uses_horus {
+                                let main_py = base_dir.join("main.py");
+                                if main_py.exists() {
+                                    if let Ok(content) = std::fs::read_to_string(&main_py) {
+                                        if content.contains("import horus") || content.contains("from horus") {
+                                            println!("{}", "".green());
+                                        } else {
+                                            println!("{}", "".yellow());
+                                            if !quiet {
+                                                warn_msgs.push("horus_py dependency but no 'import horus' found".to_string());
+                                            }
+                                        }
+                                    } else {
+                                        println!("{}", "⊘".dimmed());
+                                    }
+                                } else {
+                                    println!("{}", "⊘".dimmed());
+                                }
+                            } else {
+                                println!("{}", "⊘".dimmed());
+                            }
+                        }
+                        "cpp" => {
+                            let uses_horus = dep_specs.iter().any(|spec| spec.name == "horus_cpp");
+
+                            if uses_horus {
+                                let main_cpp = base_dir.join("main.cpp");
+                                if main_cpp.exists() {
+                                    if let Ok(content) = std::fs::read_to_string(&main_cpp) {
+                                        if content.contains("#include <horus.hpp>") {
+                                            println!("{}", "".green());
+                                        } else {
+                                            println!("{}", "".yellow());
+                                            if !quiet {
+                                                warn_msgs.push("horus_cpp dependency but no '#include <horus.hpp>' found".to_string());
+                                            }
+                                        }
+                                    } else {
+                                        println!("{}", "⊘".dimmed());
+                                    }
+                                } else {
+                                    println!("{}", "⊘".dimmed());
+                                }
+                            } else {
+                                println!("{}", "⊘".dimmed());
+                            }
+                        }
+                        _ => {
+                            println!("{}", "⊘".dimmed());
+                        }
+                    }
+                } else {
+                    println!("{}", "⊘".dimmed());
+                }
+            } else {
+                println!("{}", "⊘".dimmed());
+            }
+
             // Print Summary
             println!();
-            if warnings && !warn_msgs.is_empty() {
+            if !quiet && !warn_msgs.is_empty() {
                 for warn in &warn_msgs {
                     println!("{} {}", "⚠".yellow(), warn);
                 }
@@ -1702,11 +2041,6 @@ fn run_command(command: Commands) -> HorusResult<()> {
             let mut cmd = Cli::command();
             let bin_name = cmd.get_name().to_string();
             generate(shell, &mut cmd, bin_name, &mut io::stdout());
-            Ok(())
-        }
-
-        Commands::Version => {
-            horus_manager::version::print_version_info();
             Ok(())
         }
     }

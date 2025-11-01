@@ -526,7 +526,7 @@ class Scheduler:
         if self._scheduler:
             # Register the Python Node wrapper directly, not the internal _node
             # The Rust scheduler will call node.tick(info) and node.init(info)
-            self._scheduler.register(node, priority, logging, None)
+            self._scheduler.add(node, priority, logging, None)
 
         return self
 

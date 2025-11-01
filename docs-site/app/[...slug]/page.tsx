@@ -104,6 +104,7 @@ export async function generateStaticParams() {
     { slug: ['getting-started', 'installation'] },
     { slug: ['getting-started', 'quick-start'] },
     { slug: ['node-macro'] },
+    { slug: ['message-macro'] },
     { slug: ['dashboard'] },
     { slug: ['parameters'] },
     { slug: ['cli-reference'] },
@@ -112,6 +113,7 @@ export async function generateStaticParams() {
     { slug: ['authentication'] },
     { slug: ['remote-deployment'] },
     { slug: ['library-reference'] },
+    { slug: ['using-prebuilt-nodes'] },
     { slug: ['core'] },
     { slug: ['core', 'link'] },
     { slug: ['core', 'hub'] },
@@ -125,6 +127,7 @@ export async function generateStaticParams() {
     { slug: ['performance'] },
     { slug: ['python-bindings'] },
     { slug: ['c-bindings'] },
+    { slug: ['multi-language'] },
     { slug: ['installation'] },
     { slug: ['quick-start'] },
     { slug: ['guides', 'robot-controller'] },
@@ -136,5 +139,6 @@ export async function generateStaticParams() {
     { slug: ['api-link'] },
     { slug: ['api-scheduler'] },
     { slug: ['ai-integration'] },
+    { slug: ['troubleshooting'] },
   ];
 }

@@ -290,13 +290,13 @@ horus pkg publish                # Publish current package to registry
 horus pkg unpublish <name> <ver> # Remove package from registry
 ```
 
-**Requirements:** GitHub authentication (run `horus auth login --github` first)
+**Requirements:** GitHub authentication (run `horus auth login` first)
 
 You can also publish via web interface at [marketplace.horus-registry.dev/publish](https://marketplace.horus-registry.dev/publish)
 
 ### Authentication
 ```bash
-horus auth login --github       # GitHub OAuth login
+horus auth login                # GitHub OAuth login
 horus auth generate-key         # Generate API key
 horus auth whoami               # Show current user
 horus auth logout               # Logout

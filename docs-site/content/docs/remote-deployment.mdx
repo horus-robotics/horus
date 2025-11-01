@@ -24,13 +24,13 @@ Remote deployment allows you to:
 
 **Architecture:**
 ```
-─────────────────────────────────────────────────────────
- Dev Machine                          Robot            
-                                                       
- horus run       ──── WiFi/LAN ──── horus_daemon      
- --remote robot        HTTP                            
-                                      Builds & Runs    
-─────────────────────────────────────────────────────────
+┌──────────────────┐                    ┌─────────────────┐
+│  Dev Machine     │                    │     Robot       │
+│                  │     WiFi/LAN       │                 │
+│  horus run       ├────────────────────┤  horus_daemon   │
+│  --remote robot  │      (HTTP)        │                 │
+│                  │                    │  Builds & Runs  │
+└──────────────────┘                    └─────────────────┘
 ```
 
 ## Quick Start

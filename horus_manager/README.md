@@ -219,7 +219,7 @@ Manage authentication for the package registry.
 
 ```bash
 # Login with GitHub OAuth
-horus auth login --github
+horus auth login
 
 # Generate API key
 horus auth generate-key
