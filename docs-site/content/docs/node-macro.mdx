@@ -20,7 +20,7 @@ struct SensorNode {
 }
 
 impl SensorNode {
-    fn new() -> HorusResult<Self> {
+    fn new() -> Result<Self> {
         Ok(Self {
             publisher: Hub::new("temperature")?,
             counter: 0,
@@ -398,8 +398,8 @@ Just create it and register it:
 
 ```rust
 let mut scheduler = Scheduler::new();
-scheduler.register(Box::new(MyNode::new()?), 0, Some(true));
-scheduler.tick_all()?;
+scheduler.add(Box::new(MyNode::new()?), 0, Some(true));
+scheduler.run()?;
 ```
 
 The macro generates a `new()` method automatically.

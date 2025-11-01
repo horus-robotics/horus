@@ -358,13 +358,13 @@ import horus
 scheduler = horus.Scheduler()
 
 # High-frequency sensor (100Hz)
-scheduler.register(sensor_node, priority=0, logging=True, rate_hz=100.0)
+scheduler.add(sensor_node, priority=0, logging=True, rate_hz=100.0)
 
 # Medium-frequency controller (50Hz)
-scheduler.register(control_node, priority=1, logging=False, rate_hz=50.0)
+scheduler.add(control_node, priority=1, logging=False, rate_hz=50.0)
 
 # Low-frequency logger (10Hz)
-scheduler.register(logger_node, priority=2, logging=True, rate_hz=10.0)
+scheduler.add(logger_node, priority=2, logging=True, rate_hz=10.0)
 
 scheduler.run()
 ```
@@ -388,9 +388,9 @@ print(f"Errors: {stats['errors_count']}")
 Lower priority numbers execute first, ensuring correct data flow:
 
 ```python
-scheduler.register(sensor, priority=0)     # Executes FIRST
-scheduler.register(controller, priority=1) # Executes SECOND
-scheduler.register(actuator, priority=2)   # Executes THIRD
+scheduler.add(sensor, priority=0)     # Executes FIRST
+scheduler.add(controller, priority=1) # Executes SECOND
+scheduler.add(actuator, priority=2)   # Executes THIRD
 ```
 
 ### Automatic Timestamps (Phase 2)
@@ -587,9 +587,9 @@ logger = horus.Node(name="log", subs="cmd_vel", tick=logger_tick)
 
 # Configure with different rates and priorities
 scheduler = horus.Scheduler()
-scheduler.register(sensor, priority=0, logging=True, rate_hz=100.0)
-scheduler.register(controller, priority=1, logging=False, rate_hz=50.0)
-scheduler.register(logger, priority=2, logging=True, rate_hz=10.0)
+scheduler.add(sensor, priority=0, logging=True, rate_hz=100.0)
+scheduler.add(controller, priority=1, logging=False, rate_hz=50.0)
+scheduler.add(logger, priority=2, logging=True, rate_hz=10.0)
 
 scheduler.run(duration=5.0)
 
@@ -777,13 +777,13 @@ processor = horus.Node(
 scheduler = horus.Scheduler()
 
 # High-frequency sensor (100Hz)
-scheduler.register(sensor, priority=0, rate_hz=100.0)
+scheduler.add(sensor, priority=0, rate_hz=100.0)
 
 # Medium-frequency control (50Hz)
-scheduler.register(controller, priority=1, rate_hz=50.0)
+scheduler.add(controller, priority=1, rate_hz=50.0)
 
 # Low-frequency logging (10Hz)
-scheduler.register(logger, priority=2, rate_hz=10.0)
+scheduler.add(logger, priority=2, rate_hz=10.0)
 
 scheduler.run()
 
@@ -925,7 +925,7 @@ HORUS Python includes a mock mode for testing without Rust bindings:
 ```python
 # Enable logging for specific nodes
 scheduler = horus.Scheduler()
-scheduler.register(my_node, priority=0, logging=True)  # Enable logs
+scheduler.add(my_node, priority=0, logging=True)  # Enable logs
 
 # Check node statistics
 stats = scheduler.get_node_stats("my_node")

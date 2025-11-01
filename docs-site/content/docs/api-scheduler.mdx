@@ -27,14 +27,14 @@ use horus::prelude::*;
 let mut scheduler = Scheduler::new();
 ```
 
-## Registering Nodes
+## Adding Nodes
 
-### `register(node, priority, logging)`
+### `add(node, priority, logging)`
 
-Register a node with the scheduler.
+Add a node to the scheduler.
 
 ```rust
-pub fn register(
+pub fn add(
     &mut self,
     node: Box<dyn Node>,
     priority: u32,
@@ -55,14 +55,14 @@ use horus::prelude::*;
 
 let mut scheduler = Scheduler::new();
 
-// Register with logging enabled
-scheduler.register(Box::new(SensorNode::new()?), 0, Some(true));
+// Add with logging enabled
+scheduler.add(Box::new(SensorNode::new()?), 0, Some(true));
 
-// Register with logging disabled
-scheduler.register(Box::new(ProcessorNode::new()?), 1, Some(false));
+// Add with logging disabled
+scheduler.add(Box::new(ProcessorNode::new()?), 1, Some(false));
 
-// Register with default logging (false)
-scheduler.register(Box::new(ActuatorNode::new()?), 2, None);
+// Add with default logging (false)
+scheduler.add(Box::new(ActuatorNode::new()?), 2, None);
 ```
 
 **Priority Levels**:
@@ -75,9 +75,9 @@ scheduler.register(Box::new(ActuatorNode::new()?), 2, None);
 **Method Chaining**:
 ```rust
 scheduler
-    .register(Box::new(sensor), 0, Some(true))
-    .register(Box::new(controller), 1, Some(true))
-    .register(Box::new(actuator), 2, Some(true));
+    .add(Box::new(sensor), 0, Some(true))
+    .add(Box::new(controller), 1, Some(true))
+    .add(Box::new(actuator), 2, Some(true));
 ```
 
 ### `name(name)`
@@ -101,19 +101,19 @@ let mut scheduler = Scheduler::new()
 
 ## Running the Scheduler
 
-### `tick_all()`
+### `run()`
 
-Run all registered nodes continuously until stopped (Ctrl+C).
+Run all added nodes continuously until stopped (Ctrl+C).
 
 ```rust
-pub fn tick_all(&mut self) -> HorusResult<()>
+pub fn run(&mut self) -> Result<()>
 ```
 
-**Returns**: `HorusResult<()>` (always `Ok(())` when stopped gracefully)
+**Returns**: `Result<()>` (always `Ok(())` when stopped gracefully)
 
 **Example**:
 ```rust
-scheduler.tick_all()?;
+scheduler.run()?;
 ```
 
 **Behavior**:
@@ -123,24 +123,84 @@ scheduler.tick_all()?;
 - Handles Ctrl+C gracefully
 - Calls `shutdown()` on all nodes before exiting
 
-### `tick_node(node_names)`
+### `run_for(duration)`
+
+Run all nodes for a specified duration, then shutdown gracefully.
+
+```rust
+pub fn run_for(&mut self, duration: Duration) -> Result<()>
+```
+
+**Parameters**:
+- `duration`: How long to run the scheduler
+
+**Returns**: `Result<()>`
+
+**Example**:
+```rust
+use std::time::Duration;
+
+// Run for 10 seconds
+scheduler.run_for(Duration::from_secs(10))?;
+
+// Run for 500 milliseconds
+scheduler.run_for(Duration::from_millis(500))?;
+```
+
+**Use Cases**:
+- Integration testing with deterministic duration
+- Benchmarking (measure performance over exact time period)
+- Batch processing (run for N seconds, save results, repeat)
+- CI/CD pipelines (automated testing with timeouts)
+
+### `tick(node_names)`
 
 Run only specific nodes continuously.
 
 ```rust
-pub fn tick_node(&mut self, node_names: &[&str]) -> HorusResult<()>
+pub fn tick(&mut self, node_names: &[&str]) -> Result<()>
 ```
 
 **Parameters**:
 - `node_names`: Array of node names to run
 
-**Returns**: `HorusResult<()>`
+**Returns**: `Result<()>`
 
 **Example**:
 ```rust
 // Run only sensor and processor nodes
-scheduler.tick_node(&["SensorNode", "ProcessorNode"])?;
+scheduler.tick(&["SensorNode", "ProcessorNode"])?;
 ```
+
+### `tick_for(node_names, duration)`
+
+Run specific nodes for a specified duration.
+
+```rust
+pub fn tick_for(&mut self, node_names: &[&str], duration: Duration) -> Result<()>
+```
+
+**Parameters**:
+- `node_names`: Array of node names to run
+- `duration`: How long to run the selected nodes
+
+**Returns**: `Result<()>`
+
+**Example**:
+```rust
+use std::time::Duration;
+
+// Test specific nodes for 5 seconds
+scheduler.tick_for(
+    &["SensorNode", "ControllerNode"],
+    Duration::from_secs(5)
+)?;
+```
+
+**Use Cases**:
+- Isolated node testing
+- Performance profiling of specific subsystems
+- Debugging specific node interactions
 
 ## Control Methods
 
@@ -189,7 +249,7 @@ while scheduler.is_running() {
 
 ### `get_node_list()`
 
-Get list of all registered node names.
+Get list of all added node names.
 
 ```rust
 pub fn get_node_list(&self) -> Vec<String>
@@ -201,7 +261,7 @@ pub fn get_node_list(&self) -> Vec<String>
 ```rust
 let nodes = scheduler.get_node_list();
 for node_name in nodes {
-    println!("Registered node: {}", node_name);
+    println!("Added node: {}", node_name);
 }
 ```
 
@@ -272,68 +332,122 @@ scheduler.set_node_logging("SensorNode", false);
 scheduler.set_node_logging("ProcessorNode", true);
 ```
 
-## Complete Example
+## Complete Examples
+
+### Example 1: Production Application (Run Forever)
 
 ```rust
 use horus::prelude::*;
 
-// Define nodes
-struct SensorNode {
-    data_pub: Hub<f32>,
-}
-
-impl SensorNode {
-    fn new() -> HorusResult<Self> {
-        Ok(Self {
-            data_pub: Hub::new("sensor_data")?,
-        })
-    }
-}
-
-impl Node for SensorNode {
-    fn name(&self) -> &'static str { "SensorNode" }
-
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        self.data_pub.send(42.0, ctx).ok();
-    }
-}
-
-struct ProcessorNode {
-    data_sub: Hub<f32>,
-    result_pub: Hub<f32>,
-}
-
-impl ProcessorNode {
-    fn new() -> HorusResult<Self> {
-        Ok(Self {
-            data_sub: Hub::new("sensor_data")?,
-            result_pub: Hub::new("processed_data")?,
-        })
-    }
-}
-
-impl Node for ProcessorNode {
-    fn name(&self) -> &'static str { "ProcessorNode" }
-
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        if let Some(data) = self.data_sub.recv(ctx) {
-            let result = data * 2.0;
-            self.result_pub.send(result, ctx).ok();
-        }
-    }
-}
-
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     let mut scheduler = Scheduler::new()
-        .name("ExampleScheduler");
+        .name("RobotController");
 
-    // Register nodes with different priorities
     scheduler
-        .register(Box::new(SensorNode::new()?), 0, Some(true))
-        .register(Box::new(ProcessorNode::new()?), 1, Some(true));
+        .add(Box::new(SensorNode::new()?), 0, Some(true))
+        .add(Box::new(ProcessorNode::new()?), 1, Some(true));
 
     // Run until Ctrl+C
-    scheduler.tick_all()?;
+    scheduler.run()?;
+
+    Ok(())
+}
+```
+
+### Example 2: Integration Test (Run for Duration)
+
+```rust
+use horus::prelude::*;
+use std::time::Duration;
+
+#[test]
+fn test_sensor_processing() -> Result<()> {
+    let mut scheduler = Scheduler::new();
+
+    scheduler
+        .add(Box::new(SensorNode::new()?), 0, Some(true))
+        .add(Box::new(ProcessorNode::new()?), 1, Some(true));
+
+    // Run for 5 seconds, then check results
+    scheduler.run_for(Duration::from_secs(5))?;
+
+    // Verify results after graceful shutdown
+    assert!(verify_processing_complete());
+    Ok(())
+}
+```
+
+### Example 3: Benchmark Performance
+
+```rust
+use horus::prelude::*;
+use std::time::{Duration, Instant};
+
+fn main() -> Result<()> {
+    let mut scheduler = Scheduler::new();
+    scheduler.add(Box::new(HighSpeedNode::new()?), 0, Some(false));
+
+    let start = Instant::now();
+
+    // Run for exactly 60 seconds
+    scheduler.run_for(Duration::from_secs(60))?;
+
+    let elapsed = start.elapsed();
+    let message_count = get_message_count();
+
+    println!("Processed {} messages in {:?}", message_count, elapsed);
+    println!("Rate: {} msg/sec", message_count as f64 / elapsed.as_secs_f64());
+
+    Ok(())
+}
+```
+
+### Example 4: Debug Specific Nodes
+
+```rust
+use horus::prelude::*;
+use std::time::Duration;
+
+fn main() -> Result<()> {
+    let mut scheduler = Scheduler::new();
+
+    scheduler
+        .add(Box::new(SensorNode::new()?), 0, Some(true))
+        .add(Box::new(ControllerNode::new()?), 1, Some(true))
+        .add(Box::new(ActuatorNode::new()?), 2, Some(true));
+
+    // Test only sensor and controller for 10 seconds
+    scheduler.tick_for(
+        &["SensorNode", "ControllerNode"],
+        Duration::from_secs(10)
+    )?;
+
+    Ok(())
+}
+```
+
+### Example 5: Batch Processing Loop
+
+```rust
+use horus::prelude::*;
+use std::time::Duration;
+
+fn main() -> Result<()> {
+    let mut scheduler = Scheduler::new();
+    scheduler.add(Box::new(DataProcessor::new()?), 0, Some(true));
+
+    // Process in 1-hour batches
+    for batch in 0..24 {
+        println!("Starting batch {}...", batch);
+
+        // Run for 1 hour
+        scheduler.run_for(Duration::from_secs(3600))?;
+
+        // Save checkpoint between batches
+        save_checkpoint(batch)?;
+
+        println!("Batch {} complete", batch);
+    }
 
     Ok(())
 }
@@ -357,7 +471,7 @@ Tick 2:
    Repeat...
 ```
 
-**Within the same priority**: Nodes execute in registration order.
+**Within the same priority**: Nodes execute in the order they were added.
 
 ## Signal Handling
 
@@ -438,7 +552,7 @@ The scheduler writes metadata to `~/.horus_registry.json` for monitoring tools:
 ```
 
 This file is:
-- Created when `tick_all()` starts
+- Created when `run()` starts
 - Updated every 5 seconds with node states
 - Deleted when scheduler stops
 - Used by `horus dashboard` to monitor the system
@@ -470,8 +584,8 @@ Heartbeats are:
 
 ```rust
 let mut scheduler = Scheduler::new();
-scheduler.register(Box::new(my_node), 2, Some(true));
-scheduler.tick_all()?;
+scheduler.add(Box::new(my_node), 2, Some(true));
+scheduler.run()?;
 ```
 
 ### Multi-Priority System
@@ -480,36 +594,36 @@ scheduler.tick_all()?;
 let mut scheduler = Scheduler::new();
 
 // Critical safety monitor
-scheduler.register(Box::new(safety), 0, Some(true));
+scheduler.add(Box::new(safety), 0, Some(true));
 
 // Control loop
-scheduler.register(Box::new(controller), 1, Some(true));
+scheduler.add(Box::new(controller), 1, Some(true));
 
 // Sensors
-scheduler.register(Box::new(lidar), 2, Some(true));
-scheduler.register(Box::new(camera), 2, Some(true));
+scheduler.add(Box::new(lidar), 2, Some(true));
+scheduler.add(Box::new(camera), 2, Some(true));
 
 // Logging
-scheduler.register(Box::new(logger), 4, Some(false));
+scheduler.add(Box::new(logger), 4, Some(false));
 
-scheduler.tick_all()?;
+scheduler.run()?;
 ```
 
 ### Selective Execution
 
 ```rust
 // Run only specific nodes for testing
-scheduler.tick_node(&["SensorNode", "ProcessorNode"])?;
+scheduler.tick(&["SensorNode", "ProcessorNode"])?;
 ```
 
 ## Troubleshooting
 
 ### Nodes not executing
 
-Check registration:
+Check added nodes:
 ```rust
 let nodes = scheduler.get_node_list();
-println!("Registered nodes: {:?}", nodes);
+println!("Added nodes: {:?}", nodes);
 ```
 
 ### High CPU usage

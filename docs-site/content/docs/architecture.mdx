@@ -435,9 +435,9 @@ for node in scheduler.nodes_sorted_by_priority() {
 
 **Example:**
 ```rust
-scheduler.register(keyboard_node, 0, Some(true));   // Runs first
-scheduler.register(controller, 5, Some(true));      // Processes input
-scheduler.register(motor_driver, 10, Some(true));   // Actuates
+scheduler.add(keyboard_node, 0, Some(true));   // Runs first
+scheduler.add(controller, 5, Some(true));      // Processes input
+scheduler.add(motor_driver, 10, Some(true));   // Actuates
 ```
 
 ---

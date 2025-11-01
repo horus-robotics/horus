@@ -53,9 +53,9 @@ fn main() {
 
     // Use the installed package
     let pid = PIDNode::new(1.0, 0.1, 0.01);
-    scheduler.register(Box::new(pid), 5, Some(true));
+    scheduler.add(Box::new(pid), 5, Some(true));
 
-    scheduler.tick_all().expect("Scheduler failed");
+    scheduler.run().expect("Scheduler failed");
 }
 ```
 
@@ -698,9 +698,9 @@ fn main() {
     let mut scheduler = Scheduler::new();
 
     let controller = MyControllerNode::new(2.5);
-    scheduler.register(Box::new(controller), 5, Some(true));
+    scheduler.add(Box::new(controller), 5, Some(true));
 
-    scheduler.tick_all().expect("Scheduler failed");
+    scheduler.run().expect("Scheduler failed");
 }
 ```
 
@@ -871,7 +871,7 @@ fn main() {
     let planner = AStarPlanner::new();
     let filter = KalmanFilter::new();
 
-    // Register nodes...
+    // Add nodes...
 }
 ```
 

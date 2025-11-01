@@ -175,7 +175,7 @@ struct SensorNode {
 }
 
 impl SensorNode {
-    fn new() -> HorusResult<Self> {
+    fn new() -> Result<Self> {
         Ok(Self {
             output: Link::producer("lidar")?,
         })
@@ -194,8 +194,8 @@ impl Node for SensorNode {
 
 // Run with scheduler
 let mut scheduler = Scheduler::new();
-scheduler.register(Box::new(SensorNode::new()?), 0, Some(true));
-scheduler.tick_all()?;
+scheduler.add(Box::new(SensorNode::new()?), 0, Some(true));
+scheduler.run()?;
 ```
 
 ### 3. Metrics and Monitoring
@@ -281,8 +281,8 @@ if metrics.send_failures > 0 {
 Pass `ctx` to send/recv to see colored logs with IPC latency:
 
 ```rust
-// Enable logging when registering node
-scheduler.register(Box::new(node), 0, Some(true));
+// Enable logging when adding node
+scheduler.add(Box::new(node), 0, Some(true));
 
 // In tick():
 link.send(data, ctx)?; // Logs: [NodeName] PUB sensor_data (234ns)

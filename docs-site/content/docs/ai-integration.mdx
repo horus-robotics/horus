@@ -53,7 +53,7 @@ The built-in `CameraNode` supports OpenCV:
 use horus::prelude::*;
 use horus_library::CameraNode;
 
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     let mut scheduler = Scheduler::new();
 
     // Camera node with OpenCV backend
@@ -63,8 +63,8 @@ fn main() -> HorusResult<()> {
     camera.set_fps(30.0);
     camera.set_topic("camera/raw");
 
-    scheduler.register(Box::new(camera), 0, Some(true));
-    scheduler.tick_all()?;
+    scheduler.add(Box::new(camera), 0, Some(true));
+    scheduler.run()?;
     Ok(())
 }
 ```
@@ -94,7 +94,7 @@ pub struct VisionProcessorNode {
 }
 
 impl VisionProcessorNode {
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         Ok(Self {
             camera_sub: Hub::new("camera/raw")?,
             detections_pub: Hub::new("vision/detections")?,
@@ -173,7 +173,7 @@ pub struct YOLOv8Node {
 }
 
 impl YOLOv8Node {
-    pub fn new(model_path: &str) -> HorusResult<Self> {
+    pub fn new(model_path: &str) -> Result<Self> {
         // Load ONNX model
         let session = Session::builder()
             .map_err(|e| HorusError::Config(format!("ONNX error: {}", e)))?
@@ -292,7 +292,7 @@ pub struct TFLiteClassifierNode {
 }
 
 impl TFLiteClassifierNode {
-    pub fn new(model_path: &str, labels_path: &str) -> HorusResult<Self> {
+    pub fn new(model_path: &str, labels_path: &str) -> Result<Self> {
         // Load TFLite model
         let model = FlatBufferModel::build_from_file(model_path)
             .map_err(|e| HorusError::Config(format!("TFLite error: {}", e)))?;
@@ -379,7 +379,7 @@ pub struct TractInferenceNode {
 }
 
 impl TractInferenceNode {
-    pub fn new(model_path: &str) -> HorusResult<Self> {
+    pub fn new(model_path: &str) -> Result<Self> {
         // Load ONNX model with Tract
         let model = tract_onnx::onnx()
             .model_for_path(model_path)
@@ -493,7 +493,7 @@ pub struct LLMCommandNode {
 }
 
 impl LLMCommandNode {
-    pub fn new(model_path: &str) -> HorusResult<Self> {
+    pub fn new(model_path: &str) -> Result<Self> {
         // Load LLaMA model (Llama 2, Mistral, Phi, etc.)
         let params = LlamaParams::default();
         let model = LlamaModel::load_from_file(model_path, params)
@@ -593,7 +593,7 @@ pub struct CandleLLMNode {
 }
 
 impl CandleLLMNode {
-    pub fn new(model_path: &str, tokenizer_path: &str) -> HorusResult<Self> {
+    pub fn new(model_path: &str, tokenizer_path: &str) -> Result<Self> {
         let device = Device::cuda_if_available(0)
             .map_err(|e| HorusError::Config(format!("Device error: {}", e)))?;
 
@@ -699,7 +699,7 @@ pub struct GPT4PlannerNode {
 }
 
 impl GPT4PlannerNode {
-    pub fn new(api_key: String) -> HorusResult<Self> {
+    pub fn new(api_key: String) -> Result<Self> {
         let system_prompt = ChatMessage {
             role: "system".to_string(),
             content: "You are a robot task planner. Generate step-by-step plans in JSON format.".to_string(),
@@ -797,7 +797,7 @@ pub struct ClaudeReasoningNode {
 }
 
 impl ClaudeReasoningNode {
-    pub fn new(api_key: String) -> HorusResult<Self> {
+    pub fn new(api_key: String) -> Result<Self> {
         Ok(Self {
             sensor_sub: Hub::new("sensors/summary")?,
             decision_pub: Hub::new("robot/decision")?,
@@ -885,7 +885,7 @@ pub struct SceneUnderstandingNode {
 }
 
 impl SceneUnderstandingNode {
-    pub fn new(api_key: String) -> HorusResult<Self> {
+    pub fn new(api_key: String) -> Result<Self> {
         Ok(Self {
             camera_sub: Hub::new("camera/raw")?,
             description_pub: Hub::new("scene/description")?,
@@ -956,7 +956,7 @@ use horus::prelude::*;
 use horus_library::DifferentialDriveNode;
 
 // Combine speech recognition + LLM + robot control
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     let mut scheduler = Scheduler::new();
 
     // 1. Speech-to-text (via external service or Whisper)
@@ -973,17 +973,17 @@ fn main() -> HorusResult<()> {
     // 4. Motor control
     let drive_node = DifferentialDriveNode::new();
 
-    // Register nodes
-    scheduler.register(Box::new(speech_node), 0, Some(true));
-    scheduler.register(Box::new(llm_node), 1, Some(true));
-    scheduler.register(Box::new(parser_node), 2, Some(true));
-    scheduler.register(Box::new(drive_node), 3, Some(true));
+    // Add nodes
+    scheduler.add(Box::new(speech_node), 0, Some(true));
+    scheduler.add(Box::new(llm_node), 1, Some(true));
+    scheduler.add(Box::new(parser_node), 2, Some(true));
+    scheduler.add(Box::new(drive_node), 3, Some(true));
 
     // User says: "Move forward slowly"
     // → GPT-4: {"action": "move", "linear": 0.3, "angular": 0.0}
     // → Robot moves forward at 0.3 m/s
 
-    scheduler.tick_all()?;
+    scheduler.run()?;
     Ok(())
 }
 
@@ -993,7 +993,7 @@ pub struct CommandParserNode {
 }
 
 impl CommandParserNode {
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         Ok(Self {
             llm_sub: Hub::new("robot/plan")?,
             cmd_pub: Hub::new("motor/cmd")?,
@@ -1129,7 +1129,7 @@ pub struct PythonMLNode {
 }
 
 impl PythonMLNode {
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         Ok(Self {
             camera_sub: Hub::new("camera/raw")?,
             detections_pub: Hub::new("ml/detections")?,
@@ -1202,7 +1202,7 @@ pub struct HTTPInferenceNode {
 }
 
 impl HTTPInferenceNode {
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         Ok(Self {
             camera_sub: Hub::new("camera/raw")?,
             detections_pub: Hub::new("ml/detections")?,
@@ -1306,7 +1306,7 @@ pub struct OpenAIVisionNode {
 }
 
 impl OpenAIVisionNode {
-    pub fn new(api_key: String) -> HorusResult<Self> {
+    pub fn new(api_key: String) -> Result<Self> {
         Ok(Self {
             camera_sub: Hub::new("camera/raw")?,
             description_pub: Hub::new("vision/description")?,
@@ -1377,7 +1377,7 @@ pub struct ObjectFollowerNode {
 }
 
 impl ObjectFollowerNode {
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         Ok(Self {
             vision_sub: Hub::new("vision/detections")?,
             cmd_pub: Hub::new("motor/cmd")?,
@@ -1407,7 +1407,7 @@ impl Node for ObjectFollowerNode {
     }
 }
 
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     let mut scheduler = Scheduler::new();
 
     // Camera capture (if opencv-backend feature enabled)
@@ -1423,13 +1423,13 @@ fn main() -> HorusResult<()> {
     // Motor control
     let drive = DifferentialDriveNode::new();
 
-    // Register in priority order
-    scheduler.register(Box::new(camera), 0, Some(true));     // Highest priority
-    scheduler.register(Box::new(vision), 1, Some(true));     // Process images
-    scheduler.register(Box::new(follower), 2, Some(true));   // Make decisions
-    scheduler.register(Box::new(drive), 3, Some(true));      // Control motors
+    // Add in priority order
+    scheduler.add(Box::new(camera), 0, Some(true));     // Highest priority
+    scheduler.add(Box::new(vision), 1, Some(true));     // Process images
+    scheduler.add(Box::new(follower), 2, Some(true));   // Make decisions
+    scheduler.add(Box::new(drive), 3, Some(true));      // Control motors
 
-    scheduler.tick_all()?;
+    scheduler.run()?;
     Ok(())
 }
 ```

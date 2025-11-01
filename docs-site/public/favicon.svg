@@ -1,0 +1,23 @@
+<svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" fill="#16181c" rx="64"/>
+
+  <!-- Accent border -->
+  <rect x="0" y="0" width="512" height="8" fill="#00d9ff"/>
+
+  <!-- Letter H -->
+  <g transform="translate(256, 256)">
+    <text
+      x="0"
+      y="0"
+      font-family="monospace"
+      font-size="320"
+      font-weight="bold"
+      fill="#ffffff"
+      text-anchor="middle"
+      dominant-baseline="middle"
+    >
+      H
+    </text>
+  </g>
+</svg>

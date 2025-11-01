@@ -69,7 +69,7 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 
 ### `init()`
 
-Called once when the node is registered. Use for setup and initialization.
+Called once when the node is added to the scheduler. Use for setup and initialization.
 
 ```rust
 fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
@@ -249,7 +249,7 @@ struct TemperatureSensor {
 }
 
 impl TemperatureSensor {
-    fn new() -> HorusResult<Self> {
+    fn new() -> Result<Self> {
         Ok(Self {
             temperature_pub: Hub::new("temperature")?,
             reading: 20.0,
@@ -339,7 +339,7 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 Every node follows this lifecycle:
 
 1. **Created** - Node struct is instantiated
-2. **Registered** - Added to scheduler via `scheduler.register()`
+2. **Added** - Added to scheduler via `scheduler.add()`
 3. **Initialized** - `init()` called once
 4. **Running** - `tick()` called repeatedly (~60 FPS)
 5. **Stopping** - `shutdown()` called once

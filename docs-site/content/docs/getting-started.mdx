@@ -55,7 +55,7 @@ struct SensorNode {
 }
 
 impl SensorNode {
-    fn new() -> HorusResult<Self> {
+    fn new() -> Result<Self> {
         Ok(Self {
             publisher: Hub::new("temperature")?,
         })
@@ -167,9 +167,9 @@ The **Scheduler** runs your nodes in order:
 
 ```rust
 let mut scheduler = Scheduler::new();
-scheduler.register(Box::new(SensorNode::new()?), 0, Some(true));
-scheduler.register(Box::new(DisplayNode::new()?), 1, Some(true));
-scheduler.tick_all()?; // Run forever
+scheduler.add(Box::new(SensorNode::new()?), 0, Some(true));
+scheduler.add(Box::new(DisplayNode::new()?), 1, Some(true));
+scheduler.run()?; // Run forever
 ```
 
 Numbers are **priorities** (0 = highest). Nodes with priority 0 run first, then priority 1, etc.
@@ -182,17 +182,17 @@ HORUS includes a library of ready-to-use nodes. Just import and connect with top
 use horus::prelude::*;
 use horus_library::{KeyboardInputNode, DifferentialDriveNode};
 
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     let mut scheduler = Scheduler::new();
 
     // Create nodes - they auto-connect via topics
     let keyboard = KeyboardInputNode::new();
     let drive = DifferentialDriveNode::new();
 
-    scheduler.register(Box::new(keyboard), 0, Some(true));
-    scheduler.register(Box::new(drive), 1, Some(true));
+    scheduler.add(Box::new(keyboard), 0, Some(true));
+    scheduler.add(Box::new(drive), 1, Some(true));
 
-    scheduler.tick_all()?;
+    scheduler.run()?;
     Ok(())
 }
 ```
@@ -216,7 +216,7 @@ struct TemperatureSensor {
 }
 
 impl TemperatureSensor {
-    fn new() -> HorusResult<Self> {
+    fn new() -> Result<Self> {
         Ok(Self {
             publisher: Hub::new("temperature")?,
             reading: 20.0,
@@ -241,7 +241,7 @@ struct TemperatureDisplay {
 }
 
 impl TemperatureDisplay {
-    fn new() -> HorusResult<Self> {
+    fn new() -> Result<Self> {
         Ok(Self {
             subscriber: Hub::new("temperature")?,
         })
@@ -259,15 +259,15 @@ impl Node for TemperatureDisplay {
 }
 
 // Main program
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     let mut scheduler = Scheduler::new();
 
-    // Register nodes (sensor has higher priority)
-    scheduler.register(Box::new(TemperatureSensor::new()?), 0, Some(true));
-    scheduler.register(Box::new(TemperatureDisplay::new()?), 1, Some(true));
+    // Add nodes (sensor has higher priority)
+    scheduler.add(Box::new(TemperatureSensor::new()?), 0, Some(true));
+    scheduler.add(Box::new(TemperatureDisplay::new()?), 1, Some(true));
 
     // Run forever (Ctrl+C to stop)
-    scheduler.tick_all()?;
+    scheduler.run()?;
     Ok(())
 }
 ```

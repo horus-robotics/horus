@@ -12,7 +12,7 @@ The Scheduler is the **execution orchestrator** in HORUS. It manages the node li
 
 The Scheduler is responsible for:
 
-**Node Registration**: Registering nodes with the scheduler
+**Node Registration**: Adding nodes to the scheduler
 
 **Lifecycle Management**: Calling init(), tick(), and shutdown() at the right times
 
@@ -31,44 +31,44 @@ The Scheduler is responsible for:
 ```rust
 use horus::prelude::*;
 
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     let mut scheduler = Scheduler::new();
 
-    // Register nodes (priority 0 = highest, logging enabled)
-    scheduler.register(Box::new(my_node), 0, Some(true));
+    // Add nodes (priority 0 = highest, logging enabled)
+    scheduler.add(Box::new(my_node), 0, Some(true));
 
     // Run the scheduler
-    scheduler.tick_all()?;
+    scheduler.run()?;
     Ok(())
 }
 ```
 
-### Registering Nodes
+### Adding Nodes
 
 ```rust
 use horus::prelude::*;
 
 let mut scheduler = Scheduler::new();
 
-// Register with priority 2 (Normal - default recommended)
-scheduler.register(Box::new(sensor_node), 2, Some(true));
+// Add with priority 2 (Normal - default recommended)
+scheduler.add(Box::new(sensor_node), 2, Some(true));
 
-// Register with priority 0 (Critical - highest priority)
-scheduler.register(Box::new(safety_node), 0, Some(true));
+// Add with priority 0 (Critical - highest priority)
+scheduler.add(Box::new(safety_node), 0, Some(true));
 ```
 
 ### Running the Scheduler
 
 ```rust
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     let mut scheduler = Scheduler::new();
 
-    // Register your nodes
-    scheduler.register(Box::new(node1), 0, Some(true));
-    scheduler.register(Box::new(node2), 1, Some(true));
+    // Add your nodes
+    scheduler.add(Box::new(node1), 0, Some(true));
+    scheduler.add(Box::new(node2), 1, Some(true));
 
     // Start the main loop
-    scheduler.tick_all()?;
+    scheduler.run()?;
     Ok(())
 }
 ```
@@ -135,12 +135,12 @@ Nodes execute **in priority order** every tick:
 let mut scheduler = Scheduler::new();
 
 // Execution order: Safety  Controller  Sensor  Logger
-scheduler.register(Box::new(safety_monitor), 0, Some(true));    // Runs 1st (Critical)
-scheduler.register(Box::new(controller), 1, Some(true));         // Runs 2nd (High)
-scheduler.register(Box::new(sensor), 2, Some(true));             // Runs 3rd (Normal)
-scheduler.register(Box::new(logger), 4, Some(true));             // Runs 4th (Background)
+scheduler.add(Box::new(safety_monitor), 0, Some(true));    // Runs 1st (Critical)
+scheduler.add(Box::new(controller), 1, Some(true));         // Runs 2nd (High)
+scheduler.add(Box::new(sensor), 2, Some(true));             // Runs 3rd (Normal)
+scheduler.add(Box::new(logger), 4, Some(true));             // Runs 4th (Background)
 
-scheduler.tick_all()?;
+scheduler.run()?;
 ```
 
 **Key Point**: Lower numeric value = higher priority (Critical = 0 runs first)
@@ -160,41 +160,41 @@ scheduler.tick_all()?;
 **Critical**: Safety monitors, emergency stops, watchdogs
 
 ```rust
-scheduler.register(Box::new(emergency_stop), 0, Some(true));
+scheduler.add(Box::new(emergency_stop), 0, Some(true));
 ```
 
 **High**: Control loops, actuator commands, time-sensitive operations
 
 ```rust
-scheduler.register(Box::new(motor_controller), 1, Some(true));
+scheduler.add(Box::new(motor_controller), 1, Some(true));
 ```
 
 **Normal**: Sensors, filters, state estimation (most nodes)
 
 ```rust
-scheduler.register(Box::new(lidar_node), 2, Some(true));
+scheduler.add(Box::new(lidar_node), 2, Some(true));
 ```
 
 **Low**: Non-real-time computation, planning, optimization
 
 ```rust
-scheduler.register(Box::new(path_planner), 3, Some(true));
+scheduler.add(Box::new(path_planner), 3, Some(true));
 ```
 
 **Background**: Logging, diagnostics, data recording
 
 ```rust
-scheduler.register(Box::new(data_logger), 4, Some(true));
+scheduler.add(Box::new(data_logger), 4, Some(true));
 ```
 
 ## Lifecycle Management
 
 ### Initialization Phase
 
-When you call `tick_all()`, the scheduler first initializes all nodes:
+When you call `run()`, the scheduler first initializes all nodes:
 
 ```rust
-pub fn tick_all(&mut self) -> HorusResult<()> {
+pub fn run(&mut self) -> Result<()> {
     // Initialize all nodes
     for registered in self.nodes.iter_mut() {
         registered.context.state = NodeState::Initializing;
@@ -316,22 +316,22 @@ let scheduler = Scheduler::new();
 
 ## Running Modes
 
-### Continuous Mode (tick_all)
+### Continuous Mode (run)
 
 Run until Ctrl+C:
 
 ```rust
-scheduler.tick_all()?;
+scheduler.run()?;
 ```
 
-This is the most common mode for robotics applications. The scheduler will continuously execute all registered nodes in priority order until a shutdown signal is received.
+This is the most common mode for robotics applications. The scheduler will continuously execute all added nodes in priority order until a shutdown signal is received.
 
 ### Node-Specific Execution
 
 Execute specific nodes by name:
 
 ```rust
-scheduler.tick_node(&["SensorNode", "MotorNode"])?;
+scheduler.tick(&["SensorNode", "MotorNode"])?;
 ```
 
 Useful for:
@@ -347,7 +347,7 @@ Useful for:
 The scheduler automatically handles Ctrl+C:
 
 ```rust
-// Automatically set up by tick_all()
+// Automatically set up by run()
 ctrlc::set_handler(move || {
     eprintln!("\nCtrl+C received! Shutting down HORUS scheduler...");
     if let Ok(mut r) = running.lock() {
@@ -476,13 +476,13 @@ Add nodes at runtime:
 let mut scheduler = Scheduler::new();
 
 // Start with basic nodes
-scheduler.register(Box::new(node1), 2, Some(true));
+scheduler.add(Box::new(node1), 2, Some(true));
 
 // Later, add more nodes
-scheduler.register(Box::new(node2), 2, Some(true));
+scheduler.add(Box::new(node2), 2, Some(true));
 ```
 
-**Note**: Nodes added before tick_all() will initialize automatically.
+**Note**: Nodes added before run() will initialize automatically.
 
 ### Conditional Execution
 
@@ -508,16 +508,16 @@ Run multiple independent schedulers:
 ```rust
 use std::thread;
 
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     let mut scheduler1 = Scheduler::new();
-    scheduler1.register(Box::new(critical_nodes), 0, Some(true));
+    scheduler1.add(Box::new(critical_nodes), 0, Some(true));
 
     let mut scheduler2 = Scheduler::new();
-    scheduler2.register(Box::new(background_nodes), 4, Some(true));
+    scheduler2.add(Box::new(background_nodes), 4, Some(true));
 
     // Run schedulers in separate threads
-    let handle1 = thread::spawn(move || scheduler1.tick_all());
-    let handle2 = thread::spawn(move || scheduler2.tick_all());
+    let handle1 = thread::spawn(move || scheduler1.run());
+    let handle2 = thread::spawn(move || scheduler2.run());
 
     handle1.join().unwrap()?;
     handle2.join().unwrap()?;
@@ -569,12 +569,12 @@ Don't make everything Critical:
 
 ```rust
 // GOOD: Appropriate priorities
-scheduler.register(Box::new(emergency_stop), 0, Some(true));  // Critical
-scheduler.register(Box::new(controller), 1, Some(true));      // High
-scheduler.register(Box::new(sensor), 2, Some(true));          // Normal
+scheduler.add(Box::new(emergency_stop), 0, Some(true));  // Critical
+scheduler.add(Box::new(controller), 1, Some(true));      // High
+scheduler.add(Box::new(sensor), 2, Some(true));          // Normal
 
 // BAD: Everything is critical
-scheduler.register(Box::new(logger), 0, Some(true));  // Wrong!
+scheduler.add(Box::new(logger), 0, Some(true));  // Wrong!
 ```
 
 ### Handle Errors Gracefully
@@ -622,24 +622,24 @@ Organize nodes by function with appropriate priorities:
 
 ```rust
 // Layer 1: Safety (Critical = 0)
-scheduler.register(Box::new(collision_detector), 0, Some(true));
-scheduler.register(Box::new(emergency_stop), 0, Some(true));
+scheduler.add(Box::new(collision_detector), 0, Some(true));
+scheduler.add(Box::new(emergency_stop), 0, Some(true));
 
 // Layer 2: Control (High = 1)
-scheduler.register(Box::new(pid_controller), 1, Some(true));
-scheduler.register(Box::new(motor_driver), 1, Some(true));
+scheduler.add(Box::new(pid_controller), 1, Some(true));
+scheduler.add(Box::new(motor_driver), 1, Some(true));
 
 // Layer 3: Sensing (Normal = 2)
-scheduler.register(Box::new(lidar_node), 2, Some(true));
-scheduler.register(Box::new(camera_node), 2, Some(true));
-scheduler.register(Box::new(imu_node), 2, Some(true));
+scheduler.add(Box::new(lidar_node), 2, Some(true));
+scheduler.add(Box::new(camera_node), 2, Some(true));
+scheduler.add(Box::new(imu_node), 2, Some(true));
 
 // Layer 4: Processing (Low = 3)
-scheduler.register(Box::new(path_planner), 3, Some(true));
+scheduler.add(Box::new(path_planner), 3, Some(true));
 
 // Layer 5: Monitoring (Background = 4)
-scheduler.register(Box::new(logger), 4, Some(true));
-scheduler.register(Box::new(diagnostics), 4, Some(true));
+scheduler.add(Box::new(logger), 4, Some(true));
+scheduler.add(Box::new(diagnostics), 4, Some(true));
 ```
 
 ### Feedback Loops
@@ -648,14 +648,14 @@ Create control loops with pub/sub:
 
 ```rust
 // Sensor (Normal priority = 2)
-scheduler.register(Box::new(encoder_sensor), 2, Some(true));  // Publishes position
+scheduler.add(Box::new(encoder_sensor), 2, Some(true));  // Publishes position
 
 // Controller (High priority = 1) - runs after sensor
-scheduler.register(Box::new(position_controller), 1, Some(true));
+scheduler.add(Box::new(position_controller), 1, Some(true));
 // Subscribes to position, publishes velocity command
 
 // Actuator (High priority = 1)
-scheduler.register(Box::new(motor_actuator), 1, Some(true));
+scheduler.add(Box::new(motor_actuator), 1, Some(true));
 // Subscribes to velocity command
 ```
 
@@ -665,13 +665,13 @@ Chain nodes for data processing:
 
 ```rust
 // Raw sensor (Normal = 2)
-scheduler.register(Box::new(raw_sensor), 2, Some(true));  // Publishes raw data
+scheduler.add(Box::new(raw_sensor), 2, Some(true));  // Publishes raw data
 
 // Filter (Normal = 2)
-scheduler.register(Box::new(kalman_filter), 2, Some(true));  // Subscribes to raw, publishes filtered
+scheduler.add(Box::new(kalman_filter), 2, Some(true));  // Subscribes to raw, publishes filtered
 
 // Analyzer (Low = 3)
-scheduler.register(Box::new(data_analyzer), 3, Some(true));
+scheduler.add(Box::new(data_analyzer), 3, Some(true));
 // Subscribes to filtered data
 ```
 

@@ -21,7 +21,7 @@ The `Link<T>` provides ultra-low latency point-to-point (Single Producer Single 
 Create a Link as a producer (sender).
 
 ```rust
-pub fn producer(topic: &str) -> HorusResult<Self>
+pub fn producer(topic: &str) -> Result<Self>
 ```
 
 **Parameters**:
@@ -44,7 +44,7 @@ let sensor_output: Link<f32> = Link::producer("sensor_data")?;
 Create a Link as a consumer (receiver).
 
 ```rust
-pub fn consumer(topic: &str) -> HorusResult<Self>
+pub fn consumer(topic: &str) -> Result<Self>
 ```
 
 **Parameters**:
@@ -67,7 +67,7 @@ Create a producer with custom buffer capacity.
 pub fn producer_with_capacity(
     topic: &str,
     capacity: usize
-) -> HorusResult<Self>
+) -> Result<Self>
 ```
 
 **Parameters**:
@@ -92,7 +92,7 @@ Create a consumer with custom buffer capacity.
 pub fn consumer_with_capacity(
     topic: &str,
     capacity: usize
-) -> HorusResult<Self>
+) -> Result<Self>
 ```
 
 **Parameters**:

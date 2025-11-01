@@ -282,10 +282,10 @@ let scheduler = Scheduler::new();
 
 ```rust
 // Critical tasks run first
-scheduler.register_with_priority(safety, NodePriority::Critical);
+scheduler.add_with_priority(safety, NodePriority::Critical);
 
 // Logging runs last
-scheduler.register_with_priority(logger, NodePriority::Background);
+scheduler.add_with_priority(logger, NodePriority::Background);
 ```
 
 **Predictable execution order** = better performance.
@@ -295,11 +295,11 @@ scheduler.register_with_priority(logger, NodePriority::Background);
 ```rust
 // BAD: 50 small nodes
 for i in 0..50 {
-    scheduler.register(TinyNode::new(i));
+    scheduler.add(TinyNode::new(i));
 }
 
 // GOOD: One aggregated node
-scheduler.register(AggregatedNode::new());
+scheduler.add(AggregatedNode::new());
 ```
 
 **Fewer nodes** = less scheduling overhead.

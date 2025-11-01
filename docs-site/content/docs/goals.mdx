@@ -116,7 +116,7 @@ Instead of writing yet another IMU driver, just use the built-in one:
 use horus_library::sensors::ImuNode;
 
 let imu = ImuNode::new("/dev/i2c-1", "bno055")?;
-scheduler.register(Box::new(imu), 0, Some(true));
+scheduler.add(Box::new(imu), 0, Some(true));
 ```
 
 Need a PID controller? Already built:
@@ -126,7 +126,7 @@ use horus_library::control::PidController;
 let mut pid = PidController::new(1.0, 0.1, 0.05)?;
 // Customize if needed
 pid.set_limits(-100.0, 100.0);
-scheduler.register(Box::new(pid), 1, Some(true));
+scheduler.add(Box::new(pid), 1, Some(true));
 ```
 
 Build a drone in hours by composing existing nodes:
@@ -136,11 +136,11 @@ use horus_library::control::FlightController;
 use horus_library::actuators::MotorController;
 
 let mut scheduler = Scheduler::new();
-scheduler.register(Box::new(ImuNode::new()?), 0, Some(true));
-scheduler.register(Box::new(BarometerNode::new()?), 0, Some(true));
-scheduler.register(Box::new(FlightController::new()?), 1, Some(true));
-scheduler.register(Box::new(MotorController::new()?), 2, Some(true));
-scheduler.tick_all()?;
+scheduler.add(Box::new(ImuNode::new()?), 0, Some(true));
+scheduler.add(Box::new(BarometerNode::new()?), 0, Some(true));
+scheduler.add(Box::new(FlightController::new()?), 1, Some(true));
+scheduler.add(Box::new(MotorController::new()?), 2, Some(true));
+scheduler.run()?;
 ```
 
 Want custom behavior? Override just what you need:
@@ -192,7 +192,7 @@ horus pkg install slam-cartographer
 
 # Use it directly in their code
 use slam_cartographer::CartographerNode;
-scheduler.register(Box::new(CartographerNode::new()?), 2, Some(true));
+scheduler.add(Box::new(CartographerNode::new()?), 2, Some(true));
 ```
 
 **Impact**: Knowledge compounds across the entire robotics community. Build something useful once, share it globally. The registry becomes the npm/cargo/PyPI for robotics - proven components available to everyone.

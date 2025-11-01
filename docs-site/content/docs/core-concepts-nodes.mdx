@@ -111,7 +111,7 @@ Nodes transition through well-defined states during their lifetime:
 
 ### Lifecycle States
 
-**Uninitialized**: Node created but not registered with scheduler
+**Uninitialized**: Node created but not added to scheduler
 
 **Initializing**: Running `init()` method
 
@@ -305,16 +305,16 @@ use horus::prelude::*;
 let mut scheduler = Scheduler::new();
 
 // Safety monitor runs FIRST every tick
-scheduler.register_with_priority(safety_node, NodePriority::Critical);
+scheduler.add_with_priority(safety_node, NodePriority::Critical);
 
 // Controller runs second
-scheduler.register_with_priority(control_node, NodePriority::High);
+scheduler.add_with_priority(control_node, NodePriority::High);
 
 // Sensors run third
-scheduler.register_with_priority(sensor_node, NodePriority::Normal);
+scheduler.add_with_priority(sensor_node, NodePriority::Normal);
 
 // Logging runs LAST
-scheduler.register_with_priority(logger_node, NodePriority::Background);
+scheduler.add_with_priority(logger_node, NodePriority::Background);
 ```
 
 ### Priority Guidelines
@@ -341,7 +341,7 @@ struct SensorNode {
 }
 
 impl SensorNode {
-    fn new() -> HorusResult<Self> {
+    fn new() -> Result<Self> {
         Ok(Self {
             data_pub: Hub::new("sensor_data")?,
         })

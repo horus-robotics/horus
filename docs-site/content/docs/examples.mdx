@@ -24,7 +24,7 @@ struct SensorNode {
 }
 
 impl SensorNode {
-    fn new() -> HorusResult<Self> {
+    fn new() -> Result<Self> {
         Ok(Self {
             data_pub: Hub::new("sensor_data")?,
             counter: 0.0,
@@ -53,10 +53,10 @@ impl Node for SensorNode {
     }
 }
 
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     let mut scheduler = Scheduler::new();
-    scheduler.register(Box::new(SensorNode::new()?), 0, Some(true));
-    scheduler.tick_all()?;
+    scheduler.add(Box::new(SensorNode::new()?), 0, Some(true));
+    scheduler.run()?;
     Ok(())
 }
 ```
@@ -71,7 +71,7 @@ struct ProcessorNode {
 }
 
 impl ProcessorNode {
-    fn new() -> HorusResult<Self> {
+    fn new() -> Result<Self> {
         Ok(Self {
             data_sub: Hub::new("sensor_data")?,
         })
@@ -95,10 +95,10 @@ impl Node for ProcessorNode {
     }
 }
 
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     let mut scheduler = Scheduler::new();
-    scheduler.register(Box::new(ProcessorNode::new()?), 0, Some(true));
-    scheduler.tick_all()?;
+    scheduler.add(Box::new(ProcessorNode::new()?), 0, Some(true));
+    scheduler.run()?;
     Ok(())
 }
 ```
@@ -139,21 +139,21 @@ impl Node for ProcessorNode {
     }
 }
 
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     let mut scheduler = Scheduler::new();
 
-    // Register both nodes
-    scheduler.register(Box::new(SensorNode {
+    // Add both nodes
+    scheduler.add(Box::new(SensorNode {
         data_pub: Hub::new("sensor_data")?,
         counter: 0.0,
     }), 0, Some(true));
 
-    scheduler.register(Box::new(ProcessorNode {
+    scheduler.add(Box::new(ProcessorNode {
         data_sub: Hub::new("sensor_data")?,
     }), 1, Some(true));
 
     // Run both nodes together
-    scheduler.tick_all()?;
+    scheduler.run()?;
     Ok(())
 }
 ```
@@ -206,18 +206,18 @@ impl Node for MotorDriverNode {
     }
 }
 
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     let mut scheduler = Scheduler::new();
 
-    scheduler.register(Box::new(TeleopNode {
+    scheduler.add(Box::new(TeleopNode {
         cmd_pub: Hub::new("cmd_vel")?,
     }), 0, Some(true));
 
-    scheduler.register(Box::new(MotorDriverNode {
+    scheduler.add(Box::new(MotorDriverNode {
         cmd_sub: Hub::new("cmd_vel")?,
     }), 1, Some(true));
 
-    scheduler.tick_all()?;
+    scheduler.run()?;
     Ok(())
 }
 ```
@@ -281,21 +281,21 @@ impl Node for ObstacleDetector {
     }
 }
 
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     let mut scheduler = Scheduler::new();
 
-    scheduler.register(Box::new(LidarNode {
+    scheduler.add(Box::new(LidarNode {
         scan_pub: Hub::new("scan")?,
     }), 0, Some(true));
 
     // Obstacle detector runs with High priority (1)
-    scheduler.register(Box::new(ObstacleDetector {
+    scheduler.add(Box::new(ObstacleDetector {
         scan_sub: Hub::new("scan")?,
         cmd_pub: Hub::new("cmd_vel")?,
         safety_distance: 0.5,  // 50cm
     }), 1, Some(true));
 
-    scheduler.tick_all()?;
+    scheduler.run()?;
     Ok(())
 }
 ```
@@ -321,7 +321,7 @@ struct PIDController {
 }
 
 impl PIDController {
-    fn new(kp: f32, ki: f32, kd: f32) -> HorusResult<Self> {
+    fn new(kp: f32, ki: f32, kd: f32) -> Result<Self> {
         Ok(Self {
             setpoint_sub: Hub::new("setpoint")?,
             feedback_sub: Hub::new("feedback")?,
@@ -424,27 +424,27 @@ impl Node for ControllerNode {
     }
 }
 
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     let mut scheduler = Scheduler::new();
 
-    // Register pipeline stages
-    scheduler.register(Box::new(SensorNode {
+    // Add pipeline stages
+    scheduler.add(Box::new(SensorNode {
         raw_pub: Hub::new("raw_data")?,
     }), 0, Some(true));
 
-    scheduler.register(Box::new(FilterNode {
+    scheduler.add(Box::new(FilterNode {
         raw_sub: Hub::new("raw_data")?,
         filtered_pub: Hub::new("filtered_data")?,
         alpha: 0.1,
         filtered_value: 0.0,
     }), 1, Some(true));
 
-    scheduler.register(Box::new(ControllerNode {
+    scheduler.add(Box::new(ControllerNode {
         filtered_sub: Hub::new("filtered_data")?,
         cmd_pub: Hub::new("commands")?,
     }), 2, Some(true));
 
-    scheduler.tick_all()?;
+    scheduler.run()?;
     Ok(())
 }
 ```
@@ -583,27 +583,27 @@ impl Node for LoggerNode {
     }
 }
 
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     let mut scheduler = Scheduler::new();
 
     // Safety runs FIRST (priority 0 = Critical)
-    scheduler.register(Box::new(EmergencyStopNode {
+    scheduler.add(Box::new(EmergencyStopNode {
         battery_sub: Hub::new("battery")?,
         estop_pub: Hub::new("estop")?,
     }), 0, Some(true));
 
     // Control runs SECOND (priority 1 = High)
-    scheduler.register(Box::new(MotorController {
+    scheduler.add(Box::new(MotorController {
         estop_sub: Hub::new("estop")?,
         cmd_sub: Hub::new("cmd")?,
     }), 1, Some(true));
 
     // Logging runs LAST (priority 4 = Background)
-    scheduler.register(Box::new(LoggerNode {
+    scheduler.add(Box::new(LoggerNode {
         data_sub: Hub::new("data")?,
     }), 4, Some(true));
 
-    scheduler.tick_all()?;
+    scheduler.run()?;
     Ok(())
 }
 ```
@@ -684,12 +684,12 @@ def logger(node):
 
 # Create scheduler with per-node rates
 scheduler = horus.Scheduler()
-scheduler.register(horus.Node("sensor", pubs="imu_data", tick=high_freq_sensor),
-                   priority=0, rate_hz=100.0)
-scheduler.register(horus.Node("control", subs="imu_data", pubs="cmd_vel", tick=control_loop),
-                   priority=1, rate_hz=50.0)
-scheduler.register(horus.Node("log", subs="cmd_vel", tick=logger),
-                   priority=2, rate_hz=10.0)
+scheduler.add(horus.Node("sensor", pubs="imu_data", tick=high_freq_sensor),
+              priority=0, rate_hz=100.0)
+scheduler.add(horus.Node("control", subs="imu_data", pubs="cmd_vel", tick=control_loop),
+              priority=1, rate_hz=50.0)
+scheduler.add(horus.Node("log", subs="cmd_vel", tick=logger),
+              priority=2, rate_hz=10.0)
 
 scheduler.run(duration=5.0)
 ```
@@ -721,15 +721,15 @@ mod tests {
     }
 
     #[test]
-    fn test_pubsub_integration() -> HorusResult<()> {
+    fn test_pubsub_integration() -> Result<()> {
         let mut scheduler = Scheduler::new();
 
         // Create publisher and subscriber
-        scheduler.register(Box::new(SensorNode::new()?), 0, Some(true));
-        scheduler.register(Box::new(ProcessorNode::new()?), 1, Some(true));
+        scheduler.add(Box::new(SensorNode::new()?), 0, Some(true));
+        scheduler.add(Box::new(ProcessorNode::new()?), 1, Some(true));
 
-        // Note: Scheduler::tick_all() runs infinitely until Ctrl+C
-        // For testing, you can use tick_node() to run specific nodes
+        // Note: Scheduler::run() runs infinitely until Ctrl+C
+        // For testing, you can use tick() to run specific nodes
         // or use integration tests with timeouts and stop() method
 
         Ok(())
@@ -821,18 +821,18 @@ impl Node for SnakeControlNode {
     }
 }
 
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     let mut sched = Scheduler::new().name("SnakeScheduler");
 
     let keyboard_input_node = KeyboardInputNode::new_with_topic("snakeinput")?;
     let joystick_input_node = JoystickInputNode::new_with_topic("snakeinput")?;
     let snake_control_node = SnakeControlNode::new()?;
 
-    sched.register(Box::new(keyboard_input_node), 0, Some(true));
-    sched.register(Box::new(joystick_input_node), 1, None);
-    sched.register(Box::new(snake_control_node), 2, Some(true));
+    sched.add(Box::new(keyboard_input_node), 0, Some(true));
+    sched.add(Box::new(joystick_input_node), 1, None);
+    sched.add(Box::new(snake_control_node), 2, Some(true));
 
-    sched.tick_node(&["KeyboardInputNode", "JoystickInputNode", "SnakeControlNode"])
+    sched.tick(&["KeyboardInputNode", "JoystickInputNode", "SnakeControlNode"])
 }
 ```
 
@@ -1014,13 +1014,13 @@ impl Node for TempSensor {
     }
 }
 
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     let mut scheduler = Scheduler::new();
-    scheduler.register(Box::new(TempSensor {
+    scheduler.add(Box::new(TempSensor {
         temp_pub: Hub::new("temperature")?,
         counter: 0.0,
     }), 0, Some(true));
-    scheduler.tick_all()
+    scheduler.run()
 }
 ```
 

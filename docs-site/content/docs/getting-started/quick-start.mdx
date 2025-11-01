@@ -54,7 +54,7 @@ struct TemperatureSensor {
 }
 
 impl TemperatureSensor {
-    fn new() -> HorusResult<Self> {
+    fn new() -> Result<Self> {
         Ok(Self {
             publisher: Hub::new("temperature")?,
             temperature: 20.0,
@@ -88,7 +88,7 @@ struct TemperatureMonitor {
 }
 
 impl TemperatureMonitor {
-    fn new() -> HorusResult<Self> {
+    fn new() -> Result<Self> {
         Ok(Self {
             subscriber: Hub::new("temperature")?,
         })
@@ -112,29 +112,29 @@ impl Node for TemperatureMonitor {
 // MAIN - Run both nodes
 //============================================
 
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     println!("Starting temperature monitoring system...\n");
 
     // Create the scheduler
     let mut scheduler = Scheduler::new();
 
-    // Register both nodes
+    // Add both nodes
     // Priority 0 = sensor runs first
     // Priority 1 = monitor runs second
     // Logging enabled (Some(true)) to see message flow
-    scheduler.register(
+    scheduler.add(
         Box::new(TemperatureSensor::new()?),
         0,
         Some(true)
     );
-    scheduler.register(
+    scheduler.add(
         Box::new(TemperatureMonitor::new()?),
         1,
         Some(true)
     );
 
     // Run forever (press Ctrl+C to stop)
-    scheduler.tick_all()?;
+    scheduler.run()?;
 
     Ok(())
 }
@@ -206,13 +206,13 @@ The scheduler runs your nodes in priority order:
 let mut scheduler = Scheduler::new();
 
 // Priority 0 = highest (runs first)
-scheduler.register(Box::new(SensorNode::new()?), 0, Some(true));
+scheduler.add(Box::new(SensorNode::new()?), 0, Some(true));
 
 // Priority 1 = lower (runs after priority 0)
-scheduler.register(Box::new(MonitorNode::new()?), 1, Some(true));
+scheduler.add(Box::new(MonitorNode::new()?), 1, Some(true));
 
 // Run forever
-scheduler.tick_all()?;
+scheduler.run()?;
 ```
 
 ## Next Steps
@@ -240,8 +240,8 @@ impl Node for TemperatureMonitor {
 **2. Add a second sensor:**
 ```rust
 // In main():
-scheduler.register(Box::new(HumiditySensor::new()?), 0, Some(true));
-scheduler.register(Box::new(HumidityMonitor::new()?), 1, Some(true));
+scheduler.add(Box::new(HumiditySensor::new()?), 0, Some(true));
+scheduler.add(Box::new(HumidityMonitor::new()?), 1, Some(true));
 ```
 
 **3. Save data to a file:**
@@ -338,11 +338,11 @@ Or use a different topic name.
 
 ### Nothing prints
 
-Make sure both nodes are registered:
+Make sure both nodes are added:
 
 ```rust
-scheduler.register(Box::new(Sensor::new()?), 0, Some(true));
-scheduler.register(Box::new(Monitor::new()?), 1, Some(true));
+scheduler.add(Box::new(Sensor::new()?), 0, Some(true));
+scheduler.add(Box::new(Monitor::new()?), 1, Some(true));
 ```
 
 ## What You've Learned

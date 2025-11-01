@@ -15,7 +15,7 @@ The `Hub<T>` provides ultra-low latency pub/sub communication through shared mem
 Create a new hub for publishing and subscribing to a topic.
 
 ```rust
-pub fn new(topic_name: &str) -> HorusResult<Self>
+pub fn new(topic_name: &str) -> Result<Self>
 ```
 
 **Parameters**:
@@ -41,7 +41,7 @@ Create a hub with custom message capacity.
 pub fn new_with_capacity(
     topic_name: &str,
     capacity: usize
-) -> HorusResult<Self>
+) -> Result<Self>
 ```
 
 **Parameters**:

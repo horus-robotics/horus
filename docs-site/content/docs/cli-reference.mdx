@@ -193,11 +193,11 @@ impl Node for SensorNode { /* ... */ }
 struct ControlNode { /* ... */ }
 impl Node for ControlNode { /* ... */ }
 
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     let mut scheduler = Scheduler::new();
-    scheduler.register(Box::new(SensorNode::new()?), 0, Some(true));
-    scheduler.register(Box::new(ControlNode::new()?), 1, Some(true));
-    scheduler.tick_all()
+    scheduler.add(Box::new(SensorNode::new()?), 0, Some(true));
+    scheduler.add(Box::new(ControlNode::new()?), 1, Some(true));
+    scheduler.run()
 }
 ```
 

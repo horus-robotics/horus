@@ -1,0 +1,64 @@
+<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#16181c"/>
+
+  <!-- Grid pattern -->
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e2228" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#grid)" opacity="0.3"/>
+
+  <!-- Accent line -->
+  <rect x="0" y="0" width="8" height="630" fill="#00d9ff"/>
+
+  <!-- Content -->
+  <g transform="translate(80, 200)">
+    <!-- Logo/Title -->
+    <text x="0" y="0" font-family="monospace" font-size="120" font-weight="bold" fill="#ffffff">
+      HORUS
+    </text>
+
+    <!-- Subtitle -->
+    <text x="0" y="80" font-family="monospace" font-size="36" fill="#8a9199">
+      Ultra-Low Latency IPC for Robotics
+    </text>
+
+    <!-- Key stats -->
+    <g transform="translate(0, 160)">
+      <rect x="0" y="0" width="200" height="80" fill="#1e2228" rx="8"/>
+      <text x="100" y="30" font-family="monospace" font-size="32" font-weight="bold" fill="#00d9ff" text-anchor="middle">
+        29ns
+      </text>
+      <text x="100" y="60" font-family="monospace" font-size="18" fill="#8a9199" text-anchor="middle">
+        Latency
+      </text>
+    </g>
+
+    <g transform="translate(230, 160)">
+      <rect x="0" y="0" width="200" height="80" fill="#1e2228" rx="8"/>
+      <text x="100" y="30" font-family="monospace" font-size="32" font-weight="bold" fill="#00d9ff" text-anchor="middle">
+        Zero-Copy
+      </text>
+      <text x="100" y="60" font-family="monospace" font-size="18" fill="#8a9199" text-anchor="middle">
+        Shared Memory
+      </text>
+    </g>
+
+    <g transform="translate(460, 160)">
+      <rect x="0" y="0" width="200" height="80" fill="#1e2228" rx="8"/>
+      <text x="100" y="30" font-family="monospace" font-size="32" font-weight="bold" fill="#00d9ff" text-anchor="middle">
+        Real-time
+      </text>
+      <text x="100" y="60" font-family="monospace" font-size="18" fill="#8a9199" text-anchor="middle">
+        Control
+      </text>
+    </g>
+  </g>
+
+  <!-- Footer -->
+  <text x="80" y="590" font-family="monospace" font-size="24" fill="#4a5158">
+    docs.horus.dev
+  </text>
+</svg>
