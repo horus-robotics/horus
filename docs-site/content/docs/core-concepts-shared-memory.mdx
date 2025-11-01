@@ -1,7 +1,7 @@
 ---
 title: Core Concepts - Shared Memory
 description: Understanding HORUS shared memory IPC architecture
-order: 6
+order: 22
 ---
 
 # Shared Memory IPC
@@ -542,23 +542,32 @@ df -h /dev/shm
 # tmpfs           7.8G  128M  7.7G   2% /dev/shm
 ```
 
-### Cleaning Up Stale Topics
+### Session Isolation & Automatic Cleanup
 
-```bash
-# Remove all HORUS shared memory
-rm -rf /dev/shm/horus/
+**HORUS automatically manages shared memory using session isolation:**
 
-# Remove specific topic
-rm /dev/shm/horus/topics/horus_cmd_vel
+Each `horus run` command gets a unique session ID and stores data in:
+```
+/dev/shm/horus/sessions/{session_id}/topics/
 ```
 
-**When to clean up?**
-- After testing
-- When topics are no longer needed
-- If shared memory is full
-- After crashes (stale topics)
+**Benefits:**
+- ✅ Multiple runs don't interfere with each other
+- ✅ Automatic cleanup when run completes
+- ✅ Safe to run multiple tests simultaneously
+- ✅ No manual cleanup needed
 
-**Automatic cleanup**: HORUS nodes clean up gracefully on Ctrl+C, but crashes may leave stale topics.
+**Manual cleanup (rarely needed):**
+
+Only necessary after crashes or for testing:
+
+```bash
+# Clean all HORUS shared memory (all sessions)
+rm -rf /dev/shm/horus/
+
+# Clean specific session
+rm -rf /dev/shm/horus/sessions/{session_id}/
+```
 
 ### Monitoring Memory Usage
 
@@ -686,10 +695,10 @@ fn cleanup_shm() {
 # Check usage
 df -h /dev/shm
 
-# Clean up
+# Clean up (HORUS auto-cleans sessions, but manual cleanup helps if full)
 rm -rf /dev/shm/horus/
 
-# Increase size
+# Or increase size
 sudo mount -o remount,size=2G /dev/shm
 ```
 
@@ -708,14 +717,16 @@ chmod 755 /dev/shm/horus/
 
 ### Stale Shared Memory
 
-**Cause**: Node crashed without cleanup
+**Cause**: Node crashed before session cleanup
 
-**Solution**:
+**Note**: HORUS uses session isolation and auto-cleanup. This is rarely an issue anymore.
+
+**Solution** (if needed):
 ```bash
-# List stale topics
-ls -l /dev/shm/horus/topics/
+# List sessions
+ls -l /dev/shm/horus/sessions/
 
-# Remove all
+# Remove all HORUS shared memory
 rm -rf /dev/shm/horus/
 ```
 

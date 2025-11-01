@@ -1,10 +1,19 @@
 ---
 title: Core Concepts - Hub
 description: Understanding HORUS pub/sub communication system
-order: 4
+order: 5
 ---
 
 # Hub and Pub/Sub
+
+## Key Takeaways
+
+After reading this guide, you will understand:
+- How Hub provides zero-copy, lock-free pub/sub communication with sub-microsecond latency (312ns-481ns)
+- The send() and recv() methods for publishing and subscribing to typed topics
+- Communication patterns (one-to-one, one-to-many, many-to-one, many-to-many) for different architectures
+- How shared memory in /dev/shm enables processes to communicate without serialization
+- When to use Hub for real-time, single-machine communication vs network-based messaging
 
 The Hub is HORUS's ultra-low latency publish-subscribe (pub/sub) communication system. It enables nodes to exchange messages through shared memory IPC with **312ns-481ns latency** (Link/Hub).
 

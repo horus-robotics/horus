@@ -67,7 +67,7 @@ const sections: SidebarSection[] = [
     links: [
       { title: "Overview", href: "/multi-language", order: 1 },
       { title: "Python Bindings", href: "/python-bindings", order: 2 },
-      { title: "C Bindings", href: "/c-bindings", order: 3 },
+      { title: "C++ Bindings", href: "/cpp-bindings", order: 3 },
       { title: "AI API Integration", href: "/ai-integration", order: 4 },
     ],
   },

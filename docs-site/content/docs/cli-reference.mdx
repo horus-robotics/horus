@@ -1,19 +1,21 @@
 ---
 title: CLI Reference
 description: Complete guide to all HORUS commands
-order: 7
+order: 40
 ---
 
 # CLI Reference
 
-The `horus` command gives you everything you need to build, run, and manage your applications. This page covers all 8 commands.
+The `horus` command gives you everything you need to build, run, and manage your applications. This page covers all 9 commands.
 
 ## Quick Reference
 
 ```bash
 horus new <name>           # Create a new project
 horus run [file]           # Build and run your app
+horus check                # Validate dependencies and environment
 horus dashboard [port]     # Monitor your system
+horus sim                  # Launch 2D simulator
 horus pkg <command>        # Manage packages (install, publish, etc.)
 horus env <command>        # Save/restore environments
 horus auth <command>       # Login to registry
@@ -44,7 +46,7 @@ horus new my_project --python
 horus new my_project --c
 ```
 
-**Note**: C bindings are in alpha. Use Rust or Python for production.
+**Note**: C++ bindings are in alpha. Use Rust or Python for production.
 
 ### All Options
 
@@ -259,6 +261,187 @@ $ horus run "nodes/*.py"
 - Maximum performance with minimal overhead
 
 **Important:** Each process runs its own scheduler. Nodes communicate through HORUS shared memory topics (`/dev/shm/horus/`), not direct function calls.
+
+---
+
+## `horus check` - Validate Environment
+
+**What it does**: Validates your HORUS installation, dependencies, and environment configuration.
+
+**Why it's useful**: Quickly diagnose issues with your setup before running into cryptic errors. Ensures all dependencies are properly installed and versions are compatible.
+
+### Basic Usage
+
+```bash
+# Check current project
+horus check
+
+# Check specific package
+horus check my-package
+```
+
+### What It Checks
+
+The `horus check` command validates:
+- **HORUS installation** - Core framework is properly installed
+- **Dependencies** - All required packages are available
+- **Package versions** - Version compatibility with `horus.yaml`
+- **Environment** - Cargo, Python, and system tools are configured
+- **Shared memory** - `/dev/shm` is accessible and writable
+
+### Example Output
+
+```bash
+$ horus check
+✓ HORUS framework installed (v0.1.0)
+✓ Cargo toolchain found (1.70.0)
+✓ Python bindings available (3.11)
+✓ Shared memory accessible (/dev/shm)
+✓ All dependencies satisfied
+
+✓ Environment is ready!
+```
+
+**When validation fails**:
+```bash
+$ horus check
+✓ HORUS framework installed (v0.1.0)
+✗ Missing dependency: horus-vision (required by horus.yaml)
+✗ Shared memory not writable (/dev/shm)
+
+⚠ Fix these issues and run 'horus check' again
+```
+
+### Examples
+
+**Before starting development**:
+```bash
+horus check
+# Ensure environment is ready
+```
+
+**After installing packages**:
+```bash
+horus pkg install sensor-drivers
+horus check
+# Verify installation succeeded
+```
+
+**Troubleshooting build issues**:
+```bash
+horus check
+# Identify missing dependencies
+```
+
+**CI/CD validation**:
+```bash
+#!/bin/bash
+if ! horus check; then
+  echo "Environment validation failed"
+  exit 1
+fi
+horus run --release
+```
+
+---
+
+## `horus sim` - Launch 2D Simulator
+
+**What it does**: Launches the HORUS 2D simulator for testing robot behavior in a virtual environment.
+
+**Why it's useful**: Test your algorithms without hardware. Validate behavior before deploying to real robots. Perfect for development and learning.
+
+### Basic Usage
+
+```bash
+# Launch default simulation
+horus sim
+
+# Launch with specific scenario
+horus sim --scenario warehouse
+
+# Headless mode (for testing)
+horus sim --headless
+```
+
+### All Options
+
+```bash
+horus sim [OPTIONS]
+
+Options:
+  -s, --scenario <NAME>    Load predefined scenario (warehouse, maze, etc.)
+  --headless               Run without GUI (for CI/CD)
+  -p, --port <PORT>        Web UI port (default: 3001)
+  -r, --realtime           Lock to real-time physics (default: as-fast-as-possible)
+```
+
+### What You Get
+
+The simulator provides:
+- **2D physics** - Realistic robot movement and collisions
+- **Sensor simulation** - Virtual LiDAR, cameras, IMU
+- **Visual debugging** - See robot state and sensor readings
+- **Web interface** - Control simulation from browser
+- **HORUS integration** - Nodes communicate normally via shared memory
+
+### Examples
+
+**Test navigation algorithm**:
+```bash
+# Terminal 1: Launch simulator
+horus sim --scenario maze
+
+# Terminal 2: Run your navigation code
+horus run navigation.rs --release
+
+# Terminal 3: Monitor
+horus dashboard
+```
+
+**Headless testing (CI/CD)**:
+```bash
+horus sim --headless &
+SIM_PID=$!
+horus run test_behavior.rs --release
+kill $SIM_PID
+```
+
+**Custom scenario**:
+```bash
+# Create scenario file: warehouse.yaml
+# Then load it:
+horus sim --scenario warehouse
+```
+
+### Integration with Your Code
+
+Your HORUS nodes work unchanged in simulation:
+
+```rust
+// Same code works in sim and on real robot!
+use horus::prelude::*;
+
+struct RobotController {
+    cmd_pub: Hub<CmdVel>,
+    lidar_sub: Hub<LaserScan>,
+}
+
+impl Node for RobotController {
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        // Read simulated LiDAR
+        if let Some(scan) = self.lidar_sub.recv(ctx) {
+            // Send commands to simulated robot
+            let cmd = calculate_motion(&scan);
+            self.cmd_pub.send(cmd, ctx).ok();
+        }
+    }
+}
+```
+
+**Simulator vs Reality**: The same HORUS topics (`cmd_vel`, `laser_scan`, etc.) work in both. No code changes needed!
+
+See [Simulation Guide](/simulation) for advanced features, custom scenarios, and RL integration.
 
 ---
 
@@ -593,10 +776,13 @@ Use `--release` only when you need speed, not during development.
 
 ### "Failed to create Hub"
 
-Topic name conflict. Try a unique name or clean up:
+Topic name conflict. Try a unique name or clean up stale shared memory.
+
+**Note**: HORUS automatically cleans up shared memory after each run using session isolation. This error usually means a previous run crashed.
 
 ```bash
-rm -rf /dev/shm/horus/*
+# Clean all HORUS shared memory (if needed after crashes)
+rm -rf /dev/shm/horus/
 ```
 
 ---

@@ -12,7 +12,7 @@ This guide walks through publishing the `horus-robotics` Python package to PyPI,
 - ✅ Wheel builds successfully (611KB)
 - ✅ Package name: `horus-robotics`
 
-**Built wheel**: `horus_robotics-0.1.2-cp39-abi3-manylinux_2_34_x86_64.whl`
+**Built wheel**: `horus_robotics-0.1.3-cp39-abi3-manylinux_2_34_x86_64.whl`
 
 ---
 
@@ -86,7 +86,7 @@ unzip -l target/wheels/*.whl
 
 **Expected output**:
 ```
-📦 Built wheel for abi3 Python ≥ 3.9 to /home/lord-patpak/horus/HORUS/target/wheels/horus_robotics-0.1.2-cp39-abi3-manylinux_2_34_x86_64.whl
+📦 Built wheel for abi3 Python ≥ 3.9 to /home/lord-patpak/horus/HORUS/target/wheels/horus_robotics-0.1.3-cp39-abi3-manylinux_2_34_x86_64.whl
 ```
 
 ### Step 2: Test on TestPyPI (RECOMMENDED)
@@ -127,9 +127,9 @@ twine upload target/wheels/*.whl
 
 **You'll see**:
 ```
-📦 Built wheel for abi3 Python ≥ 3.9 to /home/lord-patpak/horus/HORUS/target/wheels/horus_robotics-0.1.2-cp39-abi3-manylinux_2_34_x86_64.whl
+📦 Built wheel for abi3 Python ≥ 3.9 to /home/lord-patpak/horus/HORUS/target/wheels/horus_robotics-0.1.3-cp39-abi3-manylinux_2_34_x86_64.whl
 🔐 Uploading to PyPI...
-✅ Published horus-robotics 0.1.2 to https://pypi.org/project/horus-robotics/
+✅ Published horus-robotics 0.1.3 to https://pypi.org/project/horus-robotics/
 ```
 
 ### Step 4: Verify Publication
@@ -157,14 +157,14 @@ For future releases, update version in **TWO files**:
    ```toml
    [project]
    name = "horus-robotics"
-   version = "0.1.2"  # <- Update here
+   version = "0.1.3"  # <- Update here
    ```
 
 2. **horus_py/Cargo.toml**:
    ```toml
    [package]
    name = "horus_py"
-   version = "0.1.2"  # <- Update here
+   version = "0.1.3"  # <- Update here
    ```
 
 Then rebuild and republish:

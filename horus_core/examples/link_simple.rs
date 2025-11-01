@@ -113,14 +113,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create scheduler
     let mut scheduler = Scheduler::new();
 
-    // Register nodes with priorities
-    scheduler.register(Box::new(sensor), 0, Some(false)); // High priority, no logging
-    scheduler.register(Box::new(controller), 1, Some(false)); // Normal priority, no logging
+    // Add nodes with priorities
+    scheduler.add(Box::new(sensor), 0, Some(false)); // High priority, no logging
+    scheduler.add(Box::new(controller), 1, Some(false)); // Normal priority, no logging
 
     println!("Starting nodes... (Ctrl+C to stop)\n");
 
     // Run forever (Ctrl+C to stop)
-    scheduler.tick_all()?;
+    scheduler.run()?;
 
     Ok(())
 }

@@ -1,0 +1,487 @@
+---
+title: What is HORUS?
+description: A high-performance framework for building distributed systems with sub-microsecond IPC
+order: 1
+---
+
+# What is HORUS?
+
+HORUS is a **framework for building applications with multiple independent components** that need to communicate efficiently. Each component handles one responsibility, and they communicate through ultra-low-latency shared memory.
+
+Think of it like building with LEGO blocks - each piece (Node) does one thing well, and you connect them together to build complex systems.
+
+## The Core Idea
+
+Instead of writing one big monolithic program, you build:
+
+- **Independent Nodes** - Each component is self-contained
+- **Connected by Topics** - Nodes communicate through named channels
+- **Run by a Scheduler** - HORUS manages execution order
+
+**Example:** A robot control system might have:
+- SensorNode (reads camera)
+- VisionNode (detects objects)
+- ControlNode (moves motors)
+- SafetyNode (prevents collisions)
+
+Each node runs independently, sharing data through topics like `"camera/image"`, `"detected/objects"`, `"motor/commands"`.
+
+## Why Use HORUS?
+
+### 1. Blazingly Fast Communication
+
+**HORUS**: Messages arrive in **312-481 nanoseconds**
+**Other frameworks**: Messages take **40,000-100,000 nanoseconds**
+
+That's **100-270x faster** than traditional approaches.
+
+**What this means for you:**
+- Real-time control systems stay responsive
+- High-frequency data processing without lag
+- Multi-sensor fusion at full speed
+- Tight control loops that actually work
+
+**The secret?** Shared memory instead of network sockets. No serialization, no copying, no network overhead.
+
+### 2. Ergonomic Rust APIs
+
+HORUS provides clean, idiomatic Rust APIs that feel natural:
+
+```rust
+use horus::prelude::*;
+
+// Create a publisher - sends temperature readings
+let publisher: Hub<f32> = Hub::new("temperature")?;
+
+// Create a subscriber - receives temperature readings
+let subscriber: Hub<f32> = Hub::new("temperature")?;
+
+// Send data (that simple!)
+publisher.send(25.0, ctx).ok();
+
+// Receive data
+if let Some(temp) = subscriber.recv(ctx) {
+    println!("Temperature: {:.1}°C", temp);
+}
+```
+
+**Even simpler with macros:**
+
+```rust
+node! {
+    SensorNode {
+        pub { temperature: f32 -> "temperature" }
+        tick(ctx) {
+            self.temperature.send(25.0, ctx).ok();
+        }
+    }
+}
+```
+
+### 3. Built-in Developer Tools
+
+HORUS includes everything you need out of the box:
+
+```bash
+# Create a new project
+horus new my_project
+
+# Run your application
+horus run
+
+# Monitor in real-time (separate terminal)
+horus dashboard
+```
+
+**The dashboard shows:**
+- All running nodes
+- Message flow between components
+- Performance metrics (latency, throughput)
+- Real-time debugging information
+
+No XML launch files or ROS-style configuration - just run `horus dashboard` and it works.
+
+### 4. Multi-Language Support
+
+Don't know Rust? Use what you know:
+
+**Python** - Simple functional API:
+```python
+from horus import Hub, Node
+
+class SensorNode(Node):
+    def __init__(self):
+        self.pub = Hub("temperature")
+
+    def tick(self):
+        self.pub.send(25.0)
+```
+
+**C** - Integrate existing hardware drivers:
+```c
+#include <horus.h>
+
+horus_hub_t* hub = horus_hub_new("temperature");
+horus_hub_send_f32(hub, 25.0);
+```
+
+**Rust** - Full framework power for performance-critical code.
+
+Mix and match languages in the same application!
+
+## Core Concepts
+
+### Nodes
+
+A **Node** is a component that does one thing. Examples:
+- Read data from a sensor
+- Process information
+- Control a motor
+- Display data on screen
+- Monitor system health
+
+**Nodes have a simple lifecycle:**
+
+1. **init()** - Start up (optional, run once)
+2. **tick()** - Do work (runs repeatedly)
+3. **shutdown()** - Clean up (optional, run once)
+
+```rust
+impl Node for MySensor {
+    fn name(&self) -> &'static str { "MySensor" }
+
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        ctx.log_info("Sensor starting up");
+        Ok(())
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        // Read sensor, send data - runs repeatedly
+    }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        ctx.log_info("Sensor shutting down");
+        Ok(())
+    }
+}
+```
+
+### Topics
+
+A **Topic** is a named channel for sending messages. Think of it like a radio frequency - anyone can broadcast on it, anyone can listen.
+
+**Topic naming conventions:**
+- Use descriptive names: `"temperature"`, `"camera/image"`, `"motor/speed"`
+- Use slashes for hierarchy: `"sensors/imu/accel"`, `"actuators/left_wheel"`
+- Keep them simple: avoid spaces, special characters
+
+**Multiple publishers/subscribers:**
+- Many nodes can publish to the same topic
+- Many nodes can subscribe to the same topic
+- HORUS handles all the synchronization
+
+```rust
+// Node A publishes temperature
+let pub_a: Hub<f32> = Hub::new("temperature")?;
+pub_a.send(25.0, ctx);
+
+// Node B also publishes temperature
+let pub_b: Hub<f32> = Hub::new("temperature")?;
+pub_b.send(30.0, ctx);
+
+// Node C receives from both
+let sub: Hub<f32> = Hub::new("temperature")?;
+if let Some(temp) = sub.recv(ctx) {
+    println!("Got: {}", temp); // Receives from both publishers
+}
+```
+
+### Hub
+
+A **Hub** is your interface to topics. It handles all the shared memory complexity:
+
+```rust
+// Create a publisher
+let publisher: Hub<f32> = Hub::new("temperature")?;
+
+// Create a subscriber (same topic name)
+let subscriber: Hub<f32> = Hub::new("temperature")?;
+```
+
+**Type safety:** The type parameter (`<f32>`) ensures publishers and subscribers agree on the message type. Rust's compiler prevents type mismatches at compile time.
+
+**Zero-copy:** Data is shared directly in memory - no serialization, no copying.
+
+### Scheduler
+
+The **Scheduler** runs your nodes in priority order:
+
+```rust
+let mut scheduler = Scheduler::new();
+
+// Add nodes with priorities
+scheduler.add(Box::new(SensorNode::new()?), 0, Some(true));  // Priority 0 (highest)
+scheduler.add(Box::new(ProcessNode::new()?), 1, Some(true)); // Priority 1
+scheduler.add(Box::new(DisplayNode::new()?), 2, Some(true)); // Priority 2
+
+// Run forever (Ctrl+C to stop)
+scheduler.run()?;
+```
+
+**How it works:**
+1. All priority 0 nodes tick
+2. Then all priority 1 nodes tick
+3. Then all priority 2 nodes tick
+4. Repeat forever
+
+**Use priorities to control execution order:**
+- Sensors should run before processors
+- Processors should run before actuators
+- Safety checks should run last
+
+## When to Use HORUS
+
+### Great For
+
+**Multi-component applications** - When you need isolated components that communicate:
+- Robot control systems
+- Real-time data processing pipelines
+- Multi-sensor fusion systems
+- Parallel processing workflows
+
+**Real-time systems** - When latency matters:
+- Control loops (motor control, flight control)
+- High-frequency trading systems
+- Live audio/video processing
+- Game engines
+
+**Single-machine distributed systems** - Multiple processes on one machine:
+- Embedded Linux systems (Raspberry Pi, Jetson Nano)
+- Edge computing devices
+- Multi-core applications
+- Development/testing of distributed architectures
+
+**Hardware integration** - Combining multiple devices/languages:
+- Mix Rust (performance) + Python (ease) + C (drivers)
+- Integrate legacy C code with modern Rust
+- Rapid prototyping with Python, production with Rust
+
+### Not Ideal For
+
+**Simple single-script programs** - If your whole program fits in 100 lines:
+- Use plain Rust, Python, or your favorite language
+- HORUS adds unnecessary complexity
+
+**Over-the-internet communication** - HORUS uses shared memory:
+- For network communication, use gRPC, HTTP, WebSockets
+- For distributed systems across machines, use message queues (RabbitMQ, Kafka)
+
+**CRUD web applications** - Standard database-backed web apps:
+- Use web frameworks (Axum, Actix, Django, Flask)
+- HORUS is designed for real-time systems, not request/response
+
+**Tiny embedded systems** - Microcontrollers without Linux:
+- HORUS requires `/dev/shm` (Linux shared memory)
+- For bare-metal embedded, use RTIC or Embassy
+
+## How HORUS is Different
+
+### vs Monolithic Programs
+
+**Traditional approach:**
+```rust
+fn main() {
+    loop {
+        let temp = read_sensor();
+        let filtered = process(temp);
+        display(filtered);
+    }
+}
+```
+
+**Problems:**
+- Hard to test individual parts
+- Changes break everything
+- Can't reuse components
+- No parallelization
+
+**HORUS approach:**
+```rust
+// SensorNode - reusable, testable, independent
+struct SensorNode { pub: Hub<f32> }
+
+// ProcessNode - can swap implementation
+struct ProcessNode { sub: Hub<f32>, pub: Hub<f32> }
+
+// DisplayNode - can replace with LogNode, etc.
+struct DisplayNode { sub: Hub<f32> }
+```
+
+**Benefits:**
+- Test each node independently
+- Change one node without affecting others
+- Reuse nodes across projects
+- Nodes can run in parallel (if priorities allow)
+
+### vs ROS (Robot Operating System)
+
+**ROS:**
+- 50-100μs typical latency (intra-machine DDS)
+- XML configuration files
+- Designed for multi-machine robotics
+- Large ecosystem of packages
+
+**HORUS:**
+- 0.312-0.481μs latency (sub-microsecond)
+- Pure code configuration (no XML)
+- Designed for single-machine performance
+- Growing ecosystem, modern Rust
+
+**Use ROS when:** You need cross-machine communication, extensive robotics libraries
+**Use HORUS when:** You need extreme performance on a single machine
+
+### vs Message Queues (RabbitMQ, Kafka)
+
+**Message Queues:**
+- 1-10ms latency
+- Network-based (can span machines)
+- Complex setup and configuration
+- Persistence and replay
+
+**HORUS:**
+- 0.000312-0.000481ms latency
+- Shared memory (single machine)
+- Minimal configuration
+- Ephemeral (no persistence)
+
+**Use message queues when:** You need multi-machine, persistence, reliability guarantees
+**Use HORUS when:** You need extreme speed on a single machine
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────┐
+│         Your Application                │
+├─────────────────────────────────────────┤
+│                                         │
+│  ┌──────────┐  ┌──────────┐  ┌───────┐ │
+│  │  Sensor  │  │ Process  │  │Display│ │
+│  │   Node   │  │   Node   │  │ Node  │ │
+│  └─────┬────┘  └────┬─────┘  └───┬───┘ │
+│        │pub          │sub/pub     │sub  │
+│        ▼             ▼            ▼     │
+├─────────────────────────────────────────┤
+│         Shared Memory Topics            │
+│     "sensor/temp"  "filtered/temp"      │
+├─────────────────────────────────────────┤
+│         HORUS Framework                 │
+│  • Hub (Pub/Sub Communication)          │
+│  • Scheduler (Priority Execution)       │
+│  • Logging (Debugging & Metrics)        │
+│  • Dashboard (Real-time Monitoring)     │
+└─────────────────────────────────────────┘
+         ▲
+         │ Uses Linux /dev/shm
+         ▼
+┌─────────────────────────────────────────┐
+│         Operating System                │
+│      (Linux with /dev/shm)              │
+└─────────────────────────────────────────┘
+```
+
+**Data flow:**
+1. Nodes communicate via Hubs
+2. Hubs write/read from shared memory topics
+3. Scheduler orchestrates node execution
+4. Dashboard monitors everything in real-time
+
+## Technical Details
+
+### Shared Memory Implementation
+
+HORUS uses Linux's `/dev/shm` for inter-process communication:
+
+- **Location:** `/dev/shm/horus/topics/`
+- **Format:** Memory-mapped files
+- **Speed:** Direct memory access (no kernel copies)
+- **Size:** Configurable per topic
+
+**Check your shared memory:**
+```bash
+df -h /dev/shm           # Available space
+ls -lh /dev/shm/horus/   # Active topics
+```
+
+### Performance Characteristics
+
+**IPC Latency Benchmarks:**
+- Min: 312ns
+- Median: 400ns
+- Max: 481ns
+- p99: 450ns
+
+**Throughput:**
+- Small messages (&lt;1KB): 2M+ msgs/sec
+- Large messages (1MB): Limited by memory bandwidth
+
+**Memory Usage:**
+- Framework overhead: ~2MB
+- Per topic: Configurable (default 1MB)
+- Per node: Depends on your implementation
+
+### Built in Rust
+
+HORUS leverages Rust for:
+
+**Safety** - Compile-time guarantees:
+- No null pointer dereferences
+- No data races
+- No use-after-free bugs
+
+**Performance** - Zero-cost abstractions:
+- No garbage collection pauses
+- Predictable memory layout
+- LLVM optimizations
+
+**Concurrency** - Fearless concurrency:
+- Send/Sync traits prevent data races
+- Ownership prevents sharing mutable state
+
+## Learning Path
+
+**Start here:**
+1. [Installation](/getting-started/installation) - Get HORUS installed
+2. [Quick Start](/getting-started/quick-start) - Build your first app in 10 minutes
+3. [First Application](/getting-started/first-application) - Detailed walkthrough
+
+**Core concepts:**
+4. [Nodes](/core-concepts-nodes) - Build components
+5. [Hub](/core-concepts-hub) - Pub/sub communication
+6. [Scheduler](/core-concepts-scheduler) - Run your application
+
+**Practical features:**
+7. [node! Macro](/node-macro) - Reduce boilerplate
+8. [message! Macro](/message-macro) - Custom message types
+9. [Dashboard](/dashboard) - Monitor and debug
+
+**Advanced:**
+10. [Multi-Language](/multi-language) - Python and C integration
+11. [Performance](/performance) - Optimize for speed
+12. [Examples](/examples) - Real projects
+
+## Next Steps
+
+Ready to start building with HORUS?
+
+1. **[Install HORUS](/getting-started/installation)**
+   Get up and running in 5 minutes
+
+2. **[Quick Start Tutorial](/getting-started/quick-start)**
+   Build your first HORUS application
+
+3. **[See Examples](/examples)**
+   Learn from real projects
+
+**Questions?** Check out [CLI Reference](/cli-reference) or [Architecture](/architecture).
+
+Let's build something fast!

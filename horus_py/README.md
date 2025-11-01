@@ -112,9 +112,9 @@ scheduler.run(duration=5)
 
 # Using scheduler with explicit priorities (deterministic execution)
 scheduler = horus.Scheduler()
-scheduler.register(sensor_node, priority=0, logging=True)   # Runs first
-scheduler.register(control_node, priority=1, logging=False) # Runs second
-scheduler.register(motor_node, priority=2, logging=True)    # Runs third
+scheduler.add(sensor_node, priority=0, logging_enabled=True)   # Runs first
+scheduler.add(control_node, priority=1, logging_enabled=False) # Runs second
+scheduler.add(motor_node, priority=2, logging_enabled=True)    # Runs third
 scheduler.run(duration=5)
 ```
 
@@ -215,9 +215,9 @@ Each node can run at its own independent rate:
 scheduler = horus.Scheduler()
 
 # Different nodes, different rates
-scheduler.register(sensor_node, priority=0, logging=True, rate_hz=100.0)   # 100Hz sensor
-scheduler.register(control_node, priority=1, logging=False, rate_hz=50.0)  # 50Hz control
-scheduler.register(logger_node, priority=2, logging=True, rate_hz=10.0)    # 10Hz logging
+scheduler.add(sensor_node, priority=0, logging_enabled=True, rate_hz=100.0)   # 100Hz sensor
+scheduler.add(control_node, priority=1, logging_enabled=False, rate_hz=50.0)  # 50Hz control
+scheduler.add(logger_node, priority=2, logging_enabled=True, rate_hz=10.0)    # 10Hz logging
 
 # Change rate at runtime
 scheduler.set_node_rate("sensor", 200.0)
@@ -344,9 +344,9 @@ logger = horus.Node(name="log", subs="cmd_vel", tick=logger_tick, rate=10)
 
 # Configure with priorities and logging
 scheduler = horus.Scheduler()
-scheduler.add(sensor, priority=0, logging=True)
-scheduler.add(controller, priority=1, logging=False)
-scheduler.add(logger, priority=2, logging=True)
+scheduler.add(sensor, priority=0, logging_enabled=True)
+scheduler.add(controller, priority=1, logging_enabled=False)
+scheduler.add(logger, priority=2, logging_enabled=True)
 
 scheduler.run(duration=5.0)
 
@@ -382,11 +382,11 @@ actuator = horus.Node(
     tick=lambda n: send_to_motor(n.get("motor_cmd")) if n.has_msg("motor_cmd") else None
 )
 
-# Register with priorities (lower = higher priority)
+# Add nodes with priorities (lower = higher priority)
 scheduler = horus.Scheduler()
-scheduler.register(sensor, priority=0, logging=True)      # Runs FIRST
-scheduler.register(controller, priority=1, logging=False) # Runs SECOND
-scheduler.register(actuator, priority=2, logging=True)    # Runs THIRD
+scheduler.add(sensor, priority=0, logging_enabled=True)      # Runs FIRST
+scheduler.add(controller, priority=1, logging_enabled=False) # Runs SECOND
+scheduler.add(actuator, priority=2, logging_enabled=True)    # Runs THIRD
 scheduler.run()
 ```
 
@@ -396,13 +396,13 @@ scheduler.run()
 - **Reproducible behavior**: Same input produces same output every time
 - **Debugging**: Easier to reason about system behavior
 
-### Chainable Registration
+### Batch Adding Nodes
 ```python
 scheduler = horus.Scheduler()
-scheduler.register(node1, 0, True) \
-         .register(node2, 1, False) \
-         .register(node3, 2, True) \
-         .run()
+scheduler.add(node1, 0, True)
+scheduler.add(node2, 1, False)
+scheduler.add(node3, 2, True)
+scheduler.run()
 ```
 
 ## Design Philosophy

@@ -237,14 +237,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create scheduler
     let mut scheduler = Scheduler::new();
 
-    // Register nodes with priorities (higher priority = runs first)
-    scheduler.register(Box::new(motor_driver), 0, Some(false)); // High priority
-    scheduler.register(Box::new(controller), 1, Some(false)); // Normal priority
+    // Add nodes with priorities (lower priority number = runs first)
+    scheduler.add(Box::new(motor_driver), 0, Some(false)); // High priority
+    scheduler.add(Box::new(controller), 1, Some(false)); // Normal priority
 
     println!("Starting control loop... (Ctrl+C to stop)\n");
 
     // Run forever (Ctrl+C to stop)
-    scheduler.tick_all()?;
+    scheduler.run()?;
 
     Ok(())
 }

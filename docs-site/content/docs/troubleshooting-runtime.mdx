@@ -1,0 +1,485 @@
+---
+title: Troubleshooting Runtime Errors
+description: Common HORUS runtime errors and how to fix them
+order: 13
+---
+
+# Troubleshooting Runtime Errors
+
+This guide helps you diagnose and fix common errors that occur when running HORUS applications. For installation issues, see [Installation Troubleshooting](/troubleshooting).
+
+## Quick Diagnostic Steps
+
+When your HORUS application isn't working:
+
+1. **Check the Dashboard**: Run `horus dashboard` to see active nodes, topics, and message flow
+2. **Examine Logs**: Look for error messages in your terminal output
+3. **Verify Topics**: Ensure publisher and subscriber use exact same topic names
+4. **Check Shared Memory**: Look in `/dev/shm/` for stale HORUS memory regions
+5. **Test Individually**: Run nodes one at a time to isolate the problem
+
+---
+
+## Hub Creation Errors
+
+### Error: "Hub creation failed" or "Failed to create Hub<T>"
+
+**Symptom**: Application crashes on startup with:
+```
+Error: Failed to create Hub<MyMessage>
+thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value'
+```
+
+**Common Causes**:
+
+1. **Stale Shared Memory from Previous Run**
+   - HORUS uses `/dev/shm/horus_*` for communication
+   - If your app crashes, these files persist
+
+   **Fix**: Clean shared memory:
+   ```bash
+   # Remove all HORUS shared memory
+   rm -f /dev/shm/horus_*
+   ```
+
+2. **Permission Issues**
+   - You may not have write access to `/dev/shm/`
+
+   **Fix**: Check permissions:
+   ```bash
+   ls -la /dev/shm/ | grep horus
+   # Should show your user as owner
+
+   # If not, remove with sudo
+   sudo rm -f /dev/shm/horus_*
+   ```
+
+3. **Conflicting Topic Names**
+   - Two Hubs with same name but different types
+
+   **Fix**: Use unique topic names:
+   ```rust
+   // BAD: Same name, different types
+   let hub1: Hub<f32> = Hub::new("data")?;
+   let hub2: Hub<String> = Hub::new("data")?;  // CONFLICT!
+
+   // GOOD: Different names
+   let hub1: Hub<f32> = Hub::new("sensor_data")?;
+   let hub2: Hub<String> = Hub::new("status_data")?;
+   ```
+
+---
+
+## Message Communication Issues
+
+### Problem: "No messages received" - recv() always returns None
+
+**Symptom**: Subscriber node never receives messages even though publisher is sending.
+
+**Common Causes**:
+
+1. **Topic Name Mismatch**
+   - Publisher and subscriber use different topic names
+   - Typos are the #1 cause
+
+   **Fix**: Verify exact topic names:
+   ```rust
+   // Publisher
+   let pub_hub: Hub<f32> = Hub::new("sensor_data")?;  // Note: sensor_data
+
+   // Subscriber
+   let sub_hub: Hub<f32> = Hub::new("sensordata")?;   // TYPO! Missing underscore
+
+   // CORRECT:
+   let sub_hub: Hub<f32> = Hub::new("sensor_data")?;  // Exact match
+   ```
+
+   **Debug with Dashboard**:
+   ```bash
+   horus dashboard
+   ```
+   Check the "Topics" section to see active topic names.
+
+2. **Type Mismatch**
+   - Publisher and subscriber use different message types
+
+   **Fix**: Ensure both use same type:
+   ```rust
+   // Publisher
+   let pub_hub: Hub<f32> = Hub::new("data")?;
+   pub_hub.send(3.14, ctx).ok();
+
+   // Subscriber (WRONG TYPE)
+   let sub_hub: Hub<f64> = Hub::new("data")?;  // f64 != f32
+
+   // CORRECT:
+   let sub_hub: Hub<f32> = Hub::new("data")?;  // Same type
+   ```
+
+3. **Publisher Hasn't Sent Yet**
+   - Subscriber starts before publisher sends first message
+   - This is normal! First recv() will return None
+
+   **Fix**: Check multiple ticks:
+   ```rust
+   impl Node for SubscriberNode {
+       fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+           if let Some(msg) = self.hub.recv(ctx) {
+               // Process message
+           } else {
+               // No message yet - this is OK on first few ticks
+           }
+       }
+   }
+   ```
+
+4. **Wrong Priority Order**
+   - Subscriber runs before publisher in same tick
+
+   **Fix**: Set priorities correctly:
+   ```rust
+   // Publisher should run first (lower priority number)
+   scheduler.add(Box::new(PublisherNode::new()?), 0, Some(true));
+
+   // Subscriber runs after (higher priority number)
+   scheduler.add(Box::new(SubscriberNode::new()?), 1, Some(true));
+   ```
+
+---
+
+## Deadlock and Hanging Issues
+
+### Problem: Application hangs, no output, no progress
+
+**Symptom**: Your app starts but freezes with no error messages.
+
+**Common Causes**:
+
+1. **Circular Priority Dependencies**
+   - Node A waits for Node B, Node B waits for Node A
+
+   **Fix**: Ensure data flows one direction:
+   ```rust
+   // BAD: Circular dependency
+   // Node A (priority 0) subscribes to "data_b"
+   // Node B (priority 1) subscribes to "data_a"
+   // Both wait for each other!
+
+   // GOOD: Unidirectional flow
+   // Node A (priority 0) publishes to "data_a"
+   // Node B (priority 1) subscribes to "data_a", publishes to "data_b"
+   // Node C (priority 2) subscribes to "data_b"
+   ```
+
+2. **Blocking Operations in tick()**
+   - Long-running computation or I/O blocks the scheduler
+
+   **Fix**: Keep tick() fast:
+   ```rust
+   // BAD: Blocks scheduler
+   fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+       std::thread::sleep(Duration::from_secs(5));  // BLOCKS EVERYTHING!
+   }
+
+   // GOOD: Use frame_time to control timing
+   fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+       // Quick operations only
+       self.hub.send(data, ctx).ok();
+   }
+   ```
+
+3. **Infinite Loop in tick()**
+   - Node never returns from tick()
+
+   **Fix**: Remove infinite loops:
+   ```rust
+   // BAD: Never exits tick()
+   fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+       loop {
+           // This runs forever!
+       }
+   }
+
+   // GOOD: Scheduler calls tick() repeatedly
+   fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+       // Do work once per tick
+       // Scheduler will call this again next frame
+   }
+   ```
+
+---
+
+## Message Size Issues
+
+### Error: "Message too large" or allocation failure
+
+**Symptom**: Compilation error or runtime panic when creating large messages.
+
+**Cause**: Message exceeds shared memory limits (typically a few MB).
+
+**Fix**: Use fixed-size arrays instead of Vec:
+
+```rust
+// BAD: Variable size
+#[derive(Clone, Serialize, Deserialize)]
+pub struct LargeMessage {
+    pub data: Vec<u8>,  // Can be any size - may exceed limit
+}
+
+// GOOD: Fixed size
+#[derive(Clone, Serialize, Deserialize)]
+pub struct LargeMessage {
+    pub data: [u8; 4096],  // Fixed 4KB
+}
+
+// BETTER: Split into multiple messages
+#[derive(Clone, Serialize, Deserialize)]
+pub struct MessageChunk {
+    pub chunk_id: u32,
+    pub total_chunks: u32,
+    pub data: [u8; 1024],
+}
+```
+
+---
+
+## Build and Compilation Issues
+
+### Error: "unresolved import" or "cannot find type in this scope"
+
+**Symptom**: Code won't compile, missing types or functions.
+
+**Fix**: Add HORUS to Cargo.toml:
+
+```toml
+[dependencies]
+horus = "0.1"
+horus_library = "0.1"  # For standard messages
+```
+
+Import the prelude:
+```rust
+use horus::prelude::*;
+use horus_library::messages::*;  // For CmdVel, LaserScan, etc.
+```
+
+### Error: "trait bound ... is not satisfied"
+
+**Symptom**: Compiler says your message doesn't implement required traits.
+
+**Fix**: Add required derives:
+```rust
+// Add these three derives to all messages
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MyMessage {
+    pub field: f32,
+}
+```
+
+---
+
+## Using the Dashboard for Debugging
+
+The HORUS dashboard is your best debugging tool. It shows real-time information about your running application.
+
+### Start the Dashboard
+
+```bash
+# In a separate terminal
+horus dashboard
+```
+
+Then open your browser to `http://localhost:7777` (or the displayed URL).
+
+### Dashboard Features
+
+**1. Nodes Tab**
+- See all running nodes
+- Check node priorities
+- Verify node names match your code
+
+**2. Topics Tab**
+- See all active topics
+- Check topic names (catch typos!)
+- See message types for each topic
+- View message counts (is data flowing?)
+
+**3. Metrics Tab**
+- CPU usage per node
+- Memory usage
+- Message rates (messages/second)
+- Identify performance bottlenecks
+
+**4. Logs Tab**
+- See all log messages from nodes
+- Filter by severity (debug/info/warn/error)
+- Identify error messages
+
+### Example Debugging Session
+
+**Problem**: Subscriber not receiving messages
+
+**Dashboard Investigation**:
+1. Go to Topics tab
+2. Find your topic name - is it there?
+   - **Not listed**: Publisher isn't sending (check publisher code)
+   - **Listed**: Topic exists, check the message type
+3. Check message count - is it increasing?
+   - **Yes**: Messages flowing, subscriber has wrong topic name
+   - **No**: Publisher not sending, check publisher tick()
+4. Check Nodes tab - are both nodes running?
+   - If missing, node crashed during init()
+
+---
+
+## Reading Log Output
+
+### Log Levels
+
+HORUS nodes can log at different severity levels:
+
+```rust
+fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    if let Some(ctx) = ctx {
+        ctx.log_debug("Detailed info for debugging");
+        ctx.log_info("Normal informational message");
+        ctx.log_warn("Something unusual happened");
+        ctx.log_error("Something went wrong!");
+    }
+}
+```
+
+**Enable debug logs**:
+```bash
+RUST_LOG=debug horus run main.rs
+```
+
+### Interpreting Timestamps
+
+Logs include nanosecond timestamps:
+
+```
+[1234567890123456789] [INFO] [SensorNode] Sensor initialized
+│                     │      │           │
+│                     │      │           └─ Node name
+│                     │      └─ Log level
+│                     └─ Timestamp (nanoseconds since epoch)
+```
+
+Calculate time between events:
+```
+Event 1: 1234567890123456789
+Event 2: 1234567890623456789
+Diff:                500000000 (500ms)
+```
+
+---
+
+## Common Patterns and Anti-Patterns
+
+### ✅ DO: Check recv() for None
+
+```rust
+fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    if let Some(msg) = self.hub.recv(ctx) {
+        // Process message
+    }
+    // No message? That's OK, just continue
+}
+```
+
+### ❌ DON'T: Unwrap recv()
+
+```rust
+fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    let msg = self.hub.recv(ctx).unwrap();  // PANIC if no message!
+}
+```
+
+### ✅ DO: Use Result for errors
+
+```rust
+impl Node for MyNode {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        if self.sensor.is_broken() {
+            return Err("Sensor initialization failed".to_string());
+        }
+        Ok(())
+    }
+}
+```
+
+### ❌ DON'T: panic!() in nodes
+
+```rust
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    if self.sensor.is_broken() {
+        panic!("Sensor broken");  // DON'T DO THIS
+    }
+    Ok(())
+}
+```
+
+### ✅ DO: Keep tick() fast
+
+```rust
+fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    // Quick operations only
+    let data = self.sensor.read_cached();
+    self.hub.send(data, ctx).ok();
+}
+```
+
+### ❌ DON'T: Block in tick()
+
+```rust
+fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    thread::sleep(Duration::from_millis(100));  // Blocks everything!
+    let data = self.network.fetch();  // Network I/O blocks!
+}
+```
+
+---
+
+## Still Stuck?
+
+If you're still having issues:
+
+1. **Check GitHub Issues**: https://github.com/anthropics/horus/issues
+   - Search for similar problems
+   - Create a new issue with:
+     - Full error message
+     - Minimal code example
+     - Output from `horus version`
+     - OS and platform
+
+2. **Enable Verbose Logging**:
+   ```bash
+   RUST_LOG=trace horus run main.rs
+   ```
+
+3. **Test with Minimal Example**:
+   - Strip down to simplest possible code
+   - Add complexity back one piece at a time
+   - Identify what causes the error
+
+4. **Check System Resources**:
+   ```bash
+   # Check available shared memory
+   df -h /dev/shm
+
+   # Check HORUS files
+   ls -lh /dev/shm/horus_*
+
+   # Clean if needed
+   rm -f /dev/shm/horus_*
+   ```
+
+---
+
+## Next Steps
+
+- Review [Core Concepts - Nodes](/core-concepts-nodes) for node lifecycle details
+- Learn about [Testing](/testing) to catch errors early
+- Explore [Examples](/examples) for working code patterns
+- Read [Performance](/performance) to optimize your application

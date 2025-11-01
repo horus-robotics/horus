@@ -12,10 +12,10 @@
 //! use horus_core::Scheduler;
 //!
 //! let mut scheduler = Scheduler::new();
-//! scheduler.register(Box::new(sensor_node), 10, Some(true));  // Enable logging
-//! scheduler.register(Box::new(control_node), 20, Some(false)); // Disable logging
-//! scheduler.register(Box::new(background_node), 200, None);    // Default logging (false)
-//! scheduler.tick_all(); // Handles initialization automatically
+//! scheduler.add(Box::new(sensor_node), 10, Some(true));  // Enable logging
+//! scheduler.add(Box::new(control_node), 20, Some(false)); // Disable logging
+//! scheduler.add(Box::new(background_node), 200, None);    // Default logging (false)
+//! scheduler.run(); // Handles initialization automatically
 //! ```
 //!
 //! ## Priority Levels

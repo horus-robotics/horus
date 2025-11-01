@@ -651,9 +651,611 @@ impl Node for ObstacleDetector {
 }
 ```
 
+## Complete Working Examples
+
+Learn by example - these are complete, runnable applications demonstrating message usage.
+
+### Example 1: Robot Teleop Controller (CmdVel)
+
+Complete differential drive robot controller using CmdVel messages.
+
+**File: `teleop_robot.rs`**
+
+```rust
+use horus::prelude::*;
+use horus_library::messages::CmdVel;
+
+// Simulated keyboard input node
+struct TeleopNode {
+    cmd_pub: Hub<CmdVel>,
+    mode: u8,  // 0=stop, 1=forward, 2=backward, 3=turn
+}
+
+impl TeleopNode {
+    fn new() -> Result<Self> {
+        Ok(Self {
+            cmd_pub: Hub::new("cmd_vel")?,
+            mode: 1,
+        })
+    }
+}
+
+impl Node for TeleopNode {
+    fn name(&self) -> &'static str { "TeleopNode" }
+
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        ctx.log_info("Teleop initialized - W/A/S/D to control");
+        Ok(())
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        // Simulate keyboard input cycling through modes
+        let cmd = match self.mode {
+            1 => CmdVel::new(1.0, 0.0),    // Forward
+            2 => CmdVel::new(-0.5, 0.0),   // Backward
+            3 => CmdVel::new(0.0, 0.8),    // Turn left
+            _ => CmdVel::zero(),            // Stop
+        };
+
+        self.cmd_pub.send(cmd, ctx).ok();
+
+        if let Some(ctx) = ctx {
+            ctx.log_info(&format!(
+                "Mode {}: linear={:.2}, angular={:.2}",
+                self.mode, cmd.linear, cmd.angular
+            ));
+        }
+
+        // Cycle modes every 50 ticks
+        self.mode = (self.mode + 1) % 4;
+    }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        // Send stop command on shutdown
+        self.cmd_pub.send(CmdVel::zero(), None).ok();
+        ctx.log_info("Teleop stopped - robot stopped");
+        Ok(())
+    }
+}
+
+// Motor driver node - converts CmdVel to wheel speeds
+struct MotorDriver {
+    cmd_sub: Hub<CmdVel>,
+    wheel_base: f32,  // Distance between wheels in meters
+}
+
+impl MotorDriver {
+    fn new(wheel_base: f32) -> Result<Self> {
+        Ok(Self {
+            cmd_sub: Hub::new("cmd_vel")?,
+            wheel_base,
+        })
+    }
+}
+
+impl Node for MotorDriver {
+    fn name(&self) -> &'static str { "MotorDriver" }
+
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        ctx.log_info(&format!(
+            "Motor driver initialized - wheel base: {:.2}m",
+            self.wheel_base
+        ));
+        Ok(())
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        if let Some(cmd) = self.cmd_sub.recv(ctx) {
+            // Convert to differential drive wheel speeds
+            // left = linear - (angular * wheel_base / 2)
+            // right = linear + (angular * wheel_base / 2)
+            let left_speed = cmd.linear - (cmd.angular * self.wheel_base / 2.0);
+            let right_speed = cmd.linear + (cmd.angular * self.wheel_base / 2.0);
+
+            if let Some(ctx) = ctx {
+                ctx.log_info(&format!(
+                    "Motors: LEFT={:.2} m/s, RIGHT={:.2} m/s",
+                    left_speed, right_speed
+                ));
+            }
+
+            // In production: send to actual motor hardware
+            // motor_controller.set_left_speed(left_speed)?;
+            // motor_controller.set_right_speed(right_speed)?;
+        }
+    }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        ctx.log_info("Motors stopped");
+        Ok(())
+    }
+}
+
+fn main() -> Result<()> {
+    let mut scheduler = Scheduler::new();
+
+    // Teleop publishes commands
+    scheduler.add(Box::new(TeleopNode::new()?), 0, Some(true));
+
+    // Motor driver subscribes and controls wheels
+    scheduler.add(Box::new(MotorDriver::new(0.3)?), 1, Some(true));
+
+    scheduler.run()?;
+    Ok(())
+}
+```
+
+**Run it:**
+```bash
+horus run teleop_robot.rs
+```
+
+**What it demonstrates:**
+- Creating and publishing CmdVel messages
+- Subscribing to CmdVel and processing commands
+- Converting twist commands to differential drive wheel speeds
+- Safe shutdown (sending stop command in shutdown())
+
+---
+
+### Example 2: IMU Sensor Fusion (IMU + Odometry)
+
+Fuse IMU and wheel odometry for better position estimates.
+
+**File: `sensor_fusion.rs`**
+
+```rust
+use horus::prelude::*;
+use horus_library::messages::{Imu, Odometry, Pose2D, Twist};
+
+// IMU sensor node - provides orientation and angular velocity
+struct ImuSensorNode {
+    imu_pub: Hub<Imu>,
+    angle: f64,
+}
+
+impl ImuSensorNode {
+    fn new() -> Result<Self> {
+        Ok(Self {
+            imu_pub: Hub::new("imu_raw")?,
+            angle: 0.0,
+        })
+    }
+}
+
+impl Node for ImuSensorNode {
+    fn name(&self) -> &'static str { "ImuSensor" }
+
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        ctx.log_info("IMU sensor initialized");
+        Ok(())
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        let mut imu = Imu::new();
+
+        // Simulate IMU readings
+        self.angle += 0.01;  // Rotating slowly
+
+        // Set orientation from Euler angles (roll, pitch, yaw)
+        imu.set_orientation_from_euler(0.0, 0.0, self.angle);
+
+        // Set angular velocity (rotating around Z axis)
+        imu.angular_velocity = [0.0, 0.0, 0.01];  // 0.01 rad/s
+
+        // Simulate accelerometer (gravity + small noise)
+        imu.linear_acceleration = [0.05, 0.03, 9.81];
+
+        if imu.is_valid() {
+            self.imu_pub.send(imu, ctx).ok();
+
+            if let Some(ctx) = ctx {
+                ctx.log_debug(&format!(
+                    "IMU: yaw={:.2} rad, gyro_z={:.3} rad/s",
+                    self.angle, imu.angular_velocity[2]
+                ));
+            }
+        }
+    }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        ctx.log_info("IMU sensor stopped");
+        Ok(())
+    }
+}
+
+// Wheel odometry node - provides position estimate
+struct WheelOdomNode {
+    odom_pub: Hub<Odometry>,
+    x: f64,
+    y: f64,
+    theta: f64,
+    velocity: f64,
+}
+
+impl WheelOdomNode {
+    fn new() -> Result<Self> {
+        Ok(Self {
+            odom_pub: Hub::new("odom_raw")?,
+            x: 0.0,
+            y: 0.0,
+            theta: 0.0,
+            velocity: 0.5,  // 0.5 m/s forward
+        })
+    }
+}
+
+impl Node for WheelOdomNode {
+    fn name(&self) -> &'static str { "WheelOdom" }
+
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        ctx.log_info("Wheel odometry initialized");
+        Ok(())
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        // Update position based on velocity (simple dead reckoning)
+        let dt = 0.01;  // Assume 100Hz
+        self.x += self.velocity * self.theta.cos() * dt;
+        self.y += self.velocity * self.theta.sin() * dt;
+        self.theta += 0.01;  // Slight rotation
+
+        // Create odometry message
+        let mut odom = Odometry::new();
+        odom.set_frames("odom", "base_link");
+
+        let pose = Pose2D::new(self.x, self.y, self.theta);
+        let twist = Twist::new_2d(self.velocity, 0.01);
+        odom.update(pose, twist);
+
+        if odom.is_valid() {
+            self.odom_pub.send(odom, ctx).ok();
+
+            if let Some(ctx) = ctx {
+                ctx.log_debug(&format!(
+                    "Odom: x={:.2}, y={:.2}, theta={:.2}",
+                    self.x, self.y, self.theta
+                ));
+            }
+        }
+    }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        ctx.log_info("Wheel odometry stopped");
+        Ok(())
+    }
+}
+
+// Sensor fusion node - combines IMU + odometry
+struct SensorFusionNode {
+    imu_sub: Hub<Imu>,
+    odom_sub: Hub<Odometry>,
+    fused_pub: Hub<Odometry>,
+}
+
+impl SensorFusionNode {
+    fn new() -> Result<Self> {
+        Ok(Self {
+            imu_sub: Hub::new("imu_raw")?,
+            odom_sub: Hub::new("odom_raw")?,
+            fused_pub: Hub::new("odom_fused")?,
+        })
+    }
+}
+
+impl Node for SensorFusionNode {
+    fn name(&self) -> &'static str { "SensorFusion" }
+
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        ctx.log_info("Sensor fusion initialized");
+        Ok(())
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        // Get latest IMU data
+        let imu_opt = self.imu_sub.recv(ctx);
+
+        // Get latest odometry data
+        let odom_opt = self.odom_sub.recv(ctx);
+
+        if let (Some(imu), Some(mut odom)) = (imu_opt, odom_opt) {
+            // Fuse: Use odometry position, but IMU orientation
+            // (IMU gyros are typically more accurate than wheel encoders for orientation)
+
+            // Extract yaw from IMU quaternion
+            let q = imu.orientation;
+            let imu_yaw = (2.0 * (q[3] * q[2] + q[0] * q[1])).atan2(
+                1.0 - 2.0 * (q[1].powi(2) + q[2].powi(2))
+            );
+
+            // Update odometry with IMU orientation
+            odom.pose.theta = imu_yaw;
+
+            // Update angular velocity from IMU
+            odom.twist.angular[2] = imu.angular_velocity[2];
+
+            // Publish fused estimate
+            self.fused_pub.send(odom, ctx).ok();
+
+            if let Some(ctx) = ctx {
+                ctx.log_info(&format!(
+                    "Fused: pos=({:.2}, {:.2}), yaw={:.2} rad (from IMU)",
+                    odom.pose.x, odom.pose.y, imu_yaw
+                ));
+            }
+        }
+    }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        ctx.log_info("Sensor fusion stopped");
+        Ok(())
+    }
+}
+
+fn main() -> Result<()> {
+    let mut scheduler = Scheduler::new();
+
+    // Sensor nodes (priority 0)
+    scheduler.add(Box::new(ImuSensorNode::new()?), 0, Some(true));
+    scheduler.add(Box::new(WheelOdomNode::new()?), 0, Some(true));
+
+    // Fusion node (priority 1 - runs after sensors)
+    scheduler.add(Box::new(SensorFusionNode::new()?), 1, Some(true));
+
+    scheduler.run()?;
+    Ok(())
+}
+```
+
+**Run it:**
+```bash
+horus run sensor_fusion.rs
+```
+
+**What it demonstrates:**
+- Creating and publishing IMU messages
+- Setting orientation from Euler angles
+- Creating Odometry messages with Pose2D and Twist
+- Simple sensor fusion (combining IMU + odometry)
+- Extracting yaw angle from quaternion
+
+---
+
+### Example 3: Custom Message Type for Multi-Sensor System
+
+Create a custom message for a complex sensor payload.
+
+**File: `custom_sensor.rs`**
+
+```rust
+use horus::prelude::*;
+use serde::{Serialize, Deserialize};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+// Custom message: Combined sensor reading
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MultiSensorReading {
+    pub timestamp: u64,           // Nanoseconds since epoch
+    pub temperature: f32,          // Celsius
+    pub humidity: f32,             // Percentage
+    pub pressure: f32,             // hPa
+    pub light_level: u16,          // Lux
+    pub motion_detected: bool,     // PIR sensor
+    pub battery_voltage: f32,      // Volts
+    pub sensor_id: u32,            // Unique sensor ID
+}
+
+impl MultiSensorReading {
+    pub fn new(sensor_id: u32) -> Self {
+        Self {
+            timestamp: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos() as u64,
+            temperature: 0.0,
+            humidity: 0.0,
+            pressure: 0.0,
+            light_level: 0,
+            motion_detected: false,
+            battery_voltage: 0.0,
+            sensor_id,
+        }
+    }
+
+    pub fn is_valid(&self) -> bool {
+        // Validation: temperature in reasonable range
+        self.temperature > -40.0 && self.temperature < 85.0 &&
+        // Humidity 0-100%
+        self.humidity >= 0.0 && self.humidity <= 100.0 &&
+        // Pressure in reasonable range (hPa)
+        self.pressure > 800.0 && self.pressure < 1200.0 &&
+        // Battery above minimum
+        self.battery_voltage > 2.5
+    }
+
+    pub fn battery_percentage(&self) -> f32 {
+        // Assume 3.0V = 0%, 4.2V = 100%
+        ((self.battery_voltage - 3.0) / 1.2 * 100.0).clamp(0.0, 100.0)
+    }
+}
+
+// Multi-sensor device node
+struct MultiSensorDevice {
+    sensor_pub: Hub<MultiSensorReading>,
+    sensor_id: u32,
+    counter: f32,
+}
+
+impl MultiSensorDevice {
+    fn new(sensor_id: u32) -> Result<Self> {
+        Ok(Self {
+            sensor_pub: Hub::new("multi_sensor_data")?,
+            sensor_id,
+            counter: 0.0,
+        })
+    }
+}
+
+impl Node for MultiSensorDevice {
+    fn name(&self) -> &'static str { "MultiSensorDevice" }
+
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        ctx.log_info(&format!("Multi-sensor {} initialized", self.sensor_id));
+        Ok(())
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        // Simulate sensor readings
+        let mut reading = MultiSensorReading::new(self.sensor_id);
+
+        reading.temperature = 22.0 + (self.counter * 0.1).sin() * 5.0;
+        reading.humidity = 50.0 + (self.counter * 0.15).cos() * 20.0;
+        reading.pressure = 1013.25 + (self.counter * 0.05).sin() * 10.0;
+        reading.light_level = ((500.0 + self.counter.sin() * 200.0) as u16).max(0);
+        reading.motion_detected = self.counter as u32 % 20 == 0;
+        reading.battery_voltage = 3.7 - (self.counter * 0.0001);  // Slow discharge
+
+        // Validate before publishing
+        if reading.is_valid() {
+            self.sensor_pub.send(reading.clone(), ctx).ok();
+
+            if let Some(ctx) = ctx {
+                ctx.log_debug(&format!(
+                    "Sensor {}: {:.1}°C, {:.0}% humidity, {}V ({:.0}% battery)",
+                    reading.sensor_id,
+                    reading.temperature,
+                    reading.humidity,
+                    reading.battery_voltage,
+                    reading.battery_percentage()
+                ));
+            }
+        } else {
+            if let Some(ctx) = ctx {
+                ctx.log_warn("Invalid sensor reading - skipping");
+            }
+        }
+
+        self.counter += 0.1;
+    }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        ctx.log_info(&format!("Sensor {} stopped", self.sensor_id));
+        Ok(())
+    }
+}
+
+// Data aggregator node - processes multiple sensors
+struct SensorAggregator {
+    sensor_sub: Hub<MultiSensorReading>,
+    readings_count: u32,
+    total_temp: f32,
+}
+
+impl SensorAggregator {
+    fn new() -> Result<Self> {
+        Ok(Self {
+            sensor_sub: Hub::new("multi_sensor_data")?,
+            readings_count: 0,
+            total_temp: 0.0,
+        })
+    }
+}
+
+impl Node for SensorAggregator {
+    fn name(&self) -> &'static str { "SensorAggregator" }
+
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        ctx.log_info("Sensor aggregator initialized");
+        Ok(())
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        // Process all available sensor readings
+        let mut readings_this_tick = 0;
+
+        while let Some(reading) = self.sensor_sub.recv(ctx) {
+            readings_this_tick += 1;
+            self.readings_count += 1;
+            self.total_temp += reading.temperature;
+
+            // Check for alerts
+            if reading.motion_detected {
+                if let Some(ctx) = ctx {
+                    ctx.log_warn(&format!(
+                        "Motion detected by sensor {}",
+                        reading.sensor_id
+                    ));
+                }
+            }
+
+            if reading.battery_percentage() < 20.0 {
+                if let Some(ctx) = ctx {
+                    ctx.log_warn(&format!(
+                        "Low battery on sensor {}: {:.0}%",
+                        reading.sensor_id,
+                        reading.battery_percentage()
+                    ));
+                }
+            }
+        }
+
+        // Report statistics every 100 ticks
+        if self.readings_count % 100 == 0 && self.readings_count > 0 {
+            let avg_temp = self.total_temp / self.readings_count as f32;
+
+            if let Some(ctx) = ctx {
+                ctx.log_info(&format!(
+                    "Stats: {} readings, avg temp: {:.1}°C",
+                    self.readings_count, avg_temp
+                ));
+            }
+        }
+    }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+        ctx.log_info(&format!(
+            "Aggregator stopped - processed {} readings",
+            self.readings_count
+        ));
+        Ok(())
+    }
+}
+
+fn main() -> Result<()> {
+    let mut scheduler = Scheduler::new();
+
+    // Multiple sensor devices
+    scheduler.add(Box::new(MultiSensorDevice::new(1)?), 0, Some(true));
+    scheduler.add(Box::new(MultiSensorDevice::new(2)?), 0, Some(true));
+
+    // Aggregator (runs after sensors)
+    scheduler.add(Box::new(SensorAggregator::new()?), 1, Some(true));
+
+    scheduler.run()?;
+    Ok(())
+}
+```
+
+**Run it:**
+```bash
+horus run custom_sensor.rs
+```
+
+**What it demonstrates:**
+- Defining custom message types with `#[derive(Clone, Serialize, Deserialize)]`
+- Adding validation methods (`is_valid()`, `battery_percentage()`)
+- Publishing custom messages through Hub
+- Subscribing to custom messages
+- Processing multiple messages per tick (aggregation pattern)
+- Generating timestamps with `SystemTime`
+
+---
+
 ## Next Steps
 
-- Explore [Examples](/examples) showing message usage patterns
-- Read the [API Reference](/api) for detailed documentation
-- Learn about [Performance Optimization](/performance) for large messages
-- Check out [Python Bindings](/python-bindings) and [C Bindings](/c-bindings) for multi-language support
+- **[Basic Examples](/basic-examples)** - Learn fundamental patterns
+- **[Advanced Examples](/advanced-examples)** - State machines, multi-process systems
+- **[Second Application](/second-application)** - Build a 3-node pipeline
+- **[API Reference](/api)** - Detailed message type documentation
+- **[Performance Optimization](/performance)** - Optimize for large messages
+- **[Python Bindings](/python-bindings)** and **[C Bindings](/c-bindings)** - Multi-language support

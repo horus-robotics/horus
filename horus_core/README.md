@@ -133,9 +133,12 @@ From `horus_core/src/scheduling/scheduler.rs`:
 ```rust
 impl Scheduler {
     pub fn new() -> Self;
-    pub fn register(&mut self, node: Box<dyn Node>, priority: u32, logging_enabled: Option<bool>) -> &mut Self;
-    pub fn tick_all(&mut self) -> HorusResult<()>;
-    pub fn tick_node(&mut self, node_names: &[&str]) -> HorusResult<()>;
+    pub fn add(&mut self, node: Box<dyn Node>, priority: u32, logging_enabled: Option<bool>) -> &mut Self;
+    pub fn run(&mut self) -> HorusResult<()>;
+    pub fn run_for(&mut self, duration: Duration) -> HorusResult<()>;
+    pub fn tick(&mut self, node_names: &[&str]) -> HorusResult<()>;
+    pub fn tick_for(&mut self, node_names: &[&str], duration: Duration) -> HorusResult<()>;
+    pub fn set_node_rate(&mut self, name: &str, rate_hz: f64) -> &mut Self;
     pub fn stop(&self);
     pub fn is_running(&self) -> bool;
 }
@@ -143,10 +146,26 @@ impl Scheduler {
 
 **Scheduler Details:**
 - Uses `tokio::runtime::Runtime` internally
-- Runs at ~60 FPS (16ms sleep between ticks)
+- Default tick rate: ~60 FPS (16ms sleep between ticks)
+- Per-node rate control: Set custom tick rates with `set_node_rate()`
 - Sorts nodes by priority each tick (0 = highest)
 - Built-in Ctrl+C handling
 - Writes heartbeats to `/dev/shm/horus/heartbeats/`
+
+**Usage Examples:**
+```rust
+// Run continuously until Ctrl+C
+scheduler.run()?;
+
+// Run for a specific duration
+scheduler.run_for(Duration::from_secs(10))?;
+
+// Run only specific nodes continuously
+scheduler.tick(&["node1", "node2"])?;
+
+// Set per-node tick rate (30 Hz for sensor_node)
+scheduler.set_node_rate("sensor_node", 30.0);
+```
 
 ## Quick Start
 
@@ -244,11 +263,11 @@ fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
 
     scheduler
-        .register(Box::new(SensorNode::new()?), 0, Some(true))
-        .register(Box::new(ControlNode::new()?), 1, Some(true));
+        .add(Box::new(SensorNode::new()?), 0, Some(true))
+        .add(Box::new(ControlNode::new()?), 1, Some(true));
 
     println!("Starting scheduler...");
-    scheduler.tick_all()?;
+    scheduler.run()?;
 
     Ok(())
 }
@@ -406,10 +425,10 @@ Example structure:
 ```rust
 let mut scheduler = Scheduler::new();
 scheduler
-    .register(Box::new(KeyboardInputNode::new()?), 0, Some(true))
-    .register(Box::new(SnakeControlNode::new()?), 2, Some(true))
-    .register(Box::new(GUINode::new()?), 3, Some(true));
-scheduler.tick_all()?;
+    .add(Box::new(KeyboardInputNode::new()?), 0, Some(true))
+    .add(Box::new(SnakeControlNode::new()?), 2, Some(true))
+    .add(Box::new(GUINode::new()?), 3, Some(true));
+scheduler.run()?;
 ```
 
 ## Development
@@ -440,4 +459,4 @@ See the main [HORUS README](../README.md) for guidelines.
 
 ## License
 
-MIT License - see [LICENSE](../LICENSE) for details.
+Apache License 2.0 - see [LICENSE](../LICENSE) for details.

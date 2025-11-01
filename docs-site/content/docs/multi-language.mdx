@@ -1,7 +1,7 @@
 ---
 title: Multi-Language Support
 description: Use HORUS with Python, C, and Rust
-order: 8
+order: 18
 ---
 
 # Multi-Language Support
@@ -46,15 +46,15 @@ horus new my-project
 
 **Learn more:** [Python Bindings](/python-bindings)
 
-### C (Alpha)
+### C++ (Alpha)
 
 **Best for:** Hardware drivers, legacy system integration, embedded systems
 
-C bindings provide low-level access to HORUS from C code. Currently in alpha with basic pub/sub support.
+C++ bindings provide low-level access to HORUS with modern RAII-based memory management. Currently in alpha with basic pub/sub support.
 
-**Status:**  Alpha - Basic functionality only
+**Status:** Alpha - Basic functionality only
 
-**Learn more:** [C Bindings](/c-bindings)
+**Learn more:** [C++ Bindings](/cpp-bindings)
 
 ## Cross-Language Communication
 
@@ -81,7 +81,7 @@ if let Some(temp) = hub.recv(None) {
 |----------|---------------------|
 | **Control loops** | Rust (lowest latency) |
 | **AI/ML models** | Python (ecosystem) |
-| **Hardware drivers** | C or Rust |
+| **Hardware drivers** | C++ or Rust |
 | **Data processing** | Python or Rust |
 | **Real-time systems** | Rust |
 | **Prototyping** | Python (fastest development) |
@@ -93,7 +93,7 @@ You can build systems with nodes in different languages:
 **Example: Robot with mixed languages**
 - **Motor controller** (Rust) - 1kHz control loop
 - **Vision processing** (Python) - PyTorch object detection
-- **Hardware driver** (C) - Legacy sensor integration
+- **Hardware driver** (C++) - Legacy sensor integration
 - **Dashboard** (Rust) - Real-time visualization
 
 All communicate through HORUS shared memory with **sub-microsecond latency**.
@@ -102,7 +102,7 @@ All communicate through HORUS shared memory with **sub-microsecond latency**.
 
 **Choose your language:**
 - [Python Bindings](/python-bindings) - Full guide with examples
-- [C Bindings](/c-bindings) - Alpha status, basic usage
+- [C++ Bindings](/cpp-bindings) - Alpha status, basic usage
 - [Quick Start](/getting-started/quick-start) - Get started with Rust
 
 **Build something:**

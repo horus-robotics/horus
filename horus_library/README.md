@@ -167,9 +167,9 @@ impl Node for KeyHandler {
 
 fn main() {
     let mut scheduler = Scheduler::new();
-    scheduler.register(Box::new(KeyboardInputNode::new()), 0, Some(true));
-    scheduler.register(Box::new(KeyHandler::new()), 1, Some(true));
-    scheduler.tick_all();
+    scheduler.add(Box::new(KeyboardInputNode::new()), 0, Some(true));
+    scheduler.add(Box::new(KeyHandler::new()), 1, Some(true));
+    scheduler.run().expect("Scheduler failed");
 }
 ```
 
@@ -338,18 +338,18 @@ fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
 
     // Input layer (highest priority)
-    scheduler.register(Box::new(KeyboardInputNode::new()?), 0, Some(true));
-    scheduler.register(Box::new(JoystickInputNode::new()?), 1, Some(true));
+    scheduler.add(Box::new(KeyboardInputNode::new()?), 0, Some(true));
+    scheduler.add(Box::new(JoystickInputNode::new()?), 1, Some(true));
 
     // Processing layer (medium priority)
-    scheduler.register(Box::new(ControllerNode::new()?), 5, Some(true));
+    scheduler.add(Box::new(ControllerNode::new()?), 5, Some(true));
 
     // Output layer (lowest priority)
-    scheduler.register(Box::new(ActuatorNode::new()?), 10, Some(true));
-    scheduler.register(Box::new(LoggerNode::new()?), 11, Some(false));
+    scheduler.add(Box::new(ActuatorNode::new()?), 10, Some(true));
+    scheduler.add(Box::new(LoggerNode::new()?), 11, Some(false));
 
     // Run with built-in Ctrl+C handling
-    scheduler.tick_all()
+    scheduler.run()
 }
 ```
 

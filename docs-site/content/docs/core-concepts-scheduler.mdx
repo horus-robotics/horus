@@ -1,10 +1,19 @@
 ---
 title: Core Concepts - Scheduler
 description: Understanding HORUS priority-based scheduler and execution orchestration
-order: 5
+order: 6
 ---
 
 # Scheduler
+
+## Key Takeaways
+
+After reading this guide, you will understand:
+- How the Scheduler orchestrates node execution through init(), tick(), and shutdown() phases
+- Why priority-based execution ensures safety-critical nodes run first every tick cycle
+- The default 60 FPS tick rate and how nodes execute in sorted priority order
+- Graceful shutdown via Ctrl+C signal handling without losing data
+- When to use different priority levels (0=Critical for emergency stops, 4=Background for logging)
 
 The Scheduler is the **execution orchestrator** in HORUS. It manages the node lifecycle, coordinates priority-based execution, and handles graceful shutdown.
 
@@ -112,6 +121,58 @@ struct RegisteredNode {
    a. Set running = false
    b. Call shutdown() on all nodes
 ```
+
+### Tick Rate Limitation
+
+**Important:** HORUS currently has a **hardcoded ~60 FPS tick rate** (~16ms per tick cycle).
+
+**What this means:**
+- The `tick_rate_fps` field is set to 60 and cannot be changed in the current version
+- Each complete tick cycle (all nodes execute once) takes approximately 16ms
+- Maximum achievable frequency: ~60 Hz
+- This is enforced by a sleep at the end of each tick cycle
+
+**Implications for your nodes:**
+```rust
+// ✓ Works perfectly - 10 Hz sensor
+// Executes once every 6 ticks (~100ms)
+impl Node for SlowSensor {
+    fn tick(&mut self, ctx) {
+        // Runs 60 times/sec, but only does work every 6th time
+    }
+}
+
+// ✓ Works well - 60 Hz control loop
+// Executes every tick (~16ms)
+impl Node for Controller {
+    fn tick(&mut self, ctx) {
+        // Runs at maximum frequency (60 Hz)
+    }
+}
+
+// ⚠️ Cannot achieve - 100 Hz+ control
+// Scheduler limited to 60 Hz maximum
+impl Node for HighFrequencyController {
+    fn tick(&mut self, ctx) {
+        // Will only run 60 times/sec, not 100+
+    }
+}
+```
+
+**Workaround for higher frequencies:**
+Run nodes in separate processes with their own schedulers. Each process can independently achieve ~60 Hz.
+
+```bash
+# Process 1: High-frequency sensor (60 Hz max)
+horus run high_freq_sensor.rs &
+
+# Process 2: Normal controller (60 Hz max)
+horus run controller.rs &
+
+# Both run at 60 Hz independently
+```
+
+**Roadmap:** Configurable per-node tick rates and removal of the global 60 FPS limit are planned for future releases. See [Roadmap](/roadmap) for details.
 
 ## Priority-Based Execution
 

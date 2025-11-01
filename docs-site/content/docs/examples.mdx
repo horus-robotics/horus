@@ -1,1060 +1,242 @@
 ---
 title: Examples
-description: Practical HORUS code examples and patterns
-order: 9
+description: Complete HORUS code examples and patterns
+order: 45
 ---
 
-# Examples
+# HORUS Examples
 
-Learn HORUS through practical examples. All code is production-ready and demonstrates best practices.
-
-## Basic Publisher-Subscriber
-
-The foundational pattern in HORUS: one node publishes data, another subscribes.
-
-### Publisher Node
-
-```rust
-use horus::prelude::*;
-
-// Define publisher node
-struct SensorNode {
-    data_pub: Hub<f32>,
-    counter: f32,
-}
-
-impl SensorNode {
-    fn new() -> Result<Self> {
-        Ok(Self {
-            data_pub: Hub::new("sensor_data")?,
-            counter: 0.0,
-        })
-    }
-}
-
-impl Node for SensorNode {
-    fn name(&self) -> &'static str {
-        "SensorNode"
-    }
-
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
-        ctx.log_info("Sensor initialized");
-        Ok(())
-    }
-
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        // Simulate sensor reading
-        let reading = self.counter.sin() * 10.0;
-
-        // Publish data
-        self.data_pub.send(reading, ctx).ok();
-
-        self.counter += 0.1;
-    }
-}
-
-fn main() -> Result<()> {
-    let mut scheduler = Scheduler::new();
-    scheduler.add(Box::new(SensorNode::new()?), 0, Some(true));
-    scheduler.run()?;
-    Ok(())
-}
-```
-
-### Subscriber Node
-
-```rust
-use horus::prelude::*;
-
-struct ProcessorNode {
-    data_sub: Hub<f32>,
-}
-
-impl ProcessorNode {
-    fn new() -> Result<Self> {
-        Ok(Self {
-            data_sub: Hub::new("sensor_data")?,
-        })
-    }
-}
-
-impl Node for ProcessorNode {
-    fn name(&self) -> &'static str {
-        "ProcessorNode"
-    }
-
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        if let Some(data) = self.data_sub.recv(ctx) {
-            // Process received data
-            let processed = data * 2.0;
-
-            if let Some(ctx) = ctx {
-                ctx.log_debug(&format!("Processed: {:.2}", processed));
-            }
-        }
-    }
-}
-
-fn main() -> Result<()> {
-    let mut scheduler = Scheduler::new();
-    scheduler.add(Box::new(ProcessorNode::new()?), 0, Some(true));
-    scheduler.run()?;
-    Ok(())
-}
-```
-
-### Combined Application
-
-```rust
-use horus::prelude::*;
-
-// Publisher
-struct SensorNode {
-    data_pub: Hub<f32>,
-    counter: f32,
-}
-
-impl Node for SensorNode {
-    fn name(&self) -> &'static str { "SensorNode" }
-
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        let reading = self.counter.sin() * 10.0;
-        self.data_pub.send(reading, ctx).ok();
-        self.counter += 0.1;
-    }
-}
-
-// Subscriber
-struct ProcessorNode {
-    data_sub: Hub<f32>,
-}
-
-impl Node for ProcessorNode {
-    fn name(&self) -> &'static str { "ProcessorNode" }
-
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        if let Some(data) = self.data_sub.recv(ctx) {
-            // Process data
-        }
-    }
-}
-
-fn main() -> Result<()> {
-    let mut scheduler = Scheduler::new();
-
-    // Add both nodes
-    scheduler.add(Box::new(SensorNode {
-        data_pub: Hub::new("sensor_data")?,
-        counter: 0.0,
-    }), 0, Some(true));
-
-    scheduler.add(Box::new(ProcessorNode {
-        data_sub: Hub::new("sensor_data")?,
-    }), 1, Some(true));
-
-    // Run both nodes together
-    scheduler.run()?;
-    Ok(())
-}
-```
-
-## Robot Velocity Controller
-
-Control a robot using CmdVel messages.
-
-```rust
-use horus::prelude::*;
-use horus_library::messages::CmdVel;
-
-// Keyboard input  velocity commands
-struct TeleopNode {
-    cmd_pub: Hub<CmdVel>,
-}
-
-impl Node for TeleopNode {
-    fn name(&self) -> &'static str { "TeleopNode" }
-
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        // Simulate keyboard input (w/a/s/d)
-        let cmd = CmdVel::new(1.0, 0.5);  // Forward + turn
-        self.cmd_pub.send(cmd, ctx).ok();
-    }
-}
-
-// Velocity commands  motor control
-struct MotorDriverNode {
-    cmd_sub: Hub<CmdVel>,
-}
-
-impl Node for MotorDriverNode {
-    fn name(&self) -> &'static str { "MotorDriverNode" }
-
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        if let Some(cmd) = self.cmd_sub.recv(ctx) {
-            // Convert to motor speeds
-            let left_speed = cmd.linear - cmd.angular;
-            let right_speed = cmd.linear + cmd.angular;
-
-            // Send to motors
-            if let Some(ctx) = ctx {
-                ctx.log_debug(&format!(
-                    "Motors: L={:.2}, R={:.2}",
-                    left_speed, right_speed
-                ));
-            }
-        }
-    }
-}
-
-fn main() -> Result<()> {
-    let mut scheduler = Scheduler::new();
-
-    scheduler.add(Box::new(TeleopNode {
-        cmd_pub: Hub::new("cmd_vel")?,
-    }), 0, Some(true));
-
-    scheduler.add(Box::new(MotorDriverNode {
-        cmd_sub: Hub::new("cmd_vel")?,
-    }), 1, Some(true));
-
-    scheduler.run()?;
-    Ok(())
-}
-```
-
-## Lidar Obstacle Detection
-
-Process laser scan data to detect obstacles.
-
-```rust
-use horus::prelude::*;
-use horus_library::messages::{LaserScan, CmdVel};
-
-// Lidar  Scan data
-struct LidarNode {
-    scan_pub: Hub<LaserScan>,
-}
-
-impl Node for LidarNode {
-    fn name(&self) -> &'static str { "LidarNode" }
-
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        let mut scan = LaserScan::new();
-
-        // Simulate lidar readings
-        for i in 0..360 {
-            scan.ranges[i] = 5.0 + (i as f32 * 0.01).sin();
-        }
-
-        self.scan_pub.send(scan, ctx).ok();
-    }
-}
-
-// Scan data  Obstacle detection
-struct ObstacleDetector {
-    scan_sub: Hub<LaserScan>,
-    cmd_pub: Hub<CmdVel>,
-    safety_distance: f32,
-}
-
-impl Node for ObstacleDetector {
-    fn name(&self) -> &'static str { "ObstacleDetector" }
-
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        if let Some(scan) = self.scan_sub.recv(ctx) {
-            // Find minimum distance
-            if let Some(min_dist) = scan.min_range() {
-                if min_dist < self.safety_distance {
-                    // Emergency stop!
-                    let stop = CmdVel::zero();
-                    self.cmd_pub.send(stop, ctx).ok();
-
-                    if let Some(ctx) = ctx {
-                        ctx.log_warning(&format!(
-                            "Obstacle detected at {:.2}m - stopping!",
-                            min_dist
-                        ));
-                    }
-                }
-            }
-        }
-    }
-}
-
-fn main() -> Result<()> {
-    let mut scheduler = Scheduler::new();
-
-    scheduler.add(Box::new(LidarNode {
-        scan_pub: Hub::new("scan")?,
-    }), 0, Some(true));
-
-    // Obstacle detector runs with High priority (1)
-    scheduler.add(Box::new(ObstacleDetector {
-        scan_sub: Hub::new("scan")?,
-        cmd_pub: Hub::new("cmd_vel")?,
-        safety_distance: 0.5,  // 50cm
-    }), 1, Some(true));
-
-    scheduler.run()?;
-    Ok(())
-}
-```
-
-## PID Controller
-
-Implement a PID controller node for position tracking.
-
-```rust
-use horus::prelude::*;
-
-struct PIDController {
-    setpoint_sub: Hub<f32>,    // Desired position
-    feedback_sub: Hub<f32>,    // Current position
-    output_pub: Hub<f32>,      // Control output
-
-    kp: f32,  // Proportional gain
-    ki: f32,  // Integral gain
-    kd: f32,  // Derivative gain
-
-    integral: f32,
-    last_error: f32,
-}
-
-impl PIDController {
-    fn new(kp: f32, ki: f32, kd: f32) -> Result<Self> {
-        Ok(Self {
-            setpoint_sub: Hub::new("setpoint")?,
-            feedback_sub: Hub::new("feedback")?,
-            output_pub: Hub::new("control_output")?,
-            kp, ki, kd,
-            integral: 0.0,
-            last_error: 0.0,
-        })
-    }
-}
-
-impl Node for PIDController {
-    fn name(&self) -> &'static str { "PIDController" }
-
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        // Get setpoint and current position
-        let setpoint = self.setpoint_sub.recv(ctx).unwrap_or(0.0);
-        let feedback = self.feedback_sub.recv(ctx).unwrap_or(0.0);
-
-        // Calculate error
-        let error = setpoint - feedback;
-
-        // Integral term
-        self.integral += error;
-
-        // Derivative term
-        let derivative = error - self.last_error;
-
-        // PID output
-        let output = self.kp * error
-                   + self.ki * self.integral
-                   + self.kd * derivative;
-
-        // Publish control output
-        self.output_pub.send(output, ctx).ok();
-
-        // Update state
-        self.last_error = error;
-    }
-}
-```
-
-## App (Multi-Node Pipeline)
-
-Chain multiple processing stages together.
-
-```rust
-use horus::prelude::*;
-
-// Stage 1: Data acquisition
-struct SensorNode {
-    raw_pub: Hub<f32>,
-}
-
-impl Node for SensorNode {
-    fn name(&self) -> &'static str { "SensorNode" }
-
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        let raw_data = 42.0;  // Read sensor
-        self.raw_pub.send(raw_data, ctx).ok();
-    }
-}
-
-// Stage 2: Filtering
-struct FilterNode {
-    raw_sub: Hub<f32>,
-    filtered_pub: Hub<f32>,
-    alpha: f32,  // Low-pass filter coefficient
-    filtered_value: f32,
-}
-
-impl Node for FilterNode {
-    fn name(&self) -> &'static str { "FilterNode" }
-
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        if let Some(raw) = self.raw_sub.recv(ctx) {
-            // Exponential moving average
-            self.filtered_value = self.alpha * raw
-                                + (1.0 - self.alpha) * self.filtered_value;
-
-            self.filtered_pub.send(self.filtered_value, ctx).ok();
-        }
-    }
-}
-
-// Stage 3: Decision making
-struct ControllerNode {
-    filtered_sub: Hub<f32>,
-    cmd_pub: Hub<f32>,
-}
-
-impl Node for ControllerNode {
-    fn name(&self) -> &'static str { "ControllerNode" }
-
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        if let Some(value) = self.filtered_sub.recv(ctx) {
-            let command = if value > 50.0 { 1.0 } else { 0.0 };
-            self.cmd_pub.send(command, ctx).ok();
-        }
-    }
-}
-
-fn main() -> Result<()> {
-    let mut scheduler = Scheduler::new();
-
-    // Add pipeline stages
-    scheduler.add(Box::new(SensorNode {
-        raw_pub: Hub::new("raw_data")?,
-    }), 0, Some(true));
-
-    scheduler.add(Box::new(FilterNode {
-        raw_sub: Hub::new("raw_data")?,
-        filtered_pub: Hub::new("filtered_data")?,
-        alpha: 0.1,
-        filtered_value: 0.0,
-    }), 1, Some(true));
-
-    scheduler.add(Box::new(ControllerNode {
-        filtered_sub: Hub::new("filtered_data")?,
-        cmd_pub: Hub::new("commands")?,
-    }), 2, Some(true));
-
-    scheduler.run()?;
-    Ok(())
-}
-```
-
-## State Machine Node
-
-Implement behavior using state machines.
-
-```rust
-use horus::prelude::*;
-
-#[derive(Debug, Clone, Copy)]
-enum RobotState {
-    Idle,
-    Moving,
-    ObstacleDetected,
-    Rotating,
-}
-
-struct StateMachineNode {
-    state: RobotState,
-    obstacle_sub: Hub<bool>,
-    cmd_pub: Hub<f32>,
-    rotation_counter: u32,
-}
-
-impl Node for StateMachineNode {
-    fn name(&self) -> &'static str { "StateMachineNode" }
-
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        // Check for obstacles
-        let obstacle = self.obstacle_sub.recv(ctx).unwrap_or(false);
-
-        // State machine logic
-        match self.state {
-            RobotState::Idle => {
-                if !obstacle {
-                    self.state = RobotState::Moving;
-                    if let Some(ctx) = ctx {
-                        ctx.log_info("Starting to move");
-                    }
-                }
-            }
-
-            RobotState::Moving => {
-                if obstacle {
-                    self.state = RobotState::ObstacleDetected;
-                    self.cmd_pub.send(0.0, ctx).ok();  // Stop
-                } else {
-                    self.cmd_pub.send(1.0, ctx).ok();  // Move forward
-                }
-            }
-
-            RobotState::ObstacleDetected => {
-                self.state = RobotState::Rotating;
-                self.rotation_counter = 0;
-                if let Some(ctx) = ctx {
-                    ctx.log_warning("Obstacle detected, rotating");
-                }
-            }
-
-            RobotState::Rotating => {
-                self.cmd_pub.send(0.5, ctx).ok();  // Rotate
-                self.rotation_counter += 1;
-
-                if self.rotation_counter > 50 {
-                    self.state = RobotState::Moving;
-                }
-            }
-        }
-    }
-}
-```
-
-## Priority-Based Safety System
-
-Use priority levels to ensure safety-critical tasks run first.
-
-```rust
-use horus::prelude::*;
-
-// CRITICAL PRIORITY: Emergency stop
-struct EmergencyStopNode {
-    battery_sub: Hub<f32>,
-    estop_pub: Hub<bool>,
-}
-
-impl Node for EmergencyStopNode {
-    fn name(&self) -> &'static str { "EmergencyStop" }
-
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        if let Some(battery) = self.battery_sub.recv(ctx) {
-            if battery < 10.0 {
-                self.estop_pub.send(true, ctx).ok();
-                if let Some(ctx) = ctx {
-                    ctx.log_error("CRITICAL: Battery low - emergency stop!");
-                }
-            }
-        }
-    }
-}
-
-// HIGH PRIORITY: Motor controller
-struct MotorController {
-    estop_sub: Hub<bool>,
-    cmd_sub: Hub<f32>,
-}
-
-impl Node for MotorController {
-    fn name(&self) -> &'static str { "MotorController" }
-
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        // Check emergency stop first
-        if let Some(true) = self.estop_sub.recv(ctx) {
-            return;  // Don't move if estop active
-        }
-
-        if let Some(cmd) = self.cmd_sub.recv(ctx) {
-            // Execute motor command
-        }
-    }
-}
-
-// BACKGROUND PRIORITY: Logging
-struct LoggerNode {
-    data_sub: Hub<f32>,
-}
-
-impl Node for LoggerNode {
-    fn name(&self) -> &'static str { "Logger" }
-
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        if let Some(data) = self.data_sub.recv(ctx) {
-            // Log to file (slow operation)
-        }
-    }
-}
-
-fn main() -> Result<()> {
-    let mut scheduler = Scheduler::new();
-
-    // Safety runs FIRST (priority 0 = Critical)
-    scheduler.add(Box::new(EmergencyStopNode {
-        battery_sub: Hub::new("battery")?,
-        estop_pub: Hub::new("estop")?,
-    }), 0, Some(true));
-
-    // Control runs SECOND (priority 1 = High)
-    scheduler.add(Box::new(MotorController {
-        estop_sub: Hub::new("estop")?,
-        cmd_sub: Hub::new("cmd")?,
-    }), 1, Some(true));
-
-    // Logging runs LAST (priority 4 = Background)
-    scheduler.add(Box::new(LoggerNode {
-        data_sub: Hub::new("data")?,
-    }), 4, Some(true));
-
-    scheduler.run()?;
-    Ok(())
-}
-```
-
-## Python Example
-
-HORUS Python provides a simple, functional API with production-ready features.
-
-### Basic Publisher-Subscriber
-
-```python
-import horus
-import math
-
-# Publisher node
-def sensor_tick(node):
-    """Simulate sensor reading"""
-    counter = getattr(sensor_tick, 'counter', 0.0)
-    reading = math.sin(counter) * 10.0
-    node.send("sensor_data", reading)
-    sensor_tick.counter = counter + 0.1
-
-sensor = horus.Node(
-    name="PySensorNode",
-    pubs="sensor_data",
-    tick=sensor_tick,
-    rate=30
-)
-
-# Subscriber node
-def processor_tick(node):
-    """Process sensor data"""
-    if node.has_msg("sensor_data"):
-        data = node.get("sensor_data")
-        processed = data * 2.0
-        print(f"Processed: {processed:.2f}")
-
-processor = horus.Node(
-    name="PyProcessorNode",
-    subs="sensor_data",
-    tick=processor_tick
-)
-
-# Run both nodes
-if __name__ == "__main__":
-    horus.run(sensor, processor, duration=5)
-```
-
-### Advanced Features: Per-Node Rates & Timestamps
-
-```python
-import horus
-import time
-
-def high_freq_sensor(node):
-    """100Hz sensor"""
-    imu = horus.ImuMsg(accel_x=1.0, accel_y=0.0, accel_z=9.8)
-    node.send("imu_data", imu)
-
-def control_loop(node):
-    """50Hz controller with staleness detection"""
-    if node.has_msg("imu_data"):
-        # Skip stale data
-        if node.is_stale("imu_data", max_age=0.1):
-            node.log_warning("Skipping stale IMU data")
-            return
-
-        imu = node.get("imu_data")
-        cmd = horus.CmdVel(linear=1.0, angular=0.5)
-        node.send("cmd_vel", cmd)
-
-def logger(node):
-    """10Hz logger"""
-    if node.has_msg("cmd_vel"):
-        msg, timestamp = node.get_with_timestamp("cmd_vel")
-        latency = (time.time() - timestamp) * 1000
-        print(f"Command latency: {latency:.1f}ms")
-
-# Create scheduler with per-node rates
-scheduler = horus.Scheduler()
-scheduler.add(horus.Node("sensor", pubs="imu_data", tick=high_freq_sensor),
-              priority=0, rate_hz=100.0)
-scheduler.add(horus.Node("control", subs="imu_data", pubs="cmd_vel", tick=control_loop),
-              priority=1, rate_hz=50.0)
-scheduler.add(horus.Node("log", subs="cmd_vel", tick=logger),
-              priority=2, rate_hz=10.0)
-
-scheduler.run(duration=5.0)
-```
-
-## Testing Pattern
-
-Test nodes in isolation before integration.
-
-```rust
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_sensor_node() {
-        let mut node = SensorNode::new();
-        let mut ctx = NodeInfo::new("TestSensor".to_string(), true);
-
-        // Initialize
-        assert!(node.init(&mut ctx).is_ok());
-
-        // Run a few ticks
-        for _ in 0..10 {
-            node.tick(Some(&mut ctx));
-        }
-
-        // Verify metrics
-        assert_eq!(ctx.metrics.total_ticks, 10);
-    }
-
-    #[test]
-    fn test_pubsub_integration() -> Result<()> {
-        let mut scheduler = Scheduler::new();
-
-        // Create publisher and subscriber
-        scheduler.add(Box::new(SensorNode::new()?), 0, Some(true));
-        scheduler.add(Box::new(ProcessorNode::new()?), 1, Some(true));
-
-        // Note: Scheduler::run() runs infinitely until Ctrl+C
-        // For testing, you can use tick() to run specific nodes
-        // or use integration tests with timeouts and stop() method
-
-        Ok(())
-    }
-}
-```
-
-## Snake Game (Multi-Process Demo)
-
-A complete snake game demonstrating HORUS's real-time IPC capabilities with a visual GUI.
-
-### Features
-
-- **Real-time IPC**: Sub-microsecond message passing between backend and GUI
-- **Keyboard Input**: Arrow keys or WASD controls
-- **Visual Display**: Animated snake with eyes that point in the direction of movement
-- **Multi-Process Architecture**: Backend and GUI run as separate processes
-
-### Architecture
-
-**Backend (main.rs)** - Run with `horus run`:
-- KeyboardInputNode: Captures keyboard input
-- JoystickInputNode: Optional gamepad support
-- SnakeControlNode: Converts input to snake state
-- Publishes to `"snakestate"` topic
-
-**GUI (snakesim_gui)** - Separate binary:
-- Subscribes to `"snakestate"` topic
-- Renders 20x20 grid with snake visualization
-- Built with eframe/egui (Rust GUI framework)
-- Updates every 200ms
-
-### Running the Game
-
-```bash
-# Copy from installed examples
-cp -r ~/.horus/cache/horus@0.1.0/examples/snakesim ~/my_snakesim
-cd ~/my_snakesim
-
-# Terminal 1: Run backend (keyboard input + game logic)
-horus run
-
-# Terminal 2: Run GUI (visual display)
-./snakesim_gui
-```
-
-Use **Arrow Keys or WASD** to control the snake!
-
-### Code Structure
-
-The backend is a single-file HORUS project:
-
-```rust
-use horus::prelude::*;
-use horus::library::nodes::{JoystickInputNode, KeyboardInputNode};
-
-#[derive(Clone, Copy, Debug)]
-pub struct SnakeState {
-    pub direction: u32,
-}
-
-struct SnakeControlNode {
-    keyboard_subscriber: Hub<KeyboardInput>,
-    joystick_subscriber: Hub<JoystickInput>,
-    snake_publisher: Hub<SnakeState>,
-}
-
-impl Node for SnakeControlNode {
-    fn name(&self) -> &'static str {
-        "SnakeControlNode"
-    }
-
-    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
-        // Handle keyboard input
-        while let Some(input) = self.keyboard_subscriber.recv(ctx.as_deref_mut()) {
-            if input.pressed {
-                let direction = match input.code {
-                    38 | 87 => 1,  // ArrowUp or W -> Up
-                    40 | 83 => 2,  // ArrowDown or S -> Down
-                    37 | 65 => 3,  // ArrowLeft or A -> Left
-                    39 | 68 => 4,  // ArrowRight or D -> Right
-                    _ => continue,
-                };
-
-                let snake_state = SnakeState { direction };
-                let _ = self.snake_publisher.send(snake_state, ctx.as_deref_mut());
-            }
-        }
-    }
-}
-
-fn main() -> Result<()> {
-    let mut sched = Scheduler::new().name("SnakeScheduler");
-
-    let keyboard_input_node = KeyboardInputNode::new_with_topic("snakeinput")?;
-    let joystick_input_node = JoystickInputNode::new_with_topic("snakeinput")?;
-    let snake_control_node = SnakeControlNode::new()?;
-
-    sched.add(Box::new(keyboard_input_node), 0, Some(true));
-    sched.add(Box::new(joystick_input_node), 1, None);
-    sched.add(Box::new(snake_control_node), 2, Some(true));
-
-    sched.tick(&["KeyboardInputNode", "JoystickInputNode", "SnakeControlNode"])
-}
-```
-
-### Performance
-
-The game demonstrates HORUS's real-time capabilities:
-- IPC latency: 262ns-1527ns (sub-microsecond!)
-- Update rate: 200ms (5 FPS for smooth gameplay)
-- Message types: KeyboardInput, JoystickInput, SnakeState
-
-### Why Two Processes?
-
-This architecture demonstrates:
-- **Process isolation**: GUI crashes don't affect game logic
-- **Language flexibility**: Could rewrite GUI in any language
-- **Real-time IPC**: Shared memory pub/sub with zero-copy messaging
-- **Production pattern**: Typical robotics architecture (sensor nodes + visualization)
+Learn HORUS through practical, runnable code examples. All examples are production-ready and demonstrate best practices.
 
 ---
 
-## Concurrent Multi-Process Execution
+## Example Categories
 
-HORUS supports running multiple node files concurrently as separate processes - ideal for distributed robotics systems where nodes need to run independently.
+### Basic Examples
 
-### Creating a Multi-Node System
+Start here if you're new to HORUS
 
-Let's build a sensor monitoring system with three independent nodes that communicate via shared memory.
+Simple patterns demonstrating fundamental concepts. Each example is complete and can be run with `horus run`.
 
-#### Step 1: Project Structure
+[Go to Basic Examples](/basic-examples)
 
+What you'll learn:
+- Publisher-Subscriber pattern
+- Robot velocity control with CmdVel
+- Lidar obstacle detection
+- PID controller implementation
+- Multi-node data pipelines
+
+Time: 30-45 minutes
+Prerequisites: [Quick Start](/getting-started/quick-start) completed
+
+---
+
+### Advanced Examples
+
+For experienced users building complex systems
+
+Advanced patterns including state machines, priority-based safety systems, multi-process architectures, and Python integration.
+
+[Go to Advanced Examples](/advanced-examples)
+
+What you'll learn:
+- State machine-based robot behavior
+- Priority-based safety systems
+- Multi-process Python systems
+- Cross-language (Rust + Python) integration
+- Per-node rate control
+- Advanced Python features (timestamps, staleness detection)
+
+Time: 1-2 hours
+Prerequisites: [Basic Examples](/basic-examples) completed
+
+---
+
+## Find Examples by Topic
+
+### By Pattern
+
+- [Publisher-Subscriber](/basic-examples#1-basic-publisher-subscriber) - Basic message passing
+- [Multi-Node Pipeline](/basic-examples#5-multi-node-pipeline) - Chained processing stages
+- [State Machine](/advanced-examples#1-state-machine-node) - Complex robot behavior
+- [Priority-Based Safety](/advanced-examples#2-priority-based-safety-system) - Safety-critical systems
+- [Multi-Process](/advanced-examples#3-python-multi-process-system) - Independent node processes
+
+### By Message Type
+
+- [CmdVel (Robot Control)](/message-types#example-1-robot-teleop-controller-cmdvel) - Differential drive robots
+- [LaserScan (Lidar)](/basic-examples#3-lidar-obstacle-detection) - Obstacle detection
+- [IMU (Sensor Fusion)](/message-types#example-2-imu-sensor-fusion-imu--odometry) - Fusing IMU and odometry
+- [Custom Messages](/message-types#example-3-custom-message-type-for-multi-sensor-system) - Multi-sensor payloads
+
+### By Language
+
+- Rust - All basic and advanced examples
+- [Python](/advanced-examples#3-python-multi-process-system) - Pure Python multi-node system
+- [Mixed (Rust + Python)](/advanced-examples#4-rust--python-cross-language-system) - Cross-language communication
+
+### By Complexity
+
+- Beginner - [Basic Examples](/basic-examples) (1-2 nodes, simple logic)
+- Intermediate - [PID Controller](/basic-examples#4-pid-controller), [Multi-Node Pipeline](/basic-examples#5-multi-node-pipeline)
+- Advanced - [State Machines](/advanced-examples#1-state-machine-node), [Safety Systems](/advanced-examples#2-priority-based-safety-system)
+- Expert - [Multi-Process Architecture](/advanced-examples#3-python-multi-process-system)
+
+---
+
+## Recommended Learning Path
+
+### 1. Start with Fundamentals (30 min)
+
+Complete the [Quick Start](/getting-started/quick-start) tutorial, then try:
+1. [Basic Publisher-Subscriber](/basic-examples#1-basic-publisher-subscriber)
+2. [Robot Velocity Controller](/basic-examples#2-robot-velocity-controller)
+
+### 2. Learn Key Patterns (45 min)
+
+Build practical applications:
+3. [Lidar Obstacle Detection](/basic-examples#3-lidar-obstacle-detection)
+4. [PID Controller](/basic-examples#4-pid-controller)
+5. [Multi-Node Pipeline](/basic-examples#5-multi-node-pipeline)
+
+### 3. Build a Real Application (1 hour)
+
+Complete the [Second Application Tutorial](/second-application) - build a 3-node sensor processing pipeline from scratch with:
+- Sensor node publishing raw data
+- Filter node cleaning the data
+- Controller node making decisions
+- Complete error handling and testing
+
+### 4. Master Advanced Concepts (2+ hours)
+
+Tackle complex robotics challenges:
+6. [State Machine](/advanced-examples#1-state-machine-node)
+7. [Priority-Based Safety System](/advanced-examples#2-priority-based-safety-system)
+8. [Multi-Process Python System](/advanced-examples#3-python-multi-process-system)
+9. [Cross-Language Integration](/advanced-examples#4-rust--python-cross-language-system)
+
+---
+
+## Running Examples
+
+All examples are self-contained and can be run directly:
+
+### Single File (Rust)
 ```bash
-mkdir multi_node_system
-cd multi_node_system
-mkdir nodes
+# Copy example code to a file
+nano my_example.rs
+
+# Run it
+horus run my_example.rs
 ```
 
-#### Step 2: Create Sensor Node
-
-**nodes/sensor.py:**
-```python
-#!/usr/bin/env python3
-import horus
-import time
-import random
-
-def sensor_tick(node):
-    """Simulate temperature sensor readings"""
-    temperature = 20.0 + random.random() * 10.0
-    node.send("temperature", temperature)
-    print(f"Sensor: {temperature:.1f}°C")
-
-node = horus.Node(
-    name="SensorNode",
-    pubs={"temperature": float},
-    tick=sensor_tick,
-    rate=2  # 2 Hz
-)
-
-horus.run(node)
-```
-
-#### Step 3: Create Controller Node
-
-**nodes/controller.py:**
-```python
-#!/usr/bin/env python3
-import horus
-
-def controller_tick(node):
-    """Control cooling fan based on temperature"""
-    temp = node.recv("temperature")
-    if temp is not None:
-        if temp > 25.0:
-            fan_speed = min(100, int((temp - 20) * 10))
-            node.send("fan_control", fan_speed)
-            print(f"Controller: Fan at {fan_speed}%")
-        else:
-            node.send("fan_control", 0)
-            print(f"Controller: Fan off")
-
-node = horus.Node(
-    name="ControllerNode",
-    subs={"temperature": float},
-    pubs={"fan_control": int},
-    tick=controller_tick,
-    rate=2
-)
-
-horus.run(node)
-```
-
-#### Step 4: Create Logger Node
-
-**nodes/logger.py:**
-```python
-#!/usr/bin/env python3
-import horus
-import datetime
-
-def logger_tick(node):
-    """Log system status"""
-    temp = node.recv("temperature")
-    fan = node.recv("fan_control")
-
-    if temp is not None and fan is not None:
-        timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-        status = "COOLING" if fan > 0 else "NORMAL"
-        print(f"Logger [{timestamp}]: {temp:.1f}°C | Fan {fan}% | {status}")
-
-node = horus.Node(
-    name="LoggerNode",
-    subs={"temperature": float, "fan_control": int},
-    tick=logger_tick,
-    rate=1  # 1 Hz
-)
-
-horus.run(node)
-```
-
-#### Step 5: Run All Nodes Concurrently
-
+### Single File (Python)
 ```bash
+# Create Python file
+nano my_example.py
+
+# Run it
+horus run my_example.py
+```
+
+### Multi-Process (Multiple Files)
+```bash
+# Create directory with multiple node files
+mkdir nodes/
+# ... create nodes/sensor.py, nodes/controller.py, etc.
+
+# Run all concurrently
 horus run "nodes/*.py"
+
+# Or mix Rust and Python
+horus run "nodes/*"
 ```
-
-**Output:**
-```bash
- Executing 3 files concurrently:
-  1. nodes/controller.py (python)
-  2. nodes/logger.py (python)
-  3. nodes/sensor.py (python)
-
- Phase 1: Building all files...
- Phase 2: Starting all processes...
-  ✓ Started [controller]
-  ✓ Started [logger]
-  ✓ Started [sensor]
-
- All processes running. Press Ctrl+C to stop.
-
-[sensor] Sensor: 23.4°C
-[controller] Controller: Fan at 34%
-[logger] Logger [15:30:45]: 23.4°C | Fan 34% | COOLING
-[sensor] Sensor: 26.8°C
-[controller] Controller: Fan at 68%
-[sensor] Sensor: 21.2°C
-[logger] Logger [15:30:46]: 21.2°C | Fan 12% | COOLING
-[controller] Controller: Fan at 12%
-```
-
-### Key Features
-
-1. **Independent Processes**: Each node runs in its own process with its own scheduler
-2. **Shared Memory IPC**: Nodes communicate via HORUS topics (`/dev/shm/horus/`)
-3. **Color-Coded Output**: Each node has a unique color for easy identification
-4. **Graceful Shutdown**: Ctrl+C stops all processes cleanly
-5. **Zero Configuration**: No launch files or configuration needed
-
-### Rust Multi-Process Example
-
-You can also use Rust files:
-
-**nodes/sensor.rs:**
-```rust
-use horus::prelude::*;
-
-pub struct TempSensor {
-    temp_pub: Hub<f32>,
-    counter: f32,
-}
-
-impl Node for TempSensor {
-    fn name(&self) -> &'static str { "TempSensor" }
-
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        let temp = 20.0 + (self.counter.sin() * 5.0);
-        self.temp_pub.send(temp, ctx).ok();
-        self.counter += 0.1;
-    }
-}
-
-fn main() -> Result<()> {
-    let mut scheduler = Scheduler::new();
-    scheduler.add(Box::new(TempSensor {
-        temp_pub: Hub::new("temperature")?,
-        counter: 0.0,
-    }), 0, Some(true));
-    scheduler.run()
-}
-```
-
-Run with:
-```bash
-horus run "nodes/*.rs" --release
-```
-
-### When to Use Multi-Process
-
-**Use concurrent execution when:**
-- Nodes need to run independently (like ROS nodes)
-- You want fault isolation (one crash doesn't take down others)
-- Different nodes have different update rates
-- Testing distributed system architectures
-
-**Use single-process when:**
-- All nodes can be in one file
-- Need maximum performance
-- Require deterministic execution order
-- Simpler deployment
-
-### Performance Notes
-
-- **Latency**: Shared memory IPC adds ~300ns-1μs overhead
-- **Throughput**: Can handle thousands of messages per second
-- **Scalability**: Tested with 50+ concurrent processes
-- **Memory**: Each process has ~2-5MB overhead
 
 ---
 
-## Next Steps
+## Example Structure
 
-- Read the [API Reference](/api) for detailed documentation
-- Optimize with the [Performance Guide](/performance)
-- Learn about [Python Bindings](/python-bindings) and [C Bindings](/c-bindings)
-- Explore the [Core Concepts](/core-concepts-nodes) for deeper understanding
+Each example includes:
+
+- Complete, runnable code - Copy and run immediately
+- Clear comments - Explains what each section does
+- Node lifecycle - Proper init(), tick(), shutdown()
+- Error handling - Safe patterns with Result types
+- Logging - Debug output using NodeInfo
+- Production-ready - Follows HORUS best practices
+
+---
+
+## Related Resources
+
+### Learning Guides
+- [Quick Start](/getting-started/quick-start) - Your first HORUS application
+- [Second Application](/second-application) - Build a 3-node pipeline
+- [Core Concepts - Nodes](/core-concepts-nodes) - Understanding node lifecycle
+- [Core Concepts - Hub](/core-concepts-hub) - Pub/sub communication
+- [Message Types](/message-types) - Standard robotics messages
+
+### Reference Documentation
+- [Node Macro](/node-macro) - Simplify node creation
+- [Using Prebuilt Nodes](/using-prebuilt-nodes) - Leverage standard library
+- [Testing](/testing) - Test your nodes
+- [API Reference](/api) - Complete API documentation
+
+### Debugging & Optimization
+- [Troubleshooting Runtime Errors](/troubleshooting-runtime) - Fix common issues
+- [Dashboard](/dashboard) - Monitor your application
+- [Performance](/performance) - Optimize for speed
+
+### Multi-Language Support
+- [Python Bindings](/python-bindings) - Complete Python API
+- [C Bindings](/c-bindings) - C language integration
+- [Multi-Language Guide](/multi-language) - Using multiple languages
+
+---
+
+## Tips for Success
+
+### Writing Your Own Examples
+
+1. Start simple - Get a basic publisher-subscriber working first
+2. Add one feature at a time - Don't try to build everything at once
+3. Test frequently - Run `horus run` after each change
+4. Use the dashboard - `horus dashboard` helps visualize message flow
+5. Check the logs - Enable debug logging with `RUST_LOG=debug`
+
+### Common Patterns
+
+Pipeline: `Sensor → Filter → Controller → Actuator`
+- Data flows one direction
+- Each node has increasing priority (0, 1, 2, 3)
+
+Aggregator: `Sensor1, Sensor2, Sensor3 → Fusion → Output`
+- Multiple inputs, single output
+- Use `while let Some(msg) = hub.recv(ctx)` to process all messages
+
+Safety Override: `Critical Safety (priority 0) → Control (priority 1)`
+- Safety checks always run first
+- Control nodes check estop before acting
+
+---
+
+## Community Examples
+
+Have you built something cool with HORUS? Share it!
+
+- Create a pull request to add your example
+- Link to your GitHub repo in discussions
+- Share on Twitter with #HORUS
+
+---
+
+## What's Next?
+
+Ready to dive in? Here's where to start:
+
+1. New to HORUS? - [Basic Examples](/basic-examples)
+2. Need a complete tutorial? - [Second Application](/second-application)
+3. Building complex systems? - [Advanced Examples](/advanced-examples)
+4. Specific message type? - [Message Types with Examples](/message-types)
+5. Stuck on an error? - [Troubleshooting Runtime Errors](/troubleshooting-runtime)

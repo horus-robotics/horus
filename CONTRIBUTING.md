@@ -35,7 +35,7 @@ cd horus_py
 maturin develop --release
 
 # Build C bindings (optional)
-cd horus_c
+cd horus_cpp
 make
 
 # Build documentation site (optional)
@@ -232,7 +232,7 @@ horus/
 horus_core/         # Core IPC implementation
 horus_macros/       # Procedural macros
 horus_py/           # Python bindings
-horus_c/            # C bindings
+horus_cpp/          # C/C++ bindings
 horus_library/      # Standard messages/nodes
 horus_daemon/       # Background service
 horus_manager/      # CLI tool

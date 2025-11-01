@@ -89,7 +89,7 @@ export default function RootLayout({
     applicationCategory: 'DeveloperApplication',
     operatingSystem: 'Linux, macOS, Windows',
     description: 'Hybrid Optimized Robotics Unified System. Sub-microsecond IPC (312-481ns), zero-copy shared memory, real-time control framework for AI robotics, humanoids, and autonomous systems. Alternative to ROS and ROS2.',
-    softwareVersion: '0.1.2',
+    softwareVersion: '0.1.3',
     url: 'https://docs.horus-registry.dev',
     keywords: 'robotics framework, robotics operating system, ROS alternative, ROS2 alternative, AI robotics, physical intelligence, embodied AI, humanoid robot, autonomous robot, machine learning robotics, IPC, real-time control, distributed computing, robotics middleware, Rust, Python, C++, low latency, shared memory, pub-sub, sub-microsecond, embedded robotics, real-time system, intelligent robots',
     programmingLanguage: ['Rust', 'Python', 'C++'],

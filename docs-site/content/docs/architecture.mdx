@@ -1,7 +1,7 @@
 ---
 title: Architecture Overview
 description: Complete technical architecture of the HORUS framework
-order: 1
+order: 24
 ---
 
 # Architecture Overview
@@ -219,12 +219,10 @@ horus env freeze              # Snapshot environment
 horus auth login --github     # GitHub OAuth
 horus auth logout             # Clear credentials
 
-# Monitoring
-horus monitor system          # CPU, memory, message rate
-horus monitor nodes           # Running node list
-horus monitor memory          # Shared memory regions
+# Monitoring (via dashboard)
+horus dashboard               # Web-based monitoring and visualization
 
-# Dashboard
+# Alternative: CLI monitoring (if available)
 horus dashboard               # Web UI (default, auto-opens)
 horus dashboard -t            # Terminal UI
 ```
@@ -327,7 +325,7 @@ class SensorNode(Node):
 **Location:** `/horus_py/`
 
 #### **horus_c** (C Support)
-C API bindings for legacy code integration.
+C++ API bindings for legacy code integration.
 
 ```c
 #include "horus.h"
@@ -439,6 +437,26 @@ scheduler.add(controller, 5, Some(true));      // Processes input
 scheduler.add(motor_driver, 10, Some(true));   // Actuates
 ```
 
+### Tick Rate Limitation
+
+**Important:** HORUS currently has a **hardcoded ~60 FPS tick rate limit** (~16ms per tick cycle).
+
+**What this means:**
+- Each `scheduler.run()` loop completes one cycle approximately every 16ms
+- Maximum tick frequency: ~60 Hz
+- All nodes execute sequentially within each 16ms window
+- If your nodes' combined execution time exceeds 16ms, ticks will slow down accordingly
+
+**Implications:**
+- For 60 Hz control loops: ✓ Works perfectly
+- For 100 Hz+ control loops: ⚠️ Currently not achievable (coming in future release)
+- For sensor fusion (10-30 Hz): ✓ More than sufficient
+
+**Workaround for higher frequencies:**
+If you need >60 Hz for specific nodes, run them in separate processes with their own schedulers. Each process can achieve ~60 Hz independently.
+
+**Roadmap:** Per-node rate control and configurable tick rates are planned for post-beta releases. See [Roadmap](/roadmap) for details.
+
 ---
 
 ## Logging System
@@ -503,7 +521,7 @@ horus pkg publish
 # Uploads to registry with Git metadata
 
 # 5. Install (on another machine)
-horus install my-package
+horus pkg install my-package
 # Downloads, caches, builds
 ```
 
@@ -511,7 +529,7 @@ horus install my-package
 - **GitHub OAuth**: Secure authentication
 - **Semantic versioning**: `0.1.0`, `1.2.3`, etc.
 - **Dependency resolution**: Automatic transitive deps
-- **Environment snapshots**: `horus freeze` for reproducibility
+- **Environment snapshots**: `horus env freeze` for reproducibility
 - **Search**: Full-text search across packages
 
 **Package Metadata:**
@@ -536,7 +554,7 @@ logging_level = "info"  # Log verbosity
 
 **CLI Monitoring:**
 ```bash
-$ horus monitor system
+$ horus dashboard
 === HORUS System Monitor ===
 
 CPU Usage: 22.6%
@@ -601,7 +619,7 @@ members = [
     "horus_manager",    # CLI
     "horus_daemon",     # Background services
     "horus_library",    # Standard library
-    "horus_c",          # C bindings
+    "horus_c",          # C++ bindings
     "horus_py",         # Python bindings
     "benchmarks",       # Performance tests
 ]

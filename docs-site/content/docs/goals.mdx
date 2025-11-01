@@ -1,7 +1,7 @@
 ---
 title: Goals & Vision  
 description: What HORUS is trying to achieve and the problems it solves
-order: 0
+order: 43
 ---
 
 # Goals & Vision
@@ -18,7 +18,7 @@ HORUS aims to become the **de facto standard for real-time robotics communicatio
 
 **Memory Safety by Default**: Leverage Rust's type system to eliminate entire classes of bugs common in C++ robotics frameworks
 
-**Unified High-Level Workflow**: Single command for build, run, and deployment across Rust, Python, and C with zero configuration
+**Unified High-Level Workflow**: Single command for build, run, and deployment across Rust, Python, and C++ with minimal configuration (simple horus.yaml vs complex ROS XML)
 
 **Dependency Isolation**: Solve dependency hell with portable, isolated environments and reproducible builds
 
@@ -59,7 +59,7 @@ HORUS aims to become the **de facto standard for real-time robotics communicatio
 
 **HORUS Solution**:
 - `.horus` environment files for exact dependency snapshots
-- `horus freeze` captures your entire working environment
+- `horus env freeze` captures your entire working environment
 - Portable environments that work identically across machines
 - Isolated dependency resolution prevents version conflicts
 - Package registry with automatic dependency installation
@@ -76,8 +76,8 @@ HORUS aims to become the **de facto standard for real-time robotics communicatio
 - **Single unified command**: `horus run` for everything
 - **Auto-detection**: Automatically detects project language and type
 - **Auto-install**: Missing dependencies? Installed automatically
-- **Zero configuration**: No makefiles, no build scripts, no setup.py
-- **Multi-language support**: Same workflow for Rust, Python, C
+- **Minimal configuration**: Simple horus.yaml (no makefiles, no build scripts, no setup.py)
+- **Multi-language support**: Same workflow for Rust, Python, C++
 
 **Impact**: Developers focus on robotics, not build systems. Instant iteration cycles. No more "how do I run this?"
 
@@ -225,7 +225,7 @@ scheduler.add(Box::new(CartographerNode::new()?), 2, Some(true));
 
 **Version Conflicts**: Isolated environments prevent dependency version conflicts across projects.
 
-**Build System Hell**: One unified build system for all languages. Auto-detect, auto-install, zero config.
+**Build System Hell**: One unified build system for all languages. Auto-detect, auto-install, minimal config (just horus.yaml).
 
 ---
 

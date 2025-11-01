@@ -1,7 +1,7 @@
 ---
 title: Performance Optimization
 description: Get maximum performance from HORUS
-order: 10
+order: 21
 ---
 
 # Performance Optimization
@@ -325,12 +325,14 @@ sudo mount -o remount,size=4G /dev/shm
 
 ### Clean Up Stale Topics
 
+**Note**: HORUS automatically cleans up sessions after each run. Manual cleanup is rarely needed.
+
 ```bash
-# Remove old shared memory
+# Clean all HORUS shared memory (if needed after crashes)
 rm -rf /dev/shm/horus/
 ```
 
-**Stale topics** waste space and cause confusion.
+**Stale topics** from crashes can waste space, but auto-cleanup prevents this in normal operation.
 
 ### Choose Appropriate Capacity
 

@@ -1,7 +1,7 @@
 ---
 title: Python Bindings
 description: Production-ready Python API for HORUS robotics with advanced features
-order: 14
+order: 51
 ---
 
 # HORUS Python Bindings
@@ -290,110 +290,23 @@ horus.run(node, duration=5)
 
 ---
 
-## Quick Helpers
-
-HORUS Python provides convenience functions for common patterns:
-
-### Transform Node
-
-```python
-# One-liner transform
-doubler = horus.quick(
-    sub="input",
-    pub="output",
-    fn=lambda x: x * 2
-)
-horus.run(doubler)
-```
-
-### Pipe
-
-```python
-# Simple processing pipeline
-horus.pipe("input", "output", lambda x: x ** 2)
-```
-
-### Echo
-
-```python
-# Mirror topic to another
-horus.echo("sensor_raw", "sensor_backup")
-```
-
-### Filter
-
-```python
-# Filter messages
-horus.filter_node("all_data", "positive_only", lambda x: x > 0)
-```
-
-### Fanout (Broadcast)
-
-```python
-# Send to multiple topics
-horus.fanout("sensor", ["log", "display", "storage"])
-```
-
-### Merge
-
-```python
-# Combine multiple inputs
-horus.merge(["sensor1", "sensor2", "sensor3"], "all_sensors")
-```
-
----
-
 ## Advanced Features (Production-Ready)
 
 HORUS Python includes advanced features that match or exceed ROS2 capabilities while maintaining simplicity.
 
-### Per-Node Rate Control (Phase 1)
-
-Each node can run at its own independent rate, enabling optimal performance for different tasks:
-
-```python
-import horus
-
-# Create scheduler with per-node rates
-scheduler = horus.Scheduler()
-
-# High-frequency sensor (100Hz)
-scheduler.add(sensor_node, priority=0, logging=True, rate_hz=100.0)
-
-# Medium-frequency controller (50Hz)
-scheduler.add(control_node, priority=1, logging=False, rate_hz=50.0)
-
-# Low-frequency logger (10Hz)
-scheduler.add(logger_node, priority=2, logging=True, rate_hz=10.0)
-
-scheduler.run()
-```
-
-**Runtime Rate Adjustment:**
-
-```python
-# Change node rate while running
-scheduler.set_node_rate("sensor", 200.0)  # Increase to 200Hz
-
-# Get node statistics
-stats = scheduler.get_node_stats("sensor")
-print(f"Node: {stats['name']}")
-print(f"Rate: {stats['rate_hz']}Hz")
-print(f"Total ticks: {stats['total_ticks']}")
-print(f"Errors: {stats['errors_count']}")
-```
-
-**Priority-Based Execution:**
+### Priority-Based Execution
 
 Lower priority numbers execute first, ensuring correct data flow:
 
 ```python
+scheduler = horus.Scheduler()
 scheduler.add(sensor, priority=0)     # Executes FIRST
 scheduler.add(controller, priority=1) # Executes SECOND
 scheduler.add(actuator, priority=2)   # Executes THIRD
+scheduler.run()
 ```
 
-### Automatic Timestamps (Phase 2)
+### Automatic Timestamps
 
 All messages automatically get microsecond-precision timestamps:
 
@@ -430,65 +343,7 @@ def control_tick(node):
 - `node.get_timestamp(topic)` - Peek at timestamp without consuming
 - `node.get_with_timestamp(topic)` - Get message and timestamp together
 
-### Typed Messages (Phase 3)
-
-Use Rust message types for better performance and type safety:
-
-```python
-import horus
-
-# Create typed messages
-cmd = horus.CmdVel(linear=1.5, angular=0.8)
-print(cmd)  # "linear: 1.50 m/s, angular: 0.80 rad/s"
-
-# Messages have automatic timestamps
-print(f"Message age: {cmd.age():.3f}s")
-
-# IMU data
-imu = horus.ImuMsg(
-    accel_x=1.0, accel_y=2.0, accel_z=3.0,
-    gyro_x=0.1, gyro_y=0.2, gyro_z=0.3
-)
-
-# Send typed messages
-node.send("cmd_vel", cmd)
-node.send("imu_data", imu)
-
-# Still backward compatible with dicts!
-node.send("cmd_vel", {"linear": 1.0, "angular": 0.5})
-```
-
-**Available Message Types:**
-
-- `horus.CmdVel(linear, angular)` - Robot velocity commands
-- `horus.ImuMsg(accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z)` - IMU sensor data
-
-**Message Features:**
-
-```python
-cmd = horus.CmdVel(linear=2.0, angular=1.0)
-
-# Access fields
-print(cmd.linear, cmd.angular)
-
-# Get timestamp
-print(cmd.timestamp)
-
-# Check age
-if cmd.age() > 0.1:
-    print("Message is stale")
-
-# Convert to dict for compatibility
-d = cmd.to_dict()
-
-# Create from dict
-cmd2 = horus.CmdVel.from_dict(d)
-
-# Factory methods
-stop = horus.CmdVel.zero()  # Create stop command
-```
-
-### Multiprocess Execution (Phase 4)
+### Multiprocess Execution
 
 Run Python nodes in separate processes for isolation and multi-language support:
 
@@ -1075,7 +930,7 @@ def good_tick(node):
 - [Examples](/examples) - More code examples
 - [Core Concepts](/core-concepts-nodes) - Understanding HORUS architecture
 - [Performance](/performance) - Optimization guide
-- [C Bindings](/c-bindings) - C API documentation
+- [C++ Bindings](/cpp-bindings) - C++ API documentation
 
 ---
 

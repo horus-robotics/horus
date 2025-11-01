@@ -1,7 +1,7 @@
 ---
 title: Troubleshooting & Maintenance
 description: Fix installation issues, update HORUS, and verify installation health
-order: 25
+order: 12
 ---
 
 # Troubleshooting & Maintenance
@@ -68,8 +68,8 @@ Pull and update? [Y/n]: y
  Dependencies updated
 
  Rebuilding HORUS (release mode)...
-   Compiling horus_core v0.1.2
-   Compiling horus v0.1.2
+   Compiling horus_core v0.1.3
+   Compiling horus v0.1.3
  Build completed
 
  Installing updated binary...
@@ -79,12 +79,12 @@ Pull and update? [Y/n]: y
  Libraries updated
 
  Verifying update...
- New version: 0.1.2
+ New version: 0.1.3
  Smoke test passed
 
  Update complete!
 
-Version: 0.1.0  0.1.2
+Version: 0.1.0  0.1.3
 ```
 
 ### Options
@@ -143,7 +143,7 @@ Version: 0.1.0  0.1.2
    - Binary location and version
    - PATH configuration
    - Core libraries
-   - Optional components (Python/C bindings)
+   - Optional components (Python/C++ bindings)
 
 3. **Functionality Tests**
    - Commands work (`--version`, `--help`)
@@ -188,7 +188,7 @@ Core Libraries:
    Runtime core: v0.1.0
    Proc macros: v0.1.0
    Standard library: v0.1.0
-   C bindings: Not installed (optional)
+   C++ bindings: Not installed (optional)
    Python bindings: Not installed (optional)
 
 Functionality Tests:
@@ -416,7 +416,7 @@ Next steps:
 4. **Version mismatches:**
    ```
    error: the package `horus` depends on `horus_core 0.1.0`,
-   but `horus_core 0.1.2` is installed
+   but `horus_core 0.1.3` is installed
    ```
 
 5. **Broken after system updates:**
@@ -567,7 +567,7 @@ Segmentation fault
 
 ```
 error: the package `horus` depends on `horus_core 0.1.0`,
-but `horus_core 0.1.2` is installed
+but `horus_core 0.1.3` is installed
 ```
 
 **Solution:**
@@ -757,9 +757,364 @@ If you encounter issues:
 
 ---
 
+## Runtime Errors
+
+Common errors when running HORUS applications and how to fix them.
+
+### Hub Creation Failed
+
+**Symptom:**
+```rust
+Error: Failed to create Hub
+thread 'main' panicked at 'Hub::new() failed'
+```
+
+**Cause:**
+- Insufficient permissions on `/dev/shm`
+- Disk space full on `/dev/shm`
+- Topic name contains invalid characters
+
+**Fix:**
+
+```bash
+# Check /dev/shm permissions
+ls -la /dev/shm
+
+# Check available space
+df -h /dev/shm
+
+# Clean old HORUS shared memory
+rm -f /dev/shm/horus_*
+
+# Fix permissions (if needed)
+sudo chmod 1777 /dev/shm
+```
+
+**Code Fix:**
+```rust
+// Ensure topic names are valid (alphanumeric, underscore, slash)
+// Good:
+let hub = Hub::new("sensor_data")?;
+let hub = Hub::new("robot/cmd_vel")?;
+
+// Bad (will fail):
+let hub = Hub::new("sensor data")?;  // Space
+let hub = Hub::new("temp@sensor")?;  // Special char
+```
+
+---
+
+### Topic Not Found / No Messages Received
+
+**Symptom:**
+```rust
+// Subscriber never receives messages
+if let Some(data) = self.data_sub.recv(ctx) {
+    println!("Got data");  // Never prints
+}
+```
+
+**Cause:**
+- Publisher and subscriber use different topic names (typo)
+- Publisher hasn't sent any messages yet
+- Nodes running in different processes without shared memory
+
+**Fix:**
+
+**1. Verify Topic Names Match:**
+```rust
+// Publisher
+let pub_hub = Hub::new("temperature")?;  // Note: "temperature"
+
+// Subscriber (wrong - typo!)
+let sub_hub = Hub::new("temperatur")?;   // Missing 'e'
+
+// Fixed:
+let sub_hub = Hub::new("temperature")?;  // Now matches!
+```
+
+**2. Check Publishing is Happening:**
+```rust
+// Add logging to publisher
+fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    let data = 42.0;
+    match self.pub_hub.send(data, ctx) {
+        Ok(()) => {
+            if let Some(ctx) = ctx {
+                ctx.log_info("Published successfully");
+            }
+        }
+        Err(_) => {
+            if let Some(ctx) = ctx {
+                ctx.log_error("Publish failed!");
+            }
+        }
+    }
+}
+```
+
+**3. Use Dashboard to Debug:**
+```bash
+# Terminal 1: Run your app
+horus run
+
+# Terminal 2: Open dashboard
+horus dashboard
+```
+
+In dashboard:
+- **Topics tab**: Shows all active topics and their types
+- **Nodes tab**: Shows which nodes are publishing/subscribing
+- **Metrics tab**: Shows message counts (0 = no messages)
+
+**4. Check Node Priority:**
+
+Ensure publisher runs before subscriber:
+```rust
+let mut scheduler = Scheduler::new();
+
+// Publisher (priority 0 - runs first)
+scheduler.add(Box::new(publisher), 0, Some(true));
+
+// Subscriber (priority 1 - runs after)
+scheduler.add(Box::new(subscriber), 1, Some(true));
+```
+
+---
+
+### Application Hangs / Deadlock
+
+**Symptom:**
+```
+Starting application...
+[Nodes initialized]
+[Application freezes - no output]
+```
+
+**Cause:**
+- Infinite loop in `tick()` method
+- Blocking I/O operation
+- Waiting for message that never arrives
+
+**Fix:**
+
+**1. Check for Infinite Loops:**
+```rust
+// BAD: Infinite loop in tick
+fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    loop {  // Never returns!
+        // Process data
+    }
+}
+
+// GOOD: Tick returns after work
+fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    // Do work once
+    self.process_data();
+    // Return naturally
+}
+```
+
+**2. Avoid Blocking Operations:**
+```rust
+// BAD: Blocking sleep in tick
+fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    std::thread::sleep(Duration::from_secs(10));  // Blocks scheduler!
+}
+
+// GOOD: Use tick counter for delays
+fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    self.tick_count += 1;
+
+    // Execute every 10 ticks (~167ms at 60 FPS)
+    if self.tick_count % 10 == 0 {
+        self.slow_operation();
+    }
+}
+```
+
+**3. Don't Wait Forever for Messages:**
+```rust
+// BAD: Blocking wait
+fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    while self.data_sub.recv(ctx).is_none() {
+        // Infinite loop if no messages!
+    }
+}
+
+// GOOD: Non-blocking receive
+fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    if let Some(data) = self.data_sub.recv(ctx) {
+        // Process data
+    }
+    // Continue even if no message
+}
+```
+
+**4. Debug with Logging:**
+```rust
+fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    if let Some(ctx) = ctx {
+        ctx.log_debug("Tick started");
+    }
+
+    // Your code here
+
+    if let Some(ctx) = ctx {
+        ctx.log_debug("Tick completed");
+    }
+}
+```
+
+If you see "Tick started" but never "Tick completed", the hang is in your code.
+
+---
+
+### Message Size Errors
+
+**Symptom:**
+```
+Error: Message too large for shared memory
+thread 'main' panicked at 'send() failed'
+```
+
+**Cause:**
+- Message type is too large for shared memory buffer
+- Trying to send very large arrays or strings
+
+**Fix:**
+
+**1. Check Message Size:**
+```rust
+use std::mem::size_of;
+
+#[derive(Clone, Debug)]
+struct LargeMessage {
+    data: [f32; 100000],  // 400KB!
+}
+
+fn main() {
+    println!("Message size: {} bytes", size_of::<LargeMessage>());
+}
+```
+
+**2. Reduce Message Size:**
+```rust
+// BAD: Huge array
+struct SensorData {
+    readings: [f32; 100000],  // 400KB
+}
+
+// GOOD: Smaller, reasonable size
+struct SensorData {
+    readings: [f32; 100],  // 400 bytes
+}
+```
+
+**3. Split Large Data:**
+```rust
+// Send data in chunks
+for chunk in large_data.chunks(100) {
+    let msg = ChunkMessage {
+        data: chunk.to_vec(),
+        index: i,
+    };
+    self.pub_hub.send(msg, ctx).ok();
+}
+```
+
+**4. Use Arc for Large Data:**
+```rust
+use std::sync::Arc;
+
+// Share large data without copying
+type LargeData = Arc<Vec<f32>>;
+
+let data = Arc::new(vec![0.0; 100000]);
+self.pub_hub.send(Arc::clone(&data), ctx).ok();
+```
+
+---
+
+### Using Dashboard to Debug
+
+The dashboard is your best debugging tool for runtime issues.
+
+**Starting the Dashboard:**
+```bash
+# Terminal 1: Run your application
+horus run
+
+# Terminal 2: Start dashboard
+horus dashboard
+```
+
+**Dashboard Features:**
+
+**1. Nodes Tab:**
+- Shows all running nodes
+- Displays node state (Running, Error, Stopped)
+- Shows tick count and timing
+- Highlights nodes that aren't ticking (stuck)
+
+**2. Topics Tab:**
+- Lists all active topics
+- Shows message types
+- Displays publisher/subscriber counts
+- **0 publishers** = no one is sending
+- **0 subscribers** = no one is listening
+
+**3. Metrics Tab:**
+- **IPC Latency**: Communication time (should be &lt;1µs)
+- **Tick Duration**: How long each node takes
+- **Message Counts**: Total sent/received
+  - If sent > 0 but received = 0, subscriber issue
+  - If sent = 0, publisher issue
+
+**4. Graph Tab:**
+- Visual node graph
+- Shows message flow between nodes
+- Disconnected nodes = topic mismatch
+
+**Debug Workflow:**
+
+```
+1. Check Nodes tab
+   -> All nodes Running? (If Error, check logs)
+
+2. Check Topics tab
+   -> Topics exist? (If no, topic name typo)
+   -> Publishers > 0? (If no, publisher not working)
+   -> Subscribers > 0? (If no, subscriber not created)
+
+3. Check Metrics tab
+   -> Messages sent > 0? (If no, publisher not sending)
+   -> Messages received > 0? (If no, subscriber not receiving)
+   -> IPC latency sane? (If >1ms, system issue)
+
+4. Check Graph tab
+   -> Nodes connected? (If no, topic name mismatch)
+```
+
+**Example Debug Session:**
+
+```bash
+# Problem: Subscriber not receiving messages
+
+# Dashboard shows:
+# Nodes: SensorNode (Running), DisplayNode (Running)
+# Topics: "sensor_data" (1 pub, 0 sub)  <-- AHA!
+
+# Issue: No subscribers!
+# Fix: Check DisplayNode - likely wrong topic name
+```
+
+---
+
 ## Next Steps
 
 - **[Installation](/getting-started/installation)** - First-time installation guide
 - **[CLI Reference](/cli-reference)** - All horus commands
 - **[Examples](/examples)** - Working code examples
 - **[Performance](/performance)** - Optimization tips
+- **[Testing](/testing)** - Test your nodes to prevent runtime errors

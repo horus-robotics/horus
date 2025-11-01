@@ -333,15 +333,15 @@ node! {
 fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
 
-    // Register the controller node with priority 0 (highest)
-    scheduler.register(
+    // Add the controller node with priority 0 (highest)
+    scheduler.add(
         Box::new(Controller::new()),
         0,     // priority (0 = highest)
         Some(true)    // logging config
     );
 
     // Run the scheduler
-    scheduler.tick_all()
+    scheduler.run()
 }
 "#
     } else {
@@ -378,15 +378,15 @@ impl Node for Controller {
 fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
 
-    // Register the controller node with priority 10
-    scheduler.register(
+    // Add the controller node with priority 0 (highest)
+    scheduler.add(
         Box::new(Controller::new()?),
         0,     // priority (0 = highest)
         Some(true)    // logging config
     );
 
     // Run the scheduler
-    scheduler.tick_all()
+    scheduler.run()
 }
 "#
     };

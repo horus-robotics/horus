@@ -195,7 +195,7 @@ horus_manager/              # CLI tool
 horus_daemon/               # Remote deployment daemon
 horus_macros/               # node! procedural macro
 horus_py/                   # Python bindings
-horus_c/                    # C bindings
+horus_cpp/                  # C/C++ bindings
 horus_library/              # Standard library
   messages/                 # Standard message types
   apps/                     # Example applications
@@ -309,10 +309,22 @@ horus dashboard 3001            # Custom port
 horus dashboard -t              # Terminal UI
 ```
 
+### Validation
+```bash
+horus check                     # Validate horus.yaml
+horus check -q                  # Only show errors, suppress warnings
+```
+
+### Simulation
+```bash
+horus sim 2d                    # Launch 2D simulator
+horus sim 2d --world map.yaml   # With custom world config
+horus sim 2d --world-image map.png --resolution 0.05  # From occupancy grid
+```
+
 ### Version Information
 ```bash
-horus version                   # Show version
-horus --version
+horus --version                 # Show version
 horus -V
 ```
 
@@ -323,8 +335,9 @@ horus -V
 use horus_core::scheduling::Scheduler;
 
 let mut scheduler = Scheduler::new();
-scheduler.register(Box::new(my_node), priority, Some(logging));
-scheduler.tick_all()?;
+scheduler.add(Box::new(my_node), priority, Some(logging));
+scheduler.run()?;  // Run continuously until Ctrl+C
+// Or: scheduler.run_for(Duration::from_secs(10))?;  // Run for duration
 ```
 
 ### Hub (Pub/Sub)
@@ -431,9 +444,9 @@ horus.run(node, duration=5)
 
 See [horus_py/README.md](horus_py/README.md) for complete documentation.
 
-### C
+### C/C++
 
-See [horus_c/README.md](horus_c/README.md) for C bindings documentation.
+See [horus_cpp/README.md](horus_cpp/README.md) for C/C++ bindings documentation.
 
 ## Testing
 

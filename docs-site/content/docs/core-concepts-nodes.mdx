@@ -1,10 +1,19 @@
 ---
 title: Core Concepts - Nodes
 description: Understanding HORUS nodes and their lifecycle
-order: 3
+order: 4
 ---
 
 # Nodes and Lifecycle
+
+## Key Takeaways
+
+After reading this guide, you will understand:
+- How nodes are self-contained units of computation that run in the scheduler
+- The Node trait's lifecycle methods (init, tick, shutdown) and when each is called
+- How NodeInfo provides logging, metrics, and timing context to your nodes
+- When to use different NodePriority levels (Critical for safety, Background for logging)
+- Communication patterns (publisher, subscriber, pipeline, aggregator) for building node graphs
 
 Nodes are the fundamental building blocks of HORUS applications. Every component in your robotics system is a node - sensors, actuators, controllers, filters, and more.
 

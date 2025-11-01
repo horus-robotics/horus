@@ -1,7 +1,7 @@
 ---
 title: Getting Started
 description: High-performance framework for building distributed systems with sub-microsecond IPC
-order: 1
+order: 3
 ---
 
 # Getting Started with HORUS
@@ -23,11 +23,13 @@ HORUS is written in Rust, which gives you:
 
 ### Multi-Language Support
 
-Don't know Rust? No problem! HORUS works with:
+Don't know Rust? No problem! HORUS provides production-ready bindings for:
 
-- **Python** - Simple functional API, perfect for prototyping
-- **C** - Integrate existing hardware drivers
+- **Python** - Simple functional API, perfect for prototyping and rapid development
 - **Rust** - Full framework power for performance-critical code
+
+**Also available (Alpha):**
+- **C++** - Hardware driver integration (basic pub/sub works, see [C++ Bindings](/cpp-bindings) for limitations)
 
 ## Why Use HORUS?
 
@@ -197,7 +199,7 @@ fn main() -> Result<()> {
 }
 ```
 
-**That's it!** 7 lines for a keyboard-controlled robot. No configuration needed - nodes know their topics.
+**That's it!** 7 lines for a keyboard-controlled robot. No XML launch files or manual topic wiring - nodes auto-connect via topic names.
 
 Available nodes: `KeyboardInputNode`, `JoystickInputNode`, `CameraNode`, `LidarNode`, `ImuNode`, `DifferentialDriveNode`, `PidControllerNode`, `EmergencyStopNode`, `SafetyMonitorNode`, and more!
 
@@ -325,7 +327,7 @@ Current temperature: 20.3°C
 10. [Dashboard](/dashboard) - Monitor and debug
 
 **Advanced** (When you need it)
-11. [Multi-Language](/multi-language) - Python and C
+11. [Multi-Language](/multi-language) - Python and C++ bindings
 12. [Performance](/performance) - Optimize for speed
 13. [Examples](/examples) - Real projects
 
