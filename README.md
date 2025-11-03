@@ -1,8 +1,29 @@
 # HORUS Framework
 
+<div align="center">
+
+[![Version](https://img.shields.io/badge/version-0.1.4-blue.svg)](https://github.com/horus-robotics/horus/releases)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org)
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS-lightgrey.svg)]()
+[![CI](https://img.shields.io/badge/CI-passing-brightgreen.svg)](.github/workflows/ci.yml)
+[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://docs.horus-registry.dev)
+
+[![Installations](https://img.shields.io/endpoint?url=https://telemetry.horus-registry.dev/telemetry/badge)](PRIVACY.md)
+[![IPC Latency](https://img.shields.io/badge/IPC%20latency-312ns-brightgreen.svg)](#performance)
+[![Throughput](https://img.shields.io/badge/throughput-6M%2B%20msg%2Fs-green.svg)](#performance)
+[![Languages](https://img.shields.io/badge/languages-Rust%20%7C%20Python%20%7C%20C%2B%2B-blue.svg)](#multi-language-support)
+[![Status](https://img.shields.io/badge/status-beta-yellow.svg)](https://github.com/horus-robotics/horus/releases)
+
 **Hybrid Optimized Robotics Unified System**
 
 A production-grade robotics framework built in Rust for **real-time performance** and **memory safety**. HORUS delivers sub-microsecond IPC latency (50-500x faster than ROS2) while maintaining a simpler developer experience.
+
+[Installation](#installation) • [Quick Start](#quick-start) • [Documentation](https://docs.horus-registry.dev) • [Examples](#examples) • [Benchmarks](#performance)
+
+</div>
+
+---
 
 ## Why HORUS?
 
