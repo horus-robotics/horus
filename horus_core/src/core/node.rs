@@ -561,14 +561,40 @@ impl NodeInfo {
     }
 
     pub fn log_info(&self, message: &str) {
+        let now = chrono::Local::now();
+        let current_tick_us = if let Some(start_time) = self.tick_start_time {
+            start_time.elapsed().as_micros() as u64
+        } else {
+            0
+        };
+
         if self.config.enable_logging
             && (self.config.log_level == "INFO" || self.config.log_level == "DEBUG")
         {
             eprintln!("\x1b[34m[INFO]\x1b[0m \x1b[33m[{}]\x1b[0m {}", self.name, message);
         }
+
+        // Write to global log buffer for dashboard
+        use crate::core::log_buffer::{publish_log, LogEntry, LogType};
+        publish_log(LogEntry {
+            timestamp: now.format("%H:%M:%S%.3f").to_string(),
+            node_name: self.name.clone(),
+            log_type: LogType::Info,
+            topic: None,
+            message: message.to_string(),
+            tick_us: current_tick_us,
+            ipc_ns: 0,
+        });
     }
 
     pub fn log_warning(&mut self, message: &str) {
+        let now = chrono::Local::now();
+        let current_tick_us = if let Some(start_time) = self.tick_start_time {
+            start_time.elapsed().as_micros() as u64
+        } else {
+            0
+        };
+
         if self.config.enable_logging {
             // Format to owned String first to avoid double-formatting issues
             let msg = format!(
@@ -580,6 +606,18 @@ impl NodeInfo {
             let _ = io::stdout().flush();
         }
 
+        // Write to global log buffer for dashboard
+        use crate::core::log_buffer::{publish_log, LogEntry, LogType};
+        publish_log(LogEntry {
+            timestamp: now.format("%H:%M:%S%.3f").to_string(),
+            node_name: self.name.clone(),
+            log_type: LogType::Warning,
+            topic: None,
+            message: message.to_string(),
+            tick_us: current_tick_us,
+            ipc_ns: 0,
+        });
+
         self.warning_history
             .push((Instant::now(), message.to_string()));
         if self.warning_history.len() > 100 {
@@ -589,6 +627,13 @@ impl NodeInfo {
     }
 
     pub fn log_error(&mut self, message: &str) {
+        let now = chrono::Local::now();
+        let current_tick_us = if let Some(start_time) = self.tick_start_time {
+            start_time.elapsed().as_micros() as u64
+        } else {
+            0
+        };
+
         if self.config.enable_logging {
             // Format to owned String first to avoid double-formatting issues
             let msg = format!(
@@ -600,6 +645,18 @@ impl NodeInfo {
             let _ = io::stdout().flush();
         }
 
+        // Write to global log buffer for dashboard
+        use crate::core::log_buffer::{publish_log, LogEntry, LogType};
+        publish_log(LogEntry {
+            timestamp: now.format("%H:%M:%S%.3f").to_string(),
+            node_name: self.name.clone(),
+            log_type: LogType::Error,
+            topic: None,
+            message: message.to_string(),
+            tick_us: current_tick_us,
+            ipc_ns: 0,
+        });
+
         self.error_history
             .push((Instant::now(), message.to_string()));
         if self.error_history.len() > 100 {
@@ -609,6 +666,13 @@ impl NodeInfo {
     }
 
     pub fn log_debug(&mut self, message: &str) {
+        let now = chrono::Local::now();
+        let current_tick_us = if let Some(start_time) = self.tick_start_time {
+            start_time.elapsed().as_micros() as u64
+        } else {
+            0
+        };
+
         if self.config.enable_logging && self.config.log_level == "DEBUG" {
             // Format to owned String first to avoid double-formatting issues
             let msg = format!(
@@ -619,6 +683,18 @@ impl NodeInfo {
             let _ = io::stdout().write_all(msg.as_bytes());
             let _ = io::stdout().flush();
         }
+
+        // Write to global log buffer for dashboard
+        use crate::core::log_buffer::{publish_log, LogEntry, LogType};
+        publish_log(LogEntry {
+            timestamp: now.format("%H:%M:%S%.3f").to_string(),
+            node_name: self.name.clone(),
+            log_type: LogType::Debug,
+            topic: None,
+            message: message.to_string(),
+            tick_us: current_tick_us,
+            ipc_ns: 0,
+        });
     }
 
     /// Production-ready metric logging - logs only significant events

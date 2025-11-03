@@ -318,49 +318,105 @@ pub extern "C" fn spin() {
     }
 }
 
-// Logging
+// Logging - with dashboard integration
 #[no_mangle]
 pub extern "C" fn log_info(msg: *const c_char) {
+    use horus_core::core::log_buffer::{publish_log, LogEntry, LogType};
+    use chrono::Local;
+
     let msg_str = unsafe {
         if msg.is_null() {
             return;
         }
         CStr::from_ptr(msg).to_str().unwrap_or("")
     };
+
     println!("[INFO] {}", msg_str);
+
+    publish_log(LogEntry {
+        timestamp: Local::now().format("%H:%M:%S%.3f").to_string(),
+        node_name: "cpp_global".to_string(),
+        log_type: LogType::Info,
+        topic: None,
+        message: msg_str.to_string(),
+        tick_us: 0,
+        ipc_ns: 0,
+    });
 }
 
 #[no_mangle]
 pub extern "C" fn log_warn(msg: *const c_char) {
+    use horus_core::core::log_buffer::{publish_log, LogEntry, LogType};
+    use chrono::Local;
+
     let msg_str = unsafe {
         if msg.is_null() {
             return;
         }
         CStr::from_ptr(msg).to_str().unwrap_or("")
     };
+
     println!("[WARN] {}", msg_str);
+
+    publish_log(LogEntry {
+        timestamp: Local::now().format("%H:%M:%S%.3f").to_string(),
+        node_name: "cpp_global".to_string(),
+        log_type: LogType::Warning,
+        topic: None,
+        message: msg_str.to_string(),
+        tick_us: 0,
+        ipc_ns: 0,
+    });
 }
 
 #[no_mangle]
 pub extern "C" fn log_error(msg: *const c_char) {
+    use horus_core::core::log_buffer::{publish_log, LogEntry, LogType};
+    use chrono::Local;
+
     let msg_str = unsafe {
         if msg.is_null() {
             return;
         }
         CStr::from_ptr(msg).to_str().unwrap_or("")
     };
+
     eprintln!("[ERROR] {}", msg_str);
+
+    publish_log(LogEntry {
+        timestamp: Local::now().format("%H:%M:%S%.3f").to_string(),
+        node_name: "cpp_global".to_string(),
+        log_type: LogType::Error,
+        topic: None,
+        message: msg_str.to_string(),
+        tick_us: 0,
+        ipc_ns: 0,
+    });
 }
 
 #[no_mangle]
 pub extern "C" fn log_debug(msg: *const c_char) {
+    use horus_core::core::log_buffer::{publish_log, LogEntry, LogType};
+    use chrono::Local;
+
     let msg_str = unsafe {
         if msg.is_null() {
             return;
         }
         CStr::from_ptr(msg).to_str().unwrap_or("")
     };
+
     println!("[DEBUG] {}", msg_str);
+
+    publish_log(LogEntry {
+        timestamp: Local::now().format("%H:%M:%S%.3f").to_string(),
+        node_name: "cpp_global".to_string(),
+        log_type: LogType::Debug,
+        topic: None,
+        message: msg_str.to_string(),
+        tick_us: 0,
+        ipc_ns: 0,
+    });
 }
 
 // Message type definitions matching C structs
@@ -692,16 +748,109 @@ pub extern "C" fn node_create_subscriber(
 }
 
 #[no_mangle]
-pub extern "C" fn node_log_info(_ctx: *mut NodeContext, msg: *const c_char) {
-    log_info(msg);
+pub extern "C" fn node_log_info(ctx: *mut NodeContext, msg: *const c_char) {
+    use horus_core::core::log_buffer::{publish_log, LogEntry, LogType};
+    use chrono::Local;
+
+    let msg_str = unsafe {
+        if msg.is_null() {
+            return;
+        }
+        CStr::from_ptr(msg).to_str().unwrap_or("")
+    };
+
+    let node_name = unsafe {
+        if ctx.is_null() {
+            "cpp_unknown".to_string()
+        } else {
+            CStr::from_ptr((*ctx).node_name)
+                .to_str()
+                .unwrap_or("cpp_unknown")
+                .to_string()
+        }
+    };
+
+    println!("[INFO] [{}] {}", node_name, msg_str);
+
+    publish_log(LogEntry {
+        timestamp: Local::now().format("%H:%M:%S%.3f").to_string(),
+        node_name,
+        log_type: LogType::Info,
+        topic: None,
+        message: msg_str.to_string(),
+        tick_us: 0,
+        ipc_ns: 0,
+    });
 }
 
 #[no_mangle]
-pub extern "C" fn node_log_warn(_ctx: *mut NodeContext, msg: *const c_char) {
-    log_warn(msg);
+pub extern "C" fn node_log_warn(ctx: *mut NodeContext, msg: *const c_char) {
+    use horus_core::core::log_buffer::{publish_log, LogEntry, LogType};
+    use chrono::Local;
+
+    let msg_str = unsafe {
+        if msg.is_null() {
+            return;
+        }
+        CStr::from_ptr(msg).to_str().unwrap_or("")
+    };
+
+    let node_name = unsafe {
+        if ctx.is_null() {
+            "cpp_unknown".to_string()
+        } else {
+            CStr::from_ptr((*ctx).node_name)
+                .to_str()
+                .unwrap_or("cpp_unknown")
+                .to_string()
+        }
+    };
+
+    println!("[WARN] [{}] {}", node_name, msg_str);
+
+    publish_log(LogEntry {
+        timestamp: Local::now().format("%H:%M:%S%.3f").to_string(),
+        node_name,
+        log_type: LogType::Warning,
+        topic: None,
+        message: msg_str.to_string(),
+        tick_us: 0,
+        ipc_ns: 0,
+    });
 }
 
 #[no_mangle]
-pub extern "C" fn node_log_error(_ctx: *mut NodeContext, msg: *const c_char) {
-    log_error(msg);
+pub extern "C" fn node_log_error(ctx: *mut NodeContext, msg: *const c_char) {
+    use horus_core::core::log_buffer::{publish_log, LogEntry, LogType};
+    use chrono::Local;
+
+    let msg_str = unsafe {
+        if msg.is_null() {
+            return;
+        }
+        CStr::from_ptr(msg).to_str().unwrap_or("")
+    };
+
+    let node_name = unsafe {
+        if ctx.is_null() {
+            "cpp_unknown".to_string()
+        } else {
+            CStr::from_ptr((*ctx).node_name)
+                .to_str()
+                .unwrap_or("cpp_unknown")
+                .to_string()
+        }
+    };
+
+    eprintln!("[ERROR] [{}] {}", node_name, msg_str);
+
+    publish_log(LogEntry {
+        timestamp: Local::now().format("%H:%M:%S%.3f").to_string(),
+        node_name,
+        log_type: LogType::Error,
+        topic: None,
+        message: msg_str.to_string(),
+        tick_us: 0,
+        ipc_ns: 0,
+    });
 }

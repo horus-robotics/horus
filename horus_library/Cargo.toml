@@ -1,6 +1,6 @@
 [package]
 name = "horus_library"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 description = "HORUS Library - Collection of Nodes, Algorithms, and Example Apps"
 authors = ["HORUS Team"]

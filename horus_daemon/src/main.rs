@@ -79,7 +79,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Optionally add authentication middleware
     if auth::is_auth_enabled() {
-        tracing::info!("🔒 API authentication enabled");
+        tracing::info!(" API authentication enabled");
         app = app.layer(middleware::from_fn(auth::auth_middleware));
     }
 

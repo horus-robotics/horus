@@ -2,8 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
 import { compileMDX } from 'next-mdx-remote/rsc';
-import { codeToHtml } from 'shiki';
 import remarkGfm from 'remark-gfm';
+import CodeBlock from '@/components/CodeBlock';
 
 const contentDirectory = path.join(process.cwd(), 'content');
 
@@ -81,8 +81,19 @@ export async function getDoc(slug: string[]): Promise<DocContent | null> {
           );
         },
         pre: ({ children, ...props }: any) => {
+          const codeElement = children?.props;
+          const className = codeElement?.className || '';
+          const code = codeElement?.children?.toString() || '';
+
+          // If we have a code block with language, use our CodeBlock component
+          if (className) {
+            return <CodeBlock className={className}>{code}</CodeBlock>;
+          }
+
+          // Otherwise render plain pre
           return (
             <pre
+              className="code-block"
               style={{
                 fontFamily: '"Courier New", Courier, monospace',
                 fontVariantLigatures: 'none',
@@ -91,6 +102,12 @@ export async function getDoc(slug: string[]): Promise<DocContent | null> {
                 textRendering: 'optimizeSpeed',
                 WebkitFontSmoothing: 'none',
                 fontWeight: 'normal',
+                backgroundColor: '#1e1e1e',
+                padding: '1rem',
+                borderRadius: '0.375rem',
+                overflow: 'auto',
+                marginBottom: '1.5rem',
+                color: '#d4d4d4',
               }}
               {...props}
             >
@@ -98,13 +115,32 @@ export async function getDoc(slug: string[]): Promise<DocContent | null> {
             </pre>
           );
         },
-        code: ({ children, ...props }: any) => {
-          // Don't apply inline-code styling to code blocks (handled by pre component and CSS)
+        code: ({ children, className, ...props }: any) => {
+          // Inline code styling
+          if (!className) {
+            return (
+              <code
+                className="px-1.5 py-0.5 rounded bg-gray-800 text-cyan-400 text-sm"
+                style={{
+                  fontVariantLigatures: 'none',
+                  fontFeatureSettings: '"liga" 0, "calt" 0',
+                }}
+                {...props}
+              >
+                {children}
+              </code>
+            );
+          }
+
+          // Code block (language specified) - syntax highlighted
           return (
             <code
+              className={className}
               style={{
                 fontVariantLigatures: 'none',
                 fontFeatureSettings: '"liga" 0, "calt" 0',
+                color: '#d4d4d4', // Light gray text
+                display: 'block',
               }}
               {...props}
             >

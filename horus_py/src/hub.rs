@@ -52,7 +52,7 @@ impl horus::core::LogSummary for GenericMessage {
 ///
 /// This class provides publish/subscribe communication between nodes.
 /// Messages are serialized using bincode for efficient transmission.
-#[pyclass]
+#[pyclass(module = "horus._horus")]
 #[derive(Clone)]
 pub struct PyHub {
     topic: String,
@@ -209,6 +209,12 @@ impl PyHub {
 
     fn __str__(&self) -> String {
         self.topic.clone()
+    }
+
+    /// Pickle support: Provide constructor arguments
+    fn __getnewargs__(&self) -> PyResult<(String, usize)> {
+        // Use default capacity of 10 when unpickling
+        Ok((self.topic.clone(), 10))
     }
 }
 

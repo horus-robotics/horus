@@ -17,13 +17,27 @@ extern "C" {
 // ============================================================================
 
 // Opaque handle types
-typedef uint32_t Pub;
-typedef uint32_t Sub;
-typedef uint32_t Node;
-typedef uint32_t Scheduler;
+// Prefixed to avoid conflicts with C++ namespace
+typedef uint32_t HorusPub;
+typedef uint32_t HorusSub;
+typedef uint32_t HorusNode;
+typedef uint32_t HorusScheduler;
+
+// C-only aliases for convenience (hidden from C++)
+#ifndef __cplusplus
+typedef HorusPub Pub;
+typedef HorusSub Sub;
+typedef HorusNode Node;
+typedef HorusScheduler Scheduler;
+#endif
 
 // Forward declaration of opaque context
-typedef struct NodeContext NodeContext;
+typedef struct HorusNodeContext HorusNodeContext;
+
+// C-only alias (hidden from C++)
+#ifndef __cplusplus
+typedef HorusNodeContext NodeContext;
+#endif
 
 // Message type identifiers
 typedef enum {
@@ -38,9 +52,9 @@ typedef enum {
 } MessageType;
 
 // Node lifecycle callbacks
-typedef bool (*NodeInitCallback)(NodeContext* ctx, void* user_data);
-typedef void (*NodeTickCallback)(NodeContext* ctx, void* user_data);
-typedef void (*NodeShutdownCallback)(NodeContext* ctx, void* user_data);
+typedef bool (*NodeInitCallback)(HorusNodeContext* ctx, void* user_data);
+typedef void (*NodeTickCallback)(HorusNodeContext* ctx, void* user_data);
+typedef void (*NodeShutdownCallback)(HorusNodeContext* ctx, void* user_data);
 
 // ============================================================================
 // Internal FFI Functions
@@ -52,16 +66,16 @@ void shutdown(void);
 bool ok(void);
 
 // Publisher/Subscriber creation (only for standard message types)
-Pub publisher(const char* topic, MessageType type);
-Sub subscriber(const char* topic, MessageType type);
+HorusPub publisher(const char* topic, MessageType type);
+HorusSub subscriber(const char* topic, MessageType type);
 
 // Message send/receive
-bool send(Pub pub, const void* data);
-bool recv(Sub sub, void* data);
+bool send(HorusPub pub, const void* data);
+bool recv(HorusSub sub, void* data);
 
 // Context-aware messaging (with logging)
-bool node_send(NodeContext* ctx, Pub pub, const void* data);
-bool node_recv(NodeContext* ctx, Sub sub, void* data);
+bool node_send(HorusNodeContext* ctx, HorusPub pub, const void* data);
+bool node_recv(HorusNodeContext* ctx, HorusSub sub, void* data);
 
 // Timing utilities
 void sleep_ms(uint32_t ms);
@@ -76,87 +90,31 @@ void log_error(const char* msg);
 void log_debug(const char* msg);
 
 // Node creation
-Node node_create(const char* name,
-                 NodeInitCallback init_fn,
-                 NodeTickCallback tick_fn,
-                 NodeShutdownCallback shutdown_fn,
-                 void* user_data);
-void node_destroy(Node node);
+HorusNode node_create(const char* name,
+                      NodeInitCallback init_fn,
+                      NodeTickCallback tick_fn,
+                      NodeShutdownCallback shutdown_fn,
+                      void* user_data);
+void node_destroy(HorusNode node);
 
 // Scheduler management
-Scheduler scheduler_create(const char* name);
-bool scheduler_add(Scheduler sched, Node node, uint32_t priority, bool enable_logging);
-void scheduler_run(Scheduler sched);
-void scheduler_tick(Scheduler sched, const char** node_names, size_t count);
-void scheduler_stop(Scheduler sched);
-void scheduler_destroy(Scheduler sched);
+HorusScheduler scheduler_create(const char* name);
+bool scheduler_add(HorusScheduler sched, HorusNode node, uint32_t priority, bool enable_logging);
+void scheduler_run(HorusScheduler sched);
+void scheduler_tick(HorusScheduler sched, const char** node_names, size_t count);
+void scheduler_stop(HorusScheduler sched);
+void scheduler_destroy(HorusScheduler sched);
 
 // Context API
-Pub node_create_publisher(NodeContext* ctx, const char* topic, MessageType type);
-Sub node_create_subscriber(NodeContext* ctx, const char* topic, MessageType type);
-void node_log_info(NodeContext* ctx, const char* msg);
-void node_log_warn(NodeContext* ctx, const char* msg);
-void node_log_error(NodeContext* ctx, const char* msg);
+HorusPub node_create_publisher(HorusNodeContext* ctx, const char* topic, MessageType type);
+HorusSub node_create_subscriber(HorusNodeContext* ctx, const char* topic, MessageType type);
+void node_log_info(HorusNodeContext* ctx, const char* msg);
+void node_log_warn(HorusNodeContext* ctx, const char* msg);
+void node_log_error(HorusNodeContext* ctx, const char* msg);
 
-// Common message structs
-typedef struct {
-    float x, y, z;
-} Vector3;
-
-typedef struct {
-    float x, y, z, w;
-} Quaternion;
-
-typedef struct {
-    Vector3 linear;
-    Vector3 angular;
-} Twist;
-
-typedef struct {
-    Vector3 position;
-    Quaternion orientation;
-} Pose;
-
-typedef struct {
-    Vector3 linear_acceleration;
-    Vector3 angular_velocity;
-    Quaternion orientation;
-    float covariance[9];
-} IMU;
-
-typedef struct {
-    float* ranges;
-    float* intensities;
-    uint32_t count;
-    float angle_min;
-    float angle_max;
-    float angle_increment;
-    float range_min;
-    float range_max;
-    float scan_time;
-} LaserScan;
-
-typedef struct {
-    uint8_t* data;
-    uint32_t width;
-    uint32_t height;
-    uint32_t step;
-    uint8_t channels;
-} Image;
-
-typedef struct {
-    float* positions;
-    float* velocities;
-    float* efforts;
-    char** names;
-    uint32_t count;
-} JointState;
-
-typedef struct {
-    float* points;  // x,y,z packed array
-    uint32_t count;
-    uint32_t stride;  // bytes between points
-} PointCloud;
+// NOTE: Message type definitions have been moved to horus_library/cpp/include/horus/messages/
+// C++ code should include horus.hpp which provides the full message library
+// This C header only contains FFI function declarations
 
 #ifdef __cplusplus
 }

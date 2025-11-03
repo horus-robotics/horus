@@ -15,7 +15,6 @@ mod ui;
 
 use anyhow::Result;
 use bevy::prelude::*;
-use bevy::app::PluginGroupBuilder;
 use bevy_egui::EguiPlugin;
 use clap::Parser;
 use horus_core::{communication::Hub, core::NodeInfo};
@@ -69,6 +68,58 @@ pub struct RobotConfig {
     pub length: f32,
     pub max_speed: f32,
     pub color: [f32; 3], // RGB
+    #[serde(default)]
+    pub visual: VisualComponents,
+}
+
+/// Optional visual components for robot appearance
+#[derive(Debug, Clone, serde::Deserialize, Default)]
+pub struct VisualComponents {
+    /// Turret component (sits on top of hull)
+    pub turret: Option<TurretConfig>,
+    /// Cannon component (extends from turret)
+    pub cannon: Option<CannonConfig>,
+    /// Tread components (visual only, for tank-like appearance)
+    pub treads: Option<TreadConfig>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct TurretConfig {
+    pub width: f32,
+    pub length: f32,
+    pub offset_x: f32, // Offset from robot center
+    pub offset_y: f32,
+    #[serde(default = "default_turret_color")]
+    pub color: [f32; 3],
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct CannonConfig {
+    pub length: f32,
+    pub width: f32,
+    pub offset_x: f32, // Offset from robot center (typically forward)
+    #[serde(default = "default_cannon_color")]
+    pub color: [f32; 3],
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct TreadConfig {
+    pub width: f32,  // Width of each tread
+    pub offset: f32, // Distance from center to each tread
+    #[serde(default = "default_tread_color")]
+    pub color: [f32; 3],
+}
+
+fn default_turret_color() -> [f32; 3] {
+    [0.25, 0.35, 0.18] // Darker olive
+}
+
+fn default_cannon_color() -> [f32; 3] {
+    [0.2, 0.2, 0.2] // Dark gray
+}
+
+fn default_tread_color() -> [f32; 3] {
+    [0.15, 0.15, 0.15] // Very dark gray
 }
 
 impl Default for RobotConfig {
@@ -78,6 +129,7 @@ impl Default for RobotConfig {
             length: 0.8,            // 0.8m long
             max_speed: 2.0,         // 2 m/s max
             color: [0.2, 0.8, 0.2], // Green
+            visual: VisualComponents::default(),
         }
     }
 }
@@ -131,6 +183,37 @@ struct Robot {
 /// World boundaries and obstacles
 #[derive(Component)]
 struct WorldElement;
+
+/// Obstacle marker
+#[derive(Component)]
+struct ObstacleElement;
+
+/// Grid lines
+#[derive(Component)]
+struct GridLine;
+
+/// Component to track physics rigid body handle for world elements
+#[derive(Component)]
+struct PhysicsHandle {
+    rigid_body_handle: RigidBodyHandle,
+}
+
+/// Visual component markers - these follow the parent robot
+#[derive(Component)]
+struct RobotTurret {
+    parent: Entity,
+}
+
+#[derive(Component)]
+struct RobotCannon {
+    parent: Entity,
+}
+
+#[derive(Component)]
+struct RobotTread {
+    parent: Entity,
+    is_left: bool, // true for left tread, false for right
+}
 
 /// HORUS communication system
 #[derive(Resource)]
@@ -314,6 +397,111 @@ impl AppConfig {
 }
 
 /// Setup system - initializes everything
+/// Helper function to spawn visual components for a robot
+fn spawn_robot_visual_components(
+    commands: &mut Commands,
+    parent_entity: Entity,
+    config: &RobotConfig,
+    scale: f32,
+) {
+    info!("🎨 Spawning visual components for robot");
+
+    // Spawn treads if configured
+    if let Some(ref tread_config) = config.visual.treads {
+        info!("  ✓ Spawning treads");
+
+        let tread_color = Color::srgb(
+            tread_config.color[0],
+            tread_config.color[1],
+            tread_config.color[2],
+        );
+
+        // Left tread
+        commands.spawn((
+            Sprite {
+                color: tread_color,
+                custom_size: Some(Vec2::new(
+                    config.length * scale,
+                    tread_config.width * scale,
+                )),
+                ..default()
+            },
+            Transform::from_translation(Vec3::new(0.0, 0.0, 0.9)), // Slightly below robot
+            RobotTread {
+                parent: parent_entity,
+                is_left: true,
+            },
+        ));
+
+        // Right tread
+        commands.spawn((
+            Sprite {
+                color: tread_color,
+                custom_size: Some(Vec2::new(
+                    config.length * scale,
+                    tread_config.width * scale,
+                )),
+                ..default()
+            },
+            Transform::from_translation(Vec3::new(0.0, 0.0, 0.9)), // Slightly below robot
+            RobotTread {
+                parent: parent_entity,
+                is_left: false,
+            },
+        ));
+    }
+
+    // Spawn turret if configured
+    if let Some(ref turret_config) = config.visual.turret {
+        info!("  ✓ Spawning turret");
+        let turret_color = Color::srgb(
+            turret_config.color[0],
+            turret_config.color[1],
+            turret_config.color[2],
+        );
+
+        commands.spawn((
+            Sprite {
+                color: turret_color,
+                custom_size: Some(Vec2::new(
+                    turret_config.length * scale,
+                    turret_config.width * scale,
+                )),
+                ..default()
+            },
+            Transform::from_translation(Vec3::new(0.0, 0.0, 1.1)), // Above robot
+            RobotTurret {
+                parent: parent_entity,
+            },
+        ));
+    }
+
+    // Spawn cannon if configured
+    if let Some(ref cannon_config) = config.visual.cannon {
+        info!("  ✓ Spawning cannon");
+        let cannon_color = Color::srgb(
+            cannon_config.color[0],
+            cannon_config.color[1],
+            cannon_config.color[2],
+        );
+
+        commands.spawn((
+            Sprite {
+                color: cannon_color,
+                custom_size: Some(Vec2::new(
+                    cannon_config.length * scale,
+                    cannon_config.width * scale,
+                )),
+                ..default()
+            },
+            Transform::from_translation(Vec3::new(0.0, 0.0, 1.2)), // Above turret
+            RobotCannon {
+                parent: parent_entity,
+            },
+        ));
+    }
+}
+
 fn setup(
     mut commands: Commands,
     app_config: Res<AppConfig>,
@@ -393,7 +581,7 @@ fn setup(
         // Physics (original scale)
         let rigid_body = RigidBodyBuilder::fixed().translation(*pos).build();
         let collider = ColliderBuilder::cuboid(size.x / 2.0, size.y / 2.0).build();
-        let _handle = physics_world.rigid_body_set.insert(rigid_body);
+        let handle = physics_world.rigid_body_set.insert(rigid_body);
         physics_world.collider_set.insert(collider);
 
         // Visual (scaled for visibility)
@@ -405,6 +593,9 @@ fn setup(
             },
             Transform::from_translation(Vec3::new(pos_scaled.x, pos_scaled.y, 0.0)),
             WorldElement,
+            PhysicsHandle {
+                rigid_body_handle: handle,
+            },
         ));
     }
 
@@ -418,18 +609,22 @@ fn setup(
         // Physics (original scale)
         let rigid_body = RigidBodyBuilder::fixed().translation(pos_physics).build();
         let collider = ColliderBuilder::cuboid(size_physics.x / 2.0, size_physics.y / 2.0).build();
-        let _handle = physics_world.rigid_body_set.insert(rigid_body);
+        let handle = physics_world.rigid_body_set.insert(rigid_body);
         physics_world.collider_set.insert(collider);
 
         // Visual (scaled)
         commands.spawn((
             Sprite {
-                color: Color::srgb(0.6, 0.4, 0.2), // Brown obstacles
+                color: Color::srgb(0.6, 0.4, 0.2), // Brown obstacles (will be updated by visual_color_system)
                 custom_size: Some(Vec2::new(size_visual.x, size_visual.y)),
                 ..default()
             },
             Transform::from_translation(Vec3::new(pos_visual.x, pos_visual.y, 0.5)),
             WorldElement,
+            ObstacleElement, // Mark as obstacle for color updates
+            PhysicsHandle {
+                rigid_body_handle: handle,
+            },
         ));
     }
 
@@ -463,7 +658,7 @@ fn setup(
         app_config.robot_config.color[2],
     );
 
-    commands.spawn((
+    let robot_entity = commands.spawn((
         Sprite {
             color: robot_color,
             custom_size: Some(Vec2::new(robot_size.x, robot_size.y)),
@@ -475,7 +670,10 @@ fn setup(
             config: app_config.robot_config.clone(),
             rigid_body_handle: robot_handle,
         },
-    ));
+    )).id();
+
+    // Spawn visual components if configured
+    spawn_robot_visual_components(&mut commands, robot_entity, &app_config.robot_config, scale);
 
     info!(" sim2d setup complete!");
     info!(
@@ -565,11 +763,12 @@ fn physics_system(mut physics_world: ResMut<PhysicsWorld>) {
 
 /// Visual sync system - updates Bevy transforms from physics
 fn visual_sync_system(
-    mut robot_query: Query<(&Robot, &mut Transform)>,
+    mut robot_query: Query<(&Robot, &mut Transform, &mut Sprite)>,
     physics_world: Res<PhysicsWorld>,
+    app_config: Res<AppConfig>,
 ) {
     let scale = 50.0; // Same scale used in setup
-    for (robot, mut transform) in robot_query.iter_mut() {
+    for (robot, mut transform, mut sprite) in robot_query.iter_mut() {
         if let Some(rigid_body) = physics_world.rigid_body_set.get(robot.rigid_body_handle) {
             // Update robot visual position from physics (scale up for visibility)
             let pos = rigid_body.translation();
@@ -578,8 +777,375 @@ fn visual_sync_system(
             transform.translation.x = pos.x * scale;
             transform.translation.y = pos.y * scale;
             transform.rotation = Quat::from_rotation_z(rot.angle());
+
+            // Update robot visual size and color from live config
+            sprite.custom_size = Some(Vec2::new(
+                app_config.robot_config.length * scale,
+                app_config.robot_config.width * scale,
+            ));
+            sprite.color = Color::srgb(
+                app_config.robot_config.color[0],
+                app_config.robot_config.color[1],
+                app_config.robot_config.color[2],
+            );
         }
     }
+}
+
+/// Robot config change detection - respawns visual components when config changes
+fn robot_visual_reload_system(
+    mut commands: Commands,
+    robot_query: Query<(Entity, &Robot)>,
+    visual_components: Query<Entity, Or<(With<RobotTurret>, With<RobotCannon>, With<RobotTread>)>>,
+    app_config: Res<AppConfig>,
+) {
+    if !app_config.is_changed() {
+        return;
+    }
+
+    info!("🔄 Robot config changed - reloading visual components");
+
+    // Despawn all existing visual components
+    for entity in visual_components.iter() {
+        commands.entity(entity).despawn();
+    }
+
+    // Respawn visual components for each robot with new config
+    for (entity, _robot) in robot_query.iter() {
+        spawn_robot_visual_components(&mut commands, entity, &app_config.robot_config, 50.0);
+    }
+}
+
+/// Visual component sync - updates turret, cannon, treads to follow robot
+fn visual_component_sync_system(
+    robot_query: Query<(&Robot, &Transform)>,
+    mut turret_query: Query<(&RobotTurret, &mut Transform), Without<Robot>>,
+    mut cannon_query: Query<(&RobotCannon, &mut Transform), (Without<Robot>, Without<RobotTurret>)>,
+    mut tread_query: Query<(&RobotTread, &mut Transform), (Without<Robot>, Without<RobotTurret>, Without<RobotCannon>)>,
+) {
+    let scale = 50.0;
+
+    // Update turrets
+    for (turret, mut transform) in turret_query.iter_mut() {
+        if let Ok((robot, robot_transform)) = robot_query.get(turret.parent) {
+            if let Some(ref turret_config) = robot.config.visual.turret {
+                // Apply robot rotation to offset
+                let angle = robot_transform.rotation.to_euler(EulerRot::ZYX).0;
+                let rotated_offset = Vec2::new(
+                    turret_config.offset_x * angle.cos() - turret_config.offset_y * angle.sin(),
+                    turret_config.offset_x * angle.sin() + turret_config.offset_y * angle.cos(),
+                ) * scale;
+
+                transform.translation.x = robot_transform.translation.x + rotated_offset.x;
+                transform.translation.y = robot_transform.translation.y + rotated_offset.y;
+                transform.rotation = robot_transform.rotation;
+            }
+        }
+    }
+
+    // Update cannons
+    for (cannon, mut transform) in cannon_query.iter_mut() {
+        if let Ok((robot, robot_transform)) = robot_query.get(cannon.parent) {
+            if let Some(ref cannon_config) = robot.config.visual.cannon {
+                // Cannon extends forward from robot center
+                let angle = robot_transform.rotation.to_euler(EulerRot::ZYX).0;
+                let forward_offset = Vec2::new(
+                    cannon_config.offset_x * angle.cos(),
+                    cannon_config.offset_x * angle.sin(),
+                ) * scale;
+
+                transform.translation.x = robot_transform.translation.x + forward_offset.x;
+                transform.translation.y = robot_transform.translation.y + forward_offset.y;
+                transform.rotation = robot_transform.rotation;
+            }
+        }
+    }
+
+    // Update treads
+    for (tread, mut transform) in tread_query.iter_mut() {
+        if let Ok((robot, robot_transform)) = robot_query.get(tread.parent) {
+            if let Some(ref tread_config) = robot.config.visual.treads {
+                // Treads are offset perpendicular to forward direction
+                let angle = robot_transform.rotation.to_euler(EulerRot::ZYX).0;
+                let offset_multiplier = if tread.is_left { 1.0 } else { -1.0 };
+                let lateral_offset = Vec2::new(
+                    -angle.sin() * tread_config.offset * offset_multiplier,
+                    angle.cos() * tread_config.offset * offset_multiplier,
+                ) * scale;
+
+                transform.translation.x = robot_transform.translation.x + lateral_offset.x;
+                transform.translation.y = robot_transform.translation.y + lateral_offset.y;
+                transform.rotation = robot_transform.rotation;
+            }
+        }
+    }
+}
+
+/// Camera control system - applies zoom and pan
+fn camera_control_system(
+    mut camera_query: Query<(&mut Transform, &mut OrthographicProjection), With<Camera2d>>,
+    camera_controller: Res<ui::CameraController>,
+) {
+    for (mut transform, mut projection) in camera_query.iter_mut() {
+        // Apply pan
+        transform.translation.x = camera_controller.pan_x;
+        transform.translation.y = camera_controller.pan_y;
+
+        // Apply zoom by adjusting orthographic scale
+        // Lower scale = more zoomed in, higher scale = more zoomed out
+        projection.scale = 1.0 / camera_controller.zoom;
+    }
+}
+
+/// Visual color update system - updates colors based on preferences
+fn visual_color_system(
+    mut obstacle_query: Query<&mut Sprite, (With<ObstacleElement>, Without<GridLine>)>,
+    mut wall_query: Query<&mut Sprite, (With<WorldElement>, Without<ObstacleElement>, Without<GridLine>)>,
+    visual_prefs: Res<ui::VisualPreferences>,
+) {
+    // Update obstacle colors
+    for mut sprite in obstacle_query.iter_mut() {
+        sprite.color = Color::srgb(
+            visual_prefs.obstacle_color[0],
+            visual_prefs.obstacle_color[1],
+            visual_prefs.obstacle_color[2],
+        );
+    }
+
+    // Update wall colors
+    for mut sprite in wall_query.iter_mut() {
+        sprite.color = Color::srgb(
+            visual_prefs.wall_color[0],
+            visual_prefs.wall_color[1],
+            visual_prefs.wall_color[2],
+        );
+    }
+}
+
+/// Grid rendering system - shows/hides and updates grid
+fn grid_system(
+    mut commands: Commands,
+    visual_prefs: Res<ui::VisualPreferences>,
+    existing_grid: Query<Entity, With<GridLine>>,
+    app_config: Res<AppConfig>,
+) {
+    // Clear existing grid if preferences changed or grid is disabled
+    if visual_prefs.is_changed() || !visual_prefs.show_grid {
+        for entity in existing_grid.iter() {
+            commands.entity(entity).despawn();
+        }
+    }
+
+    // Re-create grid if enabled
+    if visual_prefs.show_grid && visual_prefs.is_changed() {
+        let scale = 50.0;
+        let world_half_width = app_config.world_config.width / 2.0;
+        let world_half_height = app_config.world_config.height / 2.0;
+        let spacing = visual_prefs.grid_spacing;
+
+        let grid_color = Color::srgba(
+            visual_prefs.grid_color[0],
+            visual_prefs.grid_color[1],
+            visual_prefs.grid_color[2],
+            0.3, // Semi-transparent
+        );
+
+        // Vertical lines
+        let mut x = -world_half_width;
+        while x <= world_half_width {
+            commands.spawn((
+                Sprite {
+                    color: grid_color,
+                    custom_size: Some(Vec2::new(
+                        0.05 * scale,
+                        app_config.world_config.height * scale,
+                    )),
+                    ..default()
+                },
+                Transform::from_translation(Vec3::new(x * scale, 0.0, -1.0)),
+                GridLine,
+            ));
+            x += spacing;
+        }
+
+        // Horizontal lines
+        let mut y = -world_half_height;
+        while y <= world_half_height {
+            commands.spawn((
+                Sprite {
+                    color: grid_color,
+                    custom_size: Some(Vec2::new(
+                        app_config.world_config.width * scale,
+                        0.05 * scale,
+                    )),
+                    ..default()
+                },
+                Transform::from_translation(Vec3::new(0.0, y * scale, -1.0)),
+                GridLine,
+            ));
+            y += spacing;
+        }
+    }
+}
+
+/// World reload system - detects config changes and reloads world
+fn world_reload_system(
+    mut commands: Commands,
+    app_config: Res<AppConfig>,
+    mut physics_world: ResMut<PhysicsWorld>,
+    world_entities: Query<(Entity, &PhysicsHandle), Or<(With<WorldElement>, With<ObstacleElement>)>>,
+    visual_prefs: Res<ui::VisualPreferences>,
+) {
+    // Only reload if world config changed
+    if !app_config.is_changed() {
+        return;
+    }
+
+    info!("🔄 Reloading world...");
+
+    // Destructure physics_world to avoid borrow checker issues
+    let PhysicsWorld {
+        ref mut rigid_body_set,
+        ref mut collider_set,
+        ref mut island_manager,
+        ref mut impulse_joint_set,
+        ref mut multibody_joint_set,
+        ..
+    } = *physics_world;
+
+    // 1. Despawn all existing world entities (visual)
+    for (entity, physics_handle) in world_entities.iter() {
+        // Remove physics body
+        rigid_body_set.remove(
+            physics_handle.rigid_body_handle,
+            island_manager,
+            collider_set,
+            impulse_joint_set,
+            multibody_joint_set,
+            true,
+        );
+        // Remove Bevy entity
+        commands.entity(entity).despawn();
+    }
+
+    // 2. Recreate world with new config
+    let scale = 50.0;
+    let world_half_width = app_config.world_config.width / 2.0 * scale;
+    let world_half_height = app_config.world_config.height / 2.0 * scale;
+
+    let boundaries = [
+        // Bottom, Top, Left, Right walls
+        (
+            vector![0.0, -world_half_height],
+            vector![app_config.world_config.width * scale, 0.2 * scale],
+        ),
+        (
+            vector![0.0, world_half_height],
+            vector![app_config.world_config.width * scale, 0.2 * scale],
+        ),
+        (
+            vector![-world_half_width, 0.0],
+            vector![0.2 * scale, app_config.world_config.height * scale],
+        ),
+        (
+            vector![world_half_width, 0.0],
+            vector![0.2 * scale, app_config.world_config.height * scale],
+        ),
+    ];
+
+    let boundaries_physics = [
+        // Bottom, Top, Left, Right walls (original scale for physics)
+        (
+            vector![0.0, -app_config.world_config.height / 2.0],
+            vector![app_config.world_config.width, 0.2],
+        ),
+        (
+            vector![0.0, app_config.world_config.height / 2.0],
+            vector![app_config.world_config.width, 0.2],
+        ),
+        (
+            vector![-app_config.world_config.width / 2.0, 0.0],
+            vector![0.2, app_config.world_config.height],
+        ),
+        (
+            vector![app_config.world_config.width / 2.0, 0.0],
+            vector![0.2, app_config.world_config.height],
+        ),
+    ];
+
+    for ((pos, size), (pos_scaled, size_scaled)) in boundaries_physics.iter().zip(boundaries.iter())
+    {
+        // Physics (original scale)
+        let rigid_body = RigidBodyBuilder::fixed().translation(*pos).build();
+        let collider = ColliderBuilder::cuboid(size.x / 2.0, size.y / 2.0).build();
+        let handle = rigid_body_set.insert(rigid_body);
+        collider_set.insert_with_parent(
+            collider,
+            handle,
+            rigid_body_set,
+        );
+
+        // Visual (scaled for visibility)
+        commands.spawn((
+            Sprite {
+                color: Color::srgb(
+                    visual_prefs.wall_color[0],
+                    visual_prefs.wall_color[1],
+                    visual_prefs.wall_color[2],
+                ),
+                custom_size: Some(Vec2::new(size_scaled.x, size_scaled.y)),
+                ..default()
+            },
+            Transform::from_translation(Vec3::new(pos_scaled.x, pos_scaled.y, 0.0)),
+            WorldElement,
+            PhysicsHandle {
+                rigid_body_handle: handle,
+            },
+        ));
+    }
+
+    // Create obstacles
+    for obstacle in &app_config.world_config.obstacles {
+        let pos_physics = vector![obstacle.pos[0], obstacle.pos[1]];
+        let size_physics = vector![obstacle.size[0], obstacle.size[1]];
+        let pos_visual = vector![obstacle.pos[0] * scale, obstacle.pos[1] * scale];
+        let size_visual = vector![obstacle.size[0] * scale, obstacle.size[1] * scale];
+
+        // Physics (original scale)
+        let rigid_body = RigidBodyBuilder::fixed().translation(pos_physics).build();
+        let collider = ColliderBuilder::cuboid(size_physics.x / 2.0, size_physics.y / 2.0).build();
+        let handle = rigid_body_set.insert(rigid_body);
+        collider_set.insert_with_parent(
+            collider,
+            handle,
+            rigid_body_set,
+        );
+
+        // Visual (scaled)
+        commands.spawn((
+            Sprite {
+                color: Color::srgb(
+                    visual_prefs.obstacle_color[0],
+                    visual_prefs.obstacle_color[1],
+                    visual_prefs.obstacle_color[2],
+                ),
+                custom_size: Some(Vec2::new(size_visual.x, size_visual.y)),
+                ..default()
+            },
+            Transform::from_translation(Vec3::new(pos_visual.x, pos_visual.y, 0.5)),
+            WorldElement,
+            ObstacleElement,
+            PhysicsHandle {
+                rigid_body_handle: handle,
+            },
+        ));
+    }
+
+    info!("✓ World reloaded: {}x{}m with {} obstacles",
+        app_config.world_config.width,
+        app_config.world_config.height,
+        app_config.world_config.obstacles.len()
+    );
 }
 
 fn main() -> Result<()> {
@@ -634,15 +1200,23 @@ fn main() -> Result<()> {
         .insert_resource(app_config)
         .insert_resource(PhysicsWorld::default())
         .insert_resource(ui::UiState::default()) // Add UI state
+        .insert_resource(ui::VisualPreferences::default()) // Add visual preferences
+        .insert_resource(ui::CameraController::default()) // Add camera controller
         .add_systems(Startup, setup)
         .add_systems(
             Update,
             (
                 ui::ui_system,          // UI panel rendering
                 ui::file_dialog_system, // File picker handling
+                world_reload_system,    // Live world reloading
+                robot_visual_reload_system, // Robot visual component reloading
+                camera_control_system,  // Camera zoom/pan
+                grid_system,            // Grid overlay
+                visual_color_system,    // Dynamic color updates
                 horus_system,
                 physics_system,
                 visual_sync_system,
+                visual_component_sync_system, // Tank visual components
             ),
         );
     }

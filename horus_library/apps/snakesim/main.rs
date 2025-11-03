@@ -28,6 +28,12 @@ impl SnakeControlNode {
     }
 }
 
+impl horus::core::LogSummary for SnakeState {
+    fn log_summary(&self) -> String {
+        format!("SnakeState(dir:{})", self.direction)
+    }
+}
+
 impl Node for SnakeControlNode {
     fn name(&self) -> &'static str {
         "SnakeControlNode"

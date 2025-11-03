@@ -76,7 +76,7 @@ pub fn create_new_project(
         _ => unreachable!(),
     }
 
-    println!("\n{} Project created successfully!", "".green().bold());
+    println!("\n{}", "✓ Project created successfully!".green().bold());
     println!("\nTo get started:");
     println!("  {} {}", "cd".cyan(), name);
     println!("  {} (auto-installs dependencies)", "horus run".cyan());
@@ -104,7 +104,7 @@ fn prompt_language() -> Result<String> {
         "2" => "rust",
         "3" => "cpp",
         _ => {
-            println!("{} Invalid choice, defaulting to Rust", "".yellow());
+            println!("Invalid choice, defaulting to Rust");
             "rust"
         }
     };
@@ -298,6 +298,18 @@ language: {}
 horus_id: null  # Auto-generated on first dependency resolution
 
 {}
+# Optional: Ignore files, directories, and packages during horus run/check
+# ignore:
+#   files:
+#     - "debug_*.py"
+#     - "test_*.rs"
+#     - "**/experiments/**"
+#   directories:
+#     - "old/"
+#     - "experiments/"
+#   packages:
+#     - "ipython"
+#     - "jupyter"
 "#,
         name, description, author, language, dependencies
     );

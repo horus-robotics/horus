@@ -10,7 +10,74 @@
 #include <cstring>
 #include <vector>
 
+// Include HORUS message library
+#include "horus/messages.hpp"
+
 namespace horus {
+
+// Re-export message types into horus namespace for convenience
+// Geometry
+using messages::Twist;
+using messages::Pose2D;
+using messages::Transform;
+using messages::Vector3;
+using messages::Point3;
+using messages::Quaternion;
+
+// Sensor
+using messages::LaserScan;
+using messages::Imu;
+using messages::Odometry;
+using messages::Range;
+using messages::BatteryState;
+
+// Vision
+using messages::Image;
+using messages::ImageEncoding;
+using messages::CompressedImage;
+using messages::CameraInfo;
+using messages::RegionOfInterest;
+using messages::Detection;
+using messages::DetectionArray;
+using messages::StereoInfo;
+
+// Perception
+using messages::PointCloud;
+using messages::PointField;
+using messages::PointFieldType;
+using messages::BoundingBox3D;
+using messages::BoundingBoxArray3D;
+using messages::DepthImage;
+using messages::PlaneDetection;
+using messages::PlaneArray;
+
+// Navigation
+using messages::Goal;
+using messages::GoalStatus;
+using messages::GoalResult;
+using messages::Waypoint;
+using messages::Path;
+using messages::OccupancyGrid;
+using messages::CostMap;
+using messages::VelocityObstacle;
+using messages::VelocityObstacles;
+using messages::PathPlan;
+
+// Control
+using messages::MotorCommand;
+using messages::DifferentialDriveCommand;
+using messages::ServoCommand;
+using messages::PidConfig;
+using messages::TrajectoryPoint;
+using messages::JointCommand;
+
+// Diagnostics
+using messages::Heartbeat;
+using messages::Status;
+using messages::StatusLevel;
+using messages::EmergencyStop;
+using messages::ResourceUsage;
+using messages::SafetyStatus;
 
 // Exception for HORUS errors
 class HorusException : public std::runtime_error {
@@ -72,7 +139,7 @@ public:
     Publisher() : handle_(0), ctx_(nullptr) {}
 
     // Constructor for use within NodeContext (with logging)
-    explicit Publisher(const std::string& topic, NodeContext* ctx = nullptr)
+    explicit Publisher(const std::string& topic, HorusNodeContext* ctx = nullptr)
         : handle_(publisher(topic.c_str(), MSG_TWIST)), ctx_(ctx) {
         if (handle_ == 0) {
             throw HorusException("Failed to create Twist publisher");
@@ -115,62 +182,8 @@ public:
     }
 
 private:
-    Pub handle_;
-    NodeContext* ctx_;
-};
-
-template<>
-class Publisher<Pose> {
-public:
-    // Default constructor - creates invalid publisher
-    Publisher() : handle_(0), ctx_(nullptr) {}
-
-    // Constructor for use within NodeContext (with logging)
-    explicit Publisher(const std::string& topic, NodeContext* ctx = nullptr)
-        : handle_(publisher(topic.c_str(), MSG_POSE)), ctx_(ctx) {
-        if (handle_ == 0) {
-            throw HorusException("Failed to create Pose publisher");
-        }
-    }
-
-    ~Publisher() = default;
-
-    Publisher(const Publisher&) = delete;
-    Publisher& operator=(const Publisher&) = delete;
-    Publisher(Publisher&& other) noexcept
-        : handle_(other.handle_), ctx_(other.ctx_) {
-        other.handle_ = 0;
-        other.ctx_ = nullptr;
-    }
-    Publisher& operator=(Publisher&& other) noexcept {
-        if (this != &other) {
-            handle_ = other.handle_;
-            ctx_ = other.ctx_;
-            other.handle_ = 0;
-            other.ctx_ = nullptr;
-        }
-        return *this;
-    }
-
-    bool send(const Pose& data) {
-        if (handle_ == 0) throw HorusException("Invalid publisher");
-
-        // Use context-aware send for logging if context available
-        if (ctx_) {
-            return ::node_send(ctx_, handle_, &data);
-        } else {
-            return ::send(handle_, &data);
-        }
-    }
-
-    Publisher& operator<<(const Pose& data) {
-        send(data);
-        return *this;
-    }
-
-private:
-    Pub handle_;
-    NodeContext* ctx_;
+    HorusPub handle_;
+    HorusNodeContext* ctx_;
 };
 
 // Subscriber specializations for standard message types
@@ -187,7 +200,7 @@ public:
     Subscriber() : handle_(0), ctx_(nullptr) {}
 
     // Constructor for use within NodeContext (with logging)
-    explicit Subscriber(const std::string& topic, NodeContext* ctx = nullptr)
+    explicit Subscriber(const std::string& topic, HorusNodeContext* ctx = nullptr)
         : handle_(subscriber(topic.c_str(), MSG_TWIST)), ctx_(ctx) {
         if (handle_ == 0) {
             throw HorusException("Failed to create Twist subscriber");
@@ -230,62 +243,8 @@ public:
     }
 
 private:
-    Sub handle_;
-    NodeContext* ctx_;
-};
-
-template<>
-class Subscriber<Pose> {
-public:
-    // Default constructor - creates invalid subscriber
-    Subscriber() : handle_(0), ctx_(nullptr) {}
-
-    // Constructor for use within NodeContext (with logging)
-    explicit Subscriber(const std::string& topic, NodeContext* ctx = nullptr)
-        : handle_(subscriber(topic.c_str(), MSG_POSE)), ctx_(ctx) {
-        if (handle_ == 0) {
-            throw HorusException("Failed to create Pose subscriber");
-        }
-    }
-
-    ~Subscriber() = default;
-
-    Subscriber(const Subscriber&) = delete;
-    Subscriber& operator=(const Subscriber&) = delete;
-    Subscriber(Subscriber&& other) noexcept
-        : handle_(other.handle_), ctx_(other.ctx_) {
-        other.handle_ = 0;
-        other.ctx_ = nullptr;
-    }
-    Subscriber& operator=(Subscriber&& other) noexcept {
-        if (this != &other) {
-            handle_ = other.handle_;
-            ctx_ = other.ctx_;
-            other.handle_ = 0;
-            other.ctx_ = nullptr;
-        }
-        return *this;
-    }
-
-    bool recv(Pose& data) {
-        if (handle_ == 0) throw HorusException("Invalid subscriber");
-
-        // Use context-aware recv for logging if context available
-        if (ctx_) {
-            return ::node_recv(ctx_, handle_, &data);
-        } else {
-            return ::recv(handle_, &data);
-        }
-    }
-
-    Subscriber& operator>>(Pose& data) {
-        recv(data);
-        return *this;
-    }
-
-private:
-    Sub handle_;
-    NodeContext* ctx_;
+    HorusSub handle_;
+    HorusNodeContext* ctx_;
 };
 
 // Utility functions in namespace
@@ -302,20 +261,24 @@ public:
 };
 
 // Helper to create message structs with initializers
-inline Vector3 make_vector3(float x, float y, float z) {
-    return Vector3{x, y, z};
+inline Vector3 make_vector3(double x, double y, double z) {
+    return Vector3(x, y, z);
 }
 
-inline Quaternion make_quaternion(float x, float y, float z, float w) {
-    return Quaternion{x, y, z, w};
+inline Quaternion make_quaternion(double x, double y, double z, double w) {
+    return Quaternion(x, y, z, w);
 }
 
-inline Twist make_twist(Vector3 linear, Vector3 angular) {
-    return Twist{linear, angular};
+inline Twist make_twist(double lx, double ly, double lz, double ax, double ay, double az) {
+    return Twist(lx, ly, lz, ax, ay, az);
 }
 
-inline Pose make_pose(Vector3 position, Quaternion orientation) {
-    return Pose{position, orientation};
+inline Pose2D make_pose2d(double x, double y, double theta) {
+    return Pose2D(x, y, theta);
+}
+
+inline Transform make_transform(double tx, double ty, double tz, double qx, double qy, double qz, double qw) {
+    return Transform(tx, ty, tz, qx, qy, qz, qw);
 }
 
 // ============================================================================
@@ -328,7 +291,7 @@ inline Pose make_pose(Vector3 position, Quaternion orientation) {
 // NodeContext provides access to HORUS services within node callbacks
 class NodeContext {
 public:
-    explicit NodeContext(NodeContext* ctx) : ctx_(ctx) {}
+    explicit NodeContext(HorusNodeContext* ctx) : ctx_(ctx) {}
 
     // Create publishers within node context (with logging enabled)
     template<typename T>
@@ -369,7 +332,7 @@ public:
     }
 
 private:
-    NodeContext* ctx_;
+    HorusNodeContext* ctx_;
 };
 
 // Abstract Node class - inherit from this to create HORUS nodes
@@ -388,7 +351,7 @@ public:
     const std::string& name() const { return name_; }
 
     // Internal: get handle for registration
-    ::Node create_handle() {
+    HorusNode create_handle() {
         return node_create(
             name_.c_str(),
             &Node::init_callback,
@@ -403,19 +366,19 @@ private:
     void* user_data_;
 
     // Static C callbacks that forward to virtual methods
-    static bool init_callback(NodeContext* ctx, void* user_data) {
+    static bool init_callback(HorusNodeContext* ctx, void* user_data) {
         Node* node = static_cast<Node*>(user_data);
         NodeContext cpp_ctx(ctx);
         return node->init(cpp_ctx);
     }
 
-    static void tick_callback(NodeContext* ctx, void* user_data) {
+    static void tick_callback(HorusNodeContext* ctx, void* user_data) {
         Node* node = static_cast<Node*>(user_data);
         NodeContext cpp_ctx(ctx);
         node->tick(cpp_ctx);
     }
 
-    static void shutdown_callback(NodeContext* ctx, void* user_data) {
+    static void shutdown_callback(HorusNodeContext* ctx, void* user_data) {
         Node* node = static_cast<Node*>(user_data);
         NodeContext cpp_ctx(ctx);
         node->shutdown(cpp_ctx);
@@ -466,7 +429,7 @@ public:
         static_assert(std::is_base_of<Node, NodeType>::value,
                      "NodeType must inherit from horus::Node");
 
-        ::Node node_handle = node.create_handle();
+        HorusNode node_handle = node.create_handle();
         if (node_handle == 0) {
             return false;
         }
@@ -508,7 +471,7 @@ public:
     bool valid() const { return handle_ != 0; }
 
 private:
-    ::Scheduler handle_;
+    HorusScheduler handle_;
 };
 
 } // namespace horus

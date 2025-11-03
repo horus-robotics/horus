@@ -29,11 +29,11 @@ pub fn execute_remote(robot_addr: &str, file: Option<PathBuf>) -> Result<()> {
         detect_entry_file(&project_dir)?
     };
 
-    println!("{} Packaging {}...", "".cyan(), entry_file.display());
+    println!("Packaging {}...", entry_file.display());
     let tar_gz_data = package_project(&entry_file)?;
 
     let url = normalize_url(robot_addr);
-    println!("{} Uploading to {}...", "".cyan(), url);
+    println!("Uploading to {}...", url);
 
     let response = upload_to_daemon(&url, tar_gz_data)?;
 

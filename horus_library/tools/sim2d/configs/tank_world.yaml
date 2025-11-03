@@ -1,0 +1,46 @@
+# Tank-shaped world configuration (YAML format)
+# Top-down view of a tank made from rectangular obstacles
+
+width: 30.0
+height: 20.0
+
+obstacles:
+  # Tank Body (main hull)
+  - pos: [0.0, 0.0]
+    size: [8.0, 4.0]
+
+  # Tank Turret (on top of body)
+  - pos: [0.5, 0.0]
+    size: [3.0, 3.0]
+
+  # Tank Cannon (long barrel extending forward)
+  - pos: [4.5, 0.0]
+    size: [5.0, 0.6]
+
+  # Left Track (treads)
+  - pos: [0.0, 2.5]
+    size: [9.0, 0.8]
+
+  # Right Track (treads)
+  - pos: [0.0, -2.5]
+    size: [9.0, 0.8]
+
+  # Rear armor (back of tank)
+  - pos: [-4.5, 0.0]
+    size: [1.0, 4.5]
+
+  # Left track detail (front)
+  - pos: [4.0, 2.5]
+    size: [1.5, 1.2]
+
+  # Right track detail (front)
+  - pos: [4.0, -2.5]
+    size: [1.5, 1.2]
+
+  # Left track detail (rear)
+  - pos: [-4.0, 2.5]
+    size: [1.5, 1.2]
+
+  # Right track detail (rear)
+  - pos: [-4.0, -2.5]
+    size: [1.5, 1.2]

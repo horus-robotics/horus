@@ -59,6 +59,12 @@ impl SmallMessage {
     }
 }
 
+impl horus::core::LogSummary for SmallMessage {
+    fn log_summary(&self) -> String {
+        format!("SmallMsg(seq:{}, id:{})", self.sequence, self.sensor_id)
+    }
+}
+
 /// Medium message: 256 bytes (camera metadata)
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 struct CameraMetadata {
@@ -102,6 +108,12 @@ impl CameraMetadata {
     fn verify(&self) -> bool {
         let expected = Self::compute_checksum(self.sequence, &self.padding);
         self.checksum == expected
+    }
+}
+
+impl horus::core::LogSummary for CameraMetadata {
+    fn log_summary(&self) -> String {
+        format!("CameraMeta(frame:{}, {}x{})", self.frame_id, self.width, self.height)
     }
 }
 
@@ -150,6 +162,12 @@ impl LargeState {
     }
 }
 
+impl horus::core::LogSummary for LargeState {
+    fn log_summary(&self) -> String {
+        format!("LargeState(seq:{}, joints:32)", self.sequence)
+    }
+}
+
 /// Very large message: 4KB (image patch / small point cloud)
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 struct ImagePatch {
@@ -190,6 +208,12 @@ impl ImagePatch {
     fn verify(&self) -> bool {
         let expected = Self::compute_checksum(self.sequence, &self.data);
         self.checksum == expected
+    }
+}
+
+impl horus::core::LogSummary for ImagePatch {
+    fn log_summary(&self) -> String {
+        format!("ImagePatch(seq:{}, {}x{})", self.sequence, self.width, self.height)
     }
 }
 
@@ -235,6 +259,12 @@ impl PointCloud {
     fn verify(&self) -> bool {
         let expected = Self::compute_checksum(self.sequence, &self.points);
         self.checksum == expected
+    }
+}
+
+impl horus::core::LogSummary for PointCloud {
+    fn log_summary(&self) -> String {
+        format!("PointCloud(seq:{}, points:{})", self.sequence, self.point_count)
     }
 }
 

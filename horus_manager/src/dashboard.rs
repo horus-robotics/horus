@@ -31,7 +31,7 @@ fn get_local_ip() -> Option<String> {
 
 /// Run the web dashboard server
 pub async fn run(port: u16) -> anyhow::Result<()> {
-    eprintln!("📋 Dashboard will read logs from shared memory ring buffer at /dev/shm/horus_logs");
+    eprintln!("Dashboard will read logs from shared memory ring buffer at /dev/shm/horus_logs");
 
     let params = Arc::new(
         horus_core::RuntimeParams::init().unwrap_or_else(|_| horus_core::RuntimeParams::default()),

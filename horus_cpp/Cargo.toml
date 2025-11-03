@@ -1,6 +1,6 @@
 [package]
 name = "horus_cpp"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 description = "C++ API for HORUS - Hardware driver integration"
 authors = ["HORUS Team"]
@@ -13,6 +13,7 @@ crate-type = ["cdylib", "staticlib"]
 horus_core = { path = "../horus_core" }
 lazy_static = "1.4"
 libc = "0.2"
+chrono = "0.4"
 
 [build-dependencies]
 cbindgen = "0.26"

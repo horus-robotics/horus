@@ -12,6 +12,12 @@ CYAN='\033[0;36m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Load telemetry module (consent already asked in install.sh)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/scripts/telemetry.sh" ]; then
+    source "$SCRIPT_DIR/scripts/telemetry.sh"
+fi
+
 echo -e "${CYAN} HORUS Update Script${NC}"
 echo ""
 
@@ -369,6 +375,11 @@ fi
 echo ""
 echo -e "${GREEN} Update complete!${NC}"
 echo ""
+
+# Send update success telemetry
+if [ -n "$UPDATED_VERSION" ] && type send_telemetry_event &>/dev/null; then
+    send_telemetry_event "update" "success" "$UPDATED_VERSION" &
+fi
 
 # Show version comparison
 if [ "$OLD_VERSION" != "unknown" ] && [ -n "$UPDATED_VERSION" ]; then

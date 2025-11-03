@@ -22,7 +22,7 @@ pub struct TankControllerNode {
 
 impl TankControllerNode {
     /// Create new tank controller with default topics
-    pub fn new() -> Result<Self, String> {
+    pub fn new() -> std::result::Result<Self, String> {
         Self::new_with_topics("keyboard_input", "/tank/tank_1/cmd_vel", "tank_1")
     }
 
@@ -31,7 +31,7 @@ impl TankControllerNode {
         keyboard_topic: &str,
         cmd_vel_topic: &str,
         tank_id: &str,
-    ) -> Result<Self, String> {
+    ) -> std::result::Result<Self, String> {
         Ok(Self {
             keyboard_sub: Hub::new(keyboard_topic)
                 .map_err(|e| format!("Failed to create keyboard subscriber: {}", e))?,

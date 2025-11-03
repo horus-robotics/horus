@@ -1,7 +1,7 @@
 ---
 title: Troubleshooting Runtime Errors
 description: Common HORUS runtime errors and how to fix them
-order: 13
+order: 14
 ---
 
 # Troubleshooting Runtime Errors
@@ -377,7 +377,7 @@ Diff:                500000000 (500ms)
 
 ## Common Patterns and Anti-Patterns
 
-### ✅ DO: Check recv() for None
+### -DO: Check recv() for None
 
 ```rust
 fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
@@ -396,7 +396,7 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 }
 ```
 
-### ✅ DO: Use Result for errors
+### -DO: Use Result for errors
 
 ```rust
 impl Node for MyNode {
@@ -420,7 +420,7 @@ fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
 }
 ```
 
-### ✅ DO: Keep tick() fast
+### -DO: Keep tick() fast
 
 ```rust
 fn tick(&mut self, ctx: Option<&mut NodeInfo>) {

@@ -789,10 +789,59 @@ fn run_command(command: Commands) -> HorusResult<()> {
                         }
                     }
                     "cpp" => {
-                        // Skip C++ compilation check (too slow)
-                        println!("{}", "⊘".dimmed());
-                        if !quiet {
-                            warn_msgs.push("C++ code validation skipped (compile to verify)".to_string());
+                        // Check main.cpp syntax
+                        let main_cpp = base_dir.join("main.cpp");
+                        if main_cpp.exists() {
+                            // Get horus_cpp include path from cache
+                            let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+                            let horus_cpp_include = format!("{}/.horus/cache/horus_cpp@0.1.0/include", home_dir);
+
+                            // Run g++ syntax check
+                            let check_result = std::process::Command::new("g++")
+                                .arg("-fsyntax-only")
+                                .arg("-std=c++17")
+                                .arg(&format!("-I{}", horus_cpp_include))
+                                .arg(&main_cpp)
+                                .output();
+
+                            match check_result {
+                                Ok(output) if output.status.success() => {
+                                    println!("{}", "✓".green());
+
+                                    // Additional API validation
+                                    if let Ok(content) = fs::read_to_string(&main_cpp) {
+                                        // Check for common API mistakes
+                                        if content.contains("try_recv(") {
+                                            if !quiet {
+                                                warn_msgs.push("Found try_recv() - this method was removed, use recv() instead".to_string());
+                                            }
+                                        }
+                                        if content.contains("Publisher<") && !content.contains("Publisher<Twist>") && !content.contains("Publisher<Pose>") {
+                                            if !quiet {
+                                                warn_msgs.push("Custom message types in Publisher<T> are not supported - only Twist and Pose".to_string());
+                                            }
+                                        }
+                                        if content.contains("Subscriber<") && !content.contains("Subscriber<Twist>") && !content.contains("Subscriber<Pose>") {
+                                            if !quiet {
+                                                warn_msgs.push("Custom message types in Subscriber<T> are not supported - only Twist and Pose".to_string());
+                                            }
+                                        }
+                                    }
+                                }
+                                Ok(output) => {
+                                    println!("{}", "✗".red());
+                                    let stderr = String::from_utf8_lossy(&output.stderr);
+                                    errors.push(format!("C++ code has compilation errors:\n{}", stderr));
+                                }
+                                Err(_) => {
+                                    println!("{}", "⚠".yellow());
+                                    if !quiet {
+                                        warn_msgs.push("Could not run g++ - skipping C++ syntax validation".to_string());
+                                    }
+                                }
+                            }
+                        } else {
+                            println!("{}", "⊘".dimmed());
                         }
                     }
                     _ => {
@@ -1964,7 +2013,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
         },
 
         Commands::Sim { command } => match command {
-            SimCommands::Sim2d { world, robot, topic, name, headless, .. } => {
+            SimCommands::Sim2d { world, world_image, resolution, threshold, robot, topic, name, headless } => {
                 use std::process::Command;
                 use std::env;
 
@@ -1997,24 +2046,62 @@ fn run_command(command: Commands) -> HorusResult<()> {
                    .arg("--");
 
                 // Add optional arguments
-                if let Some(world_path) = world {
+                if let Some(ref world_path) = world {
                     cmd.arg("--world").arg(world_path);
                 }
-                if let Some(robot_path) = robot {
+                if let Some(ref robot_path) = robot {
                     cmd.arg("--robot").arg(robot_path);
                 }
-                cmd.arg("--topic").arg(topic);
-                cmd.arg("--name").arg(name);
+                cmd.arg("--topic").arg(&topic);
+                cmd.arg("--name").arg(&name);
                 if headless {
                     cmd.arg("--headless");
                 }
 
-                println!("{} Running: cargo run --release from {}", "▶".green(), sim2d_path);
+                println!("{} Launching sim2d...", "▶".green());
                 println!();
 
-                // Execute and wait
-                let status = cmd.status()
-                    .map_err(|e| HorusError::Config(format!("Failed to run sim2d: {}. Try running manually: cd {} && cargo run --release", e, sim2d_path)))?;
+                // Try to run pre-built binary first (fast path)
+                let sim2d_binary = env::var("HOME")
+                    .map(|h| format!("{}/.cargo/bin/sim2d", h))
+                    .unwrap_or_else(|_| "sim2d".to_string());
+
+                let status = if std::path::Path::new(&sim2d_binary).exists() {
+                    // Run pre-built binary directly (instant launch!)
+                    let mut binary_cmd = Command::new(&sim2d_binary);
+
+                    // Add arguments
+                    if let Some(ref w) = world {
+                        binary_cmd.arg("--world").arg(w);
+                    }
+                    if let Some(ref w) = world_image {
+                        binary_cmd.arg("--world_image").arg(w);
+                        if let Some(res) = resolution {
+                            binary_cmd.arg("--resolution").arg(res.to_string());
+                        }
+                        if let Some(thresh) = threshold {
+                            binary_cmd.arg("--threshold").arg(thresh.to_string());
+                        }
+                    }
+                    if let Some(ref r) = robot {
+                        binary_cmd.arg("--robot").arg(r);
+                    }
+                    binary_cmd.arg("--topic").arg(&topic);
+                    binary_cmd.arg("--name").arg(&name);
+                    if headless {
+                        binary_cmd.arg("--headless");
+                    }
+
+                    binary_cmd.status()
+                        .map_err(|e| HorusError::Config(format!("Failed to run sim2d: {}", e)))?
+                } else {
+                    // Fallback: compile and run from source
+                    println!("{} Pre-built binary not found, compiling from source...", "⚠️".yellow());
+                    cmd.status()
+                        .map_err(|e| HorusError::Config(format!("Failed to run sim2d: {}. Try running manually: cd {} && cargo run --release", e, sim2d_path)))?
+                };
+
+                // Execute and wait (reuse status variable from above)
 
                 if !status.success() {
                     return Err(HorusError::Config(format!("sim2d exited with error code: {:?}", status.code())));

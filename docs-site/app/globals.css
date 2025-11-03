@@ -182,6 +182,66 @@ pre,
     font-weight: 400 !important;
 }
 
+/* Dark mode syntax highlighting - high contrast */
+:root .token.comment,
+:root .token.prolog,
+:root .token.doctype,
+:root .token.cdata {
+    color: #94A3B8 !important;
+}
+
+:root .token.punctuation {
+    color: #CBD5E1 !important;
+}
+
+:root .token.property,
+:root .token.tag,
+:root .token.boolean,
+:root .token.number,
+:root .token.constant,
+:root .token.symbol,
+:root .token.deleted {
+    color: #FCA5A5 !important;
+}
+
+:root .token.selector,
+:root .token.attr-name,
+:root .token.string,
+:root .token.char,
+:root .token.builtin,
+:root .token.inserted {
+    color: #6EE7B7 !important;
+}
+
+:root .token.operator,
+:root .token.entity,
+:root .token.url,
+:root .language-css .token.string,
+:root .style .token.string {
+    color: #7DD3FC !important;
+}
+
+:root .token.atrule,
+:root .token.attr-value,
+:root .token.keyword {
+    color: #C4B5FD !important;
+}
+
+:root .token.function,
+:root .token.class-name {
+    color: #FCD34D !important;
+}
+
+:root .token.regex,
+:root .token.important,
+:root .token.variable {
+    color: #F0ABFC !important;
+}
+
+:root pre code {
+    color: #E2E8F0 !important;
+}
+
 code {
     font-family: 'JetBrains Mono', monospace !important;
     /* Disable ligatures for proper ASCII box drawing */
@@ -219,6 +279,66 @@ pre code,
 [data-theme="light"] pre {
     background: #F8FAFC !important;
     border-color: rgba(100, 116, 139, 0.25);
+}
+
+[data-theme="light"] pre code {
+    color: #0F172A !important;
+}
+
+/* Override Prism light theme colors for better contrast */
+[data-theme="light"] .token.comment,
+[data-theme="light"] .token.prolog,
+[data-theme="light"] .token.doctype,
+[data-theme="light"] .token.cdata {
+    color: #64748B !important;
+}
+
+[data-theme="light"] .token.punctuation {
+    color: #475569 !important;
+}
+
+[data-theme="light"] .token.property,
+[data-theme="light"] .token.tag,
+[data-theme="light"] .token.boolean,
+[data-theme="light"] .token.number,
+[data-theme="light"] .token.constant,
+[data-theme="light"] .token.symbol,
+[data-theme="light"] .token.deleted {
+    color: #DC2626 !important;
+}
+
+[data-theme="light"] .token.selector,
+[data-theme="light"] .token.attr-name,
+[data-theme="light"] .token.string,
+[data-theme="light"] .token.char,
+[data-theme="light"] .token.builtin,
+[data-theme="light"] .token.inserted {
+    color: #059669 !important;
+}
+
+[data-theme="light"] .token.operator,
+[data-theme="light"] .token.entity,
+[data-theme="light"] .token.url,
+[data-theme="light"] .language-css .token.string,
+[data-theme="light"] .style .token.string {
+    color: #0284C7 !important;
+}
+
+[data-theme="light"] .token.atrule,
+[data-theme="light"] .token.attr-value,
+[data-theme="light"] .token.keyword {
+    color: #7C3AED !important;
+}
+
+[data-theme="light"] .token.function,
+[data-theme="light"] .token.class-name {
+    color: #EA580C !important;
+}
+
+[data-theme="light"] .token.regex,
+[data-theme="light"] .token.important,
+[data-theme="light"] .token.variable {
+    color: #C026D3 !important;
 }
 
 [data-theme="light"] :not(pre) > code {
@@ -488,4 +608,37 @@ pre code,
 /* Remove glow animation in light mode */
 [data-theme="light"] .glow-pulse {
     animation: none !important;
+}
+
+/* Custom scrollbar styles */
+.scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+    background: var(--accent);
+    border-radius: 4px;
+    opacity: 0.5;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
+    opacity: 1;
+}
+
+/* Smooth scrolling for mobile */
+@supports (-webkit-overflow-scrolling: touch) {
+    .scrollbar-thin {
+        -webkit-overflow-scrolling: touch;
+    }
 }

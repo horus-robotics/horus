@@ -126,7 +126,7 @@ pub fn detect_or_select_workspace(allow_global: bool) -> Result<InstallTarget> {
             .unwrap_or("unknown")
             .to_string();
 
-        println!("  {} Detected workspace: {}", "".green(), name.yellow());
+        println!("  {} Detected workspace: {}", "✓".green(), name.yellow());
         return Ok(InstallTarget::Local(root));
     }
 
@@ -150,7 +150,7 @@ fn interactive_workspace_selector(
     registry: &WorkspaceRegistry,
     allow_global: bool,
 ) -> Result<InstallTarget> {
-    println!("\n{} Not in a HORUS workspace", "".yellow());
+    println!("\n{}", "ℹ Not in a HORUS workspace".cyan());
     println!("Where should we install the package?\n");
 
     let mut options = Vec::new();
@@ -171,7 +171,7 @@ fn interactive_workspace_selector(
     // Global option
     if allow_global {
         println!(
-            "  [{}] 🌐 Global  (~/.horus/cache) - shared across projects",
+            "  [{}]  Global  (~/.horus/cache) - shared across projects",
             idx.to_string().cyan()
         );
         options.push(InstallTarget::Global);
@@ -282,7 +282,7 @@ pub fn register_current_workspace(name: Option<String>) -> Result<()> {
     let horus_dir = current.join(".horus");
     if !horus_dir.exists() {
         fs::create_dir_all(&horus_dir)?;
-        println!("  {} Created .horus/ directory", "".green());
+        println!("  {} Created .horus/ directory", "✓".green());
     }
 
     // Create minimal horus.yaml if it doesn't exist
@@ -290,7 +290,7 @@ pub fn register_current_workspace(name: Option<String>) -> Result<()> {
     if !horus_yaml.exists() {
         let yaml_content = format!("name: {}\nversion: 0.1.0\n", workspace_name);
         fs::write(&horus_yaml, yaml_content)?;
-        println!("  {} Created horus.yaml", "".green());
+        println!("  {} Created horus.yaml", "✓".green());
     }
 
     // Register in workspace registry

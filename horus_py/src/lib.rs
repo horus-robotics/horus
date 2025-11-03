@@ -3,6 +3,7 @@ use pyo3::prelude::*;
 mod hub;
 mod node;
 mod scheduler;
+mod typed_hub;
 // mod types; // Internal types no longer exposed to Python
 
 use hub::PyHub;
@@ -15,19 +16,22 @@ use scheduler::PyScheduler;
 /// allowing Python developers to create and run distributed robotic systems.
 #[pymodule]
 fn _horus(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    // ✅ USER-FACING: Core classes that users interact with
+    //  USER-FACING: Core classes that users interact with
     m.add_class::<PyNode>()?;
     m.add_class::<PyNodeInfo>()?;
     m.add_class::<PyHub>()?;
     m.add_class::<PyScheduler>()?;
     m.add_class::<PyNodeState>()?;
 
-    // ❌ REMOVED: Internal implementation types
+    // Typed hubs for cross-language communication
+    typed_hub::register_typed_hubs(m)?;
+
+    //  REMOVED: Internal implementation types
     // - PyMessage (internal wrapper)
     // - PyNodePriority (users pass int, not enum)
     // - PyNodeConfig (internal configuration)
 
-    // ✅ VERSION: Utility function
+    //  VERSION: Utility function
     m.add_function(wrap_pyfunction!(get_version, m)?)?;
 
     Ok(())

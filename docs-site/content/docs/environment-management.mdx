@@ -713,6 +713,157 @@ horus env restore horus-freeze.yaml
 
 > **Note**: Environment registry management commands (`env list`, `env info`, `env delete`, `env export`) are planned for future releases. For now, manage published environments through the registry web interface at https://marketplace.horus-registry.dev
 
+## Ignoring Files and Packages
+
+### The `ignore` Section
+
+During development, you may have experimental code, debug files, or development-only packages that you don't want HORUS to process during `horus run` or `horus check`. The `ignore` section in `horus.yaml` allows you to exclude these items.
+
+### Configuration
+
+Add an `ignore` section to your `horus.yaml`:
+
+```yaml
+name: my_robot_project
+version: 0.1.0
+language: python
+dependencies:
+  - horus_py@0.1.0
+  - numpy
+
+# Optional: Ignore files, directories, and packages
+ignore:
+  files:
+    - "debug_*.py"          # Ignore all files starting with debug_
+    - "test_*.rs"           # Ignore all test files
+    - "**/experiments/**"   # Ignore anything in experiments directories
+  directories:
+    - "old/"                # Ignore old/ directory
+    - "experiments/"        # Ignore experiments/ directory
+  packages:
+    - "ipython"             # Don't auto-install ipython
+    - "jupyter"             # Don't auto-install jupyter
+```
+
+### Pattern Matching
+
+The `ignore` feature supports flexible pattern matching:
+
+**Wildcard (`*`)**:
+- `debug_*.py` - Matches `debug_test.py`, `debug_node.py`, etc.
+- `test_*` - Matches any file starting with `test_`
+
+**Recursive directory (`**/`)**:
+- `**/experiments/**` - Matches files in any `experiments/` directory at any depth
+- `**/temp/**` - Matches any `temp/` directory anywhere in the project
+
+**Exact match**:
+- `old/` - Matches the `old/` directory exactly
+- `debug.py` - Matches only `debug.py`
+
+### Use Cases
+
+**Development files:**
+```yaml
+ignore:
+  files:
+    - "debug_*.py"
+    - "scratch_*.rs"
+    - "**/temp/**"
+```
+
+**Test and experimental code:**
+```yaml
+ignore:
+  directories:
+    - "tests/"
+    - "experiments/"
+    - "benchmarks/"
+```
+
+**Development-only packages:**
+```yaml
+ignore:
+  packages:
+    - "ipython"      # Interactive shell for debugging
+    - "jupyter"      # Notebook for visualization
+    - "pytest"       # Testing framework
+```
+
+### Behavior
+
+When files/directories are ignored:
+- **File detection**: Ignored files won't be detected as main files by `horus run`
+- **Glob patterns**: Ignored files are excluded from glob patterns like `horus run "*.py"`
+- **Multi-file execution**: Ignored files are skipped when running multiple files
+
+When packages are ignored:
+- **Dependency scanning**: Ignored packages won't be auto-installed during `horus run`
+- **Import detection**: If your code imports an ignored package, HORUS won't try to resolve it
+- **Manual installation**: You can still manually install ignored packages with `horus pkg install`
+
+### Example Workflow
+
+**1. Create a project with debug files:**
+```bash
+horus new my_project --python
+cd my_project
+```
+
+**2. Add debug files during development:**
+```bash
+# Create some debug/experimental files
+touch debug_sensor_test.py
+mkdir experiments
+touch experiments/new_algorithm.py
+```
+
+**3. Update horus.yaml to ignore them:**
+```yaml
+ignore:
+  files:
+    - "debug_*.py"
+  directories:
+    - "experiments/"
+  packages:
+    - "ipython"
+```
+
+**4. Run the project:**
+```bash
+horus run
+# Only main.py runs, debug files and experiments are ignored
+```
+
+**5. Explicitly run ignored files when needed:**
+```bash
+horus run debug_sensor_test.py
+# Ignored files can still be run explicitly
+```
+
+### Best Practices
+
+**Keep it minimal**: Only ignore what's necessary. Over-ignoring can make debugging harder.
+
+**Use version control**: Commit your `horus.yaml` with ignore patterns so team members have consistent behavior:
+```bash
+git add horus.yaml
+git commit -m "Add ignore patterns for debug files"
+```
+
+**Document why**: Add comments explaining why certain patterns are ignored:
+```yaml
+ignore:
+  # Legacy code being phased out
+  directories:
+    - "old_controllers/"
+
+  # Development tools not needed in production
+  packages:
+    - "ipython"
+    - "jupyter"
+```
+
 ## Next Steps
 
 - **[Package Management](/package-management)** - Install and manage packages

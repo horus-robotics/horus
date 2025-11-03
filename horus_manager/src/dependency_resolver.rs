@@ -163,7 +163,7 @@ impl<'a> DependencyResolver<'a> {
 
     /// Resolve dependencies starting from root requirements
     pub fn resolve(&mut self, root_deps: Vec<DependencySpec>) -> Result<Vec<ResolvedDependency>> {
-        println!("{} Resolving dependencies...", "".cyan());
+        println!("Resolving dependencies...");
 
         // Collect all requirements via BFS
         let mut queue: VecDeque<(String, DependencySpec)> = VecDeque::new();

@@ -262,7 +262,7 @@ impl Scheduler {
                                     };
 
                                     context.record_tick_failure(error_msg.clone());
-                                    eprintln!("❌ {} failed: {}", node_name, error_msg);
+                                    eprintln!(" {} failed: {}", node_name, error_msg);
 
                                     // Call the node's error handler
                                     registered.node.on_error(&error_msg, context);
@@ -271,7 +271,7 @@ impl Scheduler {
                                     if context.config().restart_on_failure {
                                         match context.restart() {
                                             Ok(_) => {
-                                                println!("🔄 Node '{}' restarted successfully (attempt {}/{})",
+                                                println!(" Node '{}' restarted successfully (attempt {}/{})",
                                                     node_name,
                                                     context.metrics().errors_count,
                                                     context.config().max_restart_attempts);

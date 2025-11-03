@@ -131,8 +131,19 @@ export default function HomePage() {
         </div>
 
         {/* IPC Communication Animation */}
-        <div className="w-full h-[300px] md:h-[520px] overflow-x-auto">
-          <svg width="100%" height="100%" viewBox="100 0 1600 520" className="overflow-visible min-w-[800px] md:min-w-0">
+        <div className="w-full relative">
+          {/* Mobile scroll hint */}
+          <div className="md:hidden absolute top-2 right-4 z-10 text-xs text-[var(--text-tertiary)] bg-[var(--surface)] px-2 py-1 rounded border border-[var(--border)] opacity-75">
+            ← Scroll →
+          </div>
+          <div className="w-full h-[300px] md:h-[520px] overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-[var(--accent)] scrollbar-track-transparent">
+            <svg
+              width="100%"
+              height="100%"
+              viewBox="100 0 1600 520"
+              className="overflow-visible min-w-[1200px] md:min-w-0"
+              preserveAspectRatio="xMidYMid meet"
+            >
 
             {/* Title */}
             <text x="900" y="30" fill="var(--text-primary)" fontSize="18" textAnchor="middle" fontWeight="700">
@@ -418,6 +429,7 @@ export default function HomePage() {
               </text>
             </g>
           </svg>
+        </div>
         </div>
 
         {/* Key Features */}

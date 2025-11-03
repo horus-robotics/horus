@@ -1,6 +1,6 @@
 [package]
 name = "horus_manager"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 description = "Unified manager for the HORUS robotics framework"
 authors = ["HORUS Team"]

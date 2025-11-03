@@ -74,7 +74,7 @@ async fn deploy_internal(
     let deploy_dir = PathBuf::from(format!("/tmp/horus/deploy-{}", deployment_id));
     std::fs::create_dir_all(&deploy_dir)?;
 
-    tracing::debug!("📂 Created deployment directory: {}", deploy_dir.display());
+    tracing::debug!("Created deployment directory: {}", deploy_dir.display());
 
     let tar_gz = body.to_vec();
     let tar = GzDecoder::new(&tar_gz[..]);

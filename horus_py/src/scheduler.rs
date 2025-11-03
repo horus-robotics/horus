@@ -4,7 +4,9 @@ use pyo3::types::PyDict;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
-use horus::NodeInfo as CoreNodeInfo;
+use std::path::PathBuf;
+use std::fs;
+use horus::{NodeInfo as CoreNodeInfo, NodeHeartbeat};
 use crate::node::PyNodeInfo;
 
 /// Registered node with priority, logging, and per-node rate control
@@ -24,7 +26,7 @@ struct RegisteredNode {
 /// The scheduler manages the execution of multiple nodes,
 /// handling their lifecycle and coordinating their execution.
 /// Supports per-node rate control for flexible scheduling.
-#[pyclass]
+#[pyclass(module = "horus._horus")]
 pub struct PyScheduler {
     nodes: Arc<Mutex<Vec<RegisteredNode>>>,
     running: Arc<Mutex<bool>>,
@@ -35,6 +37,9 @@ pub struct PyScheduler {
 impl PyScheduler {
     #[new]
     pub fn new() -> PyResult<Self> {
+        // Create heartbeat directory for dashboard monitoring
+        Self::setup_heartbeat_directory();
+
         Ok(PyScheduler {
             nodes: Arc::new(Mutex::new(Vec::new())),
             running: Arc::new(Mutex::new(false)),
@@ -189,6 +194,7 @@ impl PyScheduler {
             for registered in nodes.iter() {
                 let py_info = Py::new(py, PyNodeInfo {
                     inner: registered.context.clone(),
+                    scheduler_running: Some(self.running.clone()),
                 })?;
 
                 // Try calling with NodeInfo parameter first, fallback to no-arg version
@@ -250,6 +256,7 @@ impl PyScheduler {
                     } else {
                         let new_info = Py::new(py, PyNodeInfo {
                             inner: registered.context.clone(),
+                            scheduler_running: Some(self.running.clone()),
                         })?;
                         registered.cached_info = Some(new_info.clone_ref(py));
                         new_info
@@ -267,6 +274,11 @@ impl PyScheduler {
                     if let Ok(mut ctx) = registered.context.lock() {
                         ctx.record_tick();
                     }
+
+                    // Write heartbeat for dashboard monitoring
+                    if let Ok(ctx) = registered.context.lock() {
+                        Self::write_heartbeat(&registered.name, &ctx, registered.rate_hz);
+                    }
                 }
             }
 
@@ -283,6 +295,9 @@ impl PyScheduler {
             }
         }
 
+        // Clean up heartbeats
+        Self::cleanup_heartbeats();
+
         // Shutdown all nodes
         {
             let nodes = self
@@ -293,6 +308,7 @@ impl PyScheduler {
             for registered in nodes.iter() {
                 let py_info = Py::new(py, PyNodeInfo {
                     inner: registered.context.clone(),
+                    scheduler_running: Some(self.running.clone()),
                 })?;
 
                 // Try calling with NodeInfo parameter first, fallback to no-arg version
@@ -338,6 +354,7 @@ impl PyScheduler {
             for registered in nodes.iter() {
                 let py_info = Py::new(py, PyNodeInfo {
                     inner: registered.context.clone(),
+                    scheduler_running: Some(self.running.clone()),
                 })?;
 
                 // Try calling with NodeInfo parameter first, fallback to no-arg version
@@ -399,6 +416,7 @@ impl PyScheduler {
                     } else {
                         let new_info = Py::new(py, PyNodeInfo {
                             inner: registered.context.clone(),
+                            scheduler_running: Some(self.running.clone()),
                         })?;
                         registered.cached_info = Some(new_info.clone_ref(py));
                         new_info
@@ -416,6 +434,11 @@ impl PyScheduler {
                     if let Ok(mut ctx) = registered.context.lock() {
                         ctx.record_tick();
                     }
+
+                    // Write heartbeat for dashboard monitoring
+                    if let Ok(ctx) = registered.context.lock() {
+                        Self::write_heartbeat(&registered.name, &ctx, registered.rate_hz);
+                    }
                 }
             }
 
@@ -425,6 +448,9 @@ impl PyScheduler {
                 thread::sleep(tick_duration - elapsed);
             }
         }
+
+        // Clean up heartbeats
+        Self::cleanup_heartbeats();
 
         // Shutdown all nodes
         {
@@ -436,6 +462,7 @@ impl PyScheduler {
             for registered in nodes.iter() {
                 let py_info = Py::new(py, PyNodeInfo {
                     inner: registered.context.clone(),
+                    scheduler_running: Some(self.running.clone()),
                 })?;
 
                 // Try calling with NodeInfo parameter first, fallback to no-arg version
@@ -493,6 +520,7 @@ impl PyScheduler {
                 if node_names.contains(&registered.name) {
                     let py_info = Py::new(py, PyNodeInfo {
                         inner: registered.context.clone(),
+                        scheduler_running: Some(self.running.clone()),
                     })?;
 
                     let result = registered.node.call_method1(py, "init", (py_info,))
@@ -556,6 +584,7 @@ impl PyScheduler {
                     } else {
                         let new_info = Py::new(py, PyNodeInfo {
                             inner: registered.context.clone(),
+                            scheduler_running: Some(self.running.clone()),
                         })?;
                         registered.cached_info = Some(new_info.clone_ref(py));
                         new_info
@@ -571,6 +600,11 @@ impl PyScheduler {
                     // Record tick completion
                     if let Ok(mut ctx) = registered.context.lock() {
                         ctx.record_tick();
+                    }
+
+                    // Write heartbeat for dashboard monitoring
+                    if let Ok(ctx) = registered.context.lock() {
+                        Self::write_heartbeat(&registered.name, &ctx, registered.rate_hz);
                     }
                 }
             }
@@ -593,6 +627,7 @@ impl PyScheduler {
                 if node_names.contains(&registered.name) {
                     let py_info = Py::new(py, PyNodeInfo {
                         inner: registered.context.clone(),
+                        scheduler_running: Some(self.running.clone()),
                     })?;
 
                     let result = registered.node.call_method1(py, "shutdown", (py_info,))
@@ -637,6 +672,7 @@ impl PyScheduler {
                 if node_names.contains(&registered.name) {
                     let py_info = Py::new(py, PyNodeInfo {
                         inner: registered.context.clone(),
+                        scheduler_running: Some(self.running.clone()),
                     })?;
 
                     let result = registered.node.call_method1(py, "init", (py_info,))
@@ -706,6 +742,7 @@ impl PyScheduler {
                     } else {
                         let new_info = Py::new(py, PyNodeInfo {
                             inner: registered.context.clone(),
+                            scheduler_running: Some(self.running.clone()),
                         })?;
                         registered.cached_info = Some(new_info.clone_ref(py));
                         new_info
@@ -721,6 +758,11 @@ impl PyScheduler {
                     // Record tick completion
                     if let Ok(mut ctx) = registered.context.lock() {
                         ctx.record_tick();
+                    }
+
+                    // Write heartbeat for dashboard monitoring
+                    if let Ok(ctx) = registered.context.lock() {
+                        Self::write_heartbeat(&registered.name, &ctx, registered.rate_hz);
                     }
                 }
             }
@@ -743,6 +785,7 @@ impl PyScheduler {
                 if node_names.contains(&registered.name) {
                     let py_info = Py::new(py, PyNodeInfo {
                         inner: registered.context.clone(),
+                        scheduler_running: Some(self.running.clone()),
                     })?;
 
                     let result = registered.node.call_method1(py, "shutdown", (py_info,))
@@ -792,5 +835,66 @@ impl PyScheduler {
             nodes.len(),
             self.tick_rate_hz
         ))
+    }
+
+    /// Pickle support: Get state for serialization
+    fn __getstate__(&self, py: Python) -> PyResult<PyObject> {
+        use pyo3::types::PyDict;
+
+        let state = PyDict::new_bound(py);
+        state.set_item("tick_rate_hz", self.tick_rate_hz)?;
+
+        // Note: Registered nodes cannot be serialized (contain PyObject references)
+        // After unpickling, users must re-add nodes using scheduler.add()
+
+        Ok(state.into())
+    }
+
+    /// Pickle support: Restore state from deserialization
+    fn __setstate__(&mut self, state: &Bound<'_, pyo3::types::PyDict>) -> PyResult<()> {
+        let tick_rate_hz: f64 = state.get_item("tick_rate_hz")?.ok_or_else(|| {
+            PyRuntimeError::new_err("Missing 'tick_rate_hz' in pickled state")
+        })?.extract()?;
+
+        // Recreate scheduler with empty nodes list
+        Self::setup_heartbeat_directory();
+
+        self.tick_rate_hz = tick_rate_hz;
+        self.nodes = Arc::new(Mutex::new(Vec::new()));
+        self.running = Arc::new(Mutex::new(false));
+
+        Ok(())
+    }
+}
+
+impl PyScheduler {
+    /// Create heartbeat directory for dashboard monitoring
+    fn setup_heartbeat_directory() {
+        let dir = PathBuf::from("/dev/shm/horus/heartbeats");
+        let _ = fs::create_dir_all(&dir);
+    }
+
+    /// Write heartbeat for a node (for dashboard monitoring)
+    fn write_heartbeat(node_name: &str, context: &CoreNodeInfo, rate_hz: f64) {
+        let heartbeat = NodeHeartbeat::from_metrics(context.state().clone(), context.metrics());
+
+        // Override target_rate_hz with actual node rate
+        let mut heartbeat = heartbeat;
+        heartbeat.target_rate_hz = rate_hz as u32;
+
+        let _ = heartbeat.write_to_file(node_name);
+    }
+
+    /// Clean up all heartbeat files
+    fn cleanup_heartbeats() {
+        let dir = PathBuf::from("/dev/shm/horus/heartbeats");
+        if dir.exists() {
+            // Only remove files, not the directory (other processes may be using it)
+            if let Ok(entries) = fs::read_dir(&dir) {
+                for entry in entries.flatten() {
+                    let _ = fs::remove_file(entry.path());
+                }
+            }
+        }
     }
 }

@@ -336,12 +336,19 @@ fn execute_single_file(
     );
     eprintln!("  {} Session: {}", "🔒".dimmed(), session_id.dimmed());
 
+    // Load ignore patterns from horus.yaml if it exists
+    let ignore = if Path::new("horus.yaml").exists() {
+        parse_horus_yaml_ignore("horus.yaml").unwrap_or_default()
+    } else {
+        IgnorePatterns::default()
+    };
+
     // Ensure .horus directory exists
     ensure_horus_directory()?;
 
     // Scan imports and resolve dependencies
     eprintln!("{} Scanning imports...", "".cyan());
-    let dependencies = scan_imports(&file_path, &language)?;
+    let dependencies = scan_imports(&file_path, &language, &ignore)?;
 
     if !dependencies.is_empty() {
         eprintln!("{} Found {} dependencies", "".cyan(), dependencies.len());
@@ -970,13 +977,20 @@ fn build_rust_files_batch(
     // Setup environment
     setup_environment()?;
 
+    // Load ignore patterns from horus.yaml if it exists
+    let ignore = if Path::new("horus.yaml").exists() {
+        parse_horus_yaml_ignore("horus.yaml").unwrap_or_default()
+    } else {
+        IgnorePatterns::default()
+    };
+
     // Find HORUS source directory
     let horus_source = find_horus_source_dir()?;
 
     // Collect all dependencies from all Rust files
     let mut all_dependencies = HashSet::new();
     for file_path in &file_paths {
-        let dependencies = scan_imports(file_path, "rust")?;
+        let dependencies = scan_imports(file_path, "rust", &ignore)?;
         all_dependencies.extend(dependencies);
     }
 
@@ -1097,8 +1111,15 @@ fn build_file_for_concurrent_execution(
     // Ensure .horus directory exists
     ensure_horus_directory()?;
 
+    // Load ignore patterns from horus.yaml if it exists
+    let ignore = if Path::new("horus.yaml").exists() {
+        parse_horus_yaml_ignore("horus.yaml").unwrap_or_default()
+    } else {
+        IgnorePatterns::default()
+    };
+
     // Scan imports and resolve dependencies
-    let dependencies = scan_imports(&file_path, &language)?;
+    let dependencies = scan_imports(&file_path, &language, &ignore)?;
     if !dependencies.is_empty() {
         resolve_dependencies(dependencies)?;
     }
@@ -1246,12 +1267,19 @@ fn resolve_execution_target(input: PathBuf) -> Result<Vec<ExecutionTarget>> {
 }
 
 fn resolve_glob_pattern(pattern: &str) -> Result<Vec<ExecutionTarget>> {
+    // Load ignore patterns from horus.yaml if it exists
+    let ignore = if Path::new("horus.yaml").exists() {
+        parse_horus_yaml_ignore("horus.yaml").unwrap_or_default()
+    } else {
+        IgnorePatterns::default()
+    };
+
     let mut files = Vec::new();
 
     for entry in glob(pattern).context("Failed to parse glob pattern")? {
         match entry {
             Ok(path) => {
-                if path.is_file() {
+                if path.is_file() && !ignore.should_ignore_file(&path) {
                     // Only include executable file types
                     if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
                         if matches!(ext, "rs" | "py" | "c" | "cc" | "cpp" | "horus") {
@@ -1283,6 +1311,13 @@ fn resolve_glob_pattern(pattern: &str) -> Result<Vec<ExecutionTarget>> {
 }
 
 fn auto_detect_main_file() -> Result<PathBuf> {
+    // Load ignore patterns from horus.yaml if it exists
+    let ignore = if Path::new("horus.yaml").exists() {
+        parse_horus_yaml_ignore("horus.yaml").unwrap_or_default()
+    } else {
+        IgnorePatterns::default()
+    };
+
     // Check for main files in priority order
     let candidates = [
         "main.rs",
@@ -1295,7 +1330,7 @@ fn auto_detect_main_file() -> Result<PathBuf> {
 
     for candidate in &candidates {
         let path = PathBuf::from(candidate);
-        if path.exists() {
+        if path.exists() && !ignore.should_ignore_file(&path) {
             return Ok(path);
         }
     }
@@ -1309,8 +1344,10 @@ fn auto_detect_main_file() -> Result<PathBuf> {
     let code_files: Vec<_> = entries
         .iter()
         .filter(|e| {
-            if let Some(ext) = e.path().extension() {
+            let path = e.path();
+            if let Some(ext) = path.extension() {
                 matches!(ext.to_str(), Some("rs") | Some("py") | Some("c"))
+                    && !ignore.should_ignore_file(&path)
             } else {
                 false
             }
@@ -1371,7 +1408,7 @@ fn ensure_horus_directory() -> Result<()> {
     Ok(())
 }
 
-fn scan_imports(file: &Path, language: &str) -> Result<HashSet<String>> {
+fn scan_imports(file: &Path, language: &str, ignore: &IgnorePatterns) -> Result<HashSet<String>> {
     let content = fs::read_to_string(file)?;
     let mut dependencies = HashSet::new();
 
@@ -1419,8 +1456,8 @@ fn scan_imports(file: &Path, language: &str) -> Result<HashSet<String>> {
         }
     }
 
-    // No longer filter out non-HORUS packages!
-    // We'll auto-create/update horus.yaml with all detected packages
+    // Filter out ignored packages
+    dependencies.retain(|dep| !ignore.should_ignore_package(dep));
 
     // Auto-create or update horus.yaml if we scanned from source
     if !from_yaml && !dependencies.is_empty() {
@@ -1633,6 +1670,136 @@ pub fn parse_horus_yaml_dependencies_v2(path: &str) -> Result<Vec<DependencySpec
             }
             Ok(deps)
         }
+    }
+}
+
+/// Ignore patterns from horus.yaml
+#[derive(Debug, Clone, Default)]
+pub struct IgnorePatterns {
+    pub files: Vec<String>,
+    pub directories: Vec<String>,
+    pub packages: Vec<String>,
+}
+
+impl IgnorePatterns {
+    /// Check if a file path should be ignored
+    pub fn should_ignore_file(&self, path: &Path) -> bool {
+        let path_str = path.to_string_lossy();
+
+        // Check directory patterns first
+        for dir_pattern in &self.directories {
+            let pattern = dir_pattern.trim_end_matches('/');
+            if path_str.contains(pattern) {
+                return true;
+            }
+        }
+
+        // Check file patterns with glob matching
+        for file_pattern in &self.files {
+            if glob_match(file_pattern, &path_str) {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    /// Check if a package should be ignored
+    pub fn should_ignore_package(&self, package: &str) -> bool {
+        self.packages.iter().any(|p| p == package)
+    }
+}
+
+/// Simple glob matching for ignore patterns
+fn glob_match(pattern: &str, text: &str) -> bool {
+    // Handle ** for directory recursion
+    if pattern.contains("**/") {
+        let parts: Vec<&str> = pattern.split("**/").collect();
+        if parts.len() == 2 {
+            let suffix = parts[1];
+            return text.contains(suffix) || text.ends_with(suffix);
+        }
+    }
+
+    // Handle * wildcard
+    if pattern.contains('*') {
+        let parts: Vec<&str> = pattern.split('*').collect();
+        if parts.is_empty() {
+            return true;
+        }
+
+        let mut pos = 0;
+        for (i, part) in parts.iter().enumerate() {
+            if part.is_empty() {
+                continue;
+            }
+
+            if i == 0 && !text.starts_with(part) {
+                return false;
+            }
+
+            if let Some(found_pos) = text[pos..].find(part) {
+                pos += found_pos + part.len();
+            } else {
+                return false;
+            }
+        }
+
+        // If pattern ends with *, we're good
+        // Otherwise, make sure we matched to the end
+        if !pattern.ends_with('*') && pos != text.len() {
+            return false;
+        }
+
+        true
+    } else {
+        // Exact match or ends_with for simple patterns
+        text == pattern || text.ends_with(pattern)
+    }
+}
+
+/// Parse ignore section from horus.yaml
+pub fn parse_horus_yaml_ignore(path: &str) -> Result<IgnorePatterns> {
+    let content = fs::read_to_string(path)?;
+
+    match serde_yaml::from_str::<serde_yaml::Value>(&content) {
+        Ok(yaml) => {
+            let mut ignore = IgnorePatterns::default();
+
+            if let Some(ignore_section) = yaml.get("ignore") {
+                if let serde_yaml::Value::Mapping(ignore_map) = ignore_section {
+                    // Parse files
+                    if let Some(serde_yaml::Value::Sequence(files)) = ignore_map.get(&serde_yaml::Value::String("files".to_string())) {
+                        for file in files {
+                            if let serde_yaml::Value::String(pattern) = file {
+                                ignore.files.push(pattern.clone());
+                            }
+                        }
+                    }
+
+                    // Parse directories
+                    if let Some(serde_yaml::Value::Sequence(dirs)) = ignore_map.get(&serde_yaml::Value::String("directories".to_string())) {
+                        for dir in dirs {
+                            if let serde_yaml::Value::String(pattern) = dir {
+                                ignore.directories.push(pattern.clone());
+                            }
+                        }
+                    }
+
+                    // Parse packages
+                    if let Some(serde_yaml::Value::Sequence(pkgs)) = ignore_map.get(&serde_yaml::Value::String("packages".to_string())) {
+                        for pkg in pkgs {
+                            if let serde_yaml::Value::String(package) = pkg {
+                                ignore.packages.push(package.clone());
+                            }
+                        }
+                    }
+                }
+            }
+
+            Ok(ignore)
+        }
+        Err(_) => Ok(IgnorePatterns::default())
     }
 }
 

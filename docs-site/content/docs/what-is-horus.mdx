@@ -107,22 +107,29 @@ Don't know Rust? Use what you know:
 
 **Python** - Simple functional API:
 ```python
-from horus import Hub, Node
+import horus
 
-class SensorNode(Node):
-    def __init__(self):
-        self.pub = Hub("temperature")
+def sensor_tick(node):
+    node.send("temperature", 25.0)
 
-    def tick(self):
-        self.pub.send(25.0)
+sensor = horus.Node(
+    name="sensor",
+    pubs=["temperature"],
+    tick=sensor_tick,
+    rate=10  # 10 Hz
+)
+
+horus.run(sensor)
 ```
 
-**C** - Integrate existing hardware drivers:
-```c
-#include <horus.h>
+**C++** - Integrate existing hardware drivers (Alpha):
+```cpp
+#include "horus.hpp"
 
-horus_hub_t* hub = horus_hub_new("temperature");
-horus_hub_send_f32(hub, 25.0);
+horus::System system("sensor");
+horus::Publisher<float> temp_pub("temperature");
+
+temp_pub.publish(25.0);
 ```
 
 **Rust** - Full framework power for performance-critical code.

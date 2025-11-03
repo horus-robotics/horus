@@ -1,66 +1,68 @@
-import { MetadataRoute } from 'next';
-
+import { MetadataRoute } from 'next'
+ 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://docs.horus.dev';
-
-  // All doc routes from generateStaticParams
-  const docRoutes = [
-    'goals',
-    'roadmap',
-    'architecture',
-    'benchmarks',
-    'getting-started',
-    'getting-started/installation',
-    'getting-started/quick-start',
-    'node-macro',
-    'dashboard',
-    'parameters',
-    'cli-reference',
-    'package-management',
-    'environment-management',
-    'authentication',
-    'remote-deployment',
-    'library-reference',
-    'core',
-    'core/link',
-    'core/hub',
-    'core-concepts-nodes',
-    'core-concepts-hub',
-    'core-concepts-link',
-    'core-concepts-scheduler',
-    'core-concepts-shared-memory',
-    'message-types',
-    'examples',
-    'performance',
-    'python-bindings',
-    'c-bindings',
-    'installation',
-    'quick-start',
-    'guides/robot-controller',
-    'guides/sensor-fusion',
-    'guides/performance',
-    'api',
-    'api-node',
-    'api-hub',
-    'api-link',
-    'api-scheduler',
-    'ai-integration',
-  ];
-
-  const routes: MetadataRoute.Sitemap = [
+  const baseUrl = 'https://docs.horus-registry.dev'
+  
+  return [
     {
       url: baseUrl,
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 1,
     },
-    ...docRoutes.map((route) => ({
-      url: `${baseUrl}/${route}`,
+    {
+      url: `${baseUrl}/docs`,
       lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/docs/complete-beginners-guide`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 1.0,
+    },
+    {
+      url: `${baseUrl}/docs/getting-started`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/docs/installation`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/docs/quick-start`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
       priority: 0.8,
-    })),
-  ];
-
-  return routes;
+    },
+    {
+      url: `${baseUrl}/docs/examples`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/docs/python-bindings`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+    {
+      url: `${baseUrl}/docs/core-concepts-nodes`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    },
+    {
+      url: `${baseUrl}/docs/what-is-horus`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+  ]
 }

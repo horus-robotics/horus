@@ -29,15 +29,15 @@ def test_per_node_rate_control():
         slow_ticks.append(time.time())
 
     # Create nodes
-    fast_node = horus.Node(name="fast", tick=fast_tick)
-    medium_node = horus.Node(name="medium", tick=medium_tick)
-    slow_node = horus.Node(name="slow", tick=slow_tick)
+    fast_node = horus.Node(name="fast", tick=fast_tick, rate=100)
+    medium_node = horus.Node(name="medium", tick=medium_tick, rate=50)
+    slow_node = horus.Node(name="slow", tick=slow_tick, rate=10)
 
     # Create scheduler and register with different rates
     scheduler = horus.Scheduler()
-    scheduler.register(fast_node, priority=0, logging=False, rate_hz=100.0)
-    scheduler.register(medium_node, priority=1, logging=False, rate_hz=50.0)
-    scheduler.register(slow_node, priority=2, logging=False, rate_hz=10.0)
+    scheduler.add(fast_node, priority=0, logging=False)
+    scheduler.add(medium_node, priority=1, logging=False)
+    scheduler.add(slow_node, priority=2, logging=False)
 
     # Run for 1 second
     scheduler.run(duration=1.0)
@@ -62,10 +62,10 @@ def test_runtime_rate_change():
     def counter_tick(node):
         tick_count[0] += 1
 
-    node = horus.Node(name="counter", tick=counter_tick)
+    node = horus.Node(name="counter", tick=counter_tick, rate=10)
 
     scheduler = horus.Scheduler()
-    scheduler.register(node, priority=0, logging=False, rate_hz=10.0)
+    scheduler.add(node, priority=0, logging=False)
 
     # Get initial stats
     stats = scheduler.get_node_stats("counter")
@@ -89,10 +89,10 @@ def test_node_statistics():
     def dummy_tick(node):
         pass
 
-    node = horus.Node(name="test_node", tick=dummy_tick)
+    node = horus.Node(name="test_node", tick=dummy_tick, rate=50)
 
     scheduler = horus.Scheduler()
-    scheduler.register(node, priority=5, logging=True, rate_hz=50.0)
+    scheduler.add(node, priority=5, logging=True)
 
     stats = scheduler.get_node_stats("test_node")
 

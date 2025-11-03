@@ -4,7 +4,7 @@ use pyo3::prelude::*;
 use std::sync::{Arc, Mutex};
 
 /// Python wrapper for NodeState
-#[pyclass]
+#[pyclass(module = "horus._horus")]
 #[derive(Clone, PartialEq)]
 pub struct PyNodeState {
     #[pyo3(get)]
@@ -80,10 +80,11 @@ impl From<&CoreNodeState> for PyNodeState {
 }
 
 /// Python wrapper for NodeInfo
-#[pyclass]
+#[pyclass(module = "horus._horus")]
 #[derive(Clone)]
 pub struct PyNodeInfo {
     pub inner: Arc<Mutex<CoreNodeInfo>>,
+    pub scheduler_running: Option<Arc<Mutex<bool>>>,
 }
 
 #[pymethods]
@@ -92,6 +93,7 @@ impl PyNodeInfo {
     fn new(name: String) -> Self {
         PyNodeInfo {
             inner: Arc::new(Mutex::new(CoreNodeInfo::new(name, true))),
+            scheduler_running: None,
         }
     }
 
@@ -206,11 +208,11 @@ impl PyNodeInfo {
             .lock()
             .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock NodeInfo: {}", e)))?;
 
-        if info.config().enable_logging {
-            // Format everything to owned Strings first to avoid lifetime issues
-            let timestamp = chrono::Local::now().format("%H:%M:%S%.3f").to_string();
-            let node_name = info.name().to_string();
+        let timestamp = chrono::Local::now().format("%H:%M:%S%.3f").to_string();
+        let node_name = info.name().to_string();
+        let tick_us = 0; // Not accessible from Python bindings (private field)
 
+        if info.config().enable_logging {
             // Build the log message safely
             let msg = format!(
                 "\r\n\x1b[36m[{}]\x1b[0m \x1b[32m[IPC: {}ns]\x1b[0m \x1b[33m{}\x1b[0m \x1b[1;32m--PUB-->\x1b[0m \x1b[35m'{}'\x1b[0m = {}\r\n",
@@ -226,6 +228,18 @@ impl PyNodeInfo {
             let _ = io::stdout().flush();
         }
 
+        // Write to global log buffer for dashboard (always, regardless of enable_logging)
+        use horus::core::log_buffer::{publish_log, LogEntry, LogType};
+        publish_log(LogEntry {
+            timestamp,
+            node_name,
+            log_type: LogType::Publish,
+            topic: Some(topic),
+            message: data_repr,
+            tick_us,
+            ipc_ns,
+        });
+
         Ok(())
     }
 
@@ -237,11 +251,11 @@ impl PyNodeInfo {
             .lock()
             .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock NodeInfo: {}", e)))?;
 
-        if info.config().enable_logging {
-            // Format everything to owned Strings first to avoid lifetime issues
-            let timestamp = chrono::Local::now().format("%H:%M:%S%.3f").to_string();
-            let node_name = info.name().to_string();
+        let timestamp = chrono::Local::now().format("%H:%M:%S%.3f").to_string();
+        let node_name = info.name().to_string();
+        let tick_us = 0; // Not accessible from Python bindings (private field)
 
+        if info.config().enable_logging {
             // Build the log message safely
             let msg = format!(
                 "\x1b[36m[{}]\x1b[0m \x1b[32m[IPC: {}ns]\x1b[0m \x1b[33m{}\x1b[0m \x1b[1;34m<--SUB--\x1b[0m \x1b[35m'{}'\x1b[0m = {}\n",
@@ -256,6 +270,18 @@ impl PyNodeInfo {
             let _ = io::stdout().write_all(msg.as_bytes());
             let _ = io::stdout().flush();
         }
+
+        // Write to global log buffer for dashboard (always, regardless of enable_logging)
+        use horus::core::log_buffer::{publish_log, LogEntry, LogType};
+        publish_log(LogEntry {
+            timestamp,
+            node_name,
+            log_type: LogType::Subscribe,
+            topic: Some(topic),
+            message: data_repr,
+            tick_us,
+            ipc_ns,
+        });
 
         Ok(())
     }
@@ -318,6 +344,20 @@ impl PyNodeInfo {
         Ok(info.metrics().successful_ticks)
     }
 
+    /// Request the scheduler to stop
+    fn request_stop(&self) -> PyResult<()> {
+        if let Some(ref running_flag) = self.scheduler_running {
+            let mut running = running_flag
+                .lock()
+                .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock running flag: {}", e)))?;
+            *running = false;
+            Ok(())
+        } else {
+            // If no scheduler reference, just silently succeed (allows nodes to work without scheduler)
+            Ok(())
+        }
+    }
+
     fn __repr__(&self) -> PyResult<String> {
         if let Ok(info) = self.inner.lock() {
             Ok(format!(
@@ -331,6 +371,15 @@ impl PyNodeInfo {
             Ok("NodeInfo(locked)".to_string())
         }
     }
+
+    /// Pickle support: Provide constructor arguments
+    fn __getnewargs__(&self) -> PyResult<(String,)> {
+        let info = self
+            .inner
+            .lock()
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock NodeInfo: {}", e)))?;
+        Ok((info.name().to_string(),))
+    }
 }
 
 /// Python wrapper for HORUS Node
@@ -339,7 +388,7 @@ impl PyNodeInfo {
 /// by subclassing and implementing the required methods.
 ///
 /// NOTE: PyNode no longer creates its own NodeInfo. The scheduler will provide one.
-#[pyclass(subclass)]
+#[pyclass(module = "horus._horus", subclass)]
 pub struct PyNode {
     #[pyo3(get)]
     pub name: String,
@@ -391,6 +440,11 @@ impl PyNode {
 
     fn __repr__(&self) -> String {
         format!("Node(name='{}')", self.name)
+    }
+
+    /// Pickle support: Provide constructor arguments
+    fn __getnewargs__(&self) -> PyResult<(String,)> {
+        Ok((self.name.clone(),))
     }
 }
 

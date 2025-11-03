@@ -61,52 +61,52 @@
 //! drive.set_velocity_limits(2.0, 3.14);
 //! ```
 
-// Declare node modules
-pub mod camera_node;
-pub mod collision_detector_node;
-pub mod differential_drive_node;
-pub mod digital_io_node;
-pub mod emergency_stop_node;
-pub mod encoder_node;
-pub mod imu_node;
-pub mod joystick_node;
-pub mod keyboard_input_node;
-pub mod lidar_node;
-pub mod localization_node;
-pub mod modbus_node;
-pub mod path_planner_node;
-pub mod pid_controller_node;
-pub mod safety_monitor_node;
-pub mod servo_controller_node;
+// Declare node modules (each in its own folder with README.md)
+pub mod camera;
+pub mod collision_detector;
+pub mod differential_drive;
+pub mod digital_io;
+pub mod emergency_stop;
+pub mod encoder;
+pub mod imu;
+pub mod joystick;
+pub mod keyboard_input;
+pub mod lidar;
+pub mod localization;
+pub mod modbus;
+pub mod path_planner;
+pub mod pid_controller;
+pub mod safety_monitor;
+pub mod servo_controller;
 
 // Re-export node types for convenience
 // Safety & Monitoring Nodes
-pub use emergency_stop_node::EmergencyStopNode;
-pub use safety_monitor_node::SafetyMonitorNode;
+pub use emergency_stop::EmergencyStopNode;
+pub use safety_monitor::SafetyMonitorNode;
 
 // Sensor Interface Nodes
-pub use camera_node::CameraNode;
-pub use encoder_node::EncoderNode;
-pub use imu_node::ImuNode;
-pub use lidar_node::LidarNode;
+pub use camera::CameraNode;
+pub use encoder::EncoderNode;
+pub use imu::ImuNode;
+pub use lidar::LidarNode;
 
 // Control & Actuation Nodes
-pub use differential_drive_node::DifferentialDriveNode;
-pub use pid_controller_node::PidControllerNode;
-pub use servo_controller_node::ServoControllerNode;
+pub use differential_drive::DifferentialDriveNode;
+pub use pid_controller::PidControllerNode;
+pub use servo_controller::ServoControllerNode;
 
 // Navigation Nodes
-pub use collision_detector_node::CollisionDetectorNode;
-pub use localization_node::LocalizationNode;
-pub use path_planner_node::PathPlannerNode;
+pub use collision_detector::CollisionDetectorNode;
+pub use localization::LocalizationNode;
+pub use path_planner::PathPlannerNode;
 
 // Industrial Integration Nodes
-pub use digital_io_node::DigitalIONode;
-pub use modbus_node::ModbusNode;
+pub use digital_io::DigitalIONode;
+pub use modbus::ModbusNode;
 
-// Input Device Nodes (Existing)
-pub use joystick_node::JoystickInputNode;
-pub use keyboard_input_node::KeyboardInputNode;
+// Input Device Nodes
+pub use joystick::JoystickInputNode;
+pub use keyboard_input::KeyboardInputNode;
 
 // Re-export core HORUS types for convenience
 pub use horus_core::{Hub, Node, NodeInfo};

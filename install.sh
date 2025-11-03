@@ -9,7 +9,14 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Load telemetry module
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/scripts/telemetry.sh" ]; then
+    source "$SCRIPT_DIR/scripts/telemetry.sh"
+fi
 
 echo -e "${CYAN} HORUS Installation Script${NC}"
 echo ""
@@ -126,6 +133,11 @@ if [[ ! $REPLY =~ ^[Yy]$ ]] && [[ ! -z $REPLY ]]; then
     exit 0
 fi
 
+# Ask for telemetry consent (first time only)
+if type ask_telemetry_consent &>/dev/null; then
+    ask_telemetry_consent
+fi
+
 # Step 1: Build all packages in release mode
 echo ""
 echo -e "${CYAN} Building HORUS packages (release mode)...${NC}"
@@ -133,6 +145,11 @@ cargo build --release
 
 if [ $? -ne 0 ]; then
     echo -e "${RED} Build failed${NC}"
+    # Send build failure telemetry
+    HORUS_VERSION=$(grep -m1 '^version' horus/Cargo.toml | sed 's/.*"\(.*\)".*/\1/' 2>/dev/null || echo "unknown")
+    if type send_telemetry_event &>/dev/null; then
+        send_telemetry_event "install" "failure" "$HORUS_VERSION" &
+    fi
     exit 1
 fi
 
@@ -150,6 +167,14 @@ cp target/release/horus "$INSTALL_DIR/horus"
 chmod +x "$INSTALL_DIR/horus"
 
 echo -e "${GREEN}${NC} CLI installed to $INSTALL_DIR/horus"
+
+# Install sim2d binary
+if [ -f "target/release/sim2d" ]; then
+    cp target/release/sim2d "$INSTALL_DIR/sim2d"
+    chmod +x "$INSTALL_DIR/sim2d"
+    echo -e "${GREEN}${NC} sim2d binary installed to $INSTALL_DIR/sim2d"
+fi
+
 echo ""
 
 # Step 3: Create cache directory structure
@@ -669,3 +694,9 @@ fi
 
 echo -e "For help: ${CYAN}horus --help${NC}"
 echo ""
+
+# Send installation success telemetry
+HORUS_VERSION=$(grep -m1 '^version' horus/Cargo.toml | sed 's/.*"\(.*\)".*/\1/' 2>/dev/null || echo "unknown")
+if type send_telemetry_event &>/dev/null; then
+    send_telemetry_event "install" "success" "$HORUS_VERSION" &
+fi

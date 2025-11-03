@@ -4,6 +4,9 @@ HORUS Python - Simple, Intuitive Robotics Framework
 A user-friendly Python API for the HORUS robotics framework.
 """
 
+# Extend namespace package path to include horus.library
+__path__ = __import__('pkgutil').extend_path(__path__, __name__)
+
 from typing import Optional, Any, Dict, List, Callable, Union
 import pickle
 import json
@@ -42,13 +45,7 @@ except ImportError:
         CRASHED = "crashed"
     def get_version(): return "0.1.0-mock"
 
-__version__ = "0.1.0"
-__all__ = [
-    "Node",
-    "Scheduler",
-    "NodeState",
-    "run",
-]
+__version__ = "0.1.4"
 
 
 def _truncate_for_logging(data: Any, max_size: int = MAX_LOG_DATA_SIZE) -> str:
@@ -129,6 +126,10 @@ class Node:
         self.on_error_fn = on_error
         self.rate = rate
         self.error_count = 0
+
+        # Per-node rate control
+        self._last_tick_time = 0.0
+        self._tick_period = 1.0 / rate if rate > 0 else 0.0
 
         # Normalize pub/sub to lists
         if isinstance(pubs, str):
@@ -297,8 +298,11 @@ class Node:
         Returns:
             True if sent successfully
         """
+        # Auto-detect topics: add topic if not already declared
         if topic not in self.pub_topics:
-            return False
+            self.pub_topics.append(topic)
+            if self._node:
+                self._hubs[topic] = _PyHub(topic, 1024)
 
         if self._node and topic in self._hubs:
             hub = self._hubs[topic]
@@ -334,6 +338,12 @@ class Node:
 
     def _receive_messages(self, topic: str):
         """Pull messages from hub into queue (Phase 2: with timestamps)."""
+        # Auto-detect topics: add topic if not already declared
+        if topic not in self.sub_topics:
+            self.sub_topics.append(topic)
+            if self._node:
+                self._hubs[topic] = _PyHub(topic, 1024)
+
         if self._node and topic in self._hubs:
             hub = self._hubs[topic]
             import time
@@ -372,7 +382,20 @@ class Node:
                 self._msg_timestamps[topic].append(timestamp)
 
     def _internal_tick(self, info: Optional[Any] = None) -> None:
-        """Internal tick called by scheduler."""
+        """Internal tick called by scheduler with per-node rate control."""
+        import time
+
+        # Check if enough time has elapsed for this node's rate
+        current_time = time.time()
+        if self._tick_period > 0:
+            time_since_last_tick = current_time - self._last_tick_time
+            if time_since_last_tick < self._tick_period:
+                # Not time to tick yet - skip this call
+                return
+
+        # Update last tick time
+        self._last_tick_time = current_time
+
         # DON'T store info - use a context manager approach
         old_info = self.info
         self.info = info
@@ -450,6 +473,21 @@ class Node:
         if self.info:
             self.info.log_debug(message)
 
+    def request_stop(self) -> None:
+        """
+        Request the scheduler to stop execution.
+
+        This is a convenience method that can be called from within
+        a node's tick callback to stop the scheduler.
+
+        Example:
+            def tick(node):
+                if node.info.tick_count() >= 10:
+                    node.request_stop()  # Stop after 10 ticks
+        """
+        if self.info:
+            self.info.request_stop()
+
     # Topic introspection methods
     def get_publishers(self) -> List[str]:
         """
@@ -526,7 +564,7 @@ class Scheduler:
         if self._scheduler:
             # Register the Python Node wrapper directly, not the internal _node
             # The Rust scheduler will call node.tick(info) and node.init(info)
-            self._scheduler.add(node, priority, logging, None)
+            self._scheduler.add(node, priority, logging, node.rate)
 
         return self
 
@@ -600,23 +638,124 @@ class Scheduler:
             return self._scheduler.get_node_stats(node_name)
         return {}
 
+    def set_node_rate(self, node_name: str, rate_hz: float) -> None:
+        """
+        Set the execution rate for a specific node.
+
+        Args:
+            node_name: Name of the node
+            rate_hz: New rate in Hz (ticks per second)
+
+        Example:
+            scheduler.set_node_rate("sensor", 100.0)  # Change to 100Hz
+        """
+        # Update the node's rate attribute
+        for node in self._nodes:
+            if node.name == node_name:
+                node.rate = rate_hz
+                node._tick_period = 1.0 / rate_hz if rate_hz > 0 else 0.0
+                break
+
+        # Update Rust scheduler if available
+        if self._scheduler:
+            self._scheduler.set_node_rate(node_name, rate_hz)
+
 
 # Convenience functions
 
-def run(*nodes: Node, duration: Optional[float] = None) -> None:
+def run(*nodes: Node, duration: Optional[float] = None, logging: bool = True) -> None:
     """
     Quick run helper - create scheduler and run nodes.
 
     Args:
         *nodes: Node instances to run
         duration: Optional duration in seconds
+        logging: Enable logging for all nodes (default: True)
 
     Example:
         node = Node(subs="in", pubs="out", tick=lambda n: n.send("out", n.get("in")))
         run(node, duration=5)
+
+        # Disable logging
+        run(node1, node2, duration=10, logging=False)
     """
     scheduler = Scheduler()
-    # Add nodes with priority based on insertion order (0, 1, 2, ...)
-    for i, node in enumerate(nodes):
-        scheduler.add(node, priority=i, logging=False)
+
+    # Smart priority assignment: subscribers first, then publishers
+    # This ensures subscriber hubs are created before first messages are sent
+    subscribers = []
+    publishers = []
+    both = []
+
+    for node in nodes:
+        has_subs = len(node.sub_topics) > 0
+        has_pubs = len(node.pub_topics) > 0
+
+        if has_subs and has_pubs:
+            both.append(node)
+        elif has_subs:
+            subscribers.append(node)
+        elif has_pubs:
+            publishers.append(node)
+        else:
+            # No declared topics - add to both category (will auto-detect)
+            both.append(node)
+
+    # Assign priorities: subscribers (0..N), both (N+1..M), publishers (M+1..P)
+    priority = 0
+    for node in subscribers:
+        scheduler.add(node, priority=priority, logging=logging)
+        priority += 1
+    for node in both:
+        scheduler.add(node, priority=priority, logging=logging)
+        priority += 1
+    for node in publishers:
+        scheduler.add(node, priority=priority, logging=logging)
+        priority += 1
+
     scheduler.run(duration)
+
+
+# Try to import horus.library messages if available
+try:
+    from horus.library import (
+        # Geometry messages
+        Pose2D,
+        Twist,
+        Transform,
+        Point3,
+        Vector3,
+        Quaternion,
+        # Control messages
+        CmdVel,
+        # Sensor messages
+        LaserScan,
+    )
+    _has_library = True
+except ImportError:
+    _has_library = False
+    # Don't fail if horus-library isn't installed
+
+__all__ = [
+    # Core API
+    "Node",
+    "Scheduler",
+    "NodeState",
+    "run",
+]
+
+# Add library messages to __all__ if available
+if _has_library:
+    __all__.extend([
+        # Geometry messages
+        "Pose2D",
+        "Twist",
+        "Transform",
+        "Point3",
+        "Vector3",
+        "Quaternion",
+        # Control messages
+        "CmdVel",
+        # Sensor messages
+        "LaserScan",
+    ])

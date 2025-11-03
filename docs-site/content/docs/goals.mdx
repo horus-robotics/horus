@@ -113,42 +113,37 @@ HORUS aims to become the **de facto standard for real-time robotics communicatio
 
 Instead of writing yet another IMU driver, just use the built-in one:
 ```rust
-use horus_library::sensors::ImuNode;
+use horus::prelude::*;
+use horus_library::ImuNode;
 
+let mut scheduler = Scheduler::new();
 let imu = ImuNode::new("/dev/i2c-1", "bno055")?;
 scheduler.add(Box::new(imu), 0, Some(true));
 ```
 
 Need a PID controller? Already built:
 ```rust
-use horus_library::control::PidController;
+use horus::prelude::*;
+use horus_library::PidControllerNode;
 
-let mut pid = PidController::new(1.0, 0.1, 0.05)?;
+let mut scheduler = Scheduler::new();
+let mut pid = PidControllerNode::new(1.0, 0.1, 0.05)?;
 // Customize if needed
 pid.set_limits(-100.0, 100.0);
 scheduler.add(Box::new(pid), 1, Some(true));
 ```
 
-Build a drone in hours by composing existing nodes:
+Build a robot in hours by composing existing nodes:
 ```rust
-use horus_library::sensors::{ImuNode, BarometerNode};
-use horus_library::control::FlightController;
-use horus_library::actuators::MotorController;
+use horus::prelude::*;
+use horus_library::{ImuNode, LidarNode, PidControllerNode, DifferentialDriveNode};
 
 let mut scheduler = Scheduler::new();
-scheduler.add(Box::new(ImuNode::new()?), 0, Some(true));
-scheduler.add(Box::new(BarometerNode::new()?), 0, Some(true));
-scheduler.add(Box::new(FlightController::new()?), 1, Some(true));
-scheduler.add(Box::new(MotorController::new()?), 2, Some(true));
+scheduler.add(Box::new(ImuNode::new("/dev/i2c-1", "mpu6050")?), 0, Some(true));
+scheduler.add(Box::new(LidarNode::new("/dev/ttyUSB0")?), 0, Some(true));
+scheduler.add(Box::new(PidControllerNode::new(1.0, 0.1, 0.05)?), 1, Some(true));
+scheduler.add(Box::new(DifferentialDriveNode::new()?), 2, Some(true));
 scheduler.run()?;
-```
-
-Want custom behavior? Override just what you need:
-```rust
-let mut controller = FlightController::new()?;
-controller.tick = |ctx| {
-    // Your custom control logic here
-};
 ```
 
 **Impact**: Transform robotics from "build everything from scratch" to "compose from proven components". Teams ship faster, researchers focus on novel algorithms instead of infrastructure, and knowledge compounds across the community through horus_library and the registry.

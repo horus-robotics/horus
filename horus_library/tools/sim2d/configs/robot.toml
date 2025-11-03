@@ -1,50 +1,16 @@
-# Example robot configuration for sim2d
-[robot]
-base_width = 0.35      # Distance between wheels (m)
-wheel_radius = 0.08    # Wheel radius (m)
-max_linear_velocity = 1.2   # Maximum linear velocity (m/s)
-max_angular_velocity = 2.5  # Maximum angular velocity (rad/s)
-max_linear_acceleration = 2.0   # Maximum linear acceleration (m/s²)
-max_angular_acceleration = 4.0  # Maximum angular acceleration (rad/s²)
-mass = 15.0           # Robot mass (kg)
-moment_of_inertia = 1.0    # Moment of inertia (kg⋅m²)
+# Robot configuration for sim2d (TOML format)
+# Simple 2D robot configuration matching the current implementation
 
-[sensors.lidar]
-beams = 720           # Number of laser beams
-fov_deg = 270.0       # Field of view in degrees
-max_range = 20.0      # Maximum range (m)
-rate_hz = 10.0        # Sample rate (Hz)
-noise_sigma = 0.01    # Range noise standard deviation (m)
+width = 0.5        # Robot width in meters
+length = 0.8       # Robot length in meters
+max_speed = 2.0    # Maximum velocity in m/s
+color = [0.2, 0.8, 0.2]  # RGB color [0.0-1.0] - Green
 
-# Mount pose relative to robot center
-[sensors.lidar.mount_pose]
-x = 0.2    # Forward offset (m)
-y = 0.0    # Lateral offset (m)
-theta = 0.0 # Rotation offset (rad)
-
-[sensors.imu]
-rate_hz = 100.0       # Sample rate (Hz)
-gyro_noise_sigma = 0.01  # Gyroscope noise (rad/s)
-gyro_bias = 0.0       # Gyroscope bias (rad/s)
-accel_noise_sigma = 0.02 # Accelerometer noise (m/s²)
-
-# Mount pose relative to robot center
-[sensors.imu.mount_pose]
-x = 0.0    # Forward offset (m)
-y = 0.0    # Lateral offset (m)
-theta = 0.0 # Rotation offset (rad)
-
-[simulation]
-tick_hz = 250         # Simulation tick rate (Hz)
-physics_substeps = 1  # Physics substeps per tick
-rtf = 1.0            # Real-time factor
-headless = true      # Run without visualization
-deterministic = true # Enable deterministic mode
-seed = 42            # Random seed
-
-[topics]
-cmd_vel = "cmd_vel"  # Command velocity topic
-odom = "odom"        # Odometry topic
-scan = "scan"        # Laser scan topic
-imu = "imu"         # IMU topic
-clock = "clock"      # Simulation clock topic
+# Example variations:
+# Blue robot:
+#   color = [0.2, 0.2, 0.8]
+# Red robot:
+#   color = [0.8, 0.2, 0.2]
+# Larger robot:
+#   width = 0.7
+#   length = 1.2
