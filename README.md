@@ -13,7 +13,7 @@
 [![IPC Latency](https://img.shields.io/badge/IPC%20latency-312ns-brightgreen.svg)](#performance)
 [![Throughput](https://img.shields.io/badge/throughput-6M%2B%20msg%2Fs-green.svg)](#performance)
 [![Languages](https://img.shields.io/badge/languages-Rust%20%7C%20Python%20%7C%20C%2B%2B-blue.svg)](#multi-language-support)
-[![Status](https://img.shields.io/badge/status-beta-yellow.svg)](https://github.com/horus-robotics/horus/releases)
+[![Status](https://img.shields.io/badge/status-alpha-yellow.svg)](https://github.com/horus-robotics/horus/releases)
 
 **Hybrid Optimized Robotics Unified System**
 
