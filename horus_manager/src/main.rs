@@ -402,9 +402,21 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     if yaml.get("author").is_none() {
                         warn_msgs.push("Optional field missing: author".to_string());
                     }
-                    if yaml.get("license").is_none() {
-                        warn_msgs.push("Optional field missing: license (required for publishing)".to_string());
+                }
+
+                // License warning (encourage projects to declare their license)
+                print!("  {} Checking license field... ", "✓".cyan());
+                let missing_license_warning = "No license specified. Consider adding a license field (e.g., MIT, Apache-2.0, BSD-3-Clause).";
+                if let Some(license) = yaml.get("license").and_then(|l| l.as_str()) {
+                    if license.trim().is_empty() {
+                        println!("{}", "⚠".yellow());
+                        warn_msgs.push(missing_license_warning.to_string());
+                    } else {
+                        println!("{} ({})", "✓".green(), license.dimmed());
                     }
+                } else {
+                    println!("{}", "⚠".yellow());
+                    warn_msgs.push(missing_license_warning.to_string());
                 }
 
                 // Language validation
@@ -1018,9 +1030,14 @@ fn run_command(command: Commands) -> HorusResult<()> {
 
             // Print Summary
             println!();
-            if !quiet && !warn_msgs.is_empty() {
-                for warn in &warn_msgs {
-                    println!("{} {}", "⚠".yellow(), warn);
+            if !quiet {
+                if warn_msgs.is_empty() {
+                    println!("{} No warnings detected.", "✓".green());
+                } else {
+                    println!("{} {} warning(s):", "⚠".yellow(), warn_msgs.len());
+                    for warn in &warn_msgs {
+                        println!("  - {}", warn);
+                    }
                 }
                 println!();
             }
