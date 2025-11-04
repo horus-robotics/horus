@@ -174,4 +174,4 @@ Tests are designed to:
 
 For test failures or questions:
 1. Review test logs for specific failures
-2. File issues at https://github.com/horus-robotics/horus/issues
+2. File issues at https://github.com/softmata/horus/issues

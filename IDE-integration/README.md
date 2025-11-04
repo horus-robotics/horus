@@ -270,9 +270,9 @@ Installation instructions will be provided when support is added.
 ## Support
 
 For issues or questions:
-- VSCode Extension: [GitHub Issues](https://github.com/horus-robotics/horus/issues)
-- General IDE Support: [HORUS Discussions](https://github.com/horus-robotics/horus/discussions)
+- VSCode Extension: [GitHub Issues](https://github.com/softmata/horus/issues)
+- General IDE Support: [HORUS Discussions](https://github.com/softmata/horus/discussions)
 
 ## License
 
-All IDE integrations are licensed under the MIT License, consistent with the HORUS framework.
+All IDE integrations are licensed under the Apache License 2.0, consistent with the HORUS framework.

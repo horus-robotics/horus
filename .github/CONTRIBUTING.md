@@ -14,7 +14,7 @@ Thank you for your interest in contributing to HORUS! This guide will help you g
 
 ```bash
 # Clone the repository
-git clone https://github.com/horus-robotics/horus.git
+git clone https://github.com/softmata/horus.git
 cd horus
 
 # Install HORUS in development mode
@@ -173,7 +173,7 @@ Contributors will be recognized in:
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the same license as the project (MIT).
+By contributing, you agree that your contributions will be licensed under the same license as the project (Apache-2.0).
 
 ---
 

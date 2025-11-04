@@ -156,7 +156,7 @@ impl CargoConfig {
                 edition: Some("2021".to_string()),
                 authors: None,
                 description: Some("HORUS package".to_string()),
-                license: Some("MIT".to_string()),
+                license: Some("Apache-2.0".to_string()),
                 repository: None,
                 homepage: None,
                 documentation: None,

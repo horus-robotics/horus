@@ -74,7 +74,7 @@ horus.run(robot)
 - ✅ Zero-copy where possible (same memory layout as Rust)
 - ✅ Familiar Pythonic API
 - ✅ All methods documented
-- ✅ Compatible with horus-robotics core package
+- ✅ Compatible with horus core package
 
 ## Coming Soon
 

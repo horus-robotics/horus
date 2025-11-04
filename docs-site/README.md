@@ -87,8 +87,8 @@ content/
 
 This documentation site is part of the HORUS open-source project:
 
-- **License**: MIT/Apache-2.0 (dual-licensed)
-- **Repository**: https://github.com/horus-robotics/horus
+- **License**: Apache-2.0
+- **Repository**: https://github.com/softmata/horus
 - **Framework**: `/HORUS` directory in the main repository
 
 ## Contributing
@@ -119,15 +119,15 @@ The documentation emphasizes HORUS's production-grade performance:
 
 ## Links
 
-- **Main Repository**: https://github.com/horus-robotics/horus
+- **Main Repository**: https://github.com/softmata/horus
 - **Discord Community**: https://discord.gg/hEZC3ev2Nf
-- **Issues**: https://github.com/horus-robotics/horus/issues
-- **Discussions**: https://github.com/horus-robotics/horus/discussions
+- **Issues**: https://github.com/softmata/horus/issues
+- **Discussions**: https://github.com/softmata/horus/discussions
 - **Crates.io**: https://crates.io/search?q=horus
 
 ## License
 
-Documentation content is dual-licensed under MIT/Apache-2.0, matching the HORUS framework license.
+Documentation content is licensed under Apache-2.0, matching the HORUS framework license.
 
 ---
 

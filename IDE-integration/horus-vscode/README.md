@@ -67,8 +67,8 @@ See [IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md) for detailed setup and 
 
 ## Contributing
 
-This extension is part of the HORUS robotics framework. For contribution guidelines, see the main [HORUS repository](https://github.com/horus-robotics/horus).
+This extension is part of the HORUS robotics framework. For contribution guidelines, see the main [HORUS repository](https://github.com/softmata/horus).
 
 ## License
 
-MIT License - See main HORUS repository for details.
+Apache License 2.0 - See main HORUS repository for details.

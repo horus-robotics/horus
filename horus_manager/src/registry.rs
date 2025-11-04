@@ -932,7 +932,7 @@ impl RegistryClient {
             .text("name", name.clone())
             .text("version", version.clone())
             .text("description", description.unwrap_or_default())
-            .text("license", license.unwrap_or_else(|| "MIT".to_string()))
+            .text("license", license.unwrap_or_else(|| "Apache-2.0".to_string()))
             .part(
                 "package",
                 reqwest::blocking::multipart::Part::bytes(package_data)

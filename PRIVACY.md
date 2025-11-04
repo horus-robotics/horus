@@ -189,7 +189,7 @@ The telemetry code is **fully open source**:
 - `update.sh` - See update tracking
 - `recovery_install.sh` - See recovery tracking
 
-You can audit the code yourself: https://github.com/horus-robotics/horus
+You can audit the code yourself: https://github.com/softmata/horus
 
 ## Changes to This Policy
 
@@ -202,7 +202,7 @@ If we change what we collect, we will:
 
 If you have questions about telemetry or privacy:
 
-- **GitHub Issues:** https://github.com/horus-robotics/horus/issues
+- **GitHub Issues:** https://github.com/softmata/horus/issues
 - **View the code:** `scripts/telemetry.sh`
 
 ## Summary

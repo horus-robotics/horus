@@ -1,6 +1,6 @@
-# Publishing horus-robotics to PyPI
+# Publishing horus to PyPI
 
-This guide walks through publishing the `horus-robotics` Python package to PyPI, enabling users to install via `pip install horus-robotics`.
+This guide walks through publishing the `horus` Python package to PyPI, enabling users to install via `pip install horus`.
 
 ## Current Status
 
@@ -10,7 +10,7 @@ This guide walks through publishing the `horus-robotics` Python package to PyPI,
 - ✅ LICENSE file included (Apache-2.0)
 - ✅ README.md comprehensive (498 lines)
 - ✅ Wheel builds successfully (611KB)
-- ✅ Package name: `horus-robotics`
+- ✅ Package name: `horus`
 
 **Built wheel**: `horus_robotics-0.1.3-cp39-abi3-manylinux_2_34_x86_64.whl`
 
@@ -32,8 +32,8 @@ First-time setup (one-time only):
 
 1. Go to https://pypi.org/manage/account/token/
 2. Click "Add API token"
-3. Name: "horus-robotics-publishing"
-4. Scope: "Entire account" (first release) or "Project: horus-robotics" (after first release)
+3. Name: "horus-publishing"
+4. Scope: "Entire account" (first release) or "Project: horus" (after first release)
 5. **Copy the token** (starts with `pypi-...`)
 6. Store securely - you won't see it again!
 
@@ -104,7 +104,7 @@ twine upload --repository testpypi target/wheels/*.whl
 **Verify on TestPyPI**:
 ```bash
 # Install from TestPyPI
-pip install --index-url https://test.pypi.org/simple/ horus-robotics
+pip install --index-url https://test.pypi.org/simple/ horus
 
 # Test import
 python3 -c "import horus; print(horus.__version__)"
@@ -129,7 +129,7 @@ twine upload target/wheels/*.whl
 ```
 📦 Built wheel for abi3 Python ≥ 3.9 to /home/lord-patpak/horus/HORUS/target/wheels/horus_robotics-0.1.3-cp39-abi3-manylinux_2_34_x86_64.whl
 🔐 Uploading to PyPI...
-✅ Published horus-robotics 0.1.3 to https://pypi.org/project/horus-robotics/
+✅ Published horus 0.1.3 to https://pypi.org/project/horus/
 ```
 
 ### Step 4: Verify Publication
@@ -138,14 +138,14 @@ twine upload target/wheels/*.whl
 # Wait 1-2 minutes for PyPI to index
 
 # Install from PyPI
-pip install horus-robotics
+pip install horus
 
 # Verify
 python3 -c "import horus; print('HORUS version:', horus.__version__)"
 python3 -c "import horus; node = horus.Node(pubs='test', tick=lambda n: n.send('test', 42)); print('✅ Success!')"
 ```
 
-**Check PyPI page**: https://pypi.org/project/horus-robotics/
+**Check PyPI page**: https://pypi.org/project/horus/
 
 ---
 
@@ -156,7 +156,7 @@ For future releases, update version in **TWO files**:
 1. **horus_py/pyproject.toml**:
    ```toml
    [project]
-   name = "horus-robotics"
+   name = "horus"
    version = "0.1.3"  # <- Update here
    ```
 
@@ -197,7 +197,7 @@ Check your API token:
 
 ### Error: "Package name conflict"
 
-If `horus-robotics` is taken, use alternative:
+If `horus` is taken, use alternative:
 - `horus-py`
 - `horus-framework`
 - `pyhorus`
@@ -290,7 +290,7 @@ cd horus_py && maturin develop --release
 
 **After** (pip install):
 ```bash
-pip install horus-robotics
+pip install horus
 ```
 
 Update `horus_manager/src/registry.rs` to auto-install:
@@ -298,8 +298,8 @@ Update `horus_manager/src/registry.rs` to auto-install:
 ```rust
 // When installing a Python project
 if package.language == "python" {
-    // Auto-install horus-robotics from PyPI
-    run_command(&["pip", "install", "horus-robotics"]);
+    // Auto-install horus from PyPI
+    run_command(&["pip", "install", "horus"]);
 }
 ```
 
@@ -322,10 +322,10 @@ maturin publish --repository testpypi
 maturin publish
 
 # Install from PyPI
-pip install horus-robotics
+pip install horus
 
 # Uninstall
-pip uninstall horus-robotics
+pip uninstall horus
 ```
 
 ---
@@ -340,13 +340,13 @@ pip uninstall horus-robotics
 - [ ] README.md is comprehensive
 - [ ] LICENSE file is included
 - [ ] Published to PyPI (`maturin publish`)
-- [ ] Verified installation (`pip install horus-robotics`)
-- [ ] Updated main HORUS docs to mention `pip install horus-robotics`
+- [ ] Verified installation (`pip install horus`)
+- [ ] Updated main HORUS docs to mention `pip install horus`
 
 ---
 
 ## Support
 
-**Questions?** Open an issue: https://github.com/horus-org/horus/issues
+**Questions?** Open an issue: https://github.com/softmata/horus/issues
 
 **Documentation**: https://docs.horus.rs

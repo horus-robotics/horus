@@ -4,7 +4,7 @@ version = "0.1.4"
 edition = "2021"
 authors = ["HORUS Team"]
 description = "Professional benchmark suite for HORUS robotics framework"
-license = "MIT OR Apache-2.0"
+license = "Apache-2.0"
 
 [features]
 default = []

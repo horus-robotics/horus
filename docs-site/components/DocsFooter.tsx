@@ -29,7 +29,7 @@ export function DocsFooter() {
             <div>
               <h4 className="font-semibold text-[var(--text-primary)] mb-3 text-sm uppercase tracking-wider">Resources</h4>
               <ul className="space-y-2.5 text-sm text-[var(--text-secondary)]">
-                <li><a href="https://github.com/horus-robotics/horus" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">GitHub Repository</a></li>
+                <li><a href="https://github.com/softmata/horus" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">GitHub Repository</a></li>
                 <li><a href="https://marketplace.horus-registry.dev/" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Package Marketplace</a></li>
                 <li><a href="/benchmarks" className="hover:text-[var(--accent)] transition-colors">Benchmarks</a></li>
                 <li><a href="/examples" className="hover:text-[var(--accent)] transition-colors">Examples</a></li>
@@ -40,7 +40,7 @@ export function DocsFooter() {
               <h4 className="font-semibold text-[var(--text-primary)] mb-3 text-sm uppercase tracking-wider">Community</h4>
               <ul className="space-y-2.5 text-sm text-[var(--text-secondary)]">
                 <li><a href="https://discord.gg/hEZC3ev2Nf" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Discord Community</a></li>
-                <li><a href="https://github.com/horus-robotics/horus/issues" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Issues</a></li>
+                <li><a href="https://github.com/softmata/horus/issues" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">Issues</a></li>
                 <li><a href="/goals" className="hover:text-[var(--accent)] transition-colors">Goals & Vision</a></li>
                 <li><a href="/architecture" className="hover:text-[var(--accent)] transition-colors">Architecture</a></li>
               </ul>
@@ -53,9 +53,9 @@ export function DocsFooter() {
             Copyright {new Date().getFullYear()} HORUS Contributors. Apache-2.0 License.
           </div>
           <div className="flex gap-6 text-sm text-[var(--text-secondary)]">
-            <a href="https://github.com/horus-robotics/horus" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">GitHub</a>
+            <a href="https://github.com/softmata/horus" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">GitHub</a>
             <a href="/performance" className="hover:text-[var(--accent)] transition-colors">Performance</a>
-            <a href="https://github.com/horus-robotics/horus/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">License</a>
+            <a href="https://github.com/softmata/horus/blob/main/LICENSE" target="_blank" rel="noopener noreferrer" className="hover:text-[var(--accent)] transition-colors">License</a>
           </div>
         </div>
       </div>

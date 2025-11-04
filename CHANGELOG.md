@@ -216,5 +216,5 @@ Changes are grouped using the following categories:
 
 - [Keep a Changelog](https://keepachangelog.com/)
 - [Semantic Versioning](https://semver.org/)
-- [HORUS Repository](https://github.com/horus-robotics/horus)
+- [HORUS Repository](https://github.com/softmata/horus)
 - [HORUS Documentation](https://docs.horus-registry.dev)

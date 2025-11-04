@@ -720,9 +720,9 @@ Sentry.init({
 
 ## Licensing
 
-**Extension License**: MIT
-**Language Server License**: MIT
-**Dependencies**: All permissive licenses (MIT, Apache-2.0, BSD)
+**Extension License**: Apache-2.0
+**Language Server License**: Apache-2.0
+**Dependencies**: All permissive licenses (Apache-2.0, BSD)
 
 **License Compliance Check**:
 ```bash

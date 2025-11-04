@@ -4,8 +4,8 @@ version = "0.1.4"
 edition = "2021"
 authors = ["HORUS Team"]
 description = "HORUS - Hybrid Optimized Robotics Unified System framework for Rust"
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/horus-robotics/horus"
+license = "Apache-2.0"
+repository = "https://github.com/softmata/horus"
 keywords = ["robotics", "ros", "ipc", "real-time", "framework"]
 categories = ["science::robotics", "embedded", "network-programming"]
 

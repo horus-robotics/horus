@@ -434,4 +434,4 @@ cargo run  # Use arrow keys and gamepad to test both input nodes
 
 ## License
 
-Part of the HORUS distributed robotics framework - MIT License.
+Part of the HORUS distributed robotics framework - Apache License 2.0.

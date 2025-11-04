@@ -40,7 +40,7 @@ pub struct CratesIoClient {
 impl CratesIoClient {
     pub fn new() -> Self {
         let client = reqwest::blocking::Client::builder()
-            .user_agent("horus-cli (https://github.com/horus-robotics)")
+            .user_agent("horus-cli (https://github.com/softmata)")
             .build()
             .expect("Failed to create HTTP client");
 

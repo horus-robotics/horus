@@ -406,7 +406,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
 
                 // License warning (encourage projects to declare their license)
                 print!("  {} Checking license field... ", "✓".cyan());
-                let missing_license_warning = "No license specified. Consider adding a license field (e.g., MIT, Apache-2.0, BSD-3-Clause).";
+                let missing_license_warning = "No license specified. Consider adding a license field (e.g., Apache-2.0, BSD-3-Clause).";
                 if let Some(license) = yaml.get("license").and_then(|l| l.as_str()) {
                     if license.trim().is_empty() {
                         println!("{}", "⚠".yellow());
@@ -2135,7 +2135,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     println!("  Seed: {}", s);
                 }
                 println!("\n{}", "⚠️  sim3d is planned for future release!".yellow());
-                println!("See roadmap: https://docs.horus-robotics.dev/roadmap");
+                println!("See roadmap: https://docs.horus-registry.dev/roadmap");
                 Ok(())
             }
         },

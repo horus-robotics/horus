@@ -571,7 +571,7 @@ sudo apt install libx11-dev libxrandr-dev libxi-dev
 
 ## License
 
-Licensed under MIT or Apache-2.0, same as HORUS framework.
+Licensed under Apache License 2.0, same as HORUS framework.
 
 ---
 

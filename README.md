@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.1.4-blue.svg)](https://github.com/horus-robotics/horus/releases)
+[![Version](https://img.shields.io/badge/version-0.1.4-blue.svg)](https://github.com/softmata/horus/releases)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS-lightgrey.svg)]()
@@ -13,13 +13,13 @@
 [![IPC Latency](https://img.shields.io/badge/IPC%20latency-312ns-brightgreen.svg)](#performance)
 [![Throughput](https://img.shields.io/badge/throughput-6M%2B%20msg%2Fs-green.svg)](#performance)
 [![Languages](https://img.shields.io/badge/languages-Rust%20%7C%20Python%20%7C%20C%2B%2B-blue.svg)](#multi-language-support)
-[![Status](https://img.shields.io/badge/status-alpha-yellow.svg)](https://github.com/horus-robotics/horus/releases)
+[![Status](https://img.shields.io/badge/status-alpha-yellow.svg)](https://github.com/softmata/horus/releases)
 
 **Hybrid Optimized Robotics Unified System**
 
 A production-grade robotics framework built in Rust for **real-time performance** and **memory safety**. HORUS delivers sub-microsecond IPC latency (50-500x faster than ROS2) while maintaining a simpler developer experience.
 
-[Installation](#installation) • [Quick Start](#quick-start) • [Documentation](https://docs.horus-registry.dev) • [Examples](#examples) • [Benchmarks](#performance)
+[Installation](#installation) • [Quick Start](#quick-start) • [Documentation](https://docs.horus-registry.dev) • [Marketplace](https://marketplace.horus-registry.dev) • [Benchmarks](https://docs.horus-registry.dev/benchmarks)
 
 </div>
 
@@ -116,7 +116,7 @@ A production-grade robotics framework built in Rust for **real-time performance*
 ### Quick Install
 
 ```bash
-git clone https://github.com/horus-robotics/horus.git
+git clone https://github.com/softmata/horus.git
 cd horus
 ./install.sh
 ```

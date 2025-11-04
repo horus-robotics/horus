@@ -237,4 +237,4 @@ See [../../ARCHITECTURE.md](../../ARCHITECTURE.md) for architectural guidelines.
 
 ## License
 
-MIT License - consistent with HORUS framework
+Apache License 2.0 - consistent with HORUS framework

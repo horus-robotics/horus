@@ -127,7 +127,7 @@ Create `package.json`:
   "publisher": "horus",
   "repository": {
     "type": "git",
-    "url": "https://github.com/horus-robotics/horus"
+    "url": "https://github.com/softmata/horus"
   },
   "engines": {
     "vscode": "^1.85.0"

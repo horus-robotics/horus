@@ -293,7 +293,7 @@ fn create_horus_yaml(
 version: 0.1.0
 description: {}
 author: {}
-license: MIT
+license: Apache-2.0
 language: {}
 horus_id: null  # Auto-generated on first dependency resolution
 
