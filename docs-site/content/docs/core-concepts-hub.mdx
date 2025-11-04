@@ -236,19 +236,18 @@ Hub tracks connection state through an atomic enum:
 
 ```rust
 pub enum ConnectionState {
-    Uninitialized = 0,
-    Connecting = 1,
-    Connected = 2,
-    Disconnecting = 3,
-    Disconnected = 4,
-    Error = 5,
+    Disconnected,
+    Connecting,
+    Connected,
+    Reconnecting,
+    Failed,
 }
 ```
 
 ### Checking Connection State
 
 ```rust
-pub fn state(&self) -> ConnectionState {
+pub fn get_connection_state(&self) -> ConnectionState {
     // Returns current connection state
 }
 ```
@@ -256,11 +255,11 @@ pub fn state(&self) -> ConnectionState {
 ### State Transitions
 
 ```
-Uninitialized  Connecting  Connected
-                                ->
-                            Disconnecting  Disconnected
-                                ->
-                              Error
+Disconnected  Connecting  Connected
+                               ->
+                          Reconnecting  Connected
+                               ->
+                            Failed
 ```
 
 ## Performance Metrics
@@ -269,14 +268,18 @@ Hub tracks detailed performance metrics atomically:
 
 ```rust
 pub struct AtomicHubMetrics {
-    pub total_messages_sent: AtomicU64,
-    pub total_messages_received: AtomicU64,
-    pub total_bytes_sent: AtomicU64,
-    pub total_bytes_received: AtomicU64,
-    pub avg_send_latency_ns: AtomicU64,
-    pub avg_recv_latency_ns: AtomicU64,
-    pub last_send_time_ns: AtomicU64,
-    pub last_recv_time_ns: AtomicU64,
+    pub messages_sent: AtomicU64,
+    pub messages_received: AtomicU64,
+    pub send_failures: AtomicU64,
+    pub recv_failures: AtomicU64,
+}
+
+pub struct HubMetrics {
+    pub messages_sent: u64,
+    pub messages_received: u64,
+    pub send_failures: u64,
+    pub recv_failures: u64,
+    pub last_activity: Option<Instant>,
 }
 ```
 
@@ -290,9 +293,9 @@ hub.send(1.0, None).ok();
 hub.send(2.0, None).ok();
 
 // Get metrics
-let metrics = hub.metrics();
-println!("Total sent: {}", metrics.total_messages_sent);
-println!("Avg latency: {}ns", metrics.avg_send_latency_ns);
+let metrics = hub.get_metrics();
+println!("Total sent: {}", metrics.messages_sent);
+println!("Send failures: {}", metrics.send_failures);
 ```
 
 ## Communication Patterns

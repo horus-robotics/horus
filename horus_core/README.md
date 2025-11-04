@@ -59,9 +59,9 @@ From `horus_core/src/core/node.rs`:
 ```rust
 pub trait Node: Send {
     fn name(&self) -> &'static str;
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String>;
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()>;
     fn tick(&mut self, ctx: Option<&mut NodeInfo>);
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String>;
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()>;
     fn get_publishers(&self) -> Vec<TopicMetadata> { Vec::new() }
     fn get_subscribers(&self) -> Vec<TopicMetadata> { Vec::new() }
 }
@@ -71,7 +71,7 @@ pub trait Node: Send {
 - `init()` takes `&mut NodeInfo` (NOT Option)
 - `tick()` takes `Option<&mut NodeInfo>` and returns nothing
 - `shutdown()` takes `&mut NodeInfo` (NOT Option)
-- All lifecycle methods use `Result<(), String>` for errors
+- All lifecycle methods use `Result<()>` for errors (via prelude alias)
 
 ### 2. NodeInfo Context
 
@@ -180,7 +180,7 @@ pub struct SensorNode {
 }
 
 impl SensorNode {
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         Ok(Self {
             publisher: Hub::new("sensor_data")?,
             counter: 0,
@@ -192,7 +192,7 @@ impl Node for SensorNode {
     fn name(&self) -> &'static str { "SensorNode" }
 
     // Optional: Called once at startup
-    fn init(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("SensorNode initialized");
         Ok(())
     }
@@ -205,7 +205,7 @@ impl Node for SensorNode {
     }
 
     // Optional: Called once at shutdown
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("SensorNode shutdown");
         Ok(())
     }
@@ -220,7 +220,7 @@ pub struct ControlNode {
 }
 
 impl ControlNode {
-    pub fn new() -> HorusResult<Self> {
+    pub fn new() -> Result<Self> {
         Ok(Self {
             subscriber: Hub::new("sensor_data")?,
         })
@@ -231,7 +231,7 @@ impl Node for ControlNode {
     fn name(&self) -> &'static str { "ControlNode" }
 
     // Optional: Called once at startup
-    fn init(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("ControlNode initialized");
         Ok(())
     }
@@ -247,7 +247,7 @@ impl Node for ControlNode {
     }
 
     // Optional: Called once at shutdown
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("ControlNode shutdown");
         Ok(())
     }
@@ -259,7 +259,7 @@ impl Node for ControlNode {
 ```rust
 use horus::prelude::*;
 
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     let mut scheduler = Scheduler::new();
 
     scheduler

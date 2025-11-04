@@ -75,7 +75,7 @@ impl Node for SensorNode {
         "SensorNode"
     }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Temperature sensor initialized");
         Ok(())
     }
@@ -103,7 +103,7 @@ impl Node for SensorNode {
         }
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Sensor shutdown complete");
         Ok(())
     }
@@ -136,7 +136,7 @@ impl Node for FilterNode {
         "FilterNode"
     }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info(&format!("Filter initialized (alpha = {:.2})", self.alpha));
         Ok(())
     }
@@ -164,7 +164,7 @@ impl Node for FilterNode {
         }
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Filter shutdown complete");
         Ok(())
     }
@@ -193,7 +193,7 @@ impl Node for DisplayNode {
         "DisplayNode"
     }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Display initialized");
         println!("\n========================================");
         println!("  Temperature Monitor - Press Ctrl+C to stop");
@@ -225,7 +225,7 @@ impl Node for DisplayNode {
         }
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         println!("\n========================================");
         println!("  Total readings displayed: {}", self.display_counter);
         println!("========================================\n");

@@ -46,7 +46,7 @@ pub fn new_with_capacity(
 
 **Parameters**:
 - `topic_name`: Name of the topic
-- `capacity`: Maximum number of messages to buffer
+- `capacity`: Maximum number of messages to buffer (not bytes!)
 
 **Returns**: `Result<Hub<T>, HorusError>`
 
@@ -55,6 +55,47 @@ pub fn new_with_capacity(
 // Create hub with buffer for 10 messages
 let hub: Hub<f32> = Hub::new_with_capacity("data", 10)?;
 ```
+
+**Understanding Capacity vs Memory:**
+
+Capacity specifies the **number of messages**, not bytes. Actual memory usage:
+
+```rust
+memory_bytes = capacity × sizeof(T) + overhead
+```
+
+**Examples:**
+```rust
+// 1000 × 4 bytes = 4 KB
+Hub::<f32>::new_with_capacity("float_data", 1000)?;
+
+// 1000 × 304 bytes = 304 KB
+Hub::<Imu>::new_with_capacity("imu", 1000)?;
+
+// 100 × 1536 bytes = 150 KB
+Hub::<LaserScan>::new_with_capacity("scan", 100)?;
+```
+
+**Calculating from Memory Budget:**
+
+If you have a specific memory budget (e.g., 50 MB):
+
+```rust
+use std::mem::size_of;
+
+let target_mb = 50;
+let target_bytes = target_mb * 1024 * 1024;
+let capacity = target_bytes / size_of::<PointCloud>();
+
+Hub::<PointCloud>::new_with_capacity("points", capacity)?;
+```
+
+**System Limits:**
+- Max capacity: 1,000,000 messages
+- Max element size: 1 MB per message
+- Max total size: 100 MB per topic
+
+See [Shared Memory Guide](/core-concepts-shared-memory#understanding-capacity-vs-memory-size) for detailed memory planning.
 
 ## Publishing Messages
 

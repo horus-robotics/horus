@@ -304,9 +304,9 @@ match hub.send(data, ctx) {
 ### Node Errors
 
 ```rust
-fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
     self.device.connect()
-        .map_err(|e| format!("Connection failed: {}", e))?;
+        .map_err(|e| HorusError::InitializationFailed(format!("Connection failed: {}", e)))?;
     Ok(())
 }
 ```

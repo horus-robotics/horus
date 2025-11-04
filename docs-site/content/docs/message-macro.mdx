@@ -203,7 +203,7 @@ impl Node for AlertMonitor {
     }
 }
 
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     let mut scheduler = Scheduler::new().name("temp_monitor");
 
     scheduler.add(Box::new(TempSensor::new()?), 0, Some(true));

@@ -157,7 +157,7 @@ A **Node** is a component that does one thing. Examples:
 impl Node for MySensor {
     fn name(&self) -> &'static str { "MySensor" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Sensor starting up");
         Ok(())
     }
@@ -166,7 +166,7 @@ impl Node for MySensor {
         // Read sensor, send data - runs repeatedly
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Sensor shutting down");
         Ok(())
     }

@@ -1,0 +1,285 @@
+================================================================================
+HORUS DOCUMENTATION ACCURACY AUDIT - COMPLETE FINDINGS REPORT
+================================================================================
+
+Audit Date: 2025-11-03
+Scope: All .mdx documentation files in /home/lord-patpak/horus/HORUS/docs-site/content/docs/
+Audit Focus: 
+  - API method signatures vs actual source code
+  - Return type accuracy (Result<T> vs HorusResult<T>)
+  - Method names (log_warn vs log_warning, state() vs get_connection_state())
+  - Code example correctness
+
+================================================================================
+CRITICAL ISSUE #1: INCORRECT RETURN TYPE - Result<T> vs HorusResult<T>
+================================================================================
+
+SEVERITY: CRITICAL
+IMPACT: All code examples using Result<T> will fail to compile
+ROOT CAUSE: Documentation uses generic Rust Result<T> but actual API uses HorusResult<T>
+
+HorusResult Definition (error.rs:97):
+  pub type HorusResult<T> = Result<T, HorusError>;
+
+FILES AFFECTED: 7 major documentation files
+
+---
+FILE: api-node.mdx (Node trait signatures)
+---
+
+Line 16 - fn init signature in trait definition:
+  DOC: "fn init(&mut self, ctx: &mut NodeInfo) -> Result<()>;"
+  ACTUAL: "fn init(&mut self, ctx: &mut NodeInfo) -> crate::error::HorusResult<()>" (node.rs:788)
+  FIX: Change to "fn init(&mut self, ctx: &mut NodeInfo) -> HorusResult<()>;"
+
+Line 75 - Example in init() method:
+  DOC: "fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {"
+  ACTUAL: Should be HorusResult<()>
+  FIX: Change to "fn init(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {"
+
+Line 88 - Another init example:
+  DOC: "fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {"
+  FIX: Change to "fn init(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {"
+
+Line 100 - fn shutdown signature:
+  DOC: "fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()>"
+  ACTUAL: Should be HorusResult<()> (node.rs:797)
+  FIX: Change to "fn shutdown(&mut self, ctx: &mut NodeInfo) -> HorusResult<()>"
+
+Line 113 - shutdown example:
+  DOC: "fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {"
+  FIX: Change to "fn shutdown(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {"
+
+Line 252 - Complete example - new() method:
+  DOC: "fn new() -> Result<Self> {"
+  FIX: Change to "fn new() -> HorusResult<Self> {"
+
+Line 265 - Complete example - init() in example:
+  DOC: "fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {"
+  FIX: Change to "fn init(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {"
+
+Line 278 - Complete example - shutdown() in example:
+  DOC: "fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {"
+  FIX: Change to "fn shutdown(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {"
+
+---
+FILE: api-hub.mdx (Hub API signatures)
+---
+
+Line 18 - Hub::new() signature:
+  DOC: "pub fn new(topic_name: &str) -> Result<Self>"
+  ACTUAL: "pub fn new(topic_name: &str) -> HorusResult<Self>" (hub.rs:134)
+  FIX: Change to "pub fn new(topic_name: &str) -> HorusResult<Self>"
+
+Line 24 - Hub::new() return type description:
+  DOC: "Returns: `Result<Hub<T>, HorusError>`"
+  FIX: Change to "Returns: `HorusResult<Hub<T>>`"
+
+Line 44 - Hub::new_with_capacity() signature:
+  DOC: "pub fn new_with_capacity(topic_name: &str, capacity: usize) -> Result<Self>"
+  ACTUAL: Should be HorusResult<Self> (hub.rs:139)
+  FIX: Change to "pub fn new_with_capacity(topic_name: &str, capacity: usize) -> HorusResult<Self>"
+
+Line 51 - new_with_capacity() return description:
+  DOC: "Returns: `Result<Hub<T>, HorusError>`"
+  FIX: Change to "Returns: `HorusResult<Hub<T>>`"
+
+---
+FILE: api-link.mdx (Link API signatures)
+---
+
+Line 24 - Link::producer() signature:
+  DOC: "pub fn producer(topic: &str) -> Result<Self>"
+  ACTUAL: "pub fn producer(topic: &str) -> HorusResult<Self>" (link.rs:93)
+  FIX: Change to "pub fn producer(topic: &str) -> HorusResult<Self>"
+
+Line 30 - producer() return type description:
+  DOC: "Returns: `Result<Link<T>, HorusError>`"
+  FIX: Change to "Returns: `HorusResult<Link<T>>`"
+
+Line 47 - Link::consumer() signature:
+  DOC: "pub fn consumer(topic: &str) -> Result<Self>"
+  ACTUAL: "pub fn consumer(topic: &str) -> HorusResult<Self>" (link.rs:109)
+  FIX: Change to "pub fn consumer(topic: &str) -> HorusResult<Self>"
+
+Line 53 - consumer() return type description:
+  DOC: "Returns: `Result<Link<T>, HorusError>`"
+  FIX: Change to "Returns: `HorusResult<Link<T>>`"
+
+NOTE: Lines 71, 103 for send() and recv() return types are CORRECT (they return Result<(),T> and Option<T>)
+
+---
+FILE: api-scheduler.mdx (Scheduler API signatures)
+---
+
+Line 109 - Scheduler::run() signature:
+  DOC: "pub fn run(&mut self) -> Result<()>"
+  ACTUAL: Should be HorusResult<()>
+  FIX: Change to "pub fn run(&mut self) -> HorusResult<()>"
+
+Line 131 - Scheduler::run_for() signature:
+  DOC: "pub fn run_for(&mut self, duration: Duration) -> Result<()>"
+  ACTUAL: Should be HorusResult<()>
+  FIX: Change to "pub fn run_for(&mut self, duration: Duration) -> HorusResult<()>"
+
+Line 161 - Scheduler::tick() signature:
+  DOC: "pub fn tick(&mut self, node_names: &[&str]) -> Result<()>"
+  ACTUAL: Should be HorusResult<()>
+  FIX: Change to "pub fn tick(&mut self, node_names: &[&str]) -> HorusResult<()>"
+
+Line 180 - Scheduler::tick_for() signature:
+  DOC: "pub fn tick_for(&mut self, node_names: &[&str], duration: Duration) -> Result<()>"
+  ACTUAL: Should be HorusResult<()>
+  FIX: Change to "pub fn tick_for(&mut self, node_names: &[&str], duration: Duration) -> HorusResult<()>"
+
+---
+FILE: basic-examples.mdx (Example code - many instances)
+---
+
+Line 39 - SensorNode::new():
+  DOC: "fn new() -> Result<Self> {"
+  FIX: Change to "fn new() -> HorusResult<Self> {"
+
+Line 52 - SensorNode::init():
+  DOC: "fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {"
+  FIX: Change to "fn init(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {"
+
+Line 71 - SensorNode::shutdown():
+  DOC: "fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {"
+  FIX: Change to "fn shutdown(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {"
+
+Lines 102, 114, 131 - ProcessorNode methods (same fixes)
+
+Lines 169, 195, 208 - Combined app methods (same fixes)
+
+Line 251 - TemperatureSensor::new():
+  DOC: "fn new() -> Result<Self> {"
+  FIX: Change to "fn new() -> HorusResult<Self> {"
+
+... (Multiple similar instances throughout the file)
+
+---
+FILE: advanced-examples.mdx (Example code)
+---
+
+Line 42 - StateMachineNode::new():
+  DOC: "fn new() -> Result<Self> {"
+  FIX: Change to "fn new() -> Result<Self> {"
+
+Line 55 - StateMachineNode::init():
+  DOC: "fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {"
+  FIX: Change to "fn init(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {"
+
+Line 119 - StateMachineNode::shutdown():
+  DOC: "fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {"
+  FIX: Change to "fn shutdown(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {"
+
+... (Multiple similar instances throughout the file)
+
+================================================================================
+CRITICAL ISSUE #2: INCORRECT METHOD NAME - log_warn vs log_warning  
+================================================================================
+
+SEVERITY: HIGH
+IMPACT: Code examples will fail to compile - method doesn't exist
+ROOT CAUSE: Documentation uses abbreviated name "log_warn" but actual method is "log_warning"
+
+Actual Method Definition (node.rs:590):
+  pub fn log_warning(&mut self, message: &str) {
+
+FILE: basic-examples.mdx
+Line 455 - In ObstacleDetector::tick():
+  DOC: "ctx.log_warn(&format!("
+  ACTUAL: Should be "ctx.log_warning"
+  FIX: Change all instances of "ctx.log_warn(" to "ctx.log_warning("
+
+FILE: advanced-examples.mdx
+Line 224 - In SafetyMonitorNode::tick():
+  DOC: "ctx.log_warn("Emergency stop system offline");"
+  ACTUAL: Should be "ctx.log_warning"
+  FIX: Change to "ctx.log_warning("Emergency stop system offline");"
+
+Line 263 - In SafetyMonitorNode::tick():
+  DOC: "ctx.log_warn("Motors DISABLED - emergency stop active");"
+  FIX: Change to "ctx.log_warning("Motors DISABLED - emergency stop active");"
+
+================================================================================
+VERIFIED CORRECT - NO CHANGES NEEDED
+================================================================================
+
+The following methods and signatures have been verified as correct:
+
+HUB METHODS:
+✓ send(msg, ctx) -> Result<(), T>  (NOT HorusResult - correct as documented)
+✓ recv(ctx) -> Option<T>
+✓ get_connection_state() -> ConnectionState
+✓ get_metrics() -> HubMetrics
+✓ get_topic_name() -> &str
+
+LINK METHODS:
+✓ send(msg, ctx) -> Result<(), T>  (NOT HorusResult - correct as documented)
+✓ recv(ctx) -> Option<T>
+✓ is_producer() -> bool
+✓ is_consumer() -> bool
+✓ role() -> LinkRole
+✓ get_topic_name() -> &str
+✓ has_messages() -> bool
+✓ get_metrics() -> LinkMetrics
+
+NODEINFO METHODS:
+✓ state() -> &NodeState
+✓ log_info(&str) 
+✓ log_warning(&str) - actual method name
+✓ log_error(&str)
+✓ log_debug(&str)
+✓ metrics() -> &NodeMetrics
+
+SCHEDULER METHODS:
+✓ new() -> Self
+✓ add(node, priority, logging) -> &mut Self
+✓ name(name) -> Self
+✓ is_running() -> bool
+✓ get_node_list() -> Vec<String>
+✓ get_node_info(name) -> Option<HashMap>
+✓ stop()
+✓ set_node_logging(name, enabled) -> bool
+
+================================================================================
+SUMMARY TABLE
+================================================================================
+
+Issue Type              | Files Affected        | Instances | Severity | Fix Type
+-----------------------|-----------------------|-----------|----------|----------
+Result<T> -> HorusResult<T> | 7 MDX files   | 50+       | CRITICAL | Find/Replace
+log_warn -> log_warning | 2 MDX files           | 2         | HIGH     | Find/Replace
+
+Total Issues Found: 52+ individual corrections needed across 7 files
+
+================================================================================
+RECOMMENDATIONS FOR FIXES
+================================================================================
+
+IMMEDIATE (Automated):
+1. Global find/replace: "-> Result<" → "-> HorusResult<" across all .mdx files
+2. Global find/replace: ".log_warn(" → ".log_warning(" across all .mdx files
+
+VERIFICATION STEPS:
+1. After fixes, extract all code blocks from MDX files
+2. Compile each example against actual HORUS API
+3. Verify no compilation errors
+4. Run as smoke tests if possible
+
+PROCESS IMPROVEMENTS:
+1. Add pre-commit hooks to validate code examples in documentation
+2. Create automated documentation generation from source code comments
+3. Implement CI/CD checks that compile all code examples
+4. Establish documentation update policy synchronized with API changes
+
+TESTING:
+1. Add regression tests that compile all documentation examples
+2. Include in CI/CD pipeline
+3. Block releases if documentation examples don't compile
+
+================================================================================
+END OF REPORT
+================================================================================

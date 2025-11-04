@@ -13,9 +13,9 @@ The `Node` trait is the core abstraction in HORUS. Implement this trait to creat
 ```rust
 pub trait Node: Send {
     fn name(&self) -> &'static str;
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String>;
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()>;
     fn tick(&mut self, ctx: Option<&mut NodeInfo>);
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String>;
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()>;
 }
 ```
 
@@ -72,7 +72,7 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 Called once when the node is added to the scheduler. Use for setup and initialization.
 
 ```rust
-fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
     ctx.log_info("Node initialized");
     Ok(())
 }
@@ -85,7 +85,7 @@ fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
 
 **Example**:
 ```rust
-fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
     self.connection = Some(connect_to_device()?);
     ctx.log_info("Connected to device");
     Ok(())
@@ -97,7 +97,7 @@ fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
 Called once when the scheduler stops. Use for cleanup.
 
 ```rust
-fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
     ctx.log_info("Node shutdown");
     Ok(())
 }
@@ -110,7 +110,7 @@ fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
 
 **Example**:
 ```rust
-fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
     if let Some(conn) = self.connection.take() {
         conn.disconnect()?;
     }
@@ -262,7 +262,7 @@ impl Node for TemperatureSensor {
         "TemperatureSensor"
     }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Temperature sensor initialized");
         Ok(())
     }
@@ -275,7 +275,7 @@ impl Node for TemperatureSensor {
         self.temperature_pub.send(self.reading, ctx).ok();
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Temperature sensor shutdown");
         Ok(())
     }

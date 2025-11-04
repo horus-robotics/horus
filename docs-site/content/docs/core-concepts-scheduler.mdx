@@ -443,8 +443,8 @@ The scheduler ensures clean shutdown:
 If a node fails to initialize:
 
 ```rust
-fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
-    return Err("Sensor not connected".to_string());
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+    return Err("Sensor not connected".into());
 }
 ```
 
@@ -488,8 +488,8 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 If shutdown() fails:
 
 ```rust
-fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
-    Err("Failed to close connection".to_string())
+fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+    Err("Failed to close connection".into())
 }
 ```
 
@@ -596,7 +596,7 @@ fn main() -> Result<()> {
 ### Initialize Heavy Resources in init()
 
 ```rust
-fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
     // Pre-allocate buffers
     self.buffer = vec![0.0; 10000];
 
@@ -762,7 +762,7 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 Check initialization:
 
 ```rust
-fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
     ctx.log_info("Initializing...");
     // If this fails, node won't run
     Ok(())

@@ -16,8 +16,10 @@
 //! ## Usage
 //!
 //! ```rust
-//! // Message types and nodes are re-exported at the root for convenience
+//! // Message types, traits, and nodes are re-exported at the root for convenience
 //! use horus_library::{
+//!     // Core traits
+//!     LogSummary,
 //!     // Messages
 //!     KeyboardInput, JoystickInput, CmdVel, LaserScan, Image, Twist,
 //!     // Nodes
@@ -37,6 +39,9 @@
 
 pub mod messages;
 pub mod nodes;
+
+// Re-export core traits needed for message types
+pub use horus_core::core::LogSummary;
 
 // Re-export message types at the crate root for convenience
 pub use messages::*;

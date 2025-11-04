@@ -343,7 +343,7 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
     if let Some(ctx) = ctx {
         ctx.log_debug("Detailed info for debugging");
         ctx.log_info("Normal informational message");
-        ctx.log_warn("Something unusual happened");
+        ctx.log_warning("Something unusual happened");
         ctx.log_error("Something went wrong!");
     }
 }
@@ -400,9 +400,9 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 
 ```rust
 impl Node for MyNode {
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         if self.sensor.is_broken() {
-            return Err("Sensor initialization failed".to_string());
+            return Err("Sensor initialization failed".into());
         }
         Ok(())
     }
@@ -412,7 +412,7 @@ impl Node for MyNode {
 ### ❌ DON'T: panic!() in nodes
 
 ```rust
-fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
     if self.sensor.is_broken() {
         panic!("Sensor broken");  // DON'T DO THIS
     }

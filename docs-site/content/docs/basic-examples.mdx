@@ -49,7 +49,7 @@ impl Node for SensorNode {
         "SensorNode"
     }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Sensor initialized");
         Ok(())
     }
@@ -68,7 +68,7 @@ impl Node for SensorNode {
         self.counter += 0.1;
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Sensor shutdown");
         Ok(())
     }
@@ -111,7 +111,7 @@ impl Node for ProcessorNode {
         "ProcessorNode"
     }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Processor initialized");
         Ok(())
     }
@@ -127,7 +127,7 @@ impl Node for ProcessorNode {
         }
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Processor shutdown");
         Ok(())
     }
@@ -166,7 +166,7 @@ struct SensorNode {
 impl Node for SensorNode {
     fn name(&self) -> &'static str { "SensorNode" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Sensor online");
         Ok(())
     }
@@ -177,7 +177,7 @@ impl Node for SensorNode {
         self.counter += 0.1;
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Sensor offline");
         Ok(())
     }
@@ -191,7 +191,7 @@ struct ProcessorNode {
 impl Node for ProcessorNode {
     fn name(&self) -> &'static str { "ProcessorNode" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Processor online");
         Ok(())
     }
@@ -205,7 +205,7 @@ impl Node for ProcessorNode {
         }
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Processor offline");
         Ok(())
     }
@@ -269,7 +269,7 @@ impl TeleopNode {
 impl Node for TeleopNode {
     fn name(&self) -> &'static str { "TeleopNode" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Teleop ready - sending movement commands");
         Ok(())
     }
@@ -281,7 +281,7 @@ impl Node for TeleopNode {
         self.cmd_pub.send(cmd, ctx).ok();
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         // Send stop command on shutdown
         let stop = CmdVel::zero();
         self.cmd_pub.send(stop, None).ok();
@@ -306,7 +306,7 @@ impl MotorDriverNode {
 impl Node for MotorDriverNode {
     fn name(&self) -> &'static str { "MotorDriverNode" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Motor driver initialized");
         Ok(())
     }
@@ -330,7 +330,7 @@ impl Node for MotorDriverNode {
         }
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Motors stopped");
         Ok(())
     }
@@ -388,7 +388,7 @@ impl LidarNode {
 impl Node for LidarNode {
     fn name(&self) -> &'static str { "LidarNode" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Lidar initialized");
         Ok(())
     }
@@ -408,7 +408,7 @@ impl Node for LidarNode {
         self.angle += 0.1;
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Lidar offline");
         Ok(())
     }
@@ -434,7 +434,7 @@ impl ObstacleDetector {
 impl Node for ObstacleDetector {
     fn name(&self) -> &'static str { "ObstacleDetector" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info(&format!(
             "Obstacle detector active - safety distance: {:.2}m",
             self.safety_distance
@@ -452,7 +452,7 @@ impl Node for ObstacleDetector {
                     self.cmd_pub.send(stop, ctx).ok();
 
                     if let Some(ctx) = ctx {
-                        ctx.log_warn(&format!(
+                        ctx.log_warning(&format!(
                             "⚠ Obstacle detected at {:.2}m - STOPPING!",
                             min_dist
                         ));
@@ -467,7 +467,7 @@ impl Node for ObstacleDetector {
         }
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Obstacle detector offline");
         Ok(())
     }
@@ -537,7 +537,7 @@ impl PIDController {
 impl Node for PIDController {
     fn name(&self) -> &'static str { "PIDController" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info(&format!(
             "PID initialized - Kp: {}, Ki: {}, Kd: {}",
             self.kp, self.ki, self.kd
@@ -578,7 +578,7 @@ impl Node for PIDController {
         self.last_error = error;
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("PID controller stopped");
         Ok(())
     }
@@ -614,7 +614,7 @@ impl Node for TestSystem {
         self.feedback_pub.send(self.position, ctx).ok();
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Test system stopped");
         Ok(())
     }
@@ -634,7 +634,7 @@ impl Node for SetpointNode {
         self.setpoint_pub.send(setpoint, ctx).ok();
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Setpoint generator stopped");
         Ok(())
     }
@@ -700,7 +700,7 @@ impl SensorNode {
 impl Node for SensorNode {
     fn name(&self) -> &'static str { "SensorNode" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Stage 1: Sensor online");
         Ok(())
     }
@@ -717,7 +717,7 @@ impl Node for SensorNode {
         self.counter += 0.1;
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Sensor offline");
         Ok(())
     }
@@ -745,7 +745,7 @@ impl FilterNode {
 impl Node for FilterNode {
     fn name(&self) -> &'static str { "FilterNode" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Stage 2: Filter online");
         Ok(())
     }
@@ -764,7 +764,7 @@ impl Node for FilterNode {
         }
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Filter offline");
         Ok(())
     }
@@ -790,7 +790,7 @@ impl ControllerNode {
 impl Node for ControllerNode {
     fn name(&self) -> &'static str { "ControllerNode" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Stage 3: Controller online");
         Ok(())
     }
@@ -809,7 +809,7 @@ impl Node for ControllerNode {
         }
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Controller offline");
         Ok(())
     }

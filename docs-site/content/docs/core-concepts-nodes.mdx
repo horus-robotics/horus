@@ -40,9 +40,9 @@ Every HORUS node implements the `Node` trait:
 ```rust
 pub trait Node: Send {
     fn name(&self) -> &'static str;
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String>;
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()>;
     fn tick(&mut self, ctx: Option<&mut NodeInfo>);
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String>;
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()>;
     fn get_publishers(&self) -> Vec<TopicMetadata>;
     fn get_subscribers(&self) -> Vec<TopicMetadata>;
 }
@@ -71,7 +71,7 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 **init()**: Called once during node startup (default: no-op)
 
 ```rust
-fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
     ctx.log_info("Node starting up");
     // Initialize resources, open files, etc.
     Ok(())
@@ -81,7 +81,7 @@ fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
 **shutdown()**: Called once during graceful shutdown (default: no-op)
 
 ```rust
-fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
     ctx.log_info("Node shutting down");
     // Clean up resources, close connections, etc.
     Ok(())
@@ -160,7 +160,7 @@ impl Node for LifecycleDemo {
         "LifecycleDemo"
     }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         // Called ONCE when node starts
         ctx.log_info("Initializing resources");
         self.counter = 0;
@@ -176,7 +176,7 @@ impl Node for LifecycleDemo {
         }
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         // Called ONCE during graceful shutdown
         ctx.log_info(&format!("Shutting down after {} ticks", self.counter));
         Ok(())
@@ -490,7 +490,7 @@ For slow operations, use async tasks or separate threads initialized in `init()`
 Pre-allocate resources during initialization:
 
 ```rust
-fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
     // Pre-allocate buffer
     self.buffer = vec![0.0; 1000];
 
@@ -511,7 +511,7 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 Release resources gracefully:
 
 ```rust
-fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
     // Close connections
     self.connection.close();
 
@@ -528,9 +528,9 @@ fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
 Return errors from init() and shutdown():
 
 ```rust
-fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
     if !self.sensor.is_available() {
-        return Err("Sensor not found".to_string());
+        return Err("Sensor not found".into());
     }
     Ok(())
 }
@@ -567,9 +567,9 @@ static mut COUNTER: u32 = 0;  // Unsafe global state
 ### Initialization Errors
 
 ```rust
-fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
     self.device = Device::open().map_err(|e| {
-        format!("Failed to open device: {}", e)
+        HorusError::InitializationFailed(format!("Failed to open device: {}", e))
     })?;
 
     ctx.log_info("Device opened successfully");
@@ -597,7 +597,7 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 ### Shutdown Errors
 
 ```rust
-fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
     if let Err(e) = self.device.close() {
         ctx.log_warning(&format!("Failed to close device: {}", e));
         // Continue shutdown anyway

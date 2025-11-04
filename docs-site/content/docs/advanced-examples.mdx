@@ -52,7 +52,7 @@ impl StateMachineNode {
 impl Node for StateMachineNode {
     fn name(&self) -> &'static str { "StateMachineNode" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("State machine initialized - starting in IDLE state");
         Ok(())
     }
@@ -116,7 +116,7 @@ impl Node for StateMachineNode {
         }
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         // Ensure robot is stopped
         self.cmd_pub.send(CmdVel::zero(), None).ok();
         ctx.log_info("State machine shutdown");
@@ -177,7 +177,7 @@ impl EmergencyStopNode {
 impl Node for EmergencyStopNode {
     fn name(&self) -> &'static str { "EmergencyStop" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("🚨 Emergency stop system online - CRITICAL priority");
         Ok(())
     }
@@ -218,10 +218,10 @@ impl Node for EmergencyStopNode {
         }
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         // Always activate estop on shutdown
         self.estop_pub.send(true, None).ok();
-        ctx.log_warn("Emergency stop system offline");
+        ctx.log_warning("Emergency stop system offline");
         Ok(())
     }
 }
@@ -248,7 +248,7 @@ impl MotorController {
 impl Node for MotorController {
     fn name(&self) -> &'static str { "MotorController" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("⚙ Motor controller online - HIGH priority");
         Ok(())
     }
@@ -260,7 +260,7 @@ impl Node for MotorController {
                 self.estop_active = estop;
                 if let Some(ctx) = ctx {
                     if estop {
-                        ctx.log_warn("Motors DISABLED - emergency stop active");
+                        ctx.log_warning("Motors DISABLED - emergency stop active");
                     } else {
                         ctx.log_info("Motors ENABLED - emergency stop cleared");
                     }
@@ -287,7 +287,7 @@ impl Node for MotorController {
         }
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         // Stop motors
         self.motor_pub.send(CmdVel::zero(), None).ok();
         ctx.log_info("Motor controller stopped");
@@ -313,7 +313,7 @@ impl LoggerNode {
 impl Node for LoggerNode {
     fn name(&self) -> &'static str { "Logger" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("📊 Logger online - BACKGROUND priority");
         Ok(())
     }
@@ -342,7 +342,7 @@ impl Node for LoggerNode {
         // In production: write to file, database, etc.
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Logger stopped");
         Ok(())
     }
@@ -552,7 +552,7 @@ impl TempSensor {
 impl Node for TempSensor {
     fn name(&self) -> &'static str { "RustTempSensor" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Rust sensor online - high performance mode");
         Ok(())
     }
@@ -569,7 +569,7 @@ impl Node for TempSensor {
         self.counter += 0.1;
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Rust sensor offline");
         Ok(())
     }
@@ -635,7 +635,7 @@ impl Node for Actuator {
         }
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Actuator stopped");
         Ok(())
     }

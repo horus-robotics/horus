@@ -893,7 +893,7 @@ impl TeleopNode {
 impl Node for TeleopNode {
     fn name(&self) -> &'static str { "TeleopNode" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Teleop initialized - W/A/S/D to control");
         Ok(())
     }
@@ -920,7 +920,7 @@ impl Node for TeleopNode {
         self.mode = (self.mode + 1) % 4;
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         // Send stop command on shutdown
         self.cmd_pub.send(CmdVel::zero(), None).ok();
         ctx.log_info("Teleop stopped - robot stopped");
@@ -946,7 +946,7 @@ impl MotorDriver {
 impl Node for MotorDriver {
     fn name(&self) -> &'static str { "MotorDriver" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info(&format!(
             "Motor driver initialized - wheel base: {:.2}m",
             self.wheel_base
@@ -975,7 +975,7 @@ impl Node for MotorDriver {
         }
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Motors stopped");
         Ok(())
     }
@@ -1036,7 +1036,7 @@ impl ImuSensorNode {
 impl Node for ImuSensorNode {
     fn name(&self) -> &'static str { "ImuSensor" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("IMU sensor initialized");
         Ok(())
     }
@@ -1068,7 +1068,7 @@ impl Node for ImuSensorNode {
         }
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("IMU sensor stopped");
         Ok(())
     }
@@ -1098,7 +1098,7 @@ impl WheelOdomNode {
 impl Node for WheelOdomNode {
     fn name(&self) -> &'static str { "WheelOdom" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Wheel odometry initialized");
         Ok(())
     }
@@ -1130,7 +1130,7 @@ impl Node for WheelOdomNode {
         }
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Wheel odometry stopped");
         Ok(())
     }
@@ -1156,7 +1156,7 @@ impl SensorFusionNode {
 impl Node for SensorFusionNode {
     fn name(&self) -> &'static str { "SensorFusion" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Sensor fusion initialized");
         Ok(())
     }
@@ -1196,7 +1196,7 @@ impl Node for SensorFusionNode {
         }
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Sensor fusion stopped");
         Ok(())
     }
@@ -1309,7 +1309,7 @@ impl MultiSensorDevice {
 impl Node for MultiSensorDevice {
     fn name(&self) -> &'static str { "MultiSensorDevice" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info(&format!("Multi-sensor {} initialized", self.sensor_id));
         Ok(())
     }
@@ -1341,14 +1341,14 @@ impl Node for MultiSensorDevice {
             }
         } else {
             if let Some(ctx) = ctx {
-                ctx.log_warn("Invalid sensor reading - skipping");
+                ctx.log_warning("Invalid sensor reading - skipping");
             }
         }
 
         self.counter += 0.1;
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info(&format!("Sensor {} stopped", self.sensor_id));
         Ok(())
     }
@@ -1374,7 +1374,7 @@ impl SensorAggregator {
 impl Node for SensorAggregator {
     fn name(&self) -> &'static str { "SensorAggregator" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Sensor aggregator initialized");
         Ok(())
     }
@@ -1391,7 +1391,7 @@ impl Node for SensorAggregator {
             // Check for alerts
             if reading.motion_detected {
                 if let Some(ctx) = ctx {
-                    ctx.log_warn(&format!(
+                    ctx.log_warning(&format!(
                         "Motion detected by sensor {}",
                         reading.sensor_id
                     ));
@@ -1400,7 +1400,7 @@ impl Node for SensorAggregator {
 
             if reading.battery_percentage() < 20.0 {
                 if let Some(ctx) = ctx {
-                    ctx.log_warn(&format!(
+                    ctx.log_warning(&format!(
                         "Low battery on sensor {}: {:.0}%",
                         reading.sensor_id,
                         reading.battery_percentage()
@@ -1422,7 +1422,7 @@ impl Node for SensorAggregator {
         }
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info(&format!(
             "Aggregator stopped - processed {} readings",
             self.readings_count

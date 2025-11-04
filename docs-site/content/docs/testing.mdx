@@ -67,7 +67,7 @@ impl Node for TemperatureSensor {
         "TemperatureSensor"
     }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Sensor initialized");
         Ok(())
     }
@@ -80,7 +80,7 @@ impl Node for TemperatureSensor {
         self.temp_pub.send(self.reading, ctx).ok();
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("Sensor shutdown");
         Ok(())
     }

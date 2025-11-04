@@ -59,54 +59,7 @@ use horus::prelude::*;
 let sensor_input: Link<f32> = Link::consumer("sensor_data")?;
 ```
 
-### `Link::producer_with_capacity(topic, capacity)`
-
-Create a producer with custom buffer capacity.
-
-```rust
-pub fn producer_with_capacity(
-    topic: &str,
-    capacity: usize
-) -> Result<Self>
-```
-
-**Parameters**:
-- `topic`: Name of the link
-- `capacity`: Buffer size (automatically rounded to next power of 2)
-
-**Returns**: `Result<Link<T>, HorusError>`
-
-**Default capacity**: 1024 messages
-
-**Example**:
-```rust
-// High-frequency control loop needs larger buffer
-let output: Link<f32> = Link::producer_with_capacity("fast_data", 4096)?;
-```
-
-### `Link::consumer_with_capacity(topic, capacity)`
-
-Create a consumer with custom buffer capacity.
-
-```rust
-pub fn consumer_with_capacity(
-    topic: &str,
-    capacity: usize
-) -> Result<Self>
-```
-
-**Parameters**:
-- `topic`: Name of the link
-- `capacity`: Buffer size (must match producer's capacity)
-
-**Returns**: `Result<Link<T>, HorusError>`
-
-**Example**:
-```rust
-let input: Link<f32> = Link::consumer_with_capacity("fast_data", 4096)?;
-```
-
-**Important**: Both producer and consumer must use the same capacity!
+**Design**: Link uses a **single-slot** design - the producer always overwrites with the latest value, and the consumer always reads the latest value. This makes Link perfect for sensor data and control loops where you always want the most recent value.
 
 ## Sending Messages (Producer Only)
 
@@ -123,8 +76,7 @@ pub fn send(&self, msg: T, ctx: Option<&mut NodeInfo>) -> Result<(), T>
 - `ctx`: Optional NodeInfo for automatic logging
 
 **Returns**:
-- `Ok(())`: Message sent successfully
-- `Err(msg)`: Buffer full (returns original message)
+- `Ok(())`: Message sent successfully (always succeeds for Link)
 
 **Performance**: ~89ns for send operation alone, ~389ns full round-trip
 
@@ -135,25 +87,11 @@ link.send(42.0, None).ok();
 
 // With automatic logging (recommended)
 fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-    if let Err(data) = link.send(42.0, ctx) {
-        eprintln!("Buffer full! Dropped: {}", data);
-    }
+    link.send(42.0, ctx).ok();
 }
 ```
 
-**Error Handling**:
-```rust
-match link.send(data, ctx) {
-    Ok(()) => {
-        // Message sent successfully
-    }
-    Err(original_data) => {
-        // Buffer full - consumer isn't reading fast enough
-        // original_data contains the message that couldn't be sent
-        eprintln!("Warning: Dropping message");
-    }
-}
-```
+**Note**: Link's single-slot design means `send()` always succeeds - it simply overwrites the previous value. This is by design for sensor/control data where you always want the latest value.
 
 ## Receiving Messages (Consumer Only)
 
@@ -169,8 +107,8 @@ pub fn recv(&self, ctx: Option<&mut NodeInfo>) -> Option<T>
 - `ctx`: Optional NodeInfo for automatic logging
 
 **Returns**:
-- `Some(msg)`: Message received
-- `None`: No message available (not an error)
+- `Some(msg)`: New message received (sequence number changed)
+- `None`: No new message (already read the current value)
 
 **Performance**: ~300ns receive operation (estimated)
 
@@ -191,8 +129,9 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 
 **Best Practices**:
 - Always check `recv()` every tick for responsive nodes
-- `None` is normal - means no new messages
+- `None` is normal - means no new data since last read
 - Messages are cloned when received
+- Link skips intermediate values - you only get the latest
 
 ## Utility Methods
 
@@ -265,21 +204,6 @@ pub fn get_topic_name(&self) -> &str
 println!("Topic: {}", link.get_topic_name());
 ```
 
-### `capacity()`
-
-Get the buffer capacity.
-
-```rust
-pub fn capacity(&self) -> usize
-```
-
-**Returns**: Buffer capacity (power of 2)
-
-**Example**:
-```rust
-println!("Buffer can hold {} messages", link.capacity());
-```
-
 ### `has_messages()`
 
 Check if messages are available (consumer only).
@@ -288,7 +212,7 @@ Check if messages are available (consumer only).
 pub fn has_messages(&self) -> bool
 ```
 
-**Returns**: `true` if messages are available to read
+**Returns**: `true` if new data is available (sequence changed since last read)
 
 **Example**:
 ```rust
@@ -297,30 +221,21 @@ if link.has_messages() {
 }
 ```
 
-## Advanced API
+### `get_metrics()`
 
-### `loan()` - Zero-Copy Publishing
-
-Loan a slot in shared memory for zero-copy writing (producer only).
+Get performance metrics for this Link.
 
 ```rust
-pub fn loan(&self) -> Result<LinkSample<T>, &'static str>
+pub fn get_metrics(&self) -> LinkMetrics
 ```
 
-**Returns**: `LinkSample<T>` - a write handle to shared memory
-
-**Use when**: Avoiding clone overhead for large messages
+**Returns**: `LinkMetrics` with message counts
 
 **Example**:
 ```rust
-if let Ok(sample) = link.loan() {
-    // Write directly to shared memory (no clone!)
-    sample.write(large_message);
-    // Message automatically published when sample is dropped
-}
+let metrics = link.get_metrics();
+println!("Sent: {}, Received: {}", metrics.messages_sent, metrics.messages_received);
 ```
-
-**Performance**: Eliminates clone overhead (~10-50% faster for large messages)
 
 ## Valid Message Types
 
@@ -502,34 +417,6 @@ Link::producer("data")?;  // Too vague
 Link::producer("link1")?; // Not descriptive
 ```
 
-### Error Handling
-
-Always handle send errors (buffer full):
-
-```rust
-if let Err(data) = link.send(data, ctx) {
-    eprintln!("Warning: Link buffer full, dropping message");
-    // Consider: increase buffer size, slow down producer, or speed up consumer
-}
-```
-
-### Buffer Sizing
-
-Choose capacity based on your loop rate:
-
-```rust
-// High-frequency (1kHz) with occasional consumer slowdown
-Link::producer_with_capacity("data", 2048)?;  // 2 seconds of buffer
-
-// Normal frequency (100Hz)
-Link::producer_with_capacity("data", 1024)?;  // Default - 10 seconds buffer
-
-// Low frequency (10Hz)
-Link::producer_with_capacity("data", 128)?;   // 12 seconds buffer
-```
-
-**Rule of thumb**: `capacity = loop_rate_hz * max_consumer_delay_seconds`
-
 ### Type Safety
 
 Producer and consumer must use the same type:
@@ -542,21 +429,21 @@ let producer: Link<f32> = Link::producer("velocity")?;
 let consumer: Link<f32> = Link::consumer("velocity")?;
 ```
 
-### Message Ordering
+### Latest Value Semantics
 
-Link guarantees FIFO ordering (First In First Out):
+Link uses a **single-slot** design - only the latest value is kept:
 
 ```rust
-// Producer sends: A, B, C
+// Producer sends: A, B, C rapidly
 producer.send(msg_a, None).ok();
-producer.send(msg_b, None).ok();
-producer.send(msg_c, None).ok();
+producer.send(msg_b, None).ok();  // Overwrites A
+producer.send(msg_c, None).ok();  // Overwrites B
 
-// Consumer receives: A, B, C (same order)
-let a = consumer.recv(None); // msg_a
-let b = consumer.recv(None); // msg_b
-let c = consumer.recv(None); // msg_c
+// Consumer only sees: C (the latest)
+let msg = consumer.recv(None); // msg_c (A and B were skipped)
 ```
+
+**This is by design** - perfect for sensors/control where you always want the most recent value, not a queue of old values.
 
 ## Common Patterns
 
@@ -657,44 +544,23 @@ rm -f /dev/shm/horus/topics/horus_links_*
 
 ### Size Calculation
 
-Memory usage per Link:
+Memory usage per Link (single-slot design):
 ```
-size = header (128 bytes) + (capacity * sizeof(T))
+size = header (64 bytes) + sizeof(T)
 ```
 
 Example:
 ```rust
-// Link<f32> with capacity 1024
-// size = 128 + (1024 * 4) = 4224 bytes (~4 KB)
+// Link<f32> - single slot
+// size = 64 + 4 = 68 bytes
 
-// Link<LaserScan> (1.5KB) with capacity 1024
-// size = 128 + (1024 * 1536) = 1,573,120 bytes (~1.5 MB)
+// Link<LaserScan> (1.5KB) - single slot
+// size = 64 + 1536 = 1600 bytes (~1.6 KB)
 ```
+
+**Advantage**: Minimal memory footprint compared to buffered queues.
 
 ## Troubleshooting
-
-### Buffer Full Errors
-
-**Symptom**: `send()` returns `Err(msg)`
-
-**Causes**:
-1. Consumer not reading fast enough
-2. Producer sending too fast
-3. Buffer too small
-
-**Solutions**:
-```rust
-// 1. Increase buffer size
-Link::producer_with_capacity("data", 4096)?;
-
-// 2. Add error handling
-if let Err(data) = link.send(data, ctx) {
-    eprintln!("Dropped: {:?}", data);
-}
-
-// 3. Slow down producer
-thread::sleep(Duration::from_millis(1));
-```
 
 ### No Messages Received
 

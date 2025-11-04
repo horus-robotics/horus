@@ -158,7 +158,7 @@ pub struct SensorNode {
 impl Node for SensorNode {
     fn name(&self) -> &'static str { "sensor_node" }
 
-    fn init(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("SensorNode initialized");
         Ok(())
     }
@@ -175,13 +175,13 @@ impl Node for SensorNode {
         self.counter += 1;
     }
 
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info(&format!("SensorNode sent {} readings", self.counter));
         Ok(())
     }
 }
 
-fn main() -> HorusResult<()> {
+fn main() -> Result<()> {
     let mut scheduler = Scheduler::new().name("sensor_app");
 
     scheduler.add(
@@ -363,10 +363,10 @@ scheduler.run()?;  // Run continuously until Ctrl+C
 
 ### Hub (Pub/Sub)
 ```rust
-use horus_core::communication::Hub;
+use horus::prelude::*;
 
 let hub: Hub<f64> = Hub::new("topic_name")?;
-hub.send(42.0, ctx)?;
+hub.send(42.0, ctx).ok();  // send() returns Result<(), T>
 
 if let Some(msg) = hub.recv(ctx) {
     // Process message
@@ -383,13 +383,13 @@ if let Some(msg) = hub.recv(ctx) {
 
 ### Node Trait
 ```rust
-use horus_core::core::{Node, NodeInfo};
+use horus::prelude::*;
 
 pub trait Node: Send {
     fn name(&self) -> &'static str;
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> { Ok(()) }
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> { Ok(()) }
     fn tick(&mut self, ctx: Option<&mut NodeInfo>);
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<(), String> { Ok(()) }
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> { Ok(()) }
 }
 ```
 

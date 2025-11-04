@@ -201,7 +201,7 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 ### Pre-Allocate in init()
 
 ```rust
-fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
     // Pre-allocate buffers
     self.buffer = vec![0.0; 10000];
 
@@ -436,7 +436,7 @@ struct Node {
     buffer: Vec<f32>,  // Pre-allocated
 }
 
-fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
     self.buffer = vec![0.0; 1000];  // Allocate once
     Ok(())
 }
@@ -492,7 +492,7 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 }
 
 // GOOD: Async or pre-loaded
-fn init(&mut self, ctx: &mut NodeInfo) -> Result<(), String> {
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
     self.data = std::fs::read("data.txt")?;  // Load once
     Ok(())
 }
