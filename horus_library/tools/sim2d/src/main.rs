@@ -339,7 +339,11 @@ impl AppConfig {
         }
     }
 
-    pub fn load_world_from_image(image_path: &str, resolution: f32, threshold: u8) -> Result<WorldConfig> {
+    pub fn load_world_from_image(
+        image_path: &str,
+        resolution: f32,
+        threshold: u8,
+    ) -> Result<WorldConfig> {
         use image::GenericImageView;
 
         info!("📷 Loading world from image: {}", image_path);
@@ -420,10 +424,7 @@ fn spawn_robot_visual_components(
         commands.spawn((
             Sprite {
                 color: tread_color,
-                custom_size: Some(Vec2::new(
-                    config.length * scale,
-                    tread_config.width * scale,
-                )),
+                custom_size: Some(Vec2::new(config.length * scale, tread_config.width * scale)),
                 ..default()
             },
             Transform::from_translation(Vec3::new(0.0, 0.0, 0.9)), // Slightly below robot
@@ -437,10 +438,7 @@ fn spawn_robot_visual_components(
         commands.spawn((
             Sprite {
                 color: tread_color,
-                custom_size: Some(Vec2::new(
-                    config.length * scale,
-                    tread_config.width * scale,
-                )),
+                custom_size: Some(Vec2::new(config.length * scale, tread_config.width * scale)),
                 ..default()
             },
             Transform::from_translation(Vec3::new(0.0, 0.0, 0.9)), // Slightly below robot
@@ -658,19 +656,21 @@ fn setup(
         app_config.robot_config.color[2],
     );
 
-    let robot_entity = commands.spawn((
-        Sprite {
-            color: robot_color,
-            custom_size: Some(Vec2::new(robot_size.x, robot_size.y)),
-            ..default()
-        },
-        Transform::from_translation(Vec3::new(robot_pos.x, robot_pos.y, 1.0)),
-        Robot {
-            name: app_config.args.name.clone(),
-            config: app_config.robot_config.clone(),
-            rigid_body_handle: robot_handle,
-        },
-    )).id();
+    let robot_entity = commands
+        .spawn((
+            Sprite {
+                color: robot_color,
+                custom_size: Some(Vec2::new(robot_size.x, robot_size.y)),
+                ..default()
+            },
+            Transform::from_translation(Vec3::new(robot_pos.x, robot_pos.y, 1.0)),
+            Robot {
+                name: app_config.args.name.clone(),
+                config: app_config.robot_config.clone(),
+                rigid_body_handle: robot_handle,
+            },
+        ))
+        .id();
 
     // Spawn visual components if configured
     spawn_robot_visual_components(&mut commands, robot_entity, &app_config.robot_config, scale);
@@ -821,7 +821,10 @@ fn visual_component_sync_system(
     robot_query: Query<(&Robot, &Transform)>,
     mut turret_query: Query<(&RobotTurret, &mut Transform), Without<Robot>>,
     mut cannon_query: Query<(&RobotCannon, &mut Transform), (Without<Robot>, Without<RobotTurret>)>,
-    mut tread_query: Query<(&RobotTread, &mut Transform), (Without<Robot>, Without<RobotTurret>, Without<RobotCannon>)>,
+    mut tread_query: Query<
+        (&RobotTread, &mut Transform),
+        (Without<Robot>, Without<RobotTurret>, Without<RobotCannon>),
+    >,
 ) {
     let scale = 50.0;
 
@@ -900,7 +903,14 @@ fn camera_control_system(
 /// Visual color update system - updates colors based on preferences
 fn visual_color_system(
     mut obstacle_query: Query<&mut Sprite, (With<ObstacleElement>, Without<GridLine>)>,
-    mut wall_query: Query<&mut Sprite, (With<WorldElement>, Without<ObstacleElement>, Without<GridLine>)>,
+    mut wall_query: Query<
+        &mut Sprite,
+        (
+            With<WorldElement>,
+            Without<ObstacleElement>,
+            Without<GridLine>,
+        ),
+    >,
     visual_prefs: Res<ui::VisualPreferences>,
 ) {
     // Update obstacle colors
@@ -993,7 +1003,10 @@ fn world_reload_system(
     mut commands: Commands,
     app_config: Res<AppConfig>,
     mut physics_world: ResMut<PhysicsWorld>,
-    world_entities: Query<(Entity, &PhysicsHandle), Or<(With<WorldElement>, With<ObstacleElement>)>>,
+    world_entities: Query<
+        (Entity, &PhysicsHandle),
+        Or<(With<WorldElement>, With<ObstacleElement>)>,
+    >,
     visual_prefs: Res<ui::VisualPreferences>,
 ) {
     // Only reload if world config changed
@@ -1079,11 +1092,7 @@ fn world_reload_system(
         let rigid_body = RigidBodyBuilder::fixed().translation(*pos).build();
         let collider = ColliderBuilder::cuboid(size.x / 2.0, size.y / 2.0).build();
         let handle = rigid_body_set.insert(rigid_body);
-        collider_set.insert_with_parent(
-            collider,
-            handle,
-            rigid_body_set,
-        );
+        collider_set.insert_with_parent(collider, handle, rigid_body_set);
 
         // Visual (scaled for visibility)
         commands.spawn((
@@ -1115,11 +1124,7 @@ fn world_reload_system(
         let rigid_body = RigidBodyBuilder::fixed().translation(pos_physics).build();
         let collider = ColliderBuilder::cuboid(size_physics.x / 2.0, size_physics.y / 2.0).build();
         let handle = rigid_body_set.insert(rigid_body);
-        collider_set.insert_with_parent(
-            collider,
-            handle,
-            rigid_body_set,
-        );
+        collider_set.insert_with_parent(collider, handle, rigid_body_set);
 
         // Visual (scaled)
         commands.spawn((
@@ -1141,7 +1146,8 @@ fn world_reload_system(
         ));
     }
 
-    info!("✓ World reloaded: {}x{}m with {} obstacles",
+    info!(
+        "✓ World reloaded: {}x{}m with {} obstacles",
         app_config.world_config.width,
         app_config.world_config.height,
         app_config.world_config.obstacles.len()
@@ -1206,13 +1212,13 @@ fn main() -> Result<()> {
         .add_systems(
             Update,
             (
-                ui::ui_system,          // UI panel rendering
-                ui::file_dialog_system, // File picker handling
-                world_reload_system,    // Live world reloading
+                ui::ui_system,              // UI panel rendering
+                ui::file_dialog_system,     // File picker handling
+                world_reload_system,        // Live world reloading
                 robot_visual_reload_system, // Robot visual component reloading
-                camera_control_system,  // Camera zoom/pan
-                grid_system,            // Grid overlay
-                visual_color_system,    // Dynamic color updates
+                camera_control_system,      // Camera zoom/pan
+                grid_system,                // Grid overlay
+                visual_color_system,        // Dynamic color updates
                 horus_system,
                 physics_system,
                 visual_sync_system,

@@ -295,13 +295,11 @@ impl Quaternion {
     }
 }
 
-
 impl LogSummary for Twist {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for Pose2D {
     fn log_summary(&self) -> String {
@@ -309,13 +307,11 @@ impl LogSummary for Pose2D {
     }
 }
 
-
 impl LogSummary for Transform {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for Point3 {
     fn log_summary(&self) -> String {
@@ -323,13 +319,11 @@ impl LogSummary for Point3 {
     }
 }
 
-
 impl LogSummary for Vector3 {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for Quaternion {
     fn log_summary(&self) -> String {

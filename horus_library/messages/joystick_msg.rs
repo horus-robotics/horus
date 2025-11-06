@@ -198,7 +198,6 @@ impl JoystickInput {
     }
 }
 
-
 impl LogSummary for JoystickInput {
     fn log_summary(&self) -> String {
         format!("{:?}", self)

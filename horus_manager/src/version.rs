@@ -184,11 +184,7 @@ pub fn print_version_info() {
             println!("\n{}", "Installed packages:".cyan());
             for (name, version) in packages {
                 let compatible = version == get_cli_version();
-                let marker = if compatible {
-                    "".green()
-                } else {
-                    "".yellow()
-                };
+                let marker = if compatible { "".green() } else { "".yellow() };
                 println!("  {} {}@{}", marker, name, version);
             }
         }

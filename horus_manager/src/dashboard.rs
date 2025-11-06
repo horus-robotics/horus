@@ -340,7 +340,11 @@ async fn logs_topic_handler(Path(topic_name): Path<String>) -> impl IntoResponse
         topic_name, original_topic
     );
     let logs = GLOBAL_LOG_BUFFER.get_for_topic(&original_topic);
-    eprintln!("[#] API: Found {} logs for '{}'", logs.len(), original_topic);
+    eprintln!(
+        "[#] API: Found {} logs for '{}'",
+        logs.len(),
+        original_topic
+    );
 
     (
         StatusCode::OK,
@@ -519,31 +523,61 @@ async fn packages_environments_handler() -> impl IntoResponse {
                                         };
 
                                         // Scan for installed packages inside this package's .horus/packages/
-                                        let nested_packages_dir = pkg_entry.path().join(".horus/packages");
+                                        let nested_packages_dir =
+                                            pkg_entry.path().join(".horus/packages");
                                         let mut installed_packages = Vec::new();
 
                                         if nested_packages_dir.exists() {
-                                            if let Ok(nested_entries) = fs::read_dir(&nested_packages_dir) {
+                                            if let Ok(nested_entries) =
+                                                fs::read_dir(&nested_packages_dir)
+                                            {
                                                 for nested_entry in nested_entries.flatten() {
-                                                    if nested_entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                                                        let nested_name = nested_entry.file_name().to_string_lossy().to_string();
+                                                    if nested_entry
+                                                        .file_type()
+                                                        .map(|t| t.is_dir())
+                                                        .unwrap_or(false)
+                                                    {
+                                                        let nested_name = nested_entry
+                                                            .file_name()
+                                                            .to_string_lossy()
+                                                            .to_string();
 
                                                         // Try to get version
-                                                        let nested_metadata_path = nested_entry.path().join("metadata.json");
-                                                        let nested_version = if nested_metadata_path.exists() {
-                                                            fs::read_to_string(&nested_metadata_path)
+                                                        let nested_metadata_path = nested_entry
+                                                            .path()
+                                                            .join("metadata.json");
+                                                        let nested_version =
+                                                            if nested_metadata_path.exists() {
+                                                                fs::read_to_string(
+                                                                    &nested_metadata_path,
+                                                                )
                                                                 .ok()
-                                                                .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
-                                                                .and_then(|j| j.get("version").and_then(|v| v.as_str()).map(|s| s.to_string()))
-                                                                .unwrap_or_else(|| "unknown".to_string())
-                                                        } else {
-                                                            "unknown".to_string()
-                                                        };
+                                                                .and_then(|s| {
+                                                                    serde_json::from_str::<
+                                                                        serde_json::Value,
+                                                                    >(
+                                                                        &s
+                                                                    )
+                                                                    .ok()
+                                                                })
+                                                                .and_then(|j| {
+                                                                    j.get("version")
+                                                                        .and_then(|v| v.as_str())
+                                                                        .map(|s| s.to_string())
+                                                                })
+                                                                .unwrap_or_else(|| {
+                                                                    "unknown".to_string()
+                                                                })
+                                                            } else {
+                                                                "unknown".to_string()
+                                                            };
 
-                                                        installed_packages.push(serde_json::json!({
-                                                            "name": nested_name,
-                                                            "version": nested_version,
-                                                        }));
+                                                        installed_packages.push(
+                                                            serde_json::json!({
+                                                                "name": nested_name,
+                                                                "version": nested_version,
+                                                            }),
+                                                        );
                                                     }
                                                 }
                                             }
@@ -560,7 +594,8 @@ async fn packages_environments_handler() -> impl IntoResponse {
                         }
 
                         // Map yaml_dependencies to installed packages with version info
-                        let workspace_dependencies: Vec<serde_json::Value> = yaml_dependencies.iter()
+                        let workspace_dependencies: Vec<serde_json::Value> = yaml_dependencies
+                            .iter()
                             .filter_map(|dep_str| {
                                 // dependency format: "package_name@version" or just "package_name"
                                 let dep_path = packages_dir.join(dep_str);
@@ -576,9 +611,21 @@ async fn packages_environments_handler() -> impl IntoResponse {
                                     let version = if metadata_path.exists() {
                                         fs::read_to_string(&metadata_path)
                                             .ok()
-                                            .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
-                                            .and_then(|j| j.get("version").and_then(|v| v.as_str()).map(|s| s.to_string()))
-                                            .unwrap_or_else(|| dep_str.split('@').nth(1).unwrap_or("unknown").to_string())
+                                            .and_then(|s| {
+                                                serde_json::from_str::<serde_json::Value>(&s).ok()
+                                            })
+                                            .and_then(|j| {
+                                                j.get("version")
+                                                    .and_then(|v| v.as_str())
+                                                    .map(|s| s.to_string())
+                                            })
+                                            .unwrap_or_else(|| {
+                                                dep_str
+                                                    .split('@')
+                                                    .nth(1)
+                                                    .unwrap_or("unknown")
+                                                    .to_string()
+                                            })
                                     } else {
                                         dep_str.split('@').nth(1).unwrap_or("unknown").to_string()
                                     };
@@ -645,7 +692,11 @@ async fn packages_install_handler(Json(req): Json<InstallRequest>) -> impl IntoR
         let (_install_result, horus_yaml_path) = if let Some(target_str) = &target {
             if target_str == "global" {
                 // Install globally - no horus.yaml to update
-                let result = client.install_to_target(&req.package, None, crate::workspace::InstallTarget::Global)?;
+                let result = client.install_to_target(
+                    &req.package,
+                    None,
+                    crate::workspace::InstallTarget::Global,
+                )?;
                 (result, None)
             } else {
                 // Use specified path - find horus.yaml in parent package
@@ -657,7 +708,8 @@ async fn packages_install_handler(Json(req): Json<InstallRequest>) -> impl IntoR
                     target_path.parent().and_then(|p| p.parent())
                 } else {
                     // Likely: /path/.horus/packages/parent_package
-                    target_path.parent()
+                    target_path
+                        .parent()
                         .and_then(|p| p.parent()) // Remove parent_package
                         .and_then(|p| p.parent()) // Remove packages
                         .and_then(|p| p.parent()) // Remove .horus
@@ -665,15 +717,23 @@ async fn packages_install_handler(Json(req): Json<InstallRequest>) -> impl IntoR
 
                 let yaml_path = parent_path.map(|p| p.join("horus.yaml"));
 
-                let result = client.install_to_target(&req.package, None, crate::workspace::InstallTarget::Local(target_path))?;
-                (result, yaml_path)
+                client.install_to_target(
+                    &req.package,
+                    None,
+                    crate::workspace::InstallTarget::Local(target_path),
+                )?;
+                ((), yaml_path)
             }
         } else {
             // Default: auto-detect - look for horus.yaml in current dir
             let yaml_path = PathBuf::from("horus.yaml");
-            let yaml_path = if yaml_path.exists() { Some(yaml_path) } else { None };
-            let result = client.install(&req.package, None)?;
-            (result, yaml_path)
+            let yaml_path = if yaml_path.exists() {
+                Some(yaml_path)
+            } else {
+                None
+            };
+            client.install(&req.package, None)?;
+            ((), yaml_path)
         };
 
         // Get installed version (try to read from metadata.json)
@@ -682,7 +742,11 @@ async fn packages_install_handler(Json(req): Json<InstallRequest>) -> impl IntoR
         // Update horus.yaml if path exists
         if let Some(yaml_path) = horus_yaml_path {
             if yaml_path.exists() {
-                crate::yaml_utils::add_dependency_to_horus_yaml(&yaml_path, &req.package, &version)?;
+                crate::yaml_utils::add_dependency_to_horus_yaml(
+                    &yaml_path,
+                    &req.package,
+                    &version,
+                )?;
             }
         }
 
@@ -772,7 +836,10 @@ async fn packages_uninstall_handler(Json(req): Json<UninstallRequest>) -> impl I
                             let horus_yaml_path = root.join("horus.yaml");
                             if horus_yaml_path.exists() {
                                 // Ignore errors in updating horus.yaml - package is already uninstalled
-                                let _ = crate::yaml_utils::remove_dependency_from_horus_yaml(&horus_yaml_path, &package);
+                                let _ = crate::yaml_utils::remove_dependency_from_horus_yaml(
+                                    &horus_yaml_path,
+                                    &package,
+                                );
                             }
                         }
 

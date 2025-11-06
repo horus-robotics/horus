@@ -29,7 +29,6 @@ pub enum LinkRole {
     Consumer,
 }
 
-
 /// Metrics for Link monitoring
 #[derive(Debug, Clone, Default)]
 pub struct LinkMetrics {
@@ -53,9 +52,9 @@ struct AtomicLinkMetrics {
 /// This is the simplest possible 1P1C design - producer overwrites, consumer tracks what it's seen
 #[repr(C, align(64))]
 struct LinkHeader {
-    sequence: AtomicU64, // Version counter - incremented on each write
+    sequence: AtomicU64,       // Version counter - incremented on each write
     element_size: AtomicUsize, // For validation
-    _padding: [u8; 48], // Pad to full cache line (8 + 8 + 48 = 64)
+    _padding: [u8; 48],        // Pad to full cache line (8 + 8 + 48 = 64)
 }
 
 /// SPSC (Single Producer Single Consumer) direct link with shared memory IPC
@@ -135,13 +134,7 @@ impl<T: crate::core::LogSummary> Link<T> {
             LinkRole::Consumer => ("consumer", "producer"),
         };
 
-        Self::create_link(
-            topic,
-            producer_node,
-            consumer_node,
-            role,
-            shm_region,
-        )
+        Self::create_link(topic, producer_node, consumer_node, role, shm_region)
     }
 
     /// Common link creation logic
@@ -228,7 +221,6 @@ impl<T: crate::core::LogSummary> Link<T> {
         })
     }
 
-
     /// Ultra-fast send with inline zero-copy - optimized for minimum latency
     /// Single-slot design: always overwrites with latest value
     /// Automatically logs if context is provided
@@ -298,10 +290,13 @@ impl<T: crate::core::LogSummary> Link<T> {
         };
 
         // Update what we've seen (local memory, Relaxed is fine)
-        self.last_seen_sequence.store(current_seq, Ordering::Relaxed);
+        self.last_seen_sequence
+            .store(current_seq, Ordering::Relaxed);
 
         // Update local metrics
-        self.metrics.messages_received.fetch_add(1, Ordering::Relaxed);
+        self.metrics
+            .messages_received
+            .fetch_add(1, Ordering::Relaxed);
 
         // Zero-cost logging
         if unlikely(ctx.is_some()) {
@@ -340,7 +335,6 @@ impl<T: crate::core::LogSummary> Link<T> {
     pub fn get_topic_name(&self) -> &str {
         &self.topic_name
     }
-
 
     /// Get performance metrics snapshot (lock-free)
     ///

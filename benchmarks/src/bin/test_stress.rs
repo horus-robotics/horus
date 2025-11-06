@@ -1,6 +1,5 @@
 /// Stress Test Suite
 /// Verifies system behavior under extreme conditions
-
 use horus::prelude::{Hub, Link, Scheduler};
 use horus_library::messages::cmd_vel::CmdVel;
 use std::env;
@@ -58,13 +57,23 @@ fn test_many_topics() -> bool {
 
         let pub_result = Hub::<CmdVel>::new(&topic);
         if pub_result.is_err() {
-            eprintln!("Failed to create publisher {} of {}: {}", i, topic_count, pub_result.unwrap_err());
+            eprintln!(
+                "Failed to create publisher {} of {}: {}",
+                i,
+                topic_count,
+                pub_result.unwrap_err()
+            );
             return false;
         }
 
         let sub_result = Hub::<CmdVel>::new(&topic);
         if sub_result.is_err() {
-            eprintln!("Failed to create subscriber {} of {}: {}", i, topic_count, sub_result.unwrap_err());
+            eprintln!(
+                "Failed to create subscriber {} of {}: {}",
+                i,
+                topic_count,
+                sub_result.unwrap_err()
+            );
             return false;
         }
 
@@ -103,18 +112,28 @@ fn test_many_topics() -> bool {
     for (i, sub_ref) in subscribers.iter().enumerate() {
         if let Some(msg) = sub_ref.recv(None) {
             if msg.stamp_nanos as usize != i {
-                eprintln!("Message mismatch on topic {}: expected {}, got {}", i, i, msg.stamp_nanos);
+                eprintln!(
+                    "Message mismatch on topic {}: expected {}, got {}",
+                    i, i, msg.stamp_nanos
+                );
                 return false;
             }
             received_count += 1;
         }
     }
 
-    if received_count >= topic_count - 10 { // Allow a few drops
-        println!("  ✓ Received from {}/{} topics", received_count, topic_count);
+    if received_count >= topic_count - 10 {
+        // Allow a few drops
+        println!(
+            "  ✓ Received from {}/{} topics",
+            received_count, topic_count
+        );
         true
     } else {
-        eprintln!("Only received from {} out of {} topics", received_count, topic_count);
+        eprintln!(
+            "Only received from {} out of {} topics",
+            received_count, topic_count
+        );
         false
     }
 }
@@ -184,10 +203,16 @@ fn test_many_nodes() -> bool {
     }
 
     if total_sent == channel_count && total_received >= channel_count - 5 {
-        println!("  ✓ All channels functional (sent: {}, received: {})", total_sent, total_received);
+        println!(
+            "  ✓ All channels functional (sent: {}, received: {})",
+            total_sent, total_received
+        );
         true
     } else {
-        eprintln!("Channel communication incomplete: sent={}, received={}", total_sent, total_received);
+        eprintln!(
+            "Channel communication incomplete: sent={}, received={}",
+            total_sent, total_received
+        );
         false
     }
 }
@@ -275,7 +300,10 @@ fn test_sustained_high_freq() -> bool {
         let sent = *sent_count.lock().unwrap();
         let recv = *recv_count.lock().unwrap();
         let errs = *errors.lock().unwrap();
-        println!("  Progress: {}s - sent: {}, recv: {}, errors: {}", elapsed, sent, recv, errs);
+        println!(
+            "  Progress: {}s - sent: {}, recv: {}, errors: {}",
+            elapsed, sent, recv, errs
+        );
     }
 
     sender_handle.join().unwrap();
@@ -297,7 +325,10 @@ fn test_sustained_high_freq() -> bool {
         println!("  ✓ Sustained high-frequency messaging successful");
         true
     } else {
-        eprintln!("Insufficient message throughput: sent={}, recv={}", final_sent, final_recv);
+        eprintln!(
+            "Insufficient message throughput: sent={}, recv={}",
+            final_sent, final_recv
+        );
         false
     }
 }
@@ -352,7 +383,10 @@ fn test_memory_pressure() -> bool {
         }
     }
 
-    println!("  ✓ Completed {} iterations without memory exhaustion", iteration_count);
+    println!(
+        "  ✓ Completed {} iterations without memory exhaustion",
+        iteration_count
+    );
     println!("  ✓ Currently holding {} active topics", topics.len());
     true
 }
@@ -455,7 +489,10 @@ fn test_long_running() -> bool {
         let elapsed = monitor_start.elapsed().as_secs() / 60;
         let sent = *sent_count.lock().unwrap();
         let recv = *recv_count.lock().unwrap();
-        println!("  Progress: {} minutes - sent: {}, recv: {}", elapsed, sent, recv);
+        println!(
+            "  Progress: {} minutes - sent: {}, recv: {}",
+            elapsed, sent, recv
+        );
     }
 
     let final_sent = sender_handle.join().unwrap();
@@ -473,7 +510,10 @@ fn test_long_running() -> bool {
         println!("  ✓ Long-running stability test passed");
         true
     } else {
-        eprintln!("Stability test failed: sent={}, recv={}, errors={}", final_sent, final_recv, order_errors);
+        eprintln!(
+            "Stability test failed: sent={}, recv={}, errors={}",
+            final_sent, final_recv, order_errors
+        );
         false
     }
 }

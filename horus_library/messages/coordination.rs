@@ -765,13 +765,11 @@ impl AuctionBid {
     }
 }
 
-
 impl LogSummary for RobotState {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for FleetStatus {
     fn log_summary(&self) -> String {
@@ -779,13 +777,11 @@ impl LogSummary for FleetStatus {
     }
 }
 
-
 impl LogSummary for TaskAssignment {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for FormationControl {
     fn log_summary(&self) -> String {
@@ -793,13 +789,11 @@ impl LogSummary for FormationControl {
     }
 }
 
-
 impl LogSummary for AuctionBid {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for RobotType {
     fn log_summary(&self) -> String {
@@ -807,13 +801,11 @@ impl LogSummary for RobotType {
     }
 }
 
-
 impl LogSummary for RobotCapability {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for CoordinationMode {
     fn log_summary(&self) -> String {
@@ -821,13 +813,11 @@ impl LogSummary for CoordinationMode {
     }
 }
 
-
 impl LogSummary for TaskType {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for TaskStatus {
     fn log_summary(&self) -> String {
@@ -835,13 +825,11 @@ impl LogSummary for TaskStatus {
     }
 }
 
-
 impl LogSummary for FormationType {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for BidStatus {
     fn log_summary(&self) -> String {

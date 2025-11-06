@@ -8,6 +8,7 @@ authors = ["HORUS Contributors"]
 [lib]
 name = "horus_library"
 crate-type = ["cdylib"]
+doc = false
 
 [dependencies]
 pyo3 = { version = "0.22", features = ["extension-module", "abi3-py39"] }

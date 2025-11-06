@@ -9,8 +9,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 /// Structured message metadata (Phase 2: Timestamps)
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MessageMetadata {
-    pub msg_type: String,  // Serialization type: "json", "pickle", etc.
-    pub timestamp: f64,     // Unix timestamp in seconds (with microsecond precision)
+    pub msg_type: String, // Serialization type: "json", "pickle", etc.
+    pub timestamp: f64,   // Unix timestamp in seconds (with microsecond precision)
 }
 
 impl MessageMetadata {

@@ -34,8 +34,8 @@ impl Default for VisualPreferences {
             show_grid: true,
             grid_spacing: 1.0, // 1 meter grid
             grid_color: [0.2, 0.2, 0.2],
-            obstacle_color: [0.6, 0.4, 0.2], // Brown
-            wall_color: [0.3, 0.3, 0.3],     // Gray
+            obstacle_color: [0.6, 0.4, 0.2],   // Brown
+            wall_color: [0.3, 0.3, 0.3],       // Gray
             background_color: [0.1, 0.1, 0.1], // Dark gray
             show_velocity_arrows: false,
         }
@@ -183,23 +183,28 @@ pub fn ui_system(
 
                 ui.horizontal(|ui| {
                     ui.label("Zoom:");
-                    if ui.add(egui::Slider::new(&mut camera_controller.zoom, 0.1..=5.0)
-                        .text("x"))
-                        .changed() {
+                    if ui
+                        .add(egui::Slider::new(&mut camera_controller.zoom, 0.1..=5.0).text("x"))
+                        .changed()
+                    {
                         ui_state.status_message = format!("Zoom: {:.1}x", camera_controller.zoom);
                     }
                 });
 
                 ui.horizontal(|ui| {
                     ui.label("Pan X:");
-                    ui.add(egui::Slider::new(&mut camera_controller.pan_x, -1000.0..=1000.0)
-                        .text("px"));
+                    ui.add(
+                        egui::Slider::new(&mut camera_controller.pan_x, -1000.0..=1000.0)
+                            .text("px"),
+                    );
                 });
 
                 ui.horizontal(|ui| {
                     ui.label("Pan Y:");
-                    ui.add(egui::Slider::new(&mut camera_controller.pan_y, -1000.0..=1000.0)
-                        .text("px"));
+                    ui.add(
+                        egui::Slider::new(&mut camera_controller.pan_y, -1000.0..=1000.0)
+                            .text("px"),
+                    );
                 });
 
                 if ui.button("Reset Camera").clicked() {
@@ -218,27 +223,40 @@ pub fn ui_system(
 
                 ui.horizontal(|ui| {
                     ui.label("Max Speed:");
-                    if ui.add(egui::Slider::new(&mut app_config.robot_config.max_speed, 0.1..=10.0)
-                        .suffix(" m/s"))
-                        .changed() {
-                        ui_state.status_message = format!("Max speed: {:.1} m/s", app_config.robot_config.max_speed);
+                    if ui
+                        .add(
+                            egui::Slider::new(&mut app_config.robot_config.max_speed, 0.1..=10.0)
+                                .suffix(" m/s"),
+                        )
+                        .changed()
+                    {
+                        ui_state.status_message =
+                            format!("Max speed: {:.1} m/s", app_config.robot_config.max_speed);
                     }
                 });
 
                 ui.horizontal(|ui| {
                     ui.label("Length:");
-                    if ui.add(egui::Slider::new(&mut app_config.robot_config.length, 0.1..=3.0)
-                        .suffix(" m"))
-                        .changed() {
+                    if ui
+                        .add(
+                            egui::Slider::new(&mut app_config.robot_config.length, 0.1..=3.0)
+                                .suffix(" m"),
+                        )
+                        .changed()
+                    {
                         ui_state.status_message = "Robot dimensions updated".to_string();
                     }
                 });
 
                 ui.horizontal(|ui| {
                     ui.label("Width:");
-                    if ui.add(egui::Slider::new(&mut app_config.robot_config.width, 0.1..=3.0)
-                        .suffix(" m"))
-                        .changed() {
+                    if ui
+                        .add(
+                            egui::Slider::new(&mut app_config.robot_config.width, 0.1..=3.0)
+                                .suffix(" m"),
+                        )
+                        .changed()
+                    {
                         ui_state.status_message = "Robot dimensions updated".to_string();
                     }
                 });
@@ -272,8 +290,10 @@ pub fn ui_system(
                 if visual_prefs.show_grid {
                     ui.horizontal(|ui| {
                         ui.label("Grid Spacing:");
-                        ui.add(egui::Slider::new(&mut visual_prefs.grid_spacing, 0.5..=5.0)
-                            .suffix(" m"));
+                        ui.add(
+                            egui::Slider::new(&mut visual_prefs.grid_spacing, 0.5..=5.0)
+                                .suffix(" m"),
+                        );
                     });
 
                     ui.horizontal(|ui| {
@@ -325,7 +345,10 @@ pub fn ui_system(
                     }
                 });
 
-                ui.checkbox(&mut visual_prefs.show_velocity_arrows, "Show Velocity Arrows");
+                ui.checkbox(
+                    &mut visual_prefs.show_velocity_arrows,
+                    "Show Velocity Arrows",
+                );
             });
 
             ui.add_space(10.0);
@@ -364,7 +387,8 @@ pub fn file_dialog_system(mut ui_state: ResMut<UiState>, mut app_config: ResMut<
                     Ok(config) => {
                         app_config.robot_config = config;
                         ui_state.robot_config_path = Some(path);
-                        ui_state.status_message = "Robot config loaded! Changes applied.".to_string();
+                        ui_state.status_message =
+                            "Robot config loaded! Changes applied.".to_string();
                         info!(" Loaded robot config - changes applied live");
                     }
                     Err(e) => {
@@ -377,8 +401,14 @@ pub fn file_dialog_system(mut ui_state: ResMut<UiState>, mut app_config: ResMut<
         }
         FileDialogType::WorldConfig => {
             let mut dialog = rfd::FileDialog::new()
-                .add_filter("All Supported Files", &["yaml", "yml", "toml", "png", "jpg", "jpeg", "pgm"])
-                .add_filter("Image Files (PNG, JPG, PGM)", &["png", "jpg", "jpeg", "pgm"])
+                .add_filter(
+                    "All Supported Files",
+                    &["yaml", "yml", "toml", "png", "jpg", "jpeg", "pgm"],
+                )
+                .add_filter(
+                    "Image Files (PNG, JPG, PGM)",
+                    &["png", "jpg", "jpeg", "pgm"],
+                )
                 .add_filter("Config Files (YAML, TOML)", &["yaml", "yml", "toml"])
                 .set_title("Load World Configuration or Image");
 
@@ -396,8 +426,11 @@ pub fn file_dialog_system(mut ui_state: ResMut<UiState>, mut app_config: ResMut<
                 let path_str = path.to_str().unwrap();
 
                 // Check if it's an image file
-                if path_str.ends_with(".png") || path_str.ends_with(".jpg") ||
-                   path_str.ends_with(".jpeg") || path_str.ends_with(".pgm") {
+                if path_str.ends_with(".png")
+                    || path_str.ends_with(".jpg")
+                    || path_str.ends_with(".jpeg")
+                    || path_str.ends_with(".pgm")
+                {
                     // Load from image with default resolution and threshold
                     match AppConfig::load_world_from_image(path_str, 0.05, 128) {
                         Ok(config) => {

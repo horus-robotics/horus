@@ -629,13 +629,11 @@ impl ClockStats {
     }
 }
 
-
 impl LogSummary for TimeSync {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for ScheduledEvent {
     fn log_summary(&self) -> String {
@@ -643,13 +641,11 @@ impl LogSummary for ScheduledEvent {
     }
 }
 
-
 impl LogSummary for Timeline {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for ClockStats {
     fn log_summary(&self) -> String {
@@ -657,13 +653,11 @@ impl LogSummary for ClockStats {
     }
 }
 
-
 impl LogSummary for SyncQuality {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for EventType {
     fn log_summary(&self) -> String {
@@ -671,13 +665,11 @@ impl LogSummary for EventType {
     }
 }
 
-
 impl LogSummary for EventStatus {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for TimelineStatus {
     fn log_summary(&self) -> String {

@@ -213,7 +213,11 @@ path = "{}"
 
             // Find HORUS source directory
             let horus_source = find_horus_source_dir()?;
-            println!("  {} Using HORUS source: {}", "".cyan(), horus_source.display());
+            println!(
+                "  {} Using HORUS source: {}",
+                "".cyan(),
+                horus_source.display()
+            );
 
             // Add dependencies from HORUS source
             for dep in &dependencies {
@@ -226,7 +230,12 @@ path = "{}"
                         dep,
                         dep_path.display()
                     ));
-                    println!("  {} Added dependency: {} -> {}", "".cyan(), dep, dep_path.display());
+                    println!(
+                        "  {} Added dependency: {} -> {}",
+                        "".cyan(),
+                        dep,
+                        dep_path.display()
+                    );
                 } else {
                     eprintln!(
                         "  {} Warning: dependency {} not found at {}",
@@ -238,7 +247,10 @@ path = "{}"
             }
 
             fs::write(&cargo_toml_path, cargo_toml)?;
-            println!("  {} Generated Cargo.toml (no source copying needed)", "".green());
+            println!(
+                "  {} Generated Cargo.toml (no source copying needed)",
+                "".green()
+            );
 
             // Run cargo build in .horus directory
             println!("{} Building with cargo...", "".cyan());
@@ -258,11 +270,7 @@ path = "{}"
             let profile = if release { "release" } else { "debug" };
             let binary_path = format!(".horus/target/{}/horus-project", profile);
 
-            println!(
-                "{} Successfully built: {}",
-                "".green(),
-                binary_path.green()
-            );
+            println!("{} Successfully built: {}", "".green(), binary_path.green());
         }
         _ => bail!("Unsupported language: {}", language),
     }
@@ -770,10 +778,7 @@ fn execute_multiple_files(
         );
 
         let exec_info = build_file_for_concurrent_execution(
-            file_path,
-            language,
-            release,
-            false, // Don't clean - already done if needed
+            file_path, language, release, false, // Don't clean - already done if needed
         )?;
 
         executables.push(exec_info);
@@ -812,8 +817,7 @@ fn execute_multiple_files(
         let color = get_color_for_index(i);
 
         let mut cmd = exec_info.create_command(&args);
-        cmd.stdout(Stdio::piped())
-            .stderr(Stdio::piped());
+        cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
 
         match cmd.spawn() {
             Ok(mut child) => {
@@ -849,17 +853,15 @@ fn execute_multiple_files(
                 children.lock().unwrap().push((node_name, child));
             }
             Err(e) => {
-                eprintln!(
-                    "  {} Failed to start [{}]: {}",
-                    "".red(),
-                    node_name,
-                    e
-                );
+                eprintln!("  {} Failed to start [{}]: {}", "".red(), node_name, e);
             }
         }
     }
 
-    println!("\n{} All processes running. Press Ctrl+C to stop.\n", "".green());
+    println!(
+        "\n{} All processes running. Press Ctrl+C to stop.\n",
+        "".green()
+    );
 
     // Wait for all processes to complete (concurrent, checks running flag)
     loop {
@@ -927,8 +929,12 @@ fn cleanup_session(session_id: &str) -> Result<()> {
     let session_dir = PathBuf::from(format!("/dev/shm/horus/sessions/{}", session_id));
 
     if session_dir.exists() {
-        fs::remove_dir_all(&session_dir)
-            .with_context(|| format!("Failed to clean up session directory: {}", session_dir.display()))?;
+        fs::remove_dir_all(&session_dir).with_context(|| {
+            format!(
+                "Failed to clean up session directory: {}",
+                session_dir.display()
+            )
+        })?;
         println!("{} Cleaned up session memory", "".dimmed());
     }
 
@@ -1555,12 +1561,44 @@ fn parse_all_python_imports(line: &str) -> Option<String> {
 /// Check if package is Python standard library
 fn is_stdlib_package(name: &str) -> bool {
     let stdlib = [
-        "os", "sys", "re", "json", "time", "datetime", "math", "random",
-        "collections", "itertools", "functools", "pathlib", "typing",
-        "asyncio", "threading", "multiprocessing", "subprocess", "logging",
-        "argparse", "configparser", "io", "pickle", "csv", "xml", "html",
-        "http", "urllib", "socket", "email", "base64", "hashlib", "hmac",
-        "secrets", "uuid", "dataclasses", "enum", "abc", "contextlib",
+        "os",
+        "sys",
+        "re",
+        "json",
+        "time",
+        "datetime",
+        "math",
+        "random",
+        "collections",
+        "itertools",
+        "functools",
+        "pathlib",
+        "typing",
+        "asyncio",
+        "threading",
+        "multiprocessing",
+        "subprocess",
+        "logging",
+        "argparse",
+        "configparser",
+        "io",
+        "pickle",
+        "csv",
+        "xml",
+        "html",
+        "http",
+        "urllib",
+        "socket",
+        "email",
+        "base64",
+        "hashlib",
+        "hmac",
+        "secrets",
+        "uuid",
+        "dataclasses",
+        "enum",
+        "abc",
+        "contextlib",
     ];
     stdlib.contains(&name)
 }
@@ -1769,7 +1807,9 @@ pub fn parse_horus_yaml_ignore(path: &str) -> Result<IgnorePatterns> {
             if let Some(ignore_section) = yaml.get("ignore") {
                 if let serde_yaml::Value::Mapping(ignore_map) = ignore_section {
                     // Parse files
-                    if let Some(serde_yaml::Value::Sequence(files)) = ignore_map.get(&serde_yaml::Value::String("files".to_string())) {
+                    if let Some(serde_yaml::Value::Sequence(files)) =
+                        ignore_map.get(&serde_yaml::Value::String("files".to_string()))
+                    {
                         for file in files {
                             if let serde_yaml::Value::String(pattern) = file {
                                 ignore.files.push(pattern.clone());
@@ -1778,7 +1818,9 @@ pub fn parse_horus_yaml_ignore(path: &str) -> Result<IgnorePatterns> {
                     }
 
                     // Parse directories
-                    if let Some(serde_yaml::Value::Sequence(dirs)) = ignore_map.get(&serde_yaml::Value::String("directories".to_string())) {
+                    if let Some(serde_yaml::Value::Sequence(dirs)) =
+                        ignore_map.get(&serde_yaml::Value::String("directories".to_string()))
+                    {
                         for dir in dirs {
                             if let serde_yaml::Value::String(pattern) = dir {
                                 ignore.directories.push(pattern.clone());
@@ -1787,7 +1829,9 @@ pub fn parse_horus_yaml_ignore(path: &str) -> Result<IgnorePatterns> {
                     }
 
                     // Parse packages
-                    if let Some(serde_yaml::Value::Sequence(pkgs)) = ignore_map.get(&serde_yaml::Value::String("packages".to_string())) {
+                    if let Some(serde_yaml::Value::Sequence(pkgs)) =
+                        ignore_map.get(&serde_yaml::Value::String("packages".to_string()))
+                    {
                         for pkg in pkgs {
                             if let serde_yaml::Value::String(package) = pkg {
                                 ignore.packages.push(package.clone());
@@ -1799,7 +1843,7 @@ pub fn parse_horus_yaml_ignore(path: &str) -> Result<IgnorePatterns> {
 
             Ok(ignore)
         }
-        Err(_) => Ok(IgnorePatterns::default())
+        Err(_) => Ok(IgnorePatterns::default()),
     }
 }
 
@@ -1843,9 +1887,23 @@ fn is_cargo_package(package_name: &str) -> bool {
 
     // Common CLI tools from crates.io
     let common_cli_tools = [
-        "bat", "fd-find", "ripgrep", "exa", "tokei", "hyperfine",
-        "starship", "zoxide", "delta", "dust", "procs", "bottom",
-        "tealdeer", "sd", "grex", "xsv", "bandwhich"
+        "bat",
+        "fd-find",
+        "ripgrep",
+        "exa",
+        "tokei",
+        "hyperfine",
+        "starship",
+        "zoxide",
+        "delta",
+        "dust",
+        "procs",
+        "bottom",
+        "tealdeer",
+        "sd",
+        "grex",
+        "xsv",
+        "bandwhich",
     ];
 
     if common_cli_tools.contains(&package_name) {
@@ -1974,8 +2032,16 @@ fn install_pip_packages(packages: Vec<PipPackage>) -> Result<()> {
         }
 
         // Get actual version by querying PyPI or using installed version
-        let version_str = pkg.version.as_ref()
-            .map(|v| v.replace(">=", "").replace("==", "").replace("~=", "").replace(">", "").replace("<", ""))
+        let version_str = pkg
+            .version
+            .as_ref()
+            .map(|v| {
+                v.replace(">=", "")
+                    .replace("==", "")
+                    .replace("~=", "")
+                    .replace(">", "")
+                    .replace("<", "")
+            })
             .unwrap_or_else(|| "latest".to_string());
 
         // Cache directory with pypi_ prefix to distinguish from HORUS packages
@@ -1991,13 +2057,23 @@ fn install_pip_packages(packages: Vec<PipPackage>) -> Result<()> {
 
         // If not cached, install to global cache
         if !pkg_cache_dir.exists() {
-            println!("  {} Installing {} to global cache...", "↓".cyan(), pkg.name);
+            println!(
+                "  {} Installing {} to global cache...",
+                "↓".cyan(),
+                pkg.name
+            );
 
             fs::create_dir_all(&pkg_cache_dir)?;
 
             // Install package with pip to cache directory using system pip
             let mut cmd = Command::new(&python_cmd);
-            cmd.args(&["-m", "pip", "install", "--target", pkg_cache_dir.to_str().unwrap()]);
+            cmd.args(&[
+                "-m",
+                "pip",
+                "install",
+                "--target",
+                pkg_cache_dir.to_str().unwrap(),
+            ]);
             cmd.arg(pkg.requirement_string());
 
             let output = cmd.output().context("Failed to run pip install")?;
@@ -2077,7 +2153,11 @@ fn install_cargo_packages(packages: Vec<CargoPackage>) -> Result<()> {
             }
         }
 
-        let version_str = pkg.version.as_ref().unwrap_or(&"latest".to_string()).clone();
+        let version_str = pkg
+            .version
+            .as_ref()
+            .unwrap_or(&"latest".to_string())
+            .clone();
         let pkg_cache_dir = global_cache.join(format!("cratesio_{}@{}", pkg.name, version_str));
         let local_link = local_bin.join(&pkg.name);
 
@@ -2089,7 +2169,11 @@ fn install_cargo_packages(packages: Vec<CargoPackage>) -> Result<()> {
 
         // If not cached, install to global cache
         if !pkg_cache_dir.exists() {
-            println!("  {} Installing {} to global cache...", "↓".cyan(), pkg.name);
+            println!(
+                "  {} Installing {} to global cache...",
+                "↓".cyan(),
+                pkg.name
+            );
 
             fs::create_dir_all(&pkg_cache_dir)?;
 
@@ -2133,7 +2217,11 @@ fn install_cargo_packages(packages: Vec<CargoPackage>) -> Result<()> {
                 .context(format!("Failed to symlink {} from global cache", pkg.name))?;
             println!("  {} Linked {}", "✓".green(), pkg.name);
         } else {
-            println!("  {} Warning: Binary {} not found in cache", "⚠".yellow(), pkg.name);
+            println!(
+                "  {} Warning: Binary {} not found in cache",
+                "⚠".yellow(),
+                pkg.name
+            );
         }
     }
 
@@ -2264,26 +2352,42 @@ fn resolve_horus_packages(dependencies: HashSet<String>) -> Result<()> {
                     Ok(dep_specs) => {
                         // Create a map of package name -> DependencySpec
                         let mut spec_map: std::collections::HashMap<String, DependencySpec> =
-                            dep_specs.into_iter().map(|spec| (spec.name.clone(), spec)).collect();
+                            dep_specs
+                                .into_iter()
+                                .map(|spec| (spec.name.clone(), spec))
+                                .collect();
 
                         for package in &missing_packages {
                             if let Some(spec) = spec_map.remove(package) {
                                 print!("  {} Installing {}... ", "".cyan(), package.yellow());
                                 io::stdout().flush()?;
 
-                                match client.install_dependency_spec(&spec, target.clone(), base_dir) {
+                                match client.install_dependency_spec(
+                                    &spec,
+                                    target.clone(),
+                                    base_dir,
+                                ) {
                                     Ok(_) => {
                                         println!("{}", "".green());
                                     }
                                     Err(e) => {
                                         println!("{}", "".red());
-                                        eprintln!("    {} Failed to install {}: {}", "".red(), package, e);
+                                        eprintln!(
+                                            "    {} Failed to install {}: {}",
+                                            "".red(),
+                                            package,
+                                            e
+                                        );
                                         bail!("Failed to install required dependency: {}", package);
                                     }
                                 }
                             } else {
                                 // Fallback to registry install if spec not found
-                                print!("  {} Installing {} (from registry)... ", "".cyan(), package.yellow());
+                                print!(
+                                    "  {} Installing {} (from registry)... ",
+                                    "".cyan(),
+                                    package.yellow()
+                                );
                                 io::stdout().flush()?;
                                 match client.install(package, None) {
                                     Ok(_) => println!("{}", "".green()),
@@ -2307,7 +2411,12 @@ fn resolve_horus_packages(dependencies: HashSet<String>) -> Result<()> {
                                 }
                                 Err(e) => {
                                     println!("{}", "".red());
-                                    eprintln!("    {} Failed to install {}: {}", "".red(), package, e);
+                                    eprintln!(
+                                        "    {} Failed to install {}: {}",
+                                        "".red(),
+                                        package,
+                                        e
+                                    );
                                     bail!("Failed to install required dependency: {}", package);
                                 }
                             }
@@ -2681,7 +2790,11 @@ fn execute_with_scheduler(
 
             // Find HORUS source directory
             let horus_source = find_horus_source_dir()?;
-            println!("  {} Using HORUS source: {}", "".cyan(), horus_source.display());
+            println!(
+                "  {} Using HORUS source: {}",
+                "".cyan(),
+                horus_source.display()
+            );
 
             // Generate Cargo.toml in .horus/ that references the source file
             let cargo_toml_path = PathBuf::from(".horus/Cargo.toml");
@@ -2860,10 +2973,7 @@ fn setup_c_environment() -> Result<()> {
     let header_path = include_dir.join("horus.h");
     if !header_path.exists() {
         // Try to copy from horus_cpp directory first
-        let possible_h_paths = [
-            "horus_cpp/include/horus.h",
-            "../horus_cpp/include/horus.h",
-        ];
+        let possible_h_paths = ["horus_cpp/include/horus.h", "../horus_cpp/include/horus.h"];
 
         let mut h_found = false;
         for path in &possible_h_paths {
@@ -2878,8 +2988,8 @@ fn setup_c_environment() -> Result<()> {
 
         // Fallback to embedded horus.h content if not found
         if !h_found {
-        // Embedded horus.h content
-        let header_content = r#"// HORUS C API - Hardware driver integration interface
+            // Embedded horus.h content
+            let header_content = r#"// HORUS C API - Hardware driver integration interface
 #ifndef HORUS_H
 #define HORUS_H
 
@@ -3002,8 +3112,8 @@ typedef struct {
 #endif
 
 #endif // HORUS_H"#;
-        fs::write(&header_path, header_content)?;
-        println!("  {} Installed horus.h (embedded fallback)", "".green());
+            fs::write(&header_path, header_content)?;
+            println!("  {} Installed horus.h (embedded fallback)", "".green());
         }
     }
 
@@ -3200,14 +3310,13 @@ fn compile_c_file(source: &Path, output: &Path, compiler: &str, release: bool) -
     // Check if source uses HORUS headers
     let content = fs::read_to_string(source).unwrap_or_default();
     let uses_horus_h = content.contains("#include <horus.h>")
-                    || content.contains("#include \"horus.h\"")
-                    || content.contains("horus.h\"");  // Catches relative paths too
+        || content.contains("#include \"horus.h\"")
+        || content.contains("horus.h\""); // Catches relative paths too
     let uses_horus_hpp = content.contains("#include <horus.hpp>")
-                      || content.contains("#include \"horus.hpp\"")
-                      || content.contains("horus.hpp\"");  // Catches relative paths too
-    let uses_framework = uses_horus_hpp
-                      || content.contains("horus::Node")
-                      || content.contains("horus::Scheduler");
+        || content.contains("#include \"horus.hpp\"")
+        || content.contains("horus.hpp\""); // Catches relative paths too
+    let uses_framework =
+        uses_horus_hpp || content.contains("horus::Node") || content.contains("horus::Scheduler");
 
     if uses_horus_h || uses_horus_hpp {
         // Include path for horus headers
@@ -3221,10 +3330,7 @@ fn compile_c_file(source: &Path, output: &Path, compiler: &str, release: bool) -
         if horus_cpp_lib.exists() {
             cmd.arg("-lhorus_cpp");
         } else {
-            println!(
-                "  {} libhorus_cpp.so not found in .horus/lib/",
-                "".yellow()
-            );
+            println!("  {} libhorus_cpp.so not found in .horus/lib/", "".yellow());
         }
     }
 
@@ -3307,9 +3413,7 @@ fn find_horus_source_dir() -> Result<PathBuf> {
         return Ok(cache_dir);
     }
 
-    bail!(
-        "HORUS not found. Please install HORUS or set HORUS_SOURCE environment variable."
-    )
+    bail!("HORUS not found. Please install HORUS or set HORUS_SOURCE environment variable.")
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -3361,7 +3465,10 @@ fn prompt_system_cargo_choice_run(
     );
     println!("\nWhat would you like to do?");
     println!("  [1] {} Use system binary (create reference)", "✓".green());
-    println!("  [2] {} Install to HORUS (isolated environment)", "🔧".blue());
+    println!(
+        "  [2] {} Install to HORUS (isolated environment)",
+        "🔧".blue()
+    );
     println!("  [3] {} Skip this package", "⊘".yellow());
 
     print!("\nChoice [1-3]: ");
@@ -3381,10 +3488,7 @@ fn prompt_system_cargo_choice_run(
     }
 }
 
-fn create_system_reference_cargo_run(
-    package_name: &str,
-    system_version: &str,
-) -> Result<()> {
+fn create_system_reference_cargo_run(package_name: &str, system_version: &str) -> Result<()> {
     println!("  {} Creating reference to system binary...", "✓".green());
 
     // Find actual system binary location
@@ -3424,7 +3528,11 @@ fn create_system_reference_cargo_run(
         "✓".green(),
         cargo_bin.display()
     );
-    println!("  {} Reference created: {}", "📝".cyan(), metadata_file.display());
+    println!(
+        "  {} Reference created: {}",
+        "📝".cyan(),
+        metadata_file.display()
+    );
     println!("  {} Binary linked: {}", "📝".cyan(), bin_link.display());
 
     Ok(())
@@ -3469,8 +3577,14 @@ fn prompt_system_package_choice_run(
         system_version.cyan()
     );
     println!("\nWhat would you like to do?");
-    println!("  [1] {} Use system package (create reference)", "✓".green());
-    println!("  [2] {} Install to HORUS (isolated environment)", "🔧".blue());
+    println!(
+        "  [1] {} Use system package (create reference)",
+        "✓".green()
+    );
+    println!(
+        "  [2] {} Install to HORUS (isolated environment)",
+        "🔧".blue()
+    );
     println!("  [3] {} Skip this package", "⊘".yellow());
 
     print!("\nChoice [1-3]: ");
@@ -3490,10 +3604,7 @@ fn prompt_system_package_choice_run(
     }
 }
 
-fn create_system_reference_python_run(
-    package_name: &str,
-    system_version: &str,
-) -> Result<()> {
+fn create_system_reference_python_run(package_name: &str, system_version: &str) -> Result<()> {
     println!("  {} Creating reference to system package...", "✓".green());
 
     let packages_dir = PathBuf::from(".horus/packages");
@@ -3510,7 +3621,11 @@ fn create_system_reference_python_run(
     fs::write(&metadata_file, serde_json::to_string_pretty(&metadata)?)?;
 
     println!("  {} Using system package", "✓".green());
-    println!("  {} Reference created: {}", "📝".cyan(), metadata_file.display());
+    println!(
+        "  {} Reference created: {}",
+        "📝".cyan(),
+        metadata_file.display()
+    );
 
     Ok(())
 }
@@ -3545,10 +3660,12 @@ fn create_horus_yaml(
     let project_name = std::env::current_dir()
         .ok()
         .and_then(|p| p.file_name().map(|n| n.to_string_lossy().to_string()))
-        .unwrap_or_else(|| file.file_stem()
-            .and_then(|n| n.to_str())
-            .unwrap_or("my-project")
-            .to_string());
+        .unwrap_or_else(|| {
+            file.file_stem()
+                .and_then(|n| n.to_str())
+                .unwrap_or("my-project")
+                .to_string()
+        });
 
     // Categorize dependencies based on language context
     let mut horus_deps = Vec::new();
@@ -3563,7 +3680,7 @@ fn create_horus_yaml(
             match language {
                 "python" => pip_deps.push(format!("pip:{}", dep)),
                 "rust" => cargo_deps.push(format!("cargo:{}", dep)),
-                "c" => {}, // C deps are handled differently
+                "c" => {} // C deps are handled differently
                 _ => pip_deps.push(format!("pip:{}", dep)), // Default to pip
             }
         }
@@ -3599,7 +3716,11 @@ fn create_horus_yaml(
     // Write file
     fs::write(yaml_path, content)?;
 
-    eprintln!("  {} Created horus.yaml with {} dependencies", "✨".green(), dependencies.len());
+    eprintln!(
+        "  {} Created horus.yaml with {} dependencies",
+        "✨".green(),
+        dependencies.len()
+    );
 
     Ok(())
 }
@@ -3629,12 +3750,22 @@ fn update_existing_horus_yaml(
         };
 
         // Check if dependency already exists (in any form)
-        let base_name = dep_str.split(':').last().unwrap_or(&dep_str)
-            .split('@').next().unwrap_or(&dep_str);
+        let base_name = dep_str
+            .split(':')
+            .last()
+            .unwrap_or(&dep_str)
+            .split('@')
+            .next()
+            .unwrap_or(&dep_str);
 
         let already_exists = existing_deps.iter().any(|e| {
-            let e_base = e.split(':').last().unwrap_or(e)
-                .split('@').next().unwrap_or(e);
+            let e_base = e
+                .split(':')
+                .last()
+                .unwrap_or(e)
+                .split('@')
+                .next()
+                .unwrap_or(e);
             e_base == base_name
         });
 
@@ -3659,7 +3790,11 @@ fn update_existing_horus_yaml(
 
     fs::write(yaml_path, content)?;
 
-    eprintln!("  {} Added {} new dependencies to horus.yaml", "✨".green(), added.len());
+    eprintln!(
+        "  {} Added {} new dependencies to horus.yaml",
+        "✨".green(),
+        added.len()
+    );
     for dep in &added {
         eprintln!("     + {}", dep);
     }

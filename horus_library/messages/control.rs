@@ -435,13 +435,11 @@ impl JointCommand {
     }
 }
 
-
 impl LogSummary for MotorCommand {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for DifferentialDriveCommand {
     fn log_summary(&self) -> String {
@@ -449,13 +447,11 @@ impl LogSummary for DifferentialDriveCommand {
     }
 }
 
-
 impl LogSummary for ServoCommand {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for PidConfig {
     fn log_summary(&self) -> String {
@@ -463,13 +459,11 @@ impl LogSummary for PidConfig {
     }
 }
 
-
 impl LogSummary for TrajectoryPoint {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for JointCommand {
     fn log_summary(&self) -> String {

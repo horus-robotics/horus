@@ -8,7 +8,6 @@ pub struct SnakeState {
     pub direction: Direction,
 }
 
-
 impl LogSummary for SnakeState {
     fn log_summary(&self) -> String {
         format!("{:?}", self)

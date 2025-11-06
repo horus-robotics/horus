@@ -13,7 +13,7 @@ struct RegisteredNode {
     logging_enabled: bool,
     initialized: bool,
     context: Option<NodeInfo>,
-    rate_hz: Option<f64>,      // Per-node rate control (None = use global scheduler rate)
+    rate_hz: Option<f64>, // Per-node rate control (None = use global scheduler rate)
     last_tick: Option<Instant>, // Last tick time for rate limiting
 }
 
@@ -68,8 +68,8 @@ impl Scheduler {
             logging_enabled,
             initialized: false,
             context: Some(context),
-            rate_hz: None,        // Use global scheduler rate by default
-            last_tick: None,      // Will be set on first tick
+            rate_hz: None,   // Use global scheduler rate by default
+            last_tick: None, // Will be set on first tick
         });
 
         println!(
@@ -150,7 +150,11 @@ impl Scheduler {
     }
 
     /// Internal method to run scheduler with optional node filtering and duration
-    fn run_with_filter(&mut self, node_filter: Option<&[&str]>, duration: Option<Duration>) -> HorusResult<()> {
+    fn run_with_filter(
+        &mut self,
+        node_filter: Option<&[&str]>,
+        duration: Option<Duration>,
+    ) -> HorusResult<()> {
         // Create tokio runtime for nodes that need async
         let rt = tokio::runtime::Runtime::new().map_err(|e| {
             crate::error::HorusError::Internal(format!("Failed to create tokio runtime: {}", e))

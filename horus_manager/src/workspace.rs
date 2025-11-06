@@ -297,10 +297,7 @@ pub fn register_current_workspace(name: Option<String>) -> Result<()> {
     let mut registry = WorkspaceRegistry::load()?;
     registry.add(workspace_name.clone(), current.clone())?;
 
-    println!(
-        " Initialized HORUS workspace: {}",
-        workspace_name.yellow()
-    );
+    println!(" Initialized HORUS workspace: {}", workspace_name.yellow());
     println!("   Location: {}", current.display());
     Ok(())
 }

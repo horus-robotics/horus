@@ -1,5 +1,5 @@
 // HORUS C++ FFI - Handle-based safe API implementation
-use horus_core::{Hub, Node, NodeInfo, Scheduler, HorusResult, HorusError};
+use horus_core::{HorusError, HorusResult, Hub, Node, NodeInfo, Scheduler};
 use std::collections::HashMap;
 use std::ffi::{c_char, c_void, CStr, CString};
 use std::sync::{
@@ -171,7 +171,6 @@ pub extern "C" fn publisher(topic: *const c_char, msg_type: MessageType) -> u32 
     handle
 }
 
-
 // Subscriber creation
 #[no_mangle]
 pub extern "C" fn subscriber(topic: *const c_char, msg_type: MessageType) -> u32 {
@@ -206,7 +205,6 @@ pub extern "C" fn subscriber(topic: *const c_char, msg_type: MessageType) -> u32
     handle
 }
 
-
 // Send message (without logging - for backwards compatibility)
 #[no_mangle]
 pub extern "C" fn send(pub_handle: u32, data: *const c_void) -> bool {
@@ -216,7 +214,7 @@ pub extern "C" fn send(pub_handle: u32, data: *const c_void) -> bool {
 
     let pubs = PUBLISHERS.lock().unwrap();
     if let Some(publisher) = pubs.get(&pub_handle) {
-        publisher.send(data, None)  // No logging
+        publisher.send(data, None) // No logging
     } else {
         false
     }
@@ -231,7 +229,7 @@ pub extern "C" fn recv(sub_handle: u32, data: *mut c_void) -> bool {
 
     let subs = SUBSCRIBERS.lock().unwrap();
     if let Some(subscriber) = subs.get(&sub_handle) {
-        subscriber.recv(data, None)  // No logging
+        subscriber.recv(data, None) // No logging
     } else {
         false
     }
@@ -239,11 +237,7 @@ pub extern "C" fn recv(sub_handle: u32, data: *mut c_void) -> bool {
 
 // Context-aware send (with logging when in node context)
 #[no_mangle]
-pub extern "C" fn node_send(
-    ctx: *mut NodeContext,
-    pub_handle: u32,
-    data: *const c_void,
-) -> bool {
+pub extern "C" fn node_send(ctx: *mut NodeContext, pub_handle: u32, data: *const c_void) -> bool {
     if data.is_null() || ctx.is_null() {
         return false;
     }
@@ -265,11 +259,7 @@ pub extern "C" fn node_send(
 
 // Context-aware recv (with logging when in node context)
 #[no_mangle]
-pub extern "C" fn node_recv(
-    ctx: *mut NodeContext,
-    sub_handle: u32,
-    data: *mut c_void,
-) -> bool {
+pub extern "C" fn node_recv(ctx: *mut NodeContext, sub_handle: u32, data: *mut c_void) -> bool {
     if data.is_null() || ctx.is_null() {
         return false;
     }
@@ -288,7 +278,6 @@ pub extern "C" fn node_recv(
         false
     }
 }
-
 
 // Timing utilities
 #[no_mangle]
@@ -321,8 +310,8 @@ pub extern "C" fn spin() {
 // Logging - with dashboard integration
 #[no_mangle]
 pub extern "C" fn log_info(msg: *const c_char) {
-    use horus_core::core::log_buffer::{publish_log, LogEntry, LogType};
     use chrono::Local;
+    use horus_core::core::log_buffer::{publish_log, LogEntry, LogType};
 
     let msg_str = unsafe {
         if msg.is_null() {
@@ -346,8 +335,8 @@ pub extern "C" fn log_info(msg: *const c_char) {
 
 #[no_mangle]
 pub extern "C" fn log_warn(msg: *const c_char) {
-    use horus_core::core::log_buffer::{publish_log, LogEntry, LogType};
     use chrono::Local;
+    use horus_core::core::log_buffer::{publish_log, LogEntry, LogType};
 
     let msg_str = unsafe {
         if msg.is_null() {
@@ -371,8 +360,8 @@ pub extern "C" fn log_warn(msg: *const c_char) {
 
 #[no_mangle]
 pub extern "C" fn log_error(msg: *const c_char) {
-    use horus_core::core::log_buffer::{publish_log, LogEntry, LogType};
     use chrono::Local;
+    use horus_core::core::log_buffer::{publish_log, LogEntry, LogType};
 
     let msg_str = unsafe {
         if msg.is_null() {
@@ -396,8 +385,8 @@ pub extern "C" fn log_error(msg: *const c_char) {
 
 #[no_mangle]
 pub extern "C" fn log_debug(msg: *const c_char) {
-    use horus_core::core::log_buffer::{publish_log, LogEntry, LogType};
     use chrono::Local;
+    use horus_core::core::log_buffer::{publish_log, LogEntry, LogType};
 
     let msg_str = unsafe {
         if msg.is_null() {
@@ -453,17 +442,30 @@ pub struct Pose {
 
 impl horus_core::core::LogSummary for Twist {
     fn log_summary(&self) -> String {
-        format!("lin:({:.2},{:.2},{:.2}) ang:({:.2},{:.2},{:.2})",
-                self.linear.x, self.linear.y, self.linear.z,
-                self.angular.x, self.angular.y, self.angular.z)
+        format!(
+            "lin:({:.2},{:.2},{:.2}) ang:({:.2},{:.2},{:.2})",
+            self.linear.x,
+            self.linear.y,
+            self.linear.z,
+            self.angular.x,
+            self.angular.y,
+            self.angular.z
+        )
     }
 }
 
 impl horus_core::core::LogSummary for Pose {
     fn log_summary(&self) -> String {
-        format!("pos:({:.2},{:.2},{:.2}) ori:({:.2},{:.2},{:.2},{:.2})",
-                self.position.x, self.position.y, self.position.z,
-                self.orientation.x, self.orientation.y, self.orientation.z, self.orientation.w)
+        format!(
+            "pos:({:.2},{:.2},{:.2}) ori:({:.2},{:.2},{:.2},{:.2})",
+            self.position.x,
+            self.position.y,
+            self.position.z,
+            self.orientation.x,
+            self.orientation.y,
+            self.orientation.z,
+            self.orientation.w
+        )
     }
 }
 
@@ -650,11 +652,17 @@ pub extern "C" fn scheduler_create(name: *const c_char) -> u32 {
 }
 
 #[no_mangle]
-pub extern "C" fn scheduler_add(sched_handle: u32, node_handle: u32, priority: u32, enable_logging: bool) -> bool {
+pub extern "C" fn scheduler_add(
+    sched_handle: u32,
+    node_handle: u32,
+    priority: u32,
+    enable_logging: bool,
+) -> bool {
     let mut nodes = NODES.lock().unwrap();
     let schedulers = SCHEDULERS.lock().unwrap();
 
-    if let (Some(node), Some(sched_arc)) = (nodes.remove(&node_handle), schedulers.get(&sched_handle))
+    if let (Some(node), Some(sched_arc)) =
+        (nodes.remove(&node_handle), schedulers.get(&sched_handle))
     {
         let mut sched = sched_arc.lock().unwrap();
 
@@ -683,7 +691,11 @@ pub extern "C" fn scheduler_run(sched_handle: u32) {
 }
 
 #[no_mangle]
-pub extern "C" fn scheduler_tick(sched_handle: u32, node_names: *const *const c_char, count: usize) {
+pub extern "C" fn scheduler_tick(
+    sched_handle: u32,
+    node_names: *const *const c_char,
+    count: usize,
+) {
     let schedulers = SCHEDULERS.lock().unwrap();
 
     if let Some(sched_arc) = schedulers.get(&sched_handle).cloned() {
@@ -749,8 +761,8 @@ pub extern "C" fn node_create_subscriber(
 
 #[no_mangle]
 pub extern "C" fn node_log_info(ctx: *mut NodeContext, msg: *const c_char) {
-    use horus_core::core::log_buffer::{publish_log, LogEntry, LogType};
     use chrono::Local;
+    use horus_core::core::log_buffer::{publish_log, LogEntry, LogType};
 
     let msg_str = unsafe {
         if msg.is_null() {
@@ -785,8 +797,8 @@ pub extern "C" fn node_log_info(ctx: *mut NodeContext, msg: *const c_char) {
 
 #[no_mangle]
 pub extern "C" fn node_log_warn(ctx: *mut NodeContext, msg: *const c_char) {
-    use horus_core::core::log_buffer::{publish_log, LogEntry, LogType};
     use chrono::Local;
+    use horus_core::core::log_buffer::{publish_log, LogEntry, LogType};
 
     let msg_str = unsafe {
         if msg.is_null() {
@@ -821,8 +833,8 @@ pub extern "C" fn node_log_warn(ctx: *mut NodeContext, msg: *const c_char) {
 
 #[no_mangle]
 pub extern "C" fn node_log_error(ctx: *mut NodeContext, msg: *const c_char) {
-    use horus_core::core::log_buffer::{publish_log, LogEntry, LogType};
     use chrono::Local;
+    use horus_core::core::log_buffer::{publish_log, LogEntry, LogType};
 
     let msg_str = unsafe {
         if msg.is_null() {

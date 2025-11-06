@@ -139,6 +139,7 @@ export async function generateStaticParams() {
     { slug: ['api-link'] },
     { slug: ['api-scheduler'] },
     { slug: ['ai-integration'] },
+    { slug: ['simulation'] },
     { slug: ['troubleshooting'] },
   ];
 }

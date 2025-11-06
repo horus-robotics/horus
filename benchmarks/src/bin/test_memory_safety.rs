@@ -1,6 +1,5 @@
 /// Memory Safety Test Suite
 /// Verifies that memory operations are safe and don't cause segfaults or leaks
-
 use horus::prelude::{Hub, Link};
 use horus_library::messages::cmd_vel::CmdVel;
 use std::env;
@@ -152,7 +151,10 @@ fn test_bounds_checking() -> bool {
     for i in 0..16 {
         if let Some(msg) = receiver.recv(None) {
             if msg.stamp_nanos as usize != i {
-                eprintln!("Message order error during drain: expected {}, got {}", i, msg.stamp_nanos);
+                eprintln!(
+                    "Message order error during drain: expected {}, got {}",
+                    i, msg.stamp_nanos
+                );
                 return false;
             }
         } else {
@@ -288,8 +290,10 @@ fn test_concurrent_access() -> bool {
         println!("  ✓ No race conditions or data corruption detected");
         true
     } else {
-        eprintln!("Thread results: pub={}, sub1={}, sub2={}, sub3={}",
-                 pub_result, sub1_result, sub2_result, sub3_result);
+        eprintln!(
+            "Thread results: pub={}, sub1={}, sub2={}, sub3={}",
+            pub_result, sub1_result, sub2_result, sub3_result
+        );
         false
     }
 }
@@ -345,7 +349,10 @@ fn test_leak_detection() -> bool {
         }
     }
 
-    println!("  ✓ Completed {} iterations without memory exhaustion", iterations);
+    println!(
+        "  ✓ Completed {} iterations without memory exhaustion",
+        iterations
+    );
     println!("  ✓ No obvious memory leaks detected");
     println!("  Note: Run with valgrind/MIRI for detailed leak analysis");
     true
@@ -394,7 +401,10 @@ fn test_overflow_protection() -> bool {
 
         // Should have sent at most buffer_size messages
         if sent > size {
-            eprintln!("Sent {} messages to buffer of size {} (overflow!)", sent, size);
+            eprintln!(
+                "Sent {} messages to buffer of size {} (overflow!)",
+                sent, size
+            );
             return false;
         }
 
@@ -407,11 +417,17 @@ fn test_overflow_protection() -> bool {
         }
 
         if received != sent {
-            eprintln!("Received {} but sent {} (buffer size {})", received, sent, size);
+            eprintln!(
+                "Received {} but sent {} (buffer size {})",
+                received, sent, size
+            );
             return false;
         }
 
-        println!("  ✓ Buffer size {} handled correctly ({} messages)", size, sent);
+        println!(
+            "  ✓ Buffer size {} handled correctly ({} messages)",
+            size, sent
+        );
     }
 
     println!("  ✓ All buffer sizes protected against overflow");

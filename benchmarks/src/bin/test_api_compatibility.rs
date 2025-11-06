@@ -1,6 +1,5 @@
 /// API Compatibility Test Suite
 /// Verifies that core APIs remain functional after structural changes
-
 use horus::prelude::{Hub, Link, Scheduler};
 use horus_library::messages::cmd_vel::CmdVel;
 use std::env;

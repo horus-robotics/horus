@@ -17,8 +17,8 @@ pub struct ResolvedDependency {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DependencySource {
-    Registry,                    // HORUS registry (default)
-    Path(std::path::PathBuf),   // Local filesystem path
+    Registry,                 // HORUS registry (default)
+    Path(std::path::PathBuf), // Local filesystem path
 }
 
 impl Default for DependencySource {
@@ -30,7 +30,7 @@ impl Default for DependencySource {
 #[derive(Debug, Clone)]
 pub struct DependencySpec {
     pub name: String,
-    pub requirement: VersionReq, // Semver requirement like "^1.2.3"
+    pub requirement: VersionReq,  // Semver requirement like "^1.2.3"
     pub source: DependencySource, // Where to get this dependency
 }
 
@@ -92,7 +92,7 @@ impl DependencySpec {
             // Structured dependency: path or registry
             Value::Mapping(map) => {
                 // Check for path dependency
-                if let Some(Value::String(path_str)) = map.get(&Value::String("path".to_string())) {
+                if let Some(Value::String(path_str)) = map.get(Value::String("path".to_string())) {
                     let path = std::path::PathBuf::from(path_str);
                     Ok(Self {
                         name,
@@ -101,7 +101,7 @@ impl DependencySpec {
                     })
                 }
                 // Check for git dependency (not supported - provide helpful error)
-                else if map.get(&Value::String("git".to_string())).is_some() {
+                else if map.get(Value::String("git".to_string())).is_some() {
                     Err(anyhow!(
                         "Git dependencies are not supported in horus.yaml.\n\
                          Instead, clone the repository and use a path dependency:\n\
@@ -110,11 +110,15 @@ impl DependencySpec {
                          2. Use path dependency:\n\
                          {}:\n\
                            path: \"./libs/{}\"",
-                        name, name, name
+                        name,
+                        name,
+                        name
                     ))
                 }
                 // Registry with explicit version
-                else if let Some(Value::String(version_str)) = map.get(&Value::String("version".to_string())) {
+                else if let Some(Value::String(version_str)) =
+                    map.get(Value::String("version".to_string()))
+                {
                     let requirement = VersionReq::parse(version_str)
                         .map_err(|e| anyhow!("Invalid version '{}': {}", version_str, e))?;
                     Ok(Self {

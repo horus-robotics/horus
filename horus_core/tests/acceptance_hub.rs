@@ -19,7 +19,11 @@ fn test_scenario_1_basic_pub_sub() {
     pub_hub.send(42, None).expect("Failed to send message");
 
     let msg = sub_hub.recv(None);
-    assert_eq!(msg, Some(42), "Subscriber should receive the exact message sent");
+    assert_eq!(
+        msg,
+        Some(42),
+        "Subscriber should receive the exact message sent"
+    );
 }
 
 #[test]
@@ -38,9 +42,21 @@ fn test_scenario_2_multiple_subscribers() {
 
     pub_hub.send(100, None).expect("Failed to send message");
 
-    assert_eq!(sub1.recv(None), Some(100), "Subscriber 1 should receive message");
-    assert_eq!(sub2.recv(None), Some(100), "Subscriber 2 should receive message");
-    assert_eq!(sub3.recv(None), Some(100), "Subscriber 3 should receive message");
+    assert_eq!(
+        sub1.recv(None),
+        Some(100),
+        "Subscriber 1 should receive message"
+    );
+    assert_eq!(
+        sub2.recv(None),
+        Some(100),
+        "Subscriber 2 should receive message"
+    );
+    assert_eq!(
+        sub3.recv(None),
+        Some(100),
+        "Subscriber 3 should receive message"
+    );
 }
 
 #[test]
@@ -109,7 +125,11 @@ fn test_scenario_6_empty_receive() {
     let hub = Hub::<i32>::new(&topic).expect("Failed to create hub");
 
     assert_eq!(hub.recv(None), None, "Empty hub should return None");
-    assert_eq!(hub.recv(None), None, "Multiple reads of empty hub should return None");
+    assert_eq!(
+        hub.recv(None),
+        None,
+        "Multiple reads of empty hub should return None"
+    );
 }
 
 #[test]
@@ -129,8 +149,12 @@ fn test_scenario_7_large_messages() {
     let pub_hub = Hub::<LargeMessage>::new(&topic).expect("Failed to create publisher");
     let sub_hub = Hub::<LargeMessage>::new(&topic).expect("Failed to create subscriber");
 
-    let msg = LargeMessage { data: vec![42; 1000] };
-    pub_hub.send(msg.clone(), None).expect("Failed to send large message");
+    let msg = LargeMessage {
+        data: vec![42; 1000],
+    };
+    pub_hub
+        .send(msg.clone(), None)
+        .expect("Failed to send large message");
 
     let received = sub_hub.recv(None).expect("Should receive large message");
     assert_eq!(received, msg, "Large message should be received completely");
@@ -199,9 +223,14 @@ fn test_edge_case_topic_name_with_special_chars() {
     let topic = format!("robot/sensors/lidar_{}", std::process::id());
 
     let hub = Hub::<i32>::new(&topic).expect("Hub should handle special chars in topic name");
-    hub.send(42, None).expect("Should be able to send on topic with special chars");
+    hub.send(42, None)
+        .expect("Should be able to send on topic with special chars");
 
-    assert_eq!(hub.recv(None), Some(42), "Should receive message on same topic");
+    assert_eq!(
+        hub.recv(None),
+        Some(42),
+        "Should receive message on same topic"
+    );
 }
 
 #[test]
@@ -258,12 +287,16 @@ fn test_different_message_types() {
 
     // Test with String
     let hub_string = Hub::<String>::new(&topic_string).expect("Failed to create String hub");
-    hub_string.send("Hello, HORUS!".to_string(), None).expect("Failed to send String");
+    hub_string
+        .send("Hello, HORUS!".to_string(), None)
+        .expect("Failed to send String");
     assert_eq!(hub_string.recv(None), Some("Hello, HORUS!".to_string()));
 
     // Test with Vec
     let hub_vec = Hub::<Vec<i32>>::new(&topic_vec).expect("Failed to create Vec hub");
-    hub_vec.send(vec![1, 2, 3, 4, 5], None).expect("Failed to send Vec");
+    hub_vec
+        .send(vec![1, 2, 3, 4, 5], None)
+        .expect("Failed to send Vec");
     assert_eq!(hub_vec.recv(None), Some(vec![1, 2, 3, 4, 5]));
 }
 
@@ -288,7 +321,9 @@ fn test_custom_struct() {
         pressure: 1013.25,
     };
 
-    pub_hub.send(data.clone(), None).expect("Failed to send struct");
+    pub_hub
+        .send(data.clone(), None)
+        .expect("Failed to send struct");
 
     let received = sub_hub.recv(None).expect("Should receive struct");
     assert_eq!(received, data, "Struct should be received correctly");

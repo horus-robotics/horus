@@ -14,10 +14,7 @@ use syn::{
 /// Parse either tuple-style or struct-style message definition
 pub enum MessageInput {
     /// Tuple-style: `Position = (f32, f32)`
-    Tuple {
-        name: Ident,
-        types: Vec<Type>,
-    },
+    Tuple { name: Ident, types: Vec<Type> },
     /// Struct-style: `MyMessage { x: u8, y: u8 }`
     Struct {
         name: Ident,
@@ -37,7 +34,8 @@ impl Parse for MessageInput {
             let content;
             syn::parenthesized!(content in input);
 
-            let types: Punctuated<Type, Comma> = content.parse_terminated(Type::parse, Token![,])?;
+            let types: Punctuated<Type, Comma> =
+                content.parse_terminated(Type::parse, Token![,])?;
             let types: Vec<Type> = types.into_iter().collect();
 
             Ok(MessageInput::Tuple { name, types })
@@ -46,7 +44,8 @@ impl Parse for MessageInput {
             let content;
             syn::braced!(content in input);
 
-            let fields: Punctuated<Field, Comma> = content.parse_terminated(Field::parse_named, Token![,])?;
+            let fields: Punctuated<Field, Comma> =
+                content.parse_terminated(Field::parse_named, Token![,])?;
 
             let fields: Vec<(Ident, Type)> = fields
                 .into_iter()

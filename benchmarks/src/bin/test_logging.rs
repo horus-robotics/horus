@@ -1,6 +1,5 @@
 /// Logging Test Suite
 /// Verifies that logging functionality works correctly
-
 use horus::prelude::{Hub, Link};
 use horus_library::messages::cmd_vel::CmdVel;
 use std::env;
@@ -185,7 +184,11 @@ fn test_message_tracing() -> bool {
         println!("  ✓ P99 latency: {}µs", p99);
         true
     } else {
-        eprintln!("Failed to trace all messages: received={}, traced={}", received, latencies.len());
+        eprintln!(
+            "Failed to trace all messages: received={}, traced={}",
+            received,
+            latencies.len()
+        );
         false
     }
 }
@@ -249,14 +252,20 @@ fn test_performance() -> bool {
     let recv_rate = received as f64 / recv_duration.as_secs_f64();
 
     println!("  ✓ Sent 10,000 messages at {:.0} msg/s", send_rate);
-    println!("  ✓ Received {} messages at {:.0} msg/s", received, recv_rate);
+    println!(
+        "  ✓ Received {} messages at {:.0} msg/s",
+        received, recv_rate
+    );
 
     // Performance should be reasonable (>10k msg/s)
     if send_rate >= 10000.0 && recv_rate >= 10000.0 {
         println!("  ✓ Performance acceptable with logging enabled");
         true
     } else {
-        eprintln!("Performance degraded: send={:.0} msg/s, recv={:.0} msg/s", send_rate, recv_rate);
+        eprintln!(
+            "Performance degraded: send={:.0} msg/s, recv={:.0} msg/s",
+            send_rate, recv_rate
+        );
         false
     }
 }
@@ -350,12 +359,16 @@ fn test_context() -> bool {
 
     let forward_result = forward_handle.join().unwrap();
 
-    if forward_result && received >= 45 { // Allow some message loss
+    if forward_result && received >= 45 {
+        // Allow some message loss
         println!("  ✓ Forwarded {} messages through chain", received);
         println!("  ✓ Context propagation working correctly");
         true
     } else {
-        eprintln!("Context propagation failed: forward={}, received={}", forward_result, received);
+        eprintln!(
+            "Context propagation failed: forward={}, received={}",
+            forward_result, received
+        );
         false
     }
 }

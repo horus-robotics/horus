@@ -1311,4 +1311,3 @@ pub fn show_graph_visualization() -> anyhow::Result<()> {
     )
     .map_err(|e| anyhow::anyhow!("Failed to run graph visualization: {}", e))
 }
-

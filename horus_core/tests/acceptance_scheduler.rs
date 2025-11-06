@@ -104,7 +104,10 @@ struct OrderedNode {
 
 impl OrderedNode {
     fn new(name: &'static str, execution_log: Arc<Mutex<Vec<String>>>) -> Self {
-        Self { name, execution_log }
+        Self {
+            name,
+            execution_log,
+        }
     }
 }
 
@@ -147,11 +150,18 @@ fn test_scenario_1_complete_node_lifecycle() {
     for _ in 0..5 {
         node.tick(Some(&mut ctx));
     }
-    assert_eq!(tick_count.load(Ordering::SeqCst), 5, "tick should be called 5 times");
+    assert_eq!(
+        tick_count.load(Ordering::SeqCst),
+        5,
+        "tick should be called 5 times"
+    );
 
     // Test shutdown
     assert!(node.shutdown(&mut ctx).is_ok(), "shutdown should succeed");
-    assert!(shutdown_called.load(Ordering::SeqCst), "shutdown should be called");
+    assert!(
+        shutdown_called.load(Ordering::SeqCst),
+        "shutdown should be called"
+    );
 }
 
 #[test]
@@ -174,7 +184,10 @@ fn test_scenario_2_init_failure_prevents_execution() {
 
     // In a real scheduler, tick would not be called after init failure
     // But we can verify the behavior is correct
-    assert!(!tick_called.load(Ordering::SeqCst), "tick should not have been called yet");
+    assert!(
+        !tick_called.load(Ordering::SeqCst),
+        "tick should not have been called yet"
+    );
 }
 
 #[test]
@@ -196,10 +209,17 @@ fn test_scenario_5_minimal_node() {
     for _ in 0..3 {
         node.tick(None);
     }
-    assert_eq!(tick_count.load(Ordering::SeqCst), 3, "tick should be called 3 times");
+    assert_eq!(
+        tick_count.load(Ordering::SeqCst),
+        3,
+        "tick should be called 3 times"
+    );
 
     // Default shutdown should succeed
-    assert!(node.shutdown(&mut ctx).is_ok(), "default shutdown should succeed");
+    assert!(
+        node.shutdown(&mut ctx).is_ok(),
+        "default shutdown should succeed"
+    );
 }
 
 #[test]
@@ -257,8 +277,16 @@ fn test_multiple_nodes_independent() {
         node2.tick(None);
     }
 
-    assert_eq!(count1.load(Ordering::SeqCst), 3, "node1 should tick 3 times");
-    assert_eq!(count2.load(Ordering::SeqCst), 7, "node2 should tick 7 times");
+    assert_eq!(
+        count1.load(Ordering::SeqCst),
+        3,
+        "node1 should tick 3 times"
+    );
+    assert_eq!(
+        count2.load(Ordering::SeqCst),
+        7,
+        "node2 should tick 7 times"
+    );
 }
 
 #[test]
@@ -324,7 +352,11 @@ fn test_tick_without_context() {
         node.tick(None);
     }
 
-    assert_eq!(tick_count.load(Ordering::SeqCst), 10, "Should tick 10 times without context");
+    assert_eq!(
+        tick_count.load(Ordering::SeqCst),
+        10,
+        "Should tick 10 times without context"
+    );
 }
 
 #[test]

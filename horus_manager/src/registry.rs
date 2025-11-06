@@ -41,20 +41,21 @@ pub struct LockedPackage {
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum PackageSource {
-    Registry,    // HORUS registry (Rust, Python, C++ curated packages)
-    PyPI,        // Python Package Index (external Python packages)
-    CratesIO,    // Rust crates.io (future)
-    System,      // System packages (apt, brew, etc.)
-    Path {       // Local filesystem path (for development)
+    Registry, // HORUS registry (Rust, Python, C++ curated packages)
+    PyPI,     // Python Package Index (external Python packages)
+    CratesIO, // Rust crates.io (future)
+    System,   // System packages (apt, brew, etc.)
+    Path {
+        // Local filesystem path (for development)
         path: String,
     },
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum SystemPackageChoice {
-    UseSystem,     // Use existing system package
-    InstallHORUS,  // Install fresh copy to HORUS
-    Cancel,        // Cancel installation
+    UseSystem,    // Use existing system package
+    InstallHORUS, // Install fresh copy to HORUS
+    Cancel,       // Cancel installation
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -129,24 +130,16 @@ impl RegistryClient {
         let source = self.detect_package_source(package_name)?;
 
         match source {
-            PackageSource::Registry => {
-                self.install_from_registry(package_name, version, target)
-            }
-            PackageSource::PyPI => {
-                self.install_from_pypi(package_name, version, target)
-            }
-            PackageSource::CratesIO => {
-                self.install_from_cratesio(package_name, version, target)
-            }
-            PackageSource::System => {
-                Err(anyhow!("System packages not supported via horus pkg install"))
-            }
-            PackageSource::Path { .. } => {
-                Err(anyhow!(
-                    "Path dependencies must be specified in horus.yaml.\n\
+            PackageSource::Registry => self.install_from_registry(package_name, version, target),
+            PackageSource::PyPI => self.install_from_pypi(package_name, version, target),
+            PackageSource::CratesIO => self.install_from_cratesio(package_name, version, target),
+            PackageSource::System => Err(anyhow!(
+                "System packages not supported via horus pkg install"
+            )),
+            PackageSource::Path { .. } => Err(anyhow!(
+                "Path dependencies must be specified in horus.yaml.\n\
                      Use 'horus run' to install dependencies from horus.yaml."
-                ))
-            }
+            )),
         }
     }
 
@@ -170,7 +163,11 @@ impl RegistryClient {
 
         // Handle ambiguity - package exists in both registries
         if in_pypi && in_crates {
-            println!("\n{} Package '{}' found in BOTH PyPI and crates.io", "⚠".yellow(), package_name.green());
+            println!(
+                "\n{} Package '{}' found in BOTH PyPI and crates.io",
+                "⚠".yellow(),
+                package_name.green()
+            );
             return self.prompt_package_source_choice(package_name);
         }
 
@@ -195,7 +192,8 @@ impl RegistryClient {
     fn check_crates_exists(&self, package_name: &str) -> bool {
         // Check crates.io API
         let crates_url = format!("https://crates.io/api/v1/crates/{}", package_name);
-        if let Ok(response) = self.client
+        if let Ok(response) = self
+            .client
             .get(&crates_url)
             .header("User-Agent", "horus-pkg-manager")
             .send()
@@ -452,7 +450,8 @@ impl RegistryClient {
 
         // Check if package exists in system first
         if let Ok(Some(system_version)) = self.detect_system_python_package(package_name) {
-            let choice = self.prompt_system_package_choice(package_name, &system_version, "PyPI")?;
+            let choice =
+                self.prompt_system_package_choice(package_name, &system_version, "PyPI")?;
 
             match choice {
                 SystemPackageChoice::Cancel => {
@@ -461,7 +460,11 @@ impl RegistryClient {
                 }
                 SystemPackageChoice::UseSystem => {
                     // Create reference to system package instead of installing
-                    return self.create_system_reference_python(package_name, &system_version, &target);
+                    return self.create_system_reference_python(
+                        package_name,
+                        &system_version,
+                        &target,
+                    );
                 }
                 SystemPackageChoice::InstallHORUS => {
                     // Continue with installation below
@@ -500,7 +503,7 @@ impl RegistryClient {
                 "python"
             };
             Command::new(python_cmd)
-                .args(&["-m", "venv", temp_venv.to_str().unwrap()])
+                .args(["-m", "venv", temp_venv.to_str().unwrap()])
                 .status()?;
         }
 
@@ -528,7 +531,7 @@ impl RegistryClient {
 
         println!("  {} Installing with pip...", "".cyan());
         let output = Command::new(&pip_path)
-            .args(&["install", "--target", pkg_dir.to_str().unwrap()])
+            .args(["install", "--target", pkg_dir.to_str().unwrap()])
             .arg(&requirement)
             .output()?;
 
@@ -572,7 +575,11 @@ impl RegistryClient {
                     " Installed {} {} to global cache",
                     package_name, version_str
                 );
-                println!("   Linked: {} -> {}", local_link.display(), pkg_dir.display());
+                println!(
+                    "   Linked: {} -> {}",
+                    local_link.display(),
+                    pkg_dir.display()
+                );
             }
         } else {
             println!(" Installed {} {} locally", package_name, version_str);
@@ -593,12 +600,15 @@ impl RegistryClient {
 
         // Check if cargo is available
         if Command::new("cargo").arg("--version").output().is_err() {
-            return Err(anyhow!("cargo not found. Please install Rust toolchain from https://rustup.rs"));
+            return Err(anyhow!(
+                "cargo not found. Please install Rust toolchain from https://rustup.rs"
+            ));
         }
 
         // Check if binary exists in system first
         if let Ok(Some(system_version)) = self.detect_system_cargo_binary(package_name) {
-            let choice = self.prompt_system_package_choice(package_name, &system_version, "crates.io")?;
+            let choice =
+                self.prompt_system_package_choice(package_name, &system_version, "crates.io")?;
 
             match choice {
                 SystemPackageChoice::Cancel => {
@@ -607,7 +617,11 @@ impl RegistryClient {
                 }
                 SystemPackageChoice::UseSystem => {
                     // Create reference to system binary instead of installing
-                    return self.create_system_reference_cargo(package_name, &system_version, &target);
+                    return self.create_system_reference_cargo(
+                        package_name,
+                        &system_version,
+                        &target,
+                    );
                 }
                 SystemPackageChoice::InstallHORUS => {
                     // Continue with installation below
@@ -707,7 +721,11 @@ impl RegistryClient {
                     " Installed {} {} to global cache",
                     package_name, version_str
                 );
-                println!("   Linked: {} -> {}", local_link.display(), pkg_dir.display());
+                println!(
+                    "   Linked: {} -> {}",
+                    local_link.display(),
+                    pkg_dir.display()
+                );
                 println!("   Binaries available in: {}/bin/", pkg_dir.display());
             }
         } else {
@@ -786,7 +804,8 @@ impl RegistryClient {
                 crate::workspace::InstallTarget::Local(workspace_path) => {
                     let local_packages = workspace_path.join(".horus/packages");
                     let has_local = local_packages.join(&resolved_dep.name).exists();
-                    let has_global = check_global_versions(&global_cache, &resolved_dep.name).unwrap_or(false);
+                    let has_global =
+                        check_global_versions(&global_cache, &resolved_dep.name).unwrap_or(false);
                     (has_local, has_global)
                 }
             };
@@ -868,15 +887,15 @@ impl RegistryClient {
                     let mut has_path_deps = false;
 
                     for dep in deps {
-                        match dep.source {
-                            DependencySource::Path(p) => {
-                                println!("\n{} Cannot publish package with path dependencies!", "Error:".red());
-                                println!("  Path dependency: {} -> {}", dep.name, p.display());
-                                println!("\n{}", "Path dependencies are not reproducible and cannot be published.".yellow());
-                                println!("{}", "Please publish the path dependency to the registry first, then update horus.yaml.".yellow());
-                                has_path_deps = true;
-                            }
-                            _ => {}
+                        if let DependencySource::Path(p) = dep.source {
+                            println!(
+                                "\n{} Cannot publish package with path dependencies!",
+                                "Error:".red()
+                            );
+                            println!("  Path dependency: {} -> {}", dep.name, p.display());
+                            println!("\n{}", "Path dependencies are not reproducible and cannot be published.".yellow());
+                            println!("{}", "Please publish the path dependency to the registry first, then update horus.yaml.".yellow());
+                            has_path_deps = true;
                         }
                     }
 
@@ -932,7 +951,10 @@ impl RegistryClient {
             .text("name", name.clone())
             .text("version", version.clone())
             .text("description", description.unwrap_or_default())
-            .text("license", license.unwrap_or_else(|| "Apache-2.0".to_string()))
+            .text(
+                "license",
+                license.unwrap_or_else(|| "Apache-2.0".to_string()),
+            )
             .part(
                 "package",
                 reqwest::blocking::multipart::Part::bytes(package_data)
@@ -994,6 +1016,7 @@ impl RegistryClient {
     }
 
     // Update package metadata (docs/source URLs and categories)
+    #[allow(clippy::too_many_arguments)]
     fn update_package_metadata(
         &self,
         name: &str,
@@ -1133,7 +1156,8 @@ impl RegistryClient {
 
                 // Check for path package metadata (*.path.json)
                 if entry_path.extension().and_then(|s| s.to_str()) == Some("json")
-                    && entry_path.to_string_lossy().contains(".path.") {
+                    && entry_path.to_string_lossy().contains(".path.")
+                {
                     let content = fs::read_to_string(&entry_path)?;
                     let metadata: serde_json::Value = serde_json::from_str(&content)?;
 
@@ -1150,16 +1174,19 @@ impl RegistryClient {
                     continue;
                 }
 
-
                 // Check for system package references (*.system.json)
                 if entry_path.extension().and_then(|s| s.to_str()) == Some("json")
-                    && entry_path.to_string_lossy().contains(".system.") {
+                    && entry_path.to_string_lossy().contains(".system.")
+                {
                     // This is a system package reference
                     let content = fs::read_to_string(&entry_path)?;
                     let metadata: serde_json::Value = serde_json::from_str(&content)?;
 
                     let name = metadata["name"].as_str().unwrap_or("unknown").to_string();
-                    let version = metadata["version"].as_str().unwrap_or("unknown").to_string();
+                    let version = metadata["version"]
+                        .as_str()
+                        .unwrap_or("unknown")
+                        .to_string();
 
                     locked_packages.push(LockedPackage {
                         name,
@@ -1189,15 +1216,22 @@ impl RegistryClient {
                         let content = fs::read_to_string(&metadata_path)?;
                         let metadata_value: serde_json::Value = serde_json::from_str(&content)?;
 
-                        let name = metadata_value["name"].as_str().unwrap_or(&package_name).to_string();
-                        let version = metadata_value["version"].as_str().unwrap_or("unknown").to_string();
-                        let checksum = metadata_value["checksum"].as_str().unwrap_or("").to_string();
+                        let name = metadata_value["name"]
+                            .as_str()
+                            .unwrap_or(&package_name)
+                            .to_string();
+                        let version = metadata_value["version"]
+                            .as_str()
+                            .unwrap_or("unknown")
+                            .to_string();
+                        let checksum = metadata_value["checksum"]
+                            .as_str()
+                            .unwrap_or("")
+                            .to_string();
                         let source_str = metadata_value["source"].as_str().unwrap_or("Registry");
 
                         // Determine package source from metadata or path
-                        let source = if source_str == "PyPI" {
-                            PackageSource::PyPI
-                        } else if actual_path.to_string_lossy().contains("pypi_") {
+                        let source = if source_str == "PyPI" || actual_path.to_string_lossy().contains("pypi_") {
                             PackageSource::PyPI
                         } else {
                             PackageSource::Registry
@@ -1713,9 +1747,7 @@ fn get_api_key() -> Result<String> {
     let auth_file = home.join(".horus/auth.json");
 
     if !auth_file.exists() {
-        return Err(anyhow!(
-            "Not authenticated. Please run: horus auth login"
-        ));
+        return Err(anyhow!("Not authenticated. Please run: horus auth login"));
     }
 
     let content = fs::read_to_string(&auth_file)?;
@@ -1893,7 +1925,10 @@ fn prompt_package_metadata(dir: &Path) -> Result<(String, String, String, String
                 }
             }
         } else {
-            println!("   {} Enter the URL where your code is hosted:", "[i]".blue());
+            println!(
+                "   {} Enter the URL where your code is hosted:",
+                "[i]".blue()
+            );
             println!("      • GitHub: https://github.com/username/repo");
             println!("      • GitLab: https://gitlab.com/username/repo");
             println!("      • Other: Any public repository URL");
@@ -1910,16 +1945,43 @@ fn prompt_package_metadata(dir: &Path) -> Result<(String, String, String, String
 
     // 3. Categories prompt
     println!("\n{}", "Categories".cyan().bold());
-    println!("   {} Help users discover your package by selecting relevant categories", "[i]".blue());
+    println!(
+        "   {} Help users discover your package by selecting relevant categories",
+        "[i]".blue()
+    );
     println!("   Available categories:");
-    println!("     {} Navigation    - Path planning, localization, mapping", "1.".cyan());
-    println!("     {} Vision        - Computer vision, image processing", "2.".cyan());
-    println!("     {} Perception    - Sensor fusion, object detection", "3.".cyan());
-    println!("     {} Control       - Motion control, PID, dynamics", "4.".cyan());
-    println!("     {} App           - Complete applications, demos", "5.".cyan());
-    println!("     {} Manipulation  - Arm control, grasping, kinematics", "6.".cyan());
-    println!("     {} Simulation    - Simulators, testing tools", "7.".cyan());
-    println!("     {} Utilities     - Tools, helpers, common functions", "8.".cyan());
+    println!(
+        "     {} Navigation    - Path planning, localization, mapping",
+        "1.".cyan()
+    );
+    println!(
+        "     {} Vision        - Computer vision, image processing",
+        "2.".cyan()
+    );
+    println!(
+        "     {} Perception    - Sensor fusion, object detection",
+        "3.".cyan()
+    );
+    println!(
+        "     {} Control       - Motion control, PID, dynamics",
+        "4.".cyan()
+    );
+    println!(
+        "     {} App           - Complete applications, demos",
+        "5.".cyan()
+    );
+    println!(
+        "     {} Manipulation  - Arm control, grasping, kinematics",
+        "6.".cyan()
+    );
+    println!(
+        "     {} Simulation    - Simulators, testing tools",
+        "7.".cyan()
+    );
+    println!(
+        "     {} Utilities     - Tools, helpers, common functions",
+        "8.".cyan()
+    );
     print!("\n   Select categories (comma-separated numbers, e.g., 1,3,5) or skip: ");
     io::stdout().flush()?;
 
@@ -1928,9 +1990,15 @@ fn prompt_package_metadata(dir: &Path) -> Result<(String, String, String, String
     let category_input = category_input.trim();
 
     if !category_input.is_empty() {
-        let category_map = vec![
-            "Navigation", "Vision", "Perception", "Control",
-            "App", "Manipulation", "Simulation", "Utilities"
+        let category_map = [
+            "Navigation",
+            "Vision",
+            "Perception",
+            "Control",
+            "App",
+            "Manipulation",
+            "Simulation",
+            "Utilities",
         ];
 
         let selected: Vec<&str> = category_input
@@ -1947,7 +2015,11 @@ fn prompt_package_metadata(dir: &Path) -> Result<(String, String, String, String
 
         if !selected.is_empty() {
             categories = selected.join(",");
-            println!("   {} Selected categories: {}", "".green(), selected.join(", "));
+            println!(
+                "   {} Selected categories: {}",
+                "".green(),
+                selected.join(", ")
+            );
         }
     }
 
@@ -1993,8 +2065,7 @@ impl PackageProvider for RegistryClient {
         }
 
         // Fallback: check local/global cache for versions
-        let home =
-            dirs::home_dir().ok_or_else(|| anyhow!("Could not find home directory"))?;
+        let home = dirs::home_dir().ok_or_else(|| anyhow!("Could not find home directory"))?;
         let global_cache = home.join(".horus/cache");
         let local_packages = PathBuf::from(".horus/packages");
 
@@ -2124,7 +2195,11 @@ impl RegistryClient {
     ) -> Result<()> {
         use crate::workspace::InstallTarget;
 
-        println!(" Installing {} from path: {}...", package_name, path.display());
+        println!(
+            " Installing {} from path: {}...",
+            package_name,
+            path.display()
+        );
 
         // Resolve relative path to absolute
         let source_path = if path.is_absolute() {
@@ -2139,10 +2214,7 @@ impl RegistryClient {
         };
 
         if !source_path.exists() {
-            return Err(anyhow!(
-                "Path does not exist: {}",
-                source_path.display()
-            ));
+            return Err(anyhow!("Path does not exist: {}", source_path.display()));
         }
 
         if !source_path.is_dir() {
@@ -2153,8 +2225,7 @@ impl RegistryClient {
         }
 
         // Detect version from package manifest
-        let version = detect_package_version(&source_path)
-            .unwrap_or_else(|| "dev".to_string());
+        let version = detect_package_version(&source_path).unwrap_or_else(|| "dev".to_string());
 
         // Determine packages directory based on target
         let packages_dir = match &target {
@@ -2209,12 +2280,16 @@ impl RegistryClient {
         let metadata_file = packages_dir.join(format!("{}.path.json", package_name));
         fs::write(&metadata_file, serde_json::to_string_pretty(&metadata)?)?;
 
+        println!(" Installed {} v{} from path", package_name, version);
         println!(
-            " Installed {} v{} from path",
-            package_name, version
+            "   Link: {} -> {}",
+            link_path.display(),
+            source_path.display()
         );
-        println!("   Link: {} -> {}", link_path.display(), source_path.display());
-        println!("   {} Path dependencies are live-linked - changes take effect immediately", "ℹ".cyan());
+        println!(
+            "   {} Path dependencies are live-linked - changes take effect immediately",
+            "ℹ".cyan()
+        );
 
         Ok(())
     }
@@ -2228,7 +2303,7 @@ impl RegistryClient {
 
         // Try to find package using pip show
         let output = Command::new("python3")
-            .args(&["-m", "pip", "show", package_name])
+            .args(["-m", "pip", "show", package_name])
             .output();
 
         if let Ok(output) = output {
@@ -2246,12 +2321,21 @@ impl RegistryClient {
 
         // Fallback: check site-packages directly
         let mut site_packages_paths = vec![
-            PathBuf::from(format!("/usr/lib/python3.12/site-packages/{}", package_name)),
-            PathBuf::from(format!("/usr/local/lib/python3.12/site-packages/{}", package_name)),
+            PathBuf::from(format!(
+                "/usr/lib/python3.12/site-packages/{}",
+                package_name
+            )),
+            PathBuf::from(format!(
+                "/usr/local/lib/python3.12/site-packages/{}",
+                package_name
+            )),
         ];
 
         if let Some(home) = dirs::home_dir() {
-            site_packages_paths.push(home.join(format!(".local/lib/python3.12/site-packages/{}", package_name)));
+            site_packages_paths.push(home.join(format!(
+                ".local/lib/python3.12/site-packages/{}",
+                package_name
+            )));
         }
 
         for path in site_packages_paths {
@@ -2345,14 +2429,17 @@ impl RegistryClient {
         system_version: &str,
         target: &crate::workspace::InstallTarget,
     ) -> Result<()> {
-        use std::process::Command;
         use crate::workspace::InstallTarget;
+        use std::process::Command;
 
         println!("  {} Creating reference to system package...", "".green());
 
         // Find actual system package location
         let output = Command::new("python3")
-            .args(&["-c", &format!("import {}; print({}.__file__)", package_name, package_name)])
+            .args([
+                "-c",
+                &format!("import {}; print({}.__file__)", package_name, package_name),
+            ])
             .output()?;
 
         if !output.status.success() {
@@ -2395,7 +2482,11 @@ impl RegistryClient {
             "✓".green(),
             package_path.display()
         );
-        println!("  {} Reference created: {}", "".cyan(), metadata_file.display());
+        println!(
+            "  {} Reference created: {}",
+            "".cyan(),
+            metadata_file.display()
+        );
 
         Ok(())
     }
@@ -2462,7 +2553,11 @@ impl RegistryClient {
             "✓".green(),
             cargo_bin.display()
         );
-        println!("  {} Reference created: {}", "".cyan(), metadata_file.display());
+        println!(
+            "  {} Reference created: {}",
+            "".cyan(),
+            metadata_file.display()
+        );
         println!("  {} Binary linked: {}", "".cyan(), bin_link.display());
 
         Ok(())

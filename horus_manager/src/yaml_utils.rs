@@ -31,15 +31,12 @@ pub fn add_dependency_to_horus_yaml(
 
     // Check for duplicates
     let dep_prefix = format!("  - {}@", package_name);
-    let already_exists = lines.iter().any(|line| {
-        line.trim().starts_with(&dep_prefix) || line.trim() == dependency_entry.trim()
-    });
+    let already_exists = lines
+        .iter()
+        .any(|line| line.trim().starts_with(&dep_prefix) || line.trim() == dependency_entry.trim());
 
     if already_exists {
-        println!(
-            "  Dependency {} already exists in horus.yaml",
-            package_name
-        );
+        println!("  Dependency {} already exists in horus.yaml", package_name);
         return Ok(());
     }
 
@@ -52,9 +49,7 @@ pub fn add_dependency_to_horus_yaml(
         let mut insert_idx = deps_idx + 1;
         while insert_idx < lines.len() {
             let line = &lines[insert_idx];
-            if line.trim().starts_with("- ") {
-                insert_idx += 1;
-            } else if line.trim().is_empty() || line.trim().starts_with("#") {
+            if line.trim().starts_with("- ") || line.trim().is_empty() || line.trim().starts_with("#") {
                 insert_idx += 1;
             } else {
                 break;
@@ -68,10 +63,7 @@ pub fn add_dependency_to_horus_yaml(
 }
 
 /// Remove a dependency from horus.yaml
-pub fn remove_dependency_from_horus_yaml(
-    horus_yaml_path: &Path,
-    package_name: &str,
-) -> Result<()> {
+pub fn remove_dependency_from_horus_yaml(horus_yaml_path: &Path, package_name: &str) -> Result<()> {
     let content = fs::read_to_string(horus_yaml_path)?;
     let lines: Vec<String> = content.lines().map(|s| s.to_string()).collect();
 
@@ -161,8 +153,8 @@ pub fn add_path_dependency_to_horus_yaml(
         }
     }
 
-    let deps_idx = deps_line_idx
-        .ok_or_else(|| anyhow!("No dependencies section found in horus.yaml"))?;
+    let deps_idx =
+        deps_line_idx.ok_or_else(|| anyhow!("No dependencies section found in horus.yaml"))?;
 
     // Check if it's an empty array: dependencies: []
     let deps_line = &lines[deps_idx];
@@ -175,15 +167,12 @@ pub fn add_path_dependency_to_horus_yaml(
     ];
 
     // Check for duplicates
-    let already_exists = lines.iter().any(|line| {
-        line.trim().starts_with(&format!("{}:", package_name))
-    });
+    let already_exists = lines
+        .iter()
+        .any(|line| line.trim().starts_with(&format!("{}:", package_name)));
 
     if already_exists {
-        println!(
-            "  Dependency {} already exists in horus.yaml",
-            package_name
-        );
+        println!("  Dependency {} already exists in horus.yaml", package_name);
         return Ok(());
     }
 
@@ -204,7 +193,8 @@ pub fn add_path_dependency_to_horus_yaml(
                 || trimmed.is_empty()
                 || (trimmed.ends_with(":") && !trimmed.starts_with("dependencies:"))
                 || trimmed.starts_with("path:")
-                || trimmed.starts_with("version:") {
+                || trimmed.starts_with("version:")
+            {
                 insert_idx += 1;
             } else {
                 break;
@@ -243,9 +233,11 @@ pub fn read_package_name_from_path(path: &Path) -> Result<String> {
     if cargo_toml.exists() {
         let content = fs::read_to_string(&cargo_toml)?;
         if let Ok(toml) = content.parse::<toml::Value>() {
-            if let Some(name) = toml.get("package")
+            if let Some(name) = toml
+                .get("package")
                 .and_then(|p| p.get("name"))
-                .and_then(|n| n.as_str()) {
+                .and_then(|n| n.as_str())
+            {
                 return Ok(name.to_string());
             }
         }

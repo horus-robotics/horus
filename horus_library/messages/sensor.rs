@@ -392,13 +392,11 @@ impl BatteryState {
     }
 }
 
-
 impl LogSummary for LaserScan {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for Imu {
     fn log_summary(&self) -> String {
@@ -406,20 +404,17 @@ impl LogSummary for Imu {
     }
 }
 
-
 impl LogSummary for Odometry {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
 
-
 impl LogSummary for Range {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for BatteryState {
     fn log_summary(&self) -> String {

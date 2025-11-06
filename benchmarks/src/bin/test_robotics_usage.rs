@@ -1,6 +1,5 @@
 /// Robotics Usage Test Suite
 /// Verifies typical robotics usage patterns work correctly
-
 use horus::prelude::{Hub, Link};
 use horus_library::messages::cmd_vel::CmdVel;
 use std::env;
@@ -132,11 +131,8 @@ fn test_sensor_flow() -> bool {
         let start = Instant::now();
         while processed < 100 && start.elapsed() < Duration::from_secs(5) {
             if let Some(msg) = processed_sub.recv(None) {
-                let cmd = CmdVel::with_timestamp(
-                    msg.linear * 0.5,
-                    msg.angular * 0.3,
-                    msg.stamp_nanos,
-                );
+                let cmd =
+                    CmdVel::with_timestamp(msg.linear * 0.5, msg.angular * 0.3, msg.stamp_nanos);
                 if cmd_pub.send(cmd, None).is_ok() {
                     processed += 1;
                 }
@@ -183,8 +179,10 @@ fn test_sensor_flow() -> bool {
         println!("  ✓ Received {} command messages", received_cmds);
         true
     } else {
-        eprintln!("Pipeline incomplete: processor={}, controller={}, cmds={}",
-                 processor_result, controller_result, received_cmds);
+        eprintln!(
+            "Pipeline incomplete: processor={}, controller={}, cmds={}",
+            processor_result, controller_result, received_cmds
+        );
         false
     }
 }
@@ -224,7 +222,10 @@ fn test_actuator_commands() -> bool {
             if let Some(cmd) = cmd_receiver.recv(None) {
                 // Verify commands are in order
                 if cmd.stamp_nanos < last_timestamp {
-                    eprintln!("Command out of order: {} < {}", cmd.stamp_nanos, last_timestamp);
+                    eprintln!(
+                        "Command out of order: {} < {}",
+                        cmd.stamp_nanos, last_timestamp
+                    );
                     return false;
                 }
                 last_timestamp = cmd.stamp_nanos;
@@ -327,7 +328,10 @@ fn test_control_loop_1khz() -> bool {
     let recv_result = recv_handle.join().unwrap();
     let final_count = *counter.lock().unwrap();
 
-    println!("  ✓ Sent 1000 messages in {}ms (target: 1000ms)", elapsed.as_millis());
+    println!(
+        "  ✓ Sent 1000 messages in {}ms (target: 1000ms)",
+        elapsed.as_millis()
+    );
     println!("  ✓ Received {} messages", final_count);
 
     if recv_result && final_count >= 900 {
@@ -488,7 +492,10 @@ fn test_state_machine() -> bool {
         println!("  ✓ State machine communication pattern successful");
         true
     } else {
-        eprintln!("Incomplete state machine communication: {}/50", received_transitions);
+        eprintln!(
+            "Incomplete state machine communication: {}/50",
+            received_transitions
+        );
         false
     }
 }

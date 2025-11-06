@@ -1,10 +1,9 @@
+use horus::error::HorusResult;
 /// Framework API Lock Test Suite
 /// Locks down Node trait, Scheduler, and full framework usage patterns
 /// If this test breaks, it means a breaking API change was introduced
-
 use horus::prelude::{Hub, Link, Node, NodeInfo, Scheduler};
 use horus_library::messages::cmd_vel::CmdVel;
-use horus::error::HorusResult;
 use std::env;
 use std::process;
 use std::sync::{Arc, Mutex};
@@ -95,7 +94,10 @@ impl Node for SensorNode {
     }
 
     fn shutdown(&mut self, _ctx: &mut NodeInfo) -> HorusResult<()> {
-        println!("  SensorNode: shutdown() called, published {} messages", self.tick_count);
+        println!(
+            "  SensorNode: shutdown() called, published {} messages",
+            self.tick_count
+        );
         Ok(())
     }
 }
@@ -290,7 +292,9 @@ fn test_per_node_rate() -> bool {
         counter: Arc<Mutex<u32>>,
     }
     impl Node for FastNode {
-        fn name(&self) -> &'static str { "fast_node" }
+        fn name(&self) -> &'static str {
+            "fast_node"
+        }
         fn tick(&mut self, _info: Option<&mut NodeInfo>) {
             *self.counter.lock().unwrap() += 1;
         }
@@ -300,7 +304,9 @@ fn test_per_node_rate() -> bool {
         counter: Arc<Mutex<u32>>,
     }
     impl Node for SlowNode {
-        fn name(&self) -> &'static str { "slow_node" }
+        fn name(&self) -> &'static str {
+            "slow_node"
+        }
         fn tick(&mut self, _info: Option<&mut NodeInfo>) {
             *self.counter.lock().unwrap() += 1;
         }
@@ -315,14 +321,20 @@ fn test_per_node_rate() -> bool {
     println!("  ✓ Scheduler created");
 
     // Add fast node (100Hz)
-    let fast_node = Box::new(FastNode { counter: fast_counter.clone() });
-    scheduler.add(fast_node, 0, None)
+    let fast_node = Box::new(FastNode {
+        counter: fast_counter.clone(),
+    });
+    scheduler
+        .add(fast_node, 0, None)
         .set_node_rate("fast_node", 100.0);
     println!("  ✓ Added fast_node at 100Hz");
 
     // Add slow node (10Hz)
-    let slow_node = Box::new(SlowNode { counter: slow_counter.clone() });
-    scheduler.add(slow_node, 1, None)
+    let slow_node = Box::new(SlowNode {
+        counter: slow_counter.clone(),
+    });
+    scheduler
+        .add(slow_node, 1, None)
         .set_node_rate("slow_node", 10.0);
     println!("  ✓ Added slow_node at 10Hz");
 
@@ -430,8 +442,8 @@ fn test_multi_node_graph() -> bool {
     let actuator_topic = format!("graph_actuator_{}", process::id());
 
     // Create Link producer for actuator
-    let actuator_sender = Link::<CmdVel>::producer(&actuator_topic)
-        .expect("Failed to create Link producer");
+    let actuator_sender =
+        Link::<CmdVel>::producer(&actuator_topic).expect("Failed to create Link producer");
 
     // Create node graph: Sensor → Controller → Actuator
     let sensor = Box::new(SensorNode::new(&sensor_topic, sensor_counter.clone()));

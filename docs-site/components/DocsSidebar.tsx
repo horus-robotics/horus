@@ -49,9 +49,10 @@ const sections: SidebarSection[] = [
     links: [
       { title: "CLI Reference", href: "/cli-reference", order: 1 },
       { title: "Dashboard", href: "/dashboard", order: 2 },
-      { title: "Parameters", href: "/parameters", order: 3 },
-      { title: "Library Reference", href: "/library-reference", order: 4 },
-      { title: "Remote Deployment", href: "/remote-deployment", order: 5 },
+      { title: "Simulation", href: "/simulation", order: 3 },
+      { title: "Parameters", href: "/parameters", order: 4 },
+      { title: "Library Reference", href: "/library-reference", order: 5 },
+      { title: "Remote Deployment", href: "/remote-deployment", order: 6 },
     ],
   },
   {

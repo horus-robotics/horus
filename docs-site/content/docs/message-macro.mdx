@@ -16,7 +16,6 @@ Before the `message!` macro, defining a custom message required manual implement
 
 ```rust
 use horus::prelude::*;
-use horus::core::LogSummary;
 
 // Manual definition - lots of boilerplate!
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,7 +41,6 @@ With `message!`, it's just **one line**:
 
 ```rust
 use horus::prelude::*;
-use horus::core::LogSummary;
 
 message!(Position = (f32, f32));
 ```
@@ -57,7 +55,6 @@ Perfect for messages with 2-4 fields:
 
 ```rust
 use horus::prelude::*;
-use horus::core::LogSummary;
 
 // 2D position
 message!(Position = (f32, f32));
@@ -78,7 +75,6 @@ Use for messages with many fields or when field names improve clarity:
 
 ```rust
 use horus::prelude::*;
-use horus::core::LogSummary;
 
 message! {
     RobotStatus {
@@ -135,7 +131,6 @@ Let's build a temperature monitoring system:
 
 ```rust
 use horus::prelude::*;
-use horus::core::LogSummary;
 
 // Define messages in one line each!
 message!(TempReading = (f32, u64));  // (celsius, timestamp)
@@ -312,7 +307,6 @@ Add these imports at the top of your file:
 
 ```rust
 use horus::prelude::*;
-use horus::core::LogSummary;  // Needed for .log_summary() method
 ```
 
 ### 2. Define Messages Near Usage
@@ -323,7 +317,6 @@ Keep message definitions close to the nodes that use them:
 // Temperature monitoring module
 mod temperature {
     use horus::prelude::*;
-    use horus::core::LogSummary;
 
     message!(TempReading = (f32, u64));
 
@@ -422,7 +415,7 @@ impl LogSummary for FastMessage {
 To call `.log_summary()` on your types, you need:
 
 ```rust
-use horus::core::LogSummary;
+use horus::prelude::*;
 ```
 
 This is because LogSummary is a trait method.

@@ -97,20 +97,35 @@ fn main() {
     // Main coordinator
     println!("\n{}", "═".repeat(80).bright_cyan().bold());
     println!("{}", "  HORUS IPC LATENCY BENCHMARK".bright_cyan().bold());
-    println!("{}", "  RDTSC-Based True Propagation Time Measurement".bright_cyan());
+    println!(
+        "{}",
+        "  RDTSC-Based True Propagation Time Measurement".bright_cyan()
+    );
     println!("{}", "═".repeat(80).bright_cyan().bold());
 
     // Calibration
     let rdtsc_overhead = calibrate_rdtsc();
     println!("\n{}", "RDTSC Calibration:".bright_yellow());
-    println!("  • Null cost (back-to-back rdtsc): {} cycles", rdtsc_overhead);
+    println!(
+        "  • Null cost (back-to-back rdtsc): {} cycles",
+        rdtsc_overhead
+    );
     println!("  • Target: ~20-30 cycles on modern x86_64");
 
     println!("\n{}", "Benchmark Configuration:".bright_yellow());
     println!("  • Message type: CmdVel (16 bytes)");
-    println!("  • Iterations per run: {}", format!("{}", ITERATIONS).bright_green());
-    println!("  • Warmup iterations: {}", format!("{}", WARMUP).bright_green());
-    println!("  • Number of runs: {}", format!("{}", NUM_RUNS).bright_green());
+    println!(
+        "  • Iterations per run: {}",
+        format!("{}", ITERATIONS).bright_green()
+    );
+    println!(
+        "  • Warmup iterations: {}",
+        format!("{}", WARMUP).bright_green()
+    );
+    println!(
+        "  • Number of runs: {}",
+        format!("{}", NUM_RUNS).bright_green()
+    );
     println!("  • CPU Affinity: producer=core0, consumer=core1");
     println!("  • Measurement: rdtsc timestamp embedded in message");
     println!("  • Pattern: Ping-pong (ack before next send - no queue buildup)");
@@ -127,13 +142,19 @@ fn main() {
 fn run_all_benchmarks() {
     // 1. Hub (multi-process MPMC)
     println!("\n{}", "═".repeat(80).bright_white());
-    println!("{}", "  HORUS HUB (Multi-Process MPMC)".bright_white().bold());
+    println!(
+        "{}",
+        "  HORUS HUB (Multi-Process MPMC)".bright_white().bold()
+    );
     println!("{}", "═".repeat(80).bright_white());
     run_ipc_benchmark("hub");
 
     // 2. Link (single-process SPSC)
     println!("\n{}", "═".repeat(80).bright_white());
-    println!("{}", "  HORUS LINK (Single-Process SPSC)".bright_white().bold());
+    println!(
+        "{}",
+        "  HORUS LINK (Single-Process SPSC)".bright_white().bold()
+    );
     println!("{}", "═".repeat(80).bright_white());
     run_link_benchmark();
 
@@ -141,7 +162,12 @@ fn run_all_benchmarks() {
     #[cfg(feature = "iceoryx2")]
     {
         println!("\n{}", "═".repeat(80).bright_white());
-        println!("{}", "  ICEORYX2 (Single-Process Threading)".bright_white().bold());
+        println!(
+            "{}",
+            "  ICEORYX2 (Single-Process Threading)"
+                .bright_white()
+                .bold()
+        );
         println!("{}", "═".repeat(80).bright_white());
         println!("  SKIPPED: iceoryx2 benchmark has synchronization issues with ping-pong pattern");
         println!("  TODO: Requires investigation of iceoryx2 API usage or different test pattern");
@@ -181,7 +207,11 @@ fn print_results(all_latencies: &[Vec<u64>]) {
     let min = *all_cycles.iter().min().unwrap();
     let max = *all_cycles.iter().max().unwrap();
 
-    println!("\n  Median:  {} cycles (~{} ns @ 2GHz)", format!("{}", median).bright_green(), median / 2);
+    println!(
+        "\n  Median:  {} cycles (~{} ns @ 2GHz)",
+        format!("{}", median).bright_green(),
+        median / 2
+    );
     println!("  P95:     {} cycles (~{} ns)", p95, p95 / 2);
     println!("  P99:     {} cycles (~{} ns)", p99, p99 / 2);
     println!("  Min:     {} cycles (~{} ns)", min, min / 2);
@@ -216,7 +246,11 @@ fn run_benchmark(ipc_type: &str) -> Vec<u64> {
     let consumer = spawn_process(&consumer_mode, &topic, &barrier_file, 1);
 
     // Wait for consumer ready
-    wait_for_barrier(&barrier_file, BARRIER_CONSUMER_READY, Duration::from_secs(5));
+    wait_for_barrier(
+        &barrier_file,
+        BARRIER_CONSUMER_READY,
+        Duration::from_secs(5),
+    );
 
     // Start producer (runs on core 0)
     let producer = spawn_process(&producer_mode, &topic, &barrier_file, 0);
@@ -229,12 +263,18 @@ fn run_benchmark(ipc_type: &str) -> Vec<u64> {
     let _ = fs::remove_file(&barrier_file);
 
     if !producer_output.status.success() {
-        eprintln!("Producer failed: {}", String::from_utf8_lossy(&producer_output.stderr));
+        eprintln!(
+            "Producer failed: {}",
+            String::from_utf8_lossy(&producer_output.stderr)
+        );
         return vec![];
     }
 
     if !consumer_output.status.success() {
-        eprintln!("Consumer failed: {}", String::from_utf8_lossy(&consumer_output.stderr));
+        eprintln!(
+            "Consumer failed: {}",
+            String::from_utf8_lossy(&consumer_output.stderr)
+        );
         return vec![];
     }
 
@@ -250,7 +290,10 @@ fn run_benchmark(ipc_type: &str) -> Vec<u64> {
     if latencies.is_empty() {
         eprintln!("WARNING: No latencies collected!");
         eprintln!("Consumer stdout: {}", output);
-        eprintln!("Consumer stderr: {}", String::from_utf8_lossy(&consumer_output.stderr));
+        eprintln!(
+            "Consumer stderr: {}",
+            String::from_utf8_lossy(&consumer_output.stderr)
+        );
     }
 
     latencies
@@ -265,7 +308,12 @@ fn spawn_process(mode: &str, topic: &str, barrier_file: &str, core: usize) -> Ch
     #[cfg(target_os = "linux")]
     {
         cmd = Command::new("taskset");
-        cmd.arg("-c").arg(core.to_string()).arg(&exe).arg(mode).arg(topic).arg(barrier_file);
+        cmd.arg("-c")
+            .arg(core.to_string())
+            .arg(&exe)
+            .arg(mode)
+            .arg(topic)
+            .arg(barrier_file);
     }
 
     cmd.stdout(std::process::Stdio::piped())
@@ -385,7 +433,10 @@ fn hub_consumer(topic: &str, barrier_file: &str) {
             }
             attempts += 1;
             if msg_start.elapsed().as_secs() > 5 {
-                eprintln!("Consumer: TIMEOUT waiting for warmup message {} after {} attempts", i, attempts);
+                eprintln!(
+                    "Consumer: TIMEOUT waiting for warmup message {} after {} attempts",
+                    i, attempts
+                );
                 eprintln!("Consumer: This suggests multi-process IPC is not working");
                 return;
             }
@@ -413,7 +464,10 @@ fn hub_consumer(topic: &str, barrier_file: &str) {
             }
         }
         if msg_start.elapsed().as_secs() > 5 {
-            eprintln!("Consumer: TIMEOUT waiting for message {} - only received {}/{}", i, i, ITERATIONS);
+            eprintln!(
+                "Consumer: TIMEOUT waiting for message {} - only received {}/{}",
+                i, i, ITERATIONS
+            );
             return;
         }
     }
@@ -452,7 +506,11 @@ fn ice_producer(topic: &str, barrier_file: &str) {
     let ack_subscriber = ack_service.subscriber_builder().create().unwrap();
 
     // Wait for consumer to signal ready
-    wait_for_barrier(barrier_file, BARRIER_CONSUMER_READY, Duration::from_secs(10));
+    wait_for_barrier(
+        barrier_file,
+        BARRIER_CONSUMER_READY,
+        Duration::from_secs(10),
+    );
     eprintln!("iceoryx2 Producer: Consumer ready, starting warmup");
 
     // Warmup - ping-pong pattern
@@ -537,12 +595,18 @@ fn ice_consumer(topic: &str, barrier_file: &str) {
                 break;
             }
             if msg_start.elapsed().as_secs() > 5 {
-                eprintln!("iceoryx2 Consumer: TIMEOUT waiting for warmup message {}", i);
+                eprintln!(
+                    "iceoryx2 Consumer: TIMEOUT waiting for warmup message {}",
+                    i
+                );
                 return;
             }
         }
     }
-    eprintln!("iceoryx2 Consumer: Warmup complete in {:?}", warmup_start.elapsed());
+    eprintln!(
+        "iceoryx2 Consumer: Warmup complete in {:?}",
+        warmup_start.elapsed()
+    );
 
     // Measured receives - measure latency then send ack
     eprintln!("iceoryx2 Consumer: Starting measured iterations");
@@ -565,7 +629,10 @@ fn ice_consumer(topic: &str, barrier_file: &str) {
                 break;
             }
             if msg_start.elapsed().as_secs() > 5 {
-                eprintln!("iceoryx2 Consumer: TIMEOUT waiting for message {} - only received {}/{}", i, i, ITERATIONS);
+                eprintln!(
+                    "iceoryx2 Consumer: TIMEOUT waiting for message {} - only received {}/{}",
+                    i, i, ITERATIONS
+                );
                 return;
             }
         }
@@ -595,7 +662,6 @@ fn run_link_benchmark() {
         let ack_recv = Link::<CmdVel>::consumer(&ack_topic).unwrap();
 
         let producer_handle = {
-
             thread::spawn(move || {
                 // Set CPU affinity to core 0 (same as Hub producer)
                 set_cpu_affinity(0);
@@ -611,7 +677,7 @@ fn run_link_benchmark() {
                         if ack_recv.recv(None).is_some() {
                             break;
                         }
-                                }
+                    }
                 }
 
                 // Measured iterations
@@ -626,7 +692,7 @@ fn run_link_benchmark() {
                         if ack_recv.recv(None).is_some() {
                             break;
                         }
-                                }
+                    }
                 }
             })
         };
@@ -645,7 +711,7 @@ fn run_link_benchmark() {
                             let _ = ack_send.send(CmdVel::new(0.0, 0.0), None);
                             break;
                         }
-                                }
+                    }
                 }
 
                 // Measured iterations
@@ -661,7 +727,7 @@ fn run_link_benchmark() {
                             let _ = ack_send.send(CmdVel::new(0.0, 0.0), None);
                             break;
                         }
-                                }
+                    }
                 }
 
                 latencies
@@ -685,8 +751,8 @@ fn run_link_benchmark() {
 
 #[cfg(feature = "iceoryx2")]
 fn run_iceoryx2_benchmark() {
-    use std::thread;
     use iceoryx2::prelude::*;
+    use std::thread;
 
     let mut all_latencies = Vec::new();
 
@@ -851,7 +917,7 @@ fn run_iceoryx2_benchmark() {
 
 #[cfg(target_os = "linux")]
 fn set_cpu_affinity(core: usize) {
-    use libc::{cpu_set_t, CPU_SET, CPU_ZERO, sched_setaffinity};
+    use libc::{cpu_set_t, sched_setaffinity, CPU_SET, CPU_ZERO};
     use std::mem;
 
     unsafe {
@@ -862,7 +928,7 @@ fn set_cpu_affinity(core: usize) {
         let result = sched_setaffinity(
             0, // 0 = current thread
             mem::size_of::<cpu_set_t>(),
-            &cpu_set
+            &cpu_set,
         );
 
         if result != 0 {

@@ -726,13 +726,11 @@ impl SafetyStatus {
     }
 }
 
-
 impl LogSummary for Heartbeat {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for Status {
     fn log_summary(&self) -> String {
@@ -740,13 +738,11 @@ impl LogSummary for Status {
     }
 }
 
-
 impl LogSummary for EmergencyStop {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for ResourceUsage {
     fn log_summary(&self) -> String {
@@ -754,13 +750,11 @@ impl LogSummary for ResourceUsage {
     }
 }
 
-
 impl LogSummary for DiagnosticValue {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for DiagnosticReport {
     fn log_summary(&self) -> String {
@@ -768,13 +762,11 @@ impl LogSummary for DiagnosticReport {
     }
 }
 
-
 impl LogSummary for NodeHeartbeat {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for SafetyStatus {
     fn log_summary(&self) -> String {
@@ -782,20 +774,17 @@ impl LogSummary for SafetyStatus {
     }
 }
 
-
 impl LogSummary for StatusLevel {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
 
-
 impl LogSummary for NodeState {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for HealthStatus {
     fn log_summary(&self) -> String {

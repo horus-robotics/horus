@@ -571,7 +571,10 @@ impl NodeInfo {
         if self.config.enable_logging
             && (self.config.log_level == "INFO" || self.config.log_level == "DEBUG")
         {
-            eprintln!("\x1b[34m[INFO]\x1b[0m \x1b[33m[{}]\x1b[0m {}", self.name, message);
+            eprintln!(
+                "\x1b[34m[INFO]\x1b[0m \x1b[33m[{}]\x1b[0m {}",
+                self.name, message
+            );
         }
 
         // Write to global log buffer for dashboard

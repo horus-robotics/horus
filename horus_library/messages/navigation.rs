@@ -538,13 +538,11 @@ pub struct VelocityObstacles {
     pub timestamp: u64,
 }
 
-
 impl LogSummary for Goal {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for GoalResult {
     fn log_summary(&self) -> String {
@@ -552,13 +550,11 @@ impl LogSummary for GoalResult {
     }
 }
 
-
 impl LogSummary for Waypoint {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for Path {
     fn log_summary(&self) -> String {
@@ -566,13 +562,11 @@ impl LogSummary for Path {
     }
 }
 
-
 impl LogSummary for OccupancyGrid {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for CostMap {
     fn log_summary(&self) -> String {
@@ -580,13 +574,11 @@ impl LogSummary for CostMap {
     }
 }
 
-
 impl LogSummary for VelocityObstacle {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for VelocityObstacles {
     fn log_summary(&self) -> String {
@@ -594,13 +586,11 @@ impl LogSummary for VelocityObstacles {
     }
 }
 
-
 impl LogSummary for PathPlan {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for GoalStatus {
     fn log_summary(&self) -> String {

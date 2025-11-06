@@ -68,7 +68,7 @@ jobs:
           sudo apt-get install -y libclang-dev llvm-dev libudev-dev libopencv-dev libasound2-dev
 
       - name: Run clippy
-        run: cargo clippy --workspace --exclude horus_py -- -D warnings -A dead_code -A unused_variables -A deprecated -A private_interfaces -A clippy::approx_constant -A clippy::manual_clamp -A clippy::not_unsafe_ptr_arg_deref -A clippy::manual_strip -A clippy::type_complexity -A clippy::field_reassign_with_default -A clippy::explicit_counter_loop -A clippy::explicit_iter_loop -A clippy::upper_case_acronyms -A clippy::needless_range_loop
+        run: cargo clippy --workspace --exclude horus_py -- -W clippy::all -A dead_code -A unused_variables -A deprecated -A private_interfaces -A unused_imports -A unused_mut -A clippy::needless_borrows_for_generic_args -A clippy::clone_on_copy -A clippy::len_zero -A clippy::ptr_arg -A clippy::manual_flatten -A clippy::collapsible_if -A clippy::iter_with_drain -A clippy::collapsible_else_if -A clippy::iter_skip_next
 
   fmt:
     name: Rustfmt (Formatting)
@@ -173,7 +173,7 @@ jobs:
       - name: Install build dependencies
         run: sudo apt-get update && sudo apt-get install -y build-essential
 
-      - name: Build C bindings
+      - name: Build C++ bindings
         run: |
-          cd horus_c
+          cd horus_cpp
           cargo build --release

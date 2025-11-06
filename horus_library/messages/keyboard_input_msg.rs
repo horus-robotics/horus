@@ -150,7 +150,6 @@ impl KeyboardInput {
     }
 }
 
-
 impl LogSummary for KeyboardInput {
     fn log_summary(&self) -> String {
         format!("{:?}", self)

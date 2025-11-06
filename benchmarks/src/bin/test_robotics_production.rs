@@ -5,7 +5,6 @@
 /// multi-rate systems, and stress scenarios.
 ///
 /// Run with: ./target/release/test_robotics_production <test_name>
-
 use horus::prelude::Link;
 use horus_library::messages::control::{DifferentialDriveCommand, MotorCommand, PidConfig};
 use horus_library::messages::geometry::Transform;
@@ -284,10 +283,7 @@ fn test_high_frequency_sensor_loop() -> TestResult {
     }
 
     if imu_out_of_order > 0 {
-        return TestResult::failure(format!(
-            "IMU messages out of order: {}",
-            imu_out_of_order
-        ));
+        return TestResult::failure(format!("IMU messages out of order: {}", imu_out_of_order));
     }
 
     if encoder_out_of_order > 0 {
@@ -356,8 +352,7 @@ fn test_control_loop() -> TestResult {
         let mut max_latency = Duration::ZERO;
         let mut total_latency = Duration::ZERO;
 
-        while controller_running.load(Ordering::Relaxed)
-            && start.elapsed() < Duration::from_secs(1)
+        while controller_running.load(Ordering::Relaxed) && start.elapsed() < Duration::from_secs(1)
         {
             let loop_start = Instant::now();
 
@@ -431,10 +426,7 @@ fn test_control_loop() -> TestResult {
     // - Max latency should be under 10ms for real-time control
     // - Should receive most commands
     if loop_count < 40 {
-        return TestResult::failure(format!(
-            "Insufficient control loops: {} < 40",
-            loop_count
-        ));
+        return TestResult::failure(format!("Insufficient control loops: {} < 40", loop_count));
     }
 
     if max_latency > Duration::from_millis(10) {
@@ -661,16 +653,12 @@ fn test_realistic_robot_pipeline() -> TestResult {
 
     let encoder_producer = match Link::<MotorCommand>::producer(&encoder_topic) {
         Ok(p) => p,
-        Err(e) => {
-            return TestResult::failure(format!("Failed to create encoder producer: {}", e))
-        }
+        Err(e) => return TestResult::failure(format!("Failed to create encoder producer: {}", e)),
     };
 
     let encoder_consumer = match Link::<MotorCommand>::consumer(&encoder_topic) {
         Ok(c) => c,
-        Err(e) => {
-            return TestResult::failure(format!("Failed to create encoder consumer: {}", e))
-        }
+        Err(e) => return TestResult::failure(format!("Failed to create encoder consumer: {}", e)),
     };
 
     // Control Link
@@ -697,8 +685,7 @@ fn test_realistic_robot_pipeline() -> TestResult {
         let mut commands_sent = 0;
 
         let start = Instant::now();
-        while controller_running.load(Ordering::Relaxed)
-            && start.elapsed() < Duration::from_secs(1)
+        while controller_running.load(Ordering::Relaxed) && start.elapsed() < Duration::from_secs(1)
         {
             let mut got_imu = false;
             let mut got_encoder = false;
@@ -777,8 +764,7 @@ fn test_realistic_robot_pipeline() -> TestResult {
     let encoder_thread = thread::spawn(move || {
         let mut count = 0;
         let start = Instant::now();
-        while encoder_running.load(Ordering::Relaxed) && start.elapsed() < Duration::from_secs(1)
-        {
+        while encoder_running.load(Ordering::Relaxed) && start.elapsed() < Duration::from_secs(1) {
             let encoder = MotorCommand::velocity(0, count as f64);
 
             if encoder_producer.send(encoder, None).is_ok() {

@@ -7,7 +7,6 @@
 ///
 /// Run with: cargo run --release --bin test_critical_production <test_name>
 /// Or run all: cargo run --release --bin test_critical_production all
-
 use horus::prelude::Link;
 use serde::{Deserialize, Serialize};
 use serde_arrays;
@@ -113,7 +112,10 @@ impl CameraMetadata {
 
 impl horus::core::LogSummary for CameraMetadata {
     fn log_summary(&self) -> String {
-        format!("CameraMeta(frame:{}, {}x{})", self.frame_id, self.width, self.height)
+        format!(
+            "CameraMeta(frame:{}, {}x{})",
+            self.frame_id, self.width, self.height
+        )
     }
 }
 
@@ -213,7 +215,10 @@ impl ImagePatch {
 
 impl horus::core::LogSummary for ImagePatch {
     fn log_summary(&self) -> String {
-        format!("ImagePatch(seq:{}, {}x{})", self.sequence, self.width, self.height)
+        format!(
+            "ImagePatch(seq:{}, {}x{})",
+            self.sequence, self.width, self.height
+        )
     }
 }
 
@@ -264,7 +269,10 @@ impl PointCloud {
 
 impl horus::core::LogSummary for PointCloud {
     fn log_summary(&self) -> String {
-        format!("PointCloud(seq:{}, points:{})", self.sequence, self.point_count)
+        format!(
+            "PointCloud(seq:{}, points:{})",
+            self.sequence, self.point_count
+        )
     }
 }
 
@@ -506,15 +514,27 @@ fn test_large_messages_64b() -> TestResult {
 
     println!("  Total time: {:?}", duration);
     println!("  Message size: 64 bytes");
-    println!("  Throughput: {:.2} msg/s", 10000.0 / duration.as_secs_f64());
-    println!("  Bandwidth: {:.2} KB/s", (10000.0 * 64.0) / 1024.0 / duration.as_secs_f64());
+    println!(
+        "  Throughput: {:.2} msg/s",
+        10000.0 / duration.as_secs_f64()
+    );
+    println!(
+        "  Bandwidth: {:.2} KB/s",
+        (10000.0 * 64.0) / 1024.0 / duration.as_secs_f64()
+    );
 
     if telem.corruption_count > 0 {
-        return TestResult::failure(format!("Data corruption detected: {}", telem.corruption_count));
+        return TestResult::failure(format!(
+            "Data corruption detected: {}",
+            telem.corruption_count
+        ));
     }
 
     if telem.message_count < 9000 {
-        return TestResult::failure(format!("Insufficient messages received: {}", telem.message_count));
+        return TestResult::failure(format!(
+            "Insufficient messages received: {}",
+            telem.message_count
+        ));
     }
 
     TestResult::success(format!(
@@ -523,7 +543,8 @@ fn test_large_messages_64b() -> TestResult {
          - Received {} messages\n\
          - Avg latency: {:.2} µs\n\
          - No corruption detected",
-        telem.message_count, telem.avg_latency_us()
+        telem.message_count,
+        telem.avg_latency_us()
     ))
 }
 
@@ -588,14 +609,23 @@ fn test_large_messages_256b() -> TestResult {
     println!("  Total time: {:?}", duration);
     println!("  Message size: 256 bytes");
     println!("  Throughput: {:.2} msg/s", 5000.0 / duration.as_secs_f64());
-    println!("  Bandwidth: {:.2} KB/s", (5000.0 * 256.0) / 1024.0 / duration.as_secs_f64());
+    println!(
+        "  Bandwidth: {:.2} KB/s",
+        (5000.0 * 256.0) / 1024.0 / duration.as_secs_f64()
+    );
 
     if telem.corruption_count > 0 {
-        return TestResult::failure(format!("Data corruption detected: {}", telem.corruption_count));
+        return TestResult::failure(format!(
+            "Data corruption detected: {}",
+            telem.corruption_count
+        ));
     }
 
     if telem.message_count < 4500 {
-        return TestResult::failure(format!("Insufficient messages received: {}", telem.message_count));
+        return TestResult::failure(format!(
+            "Insufficient messages received: {}",
+            telem.message_count
+        ));
     }
 
     TestResult::success(format!(
@@ -604,7 +634,8 @@ fn test_large_messages_256b() -> TestResult {
          - Received {} messages\n\
          - Avg latency: {:.2} µs\n\
          - No corruption detected",
-        telem.message_count, telem.avg_latency_us()
+        telem.message_count,
+        telem.avg_latency_us()
     ))
 }
 
@@ -669,14 +700,23 @@ fn test_large_messages_1kb() -> TestResult {
     println!("  Total time: {:?}", duration);
     println!("  Message size: ~1KB");
     println!("  Throughput: {:.2} msg/s", 3000.0 / duration.as_secs_f64());
-    println!("  Bandwidth: {:.2} MB/s", (3000.0 * 1024.0) / (1024.0 * 1024.0) / duration.as_secs_f64());
+    println!(
+        "  Bandwidth: {:.2} MB/s",
+        (3000.0 * 1024.0) / (1024.0 * 1024.0) / duration.as_secs_f64()
+    );
 
     if telem.corruption_count > 0 {
-        return TestResult::failure(format!("Data corruption detected: {}", telem.corruption_count));
+        return TestResult::failure(format!(
+            "Data corruption detected: {}",
+            telem.corruption_count
+        ));
     }
 
     if telem.message_count < 2700 {
-        return TestResult::failure(format!("Insufficient messages received: {}", telem.message_count));
+        return TestResult::failure(format!(
+            "Insufficient messages received: {}",
+            telem.message_count
+        ));
     }
 
     TestResult::success(format!(
@@ -685,7 +725,8 @@ fn test_large_messages_1kb() -> TestResult {
          - Received {} messages\n\
          - Avg latency: {:.2} µs\n\
          - No corruption detected",
-        telem.message_count, telem.avg_latency_us()
+        telem.message_count,
+        telem.avg_latency_us()
     ))
 }
 
@@ -750,14 +791,23 @@ fn test_large_messages_4kb() -> TestResult {
     println!("  Total time: {:?}", duration);
     println!("  Message size: ~4KB");
     println!("  Throughput: {:.2} msg/s", 1000.0 / duration.as_secs_f64());
-    println!("  Bandwidth: {:.2} MB/s", (1000.0 * 4096.0) / (1024.0 * 1024.0) / duration.as_secs_f64());
+    println!(
+        "  Bandwidth: {:.2} MB/s",
+        (1000.0 * 4096.0) / (1024.0 * 1024.0) / duration.as_secs_f64()
+    );
 
     if telem.corruption_count > 0 {
-        return TestResult::failure(format!("Data corruption detected: {}", telem.corruption_count));
+        return TestResult::failure(format!(
+            "Data corruption detected: {}",
+            telem.corruption_count
+        ));
     }
 
     if telem.message_count < 900 {
-        return TestResult::failure(format!("Insufficient messages received: {}", telem.message_count));
+        return TestResult::failure(format!(
+            "Insufficient messages received: {}",
+            telem.message_count
+        ));
     }
 
     TestResult::success(format!(
@@ -766,7 +816,8 @@ fn test_large_messages_4kb() -> TestResult {
          - Received {} messages\n\
          - Avg latency: {:.2} µs\n\
          - No corruption detected",
-        telem.message_count, telem.avg_latency_us()
+        telem.message_count,
+        telem.avg_latency_us()
     ))
 }
 
@@ -831,14 +882,23 @@ fn test_large_messages_16kb() -> TestResult {
     println!("  Total time: {:?}", duration);
     println!("  Message size: ~16KB");
     println!("  Throughput: {:.2} msg/s", 500.0 / duration.as_secs_f64());
-    println!("  Bandwidth: {:.2} MB/s", (500.0 * 16384.0) / (1024.0 * 1024.0) / duration.as_secs_f64());
+    println!(
+        "  Bandwidth: {:.2} MB/s",
+        (500.0 * 16384.0) / (1024.0 * 1024.0) / duration.as_secs_f64()
+    );
 
     if telem.corruption_count > 0 {
-        return TestResult::failure(format!("Data corruption detected: {}", telem.corruption_count));
+        return TestResult::failure(format!(
+            "Data corruption detected: {}",
+            telem.corruption_count
+        ));
     }
 
     if telem.message_count < 450 {
-        return TestResult::failure(format!("Insufficient messages received: {}", telem.message_count));
+        return TestResult::failure(format!(
+            "Insufficient messages received: {}",
+            telem.message_count
+        ));
     }
 
     TestResult::success(format!(
@@ -848,7 +908,9 @@ fn test_large_messages_16kb() -> TestResult {
          - Avg latency: {:.2} µs\n\
          - Max latency: {:.2} µs\n\
          - No corruption detected",
-        telem.message_count, telem.avg_latency_us(), telem.max_latency_us()
+        telem.message_count,
+        telem.avg_latency_us(),
+        telem.max_latency_us()
     ))
 }
 
@@ -967,19 +1029,37 @@ fn test_mixed_size_workload() -> TestResult {
     let medium_rcvd = medium_count.load(Ordering::Relaxed);
     let large_rcvd = large_count.load(Ordering::Relaxed);
 
-    println!("  Small (64B): sent={}, received={}", small_sent, small_rcvd);
-    println!("  Medium (256B): sent={}, received={}", medium_sent, medium_rcvd);
-    println!("  Large (4KB): sent={}, received={}", large_sent, large_rcvd);
+    println!(
+        "  Small (64B): sent={}, received={}",
+        small_sent, small_rcvd
+    );
+    println!(
+        "  Medium (256B): sent={}, received={}",
+        medium_sent, medium_rcvd
+    );
+    println!(
+        "  Large (4KB): sent={}, received={}",
+        large_sent, large_rcvd
+    );
 
     // Validation
     if small_rcvd < (small_sent as f64 * 0.8) as u64 {
-        return TestResult::failure(format!("Too few small messages received: {}/{}", small_rcvd, small_sent));
+        return TestResult::failure(format!(
+            "Too few small messages received: {}/{}",
+            small_rcvd, small_sent
+        ));
     }
     if medium_rcvd < (medium_sent as f64 * 0.8) as u64 {
-        return TestResult::failure(format!("Too few medium messages received: {}/{}", medium_rcvd, medium_sent));
+        return TestResult::failure(format!(
+            "Too few medium messages received: {}/{}",
+            medium_rcvd, medium_sent
+        ));
     }
     if large_rcvd < (large_sent as f64 * 0.8) as u64 {
-        return TestResult::failure(format!("Too few large messages received: {}/{}", large_rcvd, large_sent));
+        return TestResult::failure(format!(
+            "Too few large messages received: {}/{}",
+            large_rcvd, large_sent
+        ));
     }
 
     TestResult::success(format!(
@@ -1090,7 +1170,10 @@ fn test_sustained_1khz() -> TestResult {
     }
 
     if telem.corruption_count > 0 {
-        return TestResult::failure(format!("Data corruption at high frequency: {}", telem.corruption_count));
+        return TestResult::failure(format!(
+            "Data corruption at high frequency: {}",
+            telem.corruption_count
+        ));
     }
 
     if rcvd < (sent as f64 * 0.7) as u64 {
@@ -1105,9 +1188,13 @@ fn test_sustained_1khz() -> TestResult {
          - Max latency: {:.2} µs\n\
          - Missed deadlines: {} ({:.1}%)\n\
          - No corruption detected",
-        sent, achieved_hz, rcvd,
-        telem.avg_latency_us(), telem.max_latency_us(),
-        missed_deadlines, (missed_deadlines as f64 / sent as f64) * 100.0
+        sent,
+        achieved_hz,
+        rcvd,
+        telem.avg_latency_us(),
+        telem.max_latency_us(),
+        missed_deadlines,
+        (missed_deadlines as f64 / sent as f64) * 100.0
     ))
 }
 
@@ -1164,9 +1251,16 @@ fn test_burst_throughput() -> TestResult {
     println!("  Messages sent: {}", sent);
     println!("  Messages received: {}", rcvd);
     println!("  Duration: {:?}", duration);
-    println!("  Throughput: {:.2} msg/s ({:.0} kHz)", throughput, throughput / 1000.0);
+    println!(
+        "  Throughput: {:.2} msg/s ({:.0} kHz)",
+        throughput,
+        throughput / 1000.0
+    );
     println!("  Bandwidth: {:.2} MB/s", bandwidth_mbps);
-    println!("  Avg send time: {:.2} ns", duration.as_nanos() as f64 / sent as f64);
+    println!(
+        "  Avg send time: {:.2} ns",
+        duration.as_nanos() as f64 / sent as f64
+    );
 
     // Validation
     if throughput < 100000.0 {
@@ -1174,7 +1268,10 @@ fn test_burst_throughput() -> TestResult {
     }
 
     if rcvd < (sent / 100) {
-        return TestResult::failure(format!("Consumer missed too many messages: {}/{}", rcvd, sent));
+        return TestResult::failure(format!(
+            "Consumer missed too many messages: {}/{}",
+            rcvd, sent
+        ));
     }
 
     TestResult::success(format!(
@@ -1184,7 +1281,11 @@ fn test_burst_throughput() -> TestResult {
          - Bandwidth: {:.2} MB/s\n\
          - Consumer received {} messages\n\
          - System handles extreme burst rates",
-        sent, duration, throughput / 1000.0, bandwidth_mbps, rcvd
+        sent,
+        duration,
+        throughput / 1000.0,
+        bandwidth_mbps,
+        rcvd
     ))
 }
 
@@ -1209,12 +1310,16 @@ fn test_multi_producer_stress() -> TestResult {
 
         let producer = match Link::<SmallMessage>::producer(&topic) {
             Ok(p) => p,
-            Err(e) => return TestResult::failure(format!("Failed to create producer {}: {}", i, e)),
+            Err(e) => {
+                return TestResult::failure(format!("Failed to create producer {}: {}", i, e))
+            }
         };
 
         let consumer = match Link::<SmallMessage>::consumer(&topic) {
             Ok(c) => c,
-            Err(e) => return TestResult::failure(format!("Failed to create consumer {}: {}", i, e)),
+            Err(e) => {
+                return TestResult::failure(format!("Failed to create consumer {}: {}", i, e))
+            }
         };
 
         producers.push(producer);
@@ -1253,7 +1358,8 @@ fn test_multi_producer_stress() -> TestResult {
             let start = Instant::now();
             let mut sent = 0u64;
 
-            while start.elapsed() < Duration::from_secs(2) && running_clone.load(Ordering::Relaxed) {
+            while start.elapsed() < Duration::from_secs(2) && running_clone.load(Ordering::Relaxed)
+            {
                 let seq = (producer_id as u64) * 1000000 + sent;
                 let msg = SmallMessage::new(seq);
                 if producer.send(msg, None).is_ok() {
@@ -1287,7 +1393,10 @@ fn test_multi_producer_stress() -> TestResult {
 
     println!("  Producers: {}", num_producers);
     for i in 0..num_producers {
-        println!("    Producer {}: sent={}, received={}", i, sent_counts[i], rcvd_counts[i]);
+        println!(
+            "    Producer {}: sent={}, received={}",
+            i, sent_counts[i], rcvd_counts[i]
+        );
     }
     println!("  Total sent: {}", total_sent);
     println!("  Total received: {}", total_rcvd);
@@ -1299,7 +1408,10 @@ fn test_multi_producer_stress() -> TestResult {
     }
 
     if total_rcvd < (total_sent / 2) {
-        return TestResult::failure(format!("Too few messages received: {}/{}", total_rcvd, total_sent));
+        return TestResult::failure(format!(
+            "Too few messages received: {}/{}",
+            total_rcvd, total_sent
+        ));
     }
 
     TestResult::success(format!(
@@ -1340,7 +1452,10 @@ fn test_telemetry_overhead() -> TestResult {
     let baseline_duration = start.elapsed();
     let baseline_ns_per_msg = baseline_duration.as_nanos() / 10000;
 
-    println!("    Baseline: {:?} ({} ns/msg)", baseline_duration, baseline_ns_per_msg);
+    println!(
+        "    Baseline: {:?} ({} ns/msg)",
+        baseline_duration, baseline_ns_per_msg
+    );
 
     // Test 2: With telemetry tracking
     println!("  With telemetry tracking...");
@@ -1385,8 +1500,14 @@ fn test_telemetry_overhead() -> TestResult {
     let overhead_ns = tracked_ns_per_msg - baseline_ns_per_msg;
     let overhead_percent = (overhead_ns as f64 / baseline_ns_per_msg as f64) * 100.0;
 
-    println!("    With tracking: {:?} ({} ns/msg)", tracked_duration, tracked_ns_per_msg);
-    println!("    Overhead: {} ns/msg ({:.2}%)", overhead_ns, overhead_percent);
+    println!(
+        "    With tracking: {:?} ({} ns/msg)",
+        tracked_duration, tracked_ns_per_msg
+    );
+    println!(
+        "    Overhead: {} ns/msg ({:.2}%)",
+        overhead_ns, overhead_percent
+    );
 
     let telem = telemetry.lock().unwrap();
     telem.report("Telemetry Overhead");
@@ -1395,7 +1516,10 @@ fn test_telemetry_overhead() -> TestResult {
     // The raw Link operations are very fast (24ns), so any tracking adds relative overhead
     // What matters is absolute overhead stays reasonable (< 1us per message)
     if overhead_ns > 1000 {
-        return TestResult::failure(format!("Telemetry overhead too high: {} ns/msg", overhead_ns));
+        return TestResult::failure(format!(
+            "Telemetry overhead too high: {} ns/msg",
+            overhead_ns
+        ));
     }
 
     TestResult::success(format!(
@@ -1489,8 +1613,13 @@ fn test_multi_link_monitoring() -> TestResult {
 
     for (i, telemetry) in telemetries.iter().enumerate() {
         let telem = telemetry.lock().unwrap();
-        println!("    Link {}: {} msg, {:.2} µs avg, {} corrupted",
-                 i, telem.message_count, telem.avg_latency_us(), telem.corruption_count);
+        println!(
+            "    Link {}: {} msg, {:.2} µs avg, {} corrupted",
+            i,
+            telem.message_count,
+            telem.avg_latency_us(),
+            telem.corruption_count
+        );
         total_messages += telem.message_count;
         total_corrupted += telem.corruption_count;
     }
@@ -1591,7 +1720,10 @@ fn run_all_tests() -> TestResult {
     }
 
     println!("\n{}", "=".repeat(70));
-    println!("FINAL SUMMARY: {} suites passed, {} suites failed", passed, failed);
+    println!(
+        "FINAL SUMMARY: {} suites passed, {} suites failed",
+        passed, failed
+    );
     println!("{}", "=".repeat(70));
 
     if failed == 0 {
@@ -1607,7 +1739,8 @@ fn run_all_tests() -> TestResult {
         TestResult::failure(format!(
             "{} out of {} test suites failed.\n\
              System needs fixes before production deployment.",
-            failed, passed + failed
+            failed,
+            passed + failed
         ))
     }
 }
@@ -1636,7 +1769,10 @@ fn run_test_suite(suite_name: &str, tests: Vec<(&str, fn() -> TestResult)>) -> T
     }
 
     println!("\n{}", "-".repeat(70));
-    println!("{} Suite Summary: {} passed, {} failed", suite_name, passed, failed);
+    println!(
+        "{} Suite Summary: {} passed, {} failed",
+        suite_name, passed, failed
+    );
     println!("{}", "-".repeat(70));
 
     if failed == 0 {
@@ -1647,7 +1783,9 @@ fn run_test_suite(suite_name: &str, tests: Vec<(&str, fn() -> TestResult)>) -> T
     } else {
         TestResult::failure(format!(
             "{} suite: {} out of {} tests failed.",
-            suite_name, failed, passed + failed
+            suite_name,
+            failed,
+            passed + failed
         ))
     }
 }

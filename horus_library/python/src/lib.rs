@@ -1,7 +1,7 @@
+use horus_library::messages::{cmd_vel, geometry, sensor};
+use numpy::PyArray1;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyTuple};
-use numpy::PyArray1;
-use horus_library::messages::{geometry, cmd_vel, sensor};
 
 /// Python wrapper for Pose2D
 #[pyclass(module = "horus.library._library", name = "Pose2D")]
@@ -79,7 +79,10 @@ impl PyPose2D {
     }
 
     fn __repr__(&self) -> String {
-        format!("Pose2D(x={:.3}, y={:.3}, theta={:.3})", self.inner.x, self.inner.y, self.inner.theta)
+        format!(
+            "Pose2D(x={:.3}, y={:.3}, theta={:.3})",
+            self.inner.x, self.inner.y, self.inner.theta
+        )
     }
 
     fn __str__(&self) -> String {
@@ -158,8 +161,12 @@ impl PyTwist {
     fn __repr__(&self) -> String {
         format!(
             "Twist(linear=[{:.2}, {:.2}, {:.2}], angular=[{:.2}, {:.2}, {:.2}])",
-            self.inner.linear[0], self.inner.linear[1], self.inner.linear[2],
-            self.inner.angular[0], self.inner.angular[1], self.inner.angular[2]
+            self.inner.linear[0],
+            self.inner.linear[1],
+            self.inner.linear[2],
+            self.inner.angular[0],
+            self.inner.angular[1],
+            self.inner.angular[2]
         )
     }
 
@@ -244,8 +251,13 @@ impl PyTransform {
     fn __repr__(&self) -> String {
         format!(
             "Transform(translation=[{:.2}, {:.2}, {:.2}], rotation=[{:.2}, {:.2}, {:.2}, {:.2}])",
-            self.inner.translation[0], self.inner.translation[1], self.inner.translation[2],
-            self.inner.rotation[0], self.inner.rotation[1], self.inner.rotation[2], self.inner.rotation[3]
+            self.inner.translation[0],
+            self.inner.translation[1],
+            self.inner.translation[2],
+            self.inner.rotation[0],
+            self.inner.rotation[1],
+            self.inner.rotation[2],
+            self.inner.rotation[3]
         )
     }
 
@@ -318,7 +330,10 @@ impl PyPoint3 {
     }
 
     fn __repr__(&self) -> String {
-        format!("Point3(x={:.3}, y={:.3}, z={:.3})", self.inner.x, self.inner.y, self.inner.z)
+        format!(
+            "Point3(x={:.3}, y={:.3}, z={:.3})",
+            self.inner.x, self.inner.y, self.inner.z
+        )
     }
 
     fn __str__(&self) -> String {
@@ -404,7 +419,10 @@ impl PyVector3 {
     }
 
     fn __repr__(&self) -> String {
-        format!("Vector3(x={:.3}, y={:.3}, z={:.3})", self.inner.x, self.inner.y, self.inner.z)
+        format!(
+            "Vector3(x={:.3}, y={:.3}, z={:.3})",
+            self.inner.x, self.inner.y, self.inner.z
+        )
     }
 
     fn __str__(&self) -> String {
@@ -497,8 +515,10 @@ impl PyQuaternion {
     }
 
     fn __repr__(&self) -> String {
-        format!("Quaternion(x={:.3}, y={:.3}, z={:.3}, w={:.3})",
-                self.inner.x, self.inner.y, self.inner.z, self.inner.w)
+        format!(
+            "Quaternion(x={:.3}, y={:.3}, z={:.3}, w={:.3})",
+            self.inner.x, self.inner.y, self.inner.z, self.inner.w
+        )
     }
 
     fn __str__(&self) -> String {
@@ -562,7 +582,10 @@ impl PyCmdVel {
     }
 
     fn __repr__(&self) -> String {
-        format!("CmdVel(linear={:.2}, angular={:.2})", self.inner.linear, self.inner.angular)
+        format!(
+            "CmdVel(linear={:.2}, angular={:.2})",
+            self.inner.linear, self.inner.angular
+        )
     }
 
     fn __str__(&self) -> String {
@@ -614,7 +637,7 @@ impl PyLaserScan {
         }
 
         Err(pyo3::exceptions::PyTypeError::new_err(
-            "ranges must be a NumPy array or Python list of floats"
+            "ranges must be a NumPy array or Python list of floats",
         ))
     }
 

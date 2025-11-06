@@ -297,13 +297,28 @@ impl PyNodeInfo {
         let mut result = std::collections::HashMap::new();
 
         result.insert("total_ticks".to_string(), metrics.total_ticks as f64);
-        result.insert("successful_ticks".to_string(), metrics.successful_ticks as f64);
+        result.insert(
+            "successful_ticks".to_string(),
+            metrics.successful_ticks as f64,
+        );
         result.insert("failed_ticks".to_string(), metrics.failed_ticks as f64);
         result.insert("errors_count".to_string(), metrics.errors_count as f64);
-        result.insert("avg_tick_duration_ms".to_string(), metrics.avg_tick_duration_ms);
-        result.insert("min_tick_duration_ms".to_string(), metrics.min_tick_duration_ms);
-        result.insert("max_tick_duration_ms".to_string(), metrics.max_tick_duration_ms);
-        result.insert("last_tick_duration_ms".to_string(), metrics.last_tick_duration_ms);
+        result.insert(
+            "avg_tick_duration_ms".to_string(),
+            metrics.avg_tick_duration_ms,
+        );
+        result.insert(
+            "min_tick_duration_ms".to_string(),
+            metrics.min_tick_duration_ms,
+        );
+        result.insert(
+            "max_tick_duration_ms".to_string(),
+            metrics.max_tick_duration_ms,
+        );
+        result.insert(
+            "last_tick_duration_ms".to_string(),
+            metrics.last_tick_duration_ms,
+        );
 
         Ok(result)
     }
@@ -347,9 +362,9 @@ impl PyNodeInfo {
     /// Request the scheduler to stop
     fn request_stop(&self) -> PyResult<()> {
         if let Some(ref running_flag) = self.scheduler_running {
-            let mut running = running_flag
-                .lock()
-                .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock running flag: {}", e)))?;
+            let mut running = running_flag.lock().map_err(|e| {
+                PyRuntimeError::new_err(format!("Failed to lock running flag: {}", e))
+            })?;
             *running = false;
             Ok(())
         } else {

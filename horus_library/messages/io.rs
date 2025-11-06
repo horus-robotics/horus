@@ -600,13 +600,11 @@ impl SafetyRelayStatus {
     }
 }
 
-
 impl LogSummary for DigitalIO {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for AnalogIO {
     fn log_summary(&self) -> String {
@@ -614,13 +612,11 @@ impl LogSummary for AnalogIO {
     }
 }
 
-
 impl LogSummary for ModbusMessage {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for EtherNetIPMessage {
     fn log_summary(&self) -> String {
@@ -628,13 +624,11 @@ impl LogSummary for EtherNetIPMessage {
     }
 }
 
-
 impl LogSummary for NetworkStatus {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for SafetyRelayStatus {
     fn log_summary(&self) -> String {

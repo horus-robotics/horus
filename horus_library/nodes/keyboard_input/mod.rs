@@ -1,6 +1,6 @@
 use crate::KeyboardInput;
-use horus_core::{Hub, Node, NodeInfo};
 use horus_core::error::HorusResult;
+use horus_core::{Hub, Node, NodeInfo};
 
 // Type alias for cleaner signatures
 type Result<T> = HorusResult<T>;

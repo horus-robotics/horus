@@ -145,7 +145,6 @@ cd my_robot
 ### 2. Simple Node Example
 ```rust
 use horus::prelude::*;
-use horus::core::LogSummary;
 
 // Define a custom message type with one line!
 message!(SensorReading = (f64, u64));  // (value, timestamp)

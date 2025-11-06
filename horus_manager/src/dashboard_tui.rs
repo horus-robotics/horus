@@ -66,7 +66,7 @@ pub struct TuiDashboard {
 enum ParamEditMode {
     None,
     Add,
-    Edit(String), // Stores the original key being edited
+    Edit(String),   // Stores the original key being edited
     Delete(String), // Stores the key to delete
 }
 
@@ -78,7 +78,7 @@ enum ParamInputFocus {
 
 #[derive(Debug, Clone, PartialEq)]
 enum PackageViewMode {
-    List,           // Viewing all workspaces
+    List,             // Viewing all workspaces
     WorkspaceDetails, // Viewing packages inside a workspace
 }
 
@@ -241,7 +241,9 @@ impl TuiDashboard {
                                 self.param_edit_mode = ParamEditMode::None;
                                 self.param_input_key.clear();
                                 self.param_input_value.clear();
-                            } else if self.active_tab == Tab::Packages && self.package_view_mode == PackageViewMode::WorkspaceDetails {
+                            } else if self.active_tab == Tab::Packages
+                                && self.package_view_mode == PackageViewMode::WorkspaceDetails
+                            {
                                 // Navigate back to workspace list
                                 self.package_view_mode = PackageViewMode::List;
                                 self.selected_workspace = None;
@@ -318,7 +320,8 @@ impl TuiDashboard {
 
                         // Parameter operations (only in Parameters tab)
                         KeyCode::Char('r') | KeyCode::Char('R')
-                            if self.active_tab == Tab::Parameters && self.param_edit_mode == ParamEditMode::None =>
+                            if self.active_tab == Tab::Parameters
+                                && self.param_edit_mode == ParamEditMode::None =>
                         {
                             // Refresh parameters from disk
                             self.params = std::sync::Arc::new(
@@ -327,13 +330,15 @@ impl TuiDashboard {
                             );
                         }
                         KeyCode::Char('s') | KeyCode::Char('S')
-                            if self.active_tab == Tab::Parameters && self.param_edit_mode == ParamEditMode::None =>
+                            if self.active_tab == Tab::Parameters
+                                && self.param_edit_mode == ParamEditMode::None =>
                         {
                             // Save parameters to disk
                             let _ = self.params.save_to_disk();
                         }
                         KeyCode::Char('a') | KeyCode::Char('A')
-                            if self.active_tab == Tab::Parameters && self.param_edit_mode == ParamEditMode::None =>
+                            if self.active_tab == Tab::Parameters
+                                && self.param_edit_mode == ParamEditMode::None =>
                         {
                             // Start adding a new parameter
                             self.param_edit_mode = ParamEditMode::Add;
@@ -342,13 +347,15 @@ impl TuiDashboard {
                             self.param_input_focus = ParamInputFocus::Key;
                         }
                         KeyCode::Char('e') | KeyCode::Char('E')
-                            if self.active_tab == Tab::Parameters && self.param_edit_mode == ParamEditMode::None =>
+                            if self.active_tab == Tab::Parameters
+                                && self.param_edit_mode == ParamEditMode::None =>
                         {
                             // Start editing selected parameter
                             self.start_edit_parameter();
                         }
                         KeyCode::Char('d') | KeyCode::Char('D')
-                            if self.active_tab == Tab::Parameters && self.param_edit_mode == ParamEditMode::None =>
+                            if self.active_tab == Tab::Parameters
+                                && self.param_edit_mode == ParamEditMode::None =>
                         {
                             // Delete selected parameter (with confirmation)
                             self.start_delete_parameter();
@@ -378,8 +385,12 @@ impl TuiDashboard {
                             match self.param_edit_mode {
                                 ParamEditMode::Add | ParamEditMode::Edit(_) => {
                                     match self.param_input_focus {
-                                        ParamInputFocus::Key => { self.param_input_key.pop(); },
-                                        ParamInputFocus::Value => { self.param_input_value.pop(); },
+                                        ParamInputFocus::Key => {
+                                            self.param_input_key.pop();
+                                        }
+                                        ParamInputFocus::Value => {
+                                            self.param_input_value.pop();
+                                        }
                                     }
                                 }
                                 _ => {}
@@ -1344,13 +1355,18 @@ impl TuiDashboard {
             "Press any key to close help"
         } else if self.show_log_panel {
             "[ESC] Close | [↑↓] Scroll Logs | [Shift+↑↓] Switch Node/Topic | [Q] Quit"
-        } else if self.active_tab == Tab::Parameters && self.param_edit_mode == ParamEditMode::None {
+        } else if self.active_tab == Tab::Parameters && self.param_edit_mode == ParamEditMode::None
+        {
             "[A] Add | [E] Edit | [D] Delete | [R] Refresh | [S] Save | [TAB] Switch Tab | [?] Help | [Q] Quit"
         } else if self.active_tab == Tab::Parameters {
             "[TAB] Next Field | [ENTER] Confirm | [ESC] Cancel | [BACKSPACE] Delete Char"
-        } else if self.active_tab == Tab::Packages && self.package_view_mode == PackageViewMode::List {
+        } else if self.active_tab == Tab::Packages
+            && self.package_view_mode == PackageViewMode::List
+        {
             "[ENTER] View Packages | [↑↓] Navigate | [TAB] Switch Tab | [?] Help | [Q] Quit"
-        } else if self.active_tab == Tab::Packages && self.package_view_mode == PackageViewMode::WorkspaceDetails {
+        } else if self.active_tab == Tab::Packages
+            && self.package_view_mode == PackageViewMode::WorkspaceDetails
+        {
             "[ESC] Back to Workspaces | [↑↓] Navigate | [TAB] Switch Tab | [?] Help | [Q] Quit"
         } else if self.active_tab == Tab::Nodes || self.active_tab == Tab::Topics {
             "[ENTER] View Logs | [↑↓] Navigate | [TAB] Switch Tab | [P] Pause | [?] Help | [Q] Quit"
@@ -1829,10 +1845,7 @@ fn get_local_workspaces() -> Vec<WorkspaceData> {
     let mut workspaces = Vec::new();
 
     // Search in current dir and home dir for directories with .horus/ subdirectory
-    let search_paths = vec![
-        PathBuf::from("."),
-        dirs::home_dir().unwrap_or_default(),
-    ];
+    let search_paths = vec![PathBuf::from("."), dirs::home_dir().unwrap_or_default()];
 
     for base_path in search_paths {
         if !base_path.exists() {
@@ -1859,7 +1872,8 @@ fn get_local_workspaces() -> Vec<WorkspaceData> {
                         if let Ok(pkg_entries) = fs::read_dir(&packages_dir) {
                             for pkg_entry in pkg_entries.flatten() {
                                 if pkg_entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                                    let pkg_name = pkg_entry.file_name().to_string_lossy().to_string();
+                                    let pkg_name =
+                                        pkg_entry.file_name().to_string_lossy().to_string();
 
                                     // Try to get version from metadata.json
                                     let metadata_path = pkg_entry.path().join("metadata.json");
@@ -1880,28 +1894,55 @@ fn get_local_workspaces() -> Vec<WorkspaceData> {
                                     };
 
                                     // Scan for installed packages inside this package's .horus/packages/
-                                    let nested_packages_dir = pkg_entry.path().join(".horus/packages");
+                                    let nested_packages_dir =
+                                        pkg_entry.path().join(".horus/packages");
                                     let mut installed_packages = Vec::new();
 
                                     if nested_packages_dir.exists() {
-                                        if let Ok(nested_entries) = fs::read_dir(&nested_packages_dir) {
+                                        if let Ok(nested_entries) =
+                                            fs::read_dir(&nested_packages_dir)
+                                        {
                                             for nested_entry in nested_entries.flatten() {
-                                                if nested_entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                                                    let nested_name = nested_entry.file_name().to_string_lossy().to_string();
+                                                if nested_entry
+                                                    .file_type()
+                                                    .map(|t| t.is_dir())
+                                                    .unwrap_or(false)
+                                                {
+                                                    let nested_name = nested_entry
+                                                        .file_name()
+                                                        .to_string_lossy()
+                                                        .to_string();
 
                                                     // Try to get version
-                                                    let nested_metadata_path = nested_entry.path().join("metadata.json");
-                                                    let nested_version = if nested_metadata_path.exists() {
+                                                    let nested_metadata_path =
+                                                        nested_entry.path().join("metadata.json");
+                                                    let nested_version = if nested_metadata_path
+                                                        .exists()
+                                                    {
                                                         fs::read_to_string(&nested_metadata_path)
                                                             .ok()
-                                                            .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
-                                                            .and_then(|j| j.get("version").and_then(|v| v.as_str()).map(|s| s.to_string()))
-                                                            .unwrap_or_else(|| "unknown".to_string())
+                                                            .and_then(|s| {
+                                                                serde_json::from_str::<
+                                                                    serde_json::Value,
+                                                                >(
+                                                                    &s
+                                                                )
+                                                                .ok()
+                                                            })
+                                                            .and_then(|j| {
+                                                                j.get("version")
+                                                                    .and_then(|v| v.as_str())
+                                                                    .map(|s| s.to_string())
+                                                            })
+                                                            .unwrap_or_else(|| {
+                                                                "unknown".to_string()
+                                                            })
                                                     } else {
                                                         "unknown".to_string()
                                                     };
 
-                                                    installed_packages.push((nested_name, nested_version));
+                                                    installed_packages
+                                                        .push((nested_name, nested_version));
                                                 }
                                             }
                                         }
@@ -1957,11 +1998,7 @@ fn get_installed_packages() -> (Vec<(String, String, String)>, Vec<(String, Stri
                                 })
                                 .unwrap_or_else(|_| "Unknown".to_string());
 
-                            local_packages.push((
-                                name.to_string(),
-                                "latest".to_string(),
-                                size,
-                            ));
+                            local_packages.push((name.to_string(), "latest".to_string(), size));
                         }
                     }
                 }
@@ -1990,11 +2027,7 @@ fn get_installed_packages() -> (Vec<(String, String, String)>, Vec<(String, Stri
                                 })
                                 .unwrap_or_else(|_| "Unknown".to_string());
 
-                            global_packages.push((
-                                name.to_string(),
-                                "latest".to_string(),
-                                size,
-                            ));
+                            global_packages.push((name.to_string(), "latest".to_string(), size));
                         }
                     }
                 }

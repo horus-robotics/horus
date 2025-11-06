@@ -1,13 +1,13 @@
+use crate::node::PyNodeInfo;
+use horus::{NodeHeartbeat, NodeInfo as CoreNodeInfo};
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
+use std::fs;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
-use std::path::PathBuf;
-use std::fs;
-use horus::{NodeInfo as CoreNodeInfo, NodeHeartbeat};
-use crate::node::PyNodeInfo;
 
 /// Registered node with priority, logging, and per-node rate control
 struct RegisteredNode {
@@ -17,8 +17,8 @@ struct RegisteredNode {
     logging_enabled: bool,
     context: Arc<Mutex<CoreNodeInfo>>,
     cached_info: Option<Py<PyNodeInfo>>, // Cache PyNodeInfo to avoid creating new ones every tick
-    rate_hz: f64,  // Phase 1: Per-node rate control
-    last_tick: Instant, // Phase 1: Track last execution time
+    rate_hz: f64,                        // Phase 1: Per-node rate control
+    last_tick: Instant,                  // Phase 1: Track last execution time
 }
 
 /// Python wrapper for HORUS Scheduler with per-node rate control
@@ -49,7 +49,14 @@ impl PyScheduler {
 
     /// Add a node with priority, logging, and optional rate control
     #[pyo3(signature = (node, priority, logging_enabled, rate_hz=None))]
-    fn add(&mut self, py: Python, node: PyObject, priority: u32, logging_enabled: bool, rate_hz: Option<f64>) -> PyResult<()> {
+    fn add(
+        &mut self,
+        py: Python,
+        node: PyObject,
+        priority: u32,
+        logging_enabled: bool,
+        rate_hz: Option<f64>,
+    ) -> PyResult<()> {
         // Extract node name
         let name: String = node.getattr(py, "name")?.extract(py)?;
 
@@ -71,8 +78,8 @@ impl PyScheduler {
             priority,
             logging_enabled,
             context,
-            cached_info: None, // Will be created on first use
-            rate_hz: node_rate, // Phase 1: Per-node rate
+            cached_info: None,         // Will be created on first use
+            rate_hz: node_rate,        // Phase 1: Per-node rate
             last_tick: Instant::now(), // Phase 1: Initialize timestamp
         });
 
@@ -83,7 +90,6 @@ impl PyScheduler {
 
         Ok(())
     }
-
 
     /// Phase 1: Set per-node rate control
     fn set_node_rate(&mut self, node_name: String, rate_hz: f64) -> PyResult<()> {
@@ -192,13 +198,18 @@ impl PyScheduler {
                 .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
 
             for registered in nodes.iter() {
-                let py_info = Py::new(py, PyNodeInfo {
-                    inner: registered.context.clone(),
-                    scheduler_running: Some(self.running.clone()),
-                })?;
+                let py_info = Py::new(
+                    py,
+                    PyNodeInfo {
+                        inner: registered.context.clone(),
+                        scheduler_running: Some(self.running.clone()),
+                    },
+                )?;
 
                 // Try calling with NodeInfo parameter first, fallback to no-arg version
-                let result = registered.node.call_method1(py, "init", (py_info,))
+                let result = registered
+                    .node
+                    .call_method1(py, "init", (py_info,))
                     .or_else(|_| registered.node.call_method0(py, "init"));
 
                 if let Err(e) = result {
@@ -254,16 +265,21 @@ impl PyScheduler {
                     let py_info = if let Some(ref cached) = registered.cached_info {
                         cached.clone_ref(py)
                     } else {
-                        let new_info = Py::new(py, PyNodeInfo {
-                            inner: registered.context.clone(),
-                            scheduler_running: Some(self.running.clone()),
-                        })?;
+                        let new_info = Py::new(
+                            py,
+                            PyNodeInfo {
+                                inner: registered.context.clone(),
+                                scheduler_running: Some(self.running.clone()),
+                            },
+                        )?;
                         registered.cached_info = Some(new_info.clone_ref(py));
                         new_info
                     };
 
                     // Try calling with NodeInfo parameter first, fallback to no-arg version
-                    let result = registered.node.call_method1(py, "tick", (py_info,))
+                    let result = registered
+                        .node
+                        .call_method1(py, "tick", (py_info,))
                         .or_else(|_| registered.node.call_method0(py, "tick"));
 
                     if let Err(e) = result {
@@ -306,13 +322,18 @@ impl PyScheduler {
                 .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
 
             for registered in nodes.iter() {
-                let py_info = Py::new(py, PyNodeInfo {
-                    inner: registered.context.clone(),
-                    scheduler_running: Some(self.running.clone()),
-                })?;
+                let py_info = Py::new(
+                    py,
+                    PyNodeInfo {
+                        inner: registered.context.clone(),
+                        scheduler_running: Some(self.running.clone()),
+                    },
+                )?;
 
                 // Try calling with NodeInfo parameter first, fallback to no-arg version
-                let result = registered.node.call_method1(py, "shutdown", (py_info,))
+                let result = registered
+                    .node
+                    .call_method1(py, "shutdown", (py_info,))
                     .or_else(|_| registered.node.call_method0(py, "shutdown"));
 
                 if let Err(e) = result {
@@ -352,13 +373,18 @@ impl PyScheduler {
                 .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
 
             for registered in nodes.iter() {
-                let py_info = Py::new(py, PyNodeInfo {
-                    inner: registered.context.clone(),
-                    scheduler_running: Some(self.running.clone()),
-                })?;
+                let py_info = Py::new(
+                    py,
+                    PyNodeInfo {
+                        inner: registered.context.clone(),
+                        scheduler_running: Some(self.running.clone()),
+                    },
+                )?;
 
                 // Try calling with NodeInfo parameter first, fallback to no-arg version
-                let result = registered.node.call_method1(py, "init", (py_info,))
+                let result = registered
+                    .node
+                    .call_method1(py, "init", (py_info,))
                     .or_else(|_| registered.node.call_method0(py, "init"));
 
                 if let Err(e) = result {
@@ -414,16 +440,21 @@ impl PyScheduler {
                     let py_info = if let Some(ref cached) = registered.cached_info {
                         cached.clone_ref(py)
                     } else {
-                        let new_info = Py::new(py, PyNodeInfo {
-                            inner: registered.context.clone(),
-                            scheduler_running: Some(self.running.clone()),
-                        })?;
+                        let new_info = Py::new(
+                            py,
+                            PyNodeInfo {
+                                inner: registered.context.clone(),
+                                scheduler_running: Some(self.running.clone()),
+                            },
+                        )?;
                         registered.cached_info = Some(new_info.clone_ref(py));
                         new_info
                     };
 
                     // Try calling with NodeInfo parameter first, fallback to no-arg version
-                    let result = registered.node.call_method1(py, "tick", (py_info,))
+                    let result = registered
+                        .node
+                        .call_method1(py, "tick", (py_info,))
                         .or_else(|_| registered.node.call_method0(py, "tick"));
 
                     if let Err(e) = result {
@@ -460,13 +491,18 @@ impl PyScheduler {
                 .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
 
             for registered in nodes.iter() {
-                let py_info = Py::new(py, PyNodeInfo {
-                    inner: registered.context.clone(),
-                    scheduler_running: Some(self.running.clone()),
-                })?;
+                let py_info = Py::new(
+                    py,
+                    PyNodeInfo {
+                        inner: registered.context.clone(),
+                        scheduler_running: Some(self.running.clone()),
+                    },
+                )?;
 
                 // Try calling with NodeInfo parameter first, fallback to no-arg version
-                let result = registered.node.call_method1(py, "shutdown", (py_info,))
+                let result = registered
+                    .node
+                    .call_method1(py, "shutdown", (py_info,))
                     .or_else(|_| registered.node.call_method0(py, "shutdown"));
 
                 if let Err(e) = result {
@@ -518,12 +554,17 @@ impl PyScheduler {
 
             for registered in nodes.iter() {
                 if node_names.contains(&registered.name) {
-                    let py_info = Py::new(py, PyNodeInfo {
-                        inner: registered.context.clone(),
-                        scheduler_running: Some(self.running.clone()),
-                    })?;
+                    let py_info = Py::new(
+                        py,
+                        PyNodeInfo {
+                            inner: registered.context.clone(),
+                            scheduler_running: Some(self.running.clone()),
+                        },
+                    )?;
 
-                    let result = registered.node.call_method1(py, "init", (py_info,))
+                    let result = registered
+                        .node
+                        .call_method1(py, "init", (py_info,))
                         .or_else(|_| registered.node.call_method0(py, "init"));
 
                     if let Err(e) = result {
@@ -582,15 +623,20 @@ impl PyScheduler {
                     let py_info = if let Some(ref cached) = registered.cached_info {
                         cached.clone_ref(py)
                     } else {
-                        let new_info = Py::new(py, PyNodeInfo {
-                            inner: registered.context.clone(),
-                            scheduler_running: Some(self.running.clone()),
-                        })?;
+                        let new_info = Py::new(
+                            py,
+                            PyNodeInfo {
+                                inner: registered.context.clone(),
+                                scheduler_running: Some(self.running.clone()),
+                            },
+                        )?;
                         registered.cached_info = Some(new_info.clone_ref(py));
                         new_info
                     };
 
-                    let result = registered.node.call_method1(py, "tick", (py_info,))
+                    let result = registered
+                        .node
+                        .call_method1(py, "tick", (py_info,))
                         .or_else(|_| registered.node.call_method0(py, "tick"));
 
                     if let Err(e) = result {
@@ -625,12 +671,17 @@ impl PyScheduler {
 
             for registered in nodes.iter() {
                 if node_names.contains(&registered.name) {
-                    let py_info = Py::new(py, PyNodeInfo {
-                        inner: registered.context.clone(),
-                        scheduler_running: Some(self.running.clone()),
-                    })?;
+                    let py_info = Py::new(
+                        py,
+                        PyNodeInfo {
+                            inner: registered.context.clone(),
+                            scheduler_running: Some(self.running.clone()),
+                        },
+                    )?;
 
-                    let result = registered.node.call_method1(py, "shutdown", (py_info,))
+                    let result = registered
+                        .node
+                        .call_method1(py, "shutdown", (py_info,))
                         .or_else(|_| registered.node.call_method0(py, "shutdown"));
 
                     if let Err(e) = result {
@@ -644,7 +695,12 @@ impl PyScheduler {
     }
 
     /// Run specific nodes for a specified duration (in seconds)
-    fn tick_for(&mut self, py: Python, node_names: Vec<String>, duration_seconds: f64) -> PyResult<()> {
+    fn tick_for(
+        &mut self,
+        py: Python,
+        node_names: Vec<String>,
+        duration_seconds: f64,
+    ) -> PyResult<()> {
         if duration_seconds <= 0.0 {
             return Err(PyRuntimeError::new_err("Duration must be positive"));
         }
@@ -670,12 +726,17 @@ impl PyScheduler {
 
             for registered in nodes.iter() {
                 if node_names.contains(&registered.name) {
-                    let py_info = Py::new(py, PyNodeInfo {
-                        inner: registered.context.clone(),
-                        scheduler_running: Some(self.running.clone()),
-                    })?;
+                    let py_info = Py::new(
+                        py,
+                        PyNodeInfo {
+                            inner: registered.context.clone(),
+                            scheduler_running: Some(self.running.clone()),
+                        },
+                    )?;
 
-                    let result = registered.node.call_method1(py, "init", (py_info,))
+                    let result = registered
+                        .node
+                        .call_method1(py, "init", (py_info,))
                         .or_else(|_| registered.node.call_method0(py, "init"));
 
                     if let Err(e) = result {
@@ -740,15 +801,20 @@ impl PyScheduler {
                     let py_info = if let Some(ref cached) = registered.cached_info {
                         cached.clone_ref(py)
                     } else {
-                        let new_info = Py::new(py, PyNodeInfo {
-                            inner: registered.context.clone(),
-                            scheduler_running: Some(self.running.clone()),
-                        })?;
+                        let new_info = Py::new(
+                            py,
+                            PyNodeInfo {
+                                inner: registered.context.clone(),
+                                scheduler_running: Some(self.running.clone()),
+                            },
+                        )?;
                         registered.cached_info = Some(new_info.clone_ref(py));
                         new_info
                     };
 
-                    let result = registered.node.call_method1(py, "tick", (py_info,))
+                    let result = registered
+                        .node
+                        .call_method1(py, "tick", (py_info,))
                         .or_else(|_| registered.node.call_method0(py, "tick"));
 
                     if let Err(e) = result {
@@ -783,12 +849,17 @@ impl PyScheduler {
 
             for registered in nodes.iter() {
                 if node_names.contains(&registered.name) {
-                    let py_info = Py::new(py, PyNodeInfo {
-                        inner: registered.context.clone(),
-                        scheduler_running: Some(self.running.clone()),
-                    })?;
+                    let py_info = Py::new(
+                        py,
+                        PyNodeInfo {
+                            inner: registered.context.clone(),
+                            scheduler_running: Some(self.running.clone()),
+                        },
+                    )?;
 
-                    let result = registered.node.call_method1(py, "shutdown", (py_info,))
+                    let result = registered
+                        .node
+                        .call_method1(py, "shutdown", (py_info,))
                         .or_else(|_| registered.node.call_method0(py, "shutdown"));
 
                     if let Err(e) = result {
@@ -852,9 +923,10 @@ impl PyScheduler {
 
     /// Pickle support: Restore state from deserialization
     fn __setstate__(&mut self, state: &Bound<'_, pyo3::types::PyDict>) -> PyResult<()> {
-        let tick_rate_hz: f64 = state.get_item("tick_rate_hz")?.ok_or_else(|| {
-            PyRuntimeError::new_err("Missing 'tick_rate_hz' in pickled state")
-        })?.extract()?;
+        let tick_rate_hz: f64 = state
+            .get_item("tick_rate_hz")?
+            .ok_or_else(|| PyRuntimeError::new_err("Missing 'tick_rate_hz' in pickled state"))?
+            .extract()?;
 
         // Recreate scheduler with empty nodes list
         Self::setup_heartbeat_directory();

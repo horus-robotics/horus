@@ -6,7 +6,6 @@
 /// - Hub/Link compatibility
 
 use horus::prelude::*;
-use horus::core::LogSummary;  // Need this in scope to call .log_summary()
 
 // Test tuple-style messages
 message!(Position = (f32, f32));
@@ -67,20 +66,34 @@ fn main() {
     let hub_pos = Hub::<Position>::new("test/position").expect("Failed to create Hub<Position>");
     println!("✓ Created Hub<Position>");
 
-    let hub_status = Hub::<RobotStatus>::new("test/status").expect("Failed to create Hub<RobotStatus>");
+    let hub_status =
+        Hub::<RobotStatus>::new("test/status").expect("Failed to create Hub<RobotStatus>");
     println!("✓ Created Hub<RobotStatus>");
 
     // Test 7: Send without logging (ctx = None)
-    hub_pos.send(Position(3.0, 4.0), None).expect("Failed to send Position");
+    hub_pos
+        .send(Position(3.0, 4.0), None)
+        .expect("Failed to send Position");
     println!("✓ Sent Position message (no logging)");
 
-    hub_status.send(RobotStatus { x: 5.0, y: 6.0, battery: 90, is_moving: false }, None)
+    hub_status
+        .send(
+            RobotStatus {
+                x: 5.0,
+                y: 6.0,
+                battery: 90,
+                is_moving: false,
+            },
+            None,
+        )
         .expect("Failed to send RobotStatus");
     println!("✓ Sent RobotStatus message (no logging)");
 
     // Test 8: Send with logging (ctx = Some)
     let mut ctx = NodeInfo::new("test_node".to_string(), true);
-    hub_pos.send(Position(7.0, 8.0), Some(&mut ctx)).expect("Failed to send with logging");
+    hub_pos
+        .send(Position(7.0, 8.0), Some(&mut ctx))
+        .expect("Failed to send with logging");
     println!("✓ Sent Position message WITH logging");
 
     // Test 9: Receive messages

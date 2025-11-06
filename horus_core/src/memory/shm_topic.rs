@@ -235,16 +235,15 @@ impl<T> ShmTopic<T> {
             capacity
         } else {
             // Not owner - read capacity from existing header
-            let existing_capacity = unsafe {
-                (*header.as_ptr()).capacity.load(Ordering::Relaxed)
-            };
+            let existing_capacity = unsafe { (*header.as_ptr()).capacity.load(Ordering::Relaxed) };
 
             // Validate that the existing capacity matches what we calculated
             if existing_capacity != capacity {
                 return Err(format!(
                     "Topic '{}' capacity mismatch: existing={}, requested={}",
                     name, existing_capacity, capacity
-                ).into());
+                )
+                .into());
             }
 
             existing_capacity
@@ -313,7 +312,8 @@ impl<T> ShmTopic<T> {
                 return Err(format!(
                     "Maximum number of consumers ({}) exceeded for topic '{}'",
                     MAX_CONSUMERS, name
-                ).into());
+                )
+                .into());
             }
 
             // MPMC OPTIMIZED: Consumer tail will be initialized in local memory below
@@ -450,7 +450,8 @@ impl<T> ShmTopic<T> {
                 return Err(format!(
                     "Maximum number of consumers ({}) exceeded for topic '{}'",
                     MAX_CONSUMERS, name
-                ).into());
+                )
+                .into());
             }
 
             let head = (*header.as_ptr()).head.load(Ordering::Relaxed);
@@ -588,7 +589,6 @@ impl<T> ShmTopic<T> {
         // Read the message (non-destructive - message stays for other consumers)
         // Bounds already validated above
         let msg = unsafe {
-
             // Calculate byte offset and verify it's within bounds
             let byte_offset = my_tail * mem::size_of::<T>();
             let slot_ptr = self.data_ptr.as_ptr().add(byte_offset) as *const T;

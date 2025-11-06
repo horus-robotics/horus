@@ -527,7 +527,10 @@ impl LogSummary for CompressedImage {
 impl LogSummary for CameraInfo {
     fn log_summary(&self) -> String {
         let (fx, fy) = self.focal_lengths();
-        format!("CameraInfo({}x{}, f={:.1}/{:.1})", self.width, self.height, fx, fy)
+        format!(
+            "CameraInfo({}x{}, f={:.1}/{:.1})",
+            self.width, self.height, fx, fy
+        )
     }
 }
 

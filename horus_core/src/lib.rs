@@ -39,7 +39,9 @@ pub mod scheduling;
 
 // Re-export commonly used types for easy access
 pub use communication::{Hub, Link, LinkMetrics};
-pub use core::{HealthStatus, Node, NodeConfig, NodeHeartbeat, NodeInfo, NodeMetrics, NodePriority, NodeState};
+pub use core::{
+    HealthStatus, Node, NodeConfig, NodeHeartbeat, NodeInfo, NodeMetrics, NodePriority, NodeState,
+};
 pub use error::{HorusError, HorusResult};
 pub use params::RuntimeParams;
 pub use scheduling::Scheduler;

@@ -339,7 +339,11 @@ fn run_command(command: Commands) -> HorusResult<()> {
             let horus_yaml_path = file.unwrap_or_else(|| PathBuf::from("horus.yaml"));
 
             if !horus_yaml_path.exists() {
-                println!("{} horus.yaml not found at: {}", "✗".red(), horus_yaml_path.display());
+                println!(
+                    "{} horus.yaml not found at: {}",
+                    "✗".red(),
+                    horus_yaml_path.display()
+                );
                 return Err(HorusError::Config("No horus.yaml found".to_string()));
             }
 
@@ -391,7 +395,10 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     println!("{}", "".green());
                 } else {
                     println!("{}", "".red());
-                    errors.push(format!("Missing required fields: {}", missing_fields.join(", ")));
+                    errors.push(format!(
+                        "Missing required fields: {}",
+                        missing_fields.join(", ")
+                    ));
                 }
 
                 // Optional fields warning
@@ -426,11 +433,17 @@ fn run_command(command: Commands) -> HorusResult<()> {
                         println!("{}", "".green());
                     } else {
                         println!("{}", "".red());
-                        errors.push(format!("Invalid language '{}' - must be: rust, python, or cpp", language));
+                        errors.push(format!(
+                            "Invalid language '{}' - must be: rust, python, or cpp",
+                            language
+                        ));
                     }
                 } else {
                     println!("{}", "".red());
-                    errors.push("Missing or invalid 'language' field - must be: rust, python, or cpp".to_string());
+                    errors.push(
+                        "Missing or invalid 'language' field - must be: rust, python, or cpp"
+                            .to_string(),
+                    );
                 }
 
                 // Version format validation
@@ -441,7 +454,10 @@ fn run_command(command: Commands) -> HorusResult<()> {
                         Ok(_) => println!("{}", "".green()),
                         Err(e) => {
                             println!("{}", "".red());
-                            errors.push(format!("Invalid version format '{}': {} (must be valid semver like 0.1.0)", version_str, e));
+                            errors.push(format!(
+                                "Invalid version format '{}': {} (must be valid semver like 0.1.0)",
+                                version_str, e
+                            ));
                         }
                     }
                 } else if yaml.get("version").is_some() {
@@ -460,15 +476,23 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     if name.contains(' ') {
                         name_issues.push("name cannot contain spaces");
                     }
-                    if name.chars().any(|c| !c.is_ascii_alphanumeric() && c != '_' && c != '-') {
-                        name_issues.push("name can only contain letters, numbers, hyphens, and underscores");
+                    if name
+                        .chars()
+                        .any(|c| !c.is_ascii_alphanumeric() && c != '_' && c != '-')
+                    {
+                        name_issues.push(
+                            "name can only contain letters, numbers, hyphens, and underscores",
+                        );
                     }
 
                     if name_issues.is_empty() {
                         println!("{}", "".green());
                         // Warn if uppercase
                         if !quiet && name.chars().any(|c| c.is_uppercase()) {
-                            warn_msgs.push(format!("Project name '{}' contains uppercase - consider using lowercase", name));
+                            warn_msgs.push(format!(
+                                "Project name '{}' contains uppercase - consider using lowercase",
+                                name
+                            ));
                         }
                     } else {
                         println!("{}", "".red());
@@ -514,17 +538,18 @@ fn run_command(command: Commands) -> HorusResult<()> {
 
             // 3. Parse Dependencies
             print!("  {} Parsing dependencies... ", "".cyan());
-            let dep_specs = match parse_horus_yaml_dependencies_v2(horus_yaml_path.to_str().unwrap()) {
-                Ok(specs) => {
-                    println!("{}", "".green());
-                    specs
-                }
-                Err(e) => {
-                    println!("{}", "".red());
-                    errors.push(format!("Failed to parse dependencies: {}", e));
-                    Vec::new()
-                }
-            };
+            let dep_specs =
+                match parse_horus_yaml_dependencies_v2(horus_yaml_path.to_str().unwrap()) {
+                    Ok(specs) => {
+                        println!("{}", "".green());
+                        specs
+                    }
+                    Err(e) => {
+                        println!("{}", "".red());
+                        errors.push(format!("Failed to parse dependencies: {}", e));
+                        Vec::new()
+                    }
+                };
 
             // 4. Check for Duplicates
             if !dep_specs.is_empty() {
@@ -564,12 +589,30 @@ fn run_command(command: Commands) -> HorusResult<()> {
                         if resolved_path.is_dir() {
                             println!("    {} {} ({})", "".green(), spec.name, path.display());
                         } else {
-                            println!("    {} {} ({}) - Not a directory", "✗".red(), spec.name, path.display());
-                            errors.push(format!("Path dependency '{}' is not a directory: {}", spec.name, path.display()));
+                            println!(
+                                "    {} {} ({}) - Not a directory",
+                                "✗".red(),
+                                spec.name,
+                                path.display()
+                            );
+                            errors.push(format!(
+                                "Path dependency '{}' is not a directory: {}",
+                                spec.name,
+                                path.display()
+                            ));
                         }
                     } else {
-                        println!("    {} {} ({}) - Path not found", "✗".red(), spec.name, path.display());
-                        errors.push(format!("Path dependency '{}' not found: {}", spec.name, path.display()));
+                        println!(
+                            "    {} {} ({}) - Path not found",
+                            "✗".red(),
+                            spec.name,
+                            path.display()
+                        );
+                        errors.push(format!(
+                            "Path dependency '{}' not found: {}",
+                            spec.name,
+                            path.display()
+                        ));
                     }
                 }
             }
@@ -595,8 +638,11 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     let target_yaml = resolved_path.join("horus.yaml");
                     if target_yaml.exists() {
                         // Check if it references us back
-                        if let Ok(target_deps) = parse_horus_yaml_dependencies_v2(target_yaml.to_str().unwrap()) {
-                            let our_name = yaml_value.as_ref()
+                        if let Ok(target_deps) =
+                            parse_horus_yaml_dependencies_v2(target_yaml.to_str().unwrap())
+                        {
+                            let our_name = yaml_value
+                                .as_ref()
                                 .and_then(|y| y.get("name"))
                                 .and_then(|n| n.as_str())
                                 .unwrap_or("");
@@ -609,7 +655,12 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                             "Circular dependency detected: {} -> {} -> {}",
                                             our_name, spec.name, our_name
                                         ));
-                                        println!("    {} Circular: {} ↔ {}", "✗".red(), our_name, spec.name);
+                                        println!(
+                                            "    {} Circular: {} ↔ {}",
+                                            "✗".red(),
+                                            our_name,
+                                            spec.name
+                                        );
                                     }
                                 }
                             }
@@ -648,7 +699,10 @@ fn run_command(command: Commands) -> HorusResult<()> {
             } else {
                 println!("{}", "".yellow());
                 if !quiet {
-                    warn_msgs.push("No .horus/ workspace directory found - will be created on first run".to_string());
+                    warn_msgs.push(
+                        "No .horus/ workspace directory found - will be created on first run"
+                            .to_string(),
+                    );
                 }
             }
 
@@ -679,14 +733,19 @@ fn run_command(command: Commands) -> HorusResult<()> {
                         println!("{}", "".yellow());
                         if !missing_deps.is_empty() {
                             if !quiet {
-                                warn_msgs.push(format!("Missing dependencies: {} (run 'horus run' to install)", missing_deps.join(", ")));
+                                warn_msgs.push(format!(
+                                    "Missing dependencies: {} (run 'horus run' to install)",
+                                    missing_deps.join(", ")
+                                ));
                             }
                         }
                     }
                 } else {
                     println!("{}", "".yellow());
                     if !quiet {
-                        warn_msgs.push("No packages directory - dependencies not installed yet".to_string());
+                        warn_msgs.push(
+                            "No packages directory - dependencies not installed yet".to_string(),
+                        );
                     }
                 }
             } else {
@@ -697,37 +756,34 @@ fn run_command(command: Commands) -> HorusResult<()> {
             print!("  {} Checking toolchain... ", "".cyan());
             if let Some(ref yaml) = yaml_value {
                 if let Some(language) = yaml.get("language").and_then(|l| l.as_str()) {
-                let toolchain_available = match language {
-                    "rust" => {
-                        std::process::Command::new("rustc")
+                    let toolchain_available = match language {
+                        "rust" => std::process::Command::new("rustc")
                             .arg("--version")
                             .output()
                             .map(|o| o.status.success())
-                            .unwrap_or(false)
-                    }
-                    "python" => {
-                        std::process::Command::new("python3")
+                            .unwrap_or(false),
+                        "python" => std::process::Command::new("python3")
                             .arg("--version")
                             .output()
                             .map(|o| o.status.success())
-                            .unwrap_or(false)
-                    }
-                    "cpp" => {
-                        std::process::Command::new("g++")
+                            .unwrap_or(false),
+                        "cpp" => std::process::Command::new("g++")
                             .arg("--version")
                             .output()
                             .map(|o| o.status.success())
-                            .unwrap_or(false)
-                    }
-                    _ => false,
-                };
+                            .unwrap_or(false),
+                        _ => false,
+                    };
 
-                if toolchain_available {
-                    println!("{}", "".green());
-                } else {
-                    println!("{}", "".red());
-                    errors.push(format!("Required toolchain for '{}' not found in PATH", language));
-                }
+                    if toolchain_available {
+                        println!("{}", "".green());
+                    } else {
+                        println!("{}", "".red());
+                        errors.push(format!(
+                            "Required toolchain for '{}' not found in PATH",
+                            language
+                        ));
+                    }
                 } else {
                     println!("{}", "⊘".dimmed());
                 }
@@ -739,127 +795,141 @@ fn run_command(command: Commands) -> HorusResult<()> {
             print!("  {} Validating code syntax... ", "".cyan());
             if let Some(ref yaml) = yaml_value {
                 if let Some(language) = yaml.get("language").and_then(|l| l.as_str()) {
-                match language {
-                    "rust" => {
-                        // Check for Cargo.toml or main.rs
-                        let has_cargo = base_dir.join("Cargo.toml").exists();
-                        let has_main = base_dir.join("main.rs").exists() || base_dir.join("src/main.rs").exists();
+                    match language {
+                        "rust" => {
+                            // Check for Cargo.toml or main.rs
+                            let has_cargo = base_dir.join("Cargo.toml").exists();
+                            let has_main = base_dir.join("main.rs").exists()
+                                || base_dir.join("src/main.rs").exists();
 
-                        if has_cargo || has_main {
-                            let check_result = std::process::Command::new("cargo")
-                                .arg("check")
-                                .arg("--quiet")
-                                .current_dir(base_dir)
-                                .output();
+                            if has_cargo || has_main {
+                                let check_result = std::process::Command::new("cargo")
+                                    .arg("check")
+                                    .arg("--quiet")
+                                    .current_dir(base_dir)
+                                    .output();
 
-                            match check_result {
-                                Ok(output) if output.status.success() => {
-                                    println!("{}", "".green());
-                                }
-                                Ok(_) => {
-                                    println!("{}", "".red());
-                                    errors.push("Rust code has compilation errors (run 'cargo check' for details)".to_string());
-                                }
-                                Err(_) => {
-                                    println!("{}", "".yellow());
-                                    if !quiet {
-                                        warn_msgs.push("Could not run 'cargo check' - skipping code validation".to_string());
+                                match check_result {
+                                    Ok(output) if output.status.success() => {
+                                        println!("{}", "".green());
                                     }
-                                }
-                            }
-                        } else {
-                            println!("{}", "⊘".dimmed());
-                        }
-                    }
-                    "python" => {
-                        // Check main.py syntax
-                        let main_py = base_dir.join("main.py");
-                        if main_py.exists() {
-                            let check_result = std::process::Command::new("python3")
-                                .arg("-m")
-                                .arg("py_compile")
-                                .arg(&main_py)
-                                .output();
-
-                            match check_result {
-                                Ok(output) if output.status.success() => {
-                                    println!("{}", "".green());
-                                }
-                                Ok(_) => {
-                                    println!("{}", "".red());
-                                    errors.push("Python code has syntax errors".to_string());
-                                }
-                                Err(_) => {
-                                    println!("{}", "".yellow());
-                                    if !quiet {
-                                        warn_msgs.push("Could not validate Python syntax".to_string());
+                                    Ok(_) => {
+                                        println!("{}", "".red());
+                                        errors.push("Rust code has compilation errors (run 'cargo check' for details)".to_string());
                                     }
-                                }
-                            }
-                        } else {
-                            println!("{}", "⊘".dimmed());
-                        }
-                    }
-                    "cpp" => {
-                        // Check main.cpp syntax
-                        let main_cpp = base_dir.join("main.cpp");
-                        if main_cpp.exists() {
-                            // Get horus_cpp include path from cache
-                            let home_dir = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-                            let horus_cpp_include = format!("{}/.horus/cache/horus_cpp@0.1.0/include", home_dir);
-
-                            // Run g++ syntax check
-                            let check_result = std::process::Command::new("g++")
-                                .arg("-fsyntax-only")
-                                .arg("-std=c++17")
-                                .arg(&format!("-I{}", horus_cpp_include))
-                                .arg(&main_cpp)
-                                .output();
-
-                            match check_result {
-                                Ok(output) if output.status.success() => {
-                                    println!("{}", "✓".green());
-
-                                    // Additional API validation
-                                    if let Ok(content) = fs::read_to_string(&main_cpp) {
-                                        // Check for common API mistakes
-                                        if content.contains("try_recv(") {
-                                            if !quiet {
-                                                warn_msgs.push("Found try_recv() - this method was removed, use recv() instead".to_string());
-                                            }
-                                        }
-                                        if content.contains("Publisher<") && !content.contains("Publisher<Twist>") && !content.contains("Publisher<Pose>") {
-                                            if !quiet {
-                                                warn_msgs.push("Custom message types in Publisher<T> are not supported - only Twist and Pose".to_string());
-                                            }
-                                        }
-                                        if content.contains("Subscriber<") && !content.contains("Subscriber<Twist>") && !content.contains("Subscriber<Pose>") {
-                                            if !quiet {
-                                                warn_msgs.push("Custom message types in Subscriber<T> are not supported - only Twist and Pose".to_string());
-                                            }
+                                    Err(_) => {
+                                        println!("{}", "".yellow());
+                                        if !quiet {
+                                            warn_msgs.push("Could not run 'cargo check' - skipping code validation".to_string());
                                         }
                                     }
                                 }
-                                Ok(output) => {
-                                    println!("{}", "✗".red());
-                                    let stderr = String::from_utf8_lossy(&output.stderr);
-                                    errors.push(format!("C++ code has compilation errors:\n{}", stderr));
-                                }
-                                Err(_) => {
-                                    println!("{}", "⚠".yellow());
-                                    if !quiet {
-                                        warn_msgs.push("Could not run g++ - skipping C++ syntax validation".to_string());
+                            } else {
+                                println!("{}", "⊘".dimmed());
+                            }
+                        }
+                        "python" => {
+                            // Check main.py syntax
+                            let main_py = base_dir.join("main.py");
+                            if main_py.exists() {
+                                let check_result = std::process::Command::new("python3")
+                                    .arg("-m")
+                                    .arg("py_compile")
+                                    .arg(&main_py)
+                                    .output();
+
+                                match check_result {
+                                    Ok(output) if output.status.success() => {
+                                        println!("{}", "".green());
+                                    }
+                                    Ok(_) => {
+                                        println!("{}", "".red());
+                                        errors.push("Python code has syntax errors".to_string());
+                                    }
+                                    Err(_) => {
+                                        println!("{}", "".yellow());
+                                        if !quiet {
+                                            warn_msgs.push(
+                                                "Could not validate Python syntax".to_string(),
+                                            );
+                                        }
                                     }
                                 }
+                            } else {
+                                println!("{}", "⊘".dimmed());
                             }
-                        } else {
+                        }
+                        "cpp" => {
+                            // Check main.cpp syntax
+                            let main_cpp = base_dir.join("main.cpp");
+                            if main_cpp.exists() {
+                                // Get horus_cpp include path from cache
+                                let home_dir =
+                                    std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+                                let horus_cpp_include =
+                                    format!("{}/.horus/cache/horus_cpp@0.1.0/include", home_dir);
+
+                                // Run g++ syntax check
+                                let check_result = std::process::Command::new("g++")
+                                    .arg("-fsyntax-only")
+                                    .arg("-std=c++17")
+                                    .arg(&format!("-I{}", horus_cpp_include))
+                                    .arg(&main_cpp)
+                                    .output();
+
+                                match check_result {
+                                    Ok(output) if output.status.success() => {
+                                        println!("{}", "✓".green());
+
+                                        // Additional API validation
+                                        if let Ok(content) = fs::read_to_string(&main_cpp) {
+                                            // Check for common API mistakes
+                                            if content.contains("try_recv(") {
+                                                if !quiet {
+                                                    warn_msgs.push("Found try_recv() - this method was removed, use recv() instead".to_string());
+                                                }
+                                            }
+                                            if content.contains("Publisher<")
+                                                && !content.contains("Publisher<Twist>")
+                                                && !content.contains("Publisher<Pose>")
+                                            {
+                                                if !quiet {
+                                                    warn_msgs.push("Custom message types in Publisher<T> are not supported - only Twist and Pose".to_string());
+                                                }
+                                            }
+                                            if content.contains("Subscriber<")
+                                                && !content.contains("Subscriber<Twist>")
+                                                && !content.contains("Subscriber<Pose>")
+                                            {
+                                                if !quiet {
+                                                    warn_msgs.push("Custom message types in Subscriber<T> are not supported - only Twist and Pose".to_string());
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Ok(output) => {
+                                        println!("{}", "✗".red());
+                                        let stderr = String::from_utf8_lossy(&output.stderr);
+                                        errors.push(format!(
+                                            "C++ code has compilation errors:\n{}",
+                                            stderr
+                                        ));
+                                    }
+                                    Err(_) => {
+                                        println!("{}", "⚠".yellow());
+                                        if !quiet {
+                                            warn_msgs.push("Could not run g++ - skipping C++ syntax validation".to_string());
+                                        }
+                                    }
+                                }
+                            } else {
+                                println!("{}", "⊘".dimmed());
+                            }
+                        }
+                        _ => {
                             println!("{}", "⊘".dimmed());
                         }
                     }
-                    _ => {
-                        println!("{}", "⊘".dimmed());
-                    }
-                }
                 } else {
                     println!("{}", "⊘".dimmed());
                 }
@@ -890,7 +960,8 @@ fn run_command(command: Commands) -> HorusResult<()> {
             } else {
                 println!("{}", "⊘".dimmed());
                 if !quiet {
-                    warn_msgs.push("Registry not reachable - package installation may fail".to_string());
+                    warn_msgs
+                        .push("Registry not reachable - package installation may fail".to_string());
                 }
             }
 
@@ -931,23 +1002,21 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     match language {
                         "rust" => {
                             // Check if using HORUS dependencies
-                            let uses_horus = dep_specs.iter().any(|spec| {
-                                spec.name == "horus" || spec.name == "horus_macros"
-                            });
+                            let uses_horus = dep_specs
+                                .iter()
+                                .any(|spec| spec.name == "horus" || spec.name == "horus_macros");
 
                             if uses_horus {
                                 // Quick check for common patterns in main.rs or src/main.rs
-                                let main_paths = vec![
-                                    base_dir.join("main.rs"),
-                                    base_dir.join("src/main.rs"),
-                                ];
+                                let main_paths =
+                                    vec![base_dir.join("main.rs"), base_dir.join("src/main.rs")];
 
                                 let mut has_scheduler = false;
                                 for main_path in main_paths {
                                     if main_path.exists() {
                                         if let Ok(content) = std::fs::read_to_string(&main_path) {
-                                            has_scheduler = content.contains("Scheduler::new") ||
-                                                          content.contains("scheduler.register");
+                                            has_scheduler = content.contains("Scheduler::new")
+                                                || content.contains("scheduler.register");
                                             if has_scheduler {
                                                 break;
                                             }
@@ -974,7 +1043,9 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                 let main_py = base_dir.join("main.py");
                                 if main_py.exists() {
                                     if let Ok(content) = std::fs::read_to_string(&main_py) {
-                                        if content.contains("import horus") || content.contains("from horus") {
+                                        if content.contains("import horus")
+                                            || content.contains("from horus")
+                                        {
                                             println!("{}", "".green());
                                         } else {
                                             println!("{}", "".yellow());
@@ -1101,7 +1172,10 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     global,
                     target,
                 } => {
-                    use horus_manager::yaml_utils::{is_path_like, read_package_name_from_path, add_path_dependency_to_horus_yaml};
+                    use horus_manager::yaml_utils::{
+                        add_path_dependency_to_horus_yaml, is_path_like,
+                        read_package_name_from_path,
+                    };
 
                     // Check if package is actually a path
                     if is_path_like(&package) {
@@ -1112,7 +1186,11 @@ fn run_command(command: Commands) -> HorusResult<()> {
                             ));
                         }
 
-                        println!("{} Installing path dependency: {}", "".cyan(), package.green());
+                        println!(
+                            "{} Installing path dependency: {}",
+                            "".cyan(),
+                            package.green()
+                        );
 
                         // Resolve path
                         let path = PathBuf::from(&package);
@@ -1142,7 +1220,11 @@ fn run_command(command: Commands) -> HorusResult<()> {
                         let package_name = read_package_name_from_path(&absolute_path)
                             .map_err(|e| HorusError::Config(e.to_string()))?;
 
-                        println!("  {} Detected package name: {}", "".cyan(), package_name.cyan());
+                        println!(
+                            "  {} Detected package name: {}",
+                            "".cyan(),
+                            package_name.cyan()
+                        );
 
                         // Determine installation target
                         let install_target = if let Some(target_name) = target {
@@ -1165,7 +1247,8 @@ fn run_command(command: Commands) -> HorusResult<()> {
                         };
 
                         // Pass None for base_dir - CLI paths are resolved relative to current_dir
-                        client.install_from_path(&package_name, &absolute_path, install_target, None)
+                        client
+                            .install_from_path(&package_name, &absolute_path, install_target, None)
                             .map_err(|e| HorusError::Config(e.to_string()))?;
 
                         // Update horus.yaml with path dependency
@@ -1174,7 +1257,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                             if let Err(e) = add_path_dependency_to_horus_yaml(
                                 &horus_yaml_path,
                                 &package_name,
-                                &package,  // Use original path as provided by user
+                                &package, // Use original path as provided by user
                             ) {
                                 println!("  {} Failed to update horus.yaml: {}", "".yellow(), e);
                             } else {
@@ -1210,12 +1293,18 @@ fn run_command(command: Commands) -> HorusResult<()> {
                             let horus_yaml_path = workspace_path.join("horus.yaml");
                             if horus_yaml_path.exists() {
                                 let version = ver.as_deref().unwrap_or("latest");
-                                if let Err(e) = horus_manager::yaml_utils::add_dependency_to_horus_yaml(
-                                    &horus_yaml_path,
-                                    &package,
-                                    version,
-                                ) {
-                                    println!("  {} Failed to update horus.yaml: {}", "".yellow(), e);
+                                if let Err(e) =
+                                    horus_manager::yaml_utils::add_dependency_to_horus_yaml(
+                                        &horus_yaml_path,
+                                        &package,
+                                        version,
+                                    )
+                                {
+                                    println!(
+                                        "  {} Failed to update horus.yaml: {}",
+                                        "".yellow(),
+                                        e
+                                    );
                                 }
                             }
                         }
@@ -1313,14 +1402,21 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     let system_ref = packages_dir.join(format!("{}.system.json", package));
                     if system_ref.exists() {
                         // Read to determine package type
-                        let content = fs::read_to_string(&system_ref)
-                            .map_err(|e| HorusError::Config(format!("Failed to read system reference: {}", e)))?;
-                        let metadata: serde_json::Value = serde_json::from_str(&content)
-                            .map_err(|e| HorusError::Config(format!("Failed to parse system reference: {}", e)))?;
+                        let content = fs::read_to_string(&system_ref).map_err(|e| {
+                            HorusError::Config(format!("Failed to read system reference: {}", e))
+                        })?;
+                        let metadata: serde_json::Value =
+                            serde_json::from_str(&content).map_err(|e| {
+                                HorusError::Config(format!(
+                                    "Failed to parse system reference: {}",
+                                    e
+                                ))
+                            })?;
 
                         // Remove reference file
-                        fs::remove_file(&system_ref)
-                            .map_err(|e| HorusError::Config(format!("Failed to remove system reference: {}", e)))?;
+                        fs::remove_file(&system_ref).map_err(|e| {
+                            HorusError::Config(format!("Failed to remove system reference: {}", e))
+                        })?;
 
                         // If it's a cargo package, also remove bin symlink
                         if let Some(pkg_type) = metadata.get("package_type") {
@@ -1332,8 +1428,12 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                 };
                                 let bin_link = bin_dir.join(&package);
                                 if bin_link.exists() || bin_link.read_link().is_ok() {
-                                    fs::remove_file(&bin_link)
-                                        .map_err(|e| HorusError::Config(format!("Failed to remove binary link: {}", e)))?;
+                                    fs::remove_file(&bin_link).map_err(|e| {
+                                        HorusError::Config(format!(
+                                            "Failed to remove binary link: {}",
+                                            e
+                                        ))
+                                    })?;
                                     println!(" Removed binary link for {}", package);
                                 }
                             }
@@ -1359,7 +1459,9 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                         new_lines.push(line);
                                     } else if in_deps && line.starts_with("  -") {
                                         let dep = line.trim_start_matches("  -").trim();
-                                        if dep != package && !dep.starts_with(&format!("{}@", package)) {
+                                        if dep != package
+                                            && !dep.starts_with(&format!("{}@", package))
+                                        {
                                             new_lines.push(line);
                                         }
                                     } else {
@@ -1395,10 +1497,12 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     if let Some(ws_path) = workspace_path {
                         let horus_yaml_path = ws_path.join("horus.yaml");
                         if horus_yaml_path.exists() {
-                            if let Err(e) = horus_manager::yaml_utils::remove_dependency_from_horus_yaml(
-                                &horus_yaml_path,
-                                &package,
-                            ) {
+                            if let Err(e) =
+                                horus_manager::yaml_utils::remove_dependency_from_horus_yaml(
+                                    &horus_yaml_path,
+                                    &package,
+                                )
+                            {
                                 println!("  {} Failed to update horus.yaml: {}", "".yellow(), e);
                             }
                         }
@@ -1470,19 +1574,29 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                     .file_type()
                                     .map_err(|e| HorusError::Config(e.to_string()))?
                                     .is_dir()
-                                    || entry.file_type().map_err(|e| HorusError::Config(e.to_string()))?.is_symlink()
+                                    || entry
+                                        .file_type()
+                                        .map_err(|e| HorusError::Config(e.to_string()))?
+                                        .is_symlink()
                                 {
                                     has_local = true;
                                     let name = entry.file_name().to_string_lossy().to_string();
 
                                     // Check for path dependency metadata
-                                    let path_meta = packages_dir.join(format!("{}.path.json", name));
+                                    let path_meta =
+                                        packages_dir.join(format!("{}.path.json", name));
                                     if path_meta.exists() {
                                         if let Ok(content) = fs::read_to_string(&path_meta) {
-                                            if let Ok(metadata) = serde_json::from_str::<serde_json::Value>(&content) {
-                                                let version = metadata["version"].as_str().unwrap_or("dev");
-                                                let path = metadata["source_path"].as_str().unwrap_or("unknown");
-                                                println!("   {} {} {} {}",
+                                            if let Ok(metadata) =
+                                                serde_json::from_str::<serde_json::Value>(&content)
+                                            {
+                                                let version =
+                                                    metadata["version"].as_str().unwrap_or("dev");
+                                                let path = metadata["source_path"]
+                                                    .as_str()
+                                                    .unwrap_or("unknown");
+                                                println!(
+                                                    "   {} {} {} {}",
                                                     name.yellow(),
                                                     version.dimmed(),
                                                     "(path:".dimmed(),
@@ -1494,12 +1608,18 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                     }
 
                                     // Check for system package metadata
-                                    let system_meta = packages_dir.join(format!("{}.system.json", name));
+                                    let system_meta =
+                                        packages_dir.join(format!("{}.system.json", name));
                                     if system_meta.exists() {
                                         if let Ok(content) = fs::read_to_string(&system_meta) {
-                                            if let Ok(metadata) = serde_json::from_str::<serde_json::Value>(&content) {
-                                                let version = metadata["version"].as_str().unwrap_or("unknown");
-                                                println!("   {} {} {}",
+                                            if let Ok(metadata) =
+                                                serde_json::from_str::<serde_json::Value>(&content)
+                                            {
+                                                let version = metadata["version"]
+                                                    .as_str()
+                                                    .unwrap_or("unknown");
+                                                println!(
+                                                    "   {} {} {}",
                                                     name.yellow(),
                                                     version.dimmed(),
                                                     "(system)".dimmed()
@@ -1513,9 +1633,14 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                     let metadata_path = entry_path.join("metadata.json");
                                     if metadata_path.exists() {
                                         if let Ok(content) = fs::read_to_string(&metadata_path) {
-                                            if let Ok(metadata) = serde_json::from_str::<serde_json::Value>(&content) {
-                                                let version = metadata["version"].as_str().unwrap_or("unknown");
-                                                println!("   {} {} {}",
+                                            if let Ok(metadata) =
+                                                serde_json::from_str::<serde_json::Value>(&content)
+                                            {
+                                                let version = metadata["version"]
+                                                    .as_str()
+                                                    .unwrap_or("unknown");
+                                                println!(
+                                                    "   {} {} {}",
                                                     name.yellow(),
                                                     version.dimmed(),
                                                     "(registry)".dimmed()
@@ -1616,7 +1741,10 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                 .file_type()
                                 .map_err(|e| HorusError::Config(e.to_string()))?
                                 .is_dir()
-                                || entry.file_type().map_err(|e| HorusError::Config(e.to_string()))?.is_symlink()
+                                || entry
+                                    .file_type()
+                                    .map_err(|e| HorusError::Config(e.to_string()))?
+                                    .is_symlink()
                             {
                                 let name = entry.file_name().to_string_lossy().to_string();
 
@@ -1624,10 +1752,16 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                 let path_meta = packages_dir.join(format!("{}.path.json", name));
                                 if path_meta.exists() {
                                     if let Ok(content) = fs::read_to_string(&path_meta) {
-                                        if let Ok(metadata) = serde_json::from_str::<serde_json::Value>(&content) {
-                                            let version = metadata["version"].as_str().unwrap_or("dev");
-                                            let path = metadata["source_path"].as_str().unwrap_or("unknown");
-                                            println!("  {} {} {} {}",
+                                        if let Ok(metadata) =
+                                            serde_json::from_str::<serde_json::Value>(&content)
+                                        {
+                                            let version =
+                                                metadata["version"].as_str().unwrap_or("dev");
+                                            let path = metadata["source_path"]
+                                                .as_str()
+                                                .unwrap_or("unknown");
+                                            println!(
+                                                "  {} {} {} {}",
                                                 name.yellow(),
                                                 version.dimmed(),
                                                 "(path:".dimmed(),
@@ -1639,12 +1773,17 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                 }
 
                                 // Check for system package metadata
-                                let system_meta = packages_dir.join(format!("{}.system.json", name));
+                                let system_meta =
+                                    packages_dir.join(format!("{}.system.json", name));
                                 if system_meta.exists() {
                                     if let Ok(content) = fs::read_to_string(&system_meta) {
-                                        if let Ok(metadata) = serde_json::from_str::<serde_json::Value>(&content) {
-                                            let version = metadata["version"].as_str().unwrap_or("unknown");
-                                            println!("  {} {} {}",
+                                        if let Ok(metadata) =
+                                            serde_json::from_str::<serde_json::Value>(&content)
+                                        {
+                                            let version =
+                                                metadata["version"].as_str().unwrap_or("unknown");
+                                            println!(
+                                                "  {} {} {}",
                                                 name.yellow(),
                                                 version.dimmed(),
                                                 "(system)".dimmed()
@@ -1663,7 +1802,8 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                         {
                                             let version =
                                                 metadata["version"].as_str().unwrap_or("unknown");
-                                            println!("  {} {} {}",
+                                            println!(
+                                                "  {} {} {}",
                                                 name.yellow(),
                                                 version.dimmed(),
                                                 "(registry)".dimmed()
@@ -1792,12 +1932,16 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     // Publish to registry if requested
                     if publish {
                         // Validate: check for path dependencies before publishing
-                        let has_path_deps = manifest.packages.iter().any(|pkg| {
-                            matches!(pkg.source, registry::PackageSource::Path { .. })
-                        });
+                        let has_path_deps = manifest
+                            .packages
+                            .iter()
+                            .any(|pkg| matches!(pkg.source, registry::PackageSource::Path { .. }));
 
                         if has_path_deps {
-                            println!("\n{} Cannot publish environment with path dependencies!", "Error:".red());
+                            println!(
+                                "\n{} Cannot publish environment with path dependencies!",
+                                "Error:".red()
+                            );
                             println!("\nPath dependencies found:");
                             for pkg in &manifest.packages {
                                 if let registry::PackageSource::Path { ref path } = pkg.source {
@@ -1805,8 +1949,13 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                 }
                             }
                             println!("\n{}", "Path dependencies are not portable and cannot be published to the registry.".yellow());
-                            println!("{}", "You can still save locally with: horus env freeze".yellow());
-                            return Err(HorusError::Config("Cannot publish environment with path dependencies".to_string()));
+                            println!(
+                                "{}",
+                                "You can still save locally with: horus env freeze".yellow()
+                            );
+                            return Err(HorusError::Config(
+                                "Cannot publish environment with path dependencies".to_string(),
+                            ));
                         }
 
                         println!();
@@ -1856,22 +2005,48 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                     let exists = check_system_package_exists(&pkg.name);
 
                                     if exists {
-                                        println!("  {} {} v{} (system package - verified)", "✓".green(), pkg.name, pkg.version);
+                                        println!(
+                                            "  {} {} v{} (system package - verified)",
+                                            "✓".green(),
+                                            pkg.name,
+                                            pkg.version
+                                        );
                                         continue;
                                     } else {
-                                        println!("\n  {} {} v{} (system package NOT found)", "⚠".yellow(), pkg.name, pkg.version);
+                                        println!(
+                                            "\n  {} {} v{} (system package NOT found)",
+                                            "⚠".yellow(),
+                                            pkg.name,
+                                            pkg.version
+                                        );
 
                                         // Prompt user for what to do
                                         match prompt_missing_system_package(&pkg.name)? {
                                             MissingSystemChoice::InstallGlobal => {
-                                                println!("  {} Installing to HORUS global cache...", "↓".cyan());
-                                                client.install_to_target(&pkg.name, Some(&pkg.version), workspace::InstallTarget::Global)
-                                                    .map_err(|e| HorusError::Config(e.to_string()))?;
+                                                println!(
+                                                    "  {} Installing to HORUS global cache...",
+                                                    "↓".cyan()
+                                                );
+                                                client
+                                                    .install_to_target(
+                                                        &pkg.name,
+                                                        Some(&pkg.version),
+                                                        workspace::InstallTarget::Global,
+                                                    )
+                                                    .map_err(|e| {
+                                                        HorusError::Config(e.to_string())
+                                                    })?;
                                             }
                                             MissingSystemChoice::InstallLocal => {
-                                                println!("  {} Installing to HORUS local...", "↓".cyan());
-                                                client.install(&pkg.name, Some(&pkg.version))
-                                                    .map_err(|e| HorusError::Config(e.to_string()))?;
+                                                println!(
+                                                    "  {} Installing to HORUS local...",
+                                                    "↓".cyan()
+                                                );
+                                                client
+                                                    .install(&pkg.name, Some(&pkg.version))
+                                                    .map_err(|e| {
+                                                        HorusError::Config(e.to_string())
+                                                    })?;
                                             }
                                             MissingSystemChoice::Skip => {
                                                 println!("  {} Skipped {}", "⊘".yellow(), pkg.name);
@@ -1901,12 +2076,18 @@ fn run_command(command: Commands) -> HorusResult<()> {
                             if let Some(ref ws_path) = workspace_path {
                                 let yaml_path = ws_path.join("horus.yaml");
                                 if yaml_path.exists() {
-                                    if let Err(e) = horus_manager::yaml_utils::add_dependency_to_horus_yaml(
-                                        &yaml_path,
-                                        &pkg.name,
-                                        &pkg.version,
-                                    ) {
-                                        eprintln!("  {} Failed to update horus.yaml: {}", "".yellow(), e);
+                                    if let Err(e) =
+                                        horus_manager::yaml_utils::add_dependency_to_horus_yaml(
+                                            &yaml_path,
+                                            &pkg.name,
+                                            &pkg.version,
+                                        )
+                                    {
+                                        eprintln!(
+                                            "  {} Failed to update horus.yaml: {}",
+                                            "".yellow(),
+                                            e
+                                        );
                                     }
                                 }
                             }
@@ -1920,13 +2101,10 @@ fn run_command(command: Commands) -> HorusResult<()> {
                         // Fetch manifest and install manually to update horus.yaml
                         println!(" Fetching environment {}...", source);
 
-                        let url = format!(
-                            "{}/api/environments/{}",
-                            client.base_url(),
-                            source
-                        );
+                        let url = format!("{}/api/environments/{}", client.base_url(), source);
 
-                        let response = client.http_client()
+                        let response = client
+                            .http_client()
                             .get(&url)
                             .send()
                             .map_err(|e| HorusError::Config(e.to_string()))?;
@@ -1956,22 +2134,48 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                     let exists = check_system_package_exists(&pkg.name);
 
                                     if exists {
-                                        println!("  {} {} v{} (system package - verified)", "✓".green(), pkg.name, pkg.version);
+                                        println!(
+                                            "  {} {} v{} (system package - verified)",
+                                            "✓".green(),
+                                            pkg.name,
+                                            pkg.version
+                                        );
                                         continue;
                                     } else {
-                                        println!("\n  {} {} v{} (system package NOT found)", "⚠".yellow(), pkg.name, pkg.version);
+                                        println!(
+                                            "\n  {} {} v{} (system package NOT found)",
+                                            "⚠".yellow(),
+                                            pkg.name,
+                                            pkg.version
+                                        );
 
                                         // Prompt user for what to do
                                         match prompt_missing_system_package(&pkg.name)? {
                                             MissingSystemChoice::InstallGlobal => {
-                                                println!("  {} Installing to HORUS global cache...", "↓".cyan());
-                                                client.install_to_target(&pkg.name, Some(&pkg.version), workspace::InstallTarget::Global)
-                                                    .map_err(|e| HorusError::Config(e.to_string()))?;
+                                                println!(
+                                                    "  {} Installing to HORUS global cache...",
+                                                    "↓".cyan()
+                                                );
+                                                client
+                                                    .install_to_target(
+                                                        &pkg.name,
+                                                        Some(&pkg.version),
+                                                        workspace::InstallTarget::Global,
+                                                    )
+                                                    .map_err(|e| {
+                                                        HorusError::Config(e.to_string())
+                                                    })?;
                                             }
                                             MissingSystemChoice::InstallLocal => {
-                                                println!("  {} Installing to HORUS local...", "↓".cyan());
-                                                client.install(&pkg.name, Some(&pkg.version))
-                                                    .map_err(|e| HorusError::Config(e.to_string()))?;
+                                                println!(
+                                                    "  {} Installing to HORUS local...",
+                                                    "↓".cyan()
+                                                );
+                                                client
+                                                    .install(&pkg.name, Some(&pkg.version))
+                                                    .map_err(|e| {
+                                                        HorusError::Config(e.to_string())
+                                                    })?;
                                             }
                                             MissingSystemChoice::Skip => {
                                                 println!("  {} Skipped {}", "⊘".yellow(), pkg.name);
@@ -2001,12 +2205,18 @@ fn run_command(command: Commands) -> HorusResult<()> {
                             if let Some(ref ws_path) = workspace_path {
                                 let yaml_path = ws_path.join("horus.yaml");
                                 if yaml_path.exists() {
-                                    if let Err(e) = horus_manager::yaml_utils::add_dependency_to_horus_yaml(
-                                        &yaml_path,
-                                        &pkg.name,
-                                        &pkg.version,
-                                    ) {
-                                        eprintln!("  {} Failed to update horus.yaml: {}", "".yellow(), e);
+                                    if let Err(e) =
+                                        horus_manager::yaml_utils::add_dependency_to_horus_yaml(
+                                            &yaml_path,
+                                            &pkg.name,
+                                            &pkg.version,
+                                        )
+                                    {
+                                        eprintln!(
+                                            "  {} Failed to update horus.yaml: {}",
+                                            "".yellow(),
+                                            e
+                                        );
                                     }
                                 }
                             }
@@ -2030,9 +2240,18 @@ fn run_command(command: Commands) -> HorusResult<()> {
         },
 
         Commands::Sim { command } => match command {
-            SimCommands::Sim2d { world, world_image, resolution, threshold, robot, topic, name, headless } => {
-                use std::process::Command;
+            SimCommands::Sim2d {
+                world,
+                world_image,
+                resolution,
+                threshold,
+                robot,
+                topic,
+                name,
+                headless,
+            } => {
                 use std::env;
+                use std::process::Command;
 
                 println!("{} Starting sim2d...", "🎮".cyan());
                 if headless {
@@ -2058,9 +2277,9 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 // Build cargo run command with arguments
                 let mut cmd = Command::new("cargo");
                 cmd.current_dir(&sim2d_path)
-                   .arg("run")
-                   .arg("--release")
-                   .arg("--");
+                    .arg("run")
+                    .arg("--release")
+                    .arg("--");
 
                 // Add optional arguments
                 if let Some(ref world_path) = world {
@@ -2109,11 +2328,15 @@ fn run_command(command: Commands) -> HorusResult<()> {
                         binary_cmd.arg("--headless");
                     }
 
-                    binary_cmd.status()
+                    binary_cmd
+                        .status()
                         .map_err(|e| HorusError::Config(format!("Failed to run sim2d: {}", e)))?
                 } else {
                     // Fallback: compile and run from source
-                    println!("{} Pre-built binary not found, compiling from source...", "⚠️".yellow());
+                    println!(
+                        "{} Pre-built binary not found, compiling from source...",
+                        "⚠️".yellow()
+                    );
                     cmd.status()
                         .map_err(|e| HorusError::Config(format!("Failed to run sim2d: {}. Try running manually: cd {} && cargo run --release", e, sim2d_path)))?
                 };
@@ -2121,7 +2344,10 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 // Execute and wait (reuse status variable from above)
 
                 if !status.success() {
-                    return Err(HorusError::Config(format!("sim2d exited with error code: {:?}", status.code())));
+                    return Err(HorusError::Config(format!(
+                        "sim2d exited with error code: {:?}",
+                        status.code()
+                    )));
                 }
 
                 Ok(())
@@ -2187,14 +2413,19 @@ fn check_system_package_exists(package_name: &str) -> bool {
 fn prompt_missing_system_package(package_name: &str) -> Result<MissingSystemChoice, HorusError> {
     use std::io::{self, Write};
 
-    println!("\n  System package '{}' was expected but not found.", package_name);
+    println!(
+        "\n  System package '{}' was expected but not found.",
+        package_name
+    );
     println!("  What would you like to do?");
     println!("    [1] Install to HORUS global cache (shared across projects)");
     println!("    [2] Install to HORUS local (this project only)");
     println!("    [3] Skip (you will install it manually later)");
 
     print!("\n  Choice [1-3]: ");
-    io::stdout().flush().map_err(|e| HorusError::Config(e.to_string()))?;
+    io::stdout()
+        .flush()
+        .map_err(|e| HorusError::Config(e.to_string()))?;
 
     let mut input = String::new();
     io::stdin()

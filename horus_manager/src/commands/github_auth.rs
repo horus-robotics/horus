@@ -43,10 +43,7 @@ pub fn login() -> HorusResult<()> {
     // GitHub OAuth flow
     println!("Logging in to HORUS registry with GitHub...");
     println!();
-    println!(
-        "{} Opening browser for GitHub authentication...",
-        "".cyan()
-    );
+    println!("{} Opening browser for GitHub authentication...", "".cyan());
     println!("  {} {}/auth/github", "URL:".dimmed(), registry_url);
     println!();
 

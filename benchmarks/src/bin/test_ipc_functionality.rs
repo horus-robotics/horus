@@ -1,6 +1,5 @@
 /// IPC Functionality Test Suite
 /// Verifies that IPC mechanisms work correctly in various scenarios
-
 use horus::prelude::{Hub, Link};
 use horus_library::messages::cmd_vel::CmdVel;
 use std::env;
@@ -87,7 +86,10 @@ fn test_hub_multiprocess() -> bool {
         while received < 100 && start.elapsed() < Duration::from_secs(5) {
             if let Some(msg) = subscriber.recv(None) {
                 if msg.stamp_nanos as usize != received {
-                    eprintln!("Message order error: expected {}, got {}", received, msg.stamp_nanos);
+                    eprintln!(
+                        "Message order error: expected {}, got {}",
+                        received, msg.stamp_nanos
+                    );
                     return false;
                 }
                 received += 1;
@@ -185,7 +187,10 @@ fn test_link_singleprocess() -> bool {
     while received < 1000 && start.elapsed() < Duration::from_secs(5) {
         if let Some(msg) = receiver.recv(None) {
             if msg.stamp_nanos as usize != received {
-                eprintln!("Message order error: expected {}, got {}", received, msg.stamp_nanos);
+                eprintln!(
+                    "Message order error: expected {}, got {}",
+                    received, msg.stamp_nanos
+                );
                 return false;
             }
             received += 1;
@@ -244,7 +249,10 @@ fn test_cross_process() -> bool {
         while received < 500 && start.elapsed() < Duration::from_secs(5) {
             if let Some(msg) = receiver.recv(None) {
                 if msg.stamp_nanos as usize != received {
-                    eprintln!("Message order error: expected {}, got {}", received, msg.stamp_nanos);
+                    eprintln!(
+                        "Message order error: expected {}, got {}",
+                        received, msg.stamp_nanos
+                    );
                     return false;
                 }
                 received += 1;
@@ -352,7 +360,10 @@ fn test_large_messages() -> bool {
         if let Some(msg) = subscriber.recv(None) {
             // Verify message ordering
             if msg.stamp_nanos != received {
-                eprintln!("Message order error: expected {}, got {}", received, msg.stamp_nanos);
+                eprintln!(
+                    "Message order error: expected {}, got {}",
+                    received, msg.stamp_nanos
+                );
                 return false;
             }
             received += 1;
@@ -454,7 +465,10 @@ fn test_high_frequency() -> bool {
         println!("  ✓ Achieved >8kHz communication rate");
         true
     } else {
-        eprintln!("Failed to achieve target rate: received {} messages at {:.0} Hz", received, actual_rate);
+        eprintln!(
+            "Failed to achieve target rate: received {} messages at {:.0} Hz",
+            received, actual_rate
+        );
         false
     }
 }

@@ -44,7 +44,7 @@ pub use horus_library as library;
 pub mod prelude {
     // Core node types
     pub use horus_core::core::node::NodeConfig;
-    pub use horus_core::core::{Node, NodeInfo, NodeState};
+    pub use horus_core::core::{LogSummary, Node, NodeInfo, NodeState};
 
     // Communication types
     pub use horus_core::communication::{Hub, Link};

@@ -546,13 +546,11 @@ impl HapticFeedback {
     }
 }
 
-
 impl LogSummary for WrenchStamped {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for TactileArray {
     fn log_summary(&self) -> String {
@@ -560,13 +558,11 @@ impl LogSummary for TactileArray {
     }
 }
 
-
 impl LogSummary for ImpedanceParameters {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for ForceCommand {
     fn log_summary(&self) -> String {
@@ -574,20 +570,17 @@ impl LogSummary for ForceCommand {
     }
 }
 
-
 impl LogSummary for ContactInfo {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
 
-
 impl LogSummary for HapticFeedback {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
     }
 }
-
 
 impl LogSummary for ContactState {
     fn log_summary(&self) -> String {

@@ -2,8 +2,8 @@
 // This handles keyboard/joystick input and publishes snake state
 // Run snakesim_gui in another terminal to see the visualization
 
-use horus::prelude::*;
 use horus::library::nodes::{JoystickInputNode, KeyboardInputNode};
+use horus::prelude::*;
 
 // Snake state message type
 #[derive(Clone, Copy, Debug)]

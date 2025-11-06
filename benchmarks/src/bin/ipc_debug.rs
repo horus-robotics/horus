@@ -114,7 +114,10 @@ fn main() {
     match subscriber.receive() {
         Ok(Some(sample)) => {
             let payload = sample.payload();
-            println!("  ✓ Received: linear={}, angular={}", payload.linear, payload.angular);
+            println!(
+                "  ✓ Received: linear={}, angular={}",
+                payload.linear, payload.angular
+            );
         }
         Ok(None) => {
             eprintln!("  ✗ No message received");
@@ -260,7 +263,10 @@ fn run_producer(topic: &str) {
 
     let elapsed = start.elapsed();
     println!("\n[Producer] Sent {} messages in {:?}", ITERATIONS, elapsed);
-    println!("[Producer] Throughput: {:.2} msg/s", ITERATIONS as f64 / elapsed.as_secs_f64());
+    println!(
+        "[Producer] Throughput: {:.2} msg/s",
+        ITERATIONS as f64 / elapsed.as_secs_f64()
+    );
 }
 
 fn run_consumer(topic: &str) {
@@ -311,7 +317,10 @@ fn run_consumer(topic: &str) {
 
         // Safety timeout
         if start.elapsed() > Duration::from_secs(10) {
-            eprintln!("[Consumer] Timeout! Only received {}/{} messages", count, ITERATIONS);
+            eprintln!(
+                "[Consumer] Timeout! Only received {}/{} messages",
+                count, ITERATIONS
+            );
             return;
         }
     }
@@ -319,5 +328,8 @@ fn run_consumer(topic: &str) {
     let elapsed = start.elapsed();
     println!("\n[Consumer] Received {} messages in {:?}", count, elapsed);
     println!("[Consumer] Last message linear velocity: {}", last_linear);
-    println!("[Consumer] Throughput: {:.2} msg/s", count as f64 / elapsed.as_secs_f64());
+    println!(
+        "[Consumer] Throughput: {:.2} msg/s",
+        count as f64 / elapsed.as_secs_f64()
+    );
 }
