@@ -33,16 +33,15 @@ The library is organized into several key categories:
 
 ```
 horus_library/
-── core/              # Standard library components
-   ── messages/     # Shared memory-safe message types
-   ── nodes/        # Reusable node implementations
-   ── algorithms/   # Common robotics algorithms
-── examples/         # Complete example applications
-   ── snakesim/    # Multi-node snake game demo
-   ── tanksim/     # Tank simulation (in development)
-── tools/           # Development and debugging tools
-   ── sim2d/      # 2D physics simulator with visualization
-── models/          # Pre-trained models (future)
+├── messages/         # Shared memory-safe message types
+├── nodes/           # Reusable node implementations
+├── algorithms/      # Common robotics algorithms (planned)
+├── apps/            # Complete example applications
+│   ├── snakesim/   # Multi-node snake game demo
+│   └── tanksim/    # Tank simulation (in development)
+├── tools/           # Development and debugging tools
+│   └── sim2d/      # 2D physics simulator with visualization
+└── traits/          # Common trait definitions
 ```
 
 ## Components
@@ -126,7 +125,7 @@ pub struct SnakeGameState {
 Production-ready nodes for common robotics tasks.
 
 #### KeyboardInputNode
-**Location**: `nodes/keyboard_input_node/`
+**Location**: `nodes/keyboard_input/`
 
 Real-time keyboard input capture with cross-platform support:
 
@@ -181,7 +180,7 @@ fn main() {
 - Both press and release event capture
 
 #### JoystickInputNode
-**Location**: `nodes/joystick_node/`
+**Location**: `nodes/joystick/`
 
 Gamepad and joystick input capture:
 
@@ -197,31 +196,22 @@ let joystick_node = JoystickInputNode::new();
 
 ### Algorithms
 
-#### Pathfinding
-**Location**: `algorithms/pathfinding/`
+**Note**: The algorithms directory is currently empty. Common robotics algorithms (pathfinding, SLAM, etc.) are planned for future releases.
 
-Basic pathfinding algorithm template:
-
-```rust
-use horus_library::algorithms::Pathfinding;
-
-let mut pathfinder = Pathfinding::new();
-let path = pathfinder.process(&input_data);
-pathfinder.reset(); // Reset algorithm state
-```
+For now, implement custom algorithms as nodes using the Node trait.
 
 ### Example Apps (Applications)
 
 Complete distributed applications demonstrating HORUS concepts.
 
 #### SnakeSim
-**Location**: `examples/snakesim/`
+**Location**: `apps/snakesim/`
 
 Multi-node snake game with dual input support:
 
 ```bash
 # Run the complete snake game
-cd horus_library/examples/snakesim/snake_scheduler
+cd horus_library/apps/snakesim
 cargo run
 ```
 
@@ -370,7 +360,7 @@ cargo build --release -p joystick_node
 
 ```bash
 # Run SnakeSim
-cd horus_library/apps/snakesim/snake_scheduler
+cd horus_library/apps/snakesim
 cargo run
 
 # Monitor in another terminal
@@ -388,7 +378,7 @@ cargo test -p keyboard_input_node
 cargo test -p joystick_node
 
 # Integration tests with actual hardware
-cd horus_library/apps/snakesim/snake_scheduler
+cd horus_library/apps/snakesim
 cargo run  # Use arrow keys and gamepad to test both input nodes
 ```
 

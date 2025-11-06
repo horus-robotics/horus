@@ -54,12 +54,13 @@ impl Default for LaserScan {
 impl LaserScan {
     /// Create a new laser scan with default parameters
     pub fn new() -> Self {
-        let mut scan = Self::default();
-        scan.timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos() as u64;
-        scan
+        Self {
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos() as u64,
+            ..Self::default()
+        }
     }
 
     /// Get the angle for a specific range index

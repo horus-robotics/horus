@@ -78,7 +78,8 @@ impl ServoControllerNode {
             self.target_positions.insert(i, 0.0);
 
             // Set default limits
-            self.position_limits.insert(i, (-3.14, 3.14)); // ±π radians
+            self.position_limits
+                .insert(i, (-std::f64::consts::PI, std::f64::consts::PI)); // ±π radians
             self.velocity_limits.insert(i, 2.0); // 2 rad/s
             self.torque_limits.insert(i, 10.0); // 10 Nm
         }

@@ -32,7 +32,7 @@ pub struct ShmTopic<T> {
     header: NonNull<RingBufferHeader>,
     data_ptr: NonNull<u8>,
     capacity: usize,
-    consumer_id: usize, // MPMC: Consumer ID for registration (not used for tail tracking)
+    _consumer_id: usize, // MPMC: Consumer ID for registration (not used for tail tracking)
     consumer_tail: AtomicUsize, // MPMC OPTIMIZED: Each consumer tracks tail in LOCAL memory (not shared)
     _phantom: std::marker::PhantomData<T>,
     _padding: [u8; 16], // Pad to prevent false sharing
@@ -327,7 +327,7 @@ impl<T> ShmTopic<T> {
             header,
             data_ptr,
             capacity: actual_capacity,
-            consumer_id, // MPMC: Consumer ID for registration
+            _consumer_id: consumer_id, // MPMC: Consumer ID for registration
             consumer_tail: AtomicUsize::new(current_head), // MPMC OPTIMIZED: Local tail tracking
             _phantom: std::marker::PhantomData,
             _padding: [0; 16],
@@ -466,7 +466,7 @@ impl<T> ShmTopic<T> {
             header,
             data_ptr,
             capacity,
-            consumer_id, // MPMC: Consumer ID for registration
+            _consumer_id: consumer_id, // MPMC: Consumer ID for registration
             consumer_tail: AtomicUsize::new(current_head), // MPMC OPTIMIZED: Local tail tracking
             _phantom: std::marker::PhantomData,
             _padding: [0; 16],

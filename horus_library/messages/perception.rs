@@ -766,7 +766,7 @@ mod tests {
         depth_img.set_depth(0, 1, 3000);
         assert_eq!(depth_img.get_depth(0, 1), Some(3000));
 
-        let (min, max, mean) = depth_img.depth_statistics();
+        let (min, max, _mean) = depth_img.depth_statistics();
         assert_eq!(min, 1000.0);
         assert_eq!(max, 3000.0);
     }

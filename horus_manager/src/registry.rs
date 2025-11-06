@@ -203,7 +203,7 @@ impl RegistryClient {
         false
     }
 
-    fn prompt_package_source_choice(&self, package_name: &str) -> Result<PackageSource> {
+    fn prompt_package_source_choice(&self, _package_name: &str) -> Result<PackageSource> {
         use std::io::{self, Write};
 
         println!("\nWhich package source do you want to use?");

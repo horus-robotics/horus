@@ -949,20 +949,26 @@ impl TuiDashboard {
         let params: Vec<_> = params_map
             .iter()
             .map(|(key, value)| {
-                // Determine type from value
-                let type_str = match value {
-                    serde_json::Value::Number(_) => "number",
-                    serde_json::Value::String(_) => "string",
-                    serde_json::Value::Bool(_) => "bool",
-                    serde_json::Value::Array(_) => "array",
-                    serde_json::Value::Object(_) => "object",
-                    serde_json::Value::Null => "null",
+                // Determine type from value using string matching to avoid version conflicts
+                let type_str = if value.is_number() {
+                    "number"
+                } else if value.is_string() {
+                    "string"
+                } else if value.is_boolean() {
+                    "bool"
+                } else if value.is_array() {
+                    "array"
+                } else if value.is_object() {
+                    "object"
+                } else {
+                    "null"
                 };
 
                 // Format value for display
-                let value_str = match value {
-                    serde_json::Value::String(s) => s.clone(),
-                    _ => value.to_string(),
+                let value_str = if let Some(s) = value.as_str() {
+                    s.to_string()
+                } else {
+                    value.to_string()
                 };
 
                 (key.clone(), value_str, type_str.to_string())
@@ -1845,10 +1851,7 @@ fn get_local_workspaces() -> Vec<WorkspaceData> {
     let mut workspaces = Vec::new();
 
     // Search in current dir, home dir, and common project locations
-    let mut search_paths = vec![
-        PathBuf::from("."),
-        dirs::home_dir().unwrap_or_default(),
-    ];
+    let mut search_paths = vec![PathBuf::from("."), dirs::home_dir().unwrap_or_default()];
 
     // Add ~/horus if it exists (common HORUS development location)
     if let Some(home) = dirs::home_dir() {
@@ -1928,8 +1931,7 @@ fn get_local_workspaces() -> Vec<WorkspaceData> {
                     if let Ok(pkg_entries) = fs::read_dir(&packages_dir) {
                         for pkg_entry in pkg_entries.flatten() {
                             if pkg_entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                                let pkg_name =
-                                    pkg_entry.file_name().to_string_lossy().to_string();
+                                let pkg_name = pkg_entry.file_name().to_string_lossy().to_string();
 
                                 // Try to get version from metadata.json
                                 let metadata_path = pkg_entry.path().join("metadata.json");
@@ -1946,72 +1948,67 @@ fn get_local_workspaces() -> Vec<WorkspaceData> {
                                         })
                                         .unwrap_or_else(|| "unknown".to_string())
                                 } else {
-                                "unknown".to_string()
+                                    "unknown".to_string()
                                 };
 
                                 // Scan for installed packages inside this package's .horus/packages/
-                                let nested_packages_dir =
-                                pkg_entry.path().join(".horus/packages");
+                                let nested_packages_dir = pkg_entry.path().join(".horus/packages");
                                 let mut installed_packages = Vec::new();
 
                                 if nested_packages_dir.exists() {
-                                if let Ok(nested_entries) =
-                                    fs::read_dir(&nested_packages_dir)
-                                {
-                                    for nested_entry in nested_entries.flatten() {
-                                        if nested_entry
-                                            .file_type()
-                                            .map(|t| t.is_dir())
-                                            .unwrap_or(false)
-                                        {
-                                            let nested_name = nested_entry
-                                                .file_name()
-                                                .to_string_lossy()
-                                                .to_string();
-
-                                            // Try to get version
-                                            let nested_metadata_path =
-                                                nested_entry.path().join("metadata.json");
-                                            let nested_version = if nested_metadata_path
-                                                .exists()
+                                    if let Ok(nested_entries) = fs::read_dir(&nested_packages_dir) {
+                                        for nested_entry in nested_entries.flatten() {
+                                            if nested_entry
+                                                .file_type()
+                                                .map(|t| t.is_dir())
+                                                .unwrap_or(false)
                                             {
-                                                fs::read_to_string(&nested_metadata_path)
-                                                    .ok()
-                                                    .and_then(|s| {
-                                                        serde_json::from_str::<
+                                                let nested_name = nested_entry
+                                                    .file_name()
+                                                    .to_string_lossy()
+                                                    .to_string();
+
+                                                // Try to get version
+                                                let nested_metadata_path =
+                                                    nested_entry.path().join("metadata.json");
+                                                let nested_version = if nested_metadata_path
+                                                    .exists()
+                                                {
+                                                    fs::read_to_string(&nested_metadata_path)
+                                                        .ok()
+                                                        .and_then(|s| {
+                                                            serde_json::from_str::<
                                                             serde_json::Value,
                                                         >(
                                                             &s
                                                         )
                                                         .ok()
-                                                    })
-                                                    .and_then(|j| {
-                                                        j.get("version")
-                                                            .and_then(|v| v.as_str())
-                                                            .map(|s| s.to_string())
-                                                    })
-                                                    .unwrap_or_else(|| {
-                                                        "unknown".to_string()
-                                                    })
-                                            } else {
-                                                "unknown".to_string()
-                                            };
+                                                        })
+                                                        .and_then(|j| {
+                                                            j.get("version")
+                                                                .and_then(|v| v.as_str())
+                                                                .map(|s| s.to_string())
+                                                        })
+                                                        .unwrap_or_else(|| "unknown".to_string())
+                                                } else {
+                                                    "unknown".to_string()
+                                                };
 
-                                            installed_packages
-                                                .push((nested_name, nested_version));
+                                                installed_packages
+                                                    .push((nested_name, nested_version));
+                                            }
                                         }
                                     }
                                 }
-                                }
 
-                            packages.push(PackageData {
-                            name: pkg_name,
-                            version,
-                            installed_packages,
-                            });
-                            }
+                                packages.push(PackageData {
+                                    name: pkg_name,
+                                    version,
+                                    installed_packages,
+                                });
                             }
                         }
+                    }
 
                     workspaces.push(WorkspaceData {
                         name: env_name,

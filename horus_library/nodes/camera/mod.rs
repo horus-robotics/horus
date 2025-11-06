@@ -78,7 +78,7 @@ impl CameraNode {
 
     /// Set capture framerate
     pub fn set_fps(&mut self, fps: f32) {
-        self.fps = fps.max(1.0).min(120.0);
+        self.fps = fps.clamp(1.0, 120.0);
     }
 
     /// Set image encoding format

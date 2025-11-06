@@ -93,7 +93,7 @@ impl DigitalIONode {
 
     /// Set update rate in Hz
     pub fn set_update_rate(&mut self, rate: f32) {
-        self.update_rate = rate.max(0.1).min(1000.0);
+        self.update_rate = rate.clamp(0.1, 1000.0);
         self.publish_interval = (1000.0 / self.update_rate) as u64;
     }
 

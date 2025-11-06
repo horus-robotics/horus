@@ -52,7 +52,7 @@ impl ImuNode {
 
     /// Set IMU sample rate (Hz)
     pub fn set_sample_rate(&mut self, rate: f32) {
-        self.sample_rate = rate.max(1.0).min(1000.0);
+        self.sample_rate = rate.clamp(1.0, 1000.0);
     }
 
     /// Get actual sample rate (samples per second)

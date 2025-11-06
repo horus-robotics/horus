@@ -45,10 +45,10 @@ impl DifferentialDriveNode {
             odom_publisher: Hub::new(odom_topic)?,
             cmd_subscriber: Hub::new(cmd_topic)?,
 
-            wheel_base: 0.5,       // 50cm wheel base
-            wheel_radius: 0.1,     // 10cm wheel radius
-            max_linear_vel: 2.0,   // 2 m/s max
-            max_angular_vel: 3.14, // π rad/s max
+            wheel_base: 0.5,                       // 50cm wheel base
+            wheel_radius: 0.1,                     // 10cm wheel radius
+            max_linear_vel: 2.0,                   // 2 m/s max
+            max_angular_vel: std::f32::consts::PI, // π rad/s max
 
             current_twist: Twist::default(),
             position_x: 0.0,

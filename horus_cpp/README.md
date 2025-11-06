@@ -337,9 +337,11 @@ auto pose = horus::make_pose2d(5.0, 3.0, 1.57);
 
 See `examples/` directory:
 
-- `basic_pubsub.cpp` - Simple publisher/subscriber
+- `pubsub_simple_new.cpp` - Simple publisher/subscriber
 - `framework_demo.cpp` - Node framework demonstration
 - `message_showcase.cpp` - All 40+ message types showcase
+- `lidar_driver_new.cpp` - Lidar sensor driver example
+- `robot_system_new.cpp` - Complete robot system example
 
 ## Binary Compatibility
 

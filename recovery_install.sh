@@ -19,11 +19,7 @@ CROSS="${RED}${NC}"
 WARN="${YELLOW}${NC}"
 INFO="${CYAN}${NC}"
 
-# Load telemetry module (telemetry consent already asked in install.sh)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$SCRIPT_DIR/scripts/telemetry.sh" ]; then
-    source "$SCRIPT_DIR/scripts/telemetry.sh"
-fi
 
 echo -e "${MAGENTA} HORUS Recovery Installation Script${NC}"
 echo -e "${YELLOW}${NC}"
@@ -379,27 +375,8 @@ if [ $INSTALL_SUCCESS -eq 0 ]; then
         echo "  2. Ensure ~/.cargo/bin is in your PATH"
         echo "  3. Try running: horus --version"
         echo "  4. Report the issue with full output"
-        # Send partial success telemetry
-        HORUS_VERSION=$(grep -m1 '^version' horus/Cargo.toml | sed 's/.*"\(.*\)".*/\1/' 2>/dev/null || echo "unknown")
-        if type send_telemetry_event &>/dev/null; then
-            send_telemetry_event "recovery_install" "partial" "$HORUS_VERSION" &
-        fi
-    else
-        # Send success telemetry
-        HORUS_VERSION=$(grep -m1 '^version' horus/Cargo.toml | sed 's/.*"\(.*\)".*/\1/' 2>/dev/null || echo "unknown")
-        if type send_telemetry_event &>/dev/null; then
-            send_telemetry_event "recovery_install" "success" "$HORUS_VERSION" &
-        fi
-    fi
-else
-    echo -e "${RED} Installation failed${NC}"
     echo ""
     echo "Please check the errors above and try again."
-    # Send failure telemetry
-    HORUS_VERSION=$(grep -m1 '^version' horus/Cargo.toml | sed 's/.*"\(.*\)".*/\1/' 2>/dev/null || echo "unknown")
-    if type send_telemetry_event &>/dev/null; then
-        send_telemetry_event "recovery_install" "failure" "$HORUS_VERSION" &
-    fi
     exit 1
 fi
 

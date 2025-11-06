@@ -99,12 +99,14 @@ impl CargoPackage {
             let features = if let Some(equals_pos) = features_part.find('=') {
                 let features_str = &features_part[equals_pos + 1..].trim();
                 if features_str.is_empty() {
-                    return Err(anyhow::anyhow!("Empty features list (remove ':features=' or provide feature names)"));
+                    return Err(anyhow::anyhow!(
+                        "Empty features list (remove ':features=' or provide feature names)"
+                    ));
                 }
                 features_str
                     .split(',')
                     .map(|f| f.trim().to_string())
-                    .filter(|f| !f.is_empty())  // Filter out empty strings
+                    .filter(|f| !f.is_empty()) // Filter out empty strings
                     .collect()
             } else if !features_part.is_empty() {
                 return Err(anyhow::anyhow!(
@@ -132,7 +134,10 @@ impl CargoPackage {
             let version = if !version_str.is_empty() {
                 // Basic semver validation
                 if version_str.contains(char::is_whitespace) {
-                    return Err(anyhow::anyhow!("Version cannot contain whitespace: '{}'", version_str));
+                    return Err(anyhow::anyhow!(
+                        "Version cannot contain whitespace: '{}'",
+                        version_str
+                    ));
                 }
                 // Check for common mistakes
                 if version_str == "latest" {
@@ -142,7 +147,11 @@ impl CargoPackage {
             } else {
                 None
             };
-            return Ok(CargoPackage { name, version, features });
+            return Ok(CargoPackage {
+                name,
+                version,
+                features,
+            });
         }
 
         // No version specified
@@ -158,6 +167,7 @@ impl CargoPackage {
         })
     }
 
+    #[allow(dead_code)]
     fn crate_spec(&self) -> String {
         match &self.version {
             Some(v) => format!("{}@{}", self.name, v),
@@ -247,7 +257,8 @@ pub fn execute_build_only(file: Option<PathBuf>, release: bool, clean: bool) -> 
             };
 
             // Split dependencies into HORUS packages, pip packages, and cargo packages
-            let (horus_deps, _pip_packages, cargo_packages) = split_dependencies_with_context(dependencies, Some("rust"));
+            let (horus_deps, _pip_packages, cargo_packages) =
+                split_dependencies_with_context(dependencies, Some("rust"));
 
             // Generate Cargo.toml in .horus/ that references source files in parent directory
             let cargo_toml_path = PathBuf::from(".horus/Cargo.toml");
@@ -323,13 +334,21 @@ path = "{}"
                             "{} = {{ version = \"{}\", features = [{}] }}\n",
                             pkg.name,
                             version,
-                            pkg.features.iter().map(|f| format!("\"{}\"", f)).collect::<Vec<_>>().join(", ")
+                            pkg.features
+                                .iter()
+                                .map(|f| format!("\"{}\"", f))
+                                .collect::<Vec<_>>()
+                                .join(", ")
                         ));
                     } else {
                         cargo_toml.push_str(&format!(
                             "{} = {{ version = \"*\", features = [{}] }}\n",
                             pkg.name,
-                            pkg.features.iter().map(|f| format!("\"{}\"", f)).collect::<Vec<_>>().join(", ")
+                            pkg.features
+                                .iter()
+                                .map(|f| format!("\"{}\"", f))
+                                .collect::<Vec<_>>()
+                                .join(", ")
                         ));
                         eprintln!(
                             "  {} Warning: Using wildcard version for '{}' - specify a version for reproducibility",
@@ -481,17 +500,19 @@ fn execute_single_file(
         // For Rust files, cargo dependencies are handled in Cargo.toml generation
         // So we filter them out here to avoid trying to `cargo install` library crates
         let dependencies_to_resolve = if language == "rust" {
-            let (horus_pkgs, pip_pkgs, _cargo_pkgs) = split_dependencies_with_context(dependencies.clone(), Some(&language));
+            let (horus_pkgs, pip_pkgs, _cargo_pkgs) =
+                split_dependencies_with_context(dependencies.clone(), Some(&language));
             // Reconstruct set with only HORUS and pip packages
-            horus_pkgs.into_iter().chain(
-                pip_pkgs.into_iter().map(|p| {
+            horus_pkgs
+                .into_iter()
+                .chain(pip_pkgs.into_iter().map(|p| {
                     if let Some(ref v) = p.version {
                         format!("pip:{}=={}", p.name, v)
                     } else {
                         format!("pip:{}", p.name)
                     }
-                })
-            ).collect()
+                }))
+                .collect()
         } else {
             dependencies
         };
@@ -1636,6 +1657,7 @@ fn parse_rust_import(line: &str) -> Option<String> {
     None
 }
 
+#[allow(dead_code)]
 fn parse_python_import(line: &str) -> Option<String> {
     let line = line.trim();
 
@@ -1820,7 +1842,7 @@ fn parse_horus_yaml_dependencies(path: &str) -> Result<HashSet<String>> {
 }
 
 /// Parse horus.yaml dependencies with support for path, git, and registry sources
-/// Returns Vec<DependencySpec> which includes source information
+/// Returns `Vec<DependencySpec>` which includes source information
 pub fn parse_horus_yaml_dependencies_v2(path: &str) -> Result<Vec<DependencySpec>> {
     let content = fs::read_to_string(path)?;
 
@@ -2104,7 +2126,12 @@ fn split_dependencies_with_context(
             match PipPackage::from_string(pkg_str) {
                 Ok(pkg) => pip_packages.push(pkg),
                 Err(e) => {
-                    eprintln!("  {} Failed to parse pip dependency '{}': {}", "⚠️".yellow(), dep, e);
+                    eprintln!(
+                        "  {} Failed to parse pip dependency '{}': {}",
+                        "⚠️".yellow(),
+                        dep,
+                        e
+                    );
                     eprintln!("     Syntax: pip:PACKAGE@VERSION or pip:PACKAGE");
                     eprintln!("     Example: pip:numpy@1.24.0");
                 }
@@ -2117,7 +2144,12 @@ fn split_dependencies_with_context(
             match CargoPackage::from_string(pkg_str) {
                 Ok(pkg) => cargo_packages.push(pkg),
                 Err(e) => {
-                    eprintln!("  {} Failed to parse cargo dependency '{}': {}", "⚠️".yellow(), dep, e);
+                    eprintln!(
+                        "  {} Failed to parse cargo dependency '{}': {}",
+                        "⚠️".yellow(),
+                        dep,
+                        e
+                    );
                     eprintln!("     Syntax: cargo:PACKAGE@VERSION:features=FEAT1,FEAT2");
                     eprintln!("     Examples:");
                     eprintln!("       - 'cargo:serde@1.0:features=derive'");
@@ -3111,7 +3143,8 @@ fn execute_with_scheduler(
             // Parse horus.yaml to get dependencies
             let (horus_deps, cargo_packages) = if Path::new("horus.yaml").exists() {
                 let deps = parse_horus_yaml_dependencies("horus.yaml")?;
-                let (horus_pkgs, _pip_pkgs, cargo_pkgs) = split_dependencies_with_context(deps, Some("rust"));
+                let (horus_pkgs, _pip_pkgs, cargo_pkgs) =
+                    split_dependencies_with_context(deps, Some("rust"));
                 (horus_pkgs, cargo_pkgs)
             } else {
                 (Vec::new(), Vec::new())
@@ -3197,13 +3230,21 @@ path = "{}"
                             "{} = {{ version = \"{}\", features = [{}] }}\n",
                             pkg.name,
                             version,
-                            pkg.features.iter().map(|f| format!("\"{}\"", f)).collect::<Vec<_>>().join(", ")
+                            pkg.features
+                                .iter()
+                                .map(|f| format!("\"{}\"", f))
+                                .collect::<Vec<_>>()
+                                .join(", ")
                         ));
                     } else {
                         cargo_toml.push_str(&format!(
                             "{} = {{ version = \"*\", features = [{}] }}\n",
                             pkg.name,
-                            pkg.features.iter().map(|f| format!("\"{}\"", f)).collect::<Vec<_>>().join(", ")
+                            pkg.features
+                                .iter()
+                                .map(|f| format!("\"{}\"", f))
+                                .collect::<Vec<_>>()
+                                .join(", ")
                         ));
                         eprintln!(
                             "  {} Warning: Using wildcard version for '{}' - specify a version for reproducibility",
@@ -3711,7 +3752,7 @@ fn compile_c_file(source: &Path, output: &Path, compiler: &str, release: bool) -
     let uses_horus_hpp = content.contains("#include <horus.hpp>")
         || content.contains("#include \"horus.hpp\"")
         || content.contains("horus.hpp\""); // Catches relative paths too
-    let uses_framework =
+    let _uses_framework =
         uses_horus_hpp || content.contains("horus::Node") || content.contains("horus::Scheduler");
 
     if uses_horus_h || uses_horus_hpp {

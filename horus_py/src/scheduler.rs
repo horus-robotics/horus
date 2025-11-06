@@ -30,9 +30,9 @@ struct RegisteredNode {
 pub struct PyScheduler {
     nodes: Arc<Mutex<Vec<RegisteredNode>>>,
     running: Arc<Mutex<bool>>,
-    tick_rate_hz: f64,          // Global scheduler tick rate
-    scheduler_name: String,     // Scheduler name for registry
-    working_dir: PathBuf,       // Working directory for registry
+    tick_rate_hz: f64,      // Global scheduler tick rate
+    scheduler_name: String, // Scheduler name for registry
+    working_dir: PathBuf,   // Working directory for registry
 }
 
 #[pymethods]

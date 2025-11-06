@@ -24,7 +24,7 @@ horus --version
 
 ## CLI Commands
 
-HORUS Manager provides 7 main commands:
+HORUS Manager provides 8 main commands:
 
 ### 1. `horus new` - Project Creation
 
@@ -242,7 +242,32 @@ horus auth logout
 - `logout` - Logout
 - `whoami` - Show current user
 
-### 7. `horus version` - Version Information
+### 7. `horus sim` - Simulation Tools
+
+Launch 2D or 3D simulators for testing robotics code.
+
+```bash
+# Note: Simulation features are under active development
+
+# Run 2D simulator (in development)
+# horus sim 2d --world world.yaml --robot robot.yaml
+
+# Run in headless mode
+# horus sim 2d --headless
+
+# 3D simulator (planned)
+# horus sim 3d
+```
+
+**Subcommands:**
+- `2d` - Launch 2D physics simulator (under development)
+  - `--world <FILE>` - World configuration
+  - `--robot <FILE>` - Robot configuration
+  - `--name <NAME>` - Robot name (default: "robot")
+  - `--headless` - Run without GUI
+- `3d` - Launch 3D simulator (planned)
+
+### 8. `horus version` - Version Information
 
 Display HORUS version information.
 
@@ -257,19 +282,25 @@ horus -V
 
 ```
 horus_manager/
-── src/
-   ── main.rs              # CLI entry point
-   ── commands/            # Command implementations
-      ── new.rs           # Project creation
-      ── run.rs           # Build and execution
-      ── remote.rs        # Remote deployment
-      ── auth.rs          # Authentication
-      ── param.rs         # Parameter management
-   ── dashboard/           # Web dashboard (Axum)
-   ── dashboard_tui/       # Terminal UI dashboard
-   ── registry/            # Package registry client
-   ── workspace/           # Workspace detection
-── Cargo.toml
+├── src/
+│   ├── main.rs              # CLI entry point
+│   ├── commands/            # Command implementations
+│   │   ├── mod.rs          # Commands module
+│   │   ├── new.rs          # Project creation
+│   │   ├── run.rs          # Build and execution
+│   │   ├── remote.rs       # Remote deployment
+│   │   ├── github_auth.rs  # GitHub authentication
+│   │   └── monitor.rs      # System monitoring
+│   ├── dashboard.rs         # Web dashboard (Axum)
+│   ├── dashboard_tui.rs     # Terminal UI dashboard
+│   ├── registry.rs          # Package registry client
+│   ├── workspace.rs         # Workspace detection
+│   ├── graph.rs            # Dependency graph visualization
+│   ├── dependency_resolver.rs # Package dependency resolution
+│   ├── version.rs          # Version management
+│   ├── yaml_utils.rs       # YAML parsing utilities
+│   └── crates_io.rs        # Crates.io integration
+└── Cargo.toml
 ```
 
 ## Configuration

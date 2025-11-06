@@ -9,7 +9,7 @@
 [![CI](https://img.shields.io/badge/CI-passing-brightgreen.svg)](.github/workflows/ci.yml)
 [![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://docs.horus-registry.dev)
 
-[![Installations](https://img.shields.io/endpoint?url=https://telemetry.horus-registry.dev/telemetry/badge)](PRIVACY.md)
+[![Installations](https://img.shields.io/endpoint?url=https://telemetry.horus-registry.dev/count/badge)](PRIVACY.md)
 [![IPC Latency](https://img.shields.io/badge/IPC%20latency-312ns-brightgreen.svg)](#performance)
 [![Throughput](https://img.shields.io/badge/throughput-6M%2B%20msg%2Fs-green.svg)](#performance)
 [![Languages](https://img.shields.io/badge/languages-Rust%20%7C%20Python%20%7C%20C%2B%2B-blue.svg)](#multi-language-support)
@@ -210,14 +210,14 @@ horus_core/                 # Core framework
   core/                     # Node trait, NodeInfo
   memory/                   # Shared memory management
 horus_manager/              # CLI tool
-horus_daemon/               # Remote deployment daemon
+horus_daemon/               # Remote deployment daemon (under development)
 horus_macros/               # node! procedural macro
 horus_py/                   # Python bindings
 horus_cpp/                  # C/C++ bindings
 horus_library/              # Standard library
   messages/                 # Standard message types
   apps/                     # Example applications
-  tools/                    # Development tools
+  tools/                    # Development tools (sim2d/3d in progress)
 benchmarks/                 # Performance testing
 docs-site/                  # Documentation website
 ```
@@ -240,7 +240,7 @@ horus run main.rs               # Run specific file
 horus run --release             # Optimized build
 horus run --build-only          # Build without running
 horus run --clean               # Clean build cache
-horus run --remote robot:8080   # Deploy to remote robot
+# horus run --remote robot:8080 # Deploy to remote (daemon under development)
 ```
 
 #### Concurrent Multi-Process Execution
@@ -335,9 +335,10 @@ horus check -q                  # Only show errors, suppress warnings
 
 ### Simulation
 ```bash
-horus sim 2d                    # Launch 2D simulator
-horus sim 2d --world map.yaml   # With custom world config
-horus sim 2d --world-image map.png --resolution 0.05  # From occupancy grid
+# Note: Simulation features are under active development
+# horus sim 2d                    # 2D simulator (in development)
+# horus sim 2d --world map.yaml   # With custom world config
+# horus sim 3d                    # 3D simulator (planned)
 ```
 
 ### Version Information
@@ -491,22 +492,31 @@ node! {
 
 ### SnakeSim
 ```bash
-cd horus_library/apps/snakesim/snake_scheduler
-cargo run --release
+# From HORUS root directory
+cd horus_library/apps/snakesim
+
+# Terminal 1: Run backend (keyboard input + game logic)
+horus run
+
+# Terminal 2: Run GUI (visual display)
+cd snakesim_gui && cargo run --release
 ```
 
 Multi-node game demonstrating:
-- KeyboardInputNode (priority 0): Arrow key input
+- KeyboardInputNode (priority 0): Arrow key/WASD input
+- JoystickInputNode (priority 1): Joystick input
 - SnakeControlNode (priority 2): Game logic
-- GUINode (priority 3): Terminal rendering
+- GUI: Graphical display with animated snake (separate window)
 
-### Sim2D Physics Simulator
+### Sim2D Physics Simulator (Under Development)
 ```bash
-cd horus_library/tools/sim2d
-cargo run --release
+# Note: sim2d is under active development
+# From HORUS root directory
+# cd horus_library/tools/sim2d
+# cargo run --release
 ```
 
-Complete 2D robotics simulator with Bevy visualization and Rapier2D physics.
+2D robotics simulator with Bevy visualization and Rapier2D physics (in development).
 
 ## Multi-Language Support
 

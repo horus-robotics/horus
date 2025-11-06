@@ -54,7 +54,7 @@ impl LidarNode {
 
     /// Set scan frequency (Hz)
     pub fn set_scan_frequency(&mut self, frequency: f32) {
-        self.scan_frequency = frequency.max(0.1).min(100.0);
+        self.scan_frequency = frequency.clamp(0.1, 100.0);
     }
 
     /// Set range limits (meters)
@@ -65,7 +65,7 @@ impl LidarNode {
 
     /// Set angular resolution (radians)
     pub fn set_angle_increment(&mut self, increment: f32) {
-        self.angle_increment = increment.max(0.001).min(0.1);
+        self.angle_increment = increment.clamp(0.001, 0.1);
     }
 
     /// Get actual scan rate (scans per second)

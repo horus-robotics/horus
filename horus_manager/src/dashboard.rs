@@ -451,10 +451,7 @@ async fn packages_environments_handler() -> impl IntoResponse {
 
         // 2. Local Environments: Find all directories with .horus/ subdirectory
         // Search in current dir, home dir, and common project locations
-        let mut search_paths = vec![
-            PathBuf::from("."),
-            dirs::home_dir().unwrap_or_default(),
-        ];
+        let mut search_paths = vec![PathBuf::from("."), dirs::home_dir().unwrap_or_default()];
 
         // Add ~/horus if it exists (common HORUS development location)
         if let Some(home) = dirs::home_dir() {
@@ -465,7 +462,11 @@ async fn packages_environments_handler() -> impl IntoResponse {
         }
 
         // Recursively search for .horus/ directories
-        fn find_horus_projects(base_path: &PathBuf, depth: usize, max_depth: usize) -> Vec<PathBuf> {
+        fn find_horus_projects(
+            base_path: &PathBuf,
+            depth: usize,
+            max_depth: usize,
+        ) -> Vec<PathBuf> {
             let mut projects = Vec::new();
 
             if depth > max_depth {
@@ -487,7 +488,8 @@ async fn packages_environments_handler() -> impl IntoResponse {
                     // Skip target, node_modules, and other build directories
                     if let Some(name) = path.file_name() {
                         let name_str = name.to_string_lossy();
-                        if name_str == "target" || name_str == "node_modules" || name_str == ".git" {
+                        if name_str == "target" || name_str == "node_modules" || name_str == ".git"
+                        {
                             continue;
                         }
                     }
@@ -526,143 +528,40 @@ async fn packages_environments_handler() -> impl IntoResponse {
                         .to_string();
 
                     // Try to read dependencies from horus.yaml
-                        let horus_yaml_path = env_path.join("horus.yaml");
-                        let yaml_dependencies = if horus_yaml_path.exists() {
-                            fs::read_to_string(&horus_yaml_path)
-                                .ok()
-                                .and_then(|content| {
-                                    serde_yaml::from_str::<serde_yaml::Value>(&content).ok()
-                                })
-                                .and_then(|yaml| {
-                                    yaml.get("dependencies")
-                                        .and_then(|deps| deps.as_sequence())
-                                        .map(|seq| {
-                                            seq.iter()
-                                                .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                                                .collect::<Vec<String>>()
-                                        })
-                                })
-                                .unwrap_or_default()
-                        } else {
-                            Vec::new()
-                        };
+                    let horus_yaml_path = env_path.join("horus.yaml");
+                    let yaml_dependencies = if horus_yaml_path.exists() {
+                        fs::read_to_string(&horus_yaml_path)
+                            .ok()
+                            .and_then(|content| {
+                                serde_yaml::from_str::<serde_yaml::Value>(&content).ok()
+                            })
+                            .and_then(|yaml| {
+                                yaml.get("dependencies")
+                                    .and_then(|deps| deps.as_sequence())
+                                    .map(|seq| {
+                                        seq.iter()
+                                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                            .collect::<Vec<String>>()
+                                    })
+                            })
+                            .unwrap_or_default()
+                    } else {
+                        Vec::new()
+                    };
 
-                        // Get packages inside this environment
-                        let packages_dir = horus_dir.join("packages");
-                        let mut packages = Vec::new();
+                    // Get packages inside this environment
+                    let packages_dir = horus_dir.join("packages");
+                    let mut packages = Vec::new();
 
-                        if packages_dir.exists() {
-                            if let Ok(pkg_entries) = fs::read_dir(&packages_dir) {
-                                for pkg_entry in pkg_entries.flatten() {
-                                    if pkg_entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                                        let pkg_name =
-                                            pkg_entry.file_name().to_string_lossy().to_string();
+                    if packages_dir.exists() {
+                        if let Ok(pkg_entries) = fs::read_dir(&packages_dir) {
+                            for pkg_entry in pkg_entries.flatten() {
+                                if pkg_entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                                    let pkg_name =
+                                        pkg_entry.file_name().to_string_lossy().to_string();
 
-                                        // Try to get version from metadata.json
-                                        let metadata_path = pkg_entry.path().join("metadata.json");
-                                        let version = if metadata_path.exists() {
-                                            fs::read_to_string(&metadata_path)
-                                                .ok()
-                                                .and_then(|s| {
-                                                    serde_json::from_str::<serde_json::Value>(&s)
-                                                        .ok()
-                                                })
-                                                .and_then(|j| {
-                                                    j.get("version")
-                                                        .and_then(|v| v.as_str())
-                                                        .map(|s| s.to_string())
-                                                })
-                                                .unwrap_or_else(|| "unknown".to_string())
-                                        } else {
-                                            "unknown".to_string()
-                                        };
-
-                                        // Scan for installed packages inside this package's .horus/packages/
-                                        let nested_packages_dir =
-                                            pkg_entry.path().join(".horus/packages");
-                                        let mut installed_packages = Vec::new();
-
-                                        if nested_packages_dir.exists() {
-                                            if let Ok(nested_entries) =
-                                                fs::read_dir(&nested_packages_dir)
-                                            {
-                                                for nested_entry in nested_entries.flatten() {
-                                                    if nested_entry
-                                                        .file_type()
-                                                        .map(|t| t.is_dir())
-                                                        .unwrap_or(false)
-                                                    {
-                                                        let nested_name = nested_entry
-                                                            .file_name()
-                                                            .to_string_lossy()
-                                                            .to_string();
-
-                                                        // Try to get version
-                                                        let nested_metadata_path = nested_entry
-                                                            .path()
-                                                            .join("metadata.json");
-                                                        let nested_version =
-                                                            if nested_metadata_path.exists() {
-                                                                fs::read_to_string(
-                                                                    &nested_metadata_path,
-                                                                )
-                                                                .ok()
-                                                                .and_then(|s| {
-                                                                    serde_json::from_str::<
-                                                                        serde_json::Value,
-                                                                    >(
-                                                                        &s
-                                                                    )
-                                                                    .ok()
-                                                                })
-                                                                .and_then(|j| {
-                                                                    j.get("version")
-                                                                        .and_then(|v| v.as_str())
-                                                                        .map(|s| s.to_string())
-                                                                })
-                                                                .unwrap_or_else(|| {
-                                                                    "unknown".to_string()
-                                                                })
-                                                            } else {
-                                                                "unknown".to_string()
-                                                            };
-
-                                                        installed_packages.push(
-                                                            serde_json::json!({
-                                                                "name": nested_name,
-                                                                "version": nested_version,
-                                                            }),
-                                                        );
-                                                    }
-                                                }
-                                            }
-                                        }
-
-                                        packages.push(serde_json::json!({
-                                            "name": pkg_name,
-                                            "version": version,
-                                            "installed_packages": installed_packages,
-                                        }));
-                                    }
-                                }
-                            }
-                        }
-
-                        // Map yaml_dependencies to installed packages with version info
-                        let workspace_dependencies: Vec<serde_json::Value> = yaml_dependencies
-                            .iter()
-                            .filter_map(|dep_str| {
-                                // dependency format: "package_name@version" or just "package_name"
-                                let dep_path = packages_dir.join(dep_str);
-                                if dep_path.exists() || dep_path.read_link().is_ok() {
-                                    // Try to read metadata.json (follow symlinks)
-                                    let mut metadata_path = dep_path.join("metadata.json");
-
-                                    // Follow symlink if necessary
-                                    if let Ok(real_path) = std::fs::canonicalize(&dep_path) {
-                                        metadata_path = real_path.join("metadata.json");
-                                    }
-
+                                    // Try to get version from metadata.json
+                                    let metadata_path = pkg_entry.path().join("metadata.json");
                                     let version = if metadata_path.exists() {
                                         fs::read_to_string(&metadata_path)
                                             .ok()
@@ -674,26 +573,124 @@ async fn packages_environments_handler() -> impl IntoResponse {
                                                     .and_then(|v| v.as_str())
                                                     .map(|s| s.to_string())
                                             })
-                                            .unwrap_or_else(|| {
-                                                dep_str
-                                                    .split('@')
-                                                    .nth(1)
-                                                    .unwrap_or("unknown")
-                                                    .to_string()
-                                            })
+                                            .unwrap_or_else(|| "unknown".to_string())
                                     } else {
-                                        dep_str.split('@').nth(1).unwrap_or("unknown").to_string()
+                                        "unknown".to_string()
                                     };
 
-                                    Some(serde_json::json!({
-                                        "name": dep_str.split('@').next().unwrap_or(dep_str),
+                                    // Scan for installed packages inside this package's .horus/packages/
+                                    let nested_packages_dir =
+                                        pkg_entry.path().join(".horus/packages");
+                                    let mut installed_packages = Vec::new();
+
+                                    if nested_packages_dir.exists() {
+                                        if let Ok(nested_entries) =
+                                            fs::read_dir(&nested_packages_dir)
+                                        {
+                                            for nested_entry in nested_entries.flatten() {
+                                                if nested_entry
+                                                    .file_type()
+                                                    .map(|t| t.is_dir())
+                                                    .unwrap_or(false)
+                                                {
+                                                    let nested_name = nested_entry
+                                                        .file_name()
+                                                        .to_string_lossy()
+                                                        .to_string();
+
+                                                    // Try to get version
+                                                    let nested_metadata_path =
+                                                        nested_entry.path().join("metadata.json");
+                                                    let nested_version = if nested_metadata_path
+                                                        .exists()
+                                                    {
+                                                        fs::read_to_string(&nested_metadata_path)
+                                                            .ok()
+                                                            .and_then(|s| {
+                                                                serde_json::from_str::<
+                                                                    serde_json::Value,
+                                                                >(
+                                                                    &s
+                                                                )
+                                                                .ok()
+                                                            })
+                                                            .and_then(|j| {
+                                                                j.get("version")
+                                                                    .and_then(|v| v.as_str())
+                                                                    .map(|s| s.to_string())
+                                                            })
+                                                            .unwrap_or_else(|| {
+                                                                "unknown".to_string()
+                                                            })
+                                                    } else {
+                                                        "unknown".to_string()
+                                                    };
+
+                                                    installed_packages.push(serde_json::json!({
+                                                        "name": nested_name,
+                                                        "version": nested_version,
+                                                    }));
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    packages.push(serde_json::json!({
+                                        "name": pkg_name,
                                         "version": version,
-                                    }))
-                                } else {
-                                    None
+                                        "installed_packages": installed_packages,
+                                    }));
                                 }
-                            })
-                            .collect();
+                            }
+                        }
+                    }
+
+                    // Map yaml_dependencies to installed packages with version info
+                    let workspace_dependencies: Vec<serde_json::Value> = yaml_dependencies
+                        .iter()
+                        .filter_map(|dep_str| {
+                            // dependency format: "package_name@version" or just "package_name"
+                            let dep_path = packages_dir.join(dep_str);
+                            if dep_path.exists() || dep_path.read_link().is_ok() {
+                                // Try to read metadata.json (follow symlinks)
+                                let mut metadata_path = dep_path.join("metadata.json");
+
+                                // Follow symlink if necessary
+                                if let Ok(real_path) = std::fs::canonicalize(&dep_path) {
+                                    metadata_path = real_path.join("metadata.json");
+                                }
+
+                                let version = if metadata_path.exists() {
+                                    fs::read_to_string(&metadata_path)
+                                        .ok()
+                                        .and_then(|s| {
+                                            serde_json::from_str::<serde_json::Value>(&s).ok()
+                                        })
+                                        .and_then(|j| {
+                                            j.get("version")
+                                                .and_then(|v| v.as_str())
+                                                .map(|s| s.to_string())
+                                        })
+                                        .unwrap_or_else(|| {
+                                            dep_str
+                                                .split('@')
+                                                .nth(1)
+                                                .unwrap_or("unknown")
+                                                .to_string()
+                                        })
+                                } else {
+                                    dep_str.split('@').nth(1).unwrap_or("unknown").to_string()
+                                };
+
+                                Some(serde_json::json!({
+                                    "name": dep_str.split('@').next().unwrap_or(dep_str),
+                                    "version": version,
+                                }))
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
 
                     local_envs.push(serde_json::json!({
                         "name": env_name,
@@ -1138,17 +1135,25 @@ async fn params_list_handler(State(state): State<Arc<AppState>>) -> impl IntoRes
     let params_list: Vec<_> = params_map
         .iter()
         .map(|(key, value)| {
+            // Determine type using accessor methods to avoid version conflicts
+            let type_str = if value.is_number() {
+                "number"
+            } else if value.is_string() {
+                "string"
+            } else if value.is_boolean() {
+                "boolean"
+            } else if value.is_array() {
+                "array"
+            } else if value.is_object() {
+                "object"
+            } else {
+                "null"
+            };
+
             serde_json::json!({
                 "key": key,
                 "value": value,
-                "type": match value {
-                    serde_json::Value::Number(_) => "number",
-                    serde_json::Value::String(_) => "string",
-                    serde_json::Value::Bool(_) => "boolean",
-                    serde_json::Value::Array(_) => "array",
-                    serde_json::Value::Object(_) => "object",
-                    serde_json::Value::Null => "null",
-                }
+                "type": type_str
             })
         })
         .collect();
@@ -1358,8 +1363,9 @@ async fn websocket_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
 async fn handle_websocket(socket: WebSocket) {
     let (mut sender, _receiver) = socket.split();
 
-    // Stream updates every 50ms (20 FPS) for real-time monitoring
-    let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(50));
+    // Stream updates every 250ms (4 FPS) for reasonable real-time monitoring
+    // This reduces backend load and network traffic significantly
+    let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(250));
 
     loop {
         interval.tick().await;
@@ -3506,11 +3512,18 @@ fn generate_html(port: u16) -> String {
             if (topicNodes.length === 0) {{
                 console.warn(' No topic nodes found! Node types:', nodes.map(n => `${{n.id}}:${{n.type}}`));
             }}
+            if (edges.length === 0) {{
+                console.warn(' No edges found! Check if processes are publishing/subscribing to topics.');
+            }}
+
+            // Ensure nodePositions object exists
+            if (!graphState.nodePositions) {{
+                graphState.nodePositions = {{}};
+            }}
 
             // Initialize positions only if not already set (preserve drag positions)
             // OR if we have new nodes that don't have positions yet
-            const needsLayout = !graphState.nodePositions ||
-                                Object.keys(graphState.nodePositions).length === 0 ||
+            const needsLayout = Object.keys(graphState.nodePositions).length === 0 ||
                                 nodes.some(n => !graphState.nodePositions[n.id]);
 
             if (needsLayout) {{
@@ -3622,7 +3635,10 @@ fn generate_html(port: u16) -> String {
             edges.forEach(edge => {{
                 const from = graphState.nodePositions[edge.from];
                 const to = graphState.nodePositions[edge.to];
-                if (!from || !to) return;
+                if (!from || !to) {{
+                    console.warn(` Edge ${{edge.from}} -> ${{edge.to}} missing positions. From: ${{!!from}}, To: ${{!!to}}`);
+                    return;
+                }}
 
                 ctx.beginPath();
                 ctx.moveTo(from.x, from.y);
@@ -3640,32 +3656,6 @@ fn generate_html(port: u16) -> String {
                 ctx.lineTo(to.x - headlen * Math.cos(angle + Math.PI / 6), to.y - headlen * Math.sin(angle + Math.PI / 6));
                 ctx.closePath();
                 ctx.fillStyle = edge.type === 'publish' ? 'rgba(0, 212, 255, 0.9)' : 'rgba(0, 255, 136, 0.9)';
-                ctx.fill();
-            }});
-
-            // Draw animated data packets (tiny dots)
-            dataPackets.forEach(packet => {{
-                const edge = edges[packet.edgeIndex];
-                if (!edge) return;
-
-                const from = graphState.nodePositions[edge.from];
-                const to = graphState.nodePositions[edge.to];
-                if (!from || !to) return;
-
-                // Calculate packet position by interpolating along the edge
-                const t = packet.progress / 100;
-                const x = from.x + (to.x - from.x) * t;
-                const y = from.y + (to.y - from.y) * t;
-
-                // Color based on edge type (cyan for publish, green for subscribe)
-                const color = edge.type === 'publish'
-                    ? 'rgba(0, 212, 255, 0.9)'
-                    : 'rgba(0, 255, 136, 0.9)';
-
-                // Draw tiny dot (3px radius)
-                ctx.beginPath();
-                ctx.arc(x, y, 3, 0, 2 * Math.PI);
-                ctx.fillStyle = color;
                 ctx.fill();
             }});
 
@@ -3783,48 +3773,8 @@ fn generate_html(port: u16) -> String {
             }}
         }});
 
-        // Continuous graph rendering for smooth interaction
+        // Simple graph rendering - no animations
         let graphData = {{ nodes: [], edges: [] }};
-
-        // Data packets state for animation
-        let dataPackets = [];
-
-        // Packet spawner and updater (1 packet per edge max)
-        setInterval(() => {{
-            // Update all packet progress
-            dataPackets = dataPackets
-                .map(p => ({{ ...p, progress: p.progress + 2 }}))
-                .filter(p => p.progress < 100);
-
-            // Spawn new packet only on edges without packets (30% chance per tick)
-            if (Math.random() > 0.7 && graphData.edges && graphData.edges.length > 0) {{
-                // Find edges that don't have packets
-                const occupiedEdges = new Set(dataPackets.map(p => p.edgeIndex));
-                const availableEdges = graphData.edges
-                    .map((edge, idx) => idx)
-                    .filter(idx => !occupiedEdges.has(idx));
-
-                if (availableEdges.length > 0) {{
-                    const edgeIndex = availableEdges[Math.floor(Math.random() * availableEdges.length)];
-                    const edge = graphData.edges[edgeIndex];
-
-                    dataPackets.push({{
-                        id: Date.now() + Math.random(),
-                        progress: 0,
-                        edgeIndex: edgeIndex,
-                        direction: edge.type // 'publish' or 'subscribe'
-                    }});
-                }}
-            }}
-        }}, 50);
-
-        function animateGraph() {{
-            if (graphData.nodes.length > 0) {{
-                renderGraph(graphData.nodes, graphData.edges);
-            }}
-            requestAnimationFrame(animateGraph);
-        }}
-        animateGraph();
 
         // Update graph data
         async function updateGraphData() {{
@@ -3842,6 +3792,11 @@ fn generate_html(port: u16) -> String {
                 // Store in global state for resize handler
                 window.graphState.nodes = data.nodes || [];
                 window.graphState.edges = data.edges || [];
+
+                // Render once when data changes
+                if (graphData.nodes.length > 0) {{
+                    renderGraph(graphData.nodes, graphData.edges);
+                }}
             }} catch (error) {{
                 console.error('Failed to fetch graph:', error);
             }}
@@ -4137,6 +4092,13 @@ fn generate_html(port: u16) -> String {
                         // Update graph data
                         if (update.data.graph) {{
                             graphData = update.data.graph;
+                            window.graphState.nodes = update.data.graph.nodes || [];
+                            window.graphState.edges = update.data.graph.edges || [];
+
+                            // Render once when data arrives
+                            if (graphData.nodes.length > 0) {{
+                                renderGraph(graphData.nodes, graphData.edges);
+                            }}
                         }}
 
                         // Update status bar and tooltips
@@ -4158,9 +4120,9 @@ fn generate_html(port: u16) -> String {
                 console.log('🔌 WebSocket disconnected, falling back to polling');
                 wsConnected = false;
 
-                // Fallback to polling
+                // Fallback to polling (reduced frequency to match WebSocket)
                 if (!pollingInterval) {{
-                    pollingInterval = setInterval(updateAll, 100);
+                    pollingInterval = setInterval(updateAll, 250);
                 }}
 
                 // Try to reconnect after 5 seconds

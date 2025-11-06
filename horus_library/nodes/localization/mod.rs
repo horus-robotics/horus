@@ -170,9 +170,9 @@ impl LocalizationNode {
         let mut predicted_cov = [[0.0; 6]; 6];
 
         // Simplified covariance prediction (identity motion model)
-        for i in 0..6 {
-            for j in 0..6 {
-                predicted_cov[i][j] = self.covariance[i][j] + self.process_noise[i][j] * dt;
+        for (i, row) in predicted_cov.iter_mut().enumerate() {
+            for (j, val) in row.iter_mut().enumerate() {
+                *val = self.covariance[i][j] + self.process_noise[i][j] * dt;
             }
         }
 
@@ -204,8 +204,8 @@ impl LocalizationNode {
         let kalman_gain = 0.3; // Simplified - should compute proper Kalman gain
 
         // Update state
-        for i in 0..3 {
-            self.state[i] += kalman_gain * innovation[i];
+        for (i, innov_val) in innovation.iter().enumerate().take(3) {
+            self.state[i] += kalman_gain * innov_val;
         }
 
         // Update velocities from odometry twist

@@ -329,7 +329,8 @@ fn should_track_process(cmdline: &str) -> bool {
         || cmdline.contains("rustup")
         || cmdline.contains("dashboard")
         || cmdline.contains("monitor")
-        || cmdline.contains("horus run")  // Exclude "horus run" commands - they'll be in registry once scheduler starts
+        || cmdline.contains("horus run")
+    // Exclude "horus run" commands - they'll be in registry once scheduler starts
     {
         return false;
     }

@@ -1,20 +1,15 @@
--- HORUS Telemetry Database Schema
--- Stores anonymous installation and update events
+-- HORUS Installation Counter Database Schema (v3.0)
+-- Simple counting - no tracking, no UUIDs
 
-CREATE TABLE IF NOT EXISTS events (
+CREATE TABLE IF NOT EXISTS install_counts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     event TEXT NOT NULL,
-    status TEXT NOT NULL,
-    version TEXT NOT NULL,
-    install_id TEXT NOT NULL,
     os TEXT NOT NULL,
-    arch TEXT NOT NULL,
     timestamp INTEGER NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Indexes for fast queries
-CREATE INDEX IF NOT EXISTS idx_install_id ON events(install_id);
-CREATE INDEX IF NOT EXISTS idx_event_status ON events(event, status);
-CREATE INDEX IF NOT EXISTS idx_timestamp ON events(timestamp);
-CREATE INDEX IF NOT EXISTS idx_version ON events(version);
+CREATE INDEX IF NOT EXISTS idx_event ON install_counts(event);
+CREATE INDEX IF NOT EXISTS idx_timestamp ON install_counts(timestamp);
+CREATE INDEX IF NOT EXISTS idx_os ON install_counts(os);

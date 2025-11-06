@@ -47,7 +47,7 @@ pub struct PathPlannerNode {
 #[derive(Clone, Copy)]
 enum PlanningAlgorithm {
     AStar,
-    RRT,
+    Rrt,
 }
 
 #[derive(Clone, Debug)]
@@ -144,7 +144,7 @@ impl PathPlannerNode {
     /// Set planning algorithm
     pub fn set_algorithm(&mut self, use_rrt: bool) {
         self.planning_algorithm = if use_rrt {
-            PlanningAlgorithm::RRT
+            PlanningAlgorithm::Rrt
         } else {
             PlanningAlgorithm::AStar
         };
@@ -500,7 +500,7 @@ impl Node for PathPlannerNode {
         if should_replan {
             self.current_path = match self.planning_algorithm {
                 PlanningAlgorithm::AStar => self.plan_path_astar(),
-                PlanningAlgorithm::RRT => self.plan_path_rrt(),
+                PlanningAlgorithm::Rrt => self.plan_path_rrt(),
             };
 
             self.path_valid = !self.current_path.is_empty();

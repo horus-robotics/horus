@@ -417,17 +417,37 @@ The HORUS Python API follows these principles:
 
 ## Running Examples
 
-Check out the examples directory:
+Check out the test files which serve as working examples:
 
 ```bash
-# Minimal example
-python examples/minimal_example.py
+# Rate control example
+python tests/test_rate_control.py
 
-# Complete demo
-python examples/simple_api_demo.py
+# Timestamp and staleness detection
+python tests/test_timestamps.py
 
-# Robot simulation
-python examples/robot_example.py
+# Cross-language communication
+python tests/test_cross_language.py
+
+# Message integrity
+python tests/test_message_integrity.py
+```
+
+Or create simple examples:
+
+```bash
+# Create your own minimal example
+cat > my_example.py << 'EOF'
+import horus
+
+def process(node):
+    node.send("output", "Hello HORUS!")
+
+node = horus.Node(pubs="output", tick=process, rate=1)
+horus.run(node, duration=3)
+EOF
+
+python my_example.py
 ```
 
 ##  Why This Design?
