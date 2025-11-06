@@ -49,7 +49,10 @@ pub fn add_dependency_to_horus_yaml(
         let mut insert_idx = deps_idx + 1;
         while insert_idx < lines.len() {
             let line = &lines[insert_idx];
-            if line.trim().starts_with("- ") || line.trim().is_empty() || line.trim().starts_with("#") {
+            if line.trim().starts_with("- ")
+                || line.trim().is_empty()
+                || line.trim().starts_with("#")
+            {
                 insert_idx += 1;
             } else {
                 break;

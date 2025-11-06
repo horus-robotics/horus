@@ -20,6 +20,7 @@ uuid = { version = "1.4", features = ["v4"] }
 chrono = "0.4"
 anyhow = "1.0"
 pythonize = "0.22"
+ctrlc = "3.4"
 
 [build-dependencies]
 pyo3-build-config = "0.22"

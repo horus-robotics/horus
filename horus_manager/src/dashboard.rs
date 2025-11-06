@@ -450,27 +450,82 @@ async fn packages_environments_handler() -> impl IntoResponse {
         }
 
         // 2. Local Environments: Find all directories with .horus/ subdirectory
-        // Search in current dir and home dir
-        let search_paths = vec![PathBuf::from("."), dirs::home_dir().unwrap_or_default()];
+        // Search in current dir, home dir, and common project locations
+        let mut search_paths = vec![
+            PathBuf::from("."),
+            dirs::home_dir().unwrap_or_default(),
+        ];
+
+        // Add ~/horus if it exists (common HORUS development location)
+        if let Some(home) = dirs::home_dir() {
+            let horus_dev = home.join("horus");
+            if horus_dev.exists() {
+                search_paths.push(horus_dev);
+            }
+        }
+
+        // Recursively search for .horus/ directories
+        fn find_horus_projects(base_path: &PathBuf, depth: usize, max_depth: usize) -> Vec<PathBuf> {
+            let mut projects = Vec::new();
+
+            if depth > max_depth {
+                return projects;
+            }
+
+            if let Ok(entries) = fs::read_dir(base_path) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+
+                    // Skip hidden directories (except .horus itself)
+                    if let Some(name) = path.file_name() {
+                        let name_str = name.to_string_lossy();
+                        if name_str.starts_with('.') && name_str != ".horus" {
+                            continue;
+                        }
+                    }
+
+                    // Skip target, node_modules, and other build directories
+                    if let Some(name) = path.file_name() {
+                        let name_str = name.to_string_lossy();
+                        if name_str == "target" || name_str == "node_modules" || name_str == ".git" {
+                            continue;
+                        }
+                    }
+
+                    if path.is_dir() {
+                        // Check if this directory has .horus/
+                        let horus_dir = path.join(".horus");
+                        if horus_dir.exists() && horus_dir.is_dir() {
+                            projects.push(path);
+                        } else {
+                            // Recursively search subdirectories
+                            projects.extend(find_horus_projects(&path, depth + 1, max_depth));
+                        }
+                    }
+                }
+            }
+
+            projects
+        }
 
         for base_path in search_paths {
             if !base_path.exists() {
                 continue;
             }
 
-            // Walk through directories to find .horus/ folders
-            if let Ok(entries) = fs::read_dir(&base_path) {
-                for entry in entries.flatten() {
-                    if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                        continue;
-                    }
+            // Find all HORUS projects recursively (max depth 5 to avoid excessive scanning)
+            let horus_projects = find_horus_projects(&base_path, 0, 5);
 
-                    let horus_dir = entry.path().join(".horus");
-                    if horus_dir.exists() && horus_dir.is_dir() {
-                        let env_name = entry.file_name().to_string_lossy().to_string();
-                        let env_path = entry.path();
+            for env_path in horus_projects {
+                let horus_dir = env_path.join(".horus");
+                if horus_dir.exists() && horus_dir.is_dir() {
+                    let env_name = env_path
+                        .file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .to_string();
 
-                        // Try to read dependencies from horus.yaml
+                    // Try to read dependencies from horus.yaml
                         let horus_yaml_path = env_path.join("horus.yaml");
                         let yaml_dependencies = if horus_yaml_path.exists() {
                             fs::read_to_string(&horus_yaml_path)
@@ -640,14 +695,13 @@ async fn packages_environments_handler() -> impl IntoResponse {
                             })
                             .collect();
 
-                        local_envs.push(serde_json::json!({
-                            "name": env_name,
-                            "path": env_path.to_string_lossy(),
-                            "packages": packages,
-                            "package_count": packages.len(),
-                            "dependencies": workspace_dependencies,
-                        }));
-                    }
+                    local_envs.push(serde_json::json!({
+                        "name": env_name,
+                        "path": env_path.to_string_lossy(),
+                        "packages": packages,
+                        "package_count": packages.len(),
+                        "dependencies": workspace_dependencies,
+                    }));
                 }
             }
         }

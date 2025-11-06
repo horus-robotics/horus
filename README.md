@@ -144,10 +144,11 @@ cd my_robot
 
 ### 2. Simple Node Example
 ```rust
-use horus::prelude::*;
+use horus::prelude::*;  // Imports Result<T> as alias for HorusResult<T>
 
 // Define a custom message type with one line!
-message!(SensorReading = (f64, u64));  // (value, timestamp)
+// The message! macro automatically implements required traits
+message!(SensorReading = (f64, u32));  // (value, counter)
 
 pub struct SensorNode {
     publisher: Hub<SensorReading>,
@@ -163,13 +164,10 @@ impl Node for SensorNode {
     }
 
     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        let reading = SensorReading(
-            self.counter as f64 * 0.1,
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_nanos() as u64
-        );
+        // Simple sensor reading
+        let reading = SensorReading(self.counter as f64 * 0.1, self.counter);
+
+        // Send message (use None for ctx to disable logging overhead)
         let _ = self.publisher.send(reading, ctx);
         self.counter += 1;
     }
@@ -188,8 +186,8 @@ fn main() -> Result<()> {
             publisher: Hub::new("sensor_data")?,
             counter: 0,
         }),
-        0,
-        Some(true)
+        0,           // Priority (0 = highest)
+        Some(true)   // Enable logging
     );
 
     scheduler.run()
@@ -350,25 +348,62 @@ horus -V
 
 ## Core API
 
-### Scheduler
-```rust
-use horus_core::scheduling::Scheduler;
+### Message Types
 
-let mut scheduler = Scheduler::new();
-scheduler.add(Box::new(my_node), priority, Some(logging));
-scheduler.run()?;  // Run continuously until Ctrl+C
-// Or: scheduler.run_for(Duration::from_secs(10))?;  // Run for duration
-```
+All message types sent through Hub/Link must implement the `LogSummary` trait:
 
-### Hub (Pub/Sub)
 ```rust
 use horus::prelude::*;
 
-let hub: Hub<f64> = Hub::new("topic_name")?;
-hub.send(42.0, ctx).ok();  // send() returns Result<(), T>
+// Option 1: Use the message! macro (automatic trait implementation)
+message!(Position = (f32, f32));
+message!(Velocity = (f32, f32, f32));
 
-if let Some(msg) = hub.recv(ctx) {
-    // Process message
+// Option 2: Manual struct with LogSummary implementation
+#[derive(Clone, Debug)]
+pub struct CustomMessage {
+    pub value: f64,
+}
+
+impl LogSummary for CustomMessage {
+    fn log_summary(&self) -> String {
+        format!("CustomMessage({})", self.value)
+    }
+}
+```
+
+### Scheduler
+
+```rust
+use horus::prelude::*;
+
+let mut scheduler = Scheduler::new().name("my_app");
+
+// Add nodes with priority (0 = highest) and logging
+scheduler.add(Box::new(my_node), 0, Some(true));
+
+// Run options:
+scheduler.run()?;                                  // Run continuously until Ctrl+C
+scheduler.run_for(Duration::from_secs(10))?;       // Run for duration
+scheduler.tick(&["node1", "node2"])?;              // Run specific nodes
+scheduler.tick_for(&["node1"], Duration::from_secs(5))?;  // Run specific nodes for duration
+```
+
+### Hub (Pub/Sub)
+
+```rust
+use horus::prelude::*;
+
+// Create Hub for any type implementing LogSummary
+let hub: Hub<f64> = Hub::new("topic_name")?;
+
+// Send returns Result<(), T> - returns message back on failure
+hub.send(42.0, None)?;  // None = no logging (best performance)
+hub.send(42.0, Some(&mut ctx))?;  // Some(ctx) = enable logging
+
+// Receive returns Option<T>
+if let Some(msg) = hub.recv(None) {
+    println!("Received: {}", msg);
 }
 ```
 
@@ -381,6 +416,9 @@ if let Some(msg) = hub.recv(ctx) {
 *Performance varies by hardware. Run `cargo test --release` to benchmark on your system.*
 
 ### Node Trait
+
+The core trait that all nodes must implement:
+
 ```rust
 use horus::prelude::*;
 
@@ -392,28 +430,50 @@ pub trait Node: Send {
 }
 ```
 
+**About the `ctx` parameter:**
+- `ctx: Option<&mut NodeInfo>` - Use `None` for maximum performance (no logging)
+- When passing ctx to nested calls, use: `ctx.as_deref_mut()` or `Some(&mut ctx)`
+- The scheduler provides ctx based on logging settings in `scheduler.add()`
+
 ### node! Macro
+
+The `node!` macro eliminates boilerplate by auto-generating the Node implementation:
+
 ```rust
-use horus_macros::node;
+use horus::prelude::*;
+
+// Define message type first
+message!(SensorData = (f64, u32));
 
 node! {
     MyNode {
-        pub { output: f64 -> "output_topic" }
-        sub { input: f64 <- "input_topic" }
+        // Publishers (use 'pub' section)
+        pub {
+            output: SensorData -> "sensor/output",
+        }
 
+        // Subscribers (use 'sub' section)
+        sub {
+            input: SensorData -> "sensor/input",
+        }
+
+        // Node state (use 'data' section)
         data {
             counter: u32 = 0,
         }
 
+        // Lifecycle hooks
         init(ctx) {
             ctx.log_info("MyNode initialized");
             Ok(())
         }
 
         tick(ctx) {
-            if let Some(value) = self.input.recv(ctx) {
+            // ctx is Option<&mut NodeInfo> here
+            if let Some(value) = self.input.recv(ctx.as_deref_mut()) {
                 self.counter += 1;
-                self.output.send(value * 2.0, ctx).ok();
+                let processed = SensorData(value.0 * 2.0, value.1);
+                self.output.send(processed, ctx.as_deref_mut()).ok();
             }
         }
 
@@ -424,6 +484,8 @@ node! {
     }
 }
 ```
+
+**Note:** The macro uses `->` for both publishers and subscribers. The section name (`pub` vs `sub`) determines the behavior.
 
 ## Example Applications
 

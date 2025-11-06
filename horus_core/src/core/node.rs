@@ -472,6 +472,15 @@ impl NodeInfo {
         self.log_error(&error_msg);
     }
 
+    /// Get elapsed time since tick started in microseconds
+    pub fn tick_elapsed_us(&self) -> u64 {
+        if let Some(start_time) = self.tick_start_time {
+            start_time.elapsed().as_micros() as u64
+        } else {
+            0
+        }
+    }
+
     // Logging Methods - Production-Ready with IPC Timing
     // ALWAYS requires IPC timing measurement - no fallback
     pub fn log_pub<T: LogSummary>(&mut self, topic: &str, data: &T, ipc_ns: u64) {

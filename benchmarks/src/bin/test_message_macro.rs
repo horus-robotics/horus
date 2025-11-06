@@ -4,7 +4,6 @@
 /// - All necessary derives (Debug, Clone, Serialize, Deserialize)
 /// - LogSummary implementation
 /// - Hub/Link compatibility
-
 use horus::prelude::*;
 
 // Test tuple-style messages

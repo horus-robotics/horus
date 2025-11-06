@@ -30,7 +30,9 @@ struct RegisteredNode {
 pub struct PyScheduler {
     nodes: Arc<Mutex<Vec<RegisteredNode>>>,
     running: Arc<Mutex<bool>>,
-    tick_rate_hz: f64, // Global scheduler tick rate
+    tick_rate_hz: f64,          // Global scheduler tick rate
+    scheduler_name: String,     // Scheduler name for registry
+    working_dir: PathBuf,       // Working directory for registry
 }
 
 #[pymethods]
@@ -44,6 +46,8 @@ impl PyScheduler {
             nodes: Arc::new(Mutex::new(Vec::new())),
             running: Arc::new(Mutex::new(false)),
             tick_rate_hz: 100.0, // Default 100Hz
+            scheduler_name: "PythonScheduler".to_string(),
+            working_dir: std::env::current_dir().unwrap_or_else(|_| PathBuf::from("/")),
         })
     }
 
@@ -216,7 +220,16 @@ impl PyScheduler {
                     eprintln!("Failed to initialize node '{}': {:?}", registered.name, e);
                 }
             }
+
+            // Write initial registry for dashboard
+            Self::update_registry(&nodes, &self.scheduler_name, &self.working_dir);
         }
+
+        // Setup heartbeat directory
+        Self::setup_heartbeat_directory();
+
+        // Track last snapshot time
+        let mut last_snapshot = std::time::Instant::now();
 
         // Main execution loop
         for tick in 0..total_ticks {
@@ -283,6 +296,14 @@ impl PyScheduler {
                         .or_else(|_| registered.node.call_method0(py, "tick"));
 
                     if let Err(e) = result {
+                        // Check if this is a KeyboardInterrupt - if so, stop the scheduler immediately
+                        if e.is_instance_of::<pyo3::exceptions::PyKeyboardInterrupt>(py) {
+                            eprintln!("\n🛑 Keyboard interrupt received, shutting down...");
+                            if let Ok(mut r) = self.running.lock() {
+                                *r = false;
+                            }
+                            break;
+                        }
                         eprintln!("Error in node '{}' tick: {:?}", registered.name, e);
                     }
 
@@ -298,6 +319,16 @@ impl PyScheduler {
                 }
             }
 
+            // Periodic registry snapshot (every 5 seconds)
+            if last_snapshot.elapsed() >= Duration::from_secs(5) {
+                let nodes = self
+                    .nodes
+                    .lock()
+                    .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
+                Self::snapshot_state_to_registry(&nodes, &self.scheduler_name, &self.working_dir);
+                last_snapshot = std::time::Instant::now();
+            }
+
             // Sleep for remainder of tick period
             let elapsed = tick_start.elapsed();
             if elapsed < tick_duration {
@@ -311,8 +342,10 @@ impl PyScheduler {
             }
         }
 
-        // Clean up heartbeats
+        // Clean up registry, heartbeats and session
+        Self::cleanup_registry();
         Self::cleanup_heartbeats();
+        Self::cleanup_session();
 
         // Shutdown all nodes
         {
@@ -365,6 +398,15 @@ impl PyScheduler {
             *running = true;
         }
 
+        // Set up Ctrl+C handler for immediate shutdown
+        let running_clone = self.running.clone();
+        let _ = ctrlc::set_handler(move || {
+            eprintln!("\n🛑 Ctrl+C received! Shutting down scheduler...");
+            if let Ok(mut r) = running_clone.lock() {
+                *r = false;
+            }
+        });
+
         // Initialize all nodes
         {
             let nodes = self
@@ -391,11 +433,23 @@ impl PyScheduler {
                     eprintln!("Failed to initialize node '{}': {:?}", registered.name, e);
                 }
             }
+
+            // Write initial registry for dashboard
+            Self::update_registry(&nodes, &self.scheduler_name, &self.working_dir);
         }
+
+        // Setup heartbeat directory
+        Self::setup_heartbeat_directory();
+
+        // Track last snapshot time
+        let mut last_snapshot = std::time::Instant::now();
 
         // Main execution loop
         loop {
             let tick_start = std::time::Instant::now();
+
+            // Check for Python signals (e.g., Ctrl+C/KeyboardInterrupt)
+            py.check_signals()?;
 
             // Check if we should stop
             {
@@ -458,6 +512,14 @@ impl PyScheduler {
                         .or_else(|_| registered.node.call_method0(py, "tick"));
 
                     if let Err(e) = result {
+                        // Check if this is a KeyboardInterrupt - if so, stop the scheduler immediately
+                        if e.is_instance_of::<pyo3::exceptions::PyKeyboardInterrupt>(py) {
+                            eprintln!("\n🛑 Keyboard interrupt received, shutting down...");
+                            if let Ok(mut r) = self.running.lock() {
+                                *r = false;
+                            }
+                            break;
+                        }
                         eprintln!("Error in node '{}' tick: {:?}", registered.name, e);
                     }
 
@@ -473,6 +535,16 @@ impl PyScheduler {
                 }
             }
 
+            // Periodic registry snapshot (every 5 seconds)
+            if last_snapshot.elapsed() >= Duration::from_secs(5) {
+                let nodes = self
+                    .nodes
+                    .lock()
+                    .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
+                Self::snapshot_state_to_registry(&nodes, &self.scheduler_name, &self.working_dir);
+                last_snapshot = std::time::Instant::now();
+            }
+
             // Sleep for remainder of tick period
             let elapsed = tick_start.elapsed();
             if elapsed < tick_duration {
@@ -480,8 +552,10 @@ impl PyScheduler {
             }
         }
 
-        // Clean up heartbeats
+        // Clean up registry, heartbeats and session
+        Self::cleanup_registry();
         Self::cleanup_heartbeats();
+        Self::cleanup_session();
 
         // Shutdown all nodes
         {
@@ -578,6 +652,9 @@ impl PyScheduler {
         loop {
             let tick_start = std::time::Instant::now();
 
+            // Check for Python signals (e.g., Ctrl+C/KeyboardInterrupt)
+            py.check_signals()?;
+
             // Check if we should stop
             {
                 let running = self.running.lock().map_err(|e| {
@@ -640,6 +717,14 @@ impl PyScheduler {
                         .or_else(|_| registered.node.call_method0(py, "tick"));
 
                     if let Err(e) = result {
+                        // Check if this is a KeyboardInterrupt - if so, stop the scheduler immediately
+                        if e.is_instance_of::<pyo3::exceptions::PyKeyboardInterrupt>(py) {
+                            eprintln!("\n🛑 Keyboard interrupt received, shutting down...");
+                            if let Ok(mut r) = self.running.lock() {
+                                *r = false;
+                            }
+                            break;
+                        }
                         eprintln!("Error in node '{}' tick: {:?}", registered.name, e);
                     }
 
@@ -750,6 +835,9 @@ impl PyScheduler {
         loop {
             let tick_start = std::time::Instant::now();
 
+            // Check for Python signals (e.g., Ctrl+C/KeyboardInterrupt)
+            py.check_signals()?;
+
             // Check if duration exceeded
             if start_time.elapsed() >= max_duration {
                 println!("Reached time limit of {} seconds", duration_seconds);
@@ -818,6 +906,14 @@ impl PyScheduler {
                         .or_else(|_| registered.node.call_method0(py, "tick"));
 
                     if let Err(e) = result {
+                        // Check if this is a KeyboardInterrupt - if so, stop the scheduler immediately
+                        if e.is_instance_of::<pyo3::exceptions::PyKeyboardInterrupt>(py) {
+                            eprintln!("\n🛑 Keyboard interrupt received, shutting down...");
+                            if let Ok(mut r) = self.running.lock() {
+                                *r = false;
+                            }
+                            break;
+                        }
                         eprintln!("Error in node '{}' tick: {:?}", registered.name, e);
                     }
 
@@ -967,6 +1063,143 @@ impl PyScheduler {
                     let _ = fs::remove_file(entry.path());
                 }
             }
+        }
+    }
+
+    /// Clean up session directory (topics and metadata)
+    fn cleanup_session() {
+        // Get current session ID from environment
+        if let Ok(session_id) = std::env::var("HORUS_SESSION_ID") {
+            let session_dir = PathBuf::from(format!("/dev/shm/horus/sessions/{}", session_id));
+
+            if session_dir.exists() {
+                // Remove the entire session directory
+                let _ = fs::remove_dir_all(&session_dir);
+            }
+        }
+    }
+
+    /// Get path to registry file
+    fn get_registry_path() -> Result<PathBuf, std::io::Error> {
+        let mut path = std::env::var("HOME")
+            .ok()
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("/tmp"));
+        path.push(".horus_registry.json");
+        Ok(path)
+    }
+
+    /// Write metadata to registry file for monitor to read
+    fn update_registry(
+        nodes: &[RegisteredNode],
+        scheduler_name: &str,
+        working_dir: &std::path::Path,
+    ) {
+        if let Ok(registry_path) = Self::get_registry_path() {
+            let pid = std::process::id();
+
+            // Collect node info
+            let nodes_json: Vec<String> = nodes
+                .iter()
+                .map(|registered| {
+                    let name = &registered.name;
+                    let priority = registered.priority;
+
+                    format!(
+                        "    {{\"name\": \"{}\", \"priority\": {}, \"publishers\": [], \"subscribers\": []}}",
+                        name, priority
+                    )
+                })
+                .collect();
+
+            let registry_data = format!(
+                "{{\n  \"pid\": {},\n  \"scheduler_name\": \"{}\",\n  \"working_dir\": \"{}\",\n  \"nodes\": [\n{}\n  ]\n}}",
+                pid,
+                scheduler_name,
+                working_dir.to_string_lossy(),
+                nodes_json.join(",\n")
+            );
+
+            let _ = fs::write(&registry_path, registry_data);
+        }
+    }
+
+    /// Snapshot node state to registry (for crash forensics and persistence)
+    /// Called every 5 seconds to avoid I/O overhead
+    fn snapshot_state_to_registry(
+        nodes: &[RegisteredNode],
+        scheduler_name: &str,
+        working_dir: &std::path::Path,
+    ) {
+        if let Ok(registry_path) = Self::get_registry_path() {
+            let pid = std::process::id();
+            let timestamp = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
+
+            // Collect node info including state and health
+            let nodes_json: Vec<String> = nodes
+                .iter()
+                .map(|registered| {
+                    let name = &registered.name;
+                    let priority = registered.priority;
+
+                    // Get state and health from context
+                    let (state_str, health_str, error_count, tick_count) =
+                        if let Ok(ctx) = registered.context.lock() {
+                            let heartbeat = NodeHeartbeat::from_metrics(
+                                ctx.state().clone(),
+                                ctx.metrics(),
+                            );
+                            (
+                                ctx.state().to_string(),
+                                heartbeat.health.as_str().to_string(),
+                                ctx.metrics().errors_count,
+                                ctx.metrics().total_ticks,
+                            )
+                        } else {
+                            (
+                                "Unknown".to_string(),
+                                "Unknown".to_string(),
+                                0,
+                                0,
+                            )
+                        };
+
+                    format!(
+                        "    {{\"name\": \"{}\", \"priority\": {}, \"state\": \"{}\", \"health\": \"{}\", \"error_count\": {}, \"tick_count\": {}, \"publishers\": [], \"subscribers\": []}}",
+                        name, priority, state_str, health_str, error_count, tick_count
+                    )
+                })
+                .collect();
+
+            let registry_data = format!(
+                "{{\n  \"pid\": {},\n  \"scheduler_name\": \"{}\",\n  \"working_dir\": \"{}\",\n  \"last_snapshot\": {},\n  \"nodes\": [\n{}\n  ]\n}}",
+                pid,
+                scheduler_name,
+                working_dir.to_string_lossy(),
+                timestamp,
+                nodes_json.join(",\n")
+            );
+
+            // Atomic write: write to temp file, then rename
+            if let Some(parent) = registry_path.parent() {
+                let temp_path = parent.join(format!(".horus_registry.json.tmp.{}", pid));
+
+                // Write to temp file
+                if fs::write(&temp_path, &registry_data).is_ok() {
+                    // Atomically rename to final path
+                    let _ = fs::rename(&temp_path, &registry_path);
+                }
+            }
+        }
+    }
+
+    /// Remove registry file when scheduler stops
+    fn cleanup_registry() {
+        if let Ok(registry_path) = Self::get_registry_path() {
+            let _ = fs::remove_file(registry_path);
         }
     }
 }

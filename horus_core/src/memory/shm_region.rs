@@ -129,12 +129,10 @@ impl ShmRegion {
 
 impl Drop for ShmRegion {
     fn drop(&mut self) {
-        // If we're the owner and file exists, optionally remove it
-        // For now, we keep files persistent for debugging
-        // If you want to clean up:
-        // if self.owner && self.path.exists() {
-        //     let _ = std::fs::remove_file(&self.path);
-        // }
+        // Clean up shared memory file if we're the owner
+        if self.owner && self.path.exists() {
+            let _ = std::fs::remove_file(&self.path);
+        }
     }
 }
 

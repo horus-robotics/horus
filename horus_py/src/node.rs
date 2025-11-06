@@ -210,14 +210,17 @@ impl PyNodeInfo {
 
         let timestamp = chrono::Local::now().format("%H:%M:%S%.3f").to_string();
         let node_name = info.name().to_string();
-        let tick_us = 0; // Not accessible from Python bindings (private field)
+
+        // Calculate tick_us from tick_start_time
+        let tick_us = info.tick_elapsed_us();
 
         if info.config().enable_logging {
             // Build the log message safely
             let msg = format!(
-                "\r\n\x1b[36m[{}]\x1b[0m \x1b[32m[IPC: {}ns]\x1b[0m \x1b[33m{}\x1b[0m \x1b[1;32m--PUB-->\x1b[0m \x1b[35m'{}'\x1b[0m = {}\r\n",
+                "\r\n\x1b[36m[{}]\x1b[0m \x1b[32m[IPC: {}ns]\x1b[0m \x1b[90m[Tick: {}µs]\x1b[0m \x1b[33m{}\x1b[0m \x1b[1;32m--PUB-->\x1b[0m \x1b[35m'{}'\x1b[0m = {}\r\n",
                 timestamp,
                 ipc_ns,
+                tick_us,
                 node_name,
                 topic,
                 data_repr
@@ -253,14 +256,17 @@ impl PyNodeInfo {
 
         let timestamp = chrono::Local::now().format("%H:%M:%S%.3f").to_string();
         let node_name = info.name().to_string();
-        let tick_us = 0; // Not accessible from Python bindings (private field)
+
+        // Calculate tick_us from tick_start_time
+        let tick_us = info.tick_elapsed_us();
 
         if info.config().enable_logging {
             // Build the log message safely
             let msg = format!(
-                "\x1b[36m[{}]\x1b[0m \x1b[32m[IPC: {}ns]\x1b[0m \x1b[33m{}\x1b[0m \x1b[1;34m<--SUB--\x1b[0m \x1b[35m'{}'\x1b[0m = {}\n",
+                "\x1b[36m[{}]\x1b[0m \x1b[32m[IPC: {}ns]\x1b[0m \x1b[90m[Tick: {}µs]\x1b[0m \x1b[33m{}\x1b[0m \x1b[1;34m<--SUB--\x1b[0m \x1b[35m'{}'\x1b[0m = {}\n",
                 timestamp,
                 ipc_ns,
+                tick_us,
                 node_name,
                 topic,
                 data_repr

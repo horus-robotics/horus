@@ -398,6 +398,7 @@ mod tests {
             vec![DependencySpec {
                 name: "pkg_b".to_string(),
                 requirement: VersionReq::parse("^2.0.0").unwrap(),
+                source: DependencySource::Registry,
             }],
         );
 
@@ -405,6 +406,7 @@ mod tests {
         let root_deps = vec![DependencySpec {
             name: "pkg_a".to_string(),
             requirement: VersionReq::parse("^1.0.0").unwrap(),
+            source: DependencySource::Registry,
         }];
 
         let resolved = resolver.resolve(root_deps).unwrap();

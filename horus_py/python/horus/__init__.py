@@ -94,25 +94,30 @@ class Node:
 
     def __init__(self,
                  name: Optional[str] = None,
-                 pubs: Optional[Union[List[str], str]] = None,
-                 subs: Optional[Union[List[str], str]] = None,
+                 pubs: Optional[Union[List[str], str, Dict[str, Dict]]] = None,
+                 subs: Optional[Union[List[str], str, Dict[str, Dict]]] = None,
                  tick: Optional[Callable[['Node'], None]] = None,
                  rate: float = 30,
                  init: Optional[Callable[['Node'], None]] = None,
                  shutdown: Optional[Callable[['Node'], None]] = None,
-                 on_error: Optional[Callable[['Node', Exception], None]] = None):
+                 on_error: Optional[Callable[['Node', Exception], None]] = None,
+                 default_capacity: int = 1024):
         """
         Create a simple HORUS node.
 
         Args:
             name: Node name (auto-generated if None)
-            pubs: Topics to publish to (str or list)
-            subs: Topics to subscribe to (str or list)
+            pubs: Topics to publish to. Can be:
+                  - str: single topic
+                  - list: ["topic1", "topic2"]
+                  - dict: {"topic1": {"capacity": 2048}, "topic2": {}}
+            subs: Topics to subscribe to (same format as pubs)
             tick: Function to call on each tick - signature: tick(node)
             rate: Tick rate in Hz (default 30)
             init: Optional init function - signature: init(node)
             shutdown: Optional shutdown function - signature: shutdown(node)
             on_error: Optional error handler - signature: on_error(node, exception)
+            default_capacity: Default hub capacity (default: 1024)
         """
         # Auto-generate name if not provided
         if name is None:
@@ -126,19 +131,36 @@ class Node:
         self.on_error_fn = on_error
         self.rate = rate
         self.error_count = 0
+        self.default_capacity = default_capacity
 
         # Per-node rate control
         self._last_tick_time = 0.0
         self._tick_period = 1.0 / rate if rate > 0 else 0.0
 
-        # Normalize pub/sub to lists
-        if isinstance(pubs, str):
-            pubs = [pubs]
-        if isinstance(subs, str):
-            subs = [subs]
+        # Normalize pub/sub to lists and extract configs
+        self.pub_topics = []
+        self.sub_topics = []
+        self._topic_configs = {}  # topic -> config dict
 
-        self.pub_topics = pubs or []
-        self.sub_topics = subs or []
+        # Process pubs
+        if isinstance(pubs, str):
+            self.pub_topics = [pubs]
+        elif isinstance(pubs, dict):
+            for topic, config in pubs.items():
+                self.pub_topics.append(topic)
+                self._topic_configs[topic] = config or {}
+        elif isinstance(pubs, list):
+            self.pub_topics = pubs
+
+        # Process subs
+        if isinstance(subs, str):
+            self.sub_topics = [subs]
+        elif isinstance(subs, dict):
+            for topic, config in subs.items():
+                self.sub_topics.append(topic)
+                self._topic_configs[topic] = config or {}
+        elif isinstance(subs, list):
+            self.sub_topics = subs
 
         # Message queues for subscriptions
         self._msg_queues = defaultdict(list)
@@ -159,16 +181,18 @@ class Node:
             self._hubs = {}
 
     def _setup_hubs(self):
-        """Setup publish/subscribe hubs."""
+        """Setup publish/subscribe hubs with configured capacities."""
         self._hubs = {}
 
         # Create publisher hubs
         for topic in self.pub_topics:
-            self._hubs[topic] = _PyHub(topic, 1024)
+            capacity = self._topic_configs.get(topic, {}).get('capacity', self.default_capacity)
+            self._hubs[topic] = _PyHub(topic, capacity)
 
         # Create subscriber hubs
         for topic in self.sub_topics:
-            self._hubs[topic] = _PyHub(topic, 1024)
+            capacity = self._topic_configs.get(topic, {}).get('capacity', self.default_capacity)
+            self._hubs[topic] = _PyHub(topic, capacity)
 
     def has_msg(self, topic: str) -> bool:
         """
@@ -302,7 +326,8 @@ class Node:
         if topic not in self.pub_topics:
             self.pub_topics.append(topic)
             if self._node:
-                self._hubs[topic] = _PyHub(topic, 1024)
+                capacity = self._topic_configs.get(topic, {}).get('capacity', self.default_capacity)
+                self._hubs[topic] = _PyHub(topic, capacity)
 
         if self._node and topic in self._hubs:
             hub = self._hubs[topic]
@@ -342,7 +367,8 @@ class Node:
         if topic not in self.sub_topics:
             self.sub_topics.append(topic)
             if self._node:
-                self._hubs[topic] = _PyHub(topic, 1024)
+                capacity = self._topic_configs.get(topic, {}).get('capacity', self.default_capacity)
+                self._hubs[topic] = _PyHub(topic, capacity)
 
         if self._node and topic in self._hubs:
             hub = self._hubs[topic]
@@ -584,15 +610,19 @@ class Scheduler:
             # The scheduler needs to tick faster than the fastest node
             self._scheduler.set_tick_rate(1000.0)  # 1000Hz allows fine-grained control
 
-            # Run
-            if duration:
-                self._scheduler.run_for(duration)
-            else:
-                self._scheduler.run()
-
-            # Shutdown all nodes
-            for node in self._nodes:
-                node._internal_shutdown()
+            # Run with KeyboardInterrupt handling
+            try:
+                if duration:
+                    self._scheduler.run_for(duration)
+                else:
+                    self._scheduler.run()
+            except KeyboardInterrupt:
+                print("\n\n Ctrl+C received, shutting down gracefully...")
+                self._scheduler.stop()
+            finally:
+                # Shutdown all nodes
+                for node in self._nodes:
+                    node._internal_shutdown()
         else:
             # Mock mode - simple loop
             print(f"Running {len(self._nodes)} nodes in mock mode...")
@@ -600,14 +630,17 @@ class Scheduler:
             for node in self._nodes:
                 node._internal_init()
 
-            start = time.time()
-            while duration is None or (time.time() - start) < duration:
+            try:
+                start = time.time()
+                while duration is None or (time.time() - start) < duration:
+                    for node in self._nodes:
+                        node._internal_tick()
+                    time.sleep(0.03)  # ~30Hz
+            except KeyboardInterrupt:
+                print("\n\n Ctrl+C received, shutting down gracefully...")
+            finally:
                 for node in self._nodes:
-                    node._internal_tick()
-                time.sleep(0.03)  # ~30Hz
-
-            for node in self._nodes:
-                node._internal_shutdown()
+                    node._internal_shutdown()
 
     def stop(self) -> None:
         """Stop the scheduler."""

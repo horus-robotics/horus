@@ -28,12 +28,30 @@ struct EncoderReading {
     current: f32,  // amps
 }
 
+impl horus_core::core::LogSummary for EncoderReading {
+    fn log_summary(&self) -> String {
+        format!(
+            "EncoderReading(pos: {:.3}, vel: {:.3})",
+            self.position, self.velocity
+        )
+    }
+}
+
 /// Motor command (sent from controller to motor driver)
 #[derive(Debug, Clone, Copy)]
 struct MotorCommand {
     timestamp_us: u64,
     voltage: f32, // volts (-24.0 to +24.0)
     enable: bool,
+}
+
+impl horus_core::core::LogSummary for MotorCommand {
+    fn log_summary(&self) -> String {
+        format!(
+            "MotorCommand(V: {:.2}, enabled: {})",
+            self.voltage, self.enable
+        )
+    }
 }
 
 impl EncoderReading {

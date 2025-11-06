@@ -11,7 +11,7 @@ This demonstrates a full robotics application with:
 import time
 import random
 import math
-from horus import Hub, Scheduler, Node
+from horus import Scheduler, Node
 
 # ============================================================================
 # VISION PROCESSING NODES
@@ -21,13 +21,9 @@ class QrScannerNode(Node):
     """Simulates QR code scanner for warehouse inventory"""
 
     def __init__(self):
-        super().__init__()
-        self.publisher = Hub("vision/qr_codes")
+        super().__init__(name="QrScannerNode", pubs=["vision/qr_codes"])
         self.scan_count = 0
         self.known_codes = ["SHELF-A01", "SHELF-B12", "SHELF-C33", "DOCK-01"]
-
-    def name(self) -> str:
-        return "QrScannerNode"
 
     def tick(self):
         self.scan_count += 1
@@ -41,19 +37,15 @@ class QrScannerNode(Node):
                 "confidence": confidence,
                 "timestamp": time.time()
             }
-            self.publisher.send(data)
+            self.send("vision/qr_codes", data)
 
 
 class ObjectDetectorNode(Node):
     """Simulates object detection for obstacle awareness"""
 
     def __init__(self):
-        super().__init__()
-        self.publisher = Hub("vision/objects")
+        super().__init__(name="ObjectDetectorNode", pubs=["vision/objects"])
         self.frame_count = 0
-
-    def name(self) -> str:
-        return "ObjectDetectorNode"
 
     def tick(self):
         self.frame_count += 1
@@ -76,7 +68,7 @@ class ObjectDetectorNode(Node):
                 }
                 objects.append(obj)
 
-            self.publisher.send({"objects": objects, "timestamp": time.time()})
+            self.send("vision/objects", {"objects": objects, "timestamp": time.time()})
 
 
 # ============================================================================
@@ -87,77 +79,68 @@ class SlamNode(Node):
     """Simulates SLAM (Simultaneous Localization and Mapping)"""
 
     def __init__(self):
-        super().__init__()
-        self.map_publisher = Hub("localization/map")
-        self.pose_publisher = Hub("localization/pose")
+        super().__init__(name="SlamNode", pubs=["localization/map", "localization/pose"])
         self.position = [0.0, 0.0, 0.0]  # x, y, theta
         self.map_size = 0
 
-    def name(self) -> str:
-        return "SlamNode"
-
     def tick(self):
         # Simulate robot movement
-        self.position[0] += random.uniform(-0.01, 0.01)
-        self.position[1] += random.uniform(-0.01, 0.01)
+        self.position[0] += random.uniform(-0.1, 0.1)
+        self.position[1] += random.uniform(-0.1, 0.1)
         self.position[2] += random.uniform(-0.05, 0.05)
 
-        # Publish pose estimate
-        pose = {
+        # Publish pose frequently
+        pose_data = {
             "x": self.position[0],
             "y": self.position[1],
             "theta": self.position[2],
-            "covariance": [0.01, 0.01, 0.02],
-            "timestamp": time.time()
+            "covariance": [random.uniform(0.01, 0.05) for _ in range(9)]
         }
-        self.pose_publisher.send(pose)
+        self.send("localization/pose", pose_data)
 
-        # Periodically publish map updates
-        self.map_size += 1
-        if self.map_size % 200 == 0:
+        # Publish map updates less frequently
+        self.map_size += random.randint(0, 5)
+        if random.random() < 0.1:  # 10% chance
             map_data = {
-                "resolution": 0.05,  # 5cm per cell
-                "width": 200,
-                "height": 200,
-                "occupied_cells": self.map_size,
-                "timestamp": time.time()
+                "width": 100,
+                "height": 100,
+                "resolution": 0.05,
+                "occupied_cells": self.map_size
             }
-            self.map_publisher.send(map_data)
+            self.send("localization/map", map_data)
 
 
 class PositionEstimatorNode(Node):
-    """Fuses multiple sensors for position estimation"""
+    """Fuses SLAM and other sensors for position estimate"""
 
     def __init__(self):
-        super().__init__()
-        self.slam_sub = Hub("localization/pose")
-        self.qr_sub = Hub("vision/qr_codes")
-        self.publisher = Hub("localization/position_estimate")
-        self.last_qr_correction = 0
-
-    def name(self) -> str:
-        return "PositionEstimatorNode"
+        super().__init__(
+            name="PositionEstimatorNode",
+            subs=["localization/pose", "vision/qr_codes"],
+            pubs=["localization/position_estimate"]
+        )
+        self.last_slam_pose = None
+        self.last_qr_correction = None
 
     def tick(self):
         # Get SLAM pose
-        slam_pose = self.slam_sub.recv()
+        if self.has_msg("localization/pose"):
+            self.last_slam_pose = self.get("localization/pose")
 
-        # Check for QR code corrections
-        qr_data = self.qr_sub.recv()
-        if qr_data:
-            self.last_qr_correction = time.time()
+        # Get QR code corrections
+        if self.has_msg("vision/qr_codes"):
+            qr_data = self.get("vision/qr_codes")
+            self.last_qr_correction = qr_data
 
-        if slam_pose:
-            # Publish fused estimate
+        # Fuse data and publish estimate
+        if self.last_slam_pose:
             estimate = {
-                "x": slam_pose["x"],
-                "y": slam_pose["y"],
-                "theta": slam_pose["theta"],
-                "confidence": 0.95 if (time.time() - self.last_qr_correction) < 5.0 else 0.75,
-                "source": "fused",
-                "timestamp": time.time()
+                "x": self.last_slam_pose["x"],
+                "y": self.last_slam_pose["y"],
+                "theta": self.last_slam_pose["theta"],
+                "confidence": 0.9 if self.last_qr_correction else 0.7
             }
-            self.publisher.send(estimate)
+            self.send("localization/position_estimate", estimate)
 
 
 # ============================================================================
@@ -165,99 +148,58 @@ class PositionEstimatorNode(Node):
 # ============================================================================
 
 class TaskSchedulerNode(Node):
-    """Manages warehouse tasks and assigns priorities"""
+    """Assigns tasks to robots"""
 
     def __init__(self):
-        super().__init__()
-        self.task_publisher = Hub("tasks/current_task")
-        self.status_publisher = Hub("tasks/status")
-        self.current_task = None
-        self.task_queue = [
-            {"id": 1, "type": "pick", "shelf": "A01", "item": "SKU-12345"},
-            {"id": 2, "type": "pick", "shelf": "B12", "item": "SKU-67890"},
-            {"id": 3, "type": "deliver", "dock": "DOCK-01"},
-            {"id": 4, "type": "return", "shelf": "C33"},
-        ]
-        self.task_index = 0
-        self.tick_count = 0
-
-    def name(self) -> str:
-        return "TaskSchedulerNode"
+        super().__init__(
+            name="TaskSchedulerNode",
+            pubs=["tasks/current_task", "tasks/status"]
+        )
+        self.task_id = 0
+        self.tasks = ["PICK_A01", "MOVE_TO_DOCK", "PICK_B12", "DELIVER_C33"]
 
     def tick(self):
-        self.tick_count += 1
-
-        # Assign new task every 500 ticks
-        if self.tick_count % 500 == 0:
-            if self.task_queue:
-                self.current_task = self.task_queue[self.task_index % len(self.task_queue)]
-                self.task_index += 1
-                self.task_publisher.send(self.current_task)
-
-        # Publish status
-        status = {
-            "queue_size": len(self.task_queue),
-            "active_task": self.current_task["id"] if self.current_task else None,
-            "completed_today": self.task_index,
-            "timestamp": time.time()
-        }
-        self.status_publisher.send(status)
+        # Generate new task periodically
+        if random.random() < 0.02:  # 2% chance
+            self.task_id += 1
+            task = {
+                "id": self.task_id,
+                "type": random.choice(self.tasks),
+                "priority": random.randint(1, 5),
+                "assigned_time": time.time()
+            }
+            self.send("tasks/current_task", task)
+            self.send("tasks/status", {"active_tasks": self.task_id})
 
 
 class PathExecutorNode(Node):
-    """Executes planned paths to reach task locations"""
+    """Executes path planning and sends velocity commands"""
 
     def __init__(self):
-        super().__init__()
-        self.task_sub = Hub("tasks/current_task")
-        self.pose_sub = Hub("localization/position_estimate")
-        self.cmd_pub = Hub("control/cmd_vel")
-        self.current_target = None
-
-    def name(self) -> str:
-        return "PathExecutorNode"
+        super().__init__(
+            name="PathExecutorNode",
+            subs=["tasks/current_task", "localization/position_estimate"],
+            pubs=["control/cmd_vel"]
+        )
+        self.current_task = None
+        self.current_position = None
 
     def tick(self):
         # Get current task
-        task = self.task_sub.recv()
-        if task:
-            # Simple goal: navigate to shelf or dock
-            if task["type"] == "pick":
-                # Shelf locations (hardcoded for demo)
-                shelf_positions = {
-                    "A01": (5.0, 2.0),
-                    "B12": (10.0, 5.0),
-                    "C33": (15.0, 8.0)
-                }
-                self.current_target = shelf_positions.get(task["shelf"], (0, 0))
-            elif task["type"] == "deliver":
-                self.current_target = (20.0, 10.0)  # Dock location
+        if self.has_msg("tasks/current_task"):
+            self.current_task = self.get("tasks/current_task")
 
         # Get current position
-        pose = self.pose_sub.recv()
+        if self.has_msg("localization/position_estimate"):
+            self.current_position = self.get("localization/position_estimate")
 
-        if pose and self.current_target:
-            # Simple proportional controller
-            dx = self.current_target[0] - pose["x"]
-            dy = self.current_target[1] - pose["y"]
-            distance = math.sqrt(dx**2 + dy**2)
-
-            if distance > 0.1:
-                linear = min(distance * 0.5, 1.0)
-                angular = math.atan2(dy, dx) - pose["theta"]
-
-                # Normalize angular to [-pi, pi]
-                while angular > math.pi:
-                    angular -= 2 * math.pi
-                while angular < -math.pi:
-                    angular += 2 * math.pi
-
-                cmd = {
-                    "linear": linear,
-                    "angular": angular * 0.5,
-                    "timestamp": time.time()
-                }
-                self.cmd_pub.send(cmd)
+        # Execute task (simplified)
+        if self.current_task and self.current_position:
+            cmd_vel = {
+                "linear": random.uniform(0.0, 0.5),
+                "angular": random.uniform(-0.3, 0.3)
+            }
+            self.send("control/cmd_vel", cmd_vel)
 
 
 # ============================================================================
@@ -268,166 +210,123 @@ class CollisionDetectorNode(Node):
     """Monitors for potential collisions"""
 
     def __init__(self):
-        super().__init__()
-        self.objects_sub = Hub("vision/objects")
-        self.alert_pub = Hub("safety/collision_alert")
-        self.alerts_sent = 0
-
-    def name(self) -> str:
-        return "CollisionDetectorNode"
+        super().__init__(
+            name="CollisionDetectorNode",
+            subs=["vision/objects"],
+            pubs=["safety/collision_alert"]
+        )
 
     def tick(self):
-        detection = self.objects_sub.recv()
-
-        if detection and detection.get("objects"):
-            # Check for objects in danger zone
-            for obj in detection["objects"]:
+        if self.has_msg("vision/objects"):
+            objects = self.get("vision/objects")
+            
+            # Check if any objects are too close
+            for obj in objects.get("objects", []):
                 if obj["class"] in ["person", "forklift"]:
-                    # Check if object is close (in center of image)
-                    x, y, w, h = obj["bbox"]
-                    center_x = x + w/2
-
-                    if 200 < center_x < 440:  # Center zone of 640px image
-                        self.alerts_sent += 1
+                    # Simulate danger detection
+                    if random.random() < 0.1:  # 10% chance
                         alert = {
-                            "type": "collision_warning",
-                            "object_class": obj["class"],
-                            "distance_estimate": 2.0 / (w / 100.0),  # Rough estimate
-                            "severity": "high" if obj["class"] == "person" else "medium",
+                            "severity": "high",
+                            "object_type": obj["class"],
                             "timestamp": time.time()
                         }
-                        self.alert_pub.send(alert)
+                        self.send("safety/collision_alert", alert)
 
 
 class EmergencyHandlerNode(Node):
     """Handles emergency stops and safety overrides"""
 
     def __init__(self):
-        super().__init__()
-        self.alert_sub = Hub("safety/collision_alert")
-        self.cmd_sub = Hub("control/cmd_vel")
-        self.override_pub = Hub("control/cmd_vel_safe")
-        self.status_pub = Hub("safety/status")
-        self.emergency_active = False
-        self.last_alert_time = 0
-
-    def name(self) -> str:
-        return "EmergencyHandlerNode"
+        super().__init__(
+            name="EmergencyHandlerNode",
+            subs=["safety/collision_alert", "control/cmd_vel"],
+            pubs=["control/cmd_vel_safe", "safety/status"]
+        )
+        self.emergency_stop = False
 
     def tick(self):
         # Check for collision alerts
-        alert = self.alert_sub.recv()
-        if alert:
-            self.emergency_active = True
-            self.last_alert_time = time.time()
+        if self.has_msg("safety/collision_alert"):
+            alert = self.get("safety/collision_alert")
+            if alert["severity"] == "high":
+                self.emergency_stop = True
+                self.send("safety/status", {"emergency_stop": True})
 
-        # Clear emergency after 3 seconds
-        if self.emergency_active and (time.time() - self.last_alert_time) > 3.0:
-            self.emergency_active = False
+        # Monitor velocity commands
+        if self.has_msg("control/cmd_vel"):
+            cmd = self.get("control/cmd_vel")
+            
+            if self.emergency_stop:
+                # Override with stop command
+                safe_cmd = {"linear": 0.0, "angular": 0.0}
+            else:
+                safe_cmd = cmd
+            
+            self.send("control/cmd_vel_safe", safe_cmd)
 
-        # Get command velocity
-        cmd = self.cmd_sub.recv()
-
-        if self.emergency_active:
-            # Override with stop command
-            safe_cmd = {
-                "linear": 0.0,
-                "angular": 0.0,
-                "timestamp": time.time()
-            }
-            self.override_pub.send(safe_cmd)
-        elif cmd:
-            # Pass through
-            self.override_pub.send(cmd)
-
-        # Publish safety status
-        status = {
-            "emergency_active": self.emergency_active,
-            "last_alert": self.last_alert_time,
-            "system_status": "SAFE" if not self.emergency_active else "EMERGENCY_STOP",
-            "timestamp": time.time()
-        }
-        self.status_pub.send(status)
+        # Clear emergency stop after some time
+        if self.emergency_stop and random.random() < 0.05:
+            self.emergency_stop = False
 
 
 # ============================================================================
-# PERFORMANCE MONITORING NODE
+# MONITORING NODE
 # ============================================================================
 
 class PerformanceMonitorNode(Node):
-    """Monitors system performance metrics"""
+    """Monitors system performance"""
 
     def __init__(self):
-        super().__init__()
-        self.stats_pub = Hub("system/performance")
-        self.start_time = time.time()
+        super().__init__(
+            name="PerformanceMonitorNode",
+            pubs=["system/performance"]
+        )
         self.tick_count = 0
-        self.last_report = time.time()
-
-    def name(self) -> str:
-        return "PerformanceMonitorNode"
 
     def tick(self):
         self.tick_count += 1
-
-        # Report every 200 ticks
-        if self.tick_count % 200 == 0:
-            now = time.time()
-            elapsed = now - self.last_report
-            tick_rate = 200 / elapsed if elapsed > 0 else 0
-
+        
+        if self.tick_count % 100 == 0:
             stats = {
-                "uptime": now - self.start_time,
-                "tick_rate": tick_rate,
-                "total_ticks": self.tick_count,
-                "cpu_percent": random.uniform(20, 60),  # Simulated
-                "memory_mb": random.uniform(150, 300),  # Simulated
-                "timestamp": now
+                "ticks": self.tick_count,
+                "uptime": time.time(),
+                "cpu_usage": random.uniform(10, 60)
             }
-            self.stats_pub.send(stats)
-            self.last_report = now
+            self.send("system/performance", stats)
 
 
 # ============================================================================
 # MAIN
 # ============================================================================
 
-def main():
-    print("🏭 Starting Warehouse Robot System (Python)")
-    print("📊 Dashboard available at: http://localhost:8080")
-    print("🔧 Run 'horus dashboard' in another terminal to monitor\n")
-
-    scheduler = Scheduler()
-
-    # Vision Processing Layer (Priority 0-9: Highest)
-    scheduler.add(QrScannerNode(), priority=0, logging=True)
-    scheduler.add(ObjectDetectorNode(), priority=1, logging=True)
-
-    # Localization Layer (Priority 10-19: High)
-    scheduler.add(SlamNode(), priority=10, logging=True)
-    scheduler.add(PositionEstimatorNode(), priority=11, logging=True)
-
-    # Task Management Layer (Priority 20-29: Medium)
-    scheduler.add(TaskSchedulerNode(), priority=20, logging=True)
-    scheduler.add(PathExecutorNode(), priority=21, logging=True)
-
-    # Safety Layer (Priority 30-34: High within layer)
-    scheduler.add(CollisionDetectorNode(), priority=30, logging=True)
-    scheduler.add(EmergencyHandlerNode(), priority=31, logging=True)
-
-    # Monitoring Layer (Priority 40+: Low)
-    scheduler.add(PerformanceMonitorNode(), priority=40, logging=True)
-
-    print("✅ All nodes registered:")
-    print("   - 2 Vision nodes")
-    print("   - 2 Localization nodes")
-    print("   - 2 Task management nodes")
-    print("   - 2 Safety nodes")
-    print("   - 1 Performance monitoring node")
-    print("\n🚀 Starting scheduler...\n")
-
-    scheduler.run()
-
-
 if __name__ == "__main__":
-    main()
+    print("Starting Warehouse Robot Fleet System...")
+    
+    # Create scheduler
+    scheduler = Scheduler()
+    
+    # Add vision nodes
+    scheduler.add(QrScannerNode(), priority=0, logging=True)
+    scheduler.add(ObjectDetectorNode(), priority=0, logging=True)
+    
+    # Add localization nodes
+    scheduler.add(SlamNode(), priority=1, logging=True)
+    scheduler.add(PositionEstimatorNode(), priority=1, logging=True)
+    
+    # Add task management nodes
+    scheduler.add(TaskSchedulerNode(), priority=2, logging=True)
+    scheduler.add(PathExecutorNode(), priority=2, logging=True)
+    
+    # Add safety nodes
+    scheduler.add(CollisionDetectorNode(), priority=3, logging=True)
+    scheduler.add(EmergencyHandlerNode(), priority=3, logging=True)
+    
+    # Add monitoring
+    scheduler.add(PerformanceMonitorNode(), priority=4, logging=True)
+    
+    print("All nodes initialized. Running for 10 seconds...")
+    
+    # Run for 10 seconds
+    scheduler.run(duration=10.0)
+    
+    print("System shutdown complete.")

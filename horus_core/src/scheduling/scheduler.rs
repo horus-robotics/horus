@@ -324,9 +324,10 @@ impl Scheduler {
                 }
             }
 
-            // Clean up registry file and heartbeats
+            // Clean up registry file, heartbeats, and session
             self.cleanup_registry();
             Self::cleanup_heartbeats();
+            Self::cleanup_session();
 
             println!("Scheduler shutdown complete");
         });
@@ -456,6 +457,18 @@ impl Scheduler {
         let dir = PathBuf::from("/dev/shm/horus/heartbeats");
         if dir.exists() {
             let _ = fs::remove_dir_all(&dir);
+        }
+    }
+
+    /// Clean up session directory (topics and metadata)
+    fn cleanup_session() {
+        // Get current session ID from environment
+        if let Ok(session_id) = std::env::var("HORUS_SESSION_ID") {
+            let session_dir = PathBuf::from(format!("/dev/shm/horus/sessions/{}", session_id));
+
+            if session_dir.exists() {
+                let _ = fs::remove_dir_all(&session_dir);
+            }
         }
     }
 

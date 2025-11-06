@@ -893,7 +893,11 @@ impl RegistryClient {
                                 "Error:".red()
                             );
                             println!("  Path dependency: {} -> {}", dep.name, p.display());
-                            println!("\n{}", "Path dependencies are not reproducible and cannot be published.".yellow());
+                            println!(
+                                "\n{}",
+                                "Path dependencies are not reproducible and cannot be published."
+                                    .yellow()
+                            );
                             println!("{}", "Please publish the path dependency to the registry first, then update horus.yaml.".yellow());
                             has_path_deps = true;
                         }
@@ -1231,7 +1235,9 @@ impl RegistryClient {
                         let source_str = metadata_value["source"].as_str().unwrap_or("Registry");
 
                         // Determine package source from metadata or path
-                        let source = if source_str == "PyPI" || actual_path.to_string_lossy().contains("pypi_") {
+                        let source = if source_str == "PyPI"
+                            || actual_path.to_string_lossy().contains("pypi_")
+                        {
                             PackageSource::PyPI
                         } else {
                             PackageSource::Registry

@@ -329,31 +329,22 @@ fn should_track_process(cmdline: &str) -> bool {
         || cmdline.contains("rustup")
         || cmdline.contains("dashboard")
         || cmdline.contains("monitor")
+        || cmdline.contains("horus run")  // Exclude "horus run" commands - they'll be in registry once scheduler starts
     {
         return false;
     }
 
     // Only track processes that:
-    // 1. Are the horus CLI binary itself (in target/debug or target/release)
-    // 2. Are registered in the HORUS registry (handled by read_registry_file)
-    // 3. Are explicitly HORUS project binaries
+    // 1. Are registered in the HORUS registry (handled by read_registry_file)
+    // 2. Are explicitly standalone HORUS project binaries (not CLI commands)
 
-    // Check if it's a real HORUS node (not dashboard/monitor CLI tools)
-    if (cmdline.contains("target/debug/horus") ||
-        cmdline.contains("target/release/horus") ||
-        cmdline.contains("/bin/horus") ||  // Covers ~/.cargo/bin/horus, /usr/bin/horus, etc.
-        cmdline.ends_with("/horus ") ||
-        cmdline == "horus" ||
-        (cmdline.starts_with("horus ") && !cmdline.contains("cargo")))
-        && !cmdline.contains("dashboard")
-        && !cmdline.contains("monitor")
-        && (cmdline.contains("run ") || cmdline.contains("node") || cmdline.contains("scheduler"))
-    {
+    // Check if it's a standalone HORUS binary (compiled binary running a scheduler)
+    // This excludes CLI commands like "horus run", which will appear in registry once the scheduler starts
+    if cmdline.contains("scheduler") && !cmdline.contains("horus run") {
         return true;
     }
 
-    // For now, only track the horus binary itself
-    // Any other HORUS nodes should be registered through the registry system
+    // Don't track CLI invocations - only track registered nodes
     false
 }
 

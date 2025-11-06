@@ -10,6 +10,8 @@ use std::io::{self, Write};
 use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -80,25 +82,79 @@ impl PipPackage {
 struct CargoPackage {
     name: String,
     version: Option<String>, // None means latest
+    features: Vec<String>,   // Cargo features to enable
 }
 
 impl CargoPackage {
     fn from_string(s: &str) -> Result<Self> {
-        // Parse formats: "bat@0.24.0" or "bat"
+        // Parse formats: "bat@0.24.0:features=derive,serde" or "bat@0.24.0" or "bat"
         let s = s.trim();
-        if let Some(at_pos) = s.find('@') {
-            let name = s[..at_pos].trim().to_string();
-            let version = s[at_pos + 1..].trim();
-            let version = if !version.is_empty() {
-                Some(version.to_string())
+
+        // Check for features
+        let (pkg_part, features) = if let Some(colon_pos) = s.find(':') {
+            let pkg = &s[..colon_pos];
+            let features_part = &s[colon_pos + 1..];
+
+            // Parse features=a,b,c
+            let features = if let Some(equals_pos) = features_part.find('=') {
+                let features_str = &features_part[equals_pos + 1..].trim();
+                if features_str.is_empty() {
+                    return Err(anyhow::anyhow!("Empty features list (remove ':features=' or provide feature names)"));
+                }
+                features_str
+                    .split(',')
+                    .map(|f| f.trim().to_string())
+                    .filter(|f| !f.is_empty())  // Filter out empty strings
+                    .collect()
+            } else if !features_part.is_empty() {
+                return Err(anyhow::anyhow!(
+                    "Invalid features syntax '{}' - use 'features=feat1,feat2'",
+                    features_part
+                ));
+            } else {
+                Vec::new()
+            };
+            (pkg, features)
+        } else {
+            (s, Vec::new())
+        };
+
+        // Parse name@version
+        if let Some(at_pos) = pkg_part.find('@') {
+            let name = pkg_part[..at_pos].trim().to_string();
+            let version_str = pkg_part[at_pos + 1..].trim();
+
+            // Validate package name
+            if name.is_empty() {
+                return Err(anyhow::anyhow!("Package name cannot be empty"));
+            }
+
+            let version = if !version_str.is_empty() {
+                // Basic semver validation
+                if version_str.contains(char::is_whitespace) {
+                    return Err(anyhow::anyhow!("Version cannot contain whitespace: '{}'", version_str));
+                }
+                // Check for common mistakes
+                if version_str == "latest" {
+                    return Err(anyhow::anyhow!("Version 'latest' is not valid - specify a version like '1.0' or omit version"));
+                }
+                Some(version_str.to_string())
             } else {
                 None
             };
-            return Ok(CargoPackage { name, version });
+            return Ok(CargoPackage { name, version, features });
         }
+
+        // No version specified
+        let name = pkg_part.trim().to_string();
+        if name.is_empty() {
+            return Err(anyhow::anyhow!("Package name cannot be empty"));
+        }
+
         Ok(CargoPackage {
-            name: s.to_string(),
+            name,
             version: None,
+            features,
         })
     }
 
@@ -190,6 +246,9 @@ pub fn execute_build_only(file: Option<PathBuf>, release: bool, clean: bool) -> 
                 HashSet::new()
             };
 
+            // Split dependencies into HORUS packages, pip packages, and cargo packages
+            let (horus_deps, _pip_packages, cargo_packages) = split_dependencies_with_context(dependencies, Some("rust"));
+
             // Generate Cargo.toml in .horus/ that references source files in parent directory
             let cargo_toml_path = PathBuf::from(".horus/Cargo.toml");
 
@@ -201,6 +260,9 @@ pub fn execute_build_only(file: Option<PathBuf>, release: bool, clean: bool) -> 
 name = "horus-project"
 version = "0.1.0"
 edition = "2021"
+
+# Empty workspace to prevent inheriting parent workspace
+[workspace]
 
 [[bin]]
 name = "horus-project"
@@ -219,15 +281,21 @@ path = "{}"
                 horus_source.display()
             );
 
-            // Add dependencies from HORUS source
-            for dep in &dependencies {
-                // Map dependency to source directory
-                let dep_path = horus_source.join(dep);
+            // Add HORUS dependencies from source
+            for dep in &horus_deps {
+                // Strip version from dependency name for path lookup
+                let dep_name = if let Some(at_pos) = dep.find('@') {
+                    &dep[..at_pos]
+                } else {
+                    dep.as_str()
+                };
+
+                let dep_path = horus_source.join(dep_name);
 
                 if dep_path.exists() && dep_path.join("Cargo.toml").exists() {
                     cargo_toml.push_str(&format!(
                         "{} = {{ path = \"{}\" }}\n",
-                        dep,
+                        dep_name,
                         dep_path.display()
                     ));
                     println!(
@@ -243,6 +311,55 @@ path = "{}"
                         dep,
                         dep_path.display()
                     );
+                }
+            }
+
+            // Add cargo dependencies from crates.io
+            for pkg in &cargo_packages {
+                if !pkg.features.is_empty() {
+                    // With features
+                    if let Some(ref version) = pkg.version {
+                        cargo_toml.push_str(&format!(
+                            "{} = {{ version = \"{}\", features = [{}] }}\n",
+                            pkg.name,
+                            version,
+                            pkg.features.iter().map(|f| format!("\"{}\"", f)).collect::<Vec<_>>().join(", ")
+                        ));
+                    } else {
+                        cargo_toml.push_str(&format!(
+                            "{} = {{ version = \"*\", features = [{}] }}\n",
+                            pkg.name,
+                            pkg.features.iter().map(|f| format!("\"{}\"", f)).collect::<Vec<_>>().join(", ")
+                        ));
+                        eprintln!(
+                            "  {} Warning: Using wildcard version for '{}' - specify a version for reproducibility",
+                            "⚠️".yellow(),
+                            pkg.name
+                        );
+                    }
+                    println!(
+                        "  {} Added crates.io dependency: {} (features: {})",
+                        "".cyan(),
+                        pkg.name,
+                        pkg.features.join(", ")
+                    );
+                } else if let Some(ref version) = pkg.version {
+                    cargo_toml.push_str(&format!("{} = \"{}\"\n", pkg.name, version));
+                    println!(
+                        "  {} Added crates.io dependency: {}@{}",
+                        "".cyan(),
+                        pkg.name,
+                        version
+                    );
+                } else {
+                    cargo_toml.push_str(&format!("{} = \"*\"\n", pkg.name));
+                    eprintln!(
+                        "  {} Warning: Using wildcard version for '{}' - specify a version for reproducibility",
+                        "⚠️".yellow(),
+                        pkg.name
+                    );
+                    eprintln!("     Example: 'cargo:{}@1.0' in horus.yaml", pkg.name);
+                    println!("  {} Added crates.io dependency: {}", "".cyan(), pkg.name);
                 }
             }
 
@@ -360,7 +477,28 @@ fn execute_single_file(
 
     if !dependencies.is_empty() {
         eprintln!("{} Found {} dependencies", "".cyan(), dependencies.len());
-        resolve_dependencies(dependencies)?;
+
+        // For Rust files, cargo dependencies are handled in Cargo.toml generation
+        // So we filter them out here to avoid trying to `cargo install` library crates
+        let dependencies_to_resolve = if language == "rust" {
+            let (horus_pkgs, pip_pkgs, _cargo_pkgs) = split_dependencies_with_context(dependencies.clone(), Some(&language));
+            // Reconstruct set with only HORUS and pip packages
+            horus_pkgs.into_iter().chain(
+                pip_pkgs.into_iter().map(|p| {
+                    if let Some(ref v) = p.version {
+                        format!("pip:{}=={}", p.name, v)
+                    } else {
+                        format!("pip:{}", p.name)
+                    }
+                })
+            ).collect()
+        } else {
+            dependencies
+        };
+
+        if !dependencies_to_resolve.is_empty() {
+            resolve_dependencies(dependencies_to_resolve)?;
+        }
     }
 
     // Setup environment
@@ -1652,6 +1790,26 @@ fn parse_horus_yaml_dependencies(path: &str) -> Result<HashSet<String>> {
                 continue; // Skip comments
             }
 
+            // Strip inline comments (handle both quoted and unquoted strings)
+            let dep_str = if let Some(comment_pos) = dep_str.find('#') {
+                // Check if the # is inside quotes
+                let before_comment = &dep_str[..comment_pos];
+                let single_quotes = before_comment.matches('\'').count();
+                let double_quotes = before_comment.matches('"').count();
+
+                // If quotes are balanced, # is a comment. Otherwise, it's part of the string
+                if single_quotes % 2 == 0 && double_quotes % 2 == 0 {
+                    dep_str[..comment_pos].trim()
+                } else {
+                    dep_str
+                }
+            } else {
+                dep_str
+            };
+
+            // Remove surrounding quotes if present
+            let dep_str = dep_str.trim_matches('\'').trim_matches('"');
+
             // Insert the full dependency string (including version)
             // This will be split later into HORUS vs pip packages
             dependencies.insert(dep_str.to_string());
@@ -1925,7 +2083,14 @@ fn is_cargo_package(package_name: &str) -> bool {
 }
 
 /// Separate HORUS packages, pip packages, and cargo packages
-fn split_dependencies(deps: HashSet<String>) -> (Vec<String>, Vec<PipPackage>, Vec<CargoPackage>) {
+///
+/// # Arguments
+/// * `deps` - Set of dependency strings from horus.yaml
+/// * `context_language` - Optional language context ("rust", "python", "cpp") to guide auto-detection
+fn split_dependencies_with_context(
+    deps: HashSet<String>,
+    context_language: Option<&str>,
+) -> (Vec<String>, Vec<PipPackage>, Vec<CargoPackage>) {
     let mut horus_packages = Vec::new();
     let mut pip_packages = Vec::new();
     let mut cargo_packages = Vec::new();
@@ -1936,16 +2101,29 @@ fn split_dependencies(deps: HashSet<String>) -> (Vec<String>, Vec<PipPackage>, V
         // Check for explicit prefixes
         if dep.starts_with("pip:") {
             let pkg_str = dep.strip_prefix("pip:").unwrap();
-            if let Ok(pkg) = PipPackage::from_string(pkg_str) {
-                pip_packages.push(pkg);
+            match PipPackage::from_string(pkg_str) {
+                Ok(pkg) => pip_packages.push(pkg),
+                Err(e) => {
+                    eprintln!("  {} Failed to parse pip dependency '{}': {}", "⚠️".yellow(), dep, e);
+                    eprintln!("     Syntax: pip:PACKAGE@VERSION or pip:PACKAGE");
+                    eprintln!("     Example: pip:numpy@1.24.0");
+                }
             }
             continue;
         }
 
         if dep.starts_with("cargo:") {
             let pkg_str = dep.strip_prefix("cargo:").unwrap();
-            if let Ok(pkg) = CargoPackage::from_string(pkg_str) {
-                cargo_packages.push(pkg);
+            match CargoPackage::from_string(pkg_str) {
+                Ok(pkg) => cargo_packages.push(pkg),
+                Err(e) => {
+                    eprintln!("  {} Failed to parse cargo dependency '{}': {}", "⚠️".yellow(), dep, e);
+                    eprintln!("     Syntax: cargo:PACKAGE@VERSION:features=FEAT1,FEAT2");
+                    eprintln!("     Examples:");
+                    eprintln!("       - 'cargo:serde@1.0:features=derive'");
+                    eprintln!("       - 'cargo:tokio@1.35:features=full,macros'");
+                    eprintln!("       - cargo:rand@0.8");
+                }
             }
             continue;
         }
@@ -1962,28 +2140,62 @@ fn split_dependencies(deps: HashSet<String>) -> (Vec<String>, Vec<PipPackage>, V
             continue;
         }
 
-        // Auto-detect based on package registries
-        let dep_name = if let Some(at_pos) = dep.find('@') {
-            &dep[..at_pos]
-        } else {
-            dep
-        };
+        // For unprefixed dependencies, use language context to determine type
+        if let Some(lang) = context_language {
+            match lang {
+                "rust" => {
+                    // Rust context: unprefixed deps are cargo packages
+                    if let Ok(pkg) = CargoPackage::from_string(dep) {
+                        cargo_packages.push(pkg);
+                    }
+                }
+                "python" => {
+                    // Python context: unprefixed deps are pip packages
+                    if let Ok(pkg) = PipPackage::from_string(dep) {
+                        pip_packages.push(pkg);
+                    }
+                }
+                _ => {
+                    // Unknown context: fall back to old auto-detection
+                    let dep_name = if let Some(at_pos) = dep.find('@') {
+                        &dep[..at_pos]
+                    } else {
+                        dep
+                    };
 
-        // Check if it exists in crates.io (for common Rust CLI tools)
-        if is_cargo_package(dep_name) {
-            if let Ok(pkg) = CargoPackage::from_string(dep) {
-                cargo_packages.push(pkg);
+                    if is_cargo_package(dep_name) {
+                        if let Ok(pkg) = CargoPackage::from_string(dep) {
+                            cargo_packages.push(pkg);
+                        }
+                    } else if let Ok(pkg) = PipPackage::from_string(dep) {
+                        pip_packages.push(pkg);
+                    }
+                }
             }
-            continue;
-        }
+        } else {
+            // No context: use old auto-detection behavior
+            let dep_name = if let Some(at_pos) = dep.find('@') {
+                &dep[..at_pos]
+            } else {
+                dep
+            };
 
-        // Default: assume it's a pip package
-        if let Ok(pkg) = PipPackage::from_string(dep) {
-            pip_packages.push(pkg);
+            if is_cargo_package(dep_name) {
+                if let Ok(pkg) = CargoPackage::from_string(dep) {
+                    cargo_packages.push(pkg);
+                }
+            } else if let Ok(pkg) = PipPackage::from_string(dep) {
+                pip_packages.push(pkg);
+            }
         }
     }
 
     (horus_packages, pip_packages, cargo_packages)
+}
+
+/// Backward-compatible wrapper without language context
+fn split_dependencies(deps: HashSet<String>) -> (Vec<String>, Vec<PipPackage>, Vec<CargoPackage>) {
+    split_dependencies_with_context(deps, None)
 }
 
 /// Install pip packages using global cache (HORUS philosophy)
@@ -2281,26 +2493,62 @@ fn resolve_horus_packages(dependencies: HashSet<String>) -> Result<()> {
         let cached_versions = find_cached_versions(&global_cache, package)?;
 
         if let Some(cached) = cached_versions.first() {
+            // Check if we're using a different version than requested
+            let cached_name = cached.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            let version_mismatch = package.contains('@') && cached_name != package;
+
             // Special handling for horus_py - the Python package is named "horus"
-            if package == "horus_py" {
+            if package.starts_with("horus_py") {
                 // Check if lib/horus exists in the cached package
                 let lib_horus = cached.join("lib/horus");
                 if lib_horus.exists() {
                     // Create symlink named "horus" pointing to lib/horus
                     let horus_link = local_packages.join("horus");
-                    println!("  {} horus_py -> {}", "↗".cyan(), "global cache".dimmed());
+
+                    // Check if symlink already exists
+                    if horus_link.exists() {
+                        println!("  {} {} (already linked)", "".green(), package);
+                        continue;
+                    }
+
+                    if version_mismatch {
+                        println!(
+                            "  {} {} -> {} (using {})",
+                            "↗".cyan(),
+                            package,
+                            "global cache".dimmed(),
+                            cached_name.yellow()
+                        );
+                    } else {
+                        println!(
+                            "  {} {} -> {}",
+                            "↗".cyan(),
+                            package,
+                            "global cache".dimmed()
+                        );
+                    }
                     symlink(&lib_horus, &horus_link).context("Failed to symlink horus_py")?;
                     continue;
                 }
             }
 
             // Create symlink to global cache
-            println!(
-                "  {} {} -> {}",
-                "↗".cyan(),
-                package,
-                "global cache".dimmed()
-            );
+            if version_mismatch {
+                println!(
+                    "  {} {} -> {} (using {})",
+                    "↗".cyan(),
+                    package,
+                    "global cache".dimmed(),
+                    cached_name.yellow()
+                );
+            } else {
+                println!(
+                    "  {} {} -> {}",
+                    "↗".cyan(),
+                    package,
+                    "global cache".dimmed()
+                );
+            }
             symlink(cached, &local_link).context(format!("Failed to symlink {}", package))?;
         } else {
             // Package not found locally
@@ -2466,21 +2714,59 @@ fn find_cached_versions(cache_dir: &Path, package: &str) -> Result<Vec<PathBuf>>
         return Ok(versions);
     }
 
+    // Parse package name and version if specified (e.g., "horus_py@0.1.0" -> ("horus_py", Some("0.1.0")))
+    let (base_package, requested_version) = if let Some(at_pos) = package.find('@') {
+        (&package[..at_pos], Some(&package[at_pos + 1..]))
+    } else {
+        (package, None)
+    };
+
     for entry in fs::read_dir(cache_dir)? {
         let entry = entry?;
         let name = entry.file_name();
         let name_str = name.to_string_lossy();
 
-        // Match package@version or just package
-        if name_str.starts_with(package)
-            && (name_str == package || name_str.starts_with(&format!("{}@", package)))
-        {
-            versions.push(entry.path());
+        // Match base package name
+        if name_str == base_package || name_str.starts_with(&format!("{}@", base_package)) {
+            // If a specific version was requested, prefer exact match
+            if let Some(req_ver) = requested_version {
+                if name_str == format!("{}@{}", base_package, req_ver) {
+                    // Exact version match - prioritize this
+                    versions.insert(0, entry.path());
+                } else {
+                    // Different version - add to list as fallback
+                    versions.push(entry.path());
+                }
+            } else {
+                // No specific version requested - add all
+                versions.push(entry.path());
+            }
         }
     }
 
-    // Sort by version (newest first)
-    versions.sort_by(|a, b| b.cmp(a));
+    // Sort by version (newest first), but keep exact match at front if it exists
+    if requested_version.is_some() && !versions.is_empty() {
+        // First entry is exact match (if found), don't sort it out
+        let exact_match = versions.first().cloned();
+        let is_exact = exact_match.as_ref().is_some_and(|p| {
+            p.file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|n| n == format!("{}@{}", base_package, requested_version.unwrap()))
+        });
+
+        if is_exact {
+            // Keep exact match at front, sort the rest
+            let mut rest = versions.split_off(1);
+            rest.sort_by(|a, b| b.cmp(a));
+            versions.extend(rest);
+        } else {
+            // No exact match, sort all by version (newest first)
+            versions.sort_by(|a, b| b.cmp(a));
+        }
+    } else {
+        // Sort by version (newest first)
+        versions.sort_by(|a, b| b.cmp(a));
+    }
 
     Ok(versions)
 }
@@ -2571,7 +2857,29 @@ fn execute_python_node(file: PathBuf, args: Vec<String>, _release: bool) -> Resu
         cmd.arg(&wrapper_script);
         cmd.args(args);
 
-        let status = cmd.status()?;
+        // Spawn child process so we can handle Ctrl+C
+        let mut child = cmd.spawn()?;
+        let child_id = child.id();
+
+        // Setup Ctrl+C handler
+        let running = Arc::new(AtomicBool::new(true));
+        let r = running.clone();
+        ctrlc::set_handler(move || {
+            println!(
+                "\n{} Ctrl+C received, stopping Python process...",
+                "".yellow()
+            );
+            r.store(false, Ordering::SeqCst);
+            // Send SIGINT to child process on Unix systems
+            #[cfg(unix)]
+            unsafe {
+                libc::kill(child_id as i32, libc::SIGINT);
+            }
+        })
+        .ok();
+
+        // Wait for child to complete
+        let status = child.wait()?;
 
         // Cleanup wrapper script
         fs::remove_file(wrapper_script).ok();
@@ -2588,7 +2896,29 @@ fn execute_python_node(file: PathBuf, args: Vec<String>, _release: bool) -> Resu
         cmd.arg(&file);
         cmd.args(args);
 
-        let status = cmd.status()?;
+        // Spawn child process so we can handle Ctrl+C
+        let mut child = cmd.spawn()?;
+        let child_id = child.id();
+
+        // Setup Ctrl+C handler
+        let running = Arc::new(AtomicBool::new(true));
+        let r = running.clone();
+        ctrlc::set_handler(move || {
+            println!(
+                "\n{} Ctrl+C received, stopping Python process...",
+                "".yellow()
+            );
+            r.store(false, Ordering::SeqCst);
+            // Send SIGINT to child process on Unix systems
+            #[cfg(unix)]
+            unsafe {
+                libc::kill(child_id as i32, libc::SIGINT);
+            }
+        })
+        .ok();
+
+        // Wait for child to complete
+        let status = child.wait()?;
 
         // Exit with the same code as the Python script
         if !status.success() {
@@ -2684,9 +3014,6 @@ Auto-generated wrapper for HORUS scheduler integration
 """
 import sys
 import os
-import signal
-import threading
-import time
 
 # HORUS Python bindings are available via the 'horus' package
 # Install with: pip install maturin && maturin develop (from horus_py directory)
@@ -2695,17 +3022,6 @@ import time
 class HorusSchedulerIntegration:
     def __init__(self):
         self.running = True
-        self.setup_signal_handlers()
-
-    def setup_signal_handlers(self):
-        """Setup graceful shutdown on Ctrl+C"""
-        def signal_handler(sig, frame):
-            print("\n🛑 Graceful shutdown initiated...", file=sys.stderr)
-            self.running = False
-            sys.exit(0)
-
-        signal.signal(signal.SIGINT, signal_handler)
-        signal.signal(signal.SIGTERM, signal_handler)
 
     def run_node(self):
         """Run the user's node code with scheduler integration"""
@@ -2717,6 +3033,10 @@ class HorusSchedulerIntegration:
         except SystemExit as e:
             # Preserve exit code from sys.exit()
             exit_code = e.code if e.code is not None else 0
+        except KeyboardInterrupt:
+            # Ctrl+C received - exit cleanly
+            print("\n🛑 Graceful shutdown initiated...", file=sys.stderr)
+            exit_code = 0
         except Exception as e:
             print(f" Node execution failed: {{e}}", file=sys.stderr)
             exit_code = 1
@@ -2788,6 +3108,15 @@ fn execute_with_scheduler(
             // Use Cargo-based compilation (same as horus.yaml path)
             println!("{} Setting up Cargo workspace...", "".cyan());
 
+            // Parse horus.yaml to get dependencies
+            let (horus_deps, cargo_packages) = if Path::new("horus.yaml").exists() {
+                let deps = parse_horus_yaml_dependencies("horus.yaml")?;
+                let (horus_pkgs, _pip_pkgs, cargo_pkgs) = split_dependencies_with_context(deps, Some("rust"));
+                (horus_pkgs, cargo_pkgs)
+            } else {
+                (Vec::new(), Vec::new())
+            };
+
             // Find HORUS source directory
             let horus_source = find_horus_source_dir()?;
             println!(
@@ -2808,6 +3137,9 @@ name = "horus-project"
 version = "0.1.0"
 edition = "2021"
 
+# Empty workspace to prevent inheriting parent workspace
+[workspace]
+
 [[bin]]
 name = "horus-project"
 path = "{}"
@@ -2817,28 +3149,92 @@ path = "{}"
                 source_relative_path
             );
 
-            // Add HORUS core dependencies
-            // Check if using source (development) or cache (installed)
-            if horus_source.ends_with(".horus/cache") || horus_source.ends_with(".horus\\cache") {
-                // Using installed packages from cache
-                cargo_toml.push_str(&format!(
-                    "horus = {{ path = \"{}\" }}\n",
-                    horus_source.join("horus@0.1.0/horus").display()
-                ));
-                cargo_toml.push_str(&format!(
-                    "horus_library = {{ path = \"{}\" }}\n",
-                    horus_source.join("horus@0.1.0/horus_library").display()
-                ));
+            // Add HORUS dependencies from horus.yaml or defaults
+            let horus_packages_to_add = if !horus_deps.is_empty() {
+                horus_deps
             } else {
-                // Using source code (development)
-                cargo_toml.push_str(&format!(
-                    "horus = {{ path = \"{}\" }}\n",
-                    horus_source.join("horus").display()
-                ));
-                cargo_toml.push_str(&format!(
-                    "horus_library = {{ path = \"{}\" }}\n",
-                    horus_source.join("horus_library").display()
-                ));
+                // Default HORUS packages if no horus.yaml
+                vec!["horus".to_string(), "horus_library".to_string()]
+            };
+
+            for dep in &horus_packages_to_add {
+                // Strip version from dependency name for path lookup
+                let dep_name = if let Some(at_pos) = dep.find('@') {
+                    &dep[..at_pos]
+                } else {
+                    dep.as_str()
+                };
+
+                let dep_path = horus_source.join(dep_name);
+                if dep_path.exists() && dep_path.join("Cargo.toml").exists() {
+                    cargo_toml.push_str(&format!(
+                        "{} = {{ path = \"{}\" }}\n",
+                        dep_name,
+                        dep_path.display()
+                    ));
+                    println!(
+                        "  {} Added dependency: {} -> {}",
+                        "".cyan(),
+                        dep,
+                        dep_path.display()
+                    );
+                } else {
+                    eprintln!(
+                        "  {} Warning: dependency {} not found at {}",
+                        "".yellow(),
+                        dep,
+                        dep_path.display()
+                    );
+                }
+            }
+
+            // Add cargo dependencies from crates.io
+            for pkg in &cargo_packages {
+                if !pkg.features.is_empty() {
+                    // With features
+                    if let Some(ref version) = pkg.version {
+                        cargo_toml.push_str(&format!(
+                            "{} = {{ version = \"{}\", features = [{}] }}\n",
+                            pkg.name,
+                            version,
+                            pkg.features.iter().map(|f| format!("\"{}\"", f)).collect::<Vec<_>>().join(", ")
+                        ));
+                    } else {
+                        cargo_toml.push_str(&format!(
+                            "{} = {{ version = \"*\", features = [{}] }}\n",
+                            pkg.name,
+                            pkg.features.iter().map(|f| format!("\"{}\"", f)).collect::<Vec<_>>().join(", ")
+                        ));
+                        eprintln!(
+                            "  {} Warning: Using wildcard version for '{}' - specify a version for reproducibility",
+                            "⚠️".yellow(),
+                            pkg.name
+                        );
+                    }
+                    println!(
+                        "  {} Added crates.io dependency: {} (features: {})",
+                        "".cyan(),
+                        pkg.name,
+                        pkg.features.join(", ")
+                    );
+                } else if let Some(ref version) = pkg.version {
+                    cargo_toml.push_str(&format!("{} = \"{}\"\n", pkg.name, version));
+                    println!(
+                        "  {} Added crates.io dependency: {}@{}",
+                        "".cyan(),
+                        pkg.name,
+                        version
+                    );
+                } else {
+                    cargo_toml.push_str(&format!("{} = \"*\"\n", pkg.name));
+                    eprintln!(
+                        "  {} Warning: Using wildcard version for '{}' - specify a version for reproducibility",
+                        "⚠️".yellow(),
+                        pkg.name
+                    );
+                    eprintln!("     Example: 'cargo:{}@1.0' in horus.yaml", pkg.name);
+                    println!("  {} Added crates.io dependency: {}", "".cyan(), pkg.name);
+                }
             }
 
             fs::write(&cargo_toml_path, cargo_toml)?;
