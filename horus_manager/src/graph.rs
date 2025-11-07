@@ -1218,6 +1218,69 @@ impl eframe::App for GraphVisualization {
     }
 }
 
+/// Discover runtime pub/sub relationships from Hub activity metadata
+/// Returns (publishers, subscribers) for a given topic
+fn discover_runtime_pubsub(topic_name: &str) -> Result<(Vec<String>, Vec<String>), std::io::Error> {
+    use std::fs;
+    use std::path::Path;
+
+    let metadata_dir = Path::new("/dev/shm/horus/pubsub_metadata");
+    if !metadata_dir.exists() {
+        return Ok((Vec::new(), Vec::new()));
+    }
+
+    let mut publishers = Vec::new();
+    let mut subscribers = Vec::new();
+
+    // Normalize topic name for file matching
+    let safe_topic: String = topic_name.chars()
+        .map(|c| if c == '/' || c == ' ' { '_' } else { c })
+        .collect();
+
+    // Scan metadata directory for files matching this topic
+    for entry in fs::read_dir(metadata_dir)? {
+        let entry = entry?;
+        let filename = entry.file_name();
+        let filename_str = filename.to_string_lossy();
+
+        // File format: NodeName_topicname_direction
+        // e.g., KeyboardInputNode_snakeinput_pub
+        let parts: Vec<&str> = filename_str.split('_').collect();
+        if parts.len() < 3 {
+            continue;
+        }
+
+        let direction = parts.last().unwrap();
+
+        // Check if this file is for our topic
+        // Need to handle topic names with underscores
+        let file_topic_with_direction = &filename_str;
+        if file_topic_with_direction.contains(&format!("_{}_", safe_topic))
+            || file_topic_with_direction.ends_with(&format!("_{}_pub", safe_topic))
+            || file_topic_with_direction.ends_with(&format!("_{}_sub", safe_topic))
+        {
+            // Extract node name (everything before last two underscores)
+            let node_name = parts[..parts.len() - 2].join("_");
+
+            match *direction {
+                "pub" => {
+                    if !publishers.contains(&node_name) {
+                        publishers.push(node_name);
+                    }
+                }
+                "sub" => {
+                    if !subscribers.contains(&node_name) {
+                        subscribers.push(node_name);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    Ok((publishers, subscribers))
+}
+
 /// Discover graph data including nodes (processes) and topics (shared memory) with their relationships
 pub fn discover_graph_data() -> (Vec<GraphNode>, Vec<GraphEdge>) {
     let mut graph_nodes = Vec::new();
@@ -1253,37 +1316,39 @@ pub fn discover_graph_data() -> (Vec<GraphNode>, Vec<GraphEdge>) {
                 active: topic.active,
             });
 
-            // Create edges based on actual publishers and subscribers (RQT-style)
-
-            // Publisher edges: Process -> Topic (processes that WRITE to this topic)
-            for publisher_name in &topic.publishers {
-                // Find the process node by name
-                if let Some(process_node) = graph_nodes
-                    .iter()
-                    .find(|n| n.node_type == NodeType::Process && n.label == *publisher_name)
-                {
-                    graph_edges.push(GraphEdge {
-                        from: process_node.id.clone(),
-                        to: topic_id.clone(),
-                        edge_type: EdgeType::Publish,
-                        active: topic.active,
-                    });
+            // Create edges based on runtime pub/sub activity
+            // Read from /dev/shm/horus/pubsub_metadata/ files created by Hub
+            if let Ok((publishers, subscribers)) = discover_runtime_pubsub(&topic.topic_name) {
+                // Publisher edges: Process -> Topic (processes that WRITE to this topic)
+                for publisher_name in publishers {
+                    // Find the process node by name
+                    if let Some(process_node) = graph_nodes
+                        .iter()
+                        .find(|n| n.node_type == NodeType::Process && n.label == publisher_name)
+                    {
+                        graph_edges.push(GraphEdge {
+                            from: process_node.id.clone(),
+                            to: topic_id.clone(),
+                            edge_type: EdgeType::Publish,
+                            active: topic.active,
+                        });
+                    }
                 }
-            }
 
-            // Subscriber edges: Topic -> Process (processes that READ from this topic)
-            for subscriber_name in &topic.subscribers {
-                // Find the process node by name
-                if let Some(process_node) = graph_nodes
-                    .iter()
-                    .find(|n| n.node_type == NodeType::Process && n.label == *subscriber_name)
-                {
-                    graph_edges.push(GraphEdge {
-                        from: topic_id.clone(),
-                        to: process_node.id.clone(),
-                        edge_type: EdgeType::Subscribe,
-                        active: topic.active,
-                    });
+                // Subscriber edges: Topic -> Process (processes that READ from this topic)
+                for subscriber_name in subscribers {
+                    // Find the process node by name
+                    if let Some(process_node) = graph_nodes
+                        .iter()
+                        .find(|n| n.node_type == NodeType::Process && n.label == subscriber_name)
+                    {
+                        graph_edges.push(GraphEdge {
+                            from: topic_id.clone(),
+                            to: process_node.id.clone(),
+                            edge_type: EdgeType::Subscribe,
+                            active: topic.active,
+                        });
+                    }
                 }
             }
         }

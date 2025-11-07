@@ -175,6 +175,9 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug> Hub<T> {
                         std::sync::atomic::Ordering::Relaxed,
                     );
 
+                    // Record pub/sub metadata for graph visualization
+                    self.record_pubsub_activity(ctx.name(), "pub");
+
                     let ipc_ns = ipc_start.elapsed().as_nanos() as u64;
                     ctx.log_pub_summary(&self.topic_name, &summary, ipc_ns);
                 } else {
@@ -220,6 +223,9 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug> Hub<T> {
                     let ipc_start = Instant::now();
                     let ipc_ns = ipc_start.elapsed().as_nanos() as u64;
                     ctx.log_sub_summary(&self.topic_name, &summary, ipc_ns);
+
+                    // Record pub/sub metadata for graph visualization
+                    self.record_pubsub_activity(ctx.name(), "sub");
                 }
 
                 // Lock-free atomic increment for success metrics
@@ -252,5 +258,45 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug> Hub<T> {
     /// Get the topic name for this Hub
     pub fn get_topic_name(&self) -> &str {
         &self.topic_name
+    }
+
+    /// Record pub/sub activity for graph visualization discovery
+    /// Writes lightweight metadata to /dev/shm/horus/pubsub_metadata/
+    fn record_pubsub_activity(&self, node_name: &str, direction: &str) {
+        use std::fs;
+        use std::path::PathBuf;
+
+        // Create pubsub metadata directory if it doesn't exist
+        let metadata_dir = PathBuf::from("/dev/shm/horus/pubsub_metadata");
+        let _ = fs::create_dir_all(&metadata_dir);
+
+        // File naming: node_name_topic_name_direction
+        // e.g., MyControlNode_sensor_data_sub
+        let safe_node_name = node_name.replace('/', "_").replace(' ', "_");
+        let safe_topic_name = self.topic_name.replace('/', "_").replace(' ', "_");
+        let filename = format!("{}_{}_{}",  safe_node_name, safe_topic_name, direction);
+        let filepath = metadata_dir.join(filename);
+
+        // Write minimal metadata (just timestamp to show activity)
+        // File existence is enough to know the relationship exists
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
+        // Only write once every 5 seconds to reduce I/O
+        // Check if file exists and is recent
+        if let Ok(metadata) = fs::metadata(&filepath) {
+            if let Ok(modified) = metadata.modified() {
+                if let Ok(elapsed) = modified.elapsed() {
+                    if elapsed.as_secs() < 5 {
+                        return; // File is recent, skip write
+                    }
+                }
+            }
+        }
+
+        // Write timestamp (lightweight operation)
+        let _ = fs::write(&filepath, timestamp.to_string());
     }
 }

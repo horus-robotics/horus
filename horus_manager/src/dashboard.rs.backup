@@ -1564,13 +1564,13 @@ fn generate_html(port: u16) -> String {
         .sidebar {{
             width: 250px;
             background: rgba(22, 24, 28, 0.9);
-            
+            backdrop-filter: blur(10px);
             border-right: 1px solid var(--border);
             padding: 2rem 0;
             position: fixed;
             height: 100vh;
             overflow-y: auto;
-            
+            transition: background-color 0.3s ease;
         }}
 
         [data-theme="light"] .sidebar {{
@@ -1592,7 +1592,7 @@ fn generate_html(port: u16) -> String {
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            
+            transition: all 0.3s ease;
         }}
 
         .main-content {{
@@ -1661,14 +1661,19 @@ fn generate_html(port: u16) -> String {
             background: var(--card-bg);
             border: 1px solid var(--accent);
             border-radius: 8px;
-            
+            box-shadow: 0 4px 20px rgba(0, 212, 255, 0.2);
             padding: 0;
             min-width: 250px;
             max-width: 350px;
             z-index: 1000;
-            
+            animation: tooltipFadeIn 0.2s ease-out;
         }}
 
+        @keyframes tooltipFadeIn {{
+            from {{
+                opacity: 0;
+                transform: translateX(-50%) translateY(-5px);
+            }}
             to {{
                 opacity: 1;
                 transform: translateX(-50%) translateY(0);
@@ -1715,11 +1720,11 @@ fn generate_html(port: u16) -> String {
             flex-shrink: 0;
         }}
 
-        .tooltip-node-health.health-green {{ background: #00FF88;  }}
-        .tooltip-node-health.health-yellow {{ background: #FFC107;  }}
-        .tooltip-node-health.health-orange {{ background: #FF9800;  }}
-        .tooltip-node-health.health-red {{ background: #F44336;  }}
-        .tooltip-node-health.health-gray {{ background: #9E9E9E;  }}
+        .tooltip-node-health.health-green {{ background: #00FF88; box-shadow: 0 0 8px #00FF88; }}
+        .tooltip-node-health.health-yellow {{ background: #FFC107; box-shadow: 0 0 8px #FFC107; }}
+        .tooltip-node-health.health-orange {{ background: #FF9800; box-shadow: 0 0 8px #FF9800; }}
+        .tooltip-node-health.health-red {{ background: #F44336; box-shadow: 0 0 8px #F44336; }}
+        .tooltip-node-health.health-gray {{ background: #9E9E9E; box-shadow: 0 0 8px #9E9E9E; }}
 
         .tooltip-node-name {{
             color: var(--text-primary);
@@ -1760,7 +1765,7 @@ fn generate_html(port: u16) -> String {
             border: 1px solid rgba(0, 212, 255, 0.2);
             border-radius: 8px;
             padding: 1.5rem;
-            
+            transition: all 0.3s;
             position: relative;
             overflow: hidden;
         }}
@@ -1773,14 +1778,18 @@ fn generate_html(port: u16) -> String {
             width: 100%;
             height: 2px;
             background: linear-gradient(90deg, transparent, #00D4FF, transparent);
-            
+            animation: scan 3s linear infinite;
         }}
 
+        @keyframes scan {{
+            0% {{ transform: translateX(-100%); }}
+            100% {{ transform: translateX(100%); }}
+        }}
 
         .card:hover {{
             transform: translateY(-5px);
             border-color: var(--accent);
-            
+            box-shadow: 0 10px 30px var(--border);
         }}
 
         .card h2 {{
@@ -1804,10 +1813,14 @@ fn generate_html(port: u16) -> String {
             height: 8px;
             background: var(--success);
             border-radius: 50%;
-            
+            animation: pulse 2s ease-in-out infinite;
             margin-right: 0.5rem;
         }}
 
+        @keyframes pulse {{
+            0%, 100% {{ opacity: 1; }}
+            50% {{ opacity: 0.3; }}
+        }}
 
         .command {{
             background: var(--dark-bg);
@@ -1818,7 +1831,7 @@ fn generate_html(port: u16) -> String {
             color: var(--text-secondary);
             margin-top: 1rem;
             cursor: pointer;
-            
+            transition: all 0.2s;
         }}
 
         .command:hover {{
@@ -1846,7 +1859,7 @@ fn generate_html(port: u16) -> String {
             padding: 0.5rem;
             cursor: pointer;
             font-size: 1.5rem;
-            
+            transition: all 0.3s;
             z-index: 1001;
             width: 48px;
             height: 48px;
@@ -1874,7 +1887,7 @@ fn generate_html(port: u16) -> String {
             cursor: pointer;
             font-size: 1.5rem;
             font-weight: bold;
-            
+            transition: all 0.3s;
             z-index: 1001;
             width: 48px;
             height: 48px;
@@ -1902,13 +1915,17 @@ fn generate_html(port: u16) -> String {
             height: 100%;
             overflow: auto;
             background-color: rgba(0, 0, 0, 0.7);
-            
+            animation: fadeIn 0.3s;
         }}
 
         .help-modal.active {{
             display: block;
         }}
 
+        @keyframes fadeIn {{
+            from {{ opacity: 0; }}
+            to {{ opacity: 1; }}
+        }}
 
         .help-modal-content {{
             background-color: var(--card-bg);
@@ -1920,9 +1937,14 @@ fn generate_html(port: u16) -> String {
             max-height: 85vh;
             display: flex;
             flex-direction: column;
-            
+            animation: slideDown 0.3s;
         }}
 
+        @keyframes slideDown {{
+            from {{
+                transform: translateY(-50px);
+                opacity: 0;
+            }}
             to {{
                 transform: translateY(0);
                 opacity: 1;
@@ -1951,7 +1973,7 @@ fn generate_html(port: u16) -> String {
             color: var(--primary);
             font-size: 2.5rem;
             cursor: pointer;
-            
+            transition: transform 0.2s;
             padding: 0;
             width: 40px;
             height: 40px;
@@ -2004,11 +2026,11 @@ fn generate_html(port: u16) -> String {
             flex-shrink: 0;
         }}
 
-        .status-dot.health-green {{ background: #00FF88;  }}
-        .status-dot.health-yellow {{ background: #FFC107;  }}
-        .status-dot.health-orange {{ background: #FF9800;  }}
-        .status-dot.health-red {{ background: #F44336;  }}
-        .status-dot.health-gray {{ background: #9E9E9E;  }}
+        .status-dot.health-green {{ background: #00FF88; box-shadow: 0 0 10px #00FF88; }}
+        .status-dot.health-yellow {{ background: #FFC107; box-shadow: 0 0 10px #FFC107; }}
+        .status-dot.health-orange {{ background: #FF9800; box-shadow: 0 0 10px #FF9800; }}
+        .status-dot.health-red {{ background: #F44336; box-shadow: 0 0 10px #F44336; }}
+        .status-dot.health-gray {{ background: #9E9E9E; box-shadow: 0 0 10px #9E9E9E; }}
 
         .help-item strong {{
             color: var(--text-primary);
@@ -2048,7 +2070,7 @@ fn generate_html(port: u16) -> String {
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.9rem;
             color: var(--accent);
-            
+            box-shadow: 0 2px 0 var(--border);
         }}
 
         .nav {{
@@ -2068,7 +2090,7 @@ fn generate_html(port: u16) -> String {
             cursor: pointer;
             font-family: 'Courier New', monospace;
             font-size: 1rem;
-            
+            transition: all 0.3s;
             text-align: left;
         }}
 
@@ -2111,7 +2133,7 @@ fn generate_html(port: u16) -> String {
             font-weight: 600;
             cursor: pointer;
             border-radius: 6px;
-            
+            transition: all 0.3s ease;
             font-family: 'JetBrains Mono', monospace;
         }}
 
@@ -2123,7 +2145,7 @@ fn generate_html(port: u16) -> String {
         .view-btn.active {{
             background: var(--accent);
             color: var(--primary);
-            
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
         }}
 
         .refresh-btn {{
@@ -2135,7 +2157,7 @@ fn generate_html(port: u16) -> String {
 
         .refresh-btn:hover {{
             background: rgba(0, 212, 255, 0.2);
-            
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
         }}
 
         .monitor-view {{
@@ -2173,7 +2195,7 @@ fn generate_html(port: u16) -> String {
             font-weight: 600;
             cursor: pointer;
             border-radius: 6px;
-            
+            transition: all 0.3s ease;
             font-family: 'JetBrains Mono', monospace;
         }}
 
@@ -2185,7 +2207,7 @@ fn generate_html(port: u16) -> String {
         .remote-view-btn.active {{
             background: var(--accent);
             color: var(--primary);
-            
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
         }}
 
         .remote-view {{
@@ -2203,14 +2225,14 @@ fn generate_html(port: u16) -> String {
             padding: 1rem;
             margin-bottom: 0.5rem;
             cursor: pointer;
-            
+            transition: all 0.3s ease;
             user-select: none;
         }}
 
         .node-item:hover, .topic-item:hover {{
             border-color: var(--accent);
             background: var(--surface);
-            
+            box-shadow: 2px 0 8px rgba(0, 212, 255, 0.3);
         }}
 
         .node-header, .topic-header {{
@@ -2390,8 +2412,8 @@ fn generate_html(port: u16) -> String {
             height: 100vh;
             background: var(--surface);
             border-left: 2px solid var(--border);
-            
-            
+            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
+            transition: right 0.15s ease-out;
             z-index: 1000;
             display: flex;
             flex-direction: column;
@@ -2425,7 +2447,7 @@ fn generate_html(port: u16) -> String {
             padding: 0.5rem 1rem;
             border-radius: 4px;
             cursor: pointer;
-            
+            transition: all 0.3s ease;
         }}
 
         .log-panel-close:hover {{
@@ -2516,7 +2538,7 @@ fn generate_html(port: u16) -> String {
             max-height: 80vh;
             display: flex;
             flex-direction: column;
-            
+            box-shadow: 0 10px 50px rgba(0, 212, 255, 0.3);
         }}
 
         .install-dialog-header {{
@@ -2552,7 +2574,7 @@ fn generate_html(port: u16) -> String {
             border: 2px solid var(--border);
             border-radius: 8px;
             cursor: pointer;
-            
+            transition: all 0.3s;
             margin-bottom: 10px;
         }}
 
@@ -3653,6 +3675,8 @@ fn generate_html(port: u16) -> String {
                 const pos = graphState.nodePositions[node.id];
                 if (!pos) return;
 
+                const isHovered = graphState.hoveredNode === node.id;
+                const isDragged = graphState.draggedNode === node.id;
                 const nodeSize = 15;
 
                 // Different colors for processes vs topics
@@ -3661,13 +3685,27 @@ fn generate_html(port: u16) -> String {
                     : {{ r: 255, g: 20, b: 147 }};   // Pink for topics
 
                 if (node.type === 'process') {{
-                    // PROCESSES: Draw as circles (no glow, no shadows)
+                    // PROCESSES: Draw as circles
+
+                    // Outer glow
+                    for (let i = 4; i > 0; i--) {{
+                        ctx.beginPath();
+                        ctx.arc(pos.x, pos.y, nodeSize + i * 5, 0, 2 * Math.PI);
+                        ctx.fillStyle = `rgba(${{color.r}}, ${{color.g}}, ${{color.b}}, ${{0.15 / i * (isHovered || isDragged ? 2.5 : 1)}})`;
+                        ctx.fill();
+                    }}
+
+                    // Main circle
                     ctx.beginPath();
                     ctx.arc(pos.x, pos.y, nodeSize, 0, 2 * Math.PI);
                     ctx.fillStyle = `rgb(${{color.r}}, ${{color.g}}, ${{color.b}})`;
+                    ctx.shadowBlur = isHovered || isDragged ? 25 : 15;
+                    ctx.shadowColor = `rgba(${{color.r}}, ${{color.g}}, ${{color.b}}, 0.9)`;
                     ctx.fill();
+                    ctx.shadowBlur = 0;
                 }} else {{
-                    // TOPICS: Draw as rectangles (RQT style, no glow, no shadows)
+                    // TOPICS: Draw as rectangles (RQT style)
+                    // Format topic name with "/" (replace underscores)
                     const topicName = node.label.replace(/_/g, '/');
 
                     // Dynamically size rectangle based on text length
@@ -3676,31 +3714,49 @@ fn generate_html(port: u16) -> String {
                     const rectWidth = Math.max(nodeSize * 3, textWidth + 20);
                     const rectHeight = nodeSize * 1.5;
 
-                    // Main rectangle (no glow, no shadows)
+                    // Outer glow (rectangle-shaped)
+                    for (let i = 4; i > 0; i--) {{
+                        const glowPadding = i * 5;
+                        ctx.fillStyle = `rgba(${{color.r}}, ${{color.g}}, ${{color.b}}, ${{0.15 / i * (isHovered || isDragged ? 2.5 : 1)}})`;
+                        ctx.fillRect(
+                            pos.x - rectWidth/2 - glowPadding,
+                            pos.y - rectHeight/2 - glowPadding,
+                            rectWidth + glowPadding * 2,
+                            rectHeight + glowPadding * 2
+                        );
+                    }}
+
+                    // Main rectangle
                     ctx.fillStyle = `rgb(${{color.r}}, ${{color.g}}, ${{color.b}})`;
+                    ctx.shadowBlur = isHovered || isDragged ? 25 : 15;
+                    ctx.shadowColor = `rgba(${{color.r}}, ${{color.g}}, ${{color.b}}, 0.9)`;
                     ctx.fillRect(
                         pos.x - rectWidth/2,
                         pos.y - rectHeight/2,
                         rectWidth,
                         rectHeight
                     );
+                    ctx.shadowBlur = 0;
 
                     // Draw topic name INSIDE the rectangle
-                    ctx.fillStyle = 'rgb(10, 11, 13)';
-                    ctx.font = '400 10px JetBrains Mono, monospace';
+                    ctx.fillStyle = 'rgb(10, 11, 13)'; // Dark text on pink background
+                    ctx.font = `${{isHovered || isDragged ? '600' : '400'}} 10px JetBrains Mono, monospace`;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(topicName, pos.x, pos.y);
                 }}
 
-                // Draw label for processes only (below the circle, no shadows)
+                // Draw label for processes only (below the circle)
                 if (node.type === 'process') {{
-                    ctx.fillStyle = 'rgb(226, 232, 240)';
-                    ctx.font = '400 11px JetBrains Mono, monospace';
+                    ctx.fillStyle = isHovered || isDragged ? 'rgb(255, 255, 255)' : 'rgb(226, 232, 240)';
+                    ctx.font = `${{isHovered || isDragged ? '600' : '400'}} 11px JetBrains Mono, monospace`;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'top';
+                    ctx.shadowBlur = isHovered || isDragged ? 8 : 0;
+                    ctx.shadowColor = `rgba(${{color.r}}, ${{color.g}}, ${{color.b}}, 0.8)`;
                     const label = node.label.length > 15 ? node.label.substring(0, 12) + '...' : node.label;
                     ctx.fillText(label, pos.x, pos.y + 25);
+                    ctx.shadowBlur = 0;
                 }}
             }});
         }}
@@ -3799,13 +3855,11 @@ fn generate_html(port: u16) -> String {
                 return;
             }}
 
-            // Stop previous auto-update and cancel any pending requests
+            // Stop previous auto-update
             if (currentLogView.interval) {{
                 clearInterval(currentLogView.interval);
-                currentLogView.interval = null;
             }}
 
-            // Set new view context BEFORE starting updates
             currentLogView = {{ type: 'node', name: nodeName, interval: null }};
 
             title.textContent = `Logs: ${{nodeName}} (live)`;
@@ -3813,19 +3867,9 @@ fn generate_html(port: u16) -> String {
             panel.classList.add('open');
 
             async function updateLogs() {{
-                // Guard: Only update if this is still the active view
-                if (currentLogView.type !== 'node' || currentLogView.name !== nodeName) {{
-                    return; // User switched to a different log view
-                }}
-
                 try {{
                     const response = await fetch(`/api/logs/node/${{encodeURIComponent(nodeName)}}`);
                     const data = await response.json();
-
-                    // Guard again after async operation
-                    if (currentLogView.type !== 'node' || currentLogView.name !== nodeName) {{
-                        return; // View changed during fetch
-                    }}
 
                     if (data.logs && data.logs.length > 0) {{
                         const wasScrolledToBottom = content.scrollHeight - content.scrollTop <= content.clientHeight + 50;
@@ -3867,13 +3911,11 @@ fn generate_html(port: u16) -> String {
                 return;
             }}
 
-            // Stop previous auto-update and cancel any pending requests
+            // Stop previous auto-update
             if (currentLogView.interval) {{
                 clearInterval(currentLogView.interval);
-                currentLogView.interval = null;
             }}
 
-            // Set new view context BEFORE starting updates
             currentLogView = {{ type: 'topic', name: topicName, interval: null }};
 
             title.textContent = `Logs: ${{topicName}} (live)`;
@@ -3881,19 +3923,9 @@ fn generate_html(port: u16) -> String {
             panel.classList.add('open');
 
             async function updateLogs() {{
-                // Guard: Only update if this is still the active view
-                if (currentLogView.type !== 'topic' || currentLogView.name !== topicName) {{
-                    return; // User switched to a different log view
-                }}
-
                 try {{
                     const response = await fetch(`/api/logs/topic/${{encodeURIComponent(topicName)}}`);
                     const data = await response.json();
-
-                    // Guard again after async operation
-                    if (currentLogView.type !== 'topic' || currentLogView.name !== topicName) {{
-                        return; // View changed during fetch
-                    }}
 
                     if (data.logs && data.logs.length > 0) {{
                         const wasScrolledToBottom = content.scrollHeight - content.scrollTop <= content.clientHeight + 50;
@@ -4974,7 +5006,7 @@ fn generate_html(port: u16) -> String {
                     : String(param.value);
 
                 return `
-                    <tr style="border-bottom: 1px solid var(--border); " onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='transparent'">
+                    <tr style="border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background='transparent'">
                         <td style="padding: 0.75rem; font-weight: 600; color: var(--accent);">${{param.key}}</td>
                         <td style="padding: 0.75rem; color: var(--text-primary); font-family: 'JetBrains Mono', monospace;">${{valueDisplay}}</td>
                         <td style="padding: 0.75rem; color: var(--text-secondary);">
