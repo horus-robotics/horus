@@ -124,12 +124,12 @@ io_node.set_simulation(false);  // Use real hardware
 ```rust
 // Read input pin state
 if let Some(state) = io_node.get_input(0) {
-    println!("Limit switch: {}", if state { "TRIGGERED" } else { "OPEN" });
+    eprintln!("Limit switch: {}", if state { "TRIGGERED" } else { "OPEN" });
 }
 
 // Read output pin state
 if let Some(state) = io_node.get_output(0) {
-    println!("Relay: {}", if state { "ON" } else { "OFF" });
+    eprintln!("Relay: {}", if state { "ON" } else { "OFF" });
 }
 
 // Set output pin directly (programmatic control)
@@ -597,9 +597,9 @@ io_node.set_simulation(false);
 
 // Read test pin to verify hardware access
 if let Some(state) = io_node.get_input(0) {
-    println!("Hardware access OK: pin 0 = {}", state);
+    eprintln!("Hardware access OK: pin 0 = {}", state);
 } else {
-    println!("Hardware access failed - check permissions");
+    eprintln!("Hardware access failed - check permissions");
 }
 ```
 
@@ -626,7 +626,7 @@ if let Some(inputs) = input_sub.recv(None) {
         // Immediately halt all motion
         // Set all outputs to safe state
         // Publish emergency stop message
-        println!("EMERGENCY STOP ACTIVATED");
+        eprintln!("EMERGENCY STOP ACTIVATED");
     }
 }
 ```

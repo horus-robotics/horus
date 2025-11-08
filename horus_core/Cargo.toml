@@ -23,6 +23,12 @@ bincode = "1.3"
 bytemuck = { version = "1.14", features = ["derive"] }
 ctrlc = "3.4"
 tokio = { version = "1.0", features = ["full"] }
+rayon = "1.10"
+parking_lot = "0.12"
+cranelift = "0.110"
+cranelift-jit = "0.110"
+cranelift-module = "0.110"
+cranelift-native = "0.110"
 chrono = { version = "0.4", features = ["serde", "std"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 dirs = "5.0"
@@ -35,6 +41,20 @@ anyhow = "1.0"
 # Macros (optional)
 horus_macros = { path = "../horus_macros", optional = true }
 
+[dev-dependencies]
+criterion = "0.5"
+
 [features]
 default = ["macros"]
 macros = ["horus_macros"]
+rtos = []
+rt-linux = ["rtos"]
+freertos = ["rtos"]
+zephyr = ["rtos"]
+qnx = ["rtos"]
+bare-metal = ["rtos"]
+
+[[bench]]
+name = "comprehensive_benchmark"
+harness = false
+path = "../benches/comprehensive_benchmark.rs"

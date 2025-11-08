@@ -103,7 +103,7 @@ impl Node for TemperatureMonitor {
     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         // Check for new temperature readings
         if let Some(temp) = self.subscriber.recv(ctx) {
-            println!("Temperature: {:.1}°C", temp);
+            ctx.log_info(&format!("Temperature: {:.1}°C", temp));
         }
     }
 }
@@ -113,7 +113,7 @@ impl Node for TemperatureMonitor {
 //============================================
 
 fn main() -> Result<()> {
-    println!("Starting temperature monitoring system...\n");
+    eprintln!("Starting temperature monitoring system...\n");
 
     // Create the scheduler
     let mut scheduler = Scheduler::new();
@@ -226,11 +226,11 @@ Try modifying the code:
 impl Node for TemperatureMonitor {
     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         if let Some(temp) = self.subscriber.recv(ctx) {
-            println!("Temperature: {:.1}°C", temp);
+            ctx.log_info(&format!("Temperature: {:.1}°C", temp));
 
             // Alert if too hot!
             if temp > 25.0 {
-                println!(" WARNING: Temperature too high!");
+                ctx.log_warning("Temperature too high!");
             }
         }
     }
@@ -253,7 +253,7 @@ impl Node for TemperatureMonitor {
     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         if let Some(temp) = self.subscriber.recv(ctx) {
             // Display
-            println!("Temperature: {:.1}°C", temp);
+            ctx.log_info(&format!("Temperature: {:.1}°C", temp));
 
             // Save to file
             let mut file = OpenOptions::new()

@@ -31,7 +31,7 @@ Most robotics frameworks (like ROS) were built for PhD researchers. HORUS was bu
 | **Setup Time** | 5 minutes | 2-8 hours |
 | **First Robot** | 30 minutes | 2-3 days |
 | **Learning Curve** | Weekend | 2-3 months |
-| **Speed** | 312ns latency | 156,000ns latency (500x slower) |
+| **Speed** | 248ns latency | 156,000ns latency (500x slower) |
 | **Languages** | Python, Rust, C++ | Mostly C++ |
 | **Works on** | Any Linux/Mac/Windows | Mainly Ubuntu only |
 
@@ -350,7 +350,7 @@ You keep seeing "500x faster than ROS2" - what does that mean?
 
 | Task | HORUS | ROS2 | Improvement |
 |------|-------|------|-------------|
-| Send message between nodes | 312ns | 156,000ns | **500x faster** |
+| Send message between nodes | 248ns | 156,000ns | **500x faster** |
 | Camera → AI → Motors | 2.1ms | 847ms | **403x faster** |
 | Emergency STOP reaction | 0.8ms | 125ms | **156x faster** |
 
@@ -361,7 +361,7 @@ You keep seeing "500x faster than ROS2" - what does that mean?
 Imagine you're going 60 mph (26.8 m/s):
 
 - **With ROS2**: 156µs latency = **4.2 meters** traveled before reacting
-- **With HORUS**: 312ns latency = **0.008 meters** (8mm) before reacting
+- **With HORUS**: 248ns latency = **0.008 meters** (8mm) before reacting
 
 **HORUS stops 525x sooner.** In robotics, microseconds save lives.
 

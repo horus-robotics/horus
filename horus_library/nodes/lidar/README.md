@@ -77,7 +77,7 @@ let valid_count = scan.valid_count();
 
 // Find closest obstacle
 if let Some(min_dist) = scan.min_range() {
-    println!("Closest obstacle at {} meters", min_dist);
+    eprintln!("Closest obstacle at {} meters", min_dist);
 }
 ```
 
@@ -112,7 +112,7 @@ lidar.set_angle_increment(std::f32::consts::PI / 360.0);  // 0.5 degrees
 
 // Get actual scan rate (diagnostics)
 let actual_rate = lidar.get_actual_scan_rate();
-println!("Actual scan rate: {} Hz", actual_rate);
+eprintln!("Actual scan rate: {} Hz", actual_rate);
 ```
 
 ## Usage Examples
@@ -142,7 +142,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // Find closest obstacle
                 if let Some(min_dist) = scan.min_range() {
                     if min_dist < 0.5 {
-                        println!("Warning: Obstacle at {} meters!", min_dist);
+                        eprintln!("Warning: Obstacle at {} meters!", min_dist);
                     }
                 }
             }
@@ -231,7 +231,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     runtime.spawn(move || {
         loop {
             if let Ok(scan) = front_sub.recv() {
-                println!("Front LiDAR: {} valid points", scan.valid_count());
+                eprintln!("Front LiDAR: {} valid points", scan.valid_count());
             }
         }
     });
@@ -240,7 +240,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     runtime.spawn(move || {
         loop {
             if let Ok(scan) = rear_sub.recv() {
-                println!("Rear LiDAR: {} valid points", scan.valid_count());
+                eprintln!("Rear LiDAR: {} valid points", scan.valid_count());
             }
         }
     });
@@ -280,7 +280,7 @@ fn check_collision_zones(scan: &LaserScan) {
 
         // Alert if obstacle too close in this zone
         if min_dist_in_zone < 0.5 {
-            println!("Zone {}: COLLISION RISK at {:.2}m", zone, min_dist_in_zone);
+            eprintln!("Zone {}: COLLISION RISK at {:.2}m", zone, min_dist_in_zone);
         }
     }
 }
@@ -466,7 +466,7 @@ for i in 0..360 {
         let x = distance * angle.cos();
         let y = distance * angle.sin();
 
-        println!("Point {}: angle={:.2}°, dist={:.2}m, pos=({:.2}, {:.2})",
+        eprintln!("Point {}: angle={:.2}°, dist={:.2}m, pos=({:.2}, {:.2})",
                  i, angle.to_degrees(), distance, x, y);
     }
 }
@@ -514,7 +514,7 @@ fn check_direction(scan: &LaserScan, direction_deg: f32, tolerance_deg: f32) -> 
 
 // Usage
 if let Some(dist) = check_direction(&scan, 0.0, 10.0) {
-    println!("Obstacle ahead at {} meters", dist);
+    eprintln!("Obstacle ahead at {} meters", dist);
 }
 ```
 
@@ -761,7 +761,7 @@ sudo udevadm trigger
 ```rust
 // Monitor actual scan rate
 let actual_rate = lidar.get_actual_scan_rate();
-println!("Target: {} Hz, Actual: {} Hz", scan_frequency, actual_rate);
+eprintln!("Target: {} Hz, Actual: {} Hz", scan_frequency, actual_rate);
 ```
 
 **Solutions:**
@@ -870,7 +870,7 @@ println!("Target: {} Hz, Actual: {} Hz", scan_frequency, actual_rate);
 2. **Timestamp synchronization**
    ```rust
    // Check timestamp alignment with other sensors
-   println!("Scan timestamp: {}", scan.timestamp);
+   eprintln!("Scan timestamp: {}", scan.timestamp);
    ```
 
 3. **Motion blur**

@@ -44,12 +44,13 @@ mod node;
 ///         }
 ///
 ///         tick(ctx) {
-///             if let Some(cmd) = self.command.recv(ctx.as_deref_mut()) {
+///             // Process one message per tick (bounded execution time)
+///             if let Some(cmd) = self.command.recv(ctx) {
 ///                 // Process command
 ///             }
 ///             self.frame_count += 1;
 ///             let img = self.capture_frame();
-///             self.image.send(img, ctx.as_deref_mut()).ok();
+///             self.image.send(img, ctx).ok();
 ///         }
 ///     }
 /// }

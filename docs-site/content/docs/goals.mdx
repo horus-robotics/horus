@@ -12,7 +12,7 @@ HORUS aims to become the **de facto standard for real-time robotics communicatio
 
 ### Core Objectives
 
-**Sub-Microsecond Communication**: Achieve 312ns-481ns latency for robotics messages, enabling real-time control loops at 1kHz+ frequencies
+**Sub-Microsecond Communication**: Achieve 248ns-437ns latency for robotics messages, enabling real-time control loops at 1kHz+ frequencies
 
 **Zero Compromise Performance**: Deliver 100-270x faster performance than traditional frameworks without sacrificing safety or ease of use
 
@@ -32,7 +32,7 @@ HORUS aims to become the **de facto standard for real-time robotics communicatio
 
 **HORUS Solution**:
 - Shared memory architecture with zero-copy semantics
-- 312ns (Link) / ~500ns (Hub) for CmdVel (16B messages)
+- 248ns (Link) / ~500ns (Hub) for CmdVel (16B messages)
 - ~900ns (Link) / ~2.2µs (Hub) for LaserScan (1.5KB messages)
 - Linear scaling with message size
 
@@ -229,7 +229,7 @@ scheduler.add(Box::new(CartographerNode::new()?), 2, Some(true));
 ### High-Speed Manipulation
 - **Use Case**: Pick-and-place robots, surgical robots, assembly line automation
 - **Why HORUS**: Sub-microsecond latency enables 1kHz+ control loops for precise trajectory following
-- **Performance**: 312ns (Link) / ~500ns (Hub) CmdVel latency for real-time control
+- **Performance**: 248ns (Link) / ~500ns (Hub) CmdVel latency for real-time control
 
 ### Drone Control & Stabilization
 - **Use Case**: Quadcopters, racing drones, delivery drones
@@ -259,7 +259,7 @@ scheduler.add(Box::new(CartographerNode::new()?), 2, Some(true));
 ### Teleoperation & Haptics
 - **Use Case**: Remote surgery, VR robotics, haptic feedback systems
 - **Why HORUS**: Ultra-low latency eliminates perceptible lag in feedback loops
-- **Performance**: 312ns-481ns message passing enables sub-millisecond end-to-end latency
+- **Performance**: 248ns-437ns message passing enables sub-millisecond end-to-end latency
 
 ### Multi-Robot Systems
 - **Use Case**: Swarm robotics, warehouse fleets, distributed sensing

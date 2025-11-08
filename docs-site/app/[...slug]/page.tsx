@@ -111,7 +111,6 @@ export async function generateStaticParams() {
     { slug: ['package-management'] },
     { slug: ['environment-management'] },
     { slug: ['authentication'] },
-    { slug: ['remote-deployment'] },
     { slug: ['library-reference'] },
     { slug: ['using-prebuilt-nodes'] },
     { slug: ['core'] },

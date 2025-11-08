@@ -6,7 +6,7 @@ order: 23
 
 # Shared Memory IPC
 
-HORUS achieves **312ns-2.8µs latency** through a zero-copy shared memory IPC architecture. This page explains how HORUS uses `/dev/shm` for ultra-low latency inter-process communication.
+HORUS achieves **248ns-2.8µs latency** through a zero-copy shared memory IPC architecture. This page explains how HORUS uses `/dev/shm` for ultra-low latency inter-process communication.
 
 ## What is Shared Memory IPC?
 
@@ -26,10 +26,16 @@ Shared memory is a region of RAM that multiple processes can access simultaneous
 
 ### Storage Location
 
-HORUS stores shared memory segments in:
+HORUS stores shared memory segments in session-scoped directories:
 
 ```
-/dev/shm/horus/topics/
+/dev/shm/horus/sessions/{session_id}/topics/
+```
+
+Or in global topics (accessible across all sessions):
+
+```
+/dev/shm/horus/global/
 ```
 
 **Why /dev/shm?**
@@ -44,19 +50,45 @@ HORUS stores shared memory segments in:
 
 **Automatic cleanup**: Can be cleaned manually if needed
 
+### Session Management
+
+**Session-scoped topics** (default):
+- Each `horus run` creates a unique session ID
+- Topics isolated to that session
+- Multiple processes communicate by sharing the same session ID
+- Configure in `horus.yaml`:
+
+```yaml
+session_id: "my-shared-session"
+```
+
+**Global topics** (cross-session):
+- Use `Hub::new_global()` instead of `Hub::new()`
+- Topics accessible across ALL sessions
+- Useful for system-wide services
+
 ### File Naming Convention
 
 Shared memory topics follow this naming:
 
+**Session-scoped**:
 ```
-/dev/shm/horus/topics/horus_{topic_name}
+/dev/shm/horus/sessions/{session_id}/topics/horus_{topic_name}
+```
+
+**Global**:
+```
+/dev/shm/horus/global/horus_{topic_name}
 ```
 
 Examples:
 ```bash
-/dev/shm/horus/topics/horus_cmd_vel
-/dev/shm/horus/topics/horus_laser_scan
-/dev/shm/horus/topics/horus_sensor_lidar  # '/' becomes '_'
+# Session-scoped
+/dev/shm/horus/sessions/snakesim-session/topics/horus_cmd_vel
+/dev/shm/horus/sessions/abc123-uuid/topics/horus_laser_scan
+
+# Global
+/dev/shm/horus/global/horus_system_monitor
 ```
 
 **Topic name sanitization**:
@@ -870,6 +902,95 @@ let pub_hub: Hub<f32> = Hub::new("data");
 // Subscriber
 let sub_hub: Hub<f32> = Hub::new("data");  // Same type!
 ```
+
+## Cross-Session Communication
+
+HORUS provides two ways to enable communication across multiple processes:
+
+### Method 1: Shared Session ID (Recommended for Related Processes)
+
+Configure the same `session_id` in `horus.yaml` for processes that need to communicate:
+
+**Backend - horus.yaml**:
+```yaml
+name: my_backend
+version: "0.1.0"
+session_id: "my-app-session"  # Share this ID
+
+dependencies:
+  - horus
+```
+
+**GUI - horus.yaml**:
+```yaml
+name: my_gui
+version: "0.1.0"
+session_id: "my-app-session"  # Same session ID
+
+dependencies:
+  - horus
+```
+
+**Usage**:
+```rust
+// Backend (Terminal 1)
+let publisher: Hub<SensorData> = Hub::new("sensors")?;
+publisher.send(data, Some(&mut ctx))?;
+
+// GUI (Terminal 2)
+let subscriber: Hub<SensorData> = Hub::new("sensors")?;
+if let Some(data) = subscriber.recv(Some(&mut ctx)) {
+    // Receives data from backend!
+}
+```
+
+Both processes will use `/dev/shm/horus/sessions/my-app-session/topics/sensors`.
+
+### Method 2: Global Topics (For System-Wide Services)
+
+Use `Hub::new_global()` for topics that should be accessible across all sessions:
+
+```rust
+// System monitor (available to all sessions)
+let monitor: Hub<SystemStats> = Hub::new_global("system_monitor")?;
+monitor.send(stats, Some(&mut ctx))?;
+
+// Any other process (different session)
+let stats_subscriber: Hub<SystemStats> = Hub::new_global("system_monitor")?;
+if let Some(stats) = stats_subscriber.recv(Some(&mut ctx)) {
+    // Receives data regardless of session!
+}
+```
+
+Global topics use `/dev/shm/horus/global/system_monitor`.
+
+### When to Use Each Method
+
+**Use Session ID** when:
+- Building multi-process applications (backend + GUI)
+- Processes are logically related
+- You want isolation from other apps
+
+**Use Global Topics** when:
+- Building system-wide services (monitoring, logging)
+- Multiple unrelated applications need the same data
+- You want maximum discoverability
+
+### Real-World Example: Snake Game
+
+The snakesim example demonstrates session-based communication:
+
+```bash
+# Terminal 1 - Backend
+cd ~/my_snakesim
+horus run main.rs
+
+# Terminal 2 - GUI (shares session via horus.yaml)
+cd ~/my_snakesim
+horus run snakesim_gui/main.rs
+```
+
+Both share `session_id: "snakesim-session"` in their `horus.yaml` files, enabling cross-process communication.
 
 ## Next Steps
 

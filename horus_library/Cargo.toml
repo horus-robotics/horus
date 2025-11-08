@@ -31,7 +31,7 @@ serialport = { version = "4.2", optional = true }
 rplidar_drv = { version = "0.6", optional = true }
 tokio-modbus = { version = "0.7", optional = true }
 crossterm = { version = "0.27", optional = true }
-gamepads = { version = "0.1", optional = true }
+gilrs = { version = "0.10", optional = true }
 
 [features]
 default = ["control-nodes", "input-nodes"]
@@ -42,7 +42,7 @@ safety-nodes = ["rppal", "sysinfo"]
 basic-sensors = ["opencv", "nokhwa", "serialport"]
 control-nodes = []
 industrial-nodes = ["tokio-modbus"]
-input-nodes = ["crossterm", "gamepads"]
+input-nodes = ["crossterm", "gilrs"]
 
 # Individual node features
 raspberry-pi = ["rppal"]

@@ -398,10 +398,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Check safety status and take action
         if let Some(status) = safety_topic.recv(None) {
             if status.mode == SafetyStatus::MODE_SAFE_STOP {
-                println!("SAFETY STOP TRIGGERED: fault code {}", status.fault_code);
+                eprintln!("SAFETY STOP TRIGGERED: fault code {}", status.fault_code);
                 // Trigger protective actions here
             } else if status.mode == SafetyStatus::MODE_REDUCED {
-                println!("Reduced performance mode active");
+                eprintln!("Reduced performance mode active");
                 // Reduce operation speed/power
             }
         }
@@ -668,7 +668,7 @@ monitor.set_memory_threshold(90.0);
 // Verify battery state message
 let battery_topic = Hub::<BatteryState>::new("battery_state")?;
 if let Some(battery) = battery_topic.recv(None) {
-    println!("Battery: {}%", battery.percentage);
+    eprintln!("Battery: {}%", battery.percentage);
 }
 
 // Adjust threshold if needed
@@ -775,10 +775,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     MotorCommand::Velocity { motor_id: 0, value: 0.0 },
                     None
                 )?;
-                println!("SAFETY STOP: {}", status.fault_code);
+                eprintln!("SAFETY STOP: {}", status.fault_code);
             } else if status.mode == SafetyStatus::MODE_REDUCED {
                 // Reduced performance mode
-                println!("Reduced performance mode active");
+                eprintln!("Reduced performance mode active");
             }
         }
 
@@ -836,11 +836,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 SafetyStatus::MODE_REDUCED => {
                     degraded_mode = true;
-                    println!("WARNING: Operating in reduced performance mode");
+                    eprintln!("WARNING: Operating in reduced performance mode");
                     // Reduce speeds, increase safety margins
                 }
                 SafetyStatus::MODE_SAFE_STOP => {
-                    println!("CRITICAL: Safety stop triggered!");
+                    eprintln!("CRITICAL: Safety stop triggered!");
                     // Emergency stop all systems
                     estop_topic.send(
                         EmergencyStop::engage("Safety monitor triggered")

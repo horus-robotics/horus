@@ -161,7 +161,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 );
                 let (roll, pitch, yaw) = q.to_euler();
 
-                println!("Orientation - Roll: {:.2}°, Pitch: {:.2}°, Yaw: {:.2}°",
+                eprintln!("Orientation - Roll: {:.2}°, Pitch: {:.2}°, Yaw: {:.2}°",
                     roll * 180.0 / PI,
                     pitch * 180.0 / PI,
                     yaw * 180.0 / PI
@@ -212,7 +212,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             // Detect significant motion
             if angular_mag > 0.5 || accel_mag > 2.0 {
-                println!("Motion detected! Angular: {:.2} rad/s, Accel: {:.2} m/s²",
+                eprintln!("Motion detected! Angular: {:.2} rad/s, Accel: {:.2} m/s²",
                     angular_mag, accel_mag);
             }
         }
@@ -489,7 +489,7 @@ let accel_base = imu_to_base.transform_vector(
 // Check IMU initialization
 let actual_rate = imu.get_actual_sample_rate();
 if actual_rate == 0.0 {
-    println!("IMU not publishing data - check hardware connection");
+    eprintln!("IMU not publishing data - check hardware connection");
 }
 
 // For I2C IMUs, verify:
@@ -666,7 +666,7 @@ fn detect_magnetic_anomaly(mag: [f64; 3], expected_field_strength: f64) -> bool 
 
 // Fallback to gyro-only orientation when interference detected
 if detect_magnetic_anomaly(mag_data, 50.0) {
-    println!("Magnetic interference detected - using gyro-only mode");
+    eprintln!("Magnetic interference detected - using gyro-only mode");
     // Use complementary filter with accel + gyro only
 }
 ```

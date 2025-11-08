@@ -566,7 +566,7 @@ joystick.calibrate_axis("LeftStickX",
 ```rust
 // Check controller connection
 if !joystick.is_connected() {
-    println!("Controller not detected on device {}", joystick.device_id);
+    eprintln!("Controller not detected on device {}", joystick.device_id);
 }
 
 // Try different device IDs
@@ -574,7 +574,7 @@ for id in 0..4 {
     let mut joy = JoystickInputNode::new()?;
     joy.set_device_id(id);
     if joy.is_connected() {
-        println!("Controller found on device {}", id);
+        eprintln!("Controller found on device {}", id);
         break;
     }
 }
@@ -703,7 +703,7 @@ runtime.set_tick_rate(100.0);  // 100 Hz (10ms)
 // Check battery level
 let battery = joystick.get_battery_level();
 if battery < 0.2 {
-    println!("Warning: Controller battery low ({}%)", battery * 100.0);
+    eprintln!("Warning: Controller battery low ({}%)", battery * 100.0);
 }
 
 // Reduce polling rate to save battery

@@ -123,7 +123,7 @@ servo_ctrl.set_interpolation(true);  // smooth motion
 
 // Get current position of a servo
 if let Some(pos) = servo_ctrl.get_position(0) {
-    println!("Servo 0 position: {} rad", pos);
+    eprintln!("Servo 0 position: {} rad", pos);
 }
 
 // Get all current positions
@@ -337,7 +337,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
    // Verify actual position matches expected
    if let Some(actual_pos) = servo_ctrl.get_position(servo_id) {
-       println!("Servo {} at position: {}", servo_id, actual_pos);
+       eprintln!("Servo {} at position: {}", servo_id, actual_pos);
    }
    ```
 
@@ -375,7 +375,7 @@ fn calibrate_servo(
     servo_pub: &Hub<ServoCommand>,
     servo_ctrl: &ServoControllerNode,
 ) -> Result<(f64, f64), Box<dyn std::error::Error>> {
-    println!("Calibrating servo {}...", servo_id);
+    eprintln!("Calibrating servo {}...", servo_id);
 
     // Move to center
     let center = ServoCommand::new(servo_id, 0.0);
@@ -423,7 +423,7 @@ fn calibrate_servo(
     // Return to center
     servo_pub.send(center, None)?;
 
-    println!("Servo {} limits: ({}, {})", servo_id, neg_limit, pos_limit);
+    eprintln!("Servo {} limits: ({}, {})", servo_id, neg_limit, pos_limit);
     Ok((neg_limit, pos_limit))
 }
 ```
@@ -705,7 +705,7 @@ assert!(servo_id < servo_ctrl.get_servo_count());
 
 // Check position limits
 let (min, max) = servo_ctrl.get_position_limits(servo_id);
-println!("Limits for servo {}: ({}, {})", servo_id, min, max);
+eprintln!("Limits for servo {}: ({}, {})", servo_id, min, max);
 
 // Ensure servo is enabled
 let cmd = ServoCommand::new(servo_id, target);
@@ -717,7 +717,7 @@ servo_ctrl.move_to_home();
 // Check if position is being clamped
 let requested = 5.0;  // Outside normal range
 let clamped = requested.clamp(-3.14, 3.14);
-println!("Position clamped from {} to {}", requested, clamped);
+eprintln!("Position clamped from {} to {}", requested, clamped);
 ```
 
 ### Issue: Erratic or Jerky Movement
@@ -825,7 +825,7 @@ runtime.add_node(servo_ctrl);
 
 // Verify hub creation
 let servo_pub = Hub::<ServoCommand>::new("servo_cmd")?;
-println!("Publisher created on topic: servo_cmd");
+eprintln!("Publisher created on topic: servo_cmd");
 ```
 
 ### Issue: Servos Move at Different Speeds

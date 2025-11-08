@@ -75,7 +75,7 @@ use std::time::Duration;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd_pub: Hub<CmdVel> = Hub::new("cmd_vel")?;
-    println!(" Driving in circles...");
+    eprintln!(" Driving in circles...");
 
     loop {
         cmd_pub.send(CmdVel::new(1.0, 0.5), None)?;

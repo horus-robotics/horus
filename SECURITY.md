@@ -66,7 +66,6 @@ This security policy covers:
 
 - HORUS core framework (horus_core)
 - HORUS CLI tool (horus_manager)
-- HORUS daemon (horus_daemon)
 - Official language bindings (horus_py, horus_cpp)
 - HORUS package registry and marketplace
 

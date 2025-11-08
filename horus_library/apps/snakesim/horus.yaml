@@ -3,5 +3,11 @@ version: "0.1.0"
 description: "Snake game controller - converts keyboard/joystick input to snake state"
 author: "HORUS Team"
 license: "Apache-2.0"
+session_id: "snakesim-session"
 
-dependencies: []
+dependencies:
+  - horus
+  - name: serde
+    version: "1"
+    features:
+      - derive

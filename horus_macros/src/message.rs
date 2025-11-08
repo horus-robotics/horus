@@ -72,7 +72,7 @@ fn generate_tuple_message(name: Ident, types: Vec<Type>) -> TokenStream {
     });
 
     quote! {
-        #[derive(Debug, Clone, ::serde::Serialize, ::serde::Deserialize)]
+        #[derive(Debug, Clone, ::horus::serde::Serialize, ::horus::serde::Deserialize)]
         #[repr(C)]
         pub struct #name(#(#field_list),*);
 
@@ -92,7 +92,7 @@ fn generate_struct_message(name: Ident, fields: Vec<(Ident, Type)>) -> TokenStre
     });
 
     quote! {
-        #[derive(Debug, Clone, ::serde::Serialize, ::serde::Deserialize)]
+        #[derive(Debug, Clone, ::horus::serde::Serialize, ::horus::serde::Deserialize)]
         #[repr(C)]
         pub struct #name {
             #(#field_defs),*

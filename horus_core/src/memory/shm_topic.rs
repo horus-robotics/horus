@@ -131,6 +131,16 @@ impl<'a, T> Drop for ConsumerSample<'a, T> {
 impl<T> ShmTopic<T> {
     /// Create a new ring buffer in shared memory
     pub fn new(name: &str, capacity: usize) -> HorusResult<Self> {
+        Self::new_internal(name, capacity, false)
+    }
+
+    /// Create or open a global shared memory topic (accessible across all sessions)
+    pub fn new_global(name: &str, capacity: usize) -> HorusResult<Self> {
+        Self::new_internal(name, capacity, true)
+    }
+
+    /// Internal function to create topic with optional global flag
+    fn new_internal(name: &str, capacity: usize, global: bool) -> HorusResult<Self> {
         // Safety validation: check capacity bounds
         if capacity < MIN_CAPACITY {
             return Err(format!(
@@ -187,7 +197,12 @@ impl<T> ShmTopic<T> {
             .into());
         }
 
-        let region = Arc::new(ShmRegion::new(name, total_size)?);
+        // Create shared memory region (global or session-scoped)
+        let region = if global {
+            Arc::new(ShmRegion::new_global(name, total_size)?)
+        } else {
+            Arc::new(ShmRegion::new(name, total_size)?)
+        };
         let is_owner = region.is_owner();
 
         // Initialize header with safety checks

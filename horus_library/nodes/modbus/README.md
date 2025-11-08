@@ -106,14 +106,14 @@ modbus.set_timeout(3000);  // 3 seconds
 
 // Check connection status
 if modbus.is_connected() {
-    println!("Connected to Modbus device");
+    eprintln!("Connected to Modbus device");
 }
 
 // Get connection statistics
 let (attempts, last_activity, cache_size) = modbus.get_stats();
-println!("Connection attempts: {}", attempts);
-println!("Last activity: {} ns", last_activity);
-println!("Cached registers: {}", cache_size);
+eprintln!("Connection attempts: {}", attempts);
+eprintln!("Last activity: {} ns", last_activity);
+eprintln!("Cached registers: {}", cache_size);
 ```
 
 ## Usage Examples
@@ -190,7 +190,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(response) = response_hub.recv(None) {
         let temp_raw = response.data[0];
         let temperature = temp_raw as f32 / 10.0;  // Typical scaling
-        println!("Temperature: {}°C", temperature);
+        eprintln!("Temperature: {}°C", temperature);
     }
 
     Ok(())
@@ -309,7 +309,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Process responses
     while let Some(response) = response_hub.recv(None) {
-        println!("Slave {}: {:?}", response.slave_id, &response.data[..response.data_length as usize]);
+        eprintln!("Slave {}: {:?}", response.slave_id, &response.data[..response.data_length as usize]);
     }
 
     Ok(())
@@ -623,11 +623,11 @@ modbus.set_connection("/dev/ttyUSB0", 0, 1);
 if response.function_code & 0x80 != 0 {
     let exception_code = response.data[0];
     match exception_code {
-        0x01 => println!("Illegal function"),
-        0x02 => println!("Illegal data address"),
-        0x03 => println!("Illegal data value"),
-        0x04 => println!("Slave device failure"),
-        _ => println!("Unknown exception: {}", exception_code),
+        0x01 => eprintln!("Illegal function"),
+        0x02 => eprintln!("Illegal data address"),
+        0x03 => eprintln!("Illegal data value"),
+        0x04 => eprintln!("Slave device failure"),
+        _ => eprintln!("Unknown exception: {}", exception_code),
     }
 }
 ```
@@ -904,7 +904,7 @@ for (address, slave_id) in device_list {
 // Always check for exceptions
 if response.function_code & 0x80 != 0 {
     // Handle exception
-    eprintln!("Modbus exception: {}", response.data[0]);
+    eeprintln!("Modbus exception: {}", response.data[0]);
     return Err("Modbus exception");
 }
 
@@ -944,14 +944,14 @@ const MOTOR_RUN_CMD: u16 = 50;
 ```rust
 // Validate received data
 if response.data_length != request.quantity {
-    eprintln!("Invalid response length");
+    eeprintln!("Invalid response length");
     return Err("Data length mismatch");
 }
 
 // Check value ranges
 let temp = response.data[0];
 if temp < 0 || temp > 2000 {  // 0-200.0°C range
-    eprintln!("Temperature out of range: {}", temp);
+    eeprintln!("Temperature out of range: {}", temp);
 }
 ```
 

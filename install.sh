@@ -492,17 +492,18 @@ mkdir -p "$EXAMPLES_DIR"
 # Copy snakesim example
 if [ -d "horus_library/apps/snakesim" ]; then
     mkdir -p "$EXAMPLES_DIR/snakesim"
+    mkdir -p "$EXAMPLES_DIR/snakesim/snakesim_gui"
+
+    # Copy backend files
     cp horus_library/apps/snakesim/main.rs "$EXAMPLES_DIR/snakesim/" 2>/dev/null || true
     cp horus_library/apps/snakesim/horus.yaml "$EXAMPLES_DIR/snakesim/" 2>/dev/null || true
     cp horus_library/apps/snakesim/README.md "$EXAMPLES_DIR/snakesim/" 2>/dev/null || true
 
-    # Copy GUI binary if available
-    if [ -f "target/release/snakesim_gui" ]; then
-        cp target/release/snakesim_gui "$EXAMPLES_DIR/snakesim/" 2>/dev/null || true
-        echo -e "${GREEN}${NC} Installed snakesim example with GUI"
-    else
-        echo -e "${GREEN}${NC} Installed snakesim example (GUI not built)"
-    fi
+    # Copy GUI files
+    cp horus_library/apps/snakesim/snakesim_gui/main.rs "$EXAMPLES_DIR/snakesim/snakesim_gui/" 2>/dev/null || true
+    cp horus_library/apps/snakesim/snakesim_gui/horus.yaml "$EXAMPLES_DIR/snakesim/snakesim_gui/" 2>/dev/null || true
+
+    echo -e "${GREEN}${NC} Installed snakesim example with GUI"
 fi
 
 echo ""
@@ -660,8 +661,8 @@ echo ""
 echo "  2. Or try the snake game example:"
 echo -e "     ${CYAN}cp -r ~/.horus/cache/horus@$HORUS_VERSION/examples/snakesim ~/my_snakesim${NC}"
 echo -e "     ${CYAN}cd ~/my_snakesim${NC}"
-echo -e "     Terminal 1: ${CYAN}horus run${NC}  (backend with keyboard input)"
-echo -e "     Terminal 2: ${CYAN}./snakesim_gui${NC}  (GUI visualization)"
+echo -e "     Terminal 1: ${CYAN}horus run main.rs${NC}  (backend with keyboard input)"
+echo -e "     Terminal 2: ${CYAN}cd ~/my_snakesim && horus run snakesim_gui/main.rs${NC}  (GUI visualization)"
 echo -e "     Use Arrow Keys or WASD to control the snake!"
 echo ""
 echo "  3. Run your project:"

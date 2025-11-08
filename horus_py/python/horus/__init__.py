@@ -317,7 +317,7 @@ class Node:
 
         Args:
             topic: Topic to send to
-            data: Data to send
+            data: Data to send (supports numpy arrays with zero-copy)
 
         Returns:
             True if sent successfully
@@ -344,6 +344,9 @@ class Node:
             elif isinstance(data, (dict, list, tuple, int, float, bool, type(None))):
                 json_bytes = json.dumps(data).encode('utf-8')
                 result = hub.send_with_metadata(json_bytes, "json")
+            elif hasattr(data, '__array_interface__') or type(data).__name__ == 'ndarray':
+                # Zero-copy path for numpy arrays
+                result = hub.send_numpy(data)
             else:
                 pickled = pickle.dumps(data)
                 result = hub.send_with_metadata(pickled, "pickle")
@@ -392,6 +395,9 @@ class Node:
                     msg = json.loads(data_bytes.decode('utf-8'))
                 elif msg_type == "pickle":
                     msg = pickle.loads(data_bytes)
+                elif msg_type == "numpy":
+                    # Keep as raw bytes for numpy arrays
+                    msg = data_bytes
                 else:
                     try:
                         msg = data_bytes.decode('utf-8')

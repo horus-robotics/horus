@@ -466,8 +466,8 @@ impl Node for TFListenerNode {
     fn name(&self) -> &'static str { "TFListener" }
 
     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        // Receive all available transforms
-        while let Some(msg) = self.subscriber.recv(ctx) {
+        // Process one transform per tick (bounded execution)
+        if let Some(msg) = self.subscriber.recv(ctx) {
             let parent = String::from_utf8_lossy(&msg.parent_frame)
                 .trim_end_matches('\0')
                 .to_string();
@@ -485,8 +485,8 @@ impl Node for TFListenerNode {
             }
         }
 
-        // Receive static transforms
-        while let Some(msg) = self.static_sub.recv(ctx) {
+        // Process one static transform per tick (bounded execution)
+        if let Some(msg) = self.static_sub.recv(ctx) {
             let parent = String::from_utf8_lossy(&msg.parent_frame)
                 .trim_end_matches('\0')
                 .to_string();

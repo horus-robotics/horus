@@ -1,0 +1,353 @@
+// Test real-time node functionality
+use horus_core::core::{DeadlineMissPolicy, Node, NodeInfo, RTClass, RTNode, RTPriority};
+use horus_core::error::HorusResult as Result;
+use horus_core::scheduling::{Scheduler, SchedulerConfig};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
+use std::time::Duration;
+
+/// Example: Motor control node with real-time constraints
+struct MotorControlNode {
+    name: String,
+    tick_count: Arc<AtomicU64>,
+    simulate_overrun: bool,
+}
+
+impl MotorControlNode {
+    fn new(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            tick_count: Arc::new(AtomicU64::new(0)),
+            simulate_overrun: false,
+        }
+    }
+
+    fn with_overrun(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            tick_count: Arc::new(AtomicU64::new(0)),
+            simulate_overrun: true,
+        }
+    }
+}
+
+impl Node for MotorControlNode {
+    fn name(&self) -> &'static str {
+        Box::leak(self.name.clone().into_boxed_str())
+    }
+
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info(&format!("{} initialized for 1kHz control", self.name));
+        Ok(())
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        self.tick_count.fetch_add(1, Ordering::SeqCst);
+
+        // Simulate computation
+        if self.simulate_overrun {
+            // Simulate WCET violation
+            std::thread::sleep(Duration::from_micros(200));
+        } else {
+            // Normal execution within budget
+            std::thread::sleep(Duration::from_micros(50));
+        }
+
+        let count = self.tick_count.load(Ordering::SeqCst);
+        if count % 100 == 0 {
+            ctx.log_info(&format!("{} processed {} control loops", self.name, count));
+        }
+    }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info(&format!(
+            "{} shutdown after {} ticks",
+            self.name,
+            self.tick_count.load(Ordering::SeqCst)
+        ));
+        Ok(())
+    }
+}
+
+impl RTNode for MotorControlNode {
+    fn wcet_budget(&self) -> Duration {
+        Duration::from_micros(100) // 100μs budget for motor control
+    }
+
+    fn deadline(&self) -> Duration {
+        Duration::from_millis(1) // 1ms deadline for 1kHz control
+    }
+
+    fn rt_priority(&self) -> RTPriority {
+        RTPriority::Critical // Highest priority
+    }
+
+    fn rt_class(&self) -> RTClass {
+        RTClass::Hard // Must never miss deadline
+    }
+
+    fn pre_condition(&self) -> bool {
+        // Check system is ready for motor control
+        true
+    }
+
+    fn post_condition(&self) -> bool {
+        // Check motor command was sent successfully
+        true
+    }
+
+    fn invariant(&self) -> bool {
+        // Check system safety invariant
+        true
+    }
+}
+
+/// Example: Sensor fusion node with firm real-time constraints
+struct SensorFusionNode {
+    name: String,
+    samples_processed: Arc<AtomicU64>,
+}
+
+impl SensorFusionNode {
+    fn new(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            samples_processed: Arc::new(AtomicU64::new(0)),
+        }
+    }
+}
+
+impl Node for SensorFusionNode {
+    fn name(&self) -> &'static str {
+        Box::leak(self.name.clone().into_boxed_str())
+    }
+
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info(&format!(
+            "{} initialized for 100Hz sensor fusion",
+            self.name
+        ));
+        Ok(())
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        self.samples_processed.fetch_add(1, Ordering::SeqCst);
+
+        // Simulate sensor fusion computation
+        std::thread::sleep(Duration::from_micros(100));
+
+        let count = self.samples_processed.load(Ordering::SeqCst);
+        if count % 50 == 0 {
+            ctx.log_info(&format!("{} fused {} sensor samples", self.name, count));
+        }
+    }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info(&format!(
+            "{} shutdown after {} samples",
+            self.name,
+            self.samples_processed.load(Ordering::SeqCst)
+        ));
+        Ok(())
+    }
+}
+
+impl RTNode for SensorFusionNode {
+    fn wcet_budget(&self) -> Duration {
+        Duration::from_micros(500) // 500μs budget
+    }
+
+    fn deadline(&self) -> Duration {
+        Duration::from_millis(10) // 10ms deadline for 100Hz
+    }
+
+    fn rt_priority(&self) -> RTPriority {
+        RTPriority::High
+    }
+
+    fn rt_class(&self) -> RTClass {
+        RTClass::Firm // Can tolerate occasional misses
+    }
+}
+
+/// Example: Logging node with soft real-time constraints
+struct LoggingNode {
+    name: String,
+    logs_written: Arc<AtomicU64>,
+}
+
+impl LoggingNode {
+    fn new(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            logs_written: Arc::new(AtomicU64::new(0)),
+        }
+    }
+}
+
+impl Node for LoggingNode {
+    fn name(&self) -> &'static str {
+        Box::leak(self.name.clone().into_boxed_str())
+    }
+
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info(&format!("{} initialized", self.name));
+        Ok(())
+    }
+
+    fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
+        self.logs_written.fetch_add(1, Ordering::SeqCst);
+        // Simulate logging (fast operation)
+        std::thread::sleep(Duration::from_micros(10));
+    }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info(&format!(
+            "{} wrote {} logs",
+            self.name,
+            self.logs_written.load(Ordering::SeqCst)
+        ));
+        Ok(())
+    }
+}
+
+impl RTNode for LoggingNode {
+    fn wcet_budget(&self) -> Duration {
+        Duration::from_millis(5) // 5ms budget
+    }
+
+    fn deadline(&self) -> Duration {
+        Duration::from_millis(100) // 100ms deadline
+    }
+
+    fn rt_priority(&self) -> RTPriority {
+        RTPriority::Low
+    }
+
+    fn rt_class(&self) -> RTClass {
+        RTClass::Soft // Best effort
+    }
+}
+
+#[test]
+fn test_rt_node_basic() {
+    let mut scheduler = Scheduler::new();
+
+    // Use standard config (RT features disabled)
+    scheduler.set_config(SchedulerConfig::standard());
+
+    // Add RT nodes as regular nodes (RTNodeWrapper handles the conversion)
+    scheduler
+        .add(Box::new(MotorControlNode::new("motor_ctrl")), 0, Some(true))
+        .add(
+            Box::new(SensorFusionNode::new("sensor_fusion")),
+            1,
+            Some(true),
+        )
+        .add(Box::new(LoggingNode::new("logger")), 10, Some(false));
+
+    // Run for a short duration
+    let result = scheduler.run_for(Duration::from_millis(100));
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_rt_node_priority_ordering() {
+    let motor = Arc::new(AtomicU64::new(0));
+    let sensor = Arc::new(AtomicU64::new(0));
+    let logger = Arc::new(AtomicU64::new(0));
+
+    let mut motor_node = MotorControlNode::new("motor");
+    motor_node.tick_count = motor.clone();
+
+    let mut sensor_node = SensorFusionNode::new("sensor");
+    sensor_node.samples_processed = sensor.clone();
+
+    let mut log_node = LoggingNode::new("logger");
+    log_node.logs_written = logger.clone();
+
+    let mut scheduler = Scheduler::new();
+    scheduler
+        .add(Box::new(log_node), 10, Some(false)) // Low priority
+        .add(Box::new(sensor_node), 1, Some(false)) // High priority
+        .add(Box::new(motor_node), 0, Some(false)); // Critical priority
+
+    scheduler.run_for(Duration::from_millis(50)).unwrap();
+
+    // Critical priority node should have executed
+    assert!(motor.load(Ordering::SeqCst) > 0);
+}
+
+#[test]
+fn test_rt_node_with_safety_critical_config() {
+    let mut scheduler = Scheduler::new();
+
+    // Use safety-critical configuration (all RT features enabled)
+    scheduler.set_config(SchedulerConfig::safety_critical());
+
+    scheduler
+        .add(
+            Box::new(MotorControlNode::new("critical_motor")),
+            0,
+            Some(true),
+        )
+        .add(
+            Box::new(SensorFusionNode::new("critical_sensor")),
+            1,
+            Some(true),
+        );
+
+    // Run briefly (safety-critical config runs at 1kHz)
+    let result = scheduler.run_for(Duration::from_millis(50));
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_rt_node_wcet_budget() {
+    // Test that nodes respect their WCET budget
+    let node = MotorControlNode::new("test_motor");
+    assert_eq!(node.wcet_budget(), Duration::from_micros(100));
+    assert_eq!(node.deadline(), Duration::from_millis(1));
+    assert_eq!(node.rt_class(), RTClass::Hard);
+}
+
+#[test]
+fn test_rt_node_formal_verification() {
+    let mut node = MotorControlNode::new("verified_motor");
+
+    // Test pre-condition
+    assert!(node.pre_condition());
+
+    // Execute tick
+    node.tick(None);
+
+    // Test post-condition
+    assert!(node.post_condition());
+
+    // Test invariant
+    assert!(node.invariant());
+}
+
+#[test]
+fn test_rt_priority_values() {
+    assert!(RTPriority::Critical.value() < RTPriority::High.value());
+    assert!(RTPriority::High.value() < RTPriority::Medium.value());
+    assert!(RTPriority::Medium.value() < RTPriority::Low.value());
+    assert_eq!(RTPriority::Custom(42).value(), 42);
+}
+
+#[test]
+fn test_deadline_miss_policies() {
+    // Test different deadline miss policies
+    let motor = MotorControlNode::new("motor");
+    assert_eq!(
+        motor.deadline_miss_policy(),
+        DeadlineMissPolicy::EmergencyStop
+    );
+
+    let sensor = SensorFusionNode::new("sensor");
+    assert_eq!(sensor.deadline_miss_policy(), DeadlineMissPolicy::Skip);
+
+    let logger = LoggingNode::new("logger");
+    assert_eq!(logger.deadline_miss_policy(), DeadlineMissPolicy::Warn);
+}

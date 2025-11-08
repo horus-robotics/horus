@@ -87,10 +87,6 @@ horus run -b
 horus run --clean
 horus run -c
 
-# Deploy to remote robot via daemon
-horus run --remote robot:8080
-horus run -R 192.168.1.100:8080
-
 # Pass arguments to the program
 horus run main.rs -- arg1 arg2
 ```
@@ -99,14 +95,7 @@ horus run main.rs -- arg1 arg2
 - `-b, --build-only` - Build without running
 - `-r, --release` - Build in release mode
 - `-c, --clean` - Clean build cache before building
-- `-R, --remote <ROBOT>` - Deploy to remote robot (HTTP-based)
 - Trailing args passed to program
-
-**Remote Deployment:**
-- Packages project as `.tar.gz`
-- HTTP POST to `http://ROBOT:8080/deploy`
-- `horus_daemon` on robot receives, builds, and runs
-- Returns deployment ID and PID
 
 ### 3. `horus dashboard` - Monitoring Dashboard
 
@@ -288,7 +277,6 @@ horus_manager/
 │   │   ├── mod.rs          # Commands module
 │   │   ├── new.rs          # Project creation
 │   │   ├── run.rs          # Build and execution
-│   │   ├── remote.rs       # Remote deployment
 │   │   ├── github_auth.rs  # GitHub authentication
 │   │   └── monitor.rs      # System monitoring
 │   ├── dashboard.rs         # Web dashboard (Axum)
@@ -360,16 +348,6 @@ cd sensor_node
 horus run
 ```
 
-### Remote Deployment
-
-```bash
-# On robot: start daemon
-cargo run --release -p horus_daemon
-
-# On dev machine: deploy
-cd my_project
-horus run --remote 192.168.1.100:8080
-```
 
 ### Package Management
 
@@ -434,8 +412,7 @@ All commands follow consistent patterns:
 
 1. **Command not found**: Ensure `cargo install --path .` was run
 2. **Package not found**: Check registry URL configuration
-3. **Remote deployment fails**: Ensure `horus_daemon` is running on robot
-4. **Build failures**: Check that required compilers are installed
+3. **Build failures**: Check that required compilers are installed
 
 ### Getting Help
 

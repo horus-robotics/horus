@@ -11,8 +11,8 @@ order: 44
 ## 1. Core Framework (COMPLETE)
 
 ### Performance & Reliability
-- -**Link (SPSC)**: 312ns median latency (production-validated)
-- -**Hub (MPMC)**: 481ns median latency (production-validated)
+- -**Link (SPSC)**: 248ns median latency (production-validated)
+- -**Hub (MPMC)**: 437ns median latency (production-validated)
 - -**Session isolation**: Via `HORUS_SESSION_ID` environment variable
   - Sessions use isolated directory: `/dev/shm/horus/sessions/{session_id}/`
   - Cleanup: `rm -rf /dev/shm/horus/sessions/{session_id}` (entire session at once)
@@ -96,7 +96,6 @@ order: 44
 ⚠️ **How-to Guides (40% Complete):**
 - -Debug performance issues (`/docs/performance.mdx`, `/docs/troubleshooting.mdx`)
 - ❌ Migrate from ROS2 (missing - HIGH PRIORITY)
-- ❌ Deploy to embedded Linux - Raspberry Pi/Jetson specific guide (missing)
 
 **Remaining Work:**
 
@@ -182,7 +181,6 @@ order: 44
 
 ### Developer Tools
 - Dashboard enhancements (recording/playback, profiling, log search)
-- Remote deployment daemon (versioning, rollback, multi-target, CI/CD integration)
 
 ### Language Bindings Enhancements
 - PyPI package distribution (Python-only users)

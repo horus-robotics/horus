@@ -160,7 +160,6 @@ test:
 - `horus publish` (needs registry backend auth)
 - `horus dashboard` (needs UI testing)
 - Multi-node runtime communication
-- Remote deployment (needs daemon)
 
 ## Test Maintenance
 

@@ -218,7 +218,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // In your application loop
     if let Some(odom) = odom_sub.recv(None) {
-        println!("Robot position: ({:.2}, {:.2}, {:.2})",
+        eprintln!("Robot position: ({:.2}, {:.2}, {:.2})",
             odom.pose.x, odom.pose.y, odom.pose.theta);
     }
 
@@ -408,7 +408,7 @@ Small fixed footprint (~200 bytes).
 // Monitor wheel speeds
 let drive_sub = Hub::new("drive_command")?;
 if let Some(cmd) = drive_sub.recv(None) {
-    println!("Left: {:.2}, Right: {:.2}", cmd.left_speed, cmd.right_speed);
+    eprintln!("Left: {:.2}, Right: {:.2}", cmd.left_speed, cmd.right_speed);
 }
 ```
 
@@ -509,7 +509,7 @@ let actual_vel = odom.twist.linear[0];
 let slip_ratio = (commanded_vel - actual_vel) / commanded_vel;
 
 if slip_ratio > 0.2 {
-    println!("Warning: Wheel slip detected!");
+    eprintln!("Warning: Wheel slip detected!");
 }
 ```
 

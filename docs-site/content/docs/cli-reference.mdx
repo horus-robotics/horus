@@ -112,7 +112,6 @@ Options:
   -r, --release            Optimize for speed (use for real testing!)
   -b, --build-only         Just compile, don't run
   -c, --clean              Remove old build files first
-  -R, --remote <ROBOT>     Run on a remote robot
   -- <ARGS>                Arguments for your program
 ```
 
@@ -124,7 +123,7 @@ Options:
 
 **Release mode** (`--release`): Slow to compile, fast to run
 - Good for: Real testing, benchmarks, production
-- Speed: Messages take ~312ns-1.31μs (100x faster!)
+- Speed: Messages take ~248ns-1.31μs (100x faster!)
 
 **Always use `--release` when measuring performance!**
 
@@ -150,12 +149,6 @@ horus run --build-only --release
 **Fresh build** (when things act weird):
 ```bash
 horus run --clean --release
-```
-
-**Run on your robot**:
-```bash
-horus run --remote 192.168.1.100
-# Builds here, runs there
 ```
 
 **Pass arguments to your program**:
@@ -727,8 +720,8 @@ horus run --clean --release
 # Save the environment
 horus env freeze --output production.yaml
 
-# Deploy to robot
-horus run --remote production-robot --release
+# Run in production mode
+horus run --release
 ```
 
 ### Share Your Work

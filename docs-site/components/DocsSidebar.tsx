@@ -20,15 +20,20 @@ const sections: SidebarSection[] = [
   {
     title: "Getting Started",
     links: [
-      { title: "Goals & Vision", href: "/goals", order: 0 },
-      { title: "Complete Beginner's Guide", href: "/complete-beginners-guide", order: 1 },
-      { title: "Roadmap to Beta", href: "/roadmap", order: 2 },
-      { title: "Introduction", href: "/getting-started", order: 3 },
-      { title: "Installation", href: "/getting-started/installation", order: 4 },
-      { title: "Troubleshooting", href: "/troubleshooting", order: 5 },
-      { title: "Quick Start", href: "/getting-started/quick-start", order: 6 },
-      { title: "Architecture", href: "/architecture", order: 7 },
-      { title: "Examples", href: "/examples", order: 8 },
+      { title: "What is HORUS?", href: "/what-is-horus", order: 0 },
+      { title: "Goals & Vision", href: "/goals", order: 1 },
+      { title: "Complete Beginner's Guide", href: "/complete-beginners-guide", order: 2 },
+      { title: "Roadmap to Beta", href: "/roadmap", order: 3 },
+      { title: "Introduction", href: "/getting-started", order: 4 },
+      { title: "Installation", href: "/getting-started/installation", order: 5 },
+      { title: "Troubleshooting", href: "/troubleshooting", order: 6 },
+      { title: "Runtime Errors", href: "/troubleshooting-runtime", order: 7 },
+      { title: "Quick Start", href: "/getting-started/quick-start", order: 8 },
+      { title: "Second Application", href: "/second-application", order: 9 },
+      { title: "Architecture", href: "/architecture", order: 10 },
+      { title: "Examples", href: "/examples", order: 11 },
+      { title: "Basic Examples", href: "/basic-examples", order: 12 },
+      { title: "Advanced Examples", href: "/advanced-examples", order: 13 },
     ],
   },
   {
@@ -41,7 +46,9 @@ const sections: SidebarSection[] = [
       { title: "Scheduler", href: "/core-concepts-scheduler", order: 5 },
       { title: "Shared Memory", href: "/core-concepts-shared-memory", order: 6 },
       { title: "node! Macro", href: "/node-macro", order: 7 },
-      { title: "Message Types", href: "/message-types", order: 8 },
+      { title: "message! Macro", href: "/message-macro", order: 8 },
+      { title: "Message Types", href: "/message-types", order: 9 },
+      { title: "Real-Time Nodes", href: "/realtime-nodes", order: 10 },
     ],
   },
   {
@@ -50,9 +57,9 @@ const sections: SidebarSection[] = [
       { title: "CLI Reference", href: "/cli-reference", order: 1 },
       { title: "Dashboard", href: "/dashboard", order: 2 },
       { title: "Simulation", href: "/simulation", order: 3 },
-      { title: "Parameters", href: "/parameters", order: 4 },
-      { title: "Library Reference", href: "/library-reference", order: 5 },
-      { title: "Remote Deployment", href: "/remote-deployment", order: 6 },
+      { title: "Testing", href: "/testing", order: 4 },
+      { title: "Parameters", href: "/parameters", order: 5 },
+      { title: "Library Reference", href: "/library-reference", order: 6 },
     ],
   },
   {
@@ -61,7 +68,8 @@ const sections: SidebarSection[] = [
       { title: "Package Management", href: "/package-management", order: 1 },
       { title: "Using Prebuilt Nodes", href: "/using-prebuilt-nodes", order: 2 },
       { title: "Environment Management", href: "/environment-management", order: 3 },
-      { title: "Authentication", href: "/authentication", order: 4 },
+      { title: "Configuration Reference", href: "/configuration", order: 4 },
+      { title: "Authentication", href: "/authentication", order: 5 },
     ],
   },
   {
@@ -69,8 +77,9 @@ const sections: SidebarSection[] = [
     links: [
       { title: "Overview", href: "/multi-language", order: 1 },
       { title: "Python Bindings", href: "/python-bindings", order: 2 },
-      { title: "C++ Bindings", href: "/cpp-bindings", order: 3 },
-      { title: "AI API Integration", href: "/ai-integration", order: 4 },
+      { title: "Python Message Library", href: "/python-message-library", order: 3 },
+      { title: "C++ Bindings", href: "/cpp-bindings", order: 4 },
+      { title: "AI API Integration", href: "/ai-integration", order: 5 },
     ],
   },
   {
@@ -78,6 +87,12 @@ const sections: SidebarSection[] = [
     links: [
       { title: "Optimization Guide", href: "/performance", order: 1 },
       { title: "Benchmarks", href: "/benchmarks", order: 2 },
+    ],
+  },
+  {
+    title: "Advanced Topics",
+    links: [
+      { title: "RTOS Integration", href: "/rtos-integration", order: 1 },
     ],
   },
   {
@@ -106,6 +121,7 @@ export function DocsSidebar({ isOpen = true, onClose }: DocsSidebarProps) {
     "Package Management": true,
     "Multi-Language": true,
     "Performance": true,
+    "Advanced Topics": true,
     "API Reference": true,
   });
 

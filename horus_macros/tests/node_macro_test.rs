@@ -100,9 +100,10 @@ mod tests {
                 }
 
                 tick(ctx) {
-                    if let Some(data) = self.input.recv(ctx.as_deref_mut()) {
+                    // Process one message per tick for bounded execution
+                    if let Some(data) = self.input.recv(ctx) {
                         self.counter += 1;
-                        self.output.send(data, ctx.as_deref_mut()).ok();
+                        self.output.send(data, ctx).ok();
                     }
                 }
 

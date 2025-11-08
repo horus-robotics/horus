@@ -53,13 +53,13 @@ HORUS is a modern robotics framework built on **Rust**, **shared memory IPC**, a
   ┌──────────────────────────▼──────────────────────────────────┐
   │            Tooling & Management Layer                       │
   └─────────────────────────────────────────────────────────────┘
-    ┌────────────┐  ┌──────────────┐  ┌────────────┐
-    │   horus    │  │    horus     │  │  Registry  │
-    │  _manager  │  │   _daemon    │  │            │
-    │  - CLI     │  │ - Monitoring │  │ - Packages │
-    │  - Auth    │  │ - Auto-launch│  │ - Auth     │
-    │  - Packages│  │ - Health     │  │ - Search   │
-    └────────────┘  └──────────────┘  └────────────┘
+    ┌────────────┐  ┌────────────┐
+    │   horus    │  │  Registry  │
+    │  _manager  │  │            │
+    │  - CLI     │  │ - Packages │
+    │  - Auth    │  │ - Auth     │
+    │  - Packages│  │ - Search   │
+    └────────────┘  └────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
 │                    /dev/shm/horus/ (POSIX SHM)                  │
@@ -101,7 +101,7 @@ The heart of the HORUS framework. Implements all core functionality including co
 
 #### `communication/`
 - **hub.rs**: Generic `Hub<T>` implementation with backend abstraction
-- **horus_backend.rs**: Shared memory IPC with serde serialization (312ns-481ns)
+- **horus_backend.rs**: Shared memory IPC with serde serialization (248ns-437ns)
 - **message.rs**: Message trait and safety primitives
 
 #### `scheduling/`
@@ -126,7 +126,7 @@ The heart of the HORUS framework. Implements all core functionality including co
 - **backend.rs**: Backend trait for pluggable communication
 
 **Performance:**
-- CmdVel (16B): **481ns** (Hub) / **312ns** (Link)
+- CmdVel (16B): **437ns** (Hub) / **248ns** (Link)
 - IMU (304B): **940ns** (Hub)
 - Odometry (736B): **1.1μs** (Hub)
 - LaserScan (1.5KB): **2.2μs** (Hub)
@@ -278,7 +278,7 @@ All messages use **fixed-size arrays** (`[u8; N]`) instead of `String` for cross
 pub struct CmdVel {
     pub linear: f64,      // m/s
     pub angular: f64,     // rad/s
-}  // 16 bytes - 481ns (Hub) / 312ns (Link)
+}  // 16 bytes - 437ns (Hub) / 248ns (Link)
 
 pub struct LaserScan {
     pub ranges: [f32; 360],
@@ -292,21 +292,7 @@ pub struct LaserScan {
 
 ---
 
-### 6. **horus_daemon** (Background Services)
-
-Optional daemon for system-wide monitoring, auto-launch, and health checks.
-
-**Features:**
-- **Auto-launch**: Start nodes on system boot
-- **Health monitoring**: Restart crashed nodes
-- **Metrics collection**: Historical performance data
-- **Resource limits**: CPU/memory constraints
-
-**Location:** `/horus_daemon/`
-
----
-
-### 7. **Multi-Language Bindings**
+### 6. **Multi-Language Bindings**
 
 #### **horus_py** (Python Support)
 Python bindings using PyO3 for seamless Rust-Python interop.
@@ -375,7 +361,7 @@ struct SharedChannel<T> {
 
 **Latency Breakdown (Hub MPMC):**
 ```
-Total: 481ns (CmdVel 16B)
+Total: 437ns (CmdVel 16B)
 ── Serialization (serde):  ~100ns
 ── Shared memory write:    ~180ns
 ── Atomic operations:       ~80ns
@@ -390,8 +376,8 @@ HORUS uses native shared memory IPC for ultra-low latency communication:
 
 | Component | Latency | Use Case |
 |-----------|---------|----------|
-| **Link** (SPSC) | 312ns | Ultra-low latency point-to-point |
-| **Hub** (MPMC) | 481ns | General purpose pub/sub |
+| **Link** (SPSC) | 248ns | Ultra-low latency point-to-point |
+| **Hub** (MPMC) | 437ns | General purpose pub/sub |
 
 **Performance:**
 - Zero-copy shared memory
@@ -617,7 +603,6 @@ members = [
     "horus_core",       # Core framework
     "horus_macros",     # Procedural macros
     "horus_manager",    # CLI
-    "horus_daemon",     # Background services
     "horus_library",    # Standard library
     "horus_c",          # C++ bindings
     "horus_py",         # Python bindings
@@ -721,7 +706,7 @@ See [CLI Reference - horus run](/cli-reference#horus-run---build-and-run) for us
                                        ▼
                               ──────────────────
                                Shared Memory
-                               /dev/shm/         312ns-481ns
+                               /dev/shm/         248ns-437ns
                                horus_sensors
                               ─────────────────
                                         3. try_recv()
@@ -747,12 +732,12 @@ See [CLI Reference - horus run](/cli-reference#horus-run---build-and-run) for us
 **Latency Budget (Hub MPMC):**
 ```
 Total: ~3-5μs for 3-node pipeline
-── SensorNode publish:     481ns
+── SensorNode publish:     437ns
 ── Shared memory write:    180ns
-── ControlNode receive:    481ns
+── ControlNode receive:    437ns
 ── Processing:            1000ns (user code)
-── ControlNode publish:    481ns
-── MotorNode receive:      481ns
+── ControlNode publish:    437ns
+── MotorNode receive:      437ns
 ```
 
 ---
@@ -766,7 +751,6 @@ Total: ~3-5μs for 3-node pipeline
 | **horus_macros** | Want zero-boilerplate development |
 | **horus_manager** | Managing projects, packages, monitoring |
 | **horus_library** | Need standard messages, algorithms, tools |
-| **horus_daemon** | Production deployment, auto-launch |
 | **horus_py** | Python projects, rapid prototyping |
 | **horus_c** | Legacy code integration |
 
@@ -779,7 +763,7 @@ Total: ~3-5μs for 3-node pipeline
 ```
 Message Size    Latency (Hub)    Latency (Link)    Example
 ──────────────────────────────────────────────────────────
-16B             481ns            312ns             CmdVel
+16B             437ns            248ns             CmdVel
 304B            940ns            ~400ns            IMU
 736B            1.1μs            ~600ns            Odometry
 1.5KB           2.2μs            ~900ns            LaserScan
@@ -792,7 +776,7 @@ Message Size    Latency (Hub)    Latency (Link)    Example
 
 | Metric | HORUS (Link) | HORUS (Hub) | ROS2 (DDS) | Improvement |
 |--------|--------------|-------------|------------|-------------|
-| **CmdVel latency** | 312ns | 481ns | 50-100μs | **104-320x faster** |
+| **CmdVel latency** | 248ns | 437ns | 50-100μs | **104-320x faster** |
 | **LaserScan latency** | ~900ns | 2.2μs | 200-500μs | **91-556x faster** |
 | **Setup complexity** | 2 lines | 2 lines | ~50 lines | **25x simpler** |
 | **Memory safety** | Guaranteed (Rust) | Guaranteed (Rust) | Manual (C++) | **Zero segfaults** |

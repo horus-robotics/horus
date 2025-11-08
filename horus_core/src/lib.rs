@@ -37,10 +37,14 @@ pub mod memory;
 pub mod params;
 pub mod scheduling;
 
+#[cfg(feature = "rtos")]
+pub mod rtos;
+
 // Re-export commonly used types for easy access
 pub use communication::{Hub, Link, LinkMetrics};
 pub use core::{
-    HealthStatus, Node, NodeConfig, NodeHeartbeat, NodeInfo, NodeMetrics, NodePriority, NodeState,
+    HealthStatus, Node, NodeConfig, NodeHeartbeat, NodeInfo, NodeInfoExt, NodeMetrics, NodePriority, NodeState,
+    TopicMetadata,
 };
 pub use error::{HorusError, HorusResult};
 pub use params::RuntimeParams;

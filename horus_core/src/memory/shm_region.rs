@@ -21,9 +21,21 @@ pub struct ShmRegion {
 impl ShmRegion {
     /// Create or open a shared memory region in /dev/shm/horus
     pub fn new(name: &str, size: usize) -> HorusResult<Self> {
+        Self::new_internal(name, size, false)
+    }
+
+    /// Create or open a global shared memory region (accessible across all sessions)
+    pub fn new_global(name: &str, size: usize) -> HorusResult<Self> {
+        Self::new_internal(name, size, true)
+    }
+
+    /// Internal function to create shared memory region with optional global flag
+    fn new_internal(name: &str, size: usize, global: bool) -> HorusResult<Self> {
         // Create HORUS directory in /dev/shm if it doesn't exist
-        // Use session-isolated path if HORUS_SESSION_ID is set
-        let horus_shm_dir = if let Ok(session_id) = std::env::var("HORUS_SESSION_ID") {
+        // Use session-isolated path if HORUS_SESSION_ID is set and not global
+        let horus_shm_dir = if global {
+            PathBuf::from("/dev/shm/horus/global")
+        } else if let Ok(session_id) = std::env::var("HORUS_SESSION_ID") {
             PathBuf::from(format!("/dev/shm/horus/sessions/{}/topics", session_id))
         } else {
             PathBuf::from("/dev/shm/horus/topics")

@@ -9,6 +9,7 @@ pub mod dashboard_tui;
 pub mod dependency_resolver;
 pub mod graph;
 pub mod registry;
+pub mod static_analysis;
 pub mod version;
 pub mod workspace;
 pub mod yaml_utils;

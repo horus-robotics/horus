@@ -134,12 +134,12 @@ estop.trigger_stop("Collision detected");
 
 // Check if emergency stop is currently active
 if estop.is_emergency_stopped() {
-    println!("System is in emergency stop state");
+    eprintln!("System is in emergency stop state");
 }
 
 // Get the reason for the current emergency stop
 let reason = estop.get_stop_reason();
-println!("Stop reason: {}", reason);
+eprintln!("Stop reason: {}", reason);
 
 // Manually reset emergency stop (only if safe to do so)
 estop.reset();
@@ -208,10 +208,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let reason = std::str::from_utf8(&msg.reason)
                         .unwrap_or("Unknown")
                         .trim_end_matches('\0');
-                    eprintln!("EMERGENCY STOP: {}", reason);
+                    eeprintln!("EMERGENCY STOP: {}", reason);
                     // Trigger system shutdown, log event, etc.
                 } else {
-                    println!("Emergency stop released");
+                    eprintln!("Emergency stop released");
                 }
             }
         }
@@ -249,17 +249,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Ok(status) = safety_sub.receive(100) {
                 match status.mode {
                     SafetyStatus::MODE_NORMAL => {
-                        println!("Safety: NORMAL");
+                        eprintln!("Safety: NORMAL");
                     }
                     SafetyStatus::MODE_REDUCED => {
-                        println!("Safety: REDUCED CAPABILITY");
+                        eprintln!("Safety: REDUCED CAPABILITY");
                     }
                     SafetyStatus::MODE_SAFE_STOP => {
-                        println!("Safety: EMERGENCY STOP (fault code: {})", status.fault_code);
+                        eprintln!("Safety: EMERGENCY STOP (fault code: {})", status.fault_code);
                         // Halt all motion, disable actuators, etc.
                     }
                     _ => {
-                        println!("Safety: UNKNOWN MODE");
+                        eprintln!("Safety: UNKNOWN MODE");
                     }
                 }
             }
@@ -305,11 +305,11 @@ impl Node for SafeMotorController {
 
             if estop.engaged {
                 // Immediately halt all motors
-                println!("MOTOR EMERGENCY STOP");
+                eprintln!("MOTOR EMERGENCY STOP");
                 // Set all motor commands to zero
                 // Engage mechanical brakes if available
             } else {
-                println!("Motors released from emergency stop");
+                eprintln!("Motors released from emergency stop");
             }
         }
 
@@ -456,7 +456,7 @@ Recommended GPIO pins for Raspberry Pi emergency stop:
 // Only reset when it is VERIFIED SAFE to do so
 if operator_confirms_safe() && all_hazards_cleared() {
     estop.reset();
-    println!("System reset - operations may resume");
+    eprintln!("System reset - operations may resume");
 }
 ```
 
@@ -520,7 +520,7 @@ estop.set_gpio_pin(17); // Double-check this matches your button
 ```rust
 // Check if auto-reset is enabled
 if !estop.is_emergency_stopped() {
-    println!("Not in emergency stop state");
+    eprintln!("Not in emergency stop state");
 } else {
     // Manually reset
     estop.reset();

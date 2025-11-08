@@ -213,7 +213,7 @@ Pipeline: `Sensor → Filter → Controller → Actuator`
 
 Aggregator: `Sensor1, Sensor2, Sensor3 → Fusion → Output`
 - Multiple inputs, single output
-- Use `while let Some(msg) = hub.recv(ctx)` to process all messages
+- Use `if let Some(msg) = hub.recv(ctx)` for bounded execution (one message per tick)
 
 Safety Override: `Critical Safety (priority 0) → Control (priority 1)`
 - Safety checks always run first

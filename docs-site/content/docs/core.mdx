@@ -28,9 +28,9 @@ HORUS provides multiple IPC backends, each optimized for different use cases. Al
 
 **Production-Grade Message Passing**
 
-- **Latency**: 312ns-481ns (Link/Hub) for production messages
+- **Latency**: 248ns-437ns (Link/Hub) for production messages
 - **Use case**: All robotics applications - control, sensing, perception
-- **Message Types**: CmdVel (~500ns Hub / 312ns Link), IMU (~940ns Hub), LaserScan (~2.2µs Hub), Odometry (~1.1µs Hub)
+- **Message Types**: CmdVel (~500ns Hub / 248ns Link), IMU (~940ns Hub), LaserScan (~2.2µs Hub), Odometry (~1.1µs Hub)
 
 ```rust
 use horus::prelude::*;
@@ -76,7 +76,7 @@ HORUS uses **shared memory** for fast IPC:
 use horus::prelude::*;
 
 // Send complex message types
-let cmd = CmdVel::new(1.5, 0.8);  // ~500ns (Hub) / 312ns (Link)
+let cmd = CmdVel::new(1.5, 0.8);  // ~500ns (Hub) / 248ns (Link)
 pub.send(cmd, Some(&mut node))?;
 
 if let Some(cmd) = sub.recv() {

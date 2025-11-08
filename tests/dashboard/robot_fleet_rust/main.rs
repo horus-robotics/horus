@@ -50,7 +50,7 @@ node! {
                 .unwrap()
                 .as_nanos() as u64;
 
-            self.camera.send(img, ctx.as_deref_mut()).ok();
+            self.camera.send(img, ctx).ok();
         }
     }
 }
@@ -81,7 +81,7 @@ node! {
                 .unwrap()
                 .as_nanos() as u64;
 
-            self.lidar.send(scan, ctx.as_deref_mut()).ok();
+            self.lidar.send(scan, ctx).ok();
         }
     }
 }
@@ -116,7 +116,7 @@ node! {
                 .unwrap()
                 .as_nanos() as u64;
 
-            self.imu.send(imu, ctx.as_deref_mut()).ok();
+            self.imu.send(imu, ctx).ok();
         }
     }
 }
@@ -144,7 +144,7 @@ node! {
                 self.position.2
             );
 
-            self.gps.send(coords, ctx.as_deref_mut()).ok();
+            self.gps.send(coords, ctx).ok();
         }
     }
 }
@@ -170,7 +170,7 @@ node! {
 
         tick(ctx) {
             // Read GPS position
-            if let Some(gps_data) = self.gps.recv(ctx.as_deref_mut()) {
+            if let Some(gps_data) = self.gps.recv(ctx) {
                 // Simple navigation: move toward waypoint
                 let dx = self.waypoint.0 - gps_data.0;
                 let dy = self.waypoint.1 - gps_data.1;
@@ -181,7 +181,7 @@ node! {
                     let angular = (dy.atan2(dx) * 0.5) as f32;
 
                     let cmd = CmdVel::new(linear, angular);
-                    self.cmd.send(cmd, ctx.as_deref_mut()).ok();
+                    self.cmd.send(cmd, ctx).ok();
                 }
             }
         }
@@ -200,7 +200,7 @@ node! {
         }
 
         tick(ctx) {
-            if let Some(scan) = self.lidar.recv(ctx.as_deref_mut()) {
+            if let Some(scan) = self.lidar.recv(ctx) {
                 // Check front 60 degrees for obstacles
                 let start_idx = 150; // -30 degrees
                 let end_idx = 210;   // +30 degrees
@@ -218,11 +218,11 @@ node! {
                 // If obstacle within 1.5m, send alert and emergency stop
                 if min_dist < 1.5 {
                     let alert_msg = ObstacleAlert(min_dist, min_angle);
-                    self.alert.send(alert_msg, ctx.as_deref_mut()).ok();
+                    self.alert.send(alert_msg, ctx).ok();
 
                     // Emergency stop
                     let stop = CmdVel::zero();
-                    self.override_cmd.send(stop, ctx.as_deref_mut()).ok();
+                    self.override_cmd.send(stop, ctx).ok();
                 }
             }
         }
@@ -250,9 +250,9 @@ node! {
 
         tick(ctx) {
             // Check for emergency override first
-            if let Some(override_vel) = self.override_cmd.recv(ctx.as_deref_mut()) {
+            if let Some(override_vel) = self.override_cmd.recv(ctx) {
                 self.current_velocity = (override_vel.linear, override_vel.angular);
-            } else if let Some(cmd_vel) = self.cmd.recv(ctx.as_deref_mut()) {
+            } else if let Some(cmd_vel) = self.cmd.recv(ctx) {
                 self.current_velocity = (cmd_vel.linear, cmd_vel.angular);
             }
 
@@ -265,7 +265,7 @@ node! {
                 .unwrap()
                 .as_nanos() as u64;
 
-            self.odometry.send(odom, ctx.as_deref_mut()).ok();
+            self.odometry.send(odom, ctx).ok();
         }
     }
 }
@@ -296,7 +296,7 @@ node! {
             let is_charging = self.voltage > 12.4;
             let status = BatteryStatus(self.voltage, is_charging);
 
-            self.battery.send(status, ctx.as_deref_mut()).ok();
+            self.battery.send(status, ctx).ok();
         }
     }
 }
@@ -322,7 +322,7 @@ node! {
             let health_percent = ((1000 - self.error_count) * 100 / 1000).min(100) as u8;
             let health_msg = SystemHealth(health_percent, self.error_count);
 
-            self.health.send(health_msg, ctx.as_deref_mut()).ok();
+            self.health.send(health_msg, ctx).ok();
         }
     }
 }

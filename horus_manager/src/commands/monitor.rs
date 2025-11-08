@@ -62,7 +62,7 @@ impl DiscoveryCache {
             nodes: Vec::new(),
             shared_memory: Vec::new(),
             last_updated: Instant::now() - Duration::from_secs(10), // Force initial update
-            cache_duration: Duration::from_secs(2), // Cache for 2 seconds (matches web dashboard refresh)
+            cache_duration: Duration::from_millis(250), // Cache for 250ms (real-time updates)
         }
     }
 

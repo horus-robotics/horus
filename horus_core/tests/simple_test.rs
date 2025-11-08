@@ -30,9 +30,7 @@ mod tests {
             let mut count = self.counter.lock().unwrap();
             *count += 1;
 
-            if let Some(ctx) = ctx {
-                ctx.log_debug(&format!("Tick count: {}", *count));
-            }
+            ctx.log_debug(&format!("Tick count: {}", *count));
         }
 
         fn shutdown(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {

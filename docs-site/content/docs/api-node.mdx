@@ -282,57 +282,93 @@ impl Node for TemperatureSensor {
 }
 ```
 
-## Advanced: Handling Context in Loops
+## Handling Context with Multiple Calls
 
-When you need to pass `ctx` to multiple Hub calls (especially in loops), use `ctx.as_deref_mut()`:
+### Understanding `mut ctx`
+
+When using `ctx.log_debug()` and similar methods (provided by NodeInfoExt), you need to declare `ctx` as mutable:
 
 ```rust
 fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
-    // Process multiple messages in a loop
-    while let Some(input) = self.input_sub.recv(ctx.as_deref_mut()) {
-        // Process the input
-        let output = self.process(input);
+    // ^^^ mut required for ctx.log_debug() to work
+    if let Some(input) = self.keyboard_sub.recv(None) {
+        ctx.log_debug(&format!("Key pressed: {}", input.code));
 
-        // Send result (ctx.as_deref_mut() allows reuse)
+        let state = process(input);
+        self.state_pub.send(state, ctx).ok();
+    }
+}
+```
+
+**Why `mut` is required:**
+- `ctx.log_debug()` is provided by the NodeInfoExt trait
+- These methods take `&mut self`, requiring `ctx` to be mutable
+- This is true even if you pass `None` to `recv()`
+
+### Common Patterns
+
+**Pattern 1: Logging and Pub/Sub** (Recommended)
+```rust
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    if let Some(data) = self.input_sub.recv(None) {
+        ctx.log_debug("Processing");
+        let output = process(data);
+        self.output_pub.send(output, ctx).ok();
+    }
+}
+```
+
+**Pattern 2: Just Publishing** (No recv logging)
+```rust
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    let reading = self.read_sensor();
+    self.publisher.send(reading, ctx).ok();
+}
+```
+
+**Pattern 3: No Logging** (Maximum Performance)
+```rust
+fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
+    if let Some(data) = self.input_sub.recv(None) {
+        let output = self.process(data);
+        self.output_pub.send(output, None).ok();
+    }
+}
+```
+
+### Advanced: Logging Both Recv and Send
+
+Only use this if you specifically need `ctx` logging for **both** `recv()` and `send()`:
+
+```rust
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    //                ^^^ mut required for reborrowing
+
+    // Reborrow for recv
+    if let Some(input) = self.input_sub.recv(ctx.as_deref_mut()) {
+        ctx.log_debug("Processing");
+
+        // Reborrow for send
         self.output_pub.send(output, ctx.as_deref_mut()).ok();
     }
 }
 ```
 
-**Why `as_deref_mut()`?**
-- `ctx` is `Option<&mut NodeInfo>`
-- Rust's borrow checker prevents moving `&mut` references
-- `as_deref_mut()` safely creates a new borrow without moving the original
+**When to use:**
+- You need detailed IPC timing logs for both recv and send
+- Debugging performance issues
+- Profiling node communication
 
-**Common Pattern** (from production code):
-```rust
-use horus::prelude::*;
+**Cost:**
+- More complex code
+- Requires understanding `as_deref_mut()` reborrowing
 
-struct ProcessorNode {
-    input_sub: Hub<f32>,
-    output_pub: Hub<f32>,
-}
+### Best Practices
 
-impl Node for ProcessorNode {
-    fn name(&self) -> &'static str { "ProcessorNode" }
-
-    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
-        // Receive and process all available messages
-        while let Some(data) = self.input_sub.recv(ctx.as_deref_mut()) {
-            let processed = data * 2.0;
-            self.output_pub.send(processed, ctx.as_deref_mut()).ok();
-        }
-    }
-}
-```
-
-**Simple Case** (single Hub call):
-```rust
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-    // No need for as_deref_mut() with single call
-    self.publisher.send(42.0, ctx).ok();
-}
-```
+- **Recommended**: Use `mut ctx` + pass `None` to `recv()` + use `ctx` for logging and `send()`
+- **Performance**: Pass `_ctx` (unused) and `None` to both `recv()` and `send()` if you don't need logs
+- **Advanced**: Use `ctx.as_deref_mut()` for both `recv()` and `send()` when you need IPC timing logs for both
+- **Wrong**: Don't pass `ctx` to multiple calls without reborrowing via `as_deref_mut()`
 
 ## Node Lifecycle
 

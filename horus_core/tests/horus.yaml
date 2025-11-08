@@ -1,0 +1,6 @@
+name: tests
+version: 0.1.0
+language: rust
+
+dependencies:
+  - horus_core

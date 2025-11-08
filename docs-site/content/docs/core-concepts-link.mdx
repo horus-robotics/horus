@@ -53,7 +53,7 @@ output.send(data, ctx)?; // ctx enables logging
 
 ```rust
 if let Some(data) = input.recv(ctx) {
-    println!("Received: {:?}", data);
+    ctx.log_info(&format!("Received: {:?}", data));
 }
 ```
 
@@ -205,7 +205,7 @@ scheduler.run()?;
 ```rust
 // Check Link health
 let metrics = link.get_metrics();
-println!("Sent: {}, Received: {}, Failures: {}",
+eprintln!("Sent: {}, Received: {}, Failures: {}",
     metrics.messages_sent,
     metrics.messages_received,
     metrics.send_failures
@@ -273,7 +273,7 @@ if let Some(data) = link.recv(ctx) {
 ```rust
 let metrics = link.get_metrics();
 if metrics.send_failures > 0 {
-    println!("Buffer full {} times - consumer too slow!",
+    eprintln!("Buffer full {} times - consumer too slow!",
         metrics.send_failures);
 }
 ```

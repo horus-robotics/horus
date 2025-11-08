@@ -77,7 +77,7 @@ let key_event = KeyboardInput::new(
 
 // Check modifiers
 if key_event.is_ctrl() {
-    println!("Ctrl+{} pressed", key_event.get_key_name());
+    eprintln!("Ctrl+{} pressed", key_event.get_key_name());
 }
 
 // Get all modifiers
@@ -149,13 +149,14 @@ impl Node for KeyHandler {
     fn name(&self) -> &'static str { "KeyHandler" }
     
     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        while let Some(key_event) = self.subscriber.recv(ctx) {
+        // Process one key event per tick (bounded execution)
+        if let Some(key_event) = self.subscriber.recv(ctx) {
             if key_event.pressed { // Only handle key presses
                 match key_event.get_key_name().as_str() {
-                    "ArrowUp" => println!("Move up"),
-                    "ArrowDown" => println!("Move down"), 
-                    "ArrowLeft" => println!("Move left"),
-                    "ArrowRight" => println!("Move right"),
+                    "ArrowUp" => eprintln!("Move up"),
+                    "ArrowDown" => eprintln!("Move down"),
+                    "ArrowLeft" => eprintln!("Move left"),
+                    "ArrowRight" => eprintln!("Move right"),
                     "q" if key_event.is_ctrl() => std::process::exit(0),
                     _ => {}
                 }

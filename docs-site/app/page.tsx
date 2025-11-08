@@ -150,7 +150,7 @@ export default function HomePage() {
               HORUS IPC Architecture
             </text>
             <text x="900" y="50" fill="var(--text-tertiary)" fontSize="13" textAnchor="middle">
-              312ns latency • Zero-copy shared memory communication
+              248ns latency • Zero-copy shared memory communication
             </text>
 
             {/* Shared Memory Region (Center-Right) */}

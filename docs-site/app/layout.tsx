@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     'fastest robotics framework',
     'easiest robotics framework',
     '500x faster than ros2',
-    '312ns robotics',
+    '248ns robotics',
 
     // Problem-focused (experienced users)
     'ROS alternative',
@@ -132,7 +132,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "HORUS: 500x Faster Than ROS2 - Real-Time Robotics Framework",
-    description: "Build production robots with 312ns latency. Zero-copy messaging, multi-language (Rust/Python/C++), open source. Modern ROS alternative for autonomous robots, humanoids, drones. Start building in 5 minutes.",
+    description: "Build production robots with 248ns latency. Zero-copy messaging, multi-language (Rust/Python/C++), open source. Modern ROS alternative for autonomous robots, humanoids, drones. Start building in 5 minutes.",
     url: "https://docs.horus-registry.dev",
     siteName: "HORUS Robotics",
     images: [
@@ -149,7 +149,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: "HORUS: 500x Faster Robotics Framework",
-    description: "Build real-time robots with 312ns latency. ROS alternative with Rust, Python, C++. Zero-copy, production-ready, open source. Start in 5 min.",
+    description: "Build real-time robots with 248ns latency. ROS alternative with Rust, Python, C++. Zero-copy, production-ready, open source. Start in 5 min.",
     images: ['https://docs.horus-registry.dev/og-image.png'],
     creator: '@horus_robotics',
   },
@@ -191,13 +191,13 @@ export default function RootLayout({
     applicationCategory: ['DeveloperApplication', 'SoftwareLibrary'],
     applicationSubCategory: 'Real-Time Robotics Framework',
     operatingSystem: ['Linux', 'macOS', 'Windows'],
-    description: 'HORUS is the fastest open-source robotics framework with 312ns IPC latency - 500x faster than ROS2. Build production autonomous robots, humanoids, and drones with zero-copy messaging, multi-language support (Rust, Python, C++), and deterministic real-time control. Modern alternative to ROS/ROS2 for AI robotics startups and research labs.',
+    description: 'HORUS is the fastest open-source robotics framework with 248ns IPC latency - 500x faster than ROS2. Build production autonomous robots, humanoids, and drones with zero-copy messaging, multi-language support (Rust, Python, C++), and deterministic real-time control. Modern alternative to ROS/ROS2 for AI robotics startups and research labs.',
     softwareVersion: '0.1.3',
     url: 'https://docs.horus-registry.dev',
     downloadUrl: 'https://github.com/softmata/HORUS',
     installUrl: 'https://docs.horus-registry.dev/docs/installation',
     softwareHelp: 'https://docs.horus-registry.dev/docs',
-    keywords: 'fastest robotics framework, 500x faster than ROS2, sub-microsecond robotics, 312ns latency, zero-copy messaging, rust robotics, python robotics, autonomous robot, humanoid robot, drone control, ROS alternative, real-time control, production robotics, AI robotics, embodied AI, robot startup, robotics research',
+    keywords: 'fastest robotics framework, 500x faster than ROS2, sub-microsecond robotics, 248ns latency, zero-copy messaging, rust robotics, python robotics, autonomous robot, humanoid robot, drone control, ROS alternative, real-time control, production robotics, AI robotics, embodied AI, robot startup, robotics research',
     programmingLanguage: ['Rust', 'Python', 'C++'],
     license: 'https://opensource.org/licenses/Apache-2.0',
     creator: {
@@ -214,7 +214,7 @@ export default function RootLayout({
       description: 'Free and open source under Apache License 2.0',
     },
     featureList: [
-      '312-481ns IPC latency (500x faster than ROS2)',
+      '312-437ns IPC latency (500x faster than ROS2)',
       'Zero-copy shared memory architecture',
       'Deterministic real-time control',
       'Multi-language: Rust, Python, C++ support',

@@ -92,9 +92,11 @@ node! {
 ```rust
 node! {
     SimpleNode {
-        tick {
+        tick(ctx) {
             // Just the required tick implementation
-            println!("Node running...");
+            if let Some(ctx) = ctx {
+                ctx.log_info("Node running...");
+            }
         }
     }
 }

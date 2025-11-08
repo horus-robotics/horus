@@ -9,6 +9,7 @@ use axum::{
     Json, Router,
 };
 use futures::{sink::SinkExt, stream::StreamExt};
+use qrcode::{QrCode, render::unicode};
 use std::net::UdpSocket;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -27,6 +28,27 @@ fn get_local_ip() -> Option<String> {
     let socket = UdpSocket::bind("0.0.0.0:0").ok()?;
     socket.connect("8.8.8.8:80").ok()?;
     socket.local_addr().ok().map(|addr| addr.ip().to_string())
+}
+
+/// Generate and display QR code for a URL
+fn display_qr_code(url: &str) {
+    match QrCode::new(url) {
+        Ok(code) => {
+            let qr_string = code
+                .render::<unicode::Dense1x2>()
+                .dark_color(unicode::Dense1x2::Light)
+                .light_color(unicode::Dense1x2::Dark)
+                .build();
+
+            println!("\n   Scan with your phone:");
+            for line in qr_string.lines() {
+                println!("   {}", line);
+            }
+        }
+        Err(_) => {
+            // Silently skip QR code if generation fails
+        }
+    }
 }
 
 /// Run the web dashboard server
@@ -56,10 +78,6 @@ pub async fn run(port: u16) -> anyhow::Result<()> {
         .route("/api/packages/install", post(packages_install_handler))
         .route("/api/packages/uninstall", post(packages_uninstall_handler))
         .route("/api/packages/publish", post(packages_publish_handler))
-        .route("/api/remote/deploy", post(remote_deploy_handler))
-        .route("/api/remote/deployments", post(remote_deployments_handler))
-        .route("/api/remote/hardware", post(remote_hardware_handler))
-        .route("/api/remote/stop", post(remote_stop_handler))
         .route("/api/params", get(params_list_handler))
         .route("/api/params/:key", get(params_get_handler))
         .route("/api/params/:key", post(params_set_handler))
@@ -82,9 +100,16 @@ pub async fn run(port: u16) -> anyhow::Result<()> {
     println!("HORUS Web Dashboard is running!");
     println!("\nAccess from:");
     println!("   • Local:    http://localhost:{}", port);
-    if let Some(ip) = local_ip {
+    if let Some(ref ip) = local_ip {
         println!("   • Network:  http://{}:{}", ip, port);
     }
+
+    // Display QR code for network URL
+    if let Some(ref ip) = local_ip {
+        let network_url = format!("http://{}:{}", ip, port);
+        display_qr_code(&network_url);
+    }
+
     println!("\nFeatures:");
     println!("   • Real-time node monitoring");
     println!("   • Topic visualization");
@@ -407,12 +432,14 @@ async fn packages_registry_handler(Query(query): Query<SearchQuery>) -> impl Int
 async fn packages_environments_handler() -> impl IntoResponse {
     use std::fs;
     use std::path::PathBuf;
+    use std::collections::HashSet;
 
     let result = tokio::task::spawn_blocking(move || {
+        let mut global_packages_set: HashSet<String> = HashSet::new();
         let mut global_packages = Vec::new();
         let mut local_envs = Vec::new();
 
-        // 1. Global Environment: All packages in ~/.horus/cache
+        // 1. Global Environment: All packages in ~/.horus/cache (deduplicated)
         if let Some(home) = dirs::home_dir() {
             let global_cache = home.join(".horus/cache");
             if global_cache.exists() {
@@ -420,6 +447,11 @@ async fn packages_environments_handler() -> impl IntoResponse {
                     for entry in entries.flatten() {
                         if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
                             let name = entry.file_name().to_string_lossy().to_string();
+
+                            // Skip if already added
+                            if global_packages_set.contains(&name) {
+                                continue;
+                            }
 
                             // Try to read metadata
                             let metadata_path = entry.path().join("metadata.json");
@@ -439,6 +471,7 @@ async fn packages_environments_handler() -> impl IntoResponse {
                                 "unknown".to_string()
                             };
 
+                            global_packages_set.insert(name.clone());
                             global_packages.push(serde_json::json!({
                                 "name": name,
                                 "version": version,
@@ -510,6 +543,9 @@ async fn packages_environments_handler() -> impl IntoResponse {
             projects
         }
 
+        // Track canonical paths to avoid duplicates from symlinks
+        let mut seen_canonical_paths: HashSet<PathBuf> = HashSet::new();
+
         for base_path in search_paths {
             if !base_path.exists() {
                 continue;
@@ -521,6 +557,18 @@ async fn packages_environments_handler() -> impl IntoResponse {
             for env_path in horus_projects {
                 let horus_dir = env_path.join(".horus");
                 if horus_dir.exists() && horus_dir.is_dir() {
+                    // Canonicalize path to resolve symlinks
+                    let canonical_path = match env_path.canonicalize() {
+                        Ok(p) => p,
+                        Err(_) => env_path.clone(), // Fall back to original if canonicalize fails
+                    };
+
+                    // Skip if we've already seen this canonical path
+                    if seen_canonical_paths.contains(&canonical_path) {
+                        continue;
+                    }
+                    seen_canonical_paths.insert(canonical_path);
+
                     let env_name = env_path
                         .file_name()
                         .unwrap_or_default()
@@ -549,9 +597,10 @@ async fn packages_environments_handler() -> impl IntoResponse {
                         Vec::new()
                     };
 
-                    // Get packages inside this environment
+                    // Get packages inside this environment (deduplicated)
                     let packages_dir = horus_dir.join("packages");
                     let mut packages = Vec::new();
+                    let mut local_packages_set: HashSet<String> = HashSet::new();
 
                     if packages_dir.exists() {
                         if let Ok(pkg_entries) = fs::read_dir(&packages_dir) {
@@ -559,6 +608,11 @@ async fn packages_environments_handler() -> impl IntoResponse {
                                 if pkg_entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
                                     let pkg_name =
                                         pkg_entry.file_name().to_string_lossy().to_string();
+
+                                    // Skip if already added
+                                    if local_packages_set.contains(&pkg_name) {
+                                        continue;
+                                    }
 
                                     // Try to get version from metadata.json
                                     let metadata_path = pkg_entry.path().join("metadata.json");
@@ -578,77 +632,28 @@ async fn packages_environments_handler() -> impl IntoResponse {
                                         "unknown".to_string()
                                     };
 
-                                    // Scan for installed packages inside this package's .horus/packages/
-                                    let nested_packages_dir =
-                                        pkg_entry.path().join(".horus/packages");
-                                    let mut installed_packages = Vec::new();
-
-                                    if nested_packages_dir.exists() {
-                                        if let Ok(nested_entries) =
-                                            fs::read_dir(&nested_packages_dir)
-                                        {
-                                            for nested_entry in nested_entries.flatten() {
-                                                if nested_entry
-                                                    .file_type()
-                                                    .map(|t| t.is_dir())
-                                                    .unwrap_or(false)
-                                                {
-                                                    let nested_name = nested_entry
-                                                        .file_name()
-                                                        .to_string_lossy()
-                                                        .to_string();
-
-                                                    // Try to get version
-                                                    let nested_metadata_path =
-                                                        nested_entry.path().join("metadata.json");
-                                                    let nested_version = if nested_metadata_path
-                                                        .exists()
-                                                    {
-                                                        fs::read_to_string(&nested_metadata_path)
-                                                            .ok()
-                                                            .and_then(|s| {
-                                                                serde_json::from_str::<
-                                                                    serde_json::Value,
-                                                                >(
-                                                                    &s
-                                                                )
-                                                                .ok()
-                                                            })
-                                                            .and_then(|j| {
-                                                                j.get("version")
-                                                                    .and_then(|v| v.as_str())
-                                                                    .map(|s| s.to_string())
-                                                            })
-                                                            .unwrap_or_else(|| {
-                                                                "unknown".to_string()
-                                                            })
-                                                    } else {
-                                                        "unknown".to_string()
-                                                    };
-
-                                                    installed_packages.push(serde_json::json!({
-                                                        "name": nested_name,
-                                                        "version": nested_version,
-                                                    }));
-                                                }
-                                            }
-                                        }
-                                    }
-
+                                    local_packages_set.insert(pkg_name.clone());
                                     packages.push(serde_json::json!({
                                         "name": pkg_name,
                                         "version": version,
-                                        "installed_packages": installed_packages,
                                     }));
                                 }
                             }
                         }
                     }
 
-                    // Map yaml_dependencies to installed packages with version info
+                    // workspace_dependencies: Only list dependencies declared in horus.yaml
+                    // that are not already in the packages list (to avoid duplication)
                     let workspace_dependencies: Vec<serde_json::Value> = yaml_dependencies
                         .iter()
                         .filter_map(|dep_str| {
+                            let dep_name = dep_str.split('@').next().unwrap_or(dep_str);
+
+                            // Skip if already in packages list
+                            if local_packages_set.contains(dep_name) {
+                                return None;
+                            }
+
                             // dependency format: "package_name@version" or just "package_name"
                             let dep_path = packages_dir.join(dep_str);
                             if dep_path.exists() || dep_path.read_link().is_ok() {
@@ -683,7 +688,7 @@ async fn packages_environments_handler() -> impl IntoResponse {
                                 };
 
                                 Some(serde_json::json!({
-                                    "name": dep_str.split('@').next().unwrap_or(dep_str),
+                                    "name": dep_name,
                                     "version": version,
                                 }))
                             } else {
@@ -967,163 +972,6 @@ async fn packages_publish_handler() -> impl IntoResponse {
             .to_string(),
         ),
     }
-}
-
-// Remote deployment handler
-#[derive(serde::Deserialize)]
-struct DeployRequest {
-    robot_addr: String,
-    file: Option<String>,
-}
-
-async fn remote_deploy_handler(Json(req): Json<DeployRequest>) -> impl IntoResponse {
-    use crate::commands::remote::execute_remote;
-    use std::path::PathBuf;
-
-    let file = req.file.map(PathBuf::from);
-    let robot_addr = req.robot_addr.clone();
-
-    let result = tokio::task::spawn_blocking(move || execute_remote(&robot_addr, file)).await;
-
-    match result {
-        Ok(Ok(_)) => (
-            StatusCode::OK,
-            serde_json::json!({
-                "success": true,
-                "message": format!("Successfully deployed to {}", req.robot_addr)
-            })
-            .to_string(),
-        ),
-        Ok(Err(e)) => (
-            StatusCode::BAD_REQUEST,
-            serde_json::json!({
-                "success": false,
-                "error": e.to_string()
-            })
-            .to_string(),
-        ),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            serde_json::json!({
-                "success": false,
-                "error": format!("Task failed: {}", e)
-            })
-            .to_string(),
-        ),
-    }
-}
-
-// Remote deployments list handler
-#[derive(serde::Deserialize)]
-struct RobotRequest {
-    robot_addr: String,
-}
-
-async fn remote_deployments_handler(Json(req): Json<RobotRequest>) -> impl IntoResponse {
-    let url = normalize_daemon_url(&req.robot_addr, "/deployments");
-
-    match reqwest::get(&url).await {
-        Ok(response) => match response.json::<serde_json::Value>().await {
-            Ok(data) => (StatusCode::OK, serde_json::to_string(&data).unwrap()),
-            Err(e) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                serde_json::json!({
-                    "success": false,
-                    "error": format!("Failed to parse response: {}", e)
-                })
-                .to_string(),
-            ),
-        },
-        Err(e) => (
-            StatusCode::BAD_REQUEST,
-            serde_json::json!({
-                "success": false,
-                "error": format!("Failed to connect to robot: {}", e)
-            })
-            .to_string(),
-        ),
-    }
-}
-
-// Remote hardware info handler
-async fn remote_hardware_handler(Json(req): Json<RobotRequest>) -> impl IntoResponse {
-    let url = normalize_daemon_url(&req.robot_addr, "/hardware");
-
-    match reqwest::get(&url).await {
-        Ok(response) => match response.json::<serde_json::Value>().await {
-            Ok(data) => (StatusCode::OK, serde_json::to_string(&data).unwrap()),
-            Err(e) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                serde_json::json!({
-                    "success": false,
-                    "error": format!("Failed to parse response: {}", e)
-                })
-                .to_string(),
-            ),
-        },
-        Err(e) => (
-            StatusCode::BAD_REQUEST,
-            serde_json::json!({
-                "success": false,
-                "error": format!("Failed to connect to robot: {}", e)
-            })
-            .to_string(),
-        ),
-    }
-}
-
-// Remote stop deployment handler
-#[derive(serde::Deserialize)]
-struct StopRequest {
-    robot_addr: String,
-    deployment_id: String,
-}
-
-async fn remote_stop_handler(Json(req): Json<StopRequest>) -> impl IntoResponse {
-    let url = normalize_daemon_url(
-        &req.robot_addr,
-        &format!("/deployments/{}/stop", req.deployment_id),
-    );
-
-    let client = reqwest::Client::new();
-    match client.post(&url).send().await {
-        Ok(response) => match response.json::<serde_json::Value>().await {
-            Ok(data) => (StatusCode::OK, serde_json::to_string(&data).unwrap()),
-            Err(e) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                serde_json::json!({
-                    "success": false,
-                    "error": format!("Failed to parse response: {}", e)
-                })
-                .to_string(),
-            ),
-        },
-        Err(e) => (
-            StatusCode::BAD_REQUEST,
-            serde_json::json!({
-                "success": false,
-                "error": format!("Failed to stop deployment: {}", e)
-            })
-            .to_string(),
-        ),
-    }
-}
-
-fn normalize_daemon_url(addr: &str, path: &str) -> String {
-    let base = if addr.starts_with("http://") || addr.starts_with("https://") {
-        addr.to_string()
-    } else {
-        format!("http://{}", addr)
-    };
-
-    // Add port if not present
-    let base_with_port = if !base.contains(":808") && !base.contains("/") {
-        format!("{}:8080", base)
-    } else {
-        base
-    };
-
-    format!("{}{}", base_with_port, path)
 }
 
 // === Parameter Management Handlers ===
@@ -2713,16 +2561,6 @@ fn generate_html(port: u16) -> String {
                         </ul>
                     </div>
 
-                    <div class="help-item">
-                        <strong>Remote Tab</strong>
-                        <p>Deploy and manage remote robots</p>
-                        <ul>
-                            <li>Connect to robot hardware</li>
-                            <li>Deploy nodes remotely</li>
-                            <li>Monitor remote deployments</li>
-                            <li>View hardware information</li>
-                        </ul>
-                    </div>
                 </div>
 
                 <!-- Tips Section -->
@@ -2791,7 +2629,6 @@ fn generate_html(port: u16) -> String {
                 <li><button class="nav-item active" onclick="switchTab('monitor')">Monitor</button></li>
                 <li><button class="nav-item" onclick="switchTab('params')">Parameters</button></li>
                 <li><button class="nav-item" onclick="switchTab('packages')">Packages</button></li>
-                <li><button class="nav-item" onclick="switchTab('remote')">Remote</button></li>
             </ul>
         </nav>
 
@@ -3025,119 +2862,6 @@ fn generate_html(port: u16) -> String {
             </div>
         </div>
 
-        <!-- Remote Tab -->
-        <div id="tab-remote" class="tab-content">
-            <!-- Robot Connection (always visible) -->
-            <div class="card" style="margin-bottom: 20px;">
-                <h2>Robot Connection</h2>
-                <div style="margin-top: 20px;">
-                    <div style="display: flex; gap: 10px; align-items: flex-end;">
-                        <div style="flex: 1;">
-                            <label style="display: block; color: var(--text-secondary); margin-bottom: 5px; font-size: 0.9em;">
-                                Robot Address (IP:Port)
-                            </label>
-                            <input
-                                type="text"
-                                id="robot-addr"
-                                placeholder="192.168.1.100:8080"
-                                style="width: 100%; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-family: 'JetBrains Mono', monospace;"
-                            />
-                        </div>
-                        <button
-                            onclick="connectToRobot()"
-                            style="padding: 10px 20px; background: var(--accent); color: var(--primary); border: none; border-radius: 6px; cursor: pointer; font-weight: 600;"
-                        >
-                            Connect
-                        </button>
-                    </div>
-                    <div id="robot-status" style="margin-top: 10px; color: var(--text-secondary); font-size: 0.9em;"></div>
-                </div>
-            </div>
-
-            <!-- Remote View Switcher -->
-            <div class="card">
-                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                    <button
-                        id="btn-remote-deploy"
-                        class="remote-view-btn active"
-                        onclick="switchRemoteView('deploy')"
-                    >
-                        Deploy
-                    </button>
-                    <button
-                        id="btn-remote-deployments"
-                        class="remote-view-btn"
-                        onclick="switchRemoteView('deployments')"
-                    >
-                        Deployments
-                    </button>
-                    <button
-                        id="btn-remote-hardware"
-                        class="remote-view-btn"
-                        onclick="switchRemoteView('hardware')"
-                    >
-                        Hardware
-                    </button>
-                </div>
-
-                <!-- Deploy View -->
-                <div id="remote-view-deploy" class="remote-view active">
-                    <h3>Deploy Code</h3>
-                    <div style="margin-top: 15px;">
-                        <div style="margin-bottom: 15px;">
-                            <label style="display: block; color: var(--text-secondary); margin-bottom: 5px; font-size: 0.9em;">
-                                Entry File (optional, auto-detected if empty)
-                            </label>
-                            <input
-                                type="text"
-                                id="robot-file"
-                                placeholder="main.py"
-                                style="width: 100%; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-family: 'JetBrains Mono', monospace;"
-                            />
-                        </div>
-                        <button
-                            onclick="deployToRobot()"
-                            style="padding: 12px; background: var(--accent); color: var(--primary); border: none; border-radius: 6px; cursor: pointer; font-weight: 600; width: 100%;"
-                        >
-                            Deploy
-                        </button>
-                        <div id="deploy-status" style="margin-top: 15px; padding: 15px; border-radius: 6px; display: none;"></div>
-                    </div>
-                </div>
-
-                <!-- Deployments View -->
-                <div id="remote-view-deployments" class="remote-view">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h3>Active Deployments</h3>
-                        <button
-                            onclick="refreshDeployments()"
-                            style="padding: 6px 12px; background: var(--surface); color: var(--text-primary); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 0.9em;"
-                        >
-                            Refresh
-                        </button>
-                    </div>
-                    <div id="deployments-list">
-                        <p style="color: var(--text-tertiary); text-align: center; padding: 20px;">Connect to a robot to view deployments</p>
-                    </div>
-                </div>
-
-                <!-- Hardware View -->
-                <div id="remote-view-hardware" class="remote-view">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h3>Hardware</h3>
-                        <button
-                            onclick="refreshHardware()"
-                            style="padding: 6px 12px; background: var(--surface); color: var(--text-primary); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 0.9em;"
-                        >
-                            Refresh
-                        </button>
-                    </div>
-                    <div id="hardware-info">
-                        <p style="color: var(--text-tertiary); text-align: center; padding: 20px;">Connect to a robot to view hardware</p>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         </div> <!-- end main-content -->
     </div> <!-- end container -->
@@ -3216,24 +2940,6 @@ fn generate_html(port: u16) -> String {
             graphState.draggedNode = null;
         }}
 
-        // Switch remote view (deploy/deployments/hardware)
-        function switchRemoteView(viewName) {{
-            // Hide all remote views
-            document.querySelectorAll('.remote-view').forEach(view => {{
-                view.classList.remove('active');
-            }});
-
-            // Remove active class from all remote view buttons
-            document.querySelectorAll('.remote-view-btn').forEach(btn => {{
-                btn.classList.remove('active');
-            }});
-
-            // Show selected view
-            document.getElementById('remote-view-' + viewName).classList.add('active');
-
-            // Add active class to clicked button
-            event.target.classList.add('active');
-        }}
 
         // Auto-refresh status
         async function updateStatus() {{
@@ -4705,231 +4411,6 @@ fn generate_html(port: u16) -> String {
             }}
         }}
 
-        // Remote deployment functions
-        async function deployToRobot() {{
-            const robotAddr = document.getElementById('robot-addr').value.trim();
-            const robotFile = document.getElementById('robot-file').value.trim();
-            const statusDiv = document.getElementById('deploy-status');
-
-            if (!robotAddr) {{
-                alert('Please enter a robot address');
-                return;
-            }}
-
-            statusDiv.style.display = 'block';
-            statusDiv.style.background = 'var(--surface)';
-            statusDiv.style.border = '1px solid var(--border)';
-            statusDiv.innerHTML = '<p style="color: var(--text-secondary); margin: 0;">Deploying...</p>';
-
-            try {{
-                const response = await fetch('/api/remote/deploy', {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{
-                        robot_addr: robotAddr,
-                        file: robotFile || null
-                    }})
-                }});
-
-                const data = await response.json();
-
-                if (data.success) {{
-                    statusDiv.style.background = 'rgba(0, 255, 136, 0.1)';
-                    statusDiv.style.border = '1px solid var(--success)';
-                    statusDiv.innerHTML = `
-                        <p style="color: var(--success); margin: 0; font-weight: 600;">Deployment Successful</p>
-                        <p style="color: var(--text-secondary); margin: 5px 0 0 0; font-size: 0.9em;">${{data.message}}</p>
-                    `;
-                }} else {{
-                    statusDiv.style.background = 'rgba(255, 68, 68, 0.1)';
-                    statusDiv.style.border = '1px solid #ff4444';
-                    statusDiv.innerHTML = `
-                        <p style="color: #ff4444; margin: 0; font-weight: 600;">Deployment Failed</p>
-                        <p style="color: var(--text-secondary); margin: 5px 0 0 0; font-size: 0.9em;">${{data.error}}</p>
-                    `;
-                }}
-            }} catch (error) {{
-                statusDiv.style.background = 'rgba(255, 68, 68, 0.1)';
-                statusDiv.style.border = '1px solid #ff4444';
-                statusDiv.innerHTML = `
-                    <p style="color: #ff4444; margin: 0; font-weight: 600;">Error</p>
-                    <p style="color: var(--text-secondary); margin: 5px 0 0 0; font-size: 0.9em;">${{error.message}}</p>
-                `;
-            }}
-        }}
-
-        // Connect to robot
-        async function connectToRobot() {{
-            const robotAddr = document.getElementById('robot-addr').value.trim();
-            const statusDiv = document.getElementById('robot-status');
-
-            if (!robotAddr) {{
-                alert('Please enter a robot address');
-                return;
-            }}
-
-            statusDiv.innerHTML = 'Connecting...';
-
-            try {{
-                const response = await fetch('/api/remote/deployments', {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{ robot_addr: robotAddr }})
-                }});
-
-                if (response.ok) {{
-                    statusDiv.innerHTML = 'Connected';
-                    statusDiv.style.color = 'var(--success)';
-                    refreshDeployments();
-                    refreshHardware();
-                }} else {{
-                    statusDiv.innerHTML = 'Connection failed';
-                    statusDiv.style.color = '#ff4444';
-                }}
-            }} catch (error) {{
-                statusDiv.innerHTML = `Error: ${{error.message}}`;
-                statusDiv.style.color = '#ff4444';
-            }}
-        }}
-
-        // Refresh deployments list
-        async function refreshDeployments() {{
-            const robotAddr = document.getElementById('robot-addr').value.trim();
-            const listDiv = document.getElementById('deployments-list');
-
-            if (!robotAddr) {{
-                alert('Please enter a robot address first');
-                return;
-            }}
-
-            listDiv.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">Loading...</p>';
-
-            try {{
-                const response = await fetch('/api/remote/deployments', {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{ robot_addr: robotAddr }})
-                }});
-
-                const data = await response.json();
-
-                if (data && data.length > 0) {{
-                    listDiv.innerHTML = data.map(d => `
-                        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 15px; margin-bottom: 10px;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                <div style="flex: 1;">
-                                    <div style="font-weight: 600; color: var(--accent); margin-bottom: 5px;">${{d.deployment_id || d.id}}</div>
-                                    <div style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 5px;">
-                                        Status: <span style="color: ${{d.status === 'Running' ? 'var(--success)' : '#ffa500'}}">${{d.status}}</span>
-                                    </div>
-                                    ${{d.pid ? `<div style="color: var(--text-tertiary); font-size: 0.85em;">PID: ${{d.pid}}</div>` : ''}}
-                                    ${{d.cpu ? `<div style="color: var(--text-tertiary); font-size: 0.85em;">CPU: ${{d.cpu}}% | Memory: ${{d.memory}}</div>` : ''}}
-                                </div>
-                                ${{d.status === 'Running' ? `
-                                <button
-                                    onclick="stopDeployment('${{d.deployment_id || d.id}}')"
-                                    style="padding: 6px 12px; background: #ff4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85em;"
-                                >
-                                    Stop
-                                </button>
-                                ` : ''}}
-                            </div>
-                        </div>
-                    `).join('');
-                }} else {{
-                    listDiv.innerHTML = '<p style="color: var(--text-tertiary); text-align: center; padding: 20px;">No active deployments</p>';
-                }}
-            }} catch (error) {{
-                listDiv.innerHTML = `<p style="color: #ff4444; text-align: center;">Error: ${{error.message}}</p>`;
-            }}
-        }}
-
-        // Refresh hardware info
-        async function refreshHardware() {{
-            const robotAddr = document.getElementById('robot-addr').value.trim();
-            const hardwareDiv = document.getElementById('hardware-info');
-
-            if (!robotAddr) {{
-                alert('Please enter a robot address first');
-                return;
-            }}
-
-            hardwareDiv.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">Loading...</p>';
-
-            try {{
-                const response = await fetch('/api/remote/hardware', {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{ robot_addr: robotAddr }})
-                }});
-
-                const data = await response.json();
-
-                if (data) {{
-                    hardwareDiv.innerHTML = `
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 15px;">
-                                <div style="color: var(--text-tertiary); font-size: 0.85em; margin-bottom: 5px;">System</div>
-                                <div style="color: var(--text-primary); font-weight: 600;">${{data.hostname || 'Unknown'}}</div>
-                                <div style="color: var(--text-secondary); font-size: 0.85em;">${{data.os || ''}} ${{data.arch || ''}}</div>
-                            </div>
-                            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 15px;">
-                                <div style="color: var(--text-tertiary); font-size: 0.85em; margin-bottom: 5px;">CPU</div>
-                                <div style="color: var(--text-primary); font-weight: 600;">${{data.cpu_count || 0}} cores</div>
-                            </div>
-                            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 15px;">
-                                <div style="color: var(--text-tertiary); font-size: 0.85em; margin-bottom: 5px;">Memory</div>
-                                <div style="color: var(--text-primary); font-weight: 600;">${{data.total_memory || 'Unknown'}}</div>
-                            </div>
-                            ${{data.cameras && data.cameras.length > 0 ? `
-                            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 15px;">
-                                <div style="color: var(--text-tertiary); font-size: 0.85em; margin-bottom: 5px;">Cameras</div>
-                                <div style="color: var(--text-primary); font-weight: 600;">${{data.cameras.length}}</div>
-                            </div>
-                            ` : ''}}
-                            ${{data.gpio_available ? `
-                            <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 15px;">
-                                <div style="color: var(--text-tertiary); font-size: 0.85em; margin-bottom: 5px;">GPIO</div>
-                                <div style="color: var(--success); font-weight: 600;">Available</div>
-                            </div>
-                            ` : ''}}
-                        </div>
-                    `;
-                }} else {{
-                    hardwareDiv.innerHTML = '<p style="color: #ff4444; text-align: center;">Failed to load hardware info</p>';
-                }}
-            }} catch (error) {{
-                hardwareDiv.innerHTML = `<p style="color: #ff4444; text-align: center;">Error: ${{error.message}}</p>`;
-            }}
-        }}
-
-        // Stop deployment
-        async function stopDeployment(deploymentId) {{
-            const robotAddr = document.getElementById('robot-addr').value.trim();
-
-            if (!confirm(`Stop deployment ${{deploymentId}}?`)) return;
-
-            try {{
-                const response = await fetch('/api/remote/stop', {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{
-                        robot_addr: robotAddr,
-                        deployment_id: deploymentId
-                    }})
-                }});
-
-                const data = await response.json();
-
-                if (data.success || data.status === 'stopped') {{
-                    refreshDeployments();
-                }} else {{
-                    alert(`Failed to stop: ${{data.error || data.message}}`);
-                }}
-            }} catch (error) {{
-                alert(`Error: ${{error.message}}`);
-            }}
-        }}
 
         // Enter key support for search
         document.getElementById('search-input')?.addEventListener('keypress', (e) => {{

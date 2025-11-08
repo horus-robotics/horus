@@ -8,7 +8,7 @@ name = "horus_py"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.22", features = ["extension-module", "abi3-py39"] }
+pyo3 = { version = "0.22", features = ["extension-module", "abi3-py39", "num-bigint", "num-complex"] }
 horus = { path = "../horus" }
 horus_library = { path = "../horus_library" }
 tokio = { version = "1", features = ["rt-multi-thread", "time", "sync"] }

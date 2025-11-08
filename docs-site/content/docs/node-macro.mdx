@@ -222,7 +222,7 @@ node! {
 
         tick(ctx) {
             if let Some(msg) = self.messages.recv(ctx) {
-                println!("[LOG] {}", msg);
+                ctx.log_info(&format!("[LOG] {}", msg));
             }
         }
     }
@@ -348,7 +348,7 @@ init(ctx) {
 }
 
 tick(ctx) {
-    // Not here - would allocate every tick!
+    // Not in tick - would allocate every tick!
 }
 ```
 
@@ -386,7 +386,7 @@ Yes! Only `NodeName` and `tick` are required:
 node! {
     MinimalNode {
         tick(ctx) {
-            println!("Hello!");
+            ctx.log_info("Hello!");
         }
     }
 }

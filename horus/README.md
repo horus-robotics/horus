@@ -45,9 +45,11 @@ pub struct MyNode {
 impl Node for MyNode {
     fn name(&self) -> &'static str { "MyNode" }
 
-    fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         self.counter += 1;
-        println!("Tick #{}", self.counter);
+        if let Some(ctx) = ctx {
+            ctx.log_info(&format!("Tick #{}", self.counter));
+        }
     }
 }
 

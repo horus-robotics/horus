@@ -148,6 +148,24 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug> Hub<T> {
         })
     }
 
+    /// Create a new global Hub (accessible across all sessions)
+    pub fn new_global(topic_name: &str) -> HorusResult<Self> {
+        Self::new_global_with_capacity(topic_name, 1024)
+    }
+
+    /// Create a new global Hub with custom capacity (accessible across all sessions)
+    pub fn new_global_with_capacity(topic_name: &str, capacity: usize) -> HorusResult<Self> {
+        let shm_topic = Arc::new(ShmTopic::new_global(topic_name, capacity)?);
+
+        Ok(Hub {
+            shm_topic,
+            topic_name: topic_name.to_string(),
+            state: std::sync::atomic::AtomicU8::new(ConnectionState::Connected.into_u8()),
+            metrics: Arc::new(AtomicHubMetrics::default()),
+            _padding: [0; 15],
+        })
+    }
+
     /// High-performance send using zero-copy loan pattern internally
     /// This method now uses the loan() backend for optimal performance (~200ns latency)
     /// The API remains simple while delivering the best possible performance
@@ -214,14 +232,15 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug> Hub<T> {
     where
         T: crate::core::LogSummary,
     {
+        let ipc_start = Instant::now();
         match self.shm_topic.pop() {
             Some(msg) => {
+                let ipc_ns = ipc_start.elapsed().as_nanos() as u64;
+
                 // Fast path: when ctx is None, bypass logging completely (benchmarks + production)
                 if let Some(ctx) = ctx {
-                    // Logging enabled: get summary and measure IPC timing
+                    // Logging enabled: get summary and log with measured IPC timing
                     let summary = msg.log_summary();
-                    let ipc_start = Instant::now();
-                    let ipc_ns = ipc_start.elapsed().as_nanos() as u64;
                     ctx.log_sub_summary(&self.topic_name, &summary, ipc_ns);
 
                     // Record pub/sub metadata for graph visualization
@@ -274,7 +293,7 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug> Hub<T> {
         // e.g., MyControlNode_sensor_data_sub
         let safe_node_name = node_name.replace('/', "_").replace(' ', "_");
         let safe_topic_name = self.topic_name.replace('/', "_").replace(' ', "_");
-        let filename = format!("{}_{}_{}",  safe_node_name, safe_topic_name, direction);
+        let filename = format!("{}_{}_{}", safe_node_name, safe_topic_name, direction);
         let filepath = metadata_dir.join(filename);
 
         // Write minimal metadata (just timestamp to show activity)

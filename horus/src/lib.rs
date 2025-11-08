@@ -40,11 +40,14 @@ pub use horus_macros::*;
 // Re-export standard library with alias
 pub use horus_library as library;
 
+// Re-export serde at crate root for macro-generated code
+pub use serde;
+
 /// The HORUS prelude - everything you need to get started
 pub mod prelude {
     // Core node types
     pub use horus_core::core::node::NodeConfig;
-    pub use horus_core::core::{LogSummary, Node, NodeInfo, NodeState};
+    pub use horus_core::core::{LogSummary, Node, NodeInfo, NodeInfoExt, NodeState};
 
     // Communication types
     pub use horus_core::communication::{Hub, Link};

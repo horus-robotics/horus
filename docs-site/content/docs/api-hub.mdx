@@ -115,7 +115,7 @@ pub fn send(&self, msg: T, ctx: Option<&mut NodeInfo>) -> Result<(), T>
 - `Ok(())`: Message sent successfully
 - `Err(msg)`: Failed to send (returns original message)
 
-**Performance**: 481ns for small messages (16B), scales linearly with size
+**Performance**: 437ns for small messages (16B), scales linearly with size
 
 **Example**:
 ```rust
@@ -125,7 +125,7 @@ hub.send(42.0, None).ok();
 // With automatic logging (recommended)
 fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
     hub.send(42.0, ctx).ok();
-    // Automatically logs: [12:34:56.789] [IPC: 481ns] MyNode --PUB--> 'topic' = 42.0
+    // Automatically logs: [12:34:56.789] [IPC: 437ns] MyNode --PUB--> 'topic' = 42.0
 }
 ```
 
@@ -159,7 +159,7 @@ pub fn recv(&self, ctx: Option<&mut NodeInfo>) -> Option<T>
 - `Some(msg)`: Message received
 - `None`: No message available (not an error)
 
-**Performance**: 481ns for small messages (16B)
+**Performance**: 437ns for small messages (16B)
 
 **Example**:
 ```rust
@@ -390,7 +390,7 @@ impl Node for ProcessorNode {
 
 | Message Size | Latency |
 |--------------|---------|
-| 16B (CmdVel) | 481ns |
+| 16B (CmdVel) | 437ns |
 | 304B (IMU) | 940ns |
 | 1.5KB (LaserScan) | 2.2µs |
 | 120KB (PointCloud) | 360µs |

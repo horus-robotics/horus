@@ -87,7 +87,7 @@ impl LogSummary for PointCloud {
 
 **Output example**:
 ```
-[12:34:56.789] [IPC: 481ns | Tick: 12μs] MyNode --PUB--> 'cmd_vel' = Twist(lin:1.5, ang:0.5)
+[12:34:56.789] [IPC: 437ns | Tick: 12μs] MyNode --PUB--> 'cmd_vel' = Twist(lin:1.5, ang:0.5)
 ```
 
 ### Implementation
@@ -751,7 +751,7 @@ pub struct CInteropMessage {
 
 | Message Type | Size | Latency (Hub) | Latency (Link) |
 |--------------|------|---------------|----------------|
-| CmdVel | 16B | ~500ns | 312ns |
+| CmdVel | 16B | ~500ns | 248ns |
 | Pose2D | 32B | ~520ns | ~350ns |
 | IMU | 304B | ~940ns | ~400ns |
 | LaserScan | 1.5KB | ~2.2µs | ~900ns |
@@ -1380,11 +1380,8 @@ impl Node for SensorAggregator {
     }
 
     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        // Process all available sensor readings
-        let mut readings_this_tick = 0;
-
-        while let Some(reading) = self.sensor_sub.recv(ctx) {
-            readings_this_tick += 1;
+        // Process one sensor reading per tick (bounded execution)
+        if let Some(reading) = self.sensor_sub.recv(ctx) {
             self.readings_count += 1;
             self.total_temp += reading.temperature;
 

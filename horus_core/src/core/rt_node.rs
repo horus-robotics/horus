@@ -1,0 +1,249 @@
+// Real-time node trait for time-critical applications
+use super::{Node, NodeInfo};
+use std::time::Duration;
+
+/// Priority levels for real-time scheduling
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum RTPriority {
+    /// Highest priority - critical control loops
+    Critical,
+    /// High priority - important sensors
+    High,
+    /// Medium priority - normal processing
+    Medium,
+    /// Low priority - background tasks
+    Low,
+    /// Custom priority value
+    Custom(u32),
+}
+
+impl RTPriority {
+    pub fn value(&self) -> u32 {
+        match self {
+            RTPriority::Critical => 0,
+            RTPriority::High => 10,
+            RTPriority::Medium => 50,
+            RTPriority::Low => 100,
+            RTPriority::Custom(v) => *v,
+        }
+    }
+}
+
+/// Real-time class for deadline handling
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RTClass {
+    /// Must never miss deadline (safety-critical, surgical robots)
+    Hard,
+    /// Occasional miss tolerated (video streaming, VR)
+    Firm,
+    /// Best effort timing (gaming, UI, monitoring)
+    Soft,
+}
+
+/// Deadline miss policy
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DeadlineMissPolicy {
+    /// Log warning and continue
+    Warn,
+    /// Skip the node for this tick
+    Skip,
+    /// Emergency stop - trigger safety shutdown
+    EmergencyStop,
+    /// Downgrade priority for future ticks
+    Degrade,
+    /// Switch to fallback node
+    Fallback,
+}
+
+/// WCET (Worst-Case Execution Time) violation handling
+#[derive(Debug, Clone)]
+pub struct WCETViolation {
+    pub node_name: String,
+    pub budget: Duration,
+    pub actual: Duration,
+    pub overrun: Duration,
+}
+
+/// Real-time statistics for a node
+#[derive(Debug, Clone, Default)]
+pub struct RTStats {
+    /// Number of deadline misses
+    pub deadline_misses: u64,
+    /// Number of WCET violations
+    pub wcet_violations: u64,
+    /// Worst observed execution time
+    pub worst_execution: Duration,
+    /// Last execution time
+    pub last_execution: Duration,
+    /// Jitter (variance in execution time)
+    pub jitter_us: f64,
+}
+
+/// Real-time node trait for time-critical applications
+///
+/// This trait extends the base Node trait with real-time guarantees.
+/// Implementing this trait allows the scheduler to provide:
+/// - WCET budget enforcement
+/// - Deadline monitoring
+/// - Priority-based preemption
+/// - Formal verification support
+///
+/// # Example
+/// ```
+/// impl RTNode for MotorControlNode {
+///     fn wcet_budget(&self) -> Duration {
+///         Duration::from_micros(100) // 100μs max execution
+///     }
+///
+///     fn deadline(&self) -> Duration {
+///         Duration::from_millis(1) // 1ms deadline for 1kHz control
+///     }
+/// }
+/// ```
+pub trait RTNode: Node {
+    /// Worst-case execution time budget
+    fn wcet_budget(&self) -> Duration;
+
+    /// Deadline for completion (from start of tick)
+    fn deadline(&self) -> Duration {
+        self.wcet_budget() * 2 // Default: 2x WCET
+    }
+
+    /// Real-time priority (lower value = higher priority)
+    fn rt_priority(&self) -> RTPriority {
+        RTPriority::Medium
+    }
+
+    /// Real-time class (Hard/Firm/Soft)
+    fn rt_class(&self) -> RTClass {
+        RTClass::Soft
+    }
+
+    /// What to do if deadline is missed
+    fn deadline_miss_policy(&self) -> DeadlineMissPolicy {
+        match self.rt_class() {
+            RTClass::Hard => DeadlineMissPolicy::EmergencyStop,
+            RTClass::Firm => DeadlineMissPolicy::Skip,
+            RTClass::Soft => DeadlineMissPolicy::Warn,
+        }
+    }
+
+    /// Pre-condition that must be true before tick (for formal verification)
+    fn pre_condition(&self) -> bool {
+        true // Default: no precondition
+    }
+
+    /// Post-condition that must be true after tick (for formal verification)
+    fn post_condition(&self) -> bool {
+        true // Default: no postcondition
+    }
+
+    /// System invariant that must always be true (for formal verification)
+    fn invariant(&self) -> bool {
+        true // Default: no invariant
+    }
+
+    /// Called when WCET budget is exceeded
+    fn on_wcet_violation(&mut self, violation: &WCETViolation) {
+        // Default: log error
+        eprintln!(
+            "WCET violation in {}: budget={:?}, actual={:?}, overrun={:?}",
+            violation.node_name, violation.budget, violation.actual, violation.overrun
+        );
+    }
+
+    /// Called when deadline is missed
+    fn on_deadline_miss(&mut self, elapsed: Duration, deadline: Duration) {
+        // Default: log error
+        eprintln!(
+            "Deadline miss in {}: deadline={:?}, elapsed={:?}",
+            self.name(),
+            deadline,
+            elapsed
+        );
+    }
+
+    /// Get fallback node for redundancy (N-version programming)
+    fn fallback_node(&self) -> Option<Box<dyn RTNode>> {
+        None // Default: no fallback
+    }
+
+    /// Check if node is in safe state (for safety monitor)
+    fn is_safe_state(&self) -> bool {
+        true // Default: assume safe
+    }
+
+    /// Transition to safe state (for emergency stop)
+    fn enter_safe_state(&mut self, _ctx: &mut NodeInfo) {
+        // Default: do nothing (already safe)
+    }
+}
+
+/// Wrapper to make RTNode work with existing Node-based scheduler
+pub struct RTNodeWrapper {
+    node: Box<dyn RTNode>,
+    stats: RTStats,
+    degraded: bool,
+}
+
+impl RTNodeWrapper {
+    pub fn new(node: Box<dyn RTNode>) -> Self {
+        Self {
+            node,
+            stats: RTStats::default(),
+            degraded: false,
+        }
+    }
+
+    pub fn stats(&self) -> &RTStats {
+        &self.stats
+    }
+
+    pub fn is_degraded(&self) -> bool {
+        self.degraded
+    }
+
+    pub fn degrade(&mut self) {
+        self.degraded = true;
+    }
+}
+
+impl Node for RTNodeWrapper {
+    fn name(&self) -> &'static str {
+        self.node.name()
+    }
+
+    fn init(&mut self, ctx: &mut NodeInfo) -> crate::error::HorusResult<()> {
+        self.node.init(ctx)
+    }
+
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        // Pre-condition check
+        debug_assert!(
+            self.node.pre_condition(),
+            "Pre-condition failed for {}",
+            self.name()
+        );
+
+        // Execute the real-time node
+        self.node.tick(ctx);
+
+        // Post-condition check
+        debug_assert!(
+            self.node.post_condition(),
+            "Post-condition failed for {}",
+            self.name()
+        );
+
+        // Invariant check
+        debug_assert!(
+            self.node.invariant(),
+            "Invariant violated for {}",
+            self.name()
+        );
+    }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> crate::error::HorusResult<()> {
+        self.node.shutdown(ctx)
+    }
+}

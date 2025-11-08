@@ -391,7 +391,7 @@ if let Some(emergency) = emergency_subscriber.recv(None) {
     if emergency.engaged {
         // Stop all motors immediately
         motor_controller.stop_all();
-        println!("Emergency stop: {}", emergency.reason);
+        eprintln!("Emergency stop: {}", emergency.reason);
     }
 }
 ```

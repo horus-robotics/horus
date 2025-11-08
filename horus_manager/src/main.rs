@@ -59,10 +59,6 @@ enum Commands {
         #[arg(short = 'c', long = "clean")]
         clean: bool,
 
-        /// Deploy to remote robot (hostname, IP, or robot ID)
-        #[arg(short = 'R', long = "remote", value_name = "ROBOT")]
-        remote: Option<String>,
-
         /// Additional arguments to pass to the program
         #[arg(trailing_var_arg = true)]
         args: Vec<String>,
@@ -313,14 +309,9 @@ fn run_command(command: Commands) -> HorusResult<()> {
             build_only,
             release,
             clean,
-            remote,
             args,
         } => {
-            if let Some(robot_addr) = remote {
-                // Remote execution mode
-                commands::remote::execute_remote(&robot_addr, file)
-                    .map_err(|e| HorusError::Config(e.to_string()))
-            } else if build_only {
+            if build_only {
                 // Build-only mode - compile but don't execute
                 commands::run::execute_build_only(file, release, clean)
                     .map_err(|e| HorusError::Config(e.to_string()))
@@ -340,14 +331,113 @@ fn run_command(command: Commands) -> HorusResult<()> {
 
             if !horus_yaml_path.exists() {
                 println!(
-                    "{} horus.yaml not found at: {}",
+                    "{} File not found at: {}",
                     "✗".red(),
                     horus_yaml_path.display()
                 );
-                return Err(HorusError::Config("No horus.yaml found".to_string()));
+                return Err(HorusError::Config("File not found".to_string()));
             }
 
-            println!("{} Checking {}...\n", "".cyan(), horus_yaml_path.display());
+            // Check if it's a source file (.rs, .py, .c, .cpp) or horus.yaml
+            let extension = horus_yaml_path.extension().and_then(|s| s.to_str());
+
+            match extension {
+                Some("rs") => {
+                    // Check Rust file
+                    println!("{} Checking Rust file: {}\n", "".cyan(), horus_yaml_path.display());
+
+                    print!("  {} Parsing Rust syntax... ", "".cyan());
+                    let content = fs::read_to_string(&horus_yaml_path)?;
+
+                    // Use syn to parse Rust code
+                    match syn::parse_file(&content) {
+                        Ok(_) => {
+                            println!("{}", "".green());
+                            println!("\n{} Syntax check passed!", "✓".green().bold());
+                        }
+                        Err(e) => {
+                            println!("{}", "".red());
+                            println!("\n{} Syntax error:", "✗".red().bold());
+                            println!("  {}", e);
+                            return Err(HorusError::Config(format!("Rust syntax error: {}", e)));
+                        }
+                    }
+                    return Ok(());
+                }
+                Some("py") => {
+                    // Check Python file
+                    println!("{} Checking Python file: {}\n", "".cyan(), horus_yaml_path.display());
+
+                    print!("  {} Parsing Python syntax... ", "".cyan());
+
+                    // Use python3 to check syntax
+                    let output = std::process::Command::new("python3")
+                        .arg("-m")
+                        .arg("py_compile")
+                        .arg(&horus_yaml_path)
+                        .output();
+
+                    match output {
+                        Ok(result) if result.status.success() => {
+                            println!("{}", "".green());
+                            println!("\n{} Syntax check passed!", "✓".green().bold());
+                        }
+                        Ok(result) => {
+                            println!("{}", "".red());
+                            let error = String::from_utf8_lossy(&result.stderr);
+                            println!("\n{} Syntax error:", "✗".red().bold());
+                            println!("  {}", error);
+                            return Err(HorusError::Config(format!("Python syntax error: {}", error)));
+                        }
+                        Err(e) => {
+                            println!("{}", "⚠".yellow());
+                            println!("\n{} Could not check Python syntax (python3 not found): {}", "⚠".yellow(), e);
+                        }
+                    }
+                    return Ok(());
+                }
+                Some("c") | Some("cpp") | Some("cc") | Some("cxx") => {
+                    // Check C/C++ file
+                    println!("{} Checking C/C++ file: {}\n", "".cyan(), horus_yaml_path.display());
+
+                    print!("  {} Parsing C/C++ syntax... ", "".cyan());
+
+                    let compiler = if extension == Some("cpp") || extension == Some("cc") || extension == Some("cxx") {
+                        "g++"
+                    } else {
+                        "gcc"
+                    };
+
+                    // Use gcc/g++ to check syntax only
+                    let output = std::process::Command::new(compiler)
+                        .arg("-fsyntax-only")
+                        .arg(&horus_yaml_path)
+                        .output();
+
+                    match output {
+                        Ok(result) if result.status.success() => {
+                            println!("{}", "".green());
+                            println!("\n{} Syntax check passed!", "✓".green().bold());
+                        }
+                        Ok(result) => {
+                            println!("{}", "".red());
+                            let error = String::from_utf8_lossy(&result.stderr);
+                            println!("\n{} Syntax error:", "✗".red().bold());
+                            println!("  {}", error);
+                            return Err(HorusError::Config(format!("C/C++ syntax error: {}", error)));
+                        }
+                        Err(e) => {
+                            println!("{}", "⚠".yellow());
+                            println!("\n{} Could not check C/C++ syntax ({} not found): {}", "⚠".yellow(), compiler, e);
+                        }
+                    }
+                    return Ok(());
+                }
+                _ => {
+                    // Assume it's horus.yaml or yaml file
+                    println!("{} Checking {}...\n", "".cyan(), horus_yaml_path.display());
+                }
+            }
 
             let mut errors = Vec::new();
             let mut warn_msgs = Vec::new();

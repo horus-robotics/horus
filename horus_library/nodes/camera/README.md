@@ -128,11 +128,11 @@ camera.set_compression(false, 90);
 ```rust
 // Get current actual framerate
 let fps = camera.get_actual_fps();
-println!("Camera running at {:.1} fps", fps);
+eprintln!("Camera running at {:.1} fps", fps);
 
 // Get total frames captured since initialization
 let frames = camera.get_frame_count();
-println!("Captured {} frames", frames);
+eprintln!("Captured {} frames", frames);
 ```
 
 ## Usage Examples
@@ -440,7 +440,7 @@ camera.set_encoding(ImageEncoding::Mono8);
 
 // Check actual FPS
 let actual_fps = camera.get_actual_fps();
-println!("Running at {:.1} FPS", actual_fps);
+eprintln!("Running at {:.1} FPS", actual_fps);
 ```
 
 ### Issue: Wrong colors / inverted colors
@@ -591,11 +591,13 @@ impl Node for ImageProcessor {
         "ImageProcessor"
     }
 
-    fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         // Receive images from camera
         if let Some(image) = self.subscriber.recv_latest() {
-            println!("Received {}x{} image with {} bytes",
-                     image.width, image.height, image.data.len());
+            if let Some(ctx) = ctx {
+                ctx.log_debug(&format!("Received {}x{} image with {} bytes",
+                         image.width, image.height, image.data.len()));
+            }
 
             // Process image data here
             // - Apply filters (blur, edge detection)

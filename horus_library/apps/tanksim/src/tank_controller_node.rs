@@ -115,17 +115,15 @@ impl Node for TankControllerNode {
         Ok(())
     }
 
-    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
-        // Process keyboard input
-        while let Some(key) = self.keyboard_sub.recv(ctx.as_deref_mut()) {
-            if !key.pressed {
-                continue; // Only handle key press, not release
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        // Process latest keyboard input (one per tick)
+        if let Some(key) = self.keyboard_sub.recv(None) {
+            if key.pressed {
+                self.process_keyboard(&key);
             }
-
-            self.process_keyboard(&key);
         }
 
-        // Publish command
+        // Always publish current velocity (even if no new input)
         let cmd = CmdVel {
             stamp_nanos: 0, // Will be set by Hub
             linear: self.current_linear,

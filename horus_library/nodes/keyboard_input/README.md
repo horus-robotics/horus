@@ -115,7 +115,7 @@ keyboard.set_key_mappings(mappings);
 
 // Get current mapping for a key
 if let Some((name, code)) = keyboard.get_key_mapping("w") {
-    println!("Key 'w' maps to {} (code: {})", name, code);
+    eprintln!("Key 'w' maps to {} (code: {})", name, code);
 }
 
 // Reset all mappings to defaults
@@ -192,11 +192,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // In your control loop or separate node
     while let Ok(key_event) = subscriber.recv() {
         match key_event.get_key_name().as_str() {
-            "ArrowUp" | "W" => println!("Move forward"),
-            "ArrowDown" | "S" => println!("Move backward"),
-            "ArrowLeft" | "A" => println!("Turn left"),
-            "ArrowRight" | "D" => println!("Turn right"),
-            "Space" => println!("Stop"),
+            "ArrowUp" | "W" => eprintln!("Move forward"),
+            "ArrowDown" | "S" => eprintln!("Move backward"),
+            "ArrowLeft" | "A" => eprintln!("Turn left"),
+            "ArrowRight" | "D" => eprintln!("Turn right"),
+            "Space" => eprintln!("Stop"),
             "Escape" => break,
             _ => {}
         }
@@ -400,30 +400,30 @@ fn setup_command_handler() -> Result<(), Box<dyn std::error::Error>> {
 
         // Function key commands
         match key_event.get_key_name().as_str() {
-            "F1" => println!("Help menu"),
-            "F2" => println!("Save state"),
-            "F3" => println!("Load state"),
-            "F4" => println!("Settings"),
-            "F5" => println!("Refresh"),
-            "F6" => println!("Toggle mode"),
-            "F7" => println!("Debug info"),
-            "F8" => println!("Performance stats"),
-            "F9" => println!("Screenshot"),
-            "F10" => println!("Toggle fullscreen"),
-            "F11" => println!("Console"),
-            "F12" => println!("Developer tools"),
+            "F1" => eprintln!("Help menu"),
+            "F2" => eprintln!("Save state"),
+            "F3" => eprintln!("Load state"),
+            "F4" => eprintln!("Settings"),
+            "F5" => eprintln!("Refresh"),
+            "F6" => eprintln!("Toggle mode"),
+            "F7" => eprintln!("Debug info"),
+            "F8" => eprintln!("Performance stats"),
+            "F9" => eprintln!("Screenshot"),
+            "F10" => eprintln!("Toggle fullscreen"),
+            "F11" => eprintln!("Console"),
+            "F12" => eprintln!("Developer tools"),
             _ => {}
         }
 
         // Ctrl+Key combinations
         if key_event.is_ctrl() {
             match key_event.get_key_name().as_str() {
-                "S" => println!("Save (Ctrl+S)"),
-                "O" => println!("Open (Ctrl+O)"),
-                "Z" => println!("Undo (Ctrl+Z)"),
-                "Y" => println!("Redo (Ctrl+Y)"),
-                "C" => println!("Copy (Ctrl+C)"),
-                "V" => println!("Paste (Ctrl+V)"),
+                "S" => eprintln!("Save (Ctrl+S)"),
+                "O" => eprintln!("Open (Ctrl+O)"),
+                "Z" => eprintln!("Undo (Ctrl+Z)"),
+                "Y" => eprintln!("Redo (Ctrl+Y)"),
+                "C" => eprintln!("Copy (Ctrl+C)"),
+                "V" => eprintln!("Paste (Ctrl+V)"),
                 _ => {}
             }
         }
@@ -644,7 +644,7 @@ runtime.add_node(keyboard);      // Then add to runtime
 while let Ok(key_event) = subscriber.recv() {
     if key_event.has_modifier("Ctrl") &&
        key_event.get_key_name() == "C" {
-        println!("Custom cleanup...");
+        eprintln!("Custom cleanup...");
         std::process::exit(0);
     }
 }
@@ -682,13 +682,13 @@ while let Ok(key_event) = subscriber.recv_timeout(Duration::from_millis(10)) {
 // Check modifiers immediately when processing event
 if key_event.pressed {
     if key_event.has_modifier("Ctrl") {
-        println!("Ctrl is pressed");
+        eprintln!("Ctrl is pressed");
     }
     if key_event.has_modifier("Shift") {
-        println!("Shift is pressed");
+        eprintln!("Shift is pressed");
     }
     if key_event.has_modifier("Alt") {
-        println!("Alt is pressed");
+        eprintln!("Alt is pressed");
     }
 }
 
@@ -776,19 +776,19 @@ impl Node for StateMachineNode {
             match key_event.get_key_name().as_str() {
                 "F1" => {
                     self.state = RobotState::Idle;
-                    println!("State: IDLE");
+                    eprintln!("State: IDLE");
                 }
                 "F2" => {
                     self.state = RobotState::Manual;
-                    println!("State: MANUAL CONTROL");
+                    eprintln!("State: MANUAL CONTROL");
                 }
                 "F3" => {
                     self.state = RobotState::Autonomous;
-                    println!("State: AUTONOMOUS");
+                    eprintln!("State: AUTONOMOUS");
                 }
                 "Escape" | "F12" => {
                     self.state = RobotState::Emergency;
-                    println!("State: EMERGENCY STOP");
+                    eprintln!("State: EMERGENCY STOP");
                 }
                 _ => {}
             }
@@ -888,7 +888,7 @@ impl Node for DebugNode {
         while let Ok(key_event) = self.keyboard_sub.try_recv() {
             // Log all key events in verbose mode
             if self.verbose {
-                println!(
+                eprintln!(
                     "[DEBUG] Key: {}, Code: {}, Modifiers: {:?}, Pressed: {}, Time: {}",
                     key_event.get_key_name(),
                     key_event.code,
@@ -905,7 +905,7 @@ impl Node for DebugNode {
             // Toggle verbose mode with 'V'
             if key_event.get_key_name() == "V" && key_event.is_ctrl() {
                 self.verbose = !self.verbose;
-                println!("Verbose mode: {}", self.verbose);
+                eprintln!("Verbose mode: {}", self.verbose);
             }
 
             // Adjust log level with F9-F12

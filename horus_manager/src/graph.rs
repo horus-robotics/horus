@@ -1233,7 +1233,8 @@ fn discover_runtime_pubsub(topic_name: &str) -> Result<(Vec<String>, Vec<String>
     let mut subscribers = Vec::new();
 
     // Normalize topic name for file matching
-    let safe_topic: String = topic_name.chars()
+    let safe_topic: String = topic_name
+        .chars()
         .map(|c| if c == '/' || c == ' ' { '_' } else { c })
         .collect();
 

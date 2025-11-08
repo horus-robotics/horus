@@ -234,7 +234,6 @@ horus_macros/       # Procedural macros
 horus_py/           # Python bindings
 horus_cpp/          # C/C++ bindings
 horus_library/      # Standard messages/nodes
-horus_daemon/       # Background service
 horus_manager/      # CLI tool
 docs-site/          # Documentation website
 ```

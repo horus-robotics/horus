@@ -320,7 +320,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             // Detect kidnapped robot scenario
             if uncertainty > 2.0 {  // More than 2m uncertainty
-                println!("Localization lost! Triggering relocalization...");
+                eprintln!("Localization lost! Triggering relocalization...");
                 localizer.reset();
 
                 // Trigger global localization or wait for initial pose estimate
@@ -328,7 +328,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             if localizer.is_converged() {
-                println!("Localization converged!");
+                eprintln!("Localization converged!");
             }
         }
     });

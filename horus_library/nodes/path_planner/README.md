@@ -143,7 +143,7 @@ let path = planner.get_path();
 
 // Check if path is valid
 if planner.is_path_valid() {
-    println!("Valid path with {} waypoints", path.len());
+    eprintln!("Valid path with {} waypoints", path.len());
 }
 ```
 
@@ -440,7 +440,7 @@ fn evaluate_path(path: &[(f64, f64)]) -> PathMetrics {
 ```rust
 // 1. Check if goal is reachable
 if !planner.is_path_valid() {
-    println!("No valid path - check goal position");
+    eprintln!("No valid path - check goal position");
 }
 
 // 2. Increase grid resolution
@@ -513,7 +513,7 @@ planner.set_goal(target_x, target_y, target_theta);
 // Check path includes goal
 let path = planner.get_path();
 if let Some(last) = path.last() {
-    println!("Path ends at: ({}, {})", last.0, last.1);
+    eprintln!("Path ends at: ({}, {})", last.0, last.1);
 }
 
 // Verify with local planner/controller

@@ -1883,9 +1883,7 @@ fn get_local_workspaces() -> Vec<WorkspaceData> {
                         let version = if metadata_path.exists() {
                             fs::read_to_string(&metadata_path)
                                 .ok()
-                                .and_then(|s| {
-                                    serde_json::from_str::<serde_json::Value>(&s).ok()
-                                })
+                                .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
                                 .and_then(|j| {
                                     j.get("version")
                                         .and_then(|v| v.as_str())
@@ -1908,25 +1906,18 @@ fn get_local_workspaces() -> Vec<WorkspaceData> {
                                         .map(|t| t.is_dir())
                                         .unwrap_or(false)
                                     {
-                                        let nested_name = nested_entry
-                                            .file_name()
-                                            .to_string_lossy()
-                                            .to_string();
+                                        let nested_name =
+                                            nested_entry.file_name().to_string_lossy().to_string();
 
                                         // Try to get version
                                         let nested_metadata_path =
                                             nested_entry.path().join("metadata.json");
-                                        let nested_version = if nested_metadata_path.exists()
-                                        {
+                                        let nested_version = if nested_metadata_path.exists() {
                                             fs::read_to_string(&nested_metadata_path)
                                                 .ok()
                                                 .and_then(|s| {
-                                                    serde_json::from_str::<
-                                                        serde_json::Value,
-                                                    >(
-                                                        &s
-                                                    )
-                                                    .ok()
+                                                    serde_json::from_str::<serde_json::Value>(&s)
+                                                        .ok()
                                                 })
                                                 .and_then(|j| {
                                                     j.get("version")
@@ -1938,8 +1929,7 @@ fn get_local_workspaces() -> Vec<WorkspaceData> {
                                             "unknown".to_string()
                                         };
 
-                                        installed_packages
-                                            .push((nested_name, nested_version));
+                                        installed_packages.push((nested_name, nested_version));
                                     }
                                 }
                             }
@@ -1965,7 +1955,6 @@ fn get_local_workspaces() -> Vec<WorkspaceData> {
     workspaces.sort_by(|a, b| a.name.cmp(&b.name));
     workspaces
 }
-
 
 fn get_installed_packages() -> (Vec<(String, String, String)>, Vec<(String, String, String)>) {
     let mut local_packages = Vec::new();

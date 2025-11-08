@@ -17,9 +17,15 @@
 
 pub mod log_buffer;
 pub mod node;
+pub mod node_info_ext;
+pub mod rt_node;
 
 pub use log_buffer::{LogEntry, LogType, SharedLogBuffer, GLOBAL_LOG_BUFFER};
 pub use node::{
     HealthStatus, LogSummary, Node, NodeConfig, NodeHeartbeat, NodeInfo, NodeMetrics, NodePriority,
-    NodeState,
+    NodeState, TopicMetadata,
+};
+pub use node_info_ext::NodeInfoExt;
+pub use rt_node::{
+    DeadlineMissPolicy, RTClass, RTNode, RTNodeWrapper, RTPriority, RTStats, WCETViolation,
 };

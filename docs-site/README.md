@@ -113,7 +113,7 @@ We welcome contributions! To contribute to the documentation:
 
 The documentation emphasizes HORUS's production-grade performance:
 
-- **312ns-481ns** latency for real robotics messages (Link/Hub)
+- **248ns-437ns** latency for real robotics messages (Link/Hub)
 - Production benchmarks with serde serialization
 - Real-world message types (CmdVel, LaserScan, IMU, etc.)
 

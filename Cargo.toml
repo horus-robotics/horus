@@ -5,13 +5,10 @@ members = [
     "horus_core",
     "horus_macros",
     "horus_manager",
-    "horus_daemon",
     "horus_library",
     "horus_library/python",  # Python bindings for horus_library
     "horus_cpp",  # C++ API bindings
     # Example apps (multi-node applications)
-    "horus_library/apps/snakesim",
-    "horus_library/apps/snakesim/snakesim_gui",
     "horus_library/apps/tanksim",
    # Tools
     "horus_library/tools/sim2d",
