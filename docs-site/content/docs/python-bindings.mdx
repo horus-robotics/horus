@@ -857,14 +857,14 @@ if let Some(cmd) = hub.recv(None) {
 }
 ```
 
-#### Python-Only (Generic Hub) ❌ Not Compatible with Rust
+#### Python-Only (Generic Hub)  Not Compatible with Rust
 
 ```python
 # Generic Hub - Python objects only
 from horus import Hub
 
 hub = Hub("my_topic")
-hub.send({"linear": 1.0, "angular": 0.5})  # ❌ Rust cannot read this!
+hub.send({"linear": 1.0, "angular": 0.5})  #  Rust cannot read this!
 # This uses pickle serialization - only works Python ↔ Python
 ```
 
@@ -996,15 +996,15 @@ The Python bindings pass `None` for the NodeInfo context parameter, which bypass
 
 ```python
 # Internal implementation (simplified)
-hub.send(msg, None)  # ❌ No context = no logging
-hub.recv(None)       # ❌ No context = no logging
+hub.send(msg, None)  #  No context = no logging
+hub.recv(None)       #  No context = no logging
 ```
 
 **What this means:**
 - -Python nodes work perfectly and communicate via shared memory
 - -All message passing functionality works
-- ❌ Pub/sub events don't appear in dashboard logs
-- ❌ Cannot monitor Python node messages in real-time via dashboard
+-  Pub/sub events don't appear in dashboard logs
+-  Cannot monitor Python node messages in real-time via dashboard
 
 ### Scheduler Logging Flag
 

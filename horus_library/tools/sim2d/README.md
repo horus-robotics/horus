@@ -114,7 +114,7 @@ horus run circle_driver.rs
                                        
          ───────▼───────              
            HORUS Hub                  
-           cmd_vel ←                  
+           cmd_vel                   
            odom                      
          ───────────────              
 ────────────────────────────────────────
@@ -142,7 +142,7 @@ horus run circle_driver.rs
 
 ---
 
-## ⚙️ Configuration
+##  Configuration
 
 ### Robot Configuration (`configs/robot.yaml`)
 
@@ -325,20 +325,20 @@ horus sim 2d --world-image test_map.png --resolution 0.05
 
 ### How It Works
 1. Image converted to grayscale
-2. Pixels **darker than threshold** → obstacles
-3. Each obstacle pixel → small square collider
+2. Pixels **darker than threshold**  obstacles
+3. Each obstacle pixel  small square collider
 4. World size = `image_size × resolution`
 
 ### Parameters
 
 **Resolution** (meters per pixel):
 - `0.01` - High detail (10mm/pixel)
-- `0.05` - Standard (50mm/pixel) ← **ROS default**
+- `0.05` - Standard (50mm/pixel)  **ROS default**
 - `0.1` - Low detail (100mm/pixel)
 
 **Threshold** (0-255):
 - `200` - Strict (light gray = obstacle)
-- `128` - Standard ← **Default**
+- `128` - Standard  **Default**
 - `50` - Permissive (only black = obstacle)
 
 ### ROS Map Compatibility

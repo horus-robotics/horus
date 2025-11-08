@@ -121,8 +121,8 @@ impl LogSummary for YourMessage {
 Your message immediately works with all HORUS communication:
 
 ```rust
-let hub = Hub::<YourMessage>::new("topic")?;  // ✓ Works!
-let link = Link::<YourMessage>::producer("topic")?;  // ✓ Works!
+let hub = Hub::<YourMessage>::new("topic")?;  //  Works!
+let link = Link::<YourMessage>::producer("topic")?;  //  Works!
 ```
 
 ## Complete Example
@@ -192,7 +192,7 @@ impl Node for AlertMonitor {
             if temp > self.threshold {
                 let alert = Alert(true, temp);
                 self.alert_pub.send(alert, ctx).ok();
-                println!("⚠️  High temperature: {:.1}°C", temp);
+                println!("  High temperature: {:.1}°C", temp);
             }
         }
     }
@@ -424,11 +424,11 @@ This is because LogSummary is a trait method.
 
 The `message!` macro gives you:
 
-✓ **Zero boilerplate** - one line per message type
-✓ **Automatic LogSummary** - efficient logging without clones
-✓ **Hub/Link compatibility** - works immediately
-✓ **Clean syntax** - tuple or struct style
-✓ **Type safety** - full Rust type checking
+ **Zero boilerplate** - one line per message type
+ **Automatic LogSummary** - efficient logging without clones
+ **Hub/Link compatibility** - works immediately
+ **Clean syntax** - tuple or struct style
+ **Type safety** - full Rust type checking
 
 **Before**: 15+ lines of boilerplate per message
 **After**: 1 line with `message!()`

@@ -207,15 +207,15 @@ Each example includes:
 
 ### Common Patterns
 
-Pipeline: `Sensor → Filter → Controller → Actuator`
+Pipeline: `Sensor  Filter  Controller  Actuator`
 - Data flows one direction
 - Each node has increasing priority (0, 1, 2, 3)
 
-Aggregator: `Sensor1, Sensor2, Sensor3 → Fusion → Output`
+Aggregator: `Sensor1, Sensor2, Sensor3  Fusion  Output`
 - Multiple inputs, single output
 - Use `if let Some(msg) = hub.recv(ctx)` for bounded execution (one message per tick)
 
-Safety Override: `Critical Safety (priority 0) → Control (priority 1)`
+Safety Override: `Critical Safety (priority 0)  Control (priority 1)`
 - Safety checks always run first
 - Control nodes check estop before acting
 

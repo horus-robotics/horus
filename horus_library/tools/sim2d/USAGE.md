@@ -103,8 +103,8 @@ horus sim 2d \
 
 **How it works:**
 1. Image converted to grayscale
-2. Pixels darker than threshold → obstacles
-3. Each obstacle pixel → collision square
+2. Pixels darker than threshold  obstacles
+3. Each obstacle pixel  collision square
 4. World size = image_size × resolution
 
 **Example: Creating a test map in Python:**

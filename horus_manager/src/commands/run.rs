@@ -361,7 +361,7 @@ path = "{}"
                         ));
                         eprintln!(
                             "  {} Warning: Using wildcard version for '{}' - specify a version for reproducibility",
-                            "⚠️".yellow(),
+                            "".yellow(),
                             pkg.name
                         );
                     }
@@ -383,7 +383,7 @@ path = "{}"
                     cargo_toml.push_str(&format!("{} = \"*\"\n", pkg.name));
                     eprintln!(
                         "  {} Warning: Using wildcard version for '{}' - specify a version for reproducibility",
-                        "⚠️".yellow(),
+                        "".yellow(),
                         pkg.name
                     );
                     eprintln!("     Example: 'cargo:{}@1.0' in horus.yaml", pkg.name);
@@ -524,7 +524,7 @@ fn execute_single_file(
         file_path.display().to_string().green(),
         language.yellow()
     );
-    eprintln!("  {} Session: {}", "🔒".dimmed(), session_id.dimmed());
+    eprintln!("  {} Session: {}", "".dimmed(), session_id.dimmed());
 
     // Load ignore patterns from horus.yaml if it exists
     let ignore = if Path::new("horus.yaml").exists() {
@@ -934,7 +934,7 @@ fn execute_multiple_files(
         "".cyan(),
         file_paths.len()
     );
-    println!("  {} Session: {}", "🔒".dimmed(), session_id.dimmed());
+    println!("  {} Session: {}", "".dimmed(), session_id.dimmed());
 
     for (i, file_path) in file_paths.iter().enumerate() {
         let language = detect_language(file_path)?;
@@ -1898,16 +1898,18 @@ fn parse_yaml_cargo_dependency(value: &serde_yaml::Value) -> Option<String> {
                 // Check if features exist
                 if let Some(features_val) = map.get("features") {
                     if let Some(features_list) = features_val.as_sequence() {
-                        let features: Vec<&str> = features_list
-                            .iter()
-                            .filter_map(|f| f.as_str())
-                            .collect();
+                        let features: Vec<&str> =
+                            features_list.iter().filter_map(|f| f.as_str()).collect();
 
                         if !features.is_empty() {
                             cargo_dep.push_str(&format!(
                                 "{{ version = \"{}\", features = [{}] }}",
                                 version,
-                                features.iter().map(|f| format!("\"{}\"", f)).collect::<Vec<_>>().join(", ")
+                                features
+                                    .iter()
+                                    .map(|f| format!("\"{}\"", f))
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
                             ));
                             return Some(cargo_dep);
                         }
@@ -2074,7 +2076,10 @@ fn parse_dependency_map_entry(
             // Check for git dependency
             if let Some(git_value) = map.get("git") {
                 if let Some(git_str) = git_value.as_str() {
-                    eprintln!("  ⚠️  Warning: Git dependency '{}' (git: {}) is not supported in horus run", pkg_name, git_str);
+                    eprintln!(
+                        "    Warning: Git dependency '{}' (git: {}) is not supported in horus run",
+                        pkg_name, git_str
+                    );
                     eprintln!("     Consider using 'cargo run' or 'horus build' for projects with git dependencies");
                     return Ok(None);
                 }
@@ -2505,7 +2510,7 @@ fn split_dependencies_with_context(
                 Err(e) => {
                     eprintln!(
                         "  {} Failed to parse pip dependency '{}': {}",
-                        "⚠️".yellow(),
+                        "".yellow(),
                         dep,
                         e
                     );
@@ -2523,7 +2528,7 @@ fn split_dependencies_with_context(
                 Err(e) => {
                     eprintln!(
                         "  {} Failed to parse cargo dependency '{}': {}",
-                        "⚠️".yellow(),
+                        "".yellow(),
                         dep,
                         e
                     );
@@ -2537,7 +2542,7 @@ fn split_dependencies_with_context(
             continue;
         }
 
-        // Auto-detect: if starts with "horus" → HORUS registry
+        // Auto-detect: if starts with "horus"  HORUS registry
         if dep.starts_with("horus") {
             horus_packages.push(dep.to_string());
             continue;
@@ -2646,7 +2651,7 @@ fn split_dependencies_with_path_context(
                 Err(e) => {
                     eprintln!(
                         "  {} Failed to parse pip dependency '{}': {}",
-                        "⚠️".yellow(),
+                        "".yellow(),
                         dep,
                         e
                     );
@@ -2662,7 +2667,7 @@ fn split_dependencies_with_path_context(
                 Err(e) => {
                     eprintln!(
                         "  {} Failed to parse cargo dependency '{}': {}",
-                        "⚠️".yellow(),
+                        "".yellow(),
                         dep,
                         e
                     );
@@ -2671,7 +2676,7 @@ fn split_dependencies_with_path_context(
             continue;
         }
 
-        // Auto-detect: if starts with "horus" → HORUS registry
+        // Auto-detect: if starts with "horus"  HORUS registry
         if dep.starts_with("horus") {
             horus_packages.push(dep.to_string());
             continue;
@@ -2741,7 +2746,7 @@ fn install_pip_packages(packages: Vec<PipPackage>) -> Result<()> {
                     continue;
                 }
                 SystemPackageChoiceRun::InstallHORUS => {
-                    println!("  {} Installing isolated copy to HORUS...", "🔧".blue());
+                    println!("  {} Installing isolated copy to HORUS...", "".blue());
                     // Continue with installation below
                 }
                 SystemPackageChoiceRun::Cancel => {
@@ -2771,17 +2776,13 @@ fn install_pip_packages(packages: Vec<PipPackage>) -> Result<()> {
 
         // If already symlinked, skip
         if local_link.exists() || local_link.read_link().is_ok() {
-            println!("  {} {} (already linked)", "✓".green(), pkg.name);
+            println!("  {} {} (already linked)", "".green(), pkg.name);
             continue;
         }
 
         // If not cached, install to global cache
         if !pkg_cache_dir.exists() {
-            println!(
-                "  {} Installing {} to global cache...",
-                "↓".cyan(),
-                pkg.name
-            );
+            println!("  {} Installing {} to global cache...", "".cyan(), pkg.name);
 
             fs::create_dir_all(&pkg_cache_dir)?;
 
@@ -2812,7 +2813,7 @@ fn install_pip_packages(packages: Vec<PipPackage>) -> Result<()> {
             let metadata_path = pkg_cache_dir.join("metadata.json");
             fs::write(&metadata_path, serde_json::to_string_pretty(&metadata)?)?;
 
-            println!("  {} Cached {}", "✓".green(), pkg.name);
+            println!("  {} Cached {}", "".green(), pkg.name);
         } else {
             println!("  {} {} -> global cache", "↗".cyan(), pkg.name);
         }
@@ -2820,7 +2821,7 @@ fn install_pip_packages(packages: Vec<PipPackage>) -> Result<()> {
         // Symlink from local packages to global cache
         symlink(&pkg_cache_dir, &local_link)
             .context(format!("Failed to symlink {} from global cache", pkg.name))?;
-        println!("  {} Linked {}", "✓".green(), pkg.name);
+        println!("  {} Linked {}", "".green(), pkg.name);
     }
 
     Ok(())
@@ -2863,7 +2864,7 @@ fn install_cargo_packages(packages: Vec<CargoPackage>) -> Result<()> {
                     continue;
                 }
                 SystemPackageChoiceRun::InstallHORUS => {
-                    println!("  {} Installing isolated copy to HORUS...", "🔧".blue());
+                    println!("  {} Installing isolated copy to HORUS...", "".blue());
                     // Continue with installation below
                 }
                 SystemPackageChoiceRun::Cancel => {
@@ -2883,17 +2884,13 @@ fn install_cargo_packages(packages: Vec<CargoPackage>) -> Result<()> {
 
         // If already linked, skip
         if local_link.exists() || local_link.read_link().is_ok() {
-            println!("  {} {} (already linked)", "✓".green(), pkg.name);
+            println!("  {} {} (already linked)", "".green(), pkg.name);
             continue;
         }
 
         // If not cached, install to global cache
         if !pkg_cache_dir.exists() {
-            println!(
-                "  {} Installing {} to global cache...",
-                "↓".cyan(),
-                pkg.name
-            );
+            println!("  {} Installing {} to global cache...", "".cyan(), pkg.name);
 
             fs::create_dir_all(&pkg_cache_dir)?;
 
@@ -2925,7 +2922,7 @@ fn install_cargo_packages(packages: Vec<CargoPackage>) -> Result<()> {
             let metadata_path = pkg_cache_dir.join("metadata.json");
             fs::write(&metadata_path, serde_json::to_string_pretty(&metadata)?)?;
 
-            println!("  {} Cached {}", "✓".green(), pkg.name);
+            println!("  {} Cached {}", "".green(), pkg.name);
         } else {
             println!("  {} {} -> global cache", "↗".cyan(), pkg.name);
         }
@@ -2935,7 +2932,7 @@ fn install_cargo_packages(packages: Vec<CargoPackage>) -> Result<()> {
         if cached_bin.exists() {
             symlink(&cached_bin, &local_link)
                 .context(format!("Failed to symlink {} from global cache", pkg.name))?;
-            println!("  {} Linked {}", "✓".green(), pkg.name);
+            println!("  {} Linked {}", "".green(), pkg.name);
         } else {
             println!(
                 "  {} Warning: Binary {} not found in cache",
@@ -3724,7 +3721,7 @@ path = "{}"
                         ));
                         eprintln!(
                             "  {} Warning: Using wildcard version for '{}' - specify a version for reproducibility",
-                            "⚠️".yellow(),
+                            "".yellow(),
                             pkg.name
                         );
                     }
@@ -3746,7 +3743,7 @@ path = "{}"
                     cargo_toml.push_str(&format!("{} = \"*\"\n", pkg.name));
                     eprintln!(
                         "  {} Warning: Using wildcard version for '{}' - specify a version for reproducibility",
-                        "⚠️".yellow(),
+                        "".yellow(),
                         pkg.name
                     );
                     eprintln!("     Example: 'cargo:{}@1.0' in horus.yaml", pkg.name);
@@ -4411,10 +4408,10 @@ fn prompt_system_cargo_choice_run(
         system_version.cyan()
     );
     println!("\nWhat would you like to do?");
-    println!("  [1] {} Use system binary (create reference)", "✓".green());
+    println!("  [1] {} Use system binary (create reference)", "".green());
     println!(
         "  [2] {} Install to HORUS (isolated environment)",
-        "🔧".blue()
+        "".blue()
     );
     println!("  [3] {} Skip this package", "⊘".yellow());
 
@@ -4436,7 +4433,7 @@ fn prompt_system_cargo_choice_run(
 }
 
 fn create_system_reference_cargo_run(package_name: &str, system_version: &str) -> Result<()> {
-    println!("  {} Creating reference to system binary...", "✓".green());
+    println!("  {} Creating reference to system binary...", "".green());
 
     // Find actual system binary location
     let home = dirs::home_dir().ok_or_else(|| anyhow!("Could not find home directory"))?;
@@ -4472,15 +4469,15 @@ fn create_system_reference_cargo_run(package_name: &str, system_version: &str) -
 
     println!(
         "  {} Using system binary at {}",
-        "✓".green(),
+        "".green(),
         cargo_bin.display()
     );
     println!(
         "  {} Reference created: {}",
-        "📝".cyan(),
+        "".cyan(),
         metadata_file.display()
     );
-    println!("  {} Binary linked: {}", "📝".cyan(), bin_link.display());
+    println!("  {} Binary linked: {}", "".cyan(), bin_link.display());
 
     Ok(())
 }
@@ -4524,13 +4521,10 @@ fn prompt_system_package_choice_run(
         system_version.cyan()
     );
     println!("\nWhat would you like to do?");
-    println!(
-        "  [1] {} Use system package (create reference)",
-        "✓".green()
-    );
+    println!("  [1] {} Use system package (create reference)", "".green());
     println!(
         "  [2] {} Install to HORUS (isolated environment)",
-        "🔧".blue()
+        "".blue()
     );
     println!("  [3] {} Skip this package", "⊘".yellow());
 
@@ -4552,7 +4546,7 @@ fn prompt_system_package_choice_run(
 }
 
 fn create_system_reference_python_run(package_name: &str, system_version: &str) -> Result<()> {
-    println!("  {} Creating reference to system package...", "✓".green());
+    println!("  {} Creating reference to system package...", "".green());
 
     let packages_dir = PathBuf::from(".horus/packages");
     fs::create_dir_all(&packages_dir)?;
@@ -4567,10 +4561,10 @@ fn create_system_reference_python_run(package_name: &str, system_version: &str) 
 
     fs::write(&metadata_file, serde_json::to_string_pretty(&metadata)?)?;
 
-    println!("  {} Using system package", "✓".green());
+    println!("  {} Using system package", "".green());
     println!(
         "  {} Reference created: {}",
-        "📝".cyan(),
+        "".cyan(),
         metadata_file.display()
     );
 
@@ -4665,7 +4659,7 @@ fn create_horus_yaml(
 
     eprintln!(
         "  {} Created horus.yaml with {} dependencies",
-        "✨".green(),
+        "".green(),
         dependencies.len()
     );
 
@@ -4739,7 +4733,7 @@ fn update_existing_horus_yaml(
 
     eprintln!(
         "  {} Added {} new dependencies to horus.yaml",
-        "✨".green(),
+        "".green(),
         added.len()
     );
     for dep in &added {

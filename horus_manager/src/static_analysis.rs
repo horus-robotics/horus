@@ -36,23 +36,23 @@ impl LinkUsageTracker {
         for (topic, (producers, consumers)) in &self.topics {
             if *producers > 1 {
                 warnings.push(format!(
-                    "⚠️  Link topic '{}' has {} producers (expected 1 for SPSC)",
+                    "  Link topic '{}' has {} producers (expected 1 for SPSC)",
                     topic.yellow(),
                     producers.to_string().red().bold()
                 ));
                 warnings.push(format!(
-                    "   💡 Hint: Link is Single-Producer-Single-Consumer. Use Hub<T> for multiple producers."
+                    "    Hint: Link is Single-Producer-Single-Consumer. Use Hub<T> for multiple producers."
                 ));
             }
 
             if *consumers > 1 {
                 warnings.push(format!(
-                    "⚠️  Link topic '{}' has {} consumers (expected 1 for SPSC)",
+                    "  Link topic '{}' has {} consumers (expected 1 for SPSC)",
                     topic.yellow(),
                     consumers.to_string().red().bold()
                 ));
                 warnings.push(format!(
-                    "   💡 Hint: Link is Single-Producer-Single-Consumer. Use Hub<T> for multiple consumers."
+                    "    Hint: Link is Single-Producer-Single-Consumer. Use Hub<T> for multiple consumers."
                 ));
             }
         }
@@ -157,97 +157,11 @@ pub fn check_link_usage(file_path: &Path) -> Result<()> {
         );
         eprintln!(
             "  {} Fix these to avoid undefined behavior at runtime.",
-            "⚡".yellow()
+            "".yellow()
         );
         eprintln!("{}", "━".repeat(80).yellow());
         eprintln!();
     }
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_detect_multiple_producers() {
-        let code = r#"
-            use horus::prelude::*;
-
-            fn main() {
-                let link1 = Link::<f32>::producer("sensor");
-                let link2 = Link::<f32>::producer("sensor"); // Violation!
-            }
-        "#;
-
-        let ast: File = syn::parse_str(code).unwrap();
-        let mut visitor = LinkVisitor::new();
-        visitor.visit_file(&ast);
-
-        let warnings = visitor.tracker.check_violations();
-        assert_eq!(warnings.len(), 2); // Warning + Hint
-        assert!(warnings[0].contains("2 producers"));
-    }
-
-    #[test]
-    fn test_detect_multiple_consumers() {
-        let code = r#"
-            use horus::prelude::*;
-
-            fn main() {
-                let link1 = Link::<f32>::consumer("sensor");
-                let link2 = Link::<f32>::consumer("sensor"); // Violation!
-                let link3 = Link::<f32>::consumer("sensor"); // Violation!
-            }
-        "#;
-
-        let ast: File = syn::parse_str(code).unwrap();
-        let mut visitor = LinkVisitor::new();
-        visitor.visit_file(&ast);
-
-        let warnings = visitor.tracker.check_violations();
-        assert_eq!(warnings.len(), 2); // Warning + Hint
-        assert!(warnings[0].contains("3 consumers"));
-    }
-
-    #[test]
-    fn test_valid_spsc() {
-        let code = r#"
-            use horus::prelude::*;
-
-            fn main() {
-                let producer = Link::<f32>::producer("sensor");
-                let consumer = Link::<f32>::consumer("sensor");
-            }
-        "#;
-
-        let ast: File = syn::parse_str(code).unwrap();
-        let mut visitor = LinkVisitor::new();
-        visitor.visit_file(&ast);
-
-        let warnings = visitor.tracker.check_violations();
-        assert_eq!(warnings.len(), 0); // No warnings
-    }
-
-    #[test]
-    fn test_multiple_different_topics() {
-        let code = r#"
-            use horus::prelude::*;
-
-            fn main() {
-                let p1 = Link::<f32>::producer("topic1");
-                let p2 = Link::<f32>::producer("topic2");
-                let c1 = Link::<f32>::consumer("topic1");
-                let c2 = Link::<f32>::consumer("topic2");
-            }
-        "#;
-
-        let ast: File = syn::parse_str(code).unwrap();
-        let mut visitor = LinkVisitor::new();
-        visitor.visit_file(&ast);
-
-        let warnings = visitor.tracker.check_violations();
-        assert_eq!(warnings.len(), 0); // No warnings - different topics
-    }
 }

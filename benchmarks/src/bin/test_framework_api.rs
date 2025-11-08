@@ -38,7 +38,7 @@ fn main() {
     };
 
     if result {
-        println!("✓ Test passed: {}", test_name);
+        println!(" Test passed: {}", test_name);
         process::exit(0);
     } else {
         eprintln!("✗ Test failed: {}", test_name);
@@ -204,12 +204,12 @@ fn test_node_trait_api() -> bool {
 
     // Test Node trait methods - locks down signatures
     let node_name = node.name();
-    println!("  ✓ Node.name() -> &str: {}", node_name);
+    println!("   Node.name() -> &str: {}", node_name);
 
     // Test init - locks down init signature
     let mut ctx = NodeInfo::new("test_context".to_string(), false);
     match node.init(&mut ctx) {
-        Ok(()) => println!("  ✓ Node.init(&mut NodeInfo) -> HorusResult<()>"),
+        Ok(()) => println!("   Node.init(&mut NodeInfo) -> HorusResult<()>"),
         Err(e) => {
             eprintln!("Node init failed: {}", e);
             return false;
@@ -218,22 +218,22 @@ fn test_node_trait_api() -> bool {
 
     // Test tick - locks down tick signature
     node.tick(Some(&mut ctx));
-    println!("  ✓ Node.tick(Option<&mut NodeInfo>)");
+    println!("   Node.tick(Option<&mut NodeInfo>)");
 
     // Test tick with None
     node.tick(None);
-    println!("  ✓ Node.tick(None)");
+    println!("   Node.tick(None)");
 
     // Test shutdown - locks down shutdown signature
     match node.shutdown(&mut ctx) {
-        Ok(()) => println!("  ✓ Node.shutdown(&mut NodeInfo) -> HorusResult<()>"),
+        Ok(()) => println!("   Node.shutdown(&mut NodeInfo) -> HorusResult<()>"),
         Err(e) => {
             eprintln!("Node shutdown failed: {}", e);
             return false;
         }
     }
 
-    println!("  ✓ Node trait API is locked and working");
+    println!("   Node trait API is locked and working");
     true
 }
 
@@ -244,11 +244,11 @@ fn test_scheduler_api() -> bool {
 
     // Test Scheduler::new() - locks down constructor
     let mut scheduler = Scheduler::new();
-    println!("  ✓ Scheduler::new()");
+    println!("   Scheduler::new()");
 
     // Test Scheduler::name() - locks down builder pattern
     let scheduler = scheduler.name("test_scheduler");
-    println!("  ✓ Scheduler.name(&str)");
+    println!("   Scheduler.name(&str)");
 
     let mut scheduler = scheduler;
 
@@ -258,27 +258,27 @@ fn test_scheduler_api() -> bool {
     // Test Scheduler::add() - locks down node registration
     let node = Box::new(SensorNode::new(&topic, counter.clone()));
     scheduler.add(node, 0, None);
-    println!("  ✓ Scheduler.add(Box<dyn Node>, u32, Option<bool>)");
+    println!("   Scheduler.add(Box<dyn Node>, u32, Option<bool>)");
 
     // Test alternative registration with logging enabled
     let node2 = Box::new(SensorNode::new(&topic, counter.clone()));
     scheduler.add(node2, 1, Some(true));
-    println!("  ✓ Scheduler.add with logging enabled");
+    println!("   Scheduler.add with logging enabled");
 
     // Test get_node_list() - locks down query API
     let nodes = scheduler.get_node_list();
-    println!("  ✓ Scheduler.get_node_list() -> Vec<String>");
+    println!("   Scheduler.get_node_list() -> Vec<String>");
     assert!(nodes.len() >= 1, "Should have at least one node");
 
     // Test is_running() - locks down state query
     let running = scheduler.is_running();
-    println!("  ✓ Scheduler.is_running() -> bool: {}", running);
+    println!("   Scheduler.is_running() -> bool: {}", running);
 
     // Test stop() - locks down shutdown API
     scheduler.stop();
-    println!("  ✓ Scheduler.stop()");
+    println!("   Scheduler.stop()");
 
-    println!("  ✓ Scheduler API is locked and working");
+    println!("   Scheduler API is locked and working");
     true
 }
 
@@ -318,7 +318,7 @@ fn test_per_node_rate() -> bool {
 
     // Create scheduler
     let mut scheduler = Scheduler::new();
-    println!("  ✓ Scheduler created");
+    println!("   Scheduler created");
 
     // Add fast node (100Hz)
     let fast_node = Box::new(FastNode {
@@ -327,7 +327,7 @@ fn test_per_node_rate() -> bool {
     scheduler
         .add(fast_node, 0, None)
         .set_node_rate("fast_node", 100.0);
-    println!("  ✓ Added fast_node at 100Hz");
+    println!("   Added fast_node at 100Hz");
 
     // Add slow node (10Hz)
     let slow_node = Box::new(SlowNode {
@@ -336,7 +336,7 @@ fn test_per_node_rate() -> bool {
     scheduler
         .add(slow_node, 1, None)
         .set_node_rate("slow_node", 10.0);
-    println!("  ✓ Added slow_node at 10Hz");
+    println!("   Added slow_node at 10Hz");
 
     // Run for 1 second
     println!("  ⏱️  Running for 1 second...");
@@ -349,32 +349,32 @@ fn test_per_node_rate() -> bool {
     let fast_ticks = *fast_counter.lock().unwrap();
     let slow_ticks = *slow_counter.lock().unwrap();
 
-    println!("  📊 fast_node: {} ticks", fast_ticks);
-    println!("  📊 slow_node: {} ticks", slow_ticks);
+    println!("   fast_node: {} ticks", fast_ticks);
+    println!("   slow_node: {} ticks", slow_ticks);
 
     // Verify fast node ran more than slow node
     if fast_ticks <= slow_ticks {
-        eprintln!("  ❌ Fast node should have more ticks than slow node!");
+        eprintln!("   Fast node should have more ticks than slow node!");
         eprintln!("     fast: {}, slow: {}", fast_ticks, slow_ticks);
         return false;
     }
-    println!("  ✓ Fast node ran more frequently than slow node");
+    println!("   Fast node ran more frequently than slow node");
 
     // Verify fast node is roughly 10x faster (allow wide tolerance due to timing)
     let ratio = fast_ticks as f64 / slow_ticks as f64;
     if ratio >= 5.0 && ratio <= 15.0 {
-        println!("  ✓ Rate ratio is reasonable: {:.1}x", ratio);
+        println!("   Rate ratio is reasonable: {:.1}x", ratio);
     } else {
-        eprintln!("  ⚠️  Rate ratio unexpected: {:.1}x (expected ~10x)", ratio);
+        eprintln!("    Rate ratio unexpected: {:.1}x (expected ~10x)", ratio);
         // Don't fail - timing can be imprecise in tests
     }
 
-    println!("  ✓ Per-node rate control is working");
+    println!("   Per-node rate control is working");
     true
 }
 
 /// Test 3: Full Framework Workflow
-/// Locks down the complete user workflow: create nodes → register → run
+/// Locks down the complete user workflow: create nodes  register  run
 fn test_full_framework_workflow() -> bool {
     println!("Testing full framework workflow...");
 
@@ -392,7 +392,7 @@ fn test_full_framework_workflow() -> bool {
         controller_counter.clone(),
     ));
 
-    println!("  ✓ Created nodes");
+    println!("   Created nodes");
 
     // Step 2: Create and configure scheduler
     let mut scheduler = Scheduler::new();
@@ -402,29 +402,29 @@ fn test_full_framework_workflow() -> bool {
     scheduler.add(sensor, 0, Some(false));
     scheduler.add(controller, 1, Some(true));
 
-    println!("  ✓ Added nodes to scheduler");
+    println!("   Added nodes to scheduler");
 
     // Step 4: Verify node registration
     let nodes = scheduler.get_node_list();
     assert_eq!(nodes.len(), 2, "Should have 2 registered nodes");
-    println!("  ✓ Verified node registration: {:?}", nodes);
+    println!("   Verified node registration: {:?}", nodes);
 
     // Step 5: Query node info
     let sensor_info = scheduler.get_node_info("sensor_node");
     assert!(sensor_info.is_some(), "Should find sensor_node");
-    println!("  ✓ Queried node information");
+    println!("   Queried node information");
 
     // Step 6: Modify node settings
     let success = scheduler.set_node_logging("controller_node", false);
     assert!(success, "Should successfully set logging");
-    println!("  ✓ Modified node settings");
+    println!("   Modified node settings");
 
     // Step 7: Get monitoring summary
     let summary = scheduler.get_monitoring_summary();
     assert_eq!(summary.len(), 2, "Should have 2 nodes in summary");
-    println!("  ✓ Retrieved monitoring summary: {:?}", summary);
+    println!("   Retrieved monitoring summary: {:?}", summary);
 
-    println!("  ✓ Full framework workflow completed successfully");
+    println!("   Full framework workflow completed successfully");
     true
 }
 
@@ -445,7 +445,7 @@ fn test_multi_node_graph() -> bool {
     let actuator_sender =
         Link::<CmdVel>::producer(&actuator_topic).expect("Failed to create Link producer");
 
-    // Create node graph: Sensor → Controller → Actuator
+    // Create node graph: Sensor  Controller  Actuator
     let sensor = Box::new(SensorNode::new(&sensor_topic, sensor_counter.clone()));
     let controller = Box::new(ControllerNode::new(
         &sensor_topic,
@@ -454,7 +454,7 @@ fn test_multi_node_graph() -> bool {
     ));
     let actuator = Box::new(ActuatorNode::new(&actuator_topic, actuator_counter.clone()));
 
-    println!("  ✓ Created 3-node graph");
+    println!("   Created 3-node graph");
 
     // Add all nodes
     let mut scheduler = Scheduler::new();
@@ -462,7 +462,7 @@ fn test_multi_node_graph() -> bool {
     scheduler.add(controller, 1, None);
     scheduler.add(actuator, 2, None);
 
-    println!("  ✓ Added all nodes in priority order");
+    println!("   Added all nodes in priority order");
 
     // Verify graph topology
     let nodes = scheduler.get_node_list();
@@ -471,14 +471,14 @@ fn test_multi_node_graph() -> bool {
     assert!(nodes.contains(&"controller_node".to_string()));
     assert!(nodes.contains(&"actuator_node".to_string()));
 
-    println!("  ✓ Multi-node graph communication pattern locked");
+    println!("   Multi-node graph communication pattern locked");
     true
 }
 
 /// Test 5: Node Lifecycle Events
-/// Locks down init → tick → shutdown lifecycle
+/// Locks down init  tick  shutdown lifecycle
 fn test_node_lifecycle() -> bool {
-    println!("Testing node lifecycle (init → tick → shutdown)...");
+    println!("Testing node lifecycle (init  tick  shutdown)...");
 
     let counter = Arc::new(Mutex::new(0u32));
     let topic = format!("lifecycle_test_{}", process::id());
@@ -488,7 +488,7 @@ fn test_node_lifecycle() -> bool {
 
     // Phase 1: Init
     match node.init(&mut ctx) {
-        Ok(()) => println!("  ✓ Phase 1: init() completed successfully"),
+        Ok(()) => println!("   Phase 1: init() completed successfully"),
         Err(e) => {
             eprintln!("Init failed: {}", e);
             return false;
@@ -499,22 +499,22 @@ fn test_node_lifecycle() -> bool {
     for i in 0..10 {
         node.tick(Some(&mut ctx));
         if i == 0 {
-            println!("  ✓ Phase 2: tick() executed");
+            println!("   Phase 2: tick() executed");
         }
     }
     let tick_count = *counter.lock().unwrap();
     assert_eq!(tick_count, 10, "Should have ticked 10 times");
-    println!("  ✓ Phase 2: tick() loop completed ({} ticks)", tick_count);
+    println!("   Phase 2: tick() loop completed ({} ticks)", tick_count);
 
     // Phase 3: Shutdown
     match node.shutdown(&mut ctx) {
-        Ok(()) => println!("  ✓ Phase 3: shutdown() completed successfully"),
+        Ok(()) => println!("   Phase 3: shutdown() completed successfully"),
         Err(e) => {
             eprintln!("Shutdown failed: {}", e);
             return false;
         }
     }
 
-    println!("  ✓ Complete lifecycle executed: init → tick × 10 → shutdown");
+    println!("   Complete lifecycle executed: init  tick × 10  shutdown");
     true
 }

@@ -156,229 +156,47 @@ if region.is_owner() {
 - Initializes memory to zero
 - Optionally cleans up on exit (currently disabled for debugging)
 
-## ShmTopic: Lock-Free Ring Buffer
+## ShmTopic: Lock-Free Ring Buffer (Internal)
 
-### What is ShmTopic?
+`ShmTopic<T>` is the internal implementation used by Hub for lock-free ring buffer communication in shared memory.
 
-`ShmTopic<T>` implements a **lock-free ring buffer** in shared memory with:
+**Key Features**:
+- Multi-producer/multi-consumer support
+- 64-byte cache-line alignment for optimal performance
+- Zero-copy loan pattern for direct memory access
+- Atomic operations without locks
 
-**Multi-producer support**: Multiple publishers can write concurrently
+## Zero-Copy Loan Pattern (Internal)
 
-**Multi-consumer support**: Multiple subscribers each track their own position
+HORUS uses a loan pattern to achieve zero-copy communication:
 
-**Cache-line alignment**: 64-byte alignment prevents false sharing
+**Traditional approach**: Message is copied multiple times (serialize, send, deserialize)
 
-**Zero-copy loan pattern**: Direct memory access without allocations
+**HORUS approach**: Message written once to shared memory, read directly by all subscribers
 
-**Atomic operations**: Thread-safe without locks
+**How it works**:
+1. Publisher "loans" a slot in shared memory
+2. Writes data directly to that slot
+3. When done, message automatically becomes visible to subscribers
+4. Subscribers read directly from shared memory (no copy)
 
-### Structure
+This eliminates all serialization and network overhead.
 
-```rust
-#[repr(align(64))]  // Cache-line aligned
-pub struct ShmTopic<T> {
-    _region: Arc<ShmRegion>,
-    header: NonNull<RingBufferHeader>,
-    data_ptr: NonNull<u8>,
-    capacity: usize,
-    consumer_tail: AtomicUsize,  // Per-consumer position
-    _phantom: PhantomData<T>,
-    _padding: [u8; 24],  // Prevent false sharing
-}
-```
+## Lock-Free Operations (Internal)
 
-### Ring Buffer Header
+HORUS uses lock-free atomic operations for thread-safe communication without mutexes:
 
-```rust
-#[repr(C, align(64))]  // Cache-line aligned
-struct RingBufferHeader {
-    capacity: AtomicUsize,
-    head: AtomicUsize,              // Producer write position
-    tail: AtomicUsize,              // Legacy (unused)
-    element_size: AtomicUsize,
-    consumer_count: AtomicUsize,    // Number of subscribers
-    sequence_number: AtomicUsize,   // Global message counter
-    _padding: [u8; 24],             // Cache-line padding
-}
-```
+**Publishing**:
+- Uses atomic compare-and-swap to claim a memory slot
+- 75% fill limit prevents overwriting unread messages
+- Multiple publishers can write concurrently without blocking
 
-**Why cache-line alignment?**
+**Subscribing**:
+- Each subscriber independently tracks its read position
+- Non-destructive reads allow multiple subscribers
+- Lock-free atomic operations ensure thread safety
 
-Modern CPUs fetch memory in 64-byte cache lines. Aligning to 64 bytes:
-- Prevents false sharing between fields
-- Optimizes atomic operations
-- Reduces cache invalidations
-- Improves multi-core performance
-
-### Memory Layout
-
-```
-┌─────────────────────────────────────┐
-│  RingBufferHeader (64 bytes)        │ ← Aligned to 64 bytes
-├─────────────────────────────────────┤
-│  Padding (for data alignment)       │
-├─────────────────────────────────────┤
-│  Data Slot 0                        │
-├─────────────────────────────────────┤
-│  Data Slot 1                        │
-├─────────────────────────────────────┤
-│  ...                                │
-├─────────────────────────────────────┤
-│  Data Slot N-1                      │
-└─────────────────────────────────────┘
-```
-
-## Zero-Copy Loan Pattern
-
-### Traditional Approach (with copying)
-
-```rust
-// Message is copied multiple times
-let msg = MyData { x: 1.0, y: 2.0 };
-let bytes = serialize(msg);      // Copy 1
-send_over_network(bytes);        // Copy 2
-let received = deserialize(bytes); // Copy 3
-```
-
-### HORUS Loan Pattern (zero-copy)
-
-```rust
-// Message written once to shared memory
-let mut sample = topic.loan()?;  // Claim a slot
-sample.write(MyData { x: 1.0, y: 2.0 });  // Write directly to shared memory
-drop(sample);  // Automatically publishes when dropped
-```
-
-**Zero copies**: Data written once, read directly from shared memory
-
-### PublisherSample
-
-```rust
-pub struct PublisherSample<'a, T> {
-    data_ptr: *mut T,
-    slot_index: usize,
-    topic: &'a ShmTopic<T>,
-    _phantom: PhantomData<&'a mut T>,
-}
-```
-
-**Methods**:
-
-```rust
-// Write data to shared memory
-sample.write(value);
-
-// Get mutable pointer
-let ptr = sample.as_mut_ptr();
-
-// Get mutable reference (unsafe)
-unsafe {
-    let data_ref = sample.as_mut();
-    data_ref.x = 1.0;
-}
-```
-
-**Automatic publishing**: When `PublisherSample` is dropped, it increments the global sequence number, making the message visible to subscribers.
-
-### ConsumerSample
-
-```rust
-pub struct ConsumerSample<'a, T> {
-    data_ptr: *const T,
-    slot_index: usize,
-    topic: &'a ShmTopic<T>,
-    _phantom: PhantomData<&'a T>,
-}
-```
-
-**Methods**:
-
-```rust
-// Get reference to data
-let data_ref = sample.get_ref();
-
-// Get const pointer
-let ptr = sample.as_ptr();
-
-// Copy data (for Copy types)
-let data_copy = sample.read();
-```
-
-**Non-destructive reads**: Multiple subscribers can read the same message.
-
-## Lock-Free Operations
-
-### Publishing (push/loan)
-
-```rust
-pub fn loan(&self) -> Result<PublisherSample<T>, &'static str> {
-    let header = unsafe { self.header.as_ref() };
-
-    loop {
-        let head = header.head.load(Ordering::Relaxed);
-        let next = (head + 1) % self.capacity;
-
-        // Check buffer capacity
-        let current_sequence = header.sequence_number.load(Ordering::Relaxed);
-        let max_unread = (self.capacity * 3) / 4;  // 75% fill limit
-
-        if current_sequence >= max_unread {
-            return Err("Buffer full");
-        }
-
-        // Atomic compare-and-swap to claim slot
-        match header.head.compare_exchange_weak(
-            head,
-            next,
-            Ordering::Acquire,
-            Ordering::Relaxed,
-        ) {
-            Ok(_) => {
-                // Successfully claimed slot
-                return Ok(PublisherSample { ... });
-            }
-            Err(_) => {
-                // Retry if another thread claimed it first
-                continue;
-            }
-        }
-    }
-}
-```
-
-**Key Points**:
-- **Lock-free**: Uses atomic compare-and-swap
-- **Wait-free progress**: Retry until success
-- **Multi-producer safe**: Multiple publishers don't conflict
-- **75% fill limit**: Prevents overwriting unread messages
-
-### Subscribing (pop/receive)
-
-```rust
-pub fn receive(&self) -> Option<ConsumerSample<T>> {
-    let header = unsafe { self.header.as_ref() };
-
-    let my_tail = self.consumer_tail.load(Ordering::Relaxed);
-    let current_head = header.head.load(Ordering::Acquire);
-
-    if my_tail == current_head {
-        return None;  // No new messages
-    }
-
-    // Move this consumer's position forward
-    let next_tail = (my_tail + 1) % self.capacity;
-    self.consumer_tail.store(next_tail, Ordering::Relaxed);
-
-    // Return sample pointing to message in shared memory
-    Some(ConsumerSample { ... })
-}
-```
-
-**Key Points**:
-- **Per-consumer tracking**: Each subscriber has independent position
-- **Non-destructive**: Message stays for other subscribers
-- **Lock-free**: Atomic operations only
-- **Multi-consumer safe**: Subscribers don't interfere
+This design eliminates mutex contention and provides deterministic latency.
 
 ## Multi-Consumer Architecture
 
@@ -526,30 +344,7 @@ sample.write(data);          // Writes directly to shared memory
 
 ## Hub Integration
 
-`Hub<T>` uses ShmTopic internally:
-
-```rust
-pub struct Hub<T> {
-    shm_topic: Arc<ShmTopic<T>>,  // Shared memory topic
-    // ... other fields
-}
-
-pub fn send(&self, msg: T, ctx: Option<&mut NodeInfo>) -> Result<(), T> {
-    let msg_clone = msg.clone();
-
-    let ipc_ns = match self.shm_topic.loan() {
-        Ok(mut sample) => {
-            let ipc_start = Instant::now();
-            sample.write(msg_clone);  // Zero-copy write
-            drop(sample);             // Automatic publish
-            ipc_start.elapsed().as_nanos() as u64
-        },
-        Err(_) => 0
-    };
-
-    // ... logging and error handling
-}
-```
+`Hub<T>` uses ShmTopic internally to provide the user-facing pub/sub API. When you call `hub.send()`, it internally uses the loan pattern to write directly to shared memory and automatically publishes the message to all subscribers.
 
 ## Managing Shared Memory
 

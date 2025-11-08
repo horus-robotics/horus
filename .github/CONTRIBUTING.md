@@ -179,4 +179,4 @@ By contributing, you agree that your contributions will be licensed under the sa
 
 **Questions?** Open a discussion or reach out in an issue. We're here to help!
 
-Thank you for contributing to HORUS! 🚀
+Thank you for contributing to HORUS! 

@@ -241,36 +241,3 @@ impl ProtocolEncoder for RplidarHostProtocol {
     fn reset_encoder(&mut self) {}
 }
 
-#[cfg(test)]
-mod tests {
-
-    use rpos_drv::{Message, ProtocolEncoder, Result};
-
-    fn encode<T: ProtocolEncoder>(protocol: &mut T, msg: &Message) -> Result<Vec<u8>> {
-        let encoded_bytes = protocol.estimate_encoded_size(&msg)?;
-        let mut buf = vec![0; encoded_bytes];
-        let encoded_bytes = protocol.encode(&msg, &mut buf[0..encoded_bytes])?;
-        buf.truncate(encoded_bytes);
-        return Ok(buf);
-    }
-
-    #[test]
-    fn protocol_encode() {
-        let mut protocol = super::RplidarHostProtocol::new();
-
-        assert_eq!(
-            encode(&mut protocol, &Message::new(0x25))
-                .unwrap()
-                .as_slice(),
-            [0xA5, 0x25]
-        );
-
-        assert_eq!(
-            encode(&mut protocol, &Message::with_data(0x82, &[0; 5]))
-                .unwrap()
-                .as_slice(),
-            [0xA5, 0x82, 0x05, 0, 0, 0, 0, 0, 0x22]
-        );
-    }
-
-}

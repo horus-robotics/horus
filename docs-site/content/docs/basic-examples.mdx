@@ -253,7 +253,7 @@ Control a robot using standard CmdVel messages.
 use horus::prelude::*;
 use horus_library::messages::CmdVel;
 
-// Keyboard input → velocity commands
+// Keyboard input  velocity commands
 struct TeleopNode {
     cmd_pub: Hub<CmdVel>,
 }
@@ -290,7 +290,7 @@ impl Node for TeleopNode {
     }
 }
 
-// Velocity commands → motor control
+// Velocity commands  motor control
 struct MotorDriverNode {
     cmd_sub: Hub<CmdVel>,
 }
@@ -370,7 +370,7 @@ Process laser scan data to detect obstacles and stop the robot.
 use horus::prelude::*;
 use horus_library::messages::{LaserScan, CmdVel};
 
-// Lidar → Scan data
+// Lidar  Scan data
 struct LidarNode {
     scan_pub: Hub<LaserScan>,
     angle: f32,
@@ -414,7 +414,7 @@ impl Node for LidarNode {
     }
 }
 
-// Scan data → Obstacle detection → Stop command
+// Scan data  Obstacle detection  Stop command
 struct ObstacleDetector {
     scan_sub: Hub<LaserScan>,
     cmd_pub: Hub<CmdVel>,
@@ -834,7 +834,7 @@ horus run pipeline.rs
 ```
 
 **Key Concepts**:
-- Data flows: Sensor → Filter → Controller
+- Data flows: Sensor  Filter  Controller
 - Each stage has different priority (0, 1, 2)
 - Exponential moving average: `filtered = α * new + (1-α) * old`
 - Priorities ensure correct execution order

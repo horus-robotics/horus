@@ -510,9 +510,9 @@ Execute these tests manually before each release:
 - [ ] Task completes successfully
 
 **Commands**:
-- [ ] Ctrl+Shift+P → "HORUS: Run" - executes
-- [ ] Ctrl+Shift+P → "HORUS: Check" - executes
-- [ ] Ctrl+Shift+P → "HORUS: Dashboard" - opens dashboard
+- [ ] Ctrl+Shift+P  "HORUS: Run" - executes
+- [ ] Ctrl+Shift+P  "HORUS: Check" - executes
+- [ ] Ctrl+Shift+P  "HORUS: Dashboard" - opens dashboard
 - [ ] All commands work as expected
 
 **Debugging**:

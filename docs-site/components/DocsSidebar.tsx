@@ -69,7 +69,6 @@ const sections: SidebarSection[] = [
       { title: "Using Prebuilt Nodes", href: "/using-prebuilt-nodes", order: 2 },
       { title: "Environment Management", href: "/environment-management", order: 3 },
       { title: "Configuration Reference", href: "/configuration", order: 4 },
-      { title: "Authentication", href: "/authentication", order: 5 },
     ],
   },
   {

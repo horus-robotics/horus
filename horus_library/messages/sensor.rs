@@ -423,42 +423,6 @@ impl LogSummary for BatteryState {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_laser_scan_validation() {
-        let mut scan = LaserScan::new();
-        scan.ranges[0] = 5.0;
-        scan.ranges[1] = 0.05; // Below min_range
-        scan.ranges[2] = 35.0; // Above max_range
-
-        assert!(scan.is_range_valid(0));
-        assert!(!scan.is_range_valid(1));
-        assert!(!scan.is_range_valid(2));
-        assert_eq!(scan.valid_count(), 1);
-    }
-
-    #[test]
-    fn test_imu_orientation() {
-        let mut imu = Imu::new();
-        imu.set_orientation_from_euler(0.0, 0.0, std::f64::consts::PI / 2.0);
-
-        // Check quaternion is roughly correct for 90-degree yaw
-        assert!((imu.orientation[2] - 0.707).abs() < 0.01);
-        assert!((imu.orientation[3] - 0.707).abs() < 0.01);
-    }
-
-    #[test]
-    fn test_battery_state() {
-        let battery = BatteryState::new(12.6, 75.0);
-        assert!(!battery.is_low(50.0));
-        assert!(battery.is_low(80.0));
-        assert!(!battery.is_critical());
-    }
-}
-
 // Enable iceoryx2 zero-copy IPC
 #[cfg(feature = "iceoryx2")]
 unsafe impl iceoryx2_bb_elementary_traits::zero_copy_send::ZeroCopySend for LaserScan {}

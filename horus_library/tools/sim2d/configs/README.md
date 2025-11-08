@@ -164,8 +164,8 @@ horus sim 2d --world_image my_map.png --resolution 0.05 --threshold 128
 **Black = Obstacle, White = Free space**
 
 ```
-Pixel value < threshold → Obstacle
-Pixel value ≥ threshold → Free space
+Pixel value < threshold  Obstacle
+Pixel value ≥ threshold  Free space
 ```
 
 You can create maps using:
@@ -182,11 +182,11 @@ You can create maps using:
 
 ```
         +Y (up)
-         ↑
+         
          |
--X ←-----+----→ +X (right)
+-X -----+---- +X (right)
          |
-         ↓
+         
         -Y (down)
 ```
 

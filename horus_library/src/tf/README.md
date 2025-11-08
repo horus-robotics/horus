@@ -34,26 +34,26 @@ Without TF, you cannot:
 Robot with camera mounted on top:
 
     world_frame
-        ↓
+        
     map_frame
-        ↓
+        
     odom_frame
-        ↓
+        
     base_link (robot center)
-        ↓
+        
     camera_frame (0.5m forward, 0.2m up)
 ```
 
 **Questions TF Answers:**
-- "Where is the camera relative to the robot base?" → `Transform from base_link to camera_frame`
-- "Is detected object reachable?" → `Transform point from camera_frame to base_link, check distance`
-- "Where is the robot in the world?" → `Transform chain from world_frame to base_link`
+- "Where is the camera relative to the robot base?"  `Transform from base_link to camera_frame`
+- "Is detected object reachable?"  `Transform point from camera_frame to base_link, check distance`
+- "Where is the robot in the world?"  `Transform chain from world_frame to base_link`
 
 ---
 
 ## Current Status
 
-### ✅ Completed
+###  Completed
 - [x] Technical blueprint and specification
 - [x] API design (Rust, Python, C++)
 - [x] Architecture decisions
@@ -61,7 +61,7 @@ Robot with camera mounted on top:
 ### 🚧 In Progress
 - [ ] Implementation (not started)
 
-### 📋 Roadmap
+###  Roadmap
 
 **Phase 1 (Week 1-2):** Core Rust implementation
 - Transform math (quaternions, composition, inverse)

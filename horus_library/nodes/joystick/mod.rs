@@ -6,7 +6,7 @@ type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo, NodeInfoExt};
 
 #[cfg(feature = "gilrs")]
-use gilrs::{Gilrs, Event, EventType, Button, Axis};
+use gilrs::{Axis, Button, Event, EventType, Gilrs};
 
 #[cfg(not(feature = "gilrs"))]
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -34,9 +34,10 @@ impl JoystickInputNode {
         #[cfg(feature = "gilrs")]
         {
             let gilrs = Gilrs::new().map_err(|e| {
-                horus_core::error::HorusError::InitializationFailed(
-                    format!("Failed to initialize gilrs: {}", e)
-                )
+                horus_core::error::HorusError::InitializationFailed(format!(
+                    "Failed to initialize gilrs: {}",
+                    e
+                ))
             })?;
 
             Ok(Self {
@@ -64,7 +65,10 @@ impl Node for JoystickInputNode {
         #[cfg(feature = "gilrs")]
         {
             let connected = self.gilrs.gamepads().count();
-            ctx.log_info(&format!("Joystick input node initialized - {} gamepad(s) connected", connected));
+            ctx.log_info(&format!(
+                "Joystick input node initialized - {} gamepad(s) connected",
+                connected
+            ));
         }
 
         #[cfg(not(feature = "gilrs"))]
@@ -95,18 +99,17 @@ impl Node for JoystickInputNode {
                         );
 
                         self.publisher.send(joystick_input, ctx.as_deref_mut()).ok();
-                        ctx.log_debug(&format!("Button pressed: {} (gamepad {})", button_name, gamepad_id));
+                        ctx.log_debug(&format!(
+                            "Button pressed: {} (gamepad {})",
+                            button_name, gamepad_id
+                        ));
                     }
                     EventType::ButtonReleased(button, _) => {
                         let button_name = format!("{:?}", button);
                         let button_id = button_to_id(button);
 
-                        let joystick_input = JoystickInput::new_button(
-                            gamepad_id,
-                            button_id,
-                            button_name,
-                            false,
-                        );
+                        let joystick_input =
+                            JoystickInput::new_button(gamepad_id, button_id, button_name, false);
 
                         self.publisher.send(joystick_input, ctx.as_deref_mut()).ok();
                     }
@@ -114,18 +117,17 @@ impl Node for JoystickInputNode {
                         let axis_name = format!("{:?}", axis);
                         let axis_id = axis_to_id(axis);
 
-                        let joystick_input = JoystickInput::new_axis(
-                            gamepad_id,
-                            axis_id,
-                            axis_name.clone(),
-                            value,
-                        );
+                        let joystick_input =
+                            JoystickInput::new_axis(gamepad_id, axis_id, axis_name.clone(), value);
 
                         self.publisher.send(joystick_input, ctx.as_deref_mut()).ok();
 
                         // Only log significant axis movements to avoid spam
                         if value.abs() > 0.5 {
-                            ctx.log_debug(&format!("Axis {}: {:.2} (gamepad {})", axis_name, value, gamepad_id));
+                            ctx.log_debug(&format!(
+                                "Axis {}: {:.2} (gamepad {})",
+                                axis_name, value, gamepad_id
+                            ));
                         }
                     }
                     EventType::Connected => {
@@ -148,12 +150,8 @@ impl Node for JoystickInputNode {
                 .as_millis() as u64;
 
             if current_time - self.last_input_time > 3000 {
-                let joystick_input = JoystickInput::new_button(
-                    1,
-                    0,
-                    "ButtonA (placeholder)".to_string(),
-                    true,
-                );
+                let joystick_input =
+                    JoystickInput::new_button(1, 0, "ButtonA (placeholder)".to_string(), true);
                 self.publisher.send(joystick_input, ctx.as_deref_mut()).ok();
                 ctx.log_debug("Published placeholder joystick input");
                 self.last_input_time = current_time;

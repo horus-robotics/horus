@@ -393,12 +393,12 @@ impl Scheduler {
                     // Check all watchdogs
                     let expired_watchdogs = monitor.check_watchdogs();
                     if !expired_watchdogs.is_empty() {
-                        eprintln!("⚠️ Watchdog expired for nodes: {:?}", expired_watchdogs);
+                        eprintln!(" Watchdog expired for nodes: {:?}", expired_watchdogs);
                     }
 
                     // Check if emergency stop was triggered
                     if monitor.is_emergency_stop() {
-                        eprintln!("🚨 Emergency stop activated - shutting down scheduler");
+                        eprintln!(" Emergency stop activated - shutting down scheduler");
                         break;
                     }
                 }
@@ -770,7 +770,7 @@ impl Scheduler {
                     if let Some(ref monitor) = self.safety_monitor {
                         if let Err(violation) = monitor.check_wcet(node_name, tick_duration) {
                             eprintln!(
-                                "⚠️ WCET violation in {}: {:?} > {:?}",
+                                " WCET violation in {}: {:?} > {:?}",
                                 violation.node_name, violation.actual, violation.budget
                             );
                         }
@@ -785,7 +785,7 @@ impl Scheduler {
                         if let Some(ref monitor) = self.safety_monitor {
                             monitor.record_deadline_miss(node_name);
                             eprintln!(
-                                "⚠️ Deadline miss in {}: {:?} > {:?}",
+                                " Deadline miss in {}: {:?} > {:?}",
                                 node_name, elapsed, deadline
                             );
                         }
@@ -976,7 +976,7 @@ impl Scheduler {
             if let Some(ref monitor) = self.safety_monitor {
                 if let Err(violation) = monitor.check_wcet(node_name, tick_duration) {
                     eprintln!(
-                        "⚠️ WCET violation in {}: {:?} > {:?}",
+                        " WCET violation in {}: {:?} > {:?}",
                         violation.node_name, violation.actual, violation.budget
                     );
                 }
@@ -990,7 +990,7 @@ impl Scheduler {
                 if let Some(ref monitor) = self.safety_monitor {
                     monitor.record_deadline_miss(node_name);
                     eprintln!(
-                        "⚠️ Deadline miss in {}: {:?} > {:?}",
+                        " Deadline miss in {}: {:?} > {:?}",
                         node_name,
                         elapsed,
                         deadline.unwrap()

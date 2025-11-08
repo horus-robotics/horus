@@ -134,7 +134,7 @@ struct RegisteredNode {
 
 **Implications for your nodes:**
 ```rust
-// ✓ Works perfectly - 10 Hz sensor
+//  Works perfectly - 10 Hz sensor
 // Executes once every 6 ticks (~100ms)
 impl Node for SlowSensor {
     fn tick(&mut self, ctx) {
@@ -142,7 +142,7 @@ impl Node for SlowSensor {
     }
 }
 
-// ✓ Works well - 60 Hz control loop
+//  Works well - 60 Hz control loop
 // Executes every tick (~16ms)
 impl Node for Controller {
     fn tick(&mut self, ctx) {
@@ -150,7 +150,7 @@ impl Node for Controller {
     }
 }
 
-// ⚠️ Cannot achieve - 100 Hz+ control
+//  Cannot achieve - 100 Hz+ control
 // Scheduler limited to 60 Hz maximum
 impl Node for HighFrequencyController {
     fn tick(&mut self, ctx) {
@@ -252,29 +252,7 @@ scheduler.add(Box::new(data_logger), 4, Some(true));
 
 ### Initialization Phase
 
-When you call `run()`, the scheduler first initializes all nodes:
-
-```rust
-pub fn run(&mut self) -> Result<()> {
-    // Initialize all nodes
-    for registered in self.nodes.iter_mut() {
-        registered.context.state = NodeState::Initializing;
-
-        match registered.node.init(&mut registered.context) {
-            Ok(()) => {
-                registered.context.state = NodeState::Running;
-            }
-            Err(e) => {
-                eprintln!("Node {} failed to initialize: {}",
-                          registered.context.name, e);
-                registered.context.state = NodeState::Error;
-            }
-        }
-    }
-
-    // Continue to main loop...
-}
-```
+When you call `run()`, the scheduler first initializes all nodes by calling their `init()` method in sequence.
 
 **Initialization Order**: All nodes initialize before the main loop starts
 
@@ -284,73 +262,25 @@ pub fn run(&mut self) -> Result<()> {
 
 ### Main Execution Loop
 
-The main loop runs at a target FPS (default 60):
+The main loop runs continuously at ~60 FPS (default):
 
-```rust
-while self.is_running() {
-    // Sort by priority each tick
-    self.nodes.sort_by_key(|r| r.priority);
-
-    for registered in self.nodes.iter_mut() {
-        if registered.context.state != NodeState::Running {
-            continue;  // Skip non-running nodes
-        }
-
-        let context = &mut registered.context;
-        context.start_tick();  // Start timing
-
-        registered.node.tick(Some(context));
-
-        context.record_tick();  // Record metrics
-    }
-
-    // Maintain target FPS
-    std::thread::sleep(Duration::from_millis(16));  // ~60 FPS
-}
-```
-
-**Sorting**: Nodes are sorted by priority every tick
-
-**State Check**: Only nodes in Running state execute
-
-**Timing**: Each tick is timed and recorded in metrics
-
-**FPS Control**: Sleep maintains target execution rate
+**How it works**:
+- Sorts nodes by priority at the start of each tick
+- Executes each node's `tick()` method in priority order
+- Only runs nodes in Running state (skips errored nodes)
+- Records timing metrics for each node automatically
+- Sleeps to maintain 60 FPS target (~16ms per cycle)
 
 ### Shutdown Phase
 
 Graceful shutdown on Ctrl+C:
 
-```rust
-// Signal handler (set up in tick_all)
-ctrlc::set_handler(move || {
-    eprintln!("\nCtrl+C received! Shutting down HORUS scheduler...");
-    if let Ok(mut r) = running.lock() {
-        *r = false;  // Stop the main loop
-    }
-}).expect("Error setting HORUS signal handler");
-
-// After main loop exits
-for registered in self.nodes.iter_mut() {
-    registered.context.state = NodeState::Stopping;
-
-    match registered.node.shutdown(&mut registered.context) {
-        Ok(()) => {
-            registered.context.state = NodeState::Stopped;
-        }
-        Err(e) => {
-            eprintln!("Node {} shutdown error: {}",
-                      registered.context.name, e);
-        }
-    }
-}
-```
-
-**Signal Handling**: Ctrl+C triggers graceful shutdown
-
-**State Transition**: Running  Stopping  Stopped
-
-**Error Tolerance**: Shutdown continues even if individual nodes fail
+**How it works**:
+- Ctrl+C signal is automatically caught
+- Main loop stops accepting new ticks
+- Each node's `shutdown()` method is called in sequence
+- Node state transitions: Running  Stopping  Stopped
+- Errors during shutdown are logged but don't prevent other nodes from cleaning up
 
 ## Tick Rate Control
 

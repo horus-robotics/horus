@@ -90,7 +90,7 @@ HORUS uses the **industry-standard ping-pong pattern** for IPC latency measureme
 5. Repeat for 10,000 iterations
 
 **Why Ping-Pong?**
-- Industry standard (ROS2, iceoryx2, ZeroMQ all use this)
+- Industry standard (ROS2, ZeroMQ use this pattern)
 - Prevents queue buildup (realistic backpressure)
 - Measures true round-trip latency
 - Comparable across frameworks

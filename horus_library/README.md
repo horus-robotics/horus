@@ -234,7 +234,7 @@ Registered node 'JoystickInputNode' with priority 1 (logging: true)
 Registered node 'SnakeControlNode' with priority 2 (logging: true)
 
 [2025-08-10 11:30:00.123] [0ms] 📤 KeyboardInputNode  'keyboard_input' = ArrowUp
-[2025-08-10 11:30:00.124] [1ms] 📥 SnakeControlNode ← 'keyboard_input' = ArrowUp
+[2025-08-10 11:30:00.124] [1ms] 📥 SnakeControlNode  'keyboard_input' = ArrowUp
 [2025-08-10 11:30:00.125] [2ms] 📤 SnakeControlNode  'direction_command' = 1
 ```
 

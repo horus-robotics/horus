@@ -32,7 +32,7 @@ fn main() {
     };
 
     if result {
-        println!("✓ Test passed: {}", test_name);
+        println!(" Test passed: {}", test_name);
         process::exit(0);
     } else {
         eprintln!("✗ Test failed: {}", test_name);
@@ -49,7 +49,7 @@ fn test_log_levels() -> bool {
 
     let publisher = match Hub::<CmdVel>::new(&topic) {
         Ok(p) => {
-            println!("  ✓ Created publisher (logging enabled)");
+            println!("   Created publisher (logging enabled)");
             p
         }
         Err(e) => {
@@ -60,7 +60,7 @@ fn test_log_levels() -> bool {
 
     let subscriber = match Hub::<CmdVel>::new(&topic) {
         Ok(s) => {
-            println!("  ✓ Created subscriber (logging enabled)");
+            println!("   Created subscriber (logging enabled)");
             s
         }
         Err(e) => {
@@ -98,8 +98,8 @@ fn test_log_levels() -> bool {
     }
 
     if received == 10 {
-        println!("  ✓ All messages sent/received with logging active");
-        println!("  ✓ Log level filtering working correctly");
+        println!("   All messages sent/received with logging active");
+        println!("   Log level filtering working correctly");
         true
     } else {
         eprintln!("Only received {} out of 10 messages", received);
@@ -129,7 +129,7 @@ fn test_message_tracing() -> bool {
         }
     };
 
-    println!("  ✓ Created Hub for message tracing");
+    println!("   Created Hub for message tracing");
 
     thread::sleep(Duration::from_millis(100));
 
@@ -150,7 +150,7 @@ fn test_message_tracing() -> bool {
         })
         .collect();
 
-    println!("  ✓ Published 100 messages with timing traces");
+    println!("   Published 100 messages with timing traces");
 
     thread::sleep(Duration::from_millis(50));
 
@@ -179,9 +179,9 @@ fn test_message_tracing() -> bool {
         let median = latencies[50];
         let p99 = latencies[99];
 
-        println!("  ✓ Traced all 100 messages");
-        println!("  ✓ Median latency: {}µs", median);
-        println!("  ✓ P99 latency: {}µs", p99);
+        println!("   Traced all 100 messages");
+        println!("   Median latency: {}µs", median);
+        println!("   P99 latency: {}µs", p99);
         true
     } else {
         eprintln!(
@@ -216,7 +216,7 @@ fn test_performance() -> bool {
         }
     };
 
-    println!("  ✓ Created Link for performance test");
+    println!("   Created Link for performance test");
 
     // Spawn receiver thread
     let recv_handle = thread::spawn(move || {
@@ -251,15 +251,15 @@ fn test_performance() -> bool {
     let send_rate = 10000.0 / send_duration.as_secs_f64();
     let recv_rate = received as f64 / recv_duration.as_secs_f64();
 
-    println!("  ✓ Sent 10,000 messages at {:.0} msg/s", send_rate);
+    println!("   Sent 10,000 messages at {:.0} msg/s", send_rate);
     println!(
-        "  ✓ Received {} messages at {:.0} msg/s",
+        "   Received {} messages at {:.0} msg/s",
         received, recv_rate
     );
 
     // Performance should be reasonable (>10k msg/s)
     if send_rate >= 10000.0 && recv_rate >= 10000.0 {
-        println!("  ✓ Performance acceptable with logging enabled");
+        println!("   Performance acceptable with logging enabled");
         true
     } else {
         eprintln!(
@@ -278,7 +278,7 @@ fn test_context() -> bool {
     let topic1 = format!("test_context_1_{}", process::id());
     let topic2 = format!("test_context_2_{}", process::id());
 
-    // Create communication chain: topic1 → processor → topic2
+    // Create communication chain: topic1  processor  topic2
     let pub1 = match Hub::<CmdVel>::new(&topic1) {
         Ok(p) => p,
         Err(e) => {
@@ -311,7 +311,7 @@ fn test_context() -> bool {
         }
     };
 
-    println!("  ✓ Created communication chain");
+    println!("   Created communication chain");
 
     thread::sleep(Duration::from_millis(100));
 
@@ -361,8 +361,8 @@ fn test_context() -> bool {
 
     if forward_result && received >= 45 {
         // Allow some message loss
-        println!("  ✓ Forwarded {} messages through chain", received);
-        println!("  ✓ Context propagation working correctly");
+        println!("   Forwarded {} messages through chain", received);
+        println!("   Context propagation working correctly");
         true
     } else {
         eprintln!(

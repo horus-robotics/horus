@@ -140,7 +140,7 @@ All rates coordinated successfully
 
 **Validates:**
 - Multi-sensor fusion works correctly
-- Sensor → Controller → Actuator pipeline is operational
+- Sensor  Controller  Actuator pipeline is operational
 - Controller can handle multiple input streams
 - Commands reach actuators reliably
 - End-to-end data flow is correct

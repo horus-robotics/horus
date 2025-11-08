@@ -332,9 +332,9 @@ node! {
 // ============================================================================
 
 fn main() -> HorusResult<()> {
-    println!("🤖 Starting Robot Fleet Management System (Rust)");
-    println!("📊 Dashboard available at: http://localhost:8080");
-    println!("🔧 Run 'horus dashboard' in another terminal to monitor\n");
+    println!(" Starting Robot Fleet Management System (Rust)");
+    println!(" Dashboard available at: http://localhost:8080");
+    println!(" Run 'horus dashboard' in another terminal to monitor\n");
 
     let mut scheduler = Scheduler::new();
 
@@ -355,8 +355,8 @@ fn main() -> HorusResult<()> {
     scheduler.add(Box::new(BatteryMonitorNode::new()), 30, Some(true));
     scheduler.add(Box::new(SystemHealthNode::new()), 31, Some(true));
 
-    println!("✅ All nodes registered");
-    println!("🚀 Starting scheduler...\n");
+    println!(" All nodes registered");
+    println!(" Starting scheduler...\n");
 
     scheduler.run()
 }

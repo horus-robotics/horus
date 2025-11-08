@@ -30,13 +30,13 @@ horus.run()         # Quick run helper
 
 | Feature | Rust | Python | Status |
 |---------|------|--------|--------|
-| Node trait/class | ✅ | ✅ | Full |
-| Type hints | ✅ | ✅ | Full |
-| State management | ✅ | ✅ | Full |
-| Error handling | ✅ | ✅ | Full |
-| Performance metrics | ✅ | ✅ | Full |
-| Topic introspection | ✅ | ✅ | Full |
-| Multi-process | ✅ | ✅ | Full |
+| Node trait/class |  |  | Full |
+| Type hints |  |  | Full |
+| State management |  |  | Full |
+| Error handling |  |  | Full |
+| Performance metrics |  |  | Full |
+| Topic introspection |  |  | Full |
+| Multi-process |  |  | Full |
 
 **Coverage: ~75% of Rust API** (missing: resource monitoring, advanced heartbeats)
 
@@ -156,10 +156,10 @@ node = horus.Node(
 
 | Scenario | on_error provided | Behavior |
 |----------|-------------------|----------|
-| Exception in tick() | ❌ | Exception propagates, node crashes |
-| Exception in tick() | ✅ | on_error() called, execution continues |
-| Exception > 10 times | ✅ | Auto-transition to ERROR state |
-| Exception in on_error() | ✅ | Logged, original exception suppressed |
+| Exception in tick() |  | Exception propagates, node crashes |
+| Exception in tick() |  | on_error() called, execution continues |
+| Exception > 10 times |  | Auto-transition to ERROR state |
+| Exception in on_error() |  | Logged, original exception suppressed |
 
 ---
 
@@ -349,7 +349,7 @@ horus run "nodes/*.py"
 Output:
 ```
  Executing 3 files concurrently:
-  🔒 Session: abc-123-def
+   Session: abc-123-def
   1. controller_node.py (python)
   2. motor_node.py (python)
   3. sensor_node.py (python)
@@ -630,12 +630,12 @@ Common issues:
 
 The HORUS Python API now provides **~75% coverage of Rust features** for production use:
 
-✅ Type hints and IDE support
-✅ State management (NodeState enum)
-✅ Error handling (on_error callback)
-✅ Performance monitoring (metrics, uptime)
-✅ Topic introspection (get_publishers/subscribers)
-✅ Multi-process support (GIL bypass)
+ Type hints and IDE support
+ State management (NodeState enum)
+ Error handling (on_error callback)
+ Performance monitoring (metrics, uptime)
+ Topic introspection (get_publishers/subscribers)
+ Multi-process support (GIL bypass)
 
 **Production-ready for:**
 - Mobile robots

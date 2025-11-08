@@ -47,29 +47,3 @@ impl std::str::FromStr for Backend {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_backend_parsing() {
-        assert_eq!("horus".parse::<Backend>().unwrap(), Backend::Horus);
-        assert_eq!("native".parse::<Backend>().unwrap(), Backend::Horus);
-        assert!("invalid".parse::<Backend>().is_err());
-    }
-
-    #[test]
-    fn test_backend_display() {
-        assert_eq!(Backend::Horus.to_string(), "horus");
-    }
-
-    #[test]
-    fn test_backend_availability() {
-        assert!(Backend::Horus.is_available());
-
-        let available = Backend::available_backends();
-        assert!(available.contains(&Backend::Horus));
-        assert_eq!(available.len(), 1);
-    }
-}

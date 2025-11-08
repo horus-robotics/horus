@@ -844,7 +844,7 @@ impl eframe::App for GraphVisualization {
                                         ui.label("Subscribes from:");
                                         has_subscribes = true;
                                     }
-                                    ui.label(format!("  ← {}", source.label));
+                                    ui.label(format!("   {}", source.label));
                                 }
                             }
                         }
@@ -871,7 +871,7 @@ impl eframe::App for GraphVisualization {
                             if !publishers.is_empty() {
                                 ui.label("Publishers:");
                                 for pub_name in publishers {
-                                    ui.label(format!("  ← {}", pub_name));
+                                    ui.label(format!("   {}", pub_name));
                                 }
                             }
 

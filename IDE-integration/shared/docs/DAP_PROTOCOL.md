@@ -613,9 +613,9 @@ Custom HORUS debug adapter error codes:
 Each HORUS node is mapped to a DAP thread:
 
 ```
-Node "robot_controller" → Thread ID 1
-Node "sensor_driver"    → Thread ID 2
-Node "logger"           → Thread ID 3
+Node "robot_controller"  Thread ID 1
+Node "sensor_driver"     Thread ID 2
+Node "logger"            Thread ID 3
 ```
 
 This allows standard DAP "pause thread" / "continue thread" to work on individual nodes.
@@ -625,15 +625,15 @@ This allows standard DAP "pause thread" / "continue thread" to work on individua
 Topic values and node state are assigned variable references for hierarchical inspection:
 
 ```
-topic("cmd_vel") → variablesReference: 1000
-  ├─ linear → variablesReference: 1001
-  │   ├─ x → 0.5
-  │   ├─ y → 0.0
-  │   └─ z → 0.0
-  └─ angular → variablesReference: 1002
-      ├─ x → 0.0
-      ├─ y → 0.0
-      └─ z → 0.2
+topic("cmd_vel")  variablesReference: 1000
+  ├─ linear  variablesReference: 1001
+  │   ├─ x  0.5
+  │   ├─ y  0.0
+  │   └─ z  0.0
+  └─ angular  variablesReference: 1002
+      ├─ x  0.0
+      ├─ y  0.0
+      └─ z  0.2
 ```
 
 ### Performance

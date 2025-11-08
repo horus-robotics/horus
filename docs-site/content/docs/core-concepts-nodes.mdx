@@ -228,23 +228,25 @@ ctx.log_error("Sensor disconnected");
 ctx.log_debug(&format!("Position: ({}, {})", x, y));
 ```
 
-### Pub/Sub Logging
+### Pub/Sub Logging (Automatic)
 
-**log_pub()**: Automatically called when publishing (includes IPC timing)
-
-```rust
-// Called internally by Hub::send()
-ctx.log_pub("cmd_vel", &velocity, ipc_ns);
-// Output: [12:34:56.789] [IPC: 437ns | Tick: 12μs] MyNode --PUB--> 'cmd_vel' = 1.5
-```
-
-**log_sub()**: Automatically called when receiving (includes IPC timing)
+When you pass `ctx` to `Hub::send()` or `Hub::recv()`, HORUS automatically logs IPC operations:
 
 ```rust
-// Called internally by Hub::recv()
-ctx.log_sub("laser_scan", &scan, ipc_ns);
-// Output: [12:34:56.789] [IPC: 142ns | Tick: 8μs] MyNode --SUB--> 'laser_scan' = LaserScan { ... }
+fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    // Automatic pub logging - just pass ctx to send()
+    self.velocity_pub.send(1.5, ctx).ok();
+    // Output: [12:34:56.789] [IPC: 437ns | Tick: 12μs] MyNode --PUB--> 'cmd_vel' = 1.5
+
+    // Automatic sub logging - just pass ctx to recv()
+    if let Some(scan) = self.lidar_sub.recv(ctx) {
+        // Output: [12:34:56.789] [IPC: 142ns | Tick: 8μs] MyNode <--SUB-- 'laser_scan' = LaserScan { ... }
+        self.process(scan);
+    }
+}
 ```
+
+**You don't need to call any logging methods manually** - Hub handles it automatically when you pass `ctx`.
 
 ### Performance Metrics
 

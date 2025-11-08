@@ -32,15 +32,15 @@ try {
   sizes.forEach(({ size, name }) => {
     execSync(`convert horus_logo.png -resize ${size}x${size} ${name}`);
     const stats = fs.statSync(path.join(publicDir, name));
-    console.log(`✓ Generated ${name} (${Math.round(stats.size / 1024)}KB)`);
+    console.log(` Generated ${name} (${Math.round(stats.size / 1024)}KB)`);
   });
 
   // Generate .ico file
   execSync(`convert horus_logo.png -resize 32x32 favicon.ico`);
   const icoStats = fs.statSync(path.join(publicDir, 'favicon.ico'));
-  console.log(`✓ Generated favicon.ico (${Math.round(icoStats.size / 1024)}KB)`);
+  console.log(` Generated favicon.ico (${Math.round(icoStats.size / 1024)}KB)`);
 
-  console.log('\n✓ All favicons generated successfully!');
+  console.log('\n All favicons generated successfully!');
 } catch (error) {
   console.error('Failed to generate favicons:', error.message);
   process.exit(1);

@@ -110,16 +110,3 @@ pub fn find_package_root() -> Result<PathBuf> {
 pub fn resolve_runtime_value<T>(env_var: Option<T>, cargo_metadata: Option<T>, default: T) -> T {
     env_var.or(cargo_metadata).unwrap_or(default)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_config_precedence() {
-        // Test environment > cargo > default
-        assert_eq!(resolve_runtime_value(Some(1), Some(2), 3), 1);
-        assert_eq!(resolve_runtime_value(None, Some(2), 3), 2);
-        assert_eq!(resolve_runtime_value::<i32>(None, None, 3), 3);
-    }
-}

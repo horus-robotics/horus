@@ -4,13 +4,13 @@
 
 ## What's New in v0.4.0
 
-✅ **Single Node pattern** - no more Simple vs Complex confusion
-✅ **Matches Rust API** - same scheduler, priorities, context
-✅ **Matches Python API** - similar structure and simplicity
-✅ **No std::optional bloat** - clean, direct construction
-✅ **Unified logging** - works with dashboard like Rust/Python
-✅ **Full lifecycle** - init/tick/shutdown with context
-✅ **44% less boilerplate** - from 34 to 19 lines for simple drivers
+ **Single Node pattern** - no more Simple vs Complex confusion
+ **Matches Rust API** - same scheduler, priorities, context
+ **Matches Python API** - similar structure and simplicity
+ **No std::optional bloat** - clean, direct construction
+ **Unified logging** - works with dashboard like Rust/Python
+ **Full lifecycle** - init/tick/shutdown with context
+ **44% less boilerplate** - from 34 to 19 lines for simple drivers
 
 ---
 
@@ -74,7 +74,7 @@ struct MyNode : horus::Node {
 };
 ```
 
-**Lifecycle:** `init()` → `tick()` loop @ 60 FPS → `shutdown()`
+**Lifecycle:** `init()`  `tick()` loop @ 60 FPS  `shutdown()`
 
 ---
 
@@ -339,13 +339,13 @@ int main() {
 ```
 
 **Improvements:**
-- ❌ No `std::optional` wrapper
-- ❌ No `emplace()` calls
-- ❌ No stream operators (`<<`)
-- ❌ No try-catch boilerplate
-- ✅ Direct member initialization
-- ✅ Clean method calls
-- ✅ Matches Rust/Python patterns
+-  No `std::optional` wrapper
+-  No `emplace()` calls
+-  No stream operators (`<<`)
+-  No try-catch boilerplate
+-  Direct member initialization
+-  Clean method calls
+-  Matches Rust/Python patterns
 
 ---
 
@@ -362,11 +362,11 @@ horus dashboard
 ```
 
 **Dashboard shows:**
-- ✅ All nodes (C++, Rust, Python)
-- ✅ All topics and connections
-- ✅ Real-time logs with IPC timing
-- ✅ Performance metrics (CPU, tick rate)
-- ✅ Error counts
+-  All nodes (C++, Rust, Python)
+-  All topics and connections
+-  Real-time logs with IPC timing
+-  Performance metrics (CPU, tick rate)
+-  Error counts
 
 **Example dashboard logs:**
 ```

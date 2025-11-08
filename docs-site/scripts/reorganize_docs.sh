@@ -25,7 +25,7 @@ update_order() {
     if [ -f "$file" ]; then
         # Use sed to replace the order field
         sed -i "s/^order: .*/order: $new_order/" "$file"
-        echo -e "${GREEN}✓${NC} Updated $file → order: $new_order"
+        echo -e "${GREEN}${NC} Updated $file  order: $new_order"
     else
         echo -e "${YELLOW}⚠${NC} File not found: $file"
     fi
@@ -125,8 +125,8 @@ echo ""
 echo "2. Add 'Key Takeaways' sections to core-concepts-*.mdx"
 echo ""
 echo "3. Split existing files:"
-echo "   - examples.mdx → basic + advanced"
-echo "   - package-management.mdx → using + publishing"
+echo "   - examples.mdx  basic + advanced"
+echo "   - package-management.mdx  using + publishing"
 echo ""
 echo "4. Consolidate API docs into single api-reference.mdx"
 echo ""

@@ -408,11 +408,11 @@ fn spawn_robot_visual_components(
     config: &RobotConfig,
     scale: f32,
 ) {
-    info!("🎨 Spawning visual components for robot");
+    info!(" Spawning visual components for robot");
 
     // Spawn treads if configured
     if let Some(ref tread_config) = config.visual.treads {
-        info!("  ✓ Spawning treads");
+        info!("   Spawning treads");
 
         let tread_color = Color::srgb(
             tread_config.color[0],
@@ -451,7 +451,7 @@ fn spawn_robot_visual_components(
 
     // Spawn turret if configured
     if let Some(ref turret_config) = config.visual.turret {
-        info!("  ✓ Spawning turret");
+        info!("   Spawning turret");
         let turret_color = Color::srgb(
             turret_config.color[0],
             turret_config.color[1],
@@ -476,7 +476,7 @@ fn spawn_robot_visual_components(
 
     // Spawn cannon if configured
     if let Some(ref cannon_config) = config.visual.cannon {
-        info!("  ✓ Spawning cannon");
+        info!("   Spawning cannon");
         let cannon_color = Color::srgb(
             cannon_config.color[0],
             cannon_config.color[1],
@@ -1147,7 +1147,7 @@ fn world_reload_system(
     }
 
     info!(
-        "✓ World reloaded: {}x{}m with {} obstacles",
+        " World reloaded: {}x{}m with {} obstacles",
         app_config.world_config.width,
         app_config.world_config.height,
         app_config.world_config.obstacles.len()

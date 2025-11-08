@@ -388,7 +388,7 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 }
 ```
 
-### ❌ DON'T: Unwrap recv()
+###  DON'T: Unwrap recv()
 
 ```rust
 fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
@@ -409,7 +409,7 @@ impl Node for MyNode {
 }
 ```
 
-### ❌ DON'T: panic!() in nodes
+###  DON'T: panic!() in nodes
 
 ```rust
 fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
@@ -430,7 +430,7 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 }
 ```
 
-### ❌ DON'T: Block in tick()
+###  DON'T: Block in tick()
 
 ```rust
 fn tick(&mut self, ctx: Option<&mut NodeInfo>) {

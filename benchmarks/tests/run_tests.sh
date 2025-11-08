@@ -32,7 +32,7 @@ run_test() {
     echo -e "${YELLOW}Running: $test_name${NC}"
 
     if timeout $timeout bash -c "$test_cmd" 2>&1; then
-        echo -e "${GREEN}✓ PASSED${NC}: $test_name\n"
+        echo -e "${GREEN} PASSED${NC}: $test_name\n"
         ((PASSED++))
         return 0
     else
@@ -58,7 +58,7 @@ print_summary() {
     echo -e "${BLUE}Total: $((PASSED + FAILED + SKIPPED))${NC}\n"
 
     if [ $FAILED -eq 0 ]; then
-        echo -e "${GREEN}All tests passed! ✓${NC}"
+        echo -e "${GREEN}All tests passed! ${NC}"
         echo -e "${GREEN}Changes are qualified for production.${NC}\n"
         return 0
     else

@@ -35,7 +35,7 @@ fn main() {
     };
 
     if result {
-        println!("✓ Test passed: {}", test_name);
+        println!(" Test passed: {}", test_name);
         process::exit(0);
     } else {
         eprintln!("✗ Test failed: {}", test_name);
@@ -102,7 +102,7 @@ fn test_hub_multiprocess() -> bool {
         let _ = child.wait();
 
         if received == 100 {
-            println!("  ✓ Received all 100 messages from child process");
+            println!("   Received all 100 messages from child process");
             true
         } else {
             eprintln!("Only received {} out of 100 messages", received);
@@ -163,7 +163,7 @@ fn test_link_singleprocess() -> bool {
         }
     };
 
-    println!("  ✓ Created sender and receiver");
+    println!("   Created sender and receiver");
 
     // Spawn sender thread
     let sender_handle = thread::spawn(move || {
@@ -200,7 +200,7 @@ fn test_link_singleprocess() -> bool {
     let sender_result = sender_handle.join().unwrap();
 
     if received == 1000 && sender_result {
-        println!("  ✓ Sent and received 1000 messages in correct order");
+        println!("   Sent and received 1000 messages in correct order");
         true
     } else {
         eprintln!("Only received {} out of 1000 messages", received);
@@ -262,7 +262,7 @@ fn test_cross_process() -> bool {
         let _ = child.wait();
 
         if received == 500 {
-            println!("  ✓ Received all 500 messages from child process via Link");
+            println!("   Received all 500 messages from child process via Link");
             true
         } else {
             eprintln!("Only received {} out of 500 messages", received);
@@ -333,7 +333,7 @@ fn test_large_messages() -> bool {
 
     thread::sleep(Duration::from_millis(100));
 
-    println!("  ✓ Created Hub for 1MB messages");
+    println!("   Created Hub for 1MB messages");
 
     // Publish high-frequency messages
     for i in 0..1000 {
@@ -349,7 +349,7 @@ fn test_large_messages() -> bool {
         }
     }
 
-    println!("  ✓ Published 1000 messages");
+    println!("   Published 1000 messages");
 
     thread::sleep(Duration::from_millis(100));
 
@@ -373,7 +373,7 @@ fn test_large_messages() -> bool {
     }
 
     if received >= 950 {
-        println!("  ✓ Received {} messages in correct order", received);
+        println!("   Received {} messages in correct order", received);
         true
     } else {
         eprintln!("Only received {} out of 1000 messages", received);
@@ -403,7 +403,7 @@ fn test_high_frequency() -> bool {
         }
     };
 
-    println!("  ✓ Created high-frequency Link");
+    println!("   Created high-frequency Link");
 
     let barrier = Arc::new(Barrier::new(2));
     let barrier_clone = Arc::clone(&barrier);
@@ -462,7 +462,7 @@ fn test_high_frequency() -> bool {
     println!("  Receive rate: {:.0} Hz", actual_rate);
 
     if received >= target_messages && sender_result && actual_rate >= 8000.0 {
-        println!("  ✓ Achieved >8kHz communication rate");
+        println!("   Achieved >8kHz communication rate");
         true
     } else {
         eprintln!(

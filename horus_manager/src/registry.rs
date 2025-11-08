@@ -219,11 +219,11 @@ impl RegistryClient {
 
         match input.trim() {
             "1" => {
-                println!("  → Using PyPI (Python)");
+                println!("   Using PyPI (Python)");
                 Ok(PackageSource::PyPI)
             }
             "2" => {
-                println!("  → Using crates.io (Rust)");
+                println!("   Using crates.io (Rust)");
                 Ok(PackageSource::CratesIO)
             }
             "3" => {
@@ -2485,7 +2485,7 @@ impl RegistryClient {
 
         println!(
             "  {} Using system package at {}",
-            "✓".green(),
+            "".green(),
             package_path.display()
         );
         println!(
@@ -2556,7 +2556,7 @@ impl RegistryClient {
 
         println!(
             "  {} Using system binary at {}",
-            "✓".green(),
+            "".green(),
             cargo_bin.display()
         );
         println!(

@@ -272,15 +272,15 @@ int main() {
 
 | Feature | Rust | Python | C++ (Old) | C++ (New) |
 |---------|------|--------|-----------|-----------|
-| **Single Node pattern** | ✅ | ✅ | ❌ (2 APIs) | ✅ |
-| **Direct construction** | ✅ | ✅ | ❌ (std::optional) | ✅ |
-| **Method calls** | ✅ send() | ✅ send() | ⚠️ << operator | ✅ send() |
-| **Lifecycle** | ✅ init/tick/shutdown | ✅ init/tick/shutdown | ⚠️ Partial | ✅ Full |
-| **Context logging** | ✅ | ✅ | ⚠️ Basic | ✅ Full |
-| **Dashboard logs** | ✅ | ✅ | ❌ | ✅ |
-| **IPC timing** | ✅ | ✅ | ❌ | ✅ |
-| **Priority system** | ✅ 0-4 | ⚠️ Via rate | ✅ 0-4 | ✅ 0-4 |
-| **enable_logging** | ✅ Some(true) | ⚠️ N/A | ✅ | ✅ |
+| **Single Node pattern** |  |  |  (2 APIs) |  |
+| **Direct construction** |  |  |  (std::optional) |  |
+| **Method calls** |  send() |  send() |  << operator |  send() |
+| **Lifecycle** |  init/tick/shutdown |  init/tick/shutdown |  Partial |  Full |
+| **Context logging** |  |  |  Basic |  Full |
+| **Dashboard logs** |  |  |  |  |
+| **IPC timing** |  |  |  |  |
+| **Priority system** |  0-4 |  Via rate |  0-4 |  0-4 |
+| **enable_logging** |  Some(true) |  N/A |  |  |
 | **Boilerplate** | Moderate | Low | High | Low |
 
 ---
@@ -290,17 +290,17 @@ int main() {
 ### Before
 
 C++ nodes appeared in dashboard but:
-- ❌ No proper log context
-- ❌ No IPC timing metrics
-- ❌ Examples bypassed framework
+-  No proper log context
+-  No IPC timing metrics
+-  Examples bypassed framework
 
 ### After
 
 C++ nodes are **first-class citizens**:
-- ✅ Full logging with context
-- ✅ IPC timing in nanoseconds
-- ✅ All examples use framework
-- ✅ Identical dashboard view as Rust/Python
+-  Full logging with context
+-  IPC timing in nanoseconds
+-  All examples use framework
+-  Identical dashboard view as Rust/Python
 
 **Example dashboard logs:**
 ```
@@ -417,26 +417,26 @@ scheduler.add(MyNode(), 2, true);
 
 ### For Users
 
-✅ **44% less boilerplate** - 19 lines vs 34 lines
-✅ **Consistent with Rust/Python** - same patterns
-✅ **Clear API** - one way to do things
-✅ **Dashboard works perfectly** - full logging
-✅ **No namespace pollution** - `using namespace horus;`
+ **44% less boilerplate** - 19 lines vs 34 lines
+ **Consistent with Rust/Python** - same patterns
+ **Clear API** - one way to do things
+ **Dashboard works perfectly** - full logging
+ **No namespace pollution** - `using namespace horus;`
 
 ### For Framework
 
-✅ **Single code path** - no more Simple vs Framework
-✅ **Easier to document** - one API to explain
-✅ **Easier to maintain** - less code
-✅ **Language consistency** - C++ matches Rust
-✅ **Better testing** - examples use framework
+ **Single code path** - no more Simple vs Framework
+ **Easier to document** - one API to explain
+ **Easier to maintain** - less code
+ **Language consistency** - C++ matches Rust
+ **Better testing** - examples use framework
 
 ### For Ecosystem
 
-✅ **Lower learning curve** - Python → C++ is easier
-✅ **Better examples** - teach proper patterns
-✅ **Cross-language projects** - consistent structure
-✅ **Dashboard universality** - all languages equal
+ **Lower learning curve** - Python  C++ is easier
+ **Better examples** - teach proper patterns
+ **Cross-language projects** - consistent structure
+ **Dashboard universality** - all languages equal
 
 ---
 
@@ -459,12 +459,12 @@ scheduler.add(MyNode(), 2, true);
 ## Next Steps
 
 ### Immediate
-1. ✅ Review new API design
-2. ✅ Test examples compile and run
-3. ✅ Validate dashboard integration
+1.  Review new API design
+2.  Test examples compile and run
+3.  Validate dashboard integration
 
 ### Short Term
-1. Rename `horus_new.hpp` → `horus.hpp` (replace old)
+1. Rename `horus_new.hpp`  `horus.hpp` (replace old)
 2. Update all examples to new API
 3. Update documentation site
 4. Add C++ API tests to CI
@@ -481,10 +481,10 @@ scheduler.add(MyNode(), 2, true);
 
 The redesigned C++ API achieves:
 
-✅ **Parity with Rust** - Same structure, same scheduler, same logging
-✅ **Simplicity of Python** - Minimal boilerplate, clean syntax
-✅ **Modern C++17** - RAII, move semantics, templates
-✅ **Production ready** - Full lifecycle, dashboard integration, error handling
+ **Parity with Rust** - Same structure, same scheduler, same logging
+ **Simplicity of Python** - Minimal boilerplate, clean syntax
+ **Modern C++17** - RAII, move semantics, templates
+ **Production ready** - Full lifecycle, dashboard integration, error handling
 
 **Result:** C++ is now a **first-class language** in HORUS, not a second-class citizen!
 
@@ -495,4 +495,4 @@ The redesigned C++ API achieves:
 Questions or suggestions? Open a discussion:
 https://github.com/softmata/horus/discussions
 
-**Let's make HORUS C++ API the best it can be!** 🚀
+**Let's make HORUS C++ API the best it can be!** 

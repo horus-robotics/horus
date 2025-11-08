@@ -6,12 +6,12 @@ order: 52
 
 # HORUS C++ Bindings
 
-> **⚠️ Under Development**: C++ bindings are currently in alpha and under active development.
+> ** Under Development**: C++ bindings are currently in alpha and under active development.
 >
-> - ✓ Basic pub/sub operations work
-> - ✓ RAII-based memory management
-> - ⚠️ Limited to built-in message types only
-> - ⚠️ API may change before v1.0
+> -  Basic pub/sub operations work
+> -  RAII-based memory management
+> -  Limited to built-in message types only
+> -  API may change before v1.0
 >
 > **For production use, we recommend Rust or Python bindings.**
 >
@@ -310,7 +310,7 @@ All use the same shared memory - **zero serialization overhead!**
 Always use `horus::System` and `horus::Publisher` - they handle cleanup automatically.
 
 ```cpp
-✓ Good:
+ Good:
 horus::System system("node");
 horus::Publisher<Twist> pub("topic");
 // Automatic cleanup

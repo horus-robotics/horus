@@ -344,7 +344,11 @@ fn run_command(command: Commands) -> HorusResult<()> {
             match extension {
                 Some("rs") => {
                     // Check Rust file
-                    println!("{} Checking Rust file: {}\n", "".cyan(), horus_yaml_path.display());
+                    println!(
+                        "{} Checking Rust file: {}\n",
+                        "".cyan(),
+                        horus_yaml_path.display()
+                    );
 
                     print!("  {} Parsing Rust syntax... ", "".cyan());
                     let content = fs::read_to_string(&horus_yaml_path)?;
@@ -353,7 +357,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     match syn::parse_file(&content) {
                         Ok(_) => {
                             println!("{}", "".green());
-                            println!("\n{} Syntax check passed!", "✓".green().bold());
+                            println!("\n{} Syntax check passed!", "".green().bold());
                         }
                         Err(e) => {
                             println!("{}", "".red());
@@ -366,7 +370,11 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 }
                 Some("py") => {
                     // Check Python file
-                    println!("{} Checking Python file: {}\n", "".cyan(), horus_yaml_path.display());
+                    println!(
+                        "{} Checking Python file: {}\n",
+                        "".cyan(),
+                        horus_yaml_path.display()
+                    );
 
                     print!("  {} Parsing Python syntax... ", "".cyan());
 
@@ -380,29 +388,43 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     match output {
                         Ok(result) if result.status.success() => {
                             println!("{}", "".green());
-                            println!("\n{} Syntax check passed!", "✓".green().bold());
+                            println!("\n{} Syntax check passed!", "".green().bold());
                         }
                         Ok(result) => {
                             println!("{}", "".red());
                             let error = String::from_utf8_lossy(&result.stderr);
                             println!("\n{} Syntax error:", "✗".red().bold());
                             println!("  {}", error);
-                            return Err(HorusError::Config(format!("Python syntax error: {}", error)));
+                            return Err(HorusError::Config(format!(
+                                "Python syntax error: {}",
+                                error
+                            )));
                         }
                         Err(e) => {
                             println!("{}", "⚠".yellow());
-                            println!("\n{} Could not check Python syntax (python3 not found): {}", "⚠".yellow(), e);
+                            println!(
+                                "\n{} Could not check Python syntax (python3 not found): {}",
+                                "⚠".yellow(),
+                                e
+                            );
                         }
                     }
                     return Ok(());
                 }
                 Some("c") | Some("cpp") | Some("cc") | Some("cxx") => {
                     // Check C/C++ file
-                    println!("{} Checking C/C++ file: {}\n", "".cyan(), horus_yaml_path.display());
+                    println!(
+                        "{} Checking C/C++ file: {}\n",
+                        "".cyan(),
+                        horus_yaml_path.display()
+                    );
 
                     print!("  {} Parsing C/C++ syntax... ", "".cyan());
 
-                    let compiler = if extension == Some("cpp") || extension == Some("cc") || extension == Some("cxx") {
+                    let compiler = if extension == Some("cpp")
+                        || extension == Some("cc")
+                        || extension == Some("cxx")
+                    {
                         "g++"
                     } else {
                         "gcc"
@@ -417,18 +439,26 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     match output {
                         Ok(result) if result.status.success() => {
                             println!("{}", "".green());
-                            println!("\n{} Syntax check passed!", "✓".green().bold());
+                            println!("\n{} Syntax check passed!", "".green().bold());
                         }
                         Ok(result) => {
                             println!("{}", "".red());
                             let error = String::from_utf8_lossy(&result.stderr);
                             println!("\n{} Syntax error:", "✗".red().bold());
                             println!("  {}", error);
-                            return Err(HorusError::Config(format!("C/C++ syntax error: {}", error)));
+                            return Err(HorusError::Config(format!(
+                                "C/C++ syntax error: {}",
+                                error
+                            )));
                         }
                         Err(e) => {
                             println!("{}", "⚠".yellow());
-                            println!("\n{} Could not check C/C++ syntax ({} not found): {}", "⚠".yellow(), compiler, e);
+                            println!(
+                                "\n{} Could not check C/C++ syntax ({} not found): {}",
+                                "⚠".yellow(),
+                                compiler,
+                                e
+                            );
                         }
                     }
                     return Ok(());
@@ -502,14 +532,14 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 }
 
                 // License warning (encourage projects to declare their license)
-                print!("  {} Checking license field... ", "✓".cyan());
+                print!("  {} Checking license field... ", "".cyan());
                 let missing_license_warning = "No license specified. Consider adding a license field (e.g., Apache-2.0, BSD-3-Clause).";
                 if let Some(license) = yaml.get("license").and_then(|l| l.as_str()) {
                     if license.trim().is_empty() {
                         println!("{}", "⚠".yellow());
                         warn_msgs.push(missing_license_warning.to_string());
                     } else {
-                        println!("{} ({})", "✓".green(), license.dimmed());
+                        println!("{} ({})", "".green(), license.dimmed());
                     }
                 } else {
                     println!("{}", "⚠".yellow());
@@ -969,7 +999,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
 
                                 match check_result {
                                     Ok(output) if output.status.success() => {
-                                        println!("{}", "✓".green());
+                                        println!("{}", "".green());
 
                                         // Additional API validation
                                         if let Ok(content) = fs::read_to_string(&main_cpp) {
@@ -1193,7 +1223,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
             println!();
             if !quiet {
                 if warn_msgs.is_empty() {
-                    println!("{} No warnings detected.", "✓".green());
+                    println!("{} No warnings detected.", "".green());
                 } else {
                     println!("{} {} warning(s):", "⚠".yellow(), warn_msgs.len());
                     for warn in &warn_msgs {
@@ -1766,7 +1796,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                 {
                                     has_global = true;
                                     let name = entry.file_name().to_string_lossy().to_string();
-                                    println!("  🌐 {}", name.yellow());
+                                    println!("   {}", name.yellow());
                                 }
                             }
                             if !has_global {
@@ -1798,7 +1828,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                 .is_dir()
                             {
                                 let name = entry.file_name().to_string_lossy().to_string();
-                                println!("  🌐 {}", name.yellow());
+                                println!("   {}", name.yellow());
                             }
                         }
                     } else {
@@ -2097,7 +2127,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                     if exists {
                                         println!(
                                             "  {} {} v{} (system package - verified)",
-                                            "✓".green(),
+                                            "".green(),
                                             pkg.name,
                                             pkg.version
                                         );
@@ -2115,7 +2145,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                             MissingSystemChoice::InstallGlobal => {
                                                 println!(
                                                     "  {} Installing to HORUS global cache...",
-                                                    "↓".cyan()
+                                                    "".cyan()
                                                 );
                                                 client
                                                     .install_to_target(
@@ -2130,7 +2160,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                             MissingSystemChoice::InstallLocal => {
                                                 println!(
                                                     "  {} Installing to HORUS local...",
-                                                    "↓".cyan()
+                                                    "".cyan()
                                                 );
                                                 client
                                                     .install(&pkg.name, Some(&pkg.version))
@@ -2226,7 +2256,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                     if exists {
                                         println!(
                                             "  {} {} v{} (system package - verified)",
-                                            "✓".green(),
+                                            "".green(),
                                             pkg.name,
                                             pkg.version
                                         );
@@ -2244,7 +2274,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                             MissingSystemChoice::InstallGlobal => {
                                                 println!(
                                                     "  {} Installing to HORUS global cache...",
-                                                    "↓".cyan()
+                                                    "".cyan()
                                                 );
                                                 client
                                                     .install_to_target(
@@ -2259,7 +2289,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                             MissingSystemChoice::InstallLocal => {
                                                 println!(
                                                     "  {} Installing to HORUS local...",
-                                                    "↓".cyan()
+                                                    "".cyan()
                                                 );
                                                 client
                                                     .install(&pkg.name, Some(&pkg.version))
@@ -2343,7 +2373,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 use std::env;
                 use std::process::Command;
 
-                println!("{} Starting sim2d...", "🎮".cyan());
+                println!("{} Starting sim2d...", "".cyan());
                 if headless {
                     println!("  Mode: Headless (no GUI)");
                 }
@@ -2425,7 +2455,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     // Fallback: compile and run from source
                     println!(
                         "{} Pre-built binary not found, compiling from source...",
-                        "⚠️".yellow()
+                        "".yellow()
                     );
                     cmd.status()
                         .map_err(|e| HorusError::Config(format!("Failed to run sim2d: {}. Try running manually: cd {} && cargo run --release", e, sim2d_path)))?
@@ -2443,14 +2473,14 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 Ok(())
             }
             SimCommands::Sim3d { headless, seed } => {
-                println!("{} Starting sim3d...", "🎮".cyan());
+                println!("{} Starting sim3d...", "".cyan());
                 if headless {
                     println!("  Mode: Headless");
                 }
                 if let Some(s) = seed {
                     println!("  Seed: {}", s);
                 }
-                println!("\n{}", "⚠️  sim3d is planned for future release!".yellow());
+                println!("\n{}", "  sim3d is planned for future release!".yellow());
                 println!("See roadmap: https://docs.horus-registry.dev/roadmap");
                 Ok(())
             }

@@ -43,8 +43,8 @@ pub mod rtos;
 // Re-export commonly used types for easy access
 pub use communication::{Hub, Link, LinkMetrics};
 pub use core::{
-    HealthStatus, Node, NodeConfig, NodeHeartbeat, NodeInfo, NodeInfoExt, NodeMetrics, NodePriority, NodeState,
-    TopicMetadata,
+    HealthStatus, Node, NodeConfig, NodeHeartbeat, NodeInfo, NodeInfoExt, NodeMetrics,
+    NodePriority, NodeState, TopicMetadata,
 };
 pub use error::{HorusError, HorusResult};
 pub use params::RuntimeParams;

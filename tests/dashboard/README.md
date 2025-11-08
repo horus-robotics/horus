@@ -27,16 +27,16 @@ A comprehensive mobile robot fleet management system with:
 
 **Topics:**
 ```
-sensors/camera          → Image
-sensors/lidar           → LaserScan
-sensors/imu             → Imu
-sensors/gps             → GpsCoordinates
-sensors/odometry        → Odometry
-control/cmd_vel         → CmdVel
-control/cmd_vel_override→ CmdVel
-safety/obstacle_alert   → ObstacleAlert
-system/battery          → BatteryStatus
-system/health           → SystemHealth
+sensors/camera           Image
+sensors/lidar            LaserScan
+sensors/imu              Imu
+sensors/gps              GpsCoordinates
+sensors/odometry         Odometry
+control/cmd_vel          CmdVel
+control/cmd_vel_override CmdVel
+safety/obstacle_alert    ObstacleAlert
+system/battery           BatteryStatus
+system/health            SystemHealth
 ```
 
 ---
@@ -66,18 +66,18 @@ An autonomous warehouse robot with AI vision and task management:
 
 **Topics:**
 ```
-vision/qr_codes         → dict (code, confidence)
-vision/objects          → dict (objects, timestamp)
-localization/map        → dict (resolution, occupied_cells)
-localization/pose       → dict (x, y, theta, covariance)
-localization/position_estimate → dict (x, y, theta, confidence)
-tasks/current_task      → dict (id, type, shelf/dock, item)
-tasks/status            → dict (queue_size, active_task, completed)
-control/cmd_vel         → dict (linear, angular)
-control/cmd_vel_safe    → dict (linear, angular)
-safety/collision_alert  → dict (type, object_class, distance, severity)
-safety/status           → dict (emergency_active, system_status)
-system/performance      → dict (uptime, tick_rate, cpu, memory)
+vision/qr_codes          dict (code, confidence)
+vision/objects           dict (objects, timestamp)
+localization/map         dict (resolution, occupied_cells)
+localization/pose        dict (x, y, theta, covariance)
+localization/position_estimate  dict (x, y, theta, confidence)
+tasks/current_task       dict (id, type, shelf/dock, item)
+tasks/status             dict (queue_size, active_task, completed)
+control/cmd_vel          dict (linear, angular)
+control/cmd_vel_safe     dict (linear, angular)
+safety/collision_alert   dict (type, object_class, distance, severity)
+safety/status            dict (emergency_active, system_status)
+system/performance       dict (uptime, tick_rate, cpu, memory)
 ```
 
 ---
@@ -93,12 +93,12 @@ horus run
 
 Expected output:
 ```
-🤖 Starting Robot Fleet Management System (Rust)
-📊 Dashboard available at: http://localhost:8080
-🔧 Run 'horus dashboard' in another terminal to monitor
+ Starting Robot Fleet Management System (Rust)
+ Dashboard available at: http://localhost:8080
+ Run 'horus dashboard' in another terminal to monitor
 
-✅ All nodes registered
-🚀 Starting scheduler...
+ All nodes registered
+ Starting scheduler...
 ```
 
 ### Python Application
@@ -111,17 +111,17 @@ horus run
 Expected output:
 ```
 🏭 Starting Warehouse Robot System (Python)
-📊 Dashboard available at: http://localhost:8080
-🔧 Run 'horus dashboard' in another terminal to monitor
+ Dashboard available at: http://localhost:8080
+ Run 'horus dashboard' in another terminal to monitor
 
-✅ All nodes registered:
+ All nodes registered:
    - 2 Vision nodes
    - 2 Localization nodes
    - 2 Task management nodes
    - 2 Safety nodes
    - 1 Performance monitoring node
 
-🚀 Starting scheduler...
+ Starting scheduler...
 ```
 
 ---
@@ -250,22 +250,22 @@ HORUS_SESSION_ID=python1 horus run # Terminal 2
 ## Success Criteria
 
 ### Minimal (Must Work)
-- ✅ Both apps compile/run without errors
-- ✅ All nodes register with scheduler
-- ✅ Messages flow between nodes
-- ✅ Dashboard shows active nodes
+-  Both apps compile/run without errors
+-  All nodes register with scheduler
+-  Messages flow between nodes
+-  Dashboard shows active nodes
 
 ### Good (Should Work)
-- ✅ Dashboard shows all topics
-- ✅ Log streaming works
-- ✅ Performance metrics visible
-- ✅ Can run both simultaneously with session IDs
+-  Dashboard shows all topics
+-  Log streaming works
+-  Performance metrics visible
+-  Can run both simultaneously with session IDs
 
 ### Excellent (Nice to Have)
-- ✅ Topic inspector shows message content
-- ✅ Node graph visualization
-- ✅ Real-time latency graphs
-- ✅ Package dependency tree
+-  Topic inspector shows message content
+-  Node graph visualization
+-  Real-time latency graphs
+-  Package dependency tree
 
 ---
 

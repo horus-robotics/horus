@@ -610,10 +610,10 @@ detector.set_safety_sensor_pins(vec![0, 1, 2, 3]);
 ### Architecture Overview
 
 ```
-Lidar → CollisionDetectorNode → EmergencyStop → MotorController
-         ↑                        ↓
-      Odometry              WarningFlags → PathPlanner
-                                            ↓
+Lidar  CollisionDetectorNode  EmergencyStop  MotorController
+                                 
+      Odometry              WarningFlags  PathPlanner
+                                            
                                       MotionCommands
 ```
 
@@ -621,7 +621,7 @@ Lidar → CollisionDetectorNode → EmergencyStop → MotorController
 
 **Priority**: Highest (hardware-level)
 
-**Components**: Safety sensors → CollisionDetectorNode → EmergencyStop
+**Components**: Safety sensors  CollisionDetectorNode  EmergencyStop
 
 **Response time**: < 50ms
 
@@ -640,7 +640,7 @@ if let Some(emergency) = emergency_subscriber.recv(None) {
 
 **Priority**: High (software-level)
 
-**Components**: Critical zone detection → Velocity reduction
+**Components**: Critical zone detection  Velocity reduction
 
 **Response time**: < 200ms
 
@@ -660,7 +660,7 @@ if detector.is_collision_imminent() {
 
 **Priority**: Medium (planning-level)
 
-**Components**: Monitoring zone → Cost map update → Path replanning
+**Components**: Monitoring zone  Cost map update  Path replanning
 
 **Response time**: < 1s
 
@@ -744,7 +744,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 5. **Testing Strategy**:
    - Unit test: Individual zone calculations
-   - Integration test: Full sensor → emergency pipeline
+   - Integration test: Full sensor  emergency pipeline
    - Safety test: Verify emergency stop response time
    - Field test: Real-world obstacle scenarios
 

@@ -178,7 +178,7 @@ impl Node for EmergencyStopNode {
     fn name(&self) -> &'static str { "EmergencyStop" }
 
     fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
-        ctx.log_info("🚨 Emergency stop system online - CRITICAL priority");
+        ctx.log_info(" Emergency stop system online - CRITICAL priority");
         Ok(())
     }
 
@@ -191,7 +191,7 @@ impl Node for EmergencyStopNode {
                 should_stop = true;
                 if let Some(ctx) = ctx {
                     ctx.log_error(&format!(
-                        "🚨 CRITICAL: Battery at {:.0}% - EMERGENCY STOP!",
+                        " CRITICAL: Battery at {:.0}% - EMERGENCY STOP!",
                         battery.percentage
                     ));
                 }
@@ -204,7 +204,7 @@ impl Node for EmergencyStopNode {
                 should_stop = true;
                 if let Some(ctx) = ctx {
                     ctx.log_error(&format!(
-                        "🚨 CRITICAL: Obstacle at {:.2}m - EMERGENCY STOP!",
+                        " CRITICAL: Obstacle at {:.2}m - EMERGENCY STOP!",
                         min_dist
                     ));
                 }
@@ -314,7 +314,7 @@ impl Node for LoggerNode {
     fn name(&self) -> &'static str { "Logger" }
 
     fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
-        ctx.log_info("📊 Logger online - BACKGROUND priority");
+        ctx.log_info(" Logger online - BACKGROUND priority");
         Ok(())
     }
 
@@ -856,7 +856,7 @@ def test_sensor_controller_integration():
     assert len(fan_commands) > 0, "Controller should have sent fan commands"
     assert fan_commands[0] == 100, f"Expected fan at 100%, got {fan_commands[0]}%"
 
-    print("✓ Test passed!")
+    print(" Test passed!")
 
 if __name__ == "__main__":
     test_sensor_controller_integration()

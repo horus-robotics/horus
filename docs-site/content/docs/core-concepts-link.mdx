@@ -85,46 +85,48 @@ if let Some(data) = input.recv(ctx) {
 
 ### Memory Layout
 
-Link uses a **ring buffer** in shared memory (`/dev/shm/horus/topics/horus_links_<topic>`):
+Link uses a **single-slot design** in shared memory (`/dev/shm/horus/topics/links/<topic>`):
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ Header (64 bytes, cache-aligned)                       │
 ├─────────────────────────────────────────────────────────┤
-│  - head: AtomicUsize (producer write position)         │
-│  - tail: AtomicUsize (consumer read position)          │
-│  - capacity: usize                                     │
-│  - metrics: messages_sent, messages_received, failures │
+│  - sequence: AtomicU64 (version counter)               │
+│  - element_size: AtomicUsize (validation)              │
+│  - _padding: [u8; 48] (cache line alignment)           │
 ├─────────────────────────────────────────────────────────┤
-│ Ring Buffer (capacity × element_size bytes)            │
+│ Single Data Slot (sizeof(T) bytes)                     │
 ├─────────────────────────────────────────────────────────┤
-│  - Slot 0: T                                           │
-│  - Slot 1: T                                           │
-│  - ...                                                 │
-│  - Slot N-1: T                                         │
+│  - Value: T (always the latest message)                │
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Lock-Free Algorithm
+**Total memory**: `64 bytes (header) + sizeof(T)` - extremely compact!
+
+### Single-Slot Design
+
+Unlike a queue or ring buffer, Link uses a **single memory slot** that always contains the **latest value**:
 
 **Producer (send)**:
-1. Load `tail` with `Relaxed` ordering (consumer's position)
-2. Check if buffer full: `(head + 1) % capacity == tail`
-3. If space available: write message at `head` position
-4. Update `head` with `Release` ordering (makes write visible)
+1. Write new message directly to the data slot
+2. Increment `sequence` counter with `Release` ordering
+3. **Always succeeds** - overwrites previous value
 
 **Consumer (recv)**:
-1. Load `head` with `Acquire` ordering (see producer's writes)
-2. Check if buffer empty: `head == tail`
-3. If message available: read from `tail` position
-4. Update `tail` with `Release` ordering (free the slot)
+1. Load `sequence` with `Acquire` ordering
+2. Compare with last seen sequence (stored locally)
+3. If sequence changed: read message and update last seen
+4. If sequence same: return `None` (already read this value)
 
-### Why SPSC is Faster
+**Key insight**: The consumer tracks what it's already read via a **local** `last_seen_sequence` counter, not in shared memory. This eliminates contention.
 
-1. **No CAS loops**: Single writer means no compare-and-swap retries
-2. **Simpler atomic ordering**: Only need Acquire/Release, not SeqCst
-3. **No coordination overhead**: Producer and consumer never compete for same cache line
-4. **Predictable cache behavior**: Producer owns head cacheline, consumer owns tail cacheline
+### Why Single-Slot is Fast
+
+1. **No queue overhead**: No head/tail pointers, no wrap-around logic
+2. **Always overwrites**: Producer never blocks or fails
+3. **Latest value semantics**: Perfect for sensors/control (you always want the newest data)
+4. **Minimal memory footprint**: Just header + one element
+5. **Zero contention**: Producer writes, consumer reads - never compete for same atomic
 
 ## Performance Characteristics
 
@@ -205,55 +207,35 @@ scheduler.run()?;
 ```rust
 // Check Link health
 let metrics = link.get_metrics();
-eprintln!("Sent: {}, Received: {}, Failures: {}",
+eprintln!("Sent: {}, Received: {}",
     metrics.messages_sent,
-    metrics.messages_received,
-    metrics.send_failures
+    metrics.messages_received
 );
 
-// High send failures = consumer not keeping up
-if metrics.send_failures > 100 {
-    eprintln!("Warning: Consumer lagging behind!");
+// Large difference = consumer not keeping up (messages being skipped)
+let skipped = metrics.messages_sent - metrics.messages_received;
+if skipped > 100 {
+    eprintln!("Warning: Consumer skipped {} messages!", skipped);
 }
 ```
-
-## Buffer Sizing
-
-The default buffer size is **1024 messages**. Customize based on your needs:
-
-```rust
-// Larger buffer for bursty traffic
-let link = Link::producer_with_capacity("sensor", 4096)?;
-
-// Smaller buffer for tight memory constraints
-let link = Link::producer_with_capacity("heartbeat", 16)?;
-```
-
-### Sizing Guidelines
-
-**Small buffer (16-64)**: Heartbeats, synchronization signals
-**Medium buffer (256-1024)**: Sensor data, control commands
-**Large buffer (2048-8192)**: Bursty data, handling jitter
-
- **Larger buffers ≠ better performance**. Size for your actual latency requirements and expected burst size.
 
 ## Error Handling
 
-### Send Failures
+### Send Always Succeeds
+
+Due to the single-slot design, **`send()` always succeeds**:
 
 ```rust
-match link.send(data, ctx) {
-    Ok(_) => { /* success */ },
-    Err(returned_data) => {
-        // Consumer not reading fast enough, buffer full
-        // Options:
-        // 1. Drop the message (soft real-time)
-        // 2. Wait and retry (hard real-time)
-        // 3. Increase buffer size
-        // 4. Slow down producer
-    }
-}
+// Link::send() always returns Ok(()) - it overwrites the previous value
+link.send(data, ctx).ok();
 ```
+
+This is by design:
+-  **No backpressure**: Producer never blocks waiting for consumer
+-  **Latest value wins**: Old unread messages are automatically discarded
+-  **Perfect for sensors**: You always want the newest sensor reading, not old ones
+
+If you need guaranteed delivery of every message, use `Hub` instead (MPMC with buffering).
 
 ### No Messages Available
 
@@ -272,9 +254,10 @@ if let Some(data) = link.recv(ctx) {
 
 ```rust
 let metrics = link.get_metrics();
-if metrics.send_failures > 0 {
-    eprintln!("Buffer full {} times - consumer too slow!",
-        metrics.send_failures);
+let skipped = metrics.messages_sent - metrics.messages_received;
+if skipped > 0 {
+    eprintln!("Consumer skipped {} messages - may be too slow!",
+        skipped);
 }
 ```
 

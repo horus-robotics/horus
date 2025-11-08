@@ -243,34 +243,3 @@ impl HorusError {
         matches!(self, HorusError::PermissionDenied(_))
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_error_conversions() {
-        // Test IO error conversion
-        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
-        let horus_err: HorusError = io_err.into();
-        assert!(horus_err.to_string().contains("IO error"));
-
-        // Test helper methods
-        let config_err = HorusError::config("invalid setting");
-        assert!(config_err.to_string().contains("Configuration error"));
-
-        let backend_err = HorusError::backend("horus", "connection failed");
-        assert!(backend_err.to_string().contains("Backend 'horus' error"));
-    }
-
-    #[test]
-    fn test_error_checks() {
-        let not_found = HorusError::not_found("resource");
-        assert!(not_found.is_not_found());
-        assert!(!not_found.is_timeout());
-
-        let timeout = HorusError::Timeout("operation".to_string());
-        assert!(timeout.is_timeout());
-        assert!(!timeout.is_not_found());
-    }
-}

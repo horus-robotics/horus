@@ -35,7 +35,7 @@ fn main() {
     };
 
     if result {
-        println!("✓ Test passed: {}", test_name);
+        println!(" Test passed: {}", test_name);
         process::exit(0);
     } else {
         eprintln!("✗ Test failed: {}", test_name);
@@ -85,7 +85,7 @@ fn test_many_topics() -> bool {
         }
     }
 
-    println!("  ✓ Created {} topics successfully", topic_count);
+    println!("   Created {} topics successfully", topic_count);
 
     thread::sleep(Duration::from_millis(500));
 
@@ -103,7 +103,7 @@ fn test_many_topics() -> bool {
         }
     }
 
-    println!("  ✓ Published to all {} topics", topic_count);
+    println!("   Published to all {} topics", topic_count);
 
     thread::sleep(Duration::from_millis(500));
 
@@ -124,10 +124,7 @@ fn test_many_topics() -> bool {
 
     if received_count >= topic_count - 10 {
         // Allow a few drops
-        println!(
-            "  ✓ Received from {}/{} topics",
-            received_count, topic_count
-        );
+        println!("   Received from {}/{} topics", received_count, topic_count);
         true
     } else {
         eprintln!(
@@ -174,7 +171,7 @@ fn test_many_nodes() -> bool {
         }
     }
 
-    println!("  ✓ Created {} channels successfully", channel_count);
+    println!("   Created {} channels successfully", channel_count);
 
     // Send and receive on all channels
     let mut total_sent = 0;
@@ -192,7 +189,7 @@ fn test_many_nodes() -> bool {
         }
     }
 
-    println!("  ✓ Sent {} messages", total_sent);
+    println!("   Sent {} messages", total_sent);
 
     thread::sleep(Duration::from_millis(100));
 
@@ -204,7 +201,7 @@ fn test_many_nodes() -> bool {
 
     if total_sent == channel_count && total_received >= channel_count - 5 {
         println!(
-            "  ✓ All channels functional (sent: {}, received: {})",
+            "   All channels functional (sent: {}, received: {})",
             total_sent, total_received
         );
         true
@@ -239,7 +236,7 @@ fn test_sustained_high_freq() -> bool {
         }
     };
 
-    println!("  ✓ Created high-frequency Link");
+    println!("   Created high-frequency Link");
 
     let test_duration = Duration::from_secs(300); // 5 minutes
     let sent_count = Arc::new(Mutex::new(0u64));
@@ -313,7 +310,7 @@ fn test_sustained_high_freq() -> bool {
     let final_recv = *recv_count.lock().unwrap();
     let final_errors = *errors.lock().unwrap();
 
-    println!("  ✓ Sustained test completed");
+    println!("   Sustained test completed");
     println!("  Total sent: {}", final_sent);
     println!("  Total received: {}", final_recv);
     println!("  Total errors: {}", final_errors);
@@ -322,7 +319,7 @@ fn test_sustained_high_freq() -> bool {
     let min_expected = 1_000_000; // At least 1M messages in 5 minutes
 
     if final_sent >= min_expected && final_recv >= min_expected * 95 / 100 {
-        println!("  ✓ Sustained high-frequency messaging successful");
+        println!("   Sustained high-frequency messaging successful");
         true
     } else {
         eprintln!(
@@ -384,10 +381,10 @@ fn test_memory_pressure() -> bool {
     }
 
     println!(
-        "  ✓ Completed {} iterations without memory exhaustion",
+        "   Completed {} iterations without memory exhaustion",
         iteration_count
     );
-    println!("  ✓ Currently holding {} active topics", topics.len());
+    println!("   Currently holding {} active topics", topics.len());
     true
 }
 
@@ -414,7 +411,7 @@ fn test_long_running() -> bool {
         }
     };
 
-    println!("  ✓ Created long-running Link");
+    println!("   Created long-running Link");
 
     let test_duration = Duration::from_secs(1800); // 30 minutes
     let sent_count = Arc::new(Mutex::new(0u64));
@@ -498,7 +495,7 @@ fn test_long_running() -> bool {
     let final_sent = sender_handle.join().unwrap();
     let (final_recv, order_errors) = receiver_handle.join().unwrap();
 
-    println!("  ✓ Long-running test completed (30 minutes)");
+    println!("   Long-running test completed (30 minutes)");
     println!("  Total sent: {}", final_sent);
     println!("  Total received: {}", final_recv);
     println!("  Message order errors: {}", order_errors);
@@ -507,7 +504,7 @@ fn test_long_running() -> bool {
     let min_expected = 1_000_000; // At least 1M in 30 minutes
 
     if final_sent >= min_expected && final_recv >= min_expected * 95 / 100 && order_errors < 1000 {
-        println!("  ✓ Long-running stability test passed");
+        println!("   Long-running stability test passed");
         true
     } else {
         eprintln!(

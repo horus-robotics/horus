@@ -211,7 +211,7 @@ fn test_enhanced_scheduler() {
         "Flaky node should have executed at least once"
     );
 
-    println!("\n✅ Enhanced scheduler test passed!");
+    println!("\n Enhanced scheduler test passed!");
     println!("- Dependency graph analysis worked");
     println!("- Async I/O tier handled blocking operations");
     println!("- Circuit breaker protected against failures");
@@ -253,5 +253,5 @@ fn test_circuit_breaker_protection() {
     );
     assert!(attempts >= 1, "Should have attempted at least once");
 
-    println!("✅ Circuit breaker successfully protected against cascading failures");
+    println!(" Circuit breaker successfully protected against cascading failures");
 }

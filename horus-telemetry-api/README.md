@@ -120,13 +120,13 @@ curl http://localhost:8787/count/stats
 ## Privacy
 
 This API collects **minimal anonymous data**:
-- ✅ Event type (just "install")
-- ✅ OS (Linux/Darwin)
-- ✅ Timestamp
-- ❌ No UUIDs or tracking IDs
-- ❌ No personal information
-- ❌ No IP addresses stored
-- ❌ No user code or data
+-  Event type (just "install")
+-  OS (Linux/Darwin)
+-  Timestamp
+-  No UUIDs or tracking IDs
+-  No personal information
+-  No IP addresses stored
+-  No user code or data
 
 **Pure counting - can't track individuals.**
 
@@ -135,15 +135,15 @@ See [PRIVACY.md](../PRIVACY.md) for full privacy policy.
 ## Migration from v1.0/v2.0
 
 **Old system collected:**
-- `install_id` (UUID) ❌
-- `version` ❌
-- `arch` ❌
-- `status` ❌
+- `install_id` (UUID) 
+- `version` 
+- `arch` 
+- `status` 
 
 **New system collects:**
-- `event` ✅
-- `os` ✅
-- `timestamp` ✅
+- `event` 
+- `os` 
+- `timestamp` 
 
 Much simpler, more private, pure counting.
 

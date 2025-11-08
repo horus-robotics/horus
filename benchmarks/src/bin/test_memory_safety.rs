@@ -35,7 +35,7 @@ fn main() {
     };
 
     if result {
-        println!("✓ Test passed: {}", test_name);
+        println!(" Test passed: {}", test_name);
         process::exit(0);
     } else {
         eprintln!("✗ Test failed: {}", test_name);
@@ -85,8 +85,8 @@ fn test_shm_lifecycle() -> bool {
         drop(subscriber);
     }
 
-    println!("  ✓ Created and destroyed 100 topics without segfaults");
-    println!("  ✓ Shared memory lifecycle working correctly");
+    println!("   Created and destroyed 100 topics without segfaults");
+    println!("   Shared memory lifecycle working correctly");
     true
 }
 
@@ -113,7 +113,7 @@ fn test_bounds_checking() -> bool {
         }
     };
 
-    println!("  ✓ Created Link with capacity 16");
+    println!("   Created Link with capacity 16");
 
     // Fill buffer completely
     for i in 0..16 {
@@ -128,7 +128,7 @@ fn test_bounds_checking() -> bool {
         }
     }
 
-    println!("  ✓ Filled buffer to capacity");
+    println!("   Filled buffer to capacity");
 
     // Try to overfill (should block or return error, not crash)
     let msg = CmdVel {
@@ -143,7 +143,7 @@ fn test_bounds_checking() -> bool {
             return false;
         }
         Err(_) => {
-            println!("  ✓ Buffer overflow properly handled (send returned error)");
+            println!("   Buffer overflow properly handled (send returned error)");
         }
     }
 
@@ -163,7 +163,7 @@ fn test_bounds_checking() -> bool {
         }
     }
 
-    println!("  ✓ Drained buffer successfully");
+    println!("   Drained buffer successfully");
 
     // Try to read from empty buffer (should return None, not crash)
     match receiver.recv(None) {
@@ -172,7 +172,7 @@ fn test_bounds_checking() -> bool {
             return false;
         }
         None => {
-            println!("  ✓ Empty buffer properly handled (recv returned None)");
+            println!("   Empty buffer properly handled (recv returned None)");
         }
     }
 
@@ -218,7 +218,7 @@ fn test_concurrent_access() -> bool {
         }
     };
 
-    println!("  ✓ Created 1 publisher and 3 subscribers");
+    println!("   Created 1 publisher and 3 subscribers");
 
     thread::sleep(Duration::from_millis(100));
 
@@ -286,8 +286,8 @@ fn test_concurrent_access() -> bool {
     let sub3_result = sub3_handle.join().unwrap();
 
     if pub_result && sub1_result && sub2_result && sub3_result {
-        println!("  ✓ All threads completed successfully");
-        println!("  ✓ No race conditions or data corruption detected");
+        println!("   All threads completed successfully");
+        println!("   No race conditions or data corruption detected");
         true
     } else {
         eprintln!(
@@ -350,10 +350,10 @@ fn test_leak_detection() -> bool {
     }
 
     println!(
-        "  ✓ Completed {} iterations without memory exhaustion",
+        "   Completed {} iterations without memory exhaustion",
         iterations
     );
-    println!("  ✓ No obvious memory leaks detected");
+    println!("   No obvious memory leaks detected");
     println!("  Note: Run with valgrind/MIRI for detailed leak analysis");
     true
 }
@@ -425,11 +425,11 @@ fn test_overflow_protection() -> bool {
         }
 
         println!(
-            "  ✓ Buffer size {} handled correctly ({} messages)",
+            "   Buffer size {} handled correctly ({} messages)",
             size, sent
         );
     }
 
-    println!("  ✓ All buffer sizes protected against overflow");
+    println!("   All buffer sizes protected against overflow");
     true
 }

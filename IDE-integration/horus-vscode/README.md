@@ -41,10 +41,10 @@ The HORUS VSCode extension provides:
 
 ```
 Extension (TypeScript)
-    ├── Language Client → Language Server (Rust)
-    ├── Task Provider → HORUS CLI
-    ├── Debug Adapter → LLDB/GDB
-    └── Dashboard Panel → HORUS Dashboard
+    ├── Language Client  Language Server (Rust)
+    ├── Task Provider  HORUS CLI
+    ├── Debug Adapter  LLDB/GDB
+    └── Dashboard Panel  HORUS Dashboard
 ```
 
 ## Development Status

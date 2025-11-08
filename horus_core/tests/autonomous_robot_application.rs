@@ -1064,11 +1064,11 @@ fn test_autonomous_robot_complete_system() {
     println!("Total runtime: {:?}", elapsed);
     println!();
     println!("Enhanced scheduler features demonstrated:");
-    println!("✅ JIT compilation: Motor controller ran at maximum speed");
-    println!("✅ Async I/O: Cameras and lidar didn't block other nodes");
-    println!("✅ Fault tolerance: Battery monitor failures handled gracefully");
-    println!("✅ Smart scheduling: Automatic optimization after learning phase");
-    println!("✅ Zero API changes: Same simple add() and run() interface");
+    println!(" JIT compilation: Motor controller ran at maximum speed");
+    println!(" Async I/O: Cameras and lidar didn't block other nodes");
+    println!(" Fault tolerance: Battery monitor failures handled gracefully");
+    println!(" Smart scheduling: Automatic optimization after learning phase");
+    println!(" Zero API changes: Same simple add() and run() interface");
     println!();
     println!("This complete robot system shows HORUS handling:");
     println!("- Real-time control (motors, IMU)");
@@ -1144,5 +1144,5 @@ fn test_robot_performance_metrics() {
     // The motor controller should run very fast after JIT compilation
     assert!(motor_rate > 50.0, "Motor controller should run fast");
 
-    println!("✅ Performance test passed!");
+    println!(" Performance test passed!");
 }

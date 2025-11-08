@@ -35,7 +35,7 @@ fn main() {
     };
 
     if result {
-        println!("✓ Test passed: {}", test_name);
+        println!(" Test passed: {}", test_name);
         process::exit(0);
     } else {
         eprintln!("✗ Test failed: {}", test_name);
@@ -47,7 +47,7 @@ fn main() {
 fn test_sensor_flow() -> bool {
     println!("Testing sensor data flow pattern...");
 
-    // Simulate Sensor → Processor → Command pipeline using CmdVel
+    // Simulate Sensor  Processor  Command pipeline using CmdVel
     let sensor_topic = format!("test_sensor_{}", process::id());
     let processed_topic = format!("test_processed_{}", process::id());
     let cmd_topic = format!("test_cmd_{}", process::id());
@@ -100,7 +100,7 @@ fn test_sensor_flow() -> bool {
         }
     };
 
-    println!("  ✓ Created sensor data pipeline (Sensor → Processor → Cmd)");
+    println!("   Created sensor data pipeline (Sensor  Processor  Cmd)");
 
     thread::sleep(Duration::from_millis(100));
 
@@ -174,9 +174,9 @@ fn test_sensor_flow() -> bool {
     let controller_result = controller_handle.join().unwrap();
 
     if processor_result && controller_result && received_cmds >= 95 {
-        println!("  ✓ Processor handled 100 sensor messages");
-        println!("  ✓ Controller processed 100 messages");
-        println!("  ✓ Received {} command messages", received_cmds);
+        println!("   Processor handled 100 sensor messages");
+        println!("   Controller processed 100 messages");
+        println!("   Received {} command messages", received_cmds);
         true
     } else {
         eprintln!(
@@ -210,7 +210,7 @@ fn test_actuator_commands() -> bool {
         }
     };
 
-    println!("  ✓ Created actuator command Link");
+    println!("   Created actuator command Link");
 
     // Simulate motor driver receiving commands
     let driver_handle = thread::spawn(move || {
@@ -257,8 +257,8 @@ fn test_actuator_commands() -> bool {
     let driver_result = driver_handle.join().unwrap();
 
     if driver_result {
-        println!("  ✓ Sent 500 actuator commands");
-        println!("  ✓ All commands received in correct order");
+        println!("   Sent 500 actuator commands");
+        println!("   All commands received in correct order");
         true
     } else {
         eprintln!("Motor driver did not receive all commands");
@@ -288,7 +288,7 @@ fn test_control_loop_1khz() -> bool {
         }
     };
 
-    println!("  ✓ Created control loop communication channel");
+    println!("   Created control loop communication channel");
 
     let counter = Arc::new(Mutex::new(0u32));
     let counter_clone = Arc::clone(&counter);
@@ -329,13 +329,13 @@ fn test_control_loop_1khz() -> bool {
     let final_count = *counter.lock().unwrap();
 
     println!(
-        "  ✓ Sent 1000 messages in {}ms (target: 1000ms)",
+        "   Sent 1000 messages in {}ms (target: 1000ms)",
         elapsed.as_millis()
     );
-    println!("  ✓ Received {} messages", final_count);
+    println!("   Received {} messages", final_count);
 
     if recv_result && final_count >= 900 {
-        println!("  ✓ 1kHz control loop pattern successful");
+        println!("   1kHz control loop pattern successful");
         true
     } else {
         eprintln!("Control loop pattern failed: received {}/1000", final_count);
@@ -365,7 +365,7 @@ fn test_transforms() -> bool {
         }
     };
 
-    println!("  ✓ Created broadcast Hub");
+    println!("   Created broadcast Hub");
 
     thread::sleep(Duration::from_millis(100));
 
@@ -380,7 +380,7 @@ fn test_transforms() -> bool {
         thread::sleep(Duration::from_millis(10)); // 100Hz
     }
 
-    println!("  ✓ Broadcast 200 messages");
+    println!("   Broadcast 200 messages");
 
     // Receive and verify
     let mut received = 0;
@@ -394,7 +394,7 @@ fn test_transforms() -> bool {
     }
 
     if received >= 190 {
-        println!("  ✓ Received {} broadcasts", received);
+        println!("   Received {} broadcasts", received);
         true
     } else {
         eprintln!("Only received {} out of 200 broadcasts", received);
@@ -432,7 +432,7 @@ fn test_state_machine() -> bool {
         }
     };
 
-    println!("  ✓ Created state machine communication Hub");
+    println!("   Created state machine communication Hub");
 
     thread::sleep(Duration::from_millis(100));
 
@@ -485,11 +485,11 @@ fn test_state_machine() -> bool {
 
     let sent_transitions = pub_handle.join().unwrap();
 
-    println!("  ✓ Sent {} state transitions", sent_transitions);
-    println!("  ✓ Received {} state updates", received_transitions);
+    println!("   Sent {} state transitions", sent_transitions);
+    println!("   Received {} state updates", received_transitions);
 
     if received_transitions >= 45 {
-        println!("  ✓ State machine communication pattern successful");
+        println!("   State machine communication pattern successful");
         true
     } else {
         eprintln!(

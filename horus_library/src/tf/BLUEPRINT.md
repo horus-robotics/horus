@@ -59,7 +59,7 @@ Transform (TF) is a system for tracking coordinate frames and the transforms (tr
 
 **Without TF:**
 ```rust
-// ❌ Cannot relate sensor data from different frames
+//  Cannot relate sensor data from different frames
 let obstacle_in_camera = camera.detect_obstacle()?;
 // How do I know if this is in front of the robot or behind?
 // Camera might be mounted backwards!
@@ -67,7 +67,7 @@ let obstacle_in_camera = camera.detect_obstacle()?;
 
 **With TF:**
 ```rust
-// ✅ Can transform between any frames
+//  Can transform between any frames
 let obstacle_in_camera = camera.detect_obstacle()?;
 let obstacle_in_base = tf.transform_point(
     "camera_frame",
@@ -159,8 +159,8 @@ if obstacle_in_base.x < 2.0 {
        ▼
 ┌──────────────────────┐
 │ StaticTFBroadcaster  │ Publishes fixed transforms
-│ - base_link → camera │ (e.g., camera 0.5m above base)
-│ - base_link → lidar  │
+│ - base_link  camera │ (e.g., camera 0.5m above base)
+│ - base_link  lidar  │
 └──────┬───────────────┘
        │
        ▼ Hub<StaticTransformStamped>
@@ -172,8 +172,8 @@ if obstacle_in_base.x < 2.0 {
        │ Hub<TransformStamped>
 ┌──────┴───────────────┐
 │  TFBroadcaster       │ Publishes dynamic transforms
-│  - odom → base_link  │ (e.g., robot moving in odom)
-│  - map → odom        │ (e.g., localization update)
+│  - odom  base_link  │ (e.g., robot moving in odom)
+│  - map  odom        │ (e.g., localization update)
 └──────────────────────┘
        │
        ▼
@@ -646,7 +646,7 @@ fn main() -> HorusResult<()> {
 
                         if let Some(ctx) = ctx {
                             ctx.log_info(&format!(
-                                "Object at camera ({:.2}, {:.2}, {:.2}) → base ({:.2}, {:.2}, {:.2})",
+                                "Object at camera ({:.2}, {:.2}, {:.2})  base ({:.2}, {:.2}, {:.2})",
                                 point_in_camera[0], point_in_camera[1], point_in_camera[2],
                                 point_in_base[0], point_in_base[1], point_in_base[2]
                             ));
@@ -824,7 +824,7 @@ Total: ~3 MB (acceptable)
 
 ### 6.3 Optimization Strategies
 
-1. **Cache frequently-used chains:** `base_link → camera_frame` computed once, reused
+1. **Cache frequently-used chains:** `base_link  camera_frame` computed once, reused
 2. **Lock-free reads:** Use `Arc<RwLock<>>` for concurrent reads
 3. **SIMD quaternion math:** Use `nalgebra` or `glam` for fast transforms
 4. **Lazy evaluation:** Only compute transforms when requested
@@ -1007,7 +1007,7 @@ mod tests {
     fn test_tree_lookup() {
         let mut tree = TFTree::new();
 
-        // Build tree: world → base → camera
+        // Build tree: world  base  camera
         tree.add_static_transform(
             "world",
             "base_link",
@@ -1020,7 +1020,7 @@ mod tests {
             Transform::new([0.5, 0.0, 0.2], [0.0, 0.0, 0.0, 1.0])
         ).unwrap();
 
-        // Lookup world → camera (should compose)
+        // Lookup world  camera (should compose)
         let tf = tree.lookup_transform("world", "camera", 0).unwrap();
         assert_eq!(tf.translation, [1.5, 0.0, 0.2]);
     }
@@ -1032,7 +1032,7 @@ mod tests {
         tree.add_static_transform("A", "B", Transform::identity()).unwrap();
         tree.add_static_transform("B", "C", Transform::identity()).unwrap();
 
-        // This would create a cycle: A → B → C → A
+        // This would create a cycle: A  B  C  A
         let result = tree.add_static_transform("C", "A", Transform::identity());
         assert!(result.is_err());
     }
@@ -1227,32 +1227,32 @@ tf-visualizer = ["egui", "plotters"]  # Optional TF tree visualization
 
 ### 13.1 Must Have (MVP)
 
-- ✅ Transform math (compose, inverse, SLERP)
-- ✅ TF messages (TransformStamped, StaticTransformStamped)
-- ✅ TF tree structure (add, lookup, validate)
-- ✅ TFBroadcaster node
-- ✅ TFListener node
-- ✅ Rust API
-- ✅ Unit tests (>90% coverage)
-- ✅ Documentation
+-  Transform math (compose, inverse, SLERP)
+-  TF messages (TransformStamped, StaticTransformStamped)
+-  TF tree structure (add, lookup, validate)
+-  TFBroadcaster node
+-  TFListener node
+-  Rust API
+-  Unit tests (>90% coverage)
+-  Documentation
 
 ### 13.2 Should Have (v1.0)
 
-- ✅ Python bindings
-- ✅ C++ bindings
-- ✅ Time-based interpolation
-- ✅ Transform caching
-- ✅ Performance benchmarks
-- ✅ Integration tests
-- ✅ Tutorial + examples
+-  Python bindings
+-  C++ bindings
+-  Time-based interpolation
+-  Transform caching
+-  Performance benchmarks
+-  Integration tests
+-  Tutorial + examples
 
 ### 13.3 Nice to Have (Future)
 
-- ✅ TF tree visualization tool
-- ✅ URDF parser (import robot structure from URDF)
-- ✅ TF debugging CLI (`horus tf view`, `horus tf check`)
-- ✅ Real-time TF monitor in dashboard
-- ✅ Transform prediction (extrapolate into future)
+-  TF tree visualization tool
+-  URDF parser (import robot structure from URDF)
+-  TF debugging CLI (`horus tf view`, `horus tf check`)
+-  Real-time TF monitor in dashboard
+-  Transform prediction (extrapolate into future)
 
 ---
 

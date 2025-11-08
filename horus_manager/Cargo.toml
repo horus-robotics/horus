@@ -63,8 +63,16 @@ rand = "0.8"
 
 # Web dashboard dependencies
 axum = { version = "0.7", features = ["ws"] }
+axum-server = { version = "0.6", features = ["tls-rustls"] }
 tower = "0.4"
 tower-http = { version = "0.5", features = ["fs", "cors"] }
 webbrowser = "0.8"
 futures = "0.3"
 qrcode = "0.14"
+
+# Security dependencies
+rustls = "0.21"
+tokio-rustls = "0.24"
+jsonwebtoken = "9.2"
+argon2 = "0.5"
+base64 = "0.21"

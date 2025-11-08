@@ -53,8 +53,3 @@ freertos = ["rtos"]
 zephyr = ["rtos"]
 qnx = ["rtos"]
 bare-metal = ["rtos"]
-
-[[bench]]
-name = "comprehensive_benchmark"
-harness = false
-path = "../benches/comprehensive_benchmark.rs"

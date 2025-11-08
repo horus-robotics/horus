@@ -216,9 +216,9 @@ fn main() -> HorusResult<()> {
     }
 
     println!("\n=== Demonstration Complete ===");
-    println!("✓ Control nodes communicated via Link (lowest latency)");
-    println!("✓ Telemetry was broadcast via Hub to multiple subscribers");
-    println!("✓ All nodes coexisted in the same scheduler");
+    println!(" Control nodes communicated via Link (lowest latency)");
+    println!(" Telemetry was broadcast via Hub to multiple subscribers");
+    println!(" All nodes coexisted in the same scheduler");
 
     Ok(())
 }

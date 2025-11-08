@@ -5,13 +5,13 @@ Comprehensive test suite to verify that structural changes to `horus_core` don't
 ## Purpose
 
 Run these tests after making structural changes to core components (memory, IPC, scheduling, etc.) to ensure:
-- ✅ API compatibility maintained
-- ✅ IPC functionality works correctly
-- ✅ Memory safety (no segfaults, proper unsafe usage)
-- ✅ Robotics usage patterns work
-- ✅ Logging and diagnostics functional
-- ✅ Multi-process communication stable
-- ✅ Performance within acceptable bounds
+-  API compatibility maintained
+-  IPC functionality works correctly
+-  Memory safety (no segfaults, proper unsafe usage)
+-  Robotics usage patterns work
+-  Logging and diagnostics functional
+-  Multi-process communication stable
+-  Performance within acceptable bounds
 
 ## Usage
 
@@ -73,11 +73,11 @@ Run these tests after making structural changes to core components (memory, IPC,
 ## Success Criteria
 
 All tests must pass with:
-- ✅ Zero segmentation faults
-- ✅ Zero data corruption
-- ✅ Zero message loss in normal operation
-- ✅ Performance within 20% of baseline
-- ✅ Clean shutdown without leaks
+-  Zero segmentation faults
+-  Zero data corruption
+-  Zero message loss in normal operation
+-  Performance within 20% of baseline
+-  Clean shutdown without leaks
 
 ## Adding New Tests
 

@@ -34,7 +34,7 @@ fn main() {
     };
 
     if result {
-        println!("✓ Test passed: {}", test_name);
+        println!(" Test passed: {}", test_name);
         process::exit(0);
     } else {
         eprintln!("✗ Test failed: {}", test_name);
@@ -65,7 +65,7 @@ fn test_node_creation() -> bool {
         }
     };
 
-    println!("  ✓ Created Hub instances successfully");
+    println!("   Created Hub instances successfully");
 
     // Test multiple Hub instances
     let mut hubs = Vec::new();
@@ -80,7 +80,7 @@ fn test_node_creation() -> bool {
         }
     }
 
-    println!("  ✓ Created {} Hub instances", hubs.len());
+    println!("   Created {} Hub instances", hubs.len());
     true
 }
 
@@ -98,7 +98,7 @@ fn test_hub_pubsub() -> bool {
             return false;
         }
     };
-    println!("  ✓ Publisher created");
+    println!("   Publisher created");
 
     // Create subscriber
     let subscriber = match Hub::<CmdVel>::new(&topic) {
@@ -108,7 +108,7 @@ fn test_hub_pubsub() -> bool {
             return false;
         }
     };
-    println!("  ✓ Subscriber created");
+    println!("   Subscriber created");
 
     // Give subscriber time to register
     thread::sleep(Duration::from_millis(100));
@@ -128,7 +128,7 @@ fn test_hub_pubsub() -> bool {
             return false;
         }
     }
-    println!("  ✓ Published 10 messages");
+    println!("   Published 10 messages");
 
     // Wait a bit for message propagation
     thread::sleep(Duration::from_millis(50));
@@ -145,7 +145,7 @@ fn test_hub_pubsub() -> bool {
     }
 
     if received == 10 {
-        println!("  ✓ Received all 10 messages");
+        println!("   Received all 10 messages");
         true
     } else {
         eprintln!("Only received {} out of 10 messages", received);
@@ -167,7 +167,7 @@ fn test_link_sendrecv() -> bool {
             return false;
         }
     };
-    println!("  ✓ Sender created");
+    println!("   Sender created");
 
     let receiver = match Link::<CmdVel>::consumer(&topic) {
         Ok(r) => r,
@@ -176,7 +176,7 @@ fn test_link_sendrecv() -> bool {
             return false;
         }
     };
-    println!("  ✓ Receiver created");
+    println!("   Receiver created");
 
     // Test 1: Send and receive a single message
     let test_msg = CmdVel {
@@ -198,7 +198,7 @@ fn test_link_sendrecv() -> bool {
         eprintln!("Failed to receive message");
         return false;
     }
-    println!("  ✓ Basic send/receive works");
+    println!("   Basic send/receive works");
 
     // Test 2: Latest-value semantics (single-slot overwrite)
     // Send multiple messages rapidly, consumer should get the LATEST value
@@ -210,7 +210,7 @@ fn test_link_sendrecv() -> bool {
             return false;
         }
     }
-    println!("  ✓ Sent 100 messages");
+    println!("   Sent 100 messages");
 
     // Give time for last message to propagate
     thread::sleep(Duration::from_micros(100));
@@ -221,7 +221,7 @@ fn test_link_sendrecv() -> bool {
             eprintln!("Expected latest value (99), got {}", msg.stamp_nanos);
             return false;
         }
-        println!("  ✓ Latest-value semantics work correctly (got message 99)");
+        println!("   Latest-value semantics work correctly (got message 99)");
     } else {
         eprintln!("Failed to receive latest message");
         return false;
@@ -236,18 +236,18 @@ fn test_scheduler() -> bool {
 
     // Create scheduler
     let scheduler = Scheduler::new();
-    println!("  ✓ Scheduler created");
+    println!("   Scheduler created");
 
     // Test that we can create multiple schedulers
     let _scheduler2 = Scheduler::new();
-    println!("  ✓ Multiple schedulers can be created");
+    println!("   Multiple schedulers can be created");
 
     // Note: Testing actual node registration and execution requires
     // implementing the Node trait, which is beyond the scope of this
     // simple API compatibility test. The scheduler API itself is verified
     // by successful compilation and instantiation.
 
-    println!("  ✓ Scheduler API compatible");
+    println!("   Scheduler API compatible");
     true
 }
 
@@ -297,7 +297,7 @@ fn test_message_types() -> bool {
                 && msg.angular == cmd_vel.angular
                 && msg.stamp_nanos == cmd_vel.stamp_nanos
             {
-                println!("  ✓ CmdVel type works correctly");
+                println!("   CmdVel type works correctly");
             } else {
                 eprintln!("CmdVel data corrupted");
                 return false;
@@ -309,6 +309,6 @@ fn test_message_types() -> bool {
         }
     }
 
-    println!("  ✓ All message types compatible");
+    println!("   All message types compatible");
     true
 }

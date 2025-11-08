@@ -228,9 +228,9 @@ $ horus run "nodes/*.py"
 
  Phase 1: Building all files...
  Phase 2: Starting all processes...
-  ✓ Started [sensor]
-  ✓ Started [controller]
-  ✓ Started [logger]
+   Started [sensor]
+   Started [controller]
+   Started [logger]
 
  All processes running. Press Ctrl+C to stop.
 
@@ -286,19 +286,19 @@ The `horus check` command validates:
 
 ```bash
 $ horus check
-✓ HORUS framework installed (v0.1.0)
-✓ Cargo toolchain found (1.70.0)
-✓ Python bindings available (3.11)
-✓ Shared memory accessible (/dev/shm)
-✓ All dependencies satisfied
+ HORUS framework installed (v0.1.0)
+ Cargo toolchain found (1.70.0)
+ Python bindings available (3.11)
+ Shared memory accessible (/dev/shm)
+ All dependencies satisfied
 
-✓ Environment is ready!
+ Environment is ready!
 ```
 
 **When validation fails**:
 ```bash
 $ horus check
-✓ HORUS framework installed (v0.1.0)
+ HORUS framework installed (v0.1.0)
 ✗ Missing dependency: horus-vision (required by horus.yaml)
 ✗ Shared memory not writable (/dev/shm)
 

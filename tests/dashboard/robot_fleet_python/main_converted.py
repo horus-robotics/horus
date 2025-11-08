@@ -368,8 +368,8 @@ class PerformanceMonitorNode(Node):
 
 def main():
     print("🏭 Starting Warehouse Robot System (Python)")
-    print("📊 Dashboard available at: http://localhost:8080")
-    print("🔧 Run 'horus dashboard' in another terminal to monitor\n")
+    print(" Dashboard available at: http://localhost:8080")
+    print(" Run 'horus dashboard' in another terminal to monitor\n")
 
     scheduler = Scheduler()
 
@@ -392,13 +392,13 @@ def main():
     # Monitoring Layer (Priority 40+: Low)
     scheduler.add(PerformanceMonitorNode(), priority=40, logging=True)
 
-    print("✅ All nodes registered:")
+    print(" All nodes registered:")
     print("   - 2 Vision nodes")
     print("   - 2 Localization nodes")
     print("   - 2 Task management nodes")
     print("   - 2 Safety nodes")
     print("   - 1 Performance monitoring node")
-    print("\n🚀 Starting scheduler...\n")
+    print("\n Starting scheduler...\n")
 
     scheduler.run()
 

@@ -457,8 +457,8 @@ int main() {
 | **Node pattern** | Class inheritance | Trait impl | Class inheritance |
 | **Lifecycle** | init/tick/shutdown | init/tick/shutdown | init/tick/shutdown |
 | **Error handling** | Exceptions | Result<T> | Exceptions + bool |
-| **Dashboard logs** | ✅ | ✅ | ✅ |
-| **IPC timing** | ✅ | ✅ | ✅ |
+| **Dashboard logs** |  |  |  |
+| **IPC timing** |  |  |  |
 | **Priority** | Via rate | 0-4 explicit | 0-4 explicit |
 | **Memory safety** | GC | Ownership | Manual |
 | **FFI** | Native (PyO3) | Native | Native |
@@ -534,16 +534,16 @@ int main() {
 
 ## Consistency Summary
 
-### ✅ Consistent Across All Languages
+###  Consistent Across All Languages
 
-- Lifecycle: `init` → `tick` @ 60 FPS → `shutdown`
+- Lifecycle: `init`  `tick` @ 60 FPS  `shutdown`
 - Logging: `log_info/warn/error/debug`
 - Dashboard integration
 - IPC timing metrics
 - Message types (40+ built-in)
 - Cross-language communication
 
-### ⚠️ Language-Specific Differences
+###  Language-Specific Differences
 
 **Priority:**
 - Python: Via `rate` parameter (indirect)
@@ -564,12 +564,12 @@ int main() {
 ## Recommendation
 
 **Start with Python** for prototyping and high-level logic
-↓
+
 **Use C++** for hardware drivers and integrating existing code
-↓
+
 **Use Rust** for performance-critical nodes and custom libraries
 
-**All three work together seamlessly!** 🚀
+**All three work together seamlessly!** 
 
 ---
 
@@ -580,17 +580,17 @@ int main() {
 │                     Robot System                           │
 ├────────────────────────────────────────────────────────────┤
 │                                                            │
-│  [C++] LiDAR Driver  ──→ [scan] ──→ [Python] ML Detector │
-│                                                ↓           │
-│  [C++] IMU Driver    ──→ [imu]   ──→ [Rust] Controller   │
-│                                                ↓           │
-│  [C++] Camera        ──→ [image] ──→ [cmd_vel]           │
-│                                                ↓           │
+│  [C++] LiDAR Driver  ── [scan] ── [Python] ML Detector │
+│                                                           │
+│  [C++] IMU Driver    ── [imu]   ── [Rust] Controller   │
+│                                                           │
+│  [C++] Camera        ── [image] ── [cmd_vel]           │
+│                                                           │
 │                                      [C++] Motor Driver   │
 │                                                            │
 └────────────────────────────────────────────────────────────┘
 ```
 
-**Hardware (C++) → Processing (Python/Rust) → Control (Rust) → Actuation (C++)**
+**Hardware (C++)  Processing (Python/Rust)  Control (Rust)  Actuation (C++)**
 
-Perfect division of labor! ✅
+Perfect division of labor! 

@@ -134,7 +134,7 @@ export default function HomePage() {
         <div className="w-full relative">
           {/* Mobile scroll hint */}
           <div className="md:hidden absolute top-2 right-4 z-10 text-xs text-[var(--text-tertiary)] bg-[var(--surface)] px-2 py-1 rounded border border-[var(--border)] opacity-75">
-            ← Scroll →
+             Scroll 
           </div>
           <div className="w-full h-[300px] md:h-[520px] overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-[var(--accent)] scrollbar-track-transparent">
             <svg
@@ -420,12 +420,12 @@ export default function HomePage() {
             <g transform="translate(250, 485)">
               <circle cx="0" cy="0" r="7" fill="var(--accent)" opacity="0.95" />
               <text x="15" y="5" fill="var(--text-secondary)" fontSize="13" fontWeight="600">
-                Publish (Node → Topic)
+                Publish (Node  Topic)
               </text>
 
               <circle cx="0" cy="25" r="7" fill="var(--success)" opacity="0.95" />
               <text x="15" y="30" fill="var(--text-secondary)" fontSize="13" fontWeight="600">
-                Subscribe (Topic → Node)
+                Subscribe (Topic  Node)
               </text>
             </g>
           </svg>

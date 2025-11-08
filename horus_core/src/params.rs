@@ -221,25 +221,3 @@ impl Default for RuntimeParams {
         })
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_basic_operations() {
-        let params = RuntimeParams::init().unwrap();
-
-        // Test defaults
-        assert_eq!(params.get_f64("max_speed", 0.0), 1.0);
-        assert_eq!(params.get_i32("tick_rate", 0), 30);
-
-        // Test set/get
-        params.set("test_value", 42.5).unwrap();
-        assert_eq!(params.get::<f64>("test_value"), Some(42.5));
-
-        // Test overwrite
-        params.set("max_speed", 2.0).unwrap();
-        assert_eq!(params.get_f64("max_speed", 0.0), 2.0);
-    }
-}

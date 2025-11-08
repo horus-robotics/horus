@@ -584,8 +584,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Navigation Stack Components
 
 ```
-Goal → Global Planner → Local Planner → Motor Controller → Robot
-         ↑                   ↑
+Goal  Global Planner  Local Planner  Motor Controller  Robot
+                            
     Costmap/Map         Sensor Data
 ```
 

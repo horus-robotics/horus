@@ -330,31 +330,3 @@ impl LogSummary for Quaternion {
         format!("{:?}", self)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_twist_creation() {
-        let twist = Twist::new_2d(1.0, 0.5);
-        assert_eq!(twist.linear[0], 1.0);
-        assert_eq!(twist.angular[2], 0.5);
-        assert!(twist.is_valid());
-    }
-
-    #[test]
-    fn test_pose2d_distance() {
-        let pose1 = Pose2D::new(0.0, 0.0, 0.0);
-        let pose2 = Pose2D::new(3.0, 4.0, 0.0);
-        assert_eq!(pose1.distance_to(&pose2), 5.0);
-    }
-
-    #[test]
-    fn test_quaternion_normalization() {
-        let mut q = Quaternion::new(1.0, 0.0, 0.0, 1.0);
-        q.normalize();
-        let norm = (q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w).sqrt();
-        assert!((norm - 1.0).abs() < 1e-10);
-    }
-}

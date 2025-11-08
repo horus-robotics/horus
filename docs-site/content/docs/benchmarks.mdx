@@ -320,7 +320,7 @@ cargo build --release --bin production_bench
 - **Conservative**: Measures true round-trip latency, not just one-way send
 
 **What we measure:**
-- Round-trip time: Producer → Consumer → ACK → Producer
+- Round-trip time: Producer  Consumer  ACK  Producer
 - Includes serialization, IPC, deserialization, and synchronization
 - Cross-core communication (Core 0 ↔ Core 1)
 

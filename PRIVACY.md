@@ -151,9 +151,9 @@ You can audit the code yourself: https://github.com/softmata/horus
 
 | Feature | v1.0 (Prompt) | v2.0 (First-run) | v3.0 (Install) |
 |---------|---------------|------------------|----------------|
-| Prompt | ✅ Yes | ❌ No | ❌ No |
+| Prompt |  Yes |  No |  No |
 | When | Install | First horus run | Install |
-| UUID | ✅ Yes | ✅ Yes | ❌ No |
+| UUID |  Yes |  Yes |  No |
 | Tracking | Individual | Individual | None |
 | Data fields | 7 | 4 | 3 |
 | Count metric | Unique users | Active users | Total installs |

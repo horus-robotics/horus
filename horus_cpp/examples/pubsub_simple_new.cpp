@@ -112,7 +112,7 @@ struct TemperatureMonitor : Node {
 int main() {
     std::cout << "=== HORUS Simple Pub-Sub Example ===" << std::endl;
     std::cout << "\nTopology:" << std::endl;
-    std::cout << "  TemperatureSensor → [temperature] → TemperatureMonitor" << std::endl;
+    std::cout << "  TemperatureSensor -> [temperature] -> TemperatureMonitor" << std::endl;
     std::cout << "\nPress Ctrl+C to stop\n" << std::endl;
 
     try {

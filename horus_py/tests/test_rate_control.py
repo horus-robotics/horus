@@ -51,7 +51,7 @@ def test_per_node_rate_control():
     assert 45 <= len(medium_ticks) <= 55, f"Medium node ticks out of range: {len(medium_ticks)}"
     assert 9 <= len(slow_ticks) <= 11, f"Slow node ticks out of range: {len(slow_ticks)}"
 
-    print("✓ Per-node rate control test passed!")
+    print(" Per-node rate control test passed!")
 
 
 def test_runtime_rate_change():
@@ -80,7 +80,7 @@ def test_runtime_rate_change():
     print(f"Updated rate: {stats['rate_hz']}Hz")
     assert stats['rate_hz'] == 100.0
 
-    print("✓ Runtime rate change test passed!")
+    print(" Runtime rate change test passed!")
 
 
 def test_node_statistics():
@@ -105,11 +105,11 @@ def test_node_statistics():
     assert 'total_ticks' in stats
     assert 'errors_count' in stats
 
-    print("✓ Node statistics test passed!")
+    print(" Node statistics test passed!")
 
 
 if __name__ == "__main__":
     test_per_node_rate_control()
     test_runtime_rate_change()
     test_node_statistics()
-    print("\n✓ All Phase 1 tests passed!")
+    print("\n All Phase 1 tests passed!")

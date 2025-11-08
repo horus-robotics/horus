@@ -33,7 +33,7 @@ try {
   );
 
   const stats = fs.statSync(ogImagePath);
-  console.log('✓ Generated og-image.png with logo');
+  console.log(' Generated og-image.png with logo');
   console.log(`  Size: ${Math.round(stats.size / 1024)}KB`);
   console.log('  Dimensions: 1200x630');
 } catch (error) {

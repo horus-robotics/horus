@@ -58,7 +58,7 @@ fn main() -> AnyResult<()> {
     println!("   cd horus_library/tools/sim2d");
     println!("   cargo run -- --topic /tank/tank_1/cmd_vel\n");
     println!("\n");
-    println!("🏁 Starting simulation... (Press Ctrl+C to stop)\n");
+    println!(" Starting simulation... (Press Ctrl+C to stop)\n");
 
     // Run the scheduler
     let _ = scheduler.run();

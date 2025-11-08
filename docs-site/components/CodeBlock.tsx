@@ -140,7 +140,7 @@ export default function CodeBlock({ children, className = '' }: CodeBlockProps) 
           e.currentTarget.style.borderColor = theme === 'light' ? 'rgba(100, 116, 139, 0.3)' : 'rgba(0, 212, 255, 0.2)';
         }}
       >
-        {copied ? '✓ Copied!' : 'Copy'}
+        {copied ? ' Copied!' : 'Copy'}
       </button>
       <pre className={`code-block ${className}`} style={preStyle}>
         <code

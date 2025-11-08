@@ -145,9 +145,9 @@ node.subscribe("cmd_vel", |msg: Twist| {  // 10.2 Hz - teleop_node -> robot_cont
 ```
 HORUS Topics                                    [Press ? for help]
 
-cmd_vel                  geometry_msgs::Twist   10.2 Hz   teleop_node → robot_controller
-sensor_data              sensor_msgs::LaserScan 20.1 Hz   lidar_driver → slam_node, obstacle_detector
-camera/image_raw         sensor_msgs::Image     30.0 Hz   camera_driver → image_processor
+cmd_vel                  geometry_msgs::Twist   10.2 Hz   teleop_node  robot_controller
+sensor_data              sensor_msgs::LaserScan 20.1 Hz   lidar_driver  slam_node, obstacle_detector
+camera/image_raw         sensor_msgs::Image     30.0 Hz   camera_driver  image_processor
 ```
 
 ### Emacs Implementation
@@ -342,7 +342,7 @@ node.subscribe("cmd_vel", |msg: Twist| {
 
 **Runtime Annotation** (inline in editor):
 ```rust
-node.subscribe("cmd_vel", |msg: Twist| {  // ← Latest: Twist { linear: Vec3 { x: 0.5, ... }, ... }
+node.subscribe("cmd_vel", |msg: Twist| {  //  Latest: Twist { linear: Vec3 { x: 0.5, ... }, ... }
     println!("Received: {:?}", msg);
 });
 ```
@@ -387,7 +387,7 @@ cmd_vel.linear.x
 
 **Record Session**:
 ```
-[Start Recording] → [Stop Recording]
+[Start Recording]  [Stop Recording]
 
 Saved to: topics_2024-01-15_15-23-45.horus
 Size: 2.4 MB
@@ -397,7 +397,7 @@ Topics: cmd_vel, sensor_data, camera/image_raw
 
 **Playback**:
 ```
-[Load Recording] → [Play] [Pause] [Step]
+[Load Recording]  [Play] [Pause] [Step]
 
 Playing: topics_2024-01-15_15-23-45.horus
 Position: 15.2 / 30.5 seconds

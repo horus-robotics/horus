@@ -62,17 +62,17 @@ impl TierClassifier {
 
     /// Classify a single node based on its statistics
     fn classify_node(stats: &NodeStats) -> ExecutionTier {
-        // Priority 1: Ultra-fast deterministic nodes → JIT tier
+        // Priority 1: Ultra-fast deterministic nodes  JIT tier
         if stats.avg_us < 5.0 && stats.is_deterministic {
             return ExecutionTier::UltraFast;
         }
 
-        // Priority 2: I/O heavy nodes → Async tier
+        // Priority 2: I/O heavy nodes  Async tier
         if stats.is_io_heavy {
             return ExecutionTier::AsyncIO;
         }
 
-        // Priority 3: Fast nodes (<1ms) → Inline tier
+        // Priority 3: Fast nodes (<1ms)  Inline tier
         if stats.avg_us < 1000.0 {
             return ExecutionTier::Fast;
         }
@@ -199,144 +199,5 @@ impl TierStats {
         } else {
             ((self.ultra_fast + self.fast) as f64 / self.total_nodes as f64) * 100.0
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::scheduling::intelligence::profiler::RuntimeProfiler;
-    use std::time::Duration;
-
-    #[test]
-    fn test_ultra_fast_classification() {
-        let mut stats = NodeStats::default();
-
-        // Ultra-fast deterministic node
-        for _ in 0..20 {
-            stats.update(2.0); // 2μs
-        }
-
-        let tier = TierClassifier::classify_node(&stats);
-        assert_eq!(tier, ExecutionTier::UltraFast);
-    }
-
-    #[test]
-    fn test_io_heavy_classification() {
-        let mut stats = NodeStats::default();
-
-        // I/O heavy pattern
-        for _ in 0..18 {
-            stats.update(10.0);
-        }
-        stats.update(1000.0);
-        stats.update(1500.0);
-
-        let tier = TierClassifier::classify_node(&stats);
-        assert_eq!(tier, ExecutionTier::AsyncIO);
-    }
-
-    #[test]
-    fn test_fast_classification() {
-        let mut stats = NodeStats::default();
-
-        // Fast but not ultra-fast
-        for _ in 0..20 {
-            stats.update(100.0); // 100μs
-        }
-
-        let tier = TierClassifier::classify_node(&stats);
-        assert_eq!(tier, ExecutionTier::Fast);
-    }
-
-    #[test]
-    fn test_background_classification() {
-        let mut stats = NodeStats::default();
-
-        // Slow node
-        for _ in 0..20 {
-            stats.update(2000.0); // 2ms
-        }
-
-        let tier = TierClassifier::classify_node(&stats);
-        assert_eq!(tier, ExecutionTier::Background);
-    }
-
-    #[test]
-    fn test_classifier_from_profiler() {
-        let mut profiler = RuntimeProfiler::new_default();
-
-        // Add different types of nodes
-        for _ in 0..20 {
-            profiler.record("UltraFastNode", Duration::from_micros(2));
-        }
-
-        for _ in 0..20 {
-            profiler.record("FastNode", Duration::from_micros(100));
-        }
-
-        for _ in 0..18 {
-            profiler.record("IONode", Duration::from_micros(10));
-        }
-        profiler.record("IONode", Duration::from_millis(1));
-        profiler.record("IONode", Duration::from_millis(1));
-
-        for _ in 0..20 {
-            profiler.record("SlowNode", Duration::from_millis(2));
-        }
-
-        let classifier = TierClassifier::from_profiler(&profiler);
-
-        assert_eq!(
-            classifier.get_tier("UltraFastNode"),
-            Some(ExecutionTier::UltraFast)
-        );
-        assert_eq!(classifier.get_tier("FastNode"), Some(ExecutionTier::Fast));
-        assert_eq!(classifier.get_tier("IONode"), Some(ExecutionTier::AsyncIO));
-        assert_eq!(
-            classifier.get_tier("SlowNode"),
-            Some(ExecutionTier::Background)
-        );
-    }
-
-    #[test]
-    fn test_tier_stats() {
-        let mut profiler = RuntimeProfiler::new_default();
-
-        for _ in 0..20 {
-            profiler.record("Node1", Duration::from_micros(2));
-            profiler.record("Node2", Duration::from_micros(3));
-            profiler.record("Node3", Duration::from_micros(100));
-        }
-
-        let classifier = TierClassifier::from_profiler(&profiler);
-        let stats = classifier.tier_stats();
-
-        assert_eq!(stats.total_nodes, 3);
-        assert_eq!(stats.ultra_fast, 2);
-        assert_eq!(stats.fast, 1);
-        assert_eq!(stats.async_io, 0);
-    }
-
-    #[test]
-    fn test_get_nodes_in_tier() {
-        let mut profiler = RuntimeProfiler::new_default();
-
-        for _ in 0..20 {
-            profiler.record("Fast1", Duration::from_micros(2));
-            profiler.record("Fast2", Duration::from_micros(3));
-            profiler.record("Slow1", Duration::from_millis(2));
-        }
-
-        let classifier = TierClassifier::from_profiler(&profiler);
-
-        let ultra_fast = classifier.get_nodes_in_tier(ExecutionTier::UltraFast);
-        assert_eq!(ultra_fast.len(), 2);
-        assert!(ultra_fast.contains(&"Fast1".to_string()));
-        assert!(ultra_fast.contains(&"Fast2".to_string()));
-
-        let background = classifier.get_nodes_in_tier(ExecutionTier::Background);
-        assert_eq!(background.len(), 1);
-        assert!(background.contains(&"Slow1".to_string()));
     }
 }

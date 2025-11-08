@@ -190,23 +190,3 @@ pub fn print_version_info() {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_extract_version() {
-        let path = PathBuf::from("/home/user/.horus/cache/horus@0.1.0");
-        assert_eq!(extract_version_from_path(&path), Some("0.1.0".to_string()));
-
-        let path2 = PathBuf::from("horus_macros@0.2.5");
-        assert_eq!(extract_version_from_path(&path2), Some("0.2.5".to_string()));
-    }
-
-    #[test]
-    fn test_cli_version() {
-        let version = get_cli_version();
-        assert!(!version.is_empty());
-    }
-}

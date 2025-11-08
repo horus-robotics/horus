@@ -153,7 +153,7 @@ hub = Hub("my_topic")
 hub.send({"any": "python", "object": [1, 2, 3]})  # Dicts, lists, any Python type
 hub.send(MyCustomClass())  # Any Python class
 
-# ❌ This will NOT work with Rust - Rust cannot deserialize pickle!
+#  This will NOT work with Rust - Rust cannot deserialize pickle!
 ```
 
 **When to use which:**

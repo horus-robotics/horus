@@ -14,7 +14,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-echo -e "${BLUE}🚀 HORUS Quick Benchmark Suite${NC}"
+echo -e "${BLUE} HORUS Quick Benchmark Suite${NC}"
 echo "=============================="
 echo ""
 
@@ -50,7 +50,7 @@ cargo bench --bench throughput -- \
     --save-baseline "$TIMESTAMP" 2>&1 | tee "$RESULTS_DIR/throughput_$TIMESTAMP.log"
 
 echo ""
-echo -e "${GREEN}✅ Benchmarks completed!${NC}"
+echo -e "${GREEN} Benchmarks completed!${NC}"
 echo ""
 
 # Summary

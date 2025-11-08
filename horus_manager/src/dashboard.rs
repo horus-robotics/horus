@@ -4,21 +4,25 @@ use axum::{
         Path, Query, State,
     },
     http::StatusCode,
+    middleware,
     response::{Html, IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
 use futures::{sink::SinkExt, stream::StreamExt};
-use qrcode::{QrCode, render::unicode};
+use qrcode::{render::unicode, QrCode};
 use std::net::UdpSocket;
 use std::sync::Arc;
-use tokio::net::TcpListener;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowOrigin, CorsLayer};
+
+// Security imports
+use crate::security::{security_headers_middleware, AuthService};
 
 #[derive(Clone)]
 struct AppState {
     port: u16,
     params: Arc<horus_core::RuntimeParams>,
+    auth_service: Arc<AuthService>,
 }
 
 /// Get local IP address for network access
@@ -30,9 +34,12 @@ fn get_local_ip() -> Option<String> {
     socket.local_addr().ok().map(|addr| addr.ip().to_string())
 }
 
-/// Generate and display QR code for a URL
-fn display_qr_code(url: &str) {
-    match QrCode::new(url) {
+/// Generate and display QR code for a URL with secure token
+fn display_qr_code(url: &str, token: &str) {
+    // Create URL with token embedded
+    let secure_url = format!("{}?token={}", url, token);
+
+    match QrCode::new(&secure_url) {
         Ok(code) => {
             let qr_string = code
                 .render::<unicode::Dense1x2>()
@@ -51,16 +58,61 @@ fn display_qr_code(url: &str) {
     }
 }
 
+/// Wrapper middleware for token validation using AppState
+async fn dashboard_token_middleware(
+    State(state): State<Arc<AppState>>,
+    req: axum::http::Request<axum::body::Body>,
+    next: axum::middleware::Next,
+) -> Result<axum::response::Response, StatusCode> {
+    // Extract token from query parameter
+    let query = req.uri().query().unwrap_or("");
+    let token = query
+        .split('&')
+        .find_map(|param| {
+            let mut parts = param.split('=');
+            if parts.next() == Some("token") {
+                parts.next()
+            } else {
+                None
+            }
+        })
+        .ok_or(StatusCode::UNAUTHORIZED)?;
+
+    // Validate token
+    if !state.auth_service.validate_token(token) {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+
+    Ok(next.run(req).await)
+}
+
 /// Run the web dashboard server
 pub async fn run(port: u16) -> anyhow::Result<()> {
     eprintln!("Dashboard will read logs from shared memory ring buffer at /dev/shm/horus_logs");
+
+    // Initialize authentication service with random secret token
+    let auth_service = Arc::new(AuthService::new()?);
+    let secret_token = auth_service.get_token();
+
+    // Initialize TLS configuration
+    let tls_config = crate::security::TlsConfig::default_paths()?;
+    let hostname = hostname::get()
+        .ok()
+        .and_then(|h| h.into_string().ok())
+        .unwrap_or_else(|| "localhost".to_string());
+    tls_config.ensure_certificates(&hostname)?;
 
     let params = Arc::new(
         horus_core::RuntimeParams::init().unwrap_or_else(|_| horus_core::RuntimeParams::default()),
     );
 
-    let state = Arc::new(AppState { port, params });
+    let state = Arc::new(AppState {
+        port,
+        params,
+        auth_service: auth_service.clone(),
+    });
 
+    // All routes require token parameter in URL
     let app = Router::new()
         .route("/", get(index_handler))
         .route("/api/status", get(status_handler))
@@ -71,53 +123,86 @@ pub async fn run(port: u16) -> anyhow::Result<()> {
         .route("/api/logs/node/:name", get(logs_node_handler))
         .route("/api/logs/topic/:name", get(logs_topic_handler))
         .route("/api/packages/registry", get(packages_registry_handler))
-        .route(
-            "/api/packages/environments",
-            get(packages_environments_handler),
-        )
+        .route("/api/packages/environments", get(packages_environments_handler))
         .route("/api/packages/install", post(packages_install_handler))
         .route("/api/packages/uninstall", post(packages_uninstall_handler))
         .route("/api/packages/publish", post(packages_publish_handler))
         .route("/api/params", get(params_list_handler))
         .route("/api/params/:key", get(params_get_handler))
         .route("/api/params/:key", post(params_set_handler))
-        .route(
-            "/api/params/:key",
-            axum::routing::delete(params_delete_handler),
-        )
+        .route("/api/params/:key", axum::routing::delete(params_delete_handler))
         .route("/api/params/export", post(params_export_handler))
         .route("/api/params/import", post(params_import_handler))
         .route("/api/ws", get(websocket_handler))
-        .with_state(state)
-        .layer(CorsLayer::permissive());
+        .with_state(state.clone())
+        .layer(middleware::from_fn_with_state(state.clone(), dashboard_token_middleware))
+        .layer(middleware::from_fn(security_headers_middleware))
+        .layer(
+            CorsLayer::new()
+                .allow_origin(AllowOrigin::predicate(
+                    |origin: &axum::http::HeaderValue, _| {
+                        // Allow localhost and local network IPs
+                        let origin_str = origin.to_str().unwrap_or("");
+                        origin_str.starts_with("http://localhost")
+                            || origin_str.starts_with("https://localhost")
+                            || origin_str.starts_with("http://127.0.0.1")
+                            || origin_str.starts_with("https://127.0.0.1")
+                            || origin_str.starts_with("http://192.168.")
+                            || origin_str.starts_with("https://192.168.")
+                            || origin_str.starts_with("http://10.")
+                            || origin_str.starts_with("https://10.")
+                    },
+                ))
+                .allow_methods([
+                    axum::http::Method::GET,
+                    axum::http::Method::POST,
+                    axum::http::Method::DELETE,
+                ])
+                .allow_headers([
+                    axum::http::header::AUTHORIZATION,
+                    axum::http::header::CONTENT_TYPE,
+                ]),
+        );
 
     let addr = format!("0.0.0.0:{}", port);
-    let listener = TcpListener::bind(&addr).await?;
 
     // Get local IP addresses
     let local_ip = get_local_ip();
 
-    println!("HORUS Web Dashboard is running!");
-    println!("\nAccess from:");
-    println!("   • Local:    http://localhost:{}", port);
+    println!("HORUS Secure Web Dashboard is running!");
+    println!("\nSecret URL (only people with this link can access):");
+    println!("   • Local:    https://localhost:{}?token={}", port, secret_token);
     if let Some(ref ip) = local_ip {
-        println!("   • Network:  http://{}:{}", ip, port);
+        let network_url = format!("https://{}:{}", ip, port);
+        println!("   • Network:  {}?token={}", network_url, secret_token);
+
+        // Display QR code for network URL with embedded token
+        display_qr_code(&network_url, secret_token);
     }
 
-    // Display QR code for network URL
-    if let Some(ref ip) = local_ip {
-        let network_url = format!("http://{}:{}", ip, port);
-        display_qr_code(&network_url);
-    }
+    println!("\nSecurity:");
+    println!("   • TLS/SSL encryption enabled");
+    println!("   • Token-based authentication (secret URL)");
+    println!("   • Only people who see this terminal or scan the QR code can access");
+    println!("   • Anyone else on your network cannot guess the random token");
 
     println!("\nFeatures:");
     println!("   • Real-time node monitoring");
     println!("   • Topic visualization");
     println!("   • Performance metrics");
-    println!("   • Accessible from any device on your network");
+    println!("   • Accessible from any device on your network (with the secret link)");
     println!("\n   Press Ctrl+C to stop");
 
-    axum::serve(listener, app).await?;
+    // Start HTTPS server with TLS
+    let tls_config = axum_server::tls_rustls::RustlsConfig::from_pem_file(
+        &tls_config.cert_path,
+        &tls_config.key_path,
+    )
+    .await?;
+
+    axum_server::bind_rustls(addr.parse()?, tls_config)
+        .serve(app.into_make_service())
+        .await?;
 
     Ok(())
 }
@@ -430,9 +515,9 @@ async fn packages_registry_handler(Query(query): Query<SearchQuery>) -> impl Int
 
 // Environments: Show global packages and local environments
 async fn packages_environments_handler() -> impl IntoResponse {
+    use std::collections::HashSet;
     use std::fs;
     use std::path::PathBuf;
-    use std::collections::HashSet;
 
     let result = tokio::task::spawn_blocking(move || {
         let mut global_packages_set: HashSet<String> = HashSet::new();
@@ -4184,7 +4269,7 @@ fn generate_html(port: u16) -> String {
                             env.packages.forEach(pkg => {{
                                 const option = document.createElement('option');
                                 option.value = `${{env.path}}/.horus/packages/${{pkg.name}}`;
-                                option.textContent = `${{env.name}} → ${{pkg.name}}`;
+                                option.textContent = `${{env.name}}  ${{pkg.name}}`;
                                 dropdown.appendChild(option);
                             }});
                         }}

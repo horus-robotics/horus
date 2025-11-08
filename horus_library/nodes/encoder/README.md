@@ -289,7 +289,7 @@ Quadrature encoders provide two channels (A and B) that are 90 degrees out of ph
 **Effective Resolution**:
 ```
 Effective PPR = Nominal PPR × 4 (with quadrature decoding)
-Example: 256 PPR encoder → 1024 counts per revolution
+Example: 256 PPR encoder  1024 counts per revolution
 ```
 
 **Configuration for quadrature encoder**:
@@ -458,7 +458,7 @@ encoder.set_encoder_config(
 
 **Causes**:
 - Time delta calculation error
-- Sample rate too high (dt → 0)
+- Sample rate too high (dt  0)
 - Integer overflow in position calculation
 
 **Solutions**:

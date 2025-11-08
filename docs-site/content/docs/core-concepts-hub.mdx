@@ -155,39 +155,11 @@ pub fn send(&self, msg: T, ctx: Option<&mut NodeInfo>) -> Result<(), T>
 - `Ok(())`: Message sent successfully
 - `Err(msg)`: Failed to send, returns the original message
 
-**Implementation**:
-
-```rust
-pub fn send(&self, msg: T, ctx: Option<&mut NodeInfo>) -> Result<(), T> {
-    let msg_clone = msg.clone();
-
-    let ipc_ns = match self.shm_topic.loan() {
-        Ok(mut sample) => {
-            let ipc_start = Instant::now();
-            sample.write(msg_clone);
-            drop(sample);
-            ipc_start.elapsed().as_nanos() as u64
-        },
-        Err(_) => 0
-    };
-
-    if let Some(ctx) = ctx {
-        ctx.log_pub(&self.topic_name, &msg, ipc_ns);
-    }
-
-    if ipc_ns == 0 {
-        Err(msg)
-    } else {
-        Ok(())
-    }
-}
-```
-
-**Key Points**:
-- Uses loan pattern for zero-copy writes
-- Measures IPC latency in nanoseconds
-- Automatic logging with timing information
-- Non-blocking operation
+**How it works**:
+- Writes data directly to shared memory using zero-copy design
+- Measures IPC latency (248-437ns for small messages)
+- Automatically logs publish events when `ctx` is provided
+- Non-blocking operation - returns immediately
 
 ### The recv() Method
 
@@ -202,33 +174,12 @@ pub fn recv(&self, ctx: Option<&mut NodeInfo>) -> Option<T>
 - `Some(msg)`: Message received
 - `None`: No message available
 
-**Implementation**:
-
-```rust
-pub fn recv(&self, ctx: Option<&mut NodeInfo>) -> Option<T> {
-    let ipc_start = Instant::now();
-
-    match self.shm_topic.read() {
-        Ok(sample) => {
-            let msg = sample.clone();
-            let ipc_ns = ipc_start.elapsed().as_nanos() as u64;
-
-            if let Some(ctx) = ctx {
-                ctx.log_sub(&self.topic_name, &msg, ipc_ns);
-            }
-
-            Some(msg)
-        }
-        Err(_) => None
-    }
-}
-```
-
-**Key Points**:
-- Non-blocking read
-- Measures IPC latency
-- Automatic logging with timing
-- Returns clone of shared memory data
+**How it works**:
+- Reads directly from shared memory without serialization
+- Measures IPC latency (248-437ns for small messages)
+- Automatically logs subscribe events when `ctx` is provided
+- Non-blocking operation - returns immediately if no data available
+- Returns a clone of the message data
 
 ## Connection States
 

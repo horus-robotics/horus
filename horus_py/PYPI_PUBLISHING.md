@@ -4,13 +4,13 @@ This guide walks through publishing the `horus` Python package to PyPI, enabling
 
 ## Current Status
 
-✅ **Package is ready for PyPI publishing!**
+ **Package is ready for PyPI publishing!**
 
-- ✅ pyproject.toml configured with complete metadata
-- ✅ LICENSE file included (Apache-2.0)
-- ✅ README.md comprehensive (498 lines)
-- ✅ Wheel builds successfully (611KB)
-- ✅ Package name: `horus`
+-  pyproject.toml configured with complete metadata
+-  LICENSE file included (Apache-2.0)
+-  README.md comprehensive (498 lines)
+-  Wheel builds successfully (611KB)
+-  Package name: `horus`
 
 **Built wheel**: `horus_robotics-0.1.3-cp39-abi3-manylinux_2_34_x86_64.whl`
 
@@ -86,7 +86,7 @@ unzip -l target/wheels/*.whl
 
 **Expected output**:
 ```
-📦 Built wheel for abi3 Python ≥ 3.9 to /home/lord-patpak/horus/HORUS/target/wheels/horus_robotics-0.1.3-cp39-abi3-manylinux_2_34_x86_64.whl
+ Built wheel for abi3 Python ≥ 3.9 to /home/lord-patpak/horus/HORUS/target/wheels/horus_robotics-0.1.3-cp39-abi3-manylinux_2_34_x86_64.whl
 ```
 
 ### Step 2: Test on TestPyPI (RECOMMENDED)
@@ -127,9 +127,9 @@ twine upload target/wheels/*.whl
 
 **You'll see**:
 ```
-📦 Built wheel for abi3 Python ≥ 3.9 to /home/lord-patpak/horus/HORUS/target/wheels/horus_robotics-0.1.3-cp39-abi3-manylinux_2_34_x86_64.whl
+ Built wheel for abi3 Python ≥ 3.9 to /home/lord-patpak/horus/HORUS/target/wheels/horus_robotics-0.1.3-cp39-abi3-manylinux_2_34_x86_64.whl
 🔐 Uploading to PyPI...
-✅ Published horus 0.1.3 to https://pypi.org/project/horus/
+ Published horus 0.1.3 to https://pypi.org/project/horus/
 ```
 
 ### Step 4: Verify Publication
@@ -142,7 +142,7 @@ pip install horus
 
 # Verify
 python3 -c "import horus; print('HORUS version:', horus.__version__)"
-python3 -c "import horus; node = horus.Node(pubs='test', tick=lambda n: n.send('test', 42)); print('✅ Success!')"
+python3 -c "import horus; node = horus.Node(pubs='test', tick=lambda n: n.send('test', 42)); print(' Success!')"
 ```
 
 **Check PyPI page**: https://pypi.org/project/horus/
@@ -250,7 +250,7 @@ jobs:
 
 **Setup**:
 1. Add PyPI API token to GitHub Secrets as `PYPI_API_TOKEN`
-2. Create GitHub release → triggers automatic PyPI publish
+2. Create GitHub release  triggers automatic PyPI publish
 
 ---
 
@@ -273,7 +273,7 @@ maturin publish
 ```
 
 Platforms to support:
-- ✅ Linux x86_64 (done)
+-  Linux x86_64 (done)
 - ⏳ Linux ARM64 (Raspberry Pi 4/5, Jetson)
 - ⏳ Linux ARMv7 (Raspberry Pi 3)
 
@@ -313,7 +313,7 @@ cd horus_py && maturin build --release
 
 # Test locally
 maturin develop --release
-python3 -c "import horus; print('✅ Works!')"
+python3 -c "import horus; print(' Works!')"
 
 # Publish to TestPyPI
 maturin publish --repository testpypi

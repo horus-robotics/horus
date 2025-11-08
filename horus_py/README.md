@@ -203,7 +203,7 @@ node = horus.Node(
 
 ## Advanced Features
 
-### ✨ Phase 1-3 Enhancements (NEW!)
+###  Phase 1-3 Enhancements (NEW!)
 
 HORUS Python now includes production-grade features from the Rust implementation:
 

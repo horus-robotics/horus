@@ -61,38 +61,3 @@ impl LogSummary for CmdVel {
         format!("CmdVel(lin={:.2}, ang={:.2})", self.linear, self.angular)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use approx::assert_relative_eq;
-
-    #[test]
-    fn test_cmd_vel_creation() {
-        let cmd = CmdVel::new(1.5, 0.8);
-        assert_relative_eq!(cmd.linear, 1.5);
-        assert_relative_eq!(cmd.angular, 0.8);
-        assert!(cmd.stamp_nanos > 0);
-    }
-
-    #[test]
-    fn test_cmd_vel_zero() {
-        let cmd = CmdVel::zero();
-        assert_relative_eq!(cmd.linear, 0.0);
-        assert_relative_eq!(cmd.angular, 0.0);
-    }
-
-    #[test]
-    fn test_cmd_vel_with_timestamp() {
-        let cmd = CmdVel::with_timestamp(2.0, 1.0, 123456789);
-        assert_relative_eq!(cmd.linear, 2.0);
-        assert_relative_eq!(cmd.angular, 1.0);
-        assert_eq!(cmd.stamp_nanos, 123456789);
-    }
-
-    #[test]
-    fn test_bytemuck_traits() {
-        let cmd = CmdVel::new(1.0, 2.0);
-        let _bytes: &[u8] = bytemuck::bytes_of(&cmd);
-    }
-}

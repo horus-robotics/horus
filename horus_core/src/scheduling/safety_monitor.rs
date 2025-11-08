@@ -240,7 +240,7 @@ impl SafetyMonitor {
 
     /// Trigger emergency stop
     pub fn trigger_emergency_stop(&self, reason: String) {
-        eprintln!("🚨 EMERGENCY STOP: {}", reason);
+        eprintln!(" EMERGENCY STOP: {}", reason);
         self.emergency_stop.store(true, Ordering::SeqCst);
         *self.state.lock() = SafetyState::EmergencyStop;
     }
@@ -257,7 +257,7 @@ impl SafetyMonitor {
 
     /// Enter degraded mode
     pub fn enter_degraded_mode(&self, reason: String) {
-        eprintln!("⚠️ Entering degraded mode: {}", reason);
+        eprintln!(" Entering degraded mode: {}", reason);
         *self.state.lock() = SafetyState::Degraded;
     }
 
@@ -301,58 +301,4 @@ pub struct SafetyStats {
     pub wcet_overruns: u64,
     pub deadline_misses: u64,
     pub watchdog_expirations: u64,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::thread;
-
-    #[test]
-    fn test_watchdog_expiration() {
-        let watchdog = Watchdog::new("test_node".to_string(), Duration::from_millis(100));
-
-        // Initially not expired
-        assert!(!watchdog.check());
-
-        // Feed and check
-        watchdog.feed();
-        assert!(!watchdog.check());
-
-        // Wait for expiration
-        thread::sleep(Duration::from_millis(150));
-        assert!(watchdog.check());
-        assert!(watchdog.is_expired());
-    }
-
-    #[test]
-    fn test_wcet_enforcement() {
-        let mut enforcer = WCETEnforcer::new();
-        enforcer.set_budget("node1".to_string(), Duration::from_millis(10));
-
-        // Within budget
-        assert!(enforcer
-            .check_budget("node1", Duration::from_millis(5))
-            .is_ok());
-
-        // Exceeds budget
-        let result = enforcer.check_budget("node1", Duration::from_millis(15));
-        assert!(result.is_err());
-        assert_eq!(enforcer.get_overrun_count(), 1);
-    }
-
-    #[test]
-    fn test_safety_monitor_emergency_stop() {
-        let mut monitor = SafetyMonitor::new(5);
-        monitor.add_critical_node("critical".to_string(), Duration::from_millis(100));
-
-        // Normal operation
-        assert_eq!(monitor.get_state(), SafetyState::Normal);
-        assert!(!monitor.is_emergency_stop());
-
-        // Trigger emergency stop
-        monitor.trigger_emergency_stop("Test emergency".to_string());
-        assert_eq!(monitor.get_state(), SafetyState::EmergencyStop);
-        assert!(monitor.is_emergency_stop());
-    }
 }

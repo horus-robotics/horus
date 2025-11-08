@@ -325,11 +325,11 @@ Organize nodes in layers based on data flow:
 
 ```
 Layer 0: Sensors (inputs)
-    ↓
+    
 Layer 1: Processing
-    ↓
+    
 Layer 2: Control
-    ↓
+    
 Layer 3: Actuators (outputs)
 ```
 

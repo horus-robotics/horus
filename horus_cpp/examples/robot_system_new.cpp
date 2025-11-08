@@ -235,10 +235,10 @@ int main() {
     std::cout << "   HORUS Robot Control System (C++)" << std::endl;
     std::cout << "=====================================" << std::endl;
     std::cout << "\nSystem topology:" << std::endl;
-    std::cout << "  IMU Driver     → [imu]" << std::endl;
-    std::cout << "  LiDAR Driver   → [scan]" << std::endl;
-    std::cout << "  Controller     → [cmd_vel] (subscribes: imu, scan)" << std::endl;
-    std::cout << "  Safety Monitor → [estop] (subscribes: scan, cmd_vel)" << std::endl;
+    std::cout << "  IMU Driver     -> [imu]" << std::endl;
+    std::cout << "  LiDAR Driver   -> [scan]" << std::endl;
+    std::cout << "  Controller     -> [cmd_vel] (subscribes: imu, scan)" << std::endl;
+    std::cout << "  Safety Monitor -> [estop] (subscribes: scan, cmd_vel)" << std::endl;
     std::cout << "\nStarting 4 nodes at 60 FPS..." << std::endl;
     std::cout << "Press Ctrl+C to stop\n" << std::endl;
 
@@ -252,7 +252,7 @@ int main() {
         scheduler.add(ImuDriver(),     2, true);  // Normal
 
         // Run at 60 FPS (blocks until Ctrl+C)
-        // Execution order: init() all → tick() loop at 60 FPS → shutdown() all
+        // Execution order: init() all -> tick() loop at 60 FPS -> shutdown() all
         scheduler.run();
 
         std::cout << "\n=====================================" << std::endl;

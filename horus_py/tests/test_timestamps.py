@@ -51,7 +51,7 @@ def test_automatic_timestamps():
         assert ts > 0, "Timestamp should be positive"
         assert abs(now - ts) < 10, f"Timestamp should be recent: {now - ts}s ago"
 
-    print("✓ Automatic timestamps test passed!")
+    print(" Automatic timestamps test passed!")
 
 
 def test_message_age():
@@ -80,7 +80,7 @@ def test_message_age():
 
     scheduler.run(duration=0.5)
 
-    print("✓ Message age test passed!")
+    print(" Message age test passed!")
 
 
 def test_staleness_detection():
@@ -125,7 +125,7 @@ def test_staleness_detection():
     scheduler.run(duration=0.3)
 
     print(f"Stale detected: {stale_detected[0]}")
-    print("✓ Staleness detection test passed!")
+    print(" Staleness detection test passed!")
 
 
 def test_get_timestamp():
@@ -163,7 +163,7 @@ def test_get_timestamp():
 
     scheduler.run(duration=0.3)
 
-    print("✓ Get timestamp test passed!")
+    print(" Get timestamp test passed!")
 
 
 if __name__ == "__main__":
@@ -171,4 +171,4 @@ if __name__ == "__main__":
     test_message_age()
     test_staleness_detection()
     test_get_timestamp()
-    print("\n✓ All Phase 2 tests passed!")
+    print("\n All Phase 2 tests passed!")

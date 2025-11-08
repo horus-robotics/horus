@@ -754,7 +754,7 @@ impl TuiDashboard {
             )
             .block(
                 Block::default()
-                    .title("Topics - Use ↑↓ to select, Enter to view logs")
+                    .title("Topics - Use  to select, Enter to view logs")
                     .borders(Borders::ALL),
             )
             .highlight_style(
@@ -1113,7 +1113,7 @@ impl TuiDashboard {
             )
             .block(
                 Block::default()
-                    .title("Node Details - Use ↑↓ to select, Enter to view logs")
+                    .title("Node Details - Use  to select, Enter to view logs")
                     .borders(Borders::ALL),
             )
             .highlight_style(
@@ -1155,9 +1155,9 @@ impl TuiDashboard {
                 "Navigation:",
                 Style::default().fg(Color::Cyan),
             )]),
-            Line::from("  Tab        - Next tab (Overview → Nodes → Topics → Packages → Params)"),
+            Line::from("  Tab        - Next tab (Overview  Nodes  Topics  Packages  Params)"),
             Line::from("  Shift+Tab  - Previous tab"),
-            Line::from("  ↑/↓        - Navigate lists"),
+            Line::from("  /        - Navigate lists"),
             Line::from("  PgUp/PgDn  - Scroll quickly"),
             Line::from(""),
             Line::from(vec![Span::styled(
@@ -1174,7 +1174,7 @@ impl TuiDashboard {
             )]),
             Line::from("  Enter      - Open log panel for selected node/topic"),
             Line::from("  ESC        - Close log panel"),
-            Line::from("  Shift+↑↓   - Switch between nodes/topics while log panel is open"),
+            Line::from("  Shift+   - Switch between nodes/topics while log panel is open"),
             Line::from(""),
             Line::from(vec![Span::styled(
                 "Packages Tab:",
@@ -1314,7 +1314,7 @@ impl TuiDashboard {
                 .collect()
         };
 
-        let help_text = format!("Showing {} logs | ↑↓ Scroll | ESC Close", logs.len());
+        let help_text = format!("Showing {} logs |  Scroll | ESC Close", logs.len());
 
         // Create block with title
         let block = Block::default()
@@ -1360,7 +1360,7 @@ impl TuiDashboard {
         let footer_text = if self.show_help {
             "Press any key to close help"
         } else if self.show_log_panel {
-            "[ESC] Close | [↑↓] Scroll Logs | [Shift+↑↓] Switch Node/Topic | [Q] Quit"
+            "[ESC] Close | [] Scroll Logs | [Shift+] Switch Node/Topic | [Q] Quit"
         } else if self.active_tab == Tab::Parameters && self.param_edit_mode == ParamEditMode::None
         {
             "[A] Add | [E] Edit | [D] Delete | [R] Refresh | [S] Save | [TAB] Switch Tab | [?] Help | [Q] Quit"
@@ -1369,15 +1369,15 @@ impl TuiDashboard {
         } else if self.active_tab == Tab::Packages
             && self.package_view_mode == PackageViewMode::List
         {
-            "[ENTER] View Packages | [↑↓] Navigate | [TAB] Switch Tab | [?] Help | [Q] Quit"
+            "[ENTER] View Packages | [] Navigate | [TAB] Switch Tab | [?] Help | [Q] Quit"
         } else if self.active_tab == Tab::Packages
             && self.package_view_mode == PackageViewMode::WorkspaceDetails
         {
-            "[ESC] Back to Workspaces | [↑↓] Navigate | [TAB] Switch Tab | [?] Help | [Q] Quit"
+            "[ESC] Back to Workspaces | [] Navigate | [TAB] Switch Tab | [?] Help | [Q] Quit"
         } else if self.active_tab == Tab::Nodes || self.active_tab == Tab::Topics {
-            "[ENTER] View Logs | [↑↓] Navigate | [TAB] Switch Tab | [P] Pause | [?] Help | [Q] Quit"
+            "[ENTER] View Logs | [] Navigate | [TAB] Switch Tab | [P] Pause | [?] Help | [Q] Quit"
         } else {
-            "[TAB] Switch Tab | [↑↓] Navigate | [P] Pause | [?] Help | [Q] Quit"
+            "[TAB] Switch Tab | [] Navigate | [P] Pause | [?] Help | [Q] Quit"
         };
 
         let footer = Paragraph::new(footer_text)

@@ -242,19 +242,19 @@ right_speed = linear_vel + (angular_vel * wheel_base / 2)
 **Moving forward** (1 m/s):
 ```
 Twist { linear: [1.0, 0, 0], angular: [0, 0, 0] }
-→ left_speed = 1.0, right_speed = 1.0
+ left_speed = 1.0, right_speed = 1.0
 ```
 
 **Rotating in place** (1 rad/s, wheel_base = 0.5m):
 ```
 Twist { linear: [0, 0, 0], angular: [0, 0, 1.0] }
-→ left_speed = -0.25, right_speed = 0.25
+ left_speed = -0.25, right_speed = 0.25
 ```
 
 **Arc motion** (0.5 m/s forward, 0.5 rad/s turn):
 ```
 Twist { linear: [0.5, 0, 0], angular: [0, 0, 0.5] }
-→ left_speed = 0.375, right_speed = 0.625
+ left_speed = 0.375, right_speed = 0.625
 ```
 
 ### Inverse Kinematics

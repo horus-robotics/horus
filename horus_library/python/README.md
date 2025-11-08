@@ -70,11 +70,11 @@ horus.run(robot)
 
 ## Features
 
-- ✅ Type-safe message classes
-- ✅ Zero-copy where possible (same memory layout as Rust)
-- ✅ Familiar Pythonic API
-- ✅ All methods documented
-- ✅ Compatible with horus core package
+-  Type-safe message classes
+-  Zero-copy where possible (same memory layout as Rust)
+-  Familiar Pythonic API
+-  All methods documented
+-  Compatible with horus core package
 
 ## Coming Soon
 
