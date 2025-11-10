@@ -60,6 +60,14 @@ pub struct TuiDashboard {
     // Package navigation state
     package_view_mode: PackageViewMode,
     selected_workspace: Option<WorkspaceData>,
+
+    // Graph view state
+    graph_nodes: Vec<TuiGraphNode>,
+    graph_edges: Vec<TuiGraphEdge>,
+    graph_layout: GraphLayout,
+    graph_zoom: f32,
+    graph_offset_x: i32,
+    graph_offset_y: i32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -107,11 +115,50 @@ struct TopicInfo {
     subscriber_nodes: Vec<String>,
 }
 
+// Graph data structures for TUI
+#[derive(Debug, Clone)]
+struct TuiGraphNode {
+    id: String,
+    label: String,
+    node_type: TuiNodeType,
+    x: i32,  // TUI coordinates (character cells)
+    y: i32,
+    pid: Option<u32>,
+    active: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum TuiNodeType {
+    Process,
+    Topic,
+}
+
+#[derive(Debug, Clone)]
+struct TuiGraphEdge {
+    from: String,
+    to: String,
+    edge_type: TuiEdgeType,
+    active: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum TuiEdgeType {
+    Publish,   // Process publishes to topic
+    Subscribe, // Process subscribes from topic
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum GraphLayout {
+    Hierarchical,  // Processes on left, topics on right
+    Vertical,      // Processes on top, topics on bottom
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Tab {
     Overview,
     Nodes,
     Topics,
+    Graph,
     Packages,
     Parameters,
 }
@@ -128,6 +175,7 @@ impl Tab {
             Tab::Overview => "Overview",
             Tab::Nodes => "Nodes",
             Tab::Topics => "Topics",
+            Tab::Graph => "Graph",
             Tab::Packages => "Packages",
             Tab::Parameters => "Params",
         }
@@ -138,6 +186,7 @@ impl Tab {
             Tab::Overview,
             Tab::Nodes,
             Tab::Topics,
+            Tab::Graph,
             Tab::Packages,
             Tab::Parameters,
         ]
@@ -182,6 +231,13 @@ impl TuiDashboard {
 
             package_view_mode: PackageViewMode::List,
             selected_workspace: None,
+
+            graph_nodes: Vec::new(),
+            graph_edges: Vec::new(),
+            graph_layout: GraphLayout::Hierarchical,
+            graph_zoom: 1.0,
+            graph_offset_x: 0,
+            graph_offset_y: 0,
         }
     }
 
@@ -273,7 +329,10 @@ impl TuiDashboard {
 
                         // Up/Down keys with different behavior based on Shift
                         KeyCode::Up => {
-                            if shift_pressed && self.show_log_panel {
+                            if self.active_tab == Tab::Graph && !self.show_log_panel {
+                                // Pan up in graph view
+                                self.graph_offset_y += 2;
+                            } else if shift_pressed && self.show_log_panel {
                                 // Shift+Up: Navigate to previous node/topic and update log panel
                                 self.select_prev();
                                 self.update_log_panel_target();
@@ -287,7 +346,10 @@ impl TuiDashboard {
                             }
                         }
                         KeyCode::Down => {
-                            if shift_pressed && self.show_log_panel {
+                            if self.active_tab == Tab::Graph && !self.show_log_panel {
+                                // Pan down in graph view
+                                self.graph_offset_y -= 2;
+                            } else if shift_pressed && self.show_log_panel {
                                 // Shift+Down: Navigate to next node/topic and update log panel
                                 self.select_next();
                                 self.update_log_panel_target();
@@ -359,6 +421,42 @@ impl TuiDashboard {
                         {
                             // Delete selected parameter (with confirmation)
                             self.start_delete_parameter();
+                        }
+
+                        // Graph operations (only in Graph tab)
+                        KeyCode::Char('l') | KeyCode::Char('L')
+                            if self.active_tab == Tab::Graph =>
+                        {
+                            // Toggle layout
+                            self.graph_layout = match self.graph_layout {
+                                GraphLayout::Hierarchical => GraphLayout::Vertical,
+                                GraphLayout::Vertical => GraphLayout::Hierarchical,
+                            };
+                            self.apply_graph_layout();
+                        }
+                        KeyCode::Char('+') | KeyCode::Char('=')
+                            if self.active_tab == Tab::Graph =>
+                        {
+                            // Zoom in
+                            self.graph_zoom = (self.graph_zoom * 1.2).min(5.0);
+                        }
+                        KeyCode::Char('-') | KeyCode::Char('_')
+                            if self.active_tab == Tab::Graph =>
+                        {
+                            // Zoom out
+                            self.graph_zoom = (self.graph_zoom / 1.2).max(0.2);
+                        }
+                        KeyCode::Left
+                            if self.active_tab == Tab::Graph && !self.show_log_panel =>
+                        {
+                            // Pan left
+                            self.graph_offset_x += 5;
+                        }
+                        KeyCode::Right
+                            if self.active_tab == Tab::Graph && !self.show_log_panel =>
+                        {
+                            // Pan right
+                            self.graph_offset_x -= 5;
                         }
 
                         // Handle input when in parameter edit mode
@@ -462,6 +560,7 @@ impl TuiDashboard {
                     Tab::Overview => self.draw_overview(f, horizontal_chunks[0]),
                     Tab::Nodes => self.draw_nodes_simple(f, horizontal_chunks[0]),
                     Tab::Topics => self.draw_topics_simple(f, horizontal_chunks[0]),
+                    Tab::Graph => self.draw_graph(f, horizontal_chunks[0]),
                     Tab::Packages => self.draw_packages(f, horizontal_chunks[0]),
                     Tab::Parameters => self.draw_parameters(f, horizontal_chunks[0]),
                 }
@@ -478,6 +577,7 @@ impl TuiDashboard {
                     Tab::Overview => self.draw_overview(f, content_area),
                     Tab::Nodes => self.draw_nodes(f, content_area),
                     Tab::Topics => self.draw_topics(f, content_area),
+                    Tab::Graph => self.draw_graph(f, content_area),
                     Tab::Packages => self.draw_packages(f, content_area),
                     Tab::Parameters => self.draw_parameters(f, content_area),
                 }
@@ -780,6 +880,214 @@ impl TuiDashboard {
         }
 
         f.render_stateful_widget(table, area, &mut table_state);
+    }
+
+    fn draw_graph(&self, f: &mut Frame, area: Rect) {
+        use std::collections::HashMap;
+
+        // Create a block for the graph
+        let block = Block::default()
+            .title(format!(
+                "Graph - {} nodes, {} edges | ● Process → [Topic] → ● Subscriber | Layout: {:?} | [L]ayout [+/-] Zoom [←↑↓→] Pan",
+                self.graph_nodes.len(),
+                self.graph_edges.len(),
+                self.graph_layout
+            ))
+            .borders(Borders::ALL);
+
+        let inner = block.inner(area);
+        f.render_widget(block, area);
+
+        if self.graph_nodes.is_empty() {
+            // Show message if no graph data
+            let text = Paragraph::new("No nodes or topics detected. Start some HORUS nodes to see the graph.")
+                .style(Style::default().fg(Color::Yellow))
+                .alignment(Alignment::Center);
+            f.render_widget(text, inner);
+            return;
+        }
+
+        // Create a buffer to draw on
+        let width = inner.width as usize;
+        let height = inner.height as usize;
+        let mut canvas: Vec<Vec<String>> = vec![vec![" ".to_string(); width]; height];
+
+        // Create a map of node ID to node for quick lookup
+        let node_map: HashMap<String, &TuiGraphNode> =
+            self.graph_nodes.iter().map(|n| (n.id.clone(), n)).collect();
+
+        // Draw edges first (so they appear behind nodes)
+        for edge in &self.graph_edges {
+            if let (Some(from_node), Some(to_node)) =
+                (node_map.get(&edge.from), node_map.get(&edge.to))
+            {
+                self.draw_edge(
+                    &mut canvas,
+                    from_node,
+                    to_node,
+                    &edge.edge_type,
+                    edge.active,
+                    width,
+                    height,
+                );
+            }
+        }
+
+        // Draw nodes on top of edges
+        for node in &self.graph_nodes {
+            self.draw_node(&mut canvas, node, width, height);
+        }
+
+        // Convert canvas to ratatui Lines
+        let lines: Vec<Line> = canvas
+            .iter()
+            .map(|row| {
+                let spans: Vec<Span> = row
+                    .iter()
+                    .map(|cell| Span::raw(cell.clone()))
+                    .collect();
+                Line::from(spans)
+            })
+            .collect();
+
+        let paragraph = Paragraph::new(lines);
+        f.render_widget(paragraph, inner);
+    }
+
+    fn draw_node(&self, canvas: &mut [Vec<String>], node: &TuiGraphNode, width: usize, height: usize) {
+        // Apply zoom and offset
+        let x = ((node.x as f32 * self.graph_zoom) as i32 + self.graph_offset_x) as usize;
+        let y = ((node.y as f32 * self.graph_zoom) as i32 + self.graph_offset_y) as usize;
+
+        // Check bounds
+        if y >= height {
+            return;
+        }
+
+        match node.node_type {
+            TuiNodeType::Process => {
+                // Draw process as a circle using ● or ◉
+                let symbol = if node.active { "●" } else { "○" };
+                if x < width {
+                    canvas[y][x] = symbol.to_string();
+                }
+
+                // Draw label next to the node
+                let label = format!(" {}", node.label);
+                for (i, ch) in label.chars().enumerate() {
+                    let label_x = x + i + 1;
+                    if label_x < width && y < height {
+                        canvas[y][label_x] = ch.to_string();
+                    }
+                }
+            }
+            TuiNodeType::Topic => {
+                // Draw topic as a box [topic_name]
+                let label = format!("[{}]", node.label);
+                for (i, ch) in label.chars().enumerate() {
+                    let label_x = x + i;
+                    if label_x < width && y < height {
+                        canvas[y][label_x] = ch.to_string();
+                    }
+                }
+            }
+        }
+    }
+
+    fn draw_edge(
+        &self,
+        canvas: &mut [Vec<String>],
+        from: &TuiGraphNode,
+        to: &TuiGraphNode,
+        edge_type: &TuiEdgeType,
+        _active: bool,
+        width: usize,
+        height: usize,
+    ) {
+        // Apply zoom and offset
+        let x1 = ((from.x as f32 * self.graph_zoom) as i32 + self.graph_offset_x) as usize;
+        let y1 = ((from.y as f32 * self.graph_zoom) as i32 + self.graph_offset_y) as usize;
+        let x2 = ((to.x as f32 * self.graph_zoom) as i32 + self.graph_offset_x) as usize;
+        let y2 = ((to.y as f32 * self.graph_zoom) as i32 + self.graph_offset_y) as usize;
+
+        // Draw a simple line using box-drawing characters
+        if y1 == y2 {
+            // Horizontal line
+            let (start_x, end_x) = if x1 < x2 { (x1, x2) } else { (x2, x1) };
+            for x in start_x..=end_x {
+                if x < width && y1 < height {
+                    canvas[y1][x] = "─".to_string();
+                }
+            }
+
+            // Add arrowhead pointing toward destination (to)
+            // Arrow direction is based on actual data flow: from -> to
+            let arrow = if x1 < x2 {
+                "→"  // Left to right: arrow points right
+            } else {
+                "←"  // Right to left: arrow points left
+            };
+            if x2 < width && y2 < height {
+                canvas[y2][x2] = arrow.to_string();
+            }
+        } else if x1 == x2 {
+            // Vertical line
+            let (start_y, end_y) = if y1 < y2 { (y1, y2) } else { (y2, y1) };
+            for y in start_y..=end_y {
+                if x1 < width && y < height {
+                    canvas[y][x1] = "│".to_string();
+                }
+            }
+
+            // Add arrowhead pointing toward destination (to)
+            let arrow = if y1 < y2 {
+                "↓"  // Top to bottom: arrow points down
+            } else {
+                "↑"  // Bottom to top: arrow points up
+            };
+            if x2 < width && y2 < height {
+                canvas[y2][x2] = arrow.to_string();
+            }
+        } else {
+            // Diagonal or complex line - draw L-shaped connector
+            // First horizontal, then vertical
+            for x in x1.min(x2)..=x1.max(x2) {
+                if x < width && y1 < height {
+                    canvas[y1][x] = "─".to_string();
+                }
+            }
+
+            for y in y1.min(y2)..=y1.max(y2) {
+                if x2 < width && y < height {
+                    canvas[y][x2] = "│".to_string();
+                }
+            }
+
+            // Corner piece
+            if x2 < width && y1 < height {
+                let corner = if x1 < x2 && y1 < y2 {
+                    "┐"
+                } else if x1 < x2 && y1 > y2 {
+                    "┘"
+                } else if x1 > x2 && y1 < y2 {
+                    "┌"
+                } else {
+                    "└"
+                };
+                canvas[y1][x2] = corner.to_string();
+            }
+
+            // Add arrowhead at destination pointing toward final position
+            // For L-shaped connectors, the final segment is vertical
+            let arrow = if y1 < y2 {
+                "↓"  // Arrow points down to destination
+            } else {
+                "↑"  // Arrow points up to destination
+            };
+            if x2 < width && y2 < height {
+                canvas[y2][x2] = arrow.to_string();
+            }
+        }
     }
 
     fn draw_packages(&self, f: &mut Frame, area: Rect) {
@@ -1155,7 +1463,7 @@ impl TuiDashboard {
                 "Navigation:",
                 Style::default().fg(Color::Cyan),
             )]),
-            Line::from("  Tab        - Next tab (Overview  Nodes  Topics  Packages  Params)"),
+            Line::from("  Tab        - Next tab (Overview  Nodes  Topics  Graph  Packages  Params)"),
             Line::from("  Shift+Tab  - Previous tab"),
             Line::from("  /        - Navigate lists"),
             Line::from("  PgUp/PgDn  - Scroll quickly"),
@@ -1175,6 +1483,14 @@ impl TuiDashboard {
             Line::from("  Enter      - Open log panel for selected node/topic"),
             Line::from("  ESC        - Close log panel"),
             Line::from("  Shift+   - Switch between nodes/topics while log panel is open"),
+            Line::from(""),
+            Line::from(vec![Span::styled(
+                "Graph Tab:",
+                Style::default().fg(Color::Cyan),
+            )]),
+            Line::from("  L          - Toggle layout (Hierarchical/Vertical)"),
+            Line::from("  +/-        - Zoom in/out"),
+            Line::from("  Arrow keys - Pan the graph view"),
             Line::from(""),
             Line::from(vec![Span::styled(
                 "Packages Tab:",
@@ -1200,6 +1516,7 @@ impl TuiDashboard {
             Line::from("  Overview   - Summary of nodes and topics (top 10)"),
             Line::from("  Nodes      - Full list of detected HORUS nodes with details"),
             Line::from("  Topics     - Full list of shared memory topics"),
+            Line::from("  Graph      - Node-topic graph visualization with pub/sub arrows"),
             Line::from("  Packages   - Local workspaces and global packages (hierarchical)"),
             Line::from("  Params     - Runtime configuration parameters (editable)"),
             Line::from(""),
@@ -1397,6 +1714,9 @@ impl TuiDashboard {
         if let Ok(topics) = get_active_topics() {
             self.topics = topics;
         }
+
+        // Update graph data
+        self.update_graph_data();
 
         Ok(())
     }
@@ -1801,6 +2121,126 @@ impl TuiDashboard {
 
             // Exit edit mode
             self.param_edit_mode = ParamEditMode::None;
+        }
+    }
+
+    fn update_graph_data(&mut self) {
+        // Discover graph data from the graph module
+        let (graph_nodes, graph_edges) = crate::graph::discover_graph_data();
+
+        // Convert to TUI graph nodes
+        self.graph_nodes = graph_nodes
+            .into_iter()
+            .map(|node| TuiGraphNode {
+                id: node.id,
+                label: node.label,
+                node_type: match node.node_type {
+                    crate::graph::NodeType::Process => TuiNodeType::Process,
+                    crate::graph::NodeType::Topic => TuiNodeType::Topic,
+                },
+                x: 0,  // Will be set by layout
+                y: 0,
+                pid: node.pid,
+                active: node.active,
+            })
+            .collect();
+
+        // Convert to TUI graph edges
+        self.graph_edges = graph_edges
+            .into_iter()
+            .map(|edge| TuiGraphEdge {
+                from: edge.from,
+                to: edge.to,
+                edge_type: match edge.edge_type {
+                    crate::graph::EdgeType::Publish => TuiEdgeType::Publish,
+                    crate::graph::EdgeType::Subscribe => TuiEdgeType::Subscribe,
+                },
+                active: edge.active,
+            })
+            .collect();
+
+        // Apply layout algorithm
+        self.apply_graph_layout();
+    }
+
+    fn apply_graph_layout(&mut self) {
+        if self.graph_nodes.is_empty() {
+            return;
+        }
+
+        match self.graph_layout {
+            GraphLayout::Hierarchical => self.apply_hierarchical_layout(),
+            GraphLayout::Vertical => self.apply_vertical_layout(),
+        }
+    }
+
+    fn apply_hierarchical_layout(&mut self) {
+        // Separate processes and topics
+        let mut processes: Vec<&mut TuiGraphNode> = Vec::new();
+        let mut topics: Vec<&mut TuiGraphNode> = Vec::new();
+
+        for node in &mut self.graph_nodes {
+            match node.node_type {
+                TuiNodeType::Process => processes.push(node),
+                TuiNodeType::Topic => topics.push(node),
+            }
+        }
+
+        // Layout processes on the left
+        let process_x = 5;
+        let mut process_y = 3;
+        let process_spacing = 3;
+
+        for process in processes {
+            process.x = process_x;
+            process.y = process_y;
+            process_y += process_spacing;
+        }
+
+        // Layout topics on the right
+        let topic_x = 40;
+        let mut topic_y = 3;
+        let topic_spacing = 3;
+
+        for topic in topics {
+            topic.x = topic_x;
+            topic.y = topic_y;
+            topic_y += topic_spacing;
+        }
+    }
+
+    fn apply_vertical_layout(&mut self) {
+        // Separate processes and topics
+        let mut processes: Vec<&mut TuiGraphNode> = Vec::new();
+        let mut topics: Vec<&mut TuiGraphNode> = Vec::new();
+
+        for node in &mut self.graph_nodes {
+            match node.node_type {
+                TuiNodeType::Process => processes.push(node),
+                TuiNodeType::Topic => topics.push(node),
+            }
+        }
+
+        // Layout processes on top
+        let process_y = 3;
+        let mut process_x = 5;
+        let process_spacing = 15;
+
+        for process in processes {
+            process.x = process_x;
+            process.y = process_y;
+            process_x += process_spacing;
+        }
+
+        // Layout topics on bottom
+        let topic_y = 12;
+        let mut topic_x = 5;
+        let topic_spacing = 15;
+
+        for topic in topics {
+            topic.x = topic_x;
+            topic.y = topic_y;
+            topic_x += topic_spacing;
         }
     }
 }

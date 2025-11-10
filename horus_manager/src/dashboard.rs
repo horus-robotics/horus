@@ -186,6 +186,17 @@ pub async fn run(port: u16) -> anyhow::Result<()> {
     println!("   • Only people who see this terminal or scan the QR code can access");
     println!("   • Anyone else on your network cannot guess the random token");
 
+    // Check certificate status and show appropriate message
+    if crate::security::TlsConfig::is_mkcert_installed() && crate::security::TlsConfig::is_mkcert_ca_installed() {
+        // Likely using trusted certificate
+        println!("\n✓ Trusted certificate detected - No browser warnings!");
+    } else {
+        // Using self-signed certificate
+        println!("\n⚠️  Your browser may show a security warning (self-signed certificate)");
+        println!("   This is normal - the connection is still encrypted.");
+        println!("   To remove warnings, install mkcert: horus init --setup-certs");
+    }
+
     println!("\nFeatures:");
     println!("   • Real-time node monitoring");
     println!("   • Topic visualization");

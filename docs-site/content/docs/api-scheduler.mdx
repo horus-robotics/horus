@@ -1,7 +1,7 @@
 ---
 title: Scheduler API Reference
 description: Complete API reference for the Scheduler
-order: 41
+order: 414
 ---
 
 # Scheduler API Reference
@@ -515,7 +515,7 @@ let actual_hz = 1000.0 / metrics.avg_tick_duration_ms;
 
 **Profile slow nodes**:
 ```rust
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     let start = Instant::now();
 
     // Do work...

@@ -67,7 +67,7 @@ impl Node for TemperatureSensor {
         "TemperatureSensor"
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Simulate temperature change
         self.temperature += 0.1;
 
@@ -100,7 +100,7 @@ impl Node for TemperatureMonitor {
         "TemperatureMonitor"
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Check for new temperature readings
         if let Some(temp) = self.subscriber.recv(ctx) {
             ctx.log_info(&format!("Temperature: {:.1}°C", temp));
@@ -192,7 +192,7 @@ impl Node for TemperatureSensor {
     }
 
     // This runs repeatedly
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Your logic here
     }
 }
@@ -215,6 +215,55 @@ scheduler.add(Box::new(MonitorNode::new()?), 1, Some(true));
 scheduler.run()?;
 ```
 
+## Running Nodes in Separate Processes
+
+The example above runs both nodes in a **single process**. For multi-process applications (e.g., separate backend + GUI), you need a shared `session_id`.
+
+### Option 1: Configure session_id in horus.yaml
+
+Since `horus new` now auto-generates a `session_id`, you can run nodes separately:
+
+```yaml
+# horus.yaml (auto-generated)
+name: temperature-monitor
+session_id: "temperature-monitor-session"  # Shared session
+dependencies:
+  - horus@0.1.0
+```
+
+Now you can run nodes in different terminals:
+
+```bash
+# Terminal 1: Run sensor
+horus run sensor.rs
+
+# Terminal 2: Run monitor
+horus run monitor.rs
+```
+
+Both share the same session → communication works! ✅
+
+### Option 2: Use Glob Pattern
+
+Run multiple files together (auto-shares session):
+
+```bash
+horus run "*.rs"  # All Rust files run as separate processes
+```
+
+### Option 3: Use Global Hubs
+
+For cross-session communication (e.g., system-wide services):
+
+```rust
+// Instead of Hub::new()
+let hub: Hub<f32> = Hub::new_global("temperature")?;
+```
+
+Global hubs work across ALL sessions automatically.
+
+> 💡 **See [Configuration](/configuration#session-management)** for details on session_id and [Shared Memory](/core-concepts-shared-memory#session-management) for how sessions work.
+
 ## Next Steps
 
 ### Add More Features
@@ -224,7 +273,7 @@ Try modifying the code:
 **1. Add a temperature alert:**
 ```rust
 impl Node for TemperatureMonitor {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(temp) = self.subscriber.recv(ctx) {
             ctx.log_info(&format!("Temperature: {:.1}°C", temp));
 
@@ -250,7 +299,7 @@ use std::fs::OpenOptions;
 use std::io::Write;
 
 impl Node for TemperatureMonitor {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(temp) = self.subscriber.recv(ctx) {
             // Display
             ctx.log_info(&format!("Temperature: {:.1}°C", temp));

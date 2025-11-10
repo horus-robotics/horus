@@ -18,7 +18,7 @@ export function DocsFooter() {
             <div>
               <h4 className="font-semibold text-[var(--text-primary)] mb-3 text-sm uppercase tracking-wider">Documentation</h4>
               <ul className="space-y-2.5 text-sm text-[var(--text-secondary)]">
-                <li><a href="/getting-started" className="hover:text-[var(--accent)] transition-colors">Getting Started</a></li>
+                <li><a href="/getting-started/installation" className="hover:text-[var(--accent)] transition-colors">Getting Started</a></li>
                 <li><a href="/cli-reference" className="hover:text-[var(--accent)] transition-colors">CLI Reference</a></li>
                 <li><a href="/node-macro" className="hover:text-[var(--accent)] transition-colors">Node Macro</a></li>
                 <li><a href="/parameters" className="hover:text-[var(--accent)] transition-colors">Parameters</a></li>

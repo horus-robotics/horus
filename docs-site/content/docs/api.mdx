@@ -28,7 +28,7 @@ use horus::prelude::*;
 impl Node for MyNode {
     fn name(&self) -> &'static str { "MyNode" }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Your code here
     }
 }
@@ -107,7 +107,7 @@ impl Node for TemperatureSensor {
         "TemperatureSensor"
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let temp = 25.0; // Read from sensor
         self.temperature_pub.send(temp, ctx).ok();
     }
@@ -253,7 +253,7 @@ impl Node for MyNode {
 
 ```rust
 impl Node for Publisher {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let data = self.read_sensor();
         self.pub_hub.send(data, ctx).ok();
     }
@@ -264,7 +264,7 @@ impl Node for Publisher {
 
 ```rust
 impl Node for Subscriber {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(data) = self.sub_hub.recv(ctx) {
             self.process(data);
         }
@@ -276,7 +276,7 @@ impl Node for Subscriber {
 
 ```rust
 impl Node for Processor {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(input) = self.input_sub.recv(ctx) {
             let output = self.process(input);
             self.output_pub.send(output, ctx).ok();
@@ -317,14 +317,14 @@ fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
 
 ```rust
 // Good - completes quickly
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     if let Some(data) = self.sub.recv(ctx) {
         self.pub.send(data * 2.0, ctx).ok();
     }
 }
 
 // Bad - blocks tick loop
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     std::thread::sleep(Duration::from_secs(1));  // Don't do this!
     self.pub.send(42.0, ctx).ok();
 }

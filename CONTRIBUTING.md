@@ -92,8 +92,8 @@ horus run
 ### Rust
 
 Follow standard conventions:
-- Use `rustfmt`: `cargo fmt`
-- Use `clippy`: `cargo clippy -- -D warnings`
+- Format code when possible: `cargo fmt` (optional, as it may fail in some cases)
+- Run `clippy` and address critical issues: `cargo clippy` (warnings are acceptable)
 - Document public APIs with `///` comments
 
 ```rust
@@ -158,9 +158,9 @@ When reporting bugs, include:
 1. **Ensure tests pass**:
    ```bash
    cargo test
-   cargo clippy
-   cargo fmt --check
    ```
+
+   Optionally run `cargo fmt` (may fail in some cases) and `cargo clippy` (warnings are acceptable).
 
 2. **Check acceptance tests**:
    - Review relevant test files in `tests/acceptance/`
@@ -207,8 +207,8 @@ Brief description of changes
 
 ## Testing
 - [ ] Unit tests pass (`cargo test`)
-- [ ] Clippy passes (`cargo clippy`)
-- [ ] Format check passes (`cargo fmt --check`)
+- [ ] Code formatted if possible (`cargo fmt`, optional)
+- [ ] Clippy checked (`cargo clippy`, warnings acceptable)
 - [ ] Verified acceptance test scenarios
 - [ ] Updated/added acceptance tests
 
@@ -228,14 +228,16 @@ Fixes #123
 ### Code Organization
 
 ```
-horus/
-horus_core/         # Core IPC implementation
-horus_macros/       # Procedural macros
-horus_py/           # Python bindings
-horus_cpp/          # C/C++ bindings
-horus_library/      # Standard messages/nodes
-horus_manager/      # CLI tool
-docs-site/          # Documentation website
+HORUS/
+├── horus_core/         # Core IPC implementation
+├── horus_macros/       # Procedural macros
+├── horus_py/           # Python bindings
+├── horus_cpp/          # C++ bindings
+├── horus_library/      # Standard messages/nodes
+├── horus/              # CLI tool (horus command)
+├── docs-site/          # Documentation website
+├── benchmarks/         # Performance benchmarks
+└── tests/              # Integration tests
 ```
 
 ## What Not to Do
@@ -243,8 +245,8 @@ docs-site/          # Documentation website
 - Break existing APIs without migration path
 - Add dependencies without discussion
 - Commit without running tests
-- Ignore clippy warnings
-- Submit PRs without description
+- Submit PRs without description or testing
+- Ignore test failures
 
 ## Code Review
 

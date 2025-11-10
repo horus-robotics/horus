@@ -33,7 +33,7 @@ impl Node for SensorNode {
         "SensorNode"
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let temp = 20.0 + (self.counter as f32 * 0.1);
         self.publisher.send(temp, ctx).ok();
         self.counter += 1;

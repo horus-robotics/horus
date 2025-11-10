@@ -120,7 +120,7 @@ export function TableOfContents() {
           <ul className="space-y-2">
             <li>
               <a
-                href="/getting-started"
+                href="/getting-started/installation"
                 className="text-xs text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors block touch-manipulation py-1"
               >
                 Getting Started

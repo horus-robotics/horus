@@ -1,8 +1,0 @@
-name = "horus-telemetry"
-main = "src/index.js"
-compatibility_date = "2024-01-01"
-
-[[d1_databases]]
-binding = "DB"
-database_name = "horus-telemetry-db"
-database_id = "1b501c6f-0507-4079-92eb-5a77032ba0fe"

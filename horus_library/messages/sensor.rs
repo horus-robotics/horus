@@ -417,6 +417,139 @@ impl LogSummary for Range {
     }
 }
 
+/// GPS/GNSS Position Data
+///
+/// Standard GNSS position data from GPS, GLONASS, Galileo, or other
+/// satellite navigation systems. Provides latitude, longitude, altitude,
+/// and accuracy information.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct NavSatFix {
+    /// Latitude in degrees (positive = North, negative = South)
+    pub latitude: f64,
+    /// Longitude in degrees (positive = East, negative = West)
+    pub longitude: f64,
+    /// Altitude in meters above WGS84 ellipsoid
+    pub altitude: f64,
+    /// Position covariance matrix [lat, lon, alt] diagonal
+    pub position_covariance: [f64; 9],
+    /// Covariance type (0=unknown, 1=approximated, 2=diagonal_known, 3=known)
+    pub position_covariance_type: u8,
+    /// Satellite fix status (0=no_fix, 1=fix, 2=sbas_fix, 3=gbas_fix)
+    pub status: u8,
+    /// Number of satellites visible
+    pub satellites_visible: u16,
+    /// HDOP (Horizontal dilution of precision)
+    pub hdop: f32,
+    /// VDOP (Vertical dilution of precision)
+    pub vdop: f32,
+    /// Ground speed in m/s
+    pub speed: f32,
+    /// Course/heading in degrees
+    pub heading: f32,
+    /// Timestamp in nanoseconds since epoch
+    pub timestamp: u64,
+}
+
+impl Default for NavSatFix {
+    fn default() -> Self {
+        Self {
+            latitude: 0.0,
+            longitude: 0.0,
+            altitude: 0.0,
+            position_covariance: [0.0; 9],
+            position_covariance_type: Self::COVARIANCE_TYPE_UNKNOWN,
+            status: Self::STATUS_NO_FIX,
+            satellites_visible: 0,
+            hdop: 99.9,
+            vdop: 99.9,
+            speed: 0.0,
+            heading: 0.0,
+            timestamp: 0,
+        }
+    }
+}
+
+impl NavSatFix {
+    // Status constants
+    pub const STATUS_NO_FIX: u8 = 0;
+    pub const STATUS_FIX: u8 = 1;
+    pub const STATUS_SBAS_FIX: u8 = 2;
+    pub const STATUS_GBAS_FIX: u8 = 3;
+
+    // Covariance type constants
+    pub const COVARIANCE_TYPE_UNKNOWN: u8 = 0;
+    pub const COVARIANCE_TYPE_APPROXIMATED: u8 = 1;
+    pub const COVARIANCE_TYPE_DIAGONAL_KNOWN: u8 = 2;
+    pub const COVARIANCE_TYPE_KNOWN: u8 = 3;
+
+    /// Create a new GPS fix message
+    pub fn new() -> Self {
+        Self {
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos() as u64,
+            ..Self::default()
+        }
+    }
+
+    /// Create from lat/lon/alt
+    pub fn from_coordinates(lat: f64, lon: f64, alt: f64) -> Self {
+        let mut fix = Self::new();
+        fix.latitude = lat;
+        fix.longitude = lon;
+        fix.altitude = alt;
+        fix.status = Self::STATUS_FIX;
+        fix
+    }
+
+    /// Check if we have a valid GPS fix
+    pub fn has_fix(&self) -> bool {
+        self.status >= Self::STATUS_FIX
+    }
+
+    /// Check if coordinates are valid
+    pub fn is_valid(&self) -> bool {
+        self.latitude >= -90.0
+            && self.latitude <= 90.0
+            && self.longitude >= -180.0
+            && self.longitude <= 180.0
+            && self.latitude.is_finite()
+            && self.longitude.is_finite()
+            && self.altitude.is_finite()
+    }
+
+    /// Calculate approximate accuracy in meters from HDOP
+    pub fn horizontal_accuracy(&self) -> f32 {
+        // Rough approximation: accuracy ≈ HDOP * 5m
+        self.hdop * 5.0
+    }
+
+    /// Calculate distance to another GPS position in meters (Haversine formula)
+    pub fn distance_to(&self, other: &NavSatFix) -> f64 {
+        const EARTH_RADIUS: f64 = 6371000.0; // meters
+
+        let lat1 = self.latitude.to_radians();
+        let lat2 = other.latitude.to_radians();
+        let delta_lat = (other.latitude - self.latitude).to_radians();
+        let delta_lon = (other.longitude - self.longitude).to_radians();
+
+        let a = (delta_lat / 2.0).sin().powi(2)
+            + lat1.cos() * lat2.cos() * (delta_lon / 2.0).sin().powi(2);
+        let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
+
+        EARTH_RADIUS * c
+    }
+}
+
+impl LogSummary for NavSatFix {
+    fn log_summary(&self) -> String {
+        format!("GPS: lat={:.6}, lon={:.6}, alt={:.1}m, sats={}, fix={}",
+            self.latitude, self.longitude, self.altitude,
+            self.satellites_visible, self.status)
+    }
+}
+
 impl LogSummary for BatteryState {
     fn log_summary(&self) -> String {
         format!("{:?}", self)
@@ -434,3 +567,5 @@ unsafe impl iceoryx2_bb_elementary_traits::zero_copy_send::ZeroCopySend for Odom
 unsafe impl iceoryx2_bb_elementary_traits::zero_copy_send::ZeroCopySend for Range {}
 #[cfg(feature = "iceoryx2")]
 unsafe impl iceoryx2_bb_elementary_traits::zero_copy_send::ZeroCopySend for BatteryState {}
+#[cfg(feature = "iceoryx2")]
+unsafe impl iceoryx2_bb_elementary_traits::zero_copy_send::ZeroCopySend for NavSatFix {}

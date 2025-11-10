@@ -193,7 +193,6 @@ Core Libraries:
 
 Functionality Tests:
 
-   Command: --version
    Command: --help
    All subcommands: Accessible
 
@@ -409,7 +408,7 @@ Next steps:
 
 3. **Binary doesn't work:**
    ```bash
-   $ horus --version
+   $ horus --help
    Segmentation fault
    ```
 
@@ -543,7 +542,7 @@ source ~/.bashrc  # or restart terminal
 
 # Verify
 which horus
-horus --version
+horus --help
 ```
 
 ---
@@ -551,7 +550,7 @@ horus --version
 **Problem: Binary exists but doesn't run**
 
 ```bash
-$ horus --version
+$ horus --help
 Segmentation fault
 ```
 
@@ -836,18 +835,14 @@ let sub_hub = Hub::new("temperature")?;  // Now matches!
 **2. Check Publishing is Happening:**
 ```rust
 // Add logging to publisher
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     let data = 42.0;
     match self.pub_hub.send(data, ctx) {
         Ok(()) => {
-            if let Some(ctx) = ctx {
-                ctx.log_info("Published successfully");
-            }
+        ctx.log_info("Published successfully");
         }
         Err(_) => {
-            if let Some(ctx) = ctx {
-                ctx.log_error("Publish failed!");
-            }
+        ctx.log_error("Publish failed!");
         }
     }
 }
@@ -901,14 +896,14 @@ Starting application...
 **1. Check for Infinite Loops:**
 ```rust
 // BAD: Infinite loop in tick
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     loop {  // Never returns!
         // Process data
     }
 }
 
 // GOOD: Tick returns after work
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     // Do work once
     self.process_data();
     // Return naturally
@@ -918,12 +913,12 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 **2. Avoid Blocking Operations:**
 ```rust
 // BAD: Blocking sleep in tick
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     std::thread::sleep(Duration::from_secs(10));  // Blocks scheduler!
 }
 
 // GOOD: Use tick counter for delays
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     self.tick_count += 1;
 
     // Execute every 10 ticks (~167ms at 60 FPS)
@@ -936,14 +931,14 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 **3. Don't Wait Forever for Messages:**
 ```rust
 // BAD: Blocking wait
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     while self.data_sub.recv(ctx).is_none() {
         // Infinite loop if no messages!
     }
 }
 
 // GOOD: Non-blocking receive
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     if let Some(data) = self.data_sub.recv(ctx) {
         // Process data
     }
@@ -953,16 +948,11 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 
 **4. Debug with Logging:**
 ```rust
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-    if let Some(ctx) = ctx {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         ctx.log_debug("Tick started");
-    }
 
     // Your code here
-
-    if let Some(ctx) = ctx {
         ctx.log_debug("Tick completed");
-    }
 }
 ```
 

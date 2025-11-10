@@ -214,7 +214,7 @@ export default function RootLayout({
       description: 'Free and open source under Apache License 2.0',
     },
     featureList: [
-      '312-437ns IPC latency (500x faster than ROS2)',
+      '248-437ns IPC latency (500x faster than ROS2)',
       'Zero-copy shared memory architecture',
       'Deterministic real-time control',
       'Multi-language: Rust, Python, C++ support',

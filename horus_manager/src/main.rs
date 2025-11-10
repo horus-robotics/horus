@@ -21,6 +21,21 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Initialize HORUS in current directory or setup certificates
+    Init {
+        /// Setup trusted TLS certificates using mkcert
+        #[arg(long = "setup-certs")]
+        setup_certs: bool,
+
+        /// Regenerate existing certificates
+        #[arg(long = "regenerate-certs")]
+        regenerate_certs: bool,
+
+        /// Workspace name (optional, defaults to directory name)
+        #[arg(short = 'n', long = "name")]
+        name: Option<String>,
+    },
+
     /// Create a new HORUS project
     New {
         /// Project name
@@ -280,6 +295,15 @@ fn main() {
 
 fn run_command(command: Commands) -> HorusResult<()> {
     match command {
+        Commands::Init {
+            setup_certs,
+            regenerate_certs,
+            name,
+        } => {
+            commands::init::run_init(setup_certs, regenerate_certs, name)
+                .map_err(|e| HorusError::Config(e.to_string()))
+        }
+
         Commands::New {
             name,
             path,

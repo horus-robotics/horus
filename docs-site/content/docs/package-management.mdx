@@ -1237,7 +1237,7 @@ impl Node for MyControllerNode {
         "MyController"
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(value) = self.input.recv(ctx) {
             let result = value * self.gain;
             self.output.send(result, ctx).ok();

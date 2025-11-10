@@ -73,13 +73,13 @@ cd horus
 ./install.sh
 
 # 4. Verify it works
-horus --version
+horus --help
 
 # 5. Run full verification (optional but recommended)
 ./verify.sh
 ```
 
-If you see `horus 0.3.0` (or similar) and verify.sh shows green checkmarks, you're all set! Skip to [Next Steps](#next-steps).
+If the help command works and verify.sh shows green checkmarks, you're all set! Skip to [Next Steps](#next-steps).
 
 **What the installer does:**
 - Builds the `horus` CLI tool
@@ -171,16 +171,6 @@ You'll see colored output showing progress - green checkmarks mean success!
 Test that the `horus` command works:
 
 ```bash
-horus --version
-```
-
-You should see:
-```
-horus 0.3.0
-```
-
-Try the help command:
-```bash
 horus --help
 ```
 
@@ -221,7 +211,6 @@ HORUS Installation:
    In PATH: Yes (correct binary)
 
 Functionality Tests:
-   Command: --version
    Command: --help
    All subcommands: Accessible
    Build: cargo check passes (0 warnings)
@@ -433,6 +422,42 @@ Having installation issues? See the **[Troubleshooting & Maintenance Guide](/tro
 - Update and recovery scripts (`update.sh`, `verify.sh`, `recovery_install.sh`)
 - Platform-specific problems
 - 15+ solved issues with detailed solutions
+
+## Optional: Setup Trusted Certificates
+
+**For Dashboard Users (Recommended)**
+
+By default, the HORUS dashboard uses self-signed SSL certificates, which cause browser security warnings. You can eliminate these warnings with a one-time setup using mkcert:
+
+```bash
+# Install mkcert
+# Ubuntu/Debian:
+sudo apt install mkcert
+
+# macOS:
+brew install mkcert
+
+# Setup trusted certificates
+horus init --setup-certs
+```
+
+**What this does:**
+- ✓ Installs a local Certificate Authority on your device
+- ✓ Generates trusted certificates for localhost and your network IP
+- ✓ Eliminates browser security warnings
+- ✓ Works with all browsers (Chrome, Firefox, Safari, Edge)
+
+**After this setup:**
+- When you run `horus dashboard`, you'll see: **✓ Trusted certificate detected - No browser warnings!**
+- You and your team can access the dashboard without accepting security warnings
+- Perfect for development and demonstrations
+
+**Skip this if:**
+- You don't plan to use the web dashboard
+- You're okay clicking through browser warnings
+- You prefer the terminal UI mode (`horus dashboard --tui`)
+
+**Learn more:** See the [Dashboard Guide](/dashboard#trusted-https-certificates) for details.
 
 ## Next Steps
 

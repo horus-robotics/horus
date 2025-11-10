@@ -56,7 +56,7 @@ export function DocsNav({ onMenuClick }: DocsNavProps) {
                 Goals & Vision
               </Link>
               <Link
-                href="/getting-started"
+                href="/getting-started/installation"
                 className="text-sm text-[var(--text-secondary)] hover:text-[var(--accent)] transition-colors"
               >
                 Getting Started

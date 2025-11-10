@@ -1,8 +1,10 @@
+use crate::communication::network::DirectBackend;
 use crate::core::node::NodeInfo;
 use crate::error::HorusResult;
 use crate::memory::shm_region::ShmRegion;
 use std::marker::PhantomData;
 use std::mem;
+use std::net::SocketAddr;
 use std::ptr::NonNull;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -57,26 +59,45 @@ struct LinkHeader {
     _padding: [u8; 48],        // Pad to full cache line (8 + 8 + 48 = 64)
 }
 
-/// SPSC (Single Producer Single Consumer) direct link with shared memory IPC
+/// SPSC (Single Producer Single Consumer) direct link with shared memory IPC or network
 /// Single-slot design: always returns the LATEST value, perfect for sensors/control
 /// Producer overwrites old data, consumer tracks what it's already read via sequence number
-#[derive(Debug)]
+///
+/// Supports both local shared memory and network endpoints:
+/// - `"topic"` → Local shared memory (248ns latency)
+/// - `"topic@192.168.1.5:9000"` → Direct network connection (5-15µs latency)
 #[repr(align(64))]
 pub struct Link<T> {
-    shm_region: Arc<ShmRegion>,
+    shm_region: Option<Arc<ShmRegion>>,      // Local shared memory (if local)
+    network: Option<DirectBackend<T>>,        // Network backend (if network)
+    is_network: bool,                         // Fast dispatch flag
     topic_name: String,
     producer_node: String,
     consumer_node: String,
     role: LinkRole,
-    header: NonNull<LinkHeader>,
-    data_ptr: NonNull<u8>,
-    last_seen_sequence: AtomicU64, // Consumer tracks what it's read (local memory)
+    header: Option<NonNull<LinkHeader>>,     // Only for local
+    data_ptr: Option<NonNull<u8>>,           // Only for local
+    last_seen_sequence: AtomicU64,           // Consumer tracks what it's read (local memory)
     metrics: Arc<AtomicLinkMetrics>,
     _phantom: PhantomData<T>,
-    _padding: [u8; 8],
+    _padding: [u8; 6],
 }
 
-impl<T: crate::core::LogSummary> Link<T> {
+// Manual Debug implementation since DirectBackend doesn't implement Debug for all T
+impl<T> std::fmt::Debug for Link<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Link")
+            .field("topic_name", &self.topic_name)
+            .field("role", &self.role)
+            .field("is_network", &self.is_network)
+            .finish_non_exhaustive()
+    }
+}
+
+impl<T> Link<T>
+where
+    T: crate::core::LogSummary + serde::Serialize + serde::de::DeserializeOwned + Send + Sync + 'static,
+{
     // ====== PRIMARY API (recommended) ======
 
     /// Create a Link as a producer (sender)
@@ -84,9 +105,17 @@ impl<T: crate::core::LogSummary> Link<T> {
     /// The producer can send messages but cannot receive.
     /// Single-slot design: always overwrites with latest value.
     ///
+    /// Supports both local shared memory and network endpoints:
+    /// - `"sensor_data"` → Local shared memory (248ns latency)
+    /// - `"sensor_data@192.168.1.5:9000"` → Direct network connection (5-15µs latency)
+    ///
     /// # Example
     /// ```rust,ignore
+    /// // Local
     /// let output: Link<f32> = Link::producer("sensor_data")?;
+    ///
+    /// // Network
+    /// let output: Link<f32> = Link::producer("sensor_data@192.168.1.5:9000")?;
     /// output.send(42.0, None)?;
     /// ```
     pub fn producer(topic: &str) -> HorusResult<Self> {
@@ -98,9 +127,17 @@ impl<T: crate::core::LogSummary> Link<T> {
     /// The consumer can receive messages but cannot send.
     /// Single-slot design: always reads latest value, skips if already seen.
     ///
+    /// Supports both local shared memory and network endpoints:
+    /// - `"sensor_data"` → Local shared memory (248ns latency)
+    /// - `"sensor_data@0.0.0.0:9000"` → Listen for network connections (5-15µs latency)
+    ///
     /// # Example
     /// ```rust,ignore
+    /// // Local
     /// let input: Link<f32> = Link::consumer("sensor_data")?;
+    ///
+    /// // Network (listen for producer)
+    /// let input: Link<f32> = Link::consumer("sensor_data@0.0.0.0:9000")?;
     /// if let Some(value) = input.recv(None) {
     ///     println!("Received: {}", value);
     /// }
@@ -109,17 +146,227 @@ impl<T: crate::core::LogSummary> Link<T> {
         Self::with_role(topic, LinkRole::Consumer)
     }
 
+    /// Create a Link producer from configuration file
+    ///
+    /// Loads link configuration from TOML/YAML file and creates a producer.
+    ///
+    /// # Arguments
+    /// * `link_name` - Name of the link to look up in the config file
+    ///
+    /// # Config File Format
+    ///
+    /// TOML example:
+    /// ```toml
+    /// [hubs.video_link]
+    /// name = "video"
+    /// endpoint = "video@192.168.1.50:9000"  # Producer connects to this
+    /// ```
+    ///
+    /// YAML example:
+    /// ```yaml
+    /// hubs:
+    ///   video_link:
+    ///     name: video
+    ///     endpoint: video@192.168.1.50:9000
+    /// ```
+    ///
+    /// # Config File Search Paths
+    /// 1. `./horus.toml` or `./horus.yaml`
+    /// 2. `~/.horus/config.toml` or `~/.horus/config.yaml`
+    /// 3. `/etc/horus/config.toml` or `/etc/horus/config.yaml`
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// // Load from config and create producer
+    /// let output: Link<VideoFrame> = Link::producer_from_config("video_link")?;
+    /// output.send(frame, None)?;
+    /// ```
+    pub fn producer_from_config(link_name: &str) -> HorusResult<Self> {
+        use crate::communication::config::HorusConfig;
+
+        // Load config from standard search paths
+        let config = HorusConfig::find_and_load()?;
+
+        // Get link config
+        let link_config = config.get_hub(link_name)?;
+
+        // Get endpoint string
+        let endpoint_str = link_config.get_endpoint();
+
+        // Create producer with the endpoint
+        Self::producer(&endpoint_str)
+    }
+
+    /// Create a Link producer from a specific config file path
+    ///
+    /// # Arguments
+    /// * `config_path` - Path to the configuration file (TOML or YAML)
+    /// * `link_name` - Name of the link to look up in the config file
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let output: Link<f32> = Link::producer_from_config_file("my_config.toml", "sensor_link")?;
+    /// ```
+    pub fn producer_from_config_file<P: AsRef<std::path::Path>>(
+        config_path: P,
+        link_name: &str,
+    ) -> HorusResult<Self> {
+        use crate::communication::config::HorusConfig;
+
+        // Load config from specific file
+        let config = HorusConfig::from_file(config_path)?;
+
+        // Get link config
+        let link_config = config.get_hub(link_name)?;
+
+        // Get endpoint string
+        let endpoint_str = link_config.get_endpoint();
+
+        // Create producer with the endpoint
+        Self::producer(&endpoint_str)
+    }
+
+    /// Create a Link consumer from configuration file
+    ///
+    /// Loads link configuration from TOML/YAML file and creates a consumer.
+    ///
+    /// # Arguments
+    /// * `link_name` - Name of the link to look up in the config file
+    ///
+    /// # Config File Format
+    ///
+    /// TOML example:
+    /// ```toml
+    /// [hubs.video_link]
+    /// name = "video"
+    /// endpoint = "video@0.0.0.0:9000"  # Consumer listens on this port
+    /// ```
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// // Load from config and create consumer
+    /// let input: Link<VideoFrame> = Link::consumer_from_config("video_link")?;
+    /// if let Some(frame) = input.recv(None) {
+    ///     process(frame);
+    /// }
+    /// ```
+    pub fn consumer_from_config(link_name: &str) -> HorusResult<Self> {
+        use crate::communication::config::HorusConfig;
+
+        // Load config from standard search paths
+        let config = HorusConfig::find_and_load()?;
+
+        // Get link config
+        let link_config = config.get_hub(link_name)?;
+
+        // Get endpoint string
+        let endpoint_str = link_config.get_endpoint();
+
+        // Create consumer with the endpoint
+        Self::consumer(&endpoint_str)
+    }
+
+    /// Create a Link consumer from a specific config file path
+    ///
+    /// # Arguments
+    /// * `config_path` - Path to the configuration file (TOML or YAML)
+    /// * `link_name` - Name of the link to look up in the config file
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// let input: Link<f32> = Link::consumer_from_config_file("my_config.toml", "sensor_link")?;
+    /// ```
+    pub fn consumer_from_config_file<P: AsRef<std::path::Path>>(
+        config_path: P,
+        link_name: &str,
+    ) -> HorusResult<Self> {
+        use crate::communication::config::HorusConfig;
+
+        // Load config from specific file
+        let config = HorusConfig::from_file(config_path)?;
+
+        // Get link config
+        let link_config = config.get_hub(link_name)?;
+
+        // Get endpoint string
+        let endpoint_str = link_config.get_endpoint();
+
+        // Create consumer with the endpoint
+        Self::consumer(&endpoint_str)
+    }
+
     // ====== INTERNAL IMPLEMENTATION ======
 
     /// Internal method to create Link with explicit role
     fn with_role(topic: &str, role: LinkRole) -> HorusResult<Self> {
         let element_size = mem::size_of::<T>();
-        let element_align = mem::align_of::<T>();
-        let header_size = mem::size_of::<LinkHeader>();
 
         if element_size == 0 {
             return Err("Cannot create Link for zero-sized types".into());
         }
+
+        // Parse endpoint: check if it's network (contains '@')
+        if topic.contains('@') {
+            // Network endpoint
+            return Self::create_network_link(topic, role);
+        }
+
+        // Local shared memory
+        Self::create_local_link(topic, role)
+    }
+
+    /// Create a network-based Link (direct TCP connection)
+    fn create_network_link(endpoint: &str, role: LinkRole) -> HorusResult<Self> {
+        // Parse endpoint: "topic@host:port"
+        let parts: Vec<&str> = endpoint.split('@').collect();
+        if parts.len() != 2 {
+            return Err(format!("Invalid network endpoint: {}", endpoint).into());
+        }
+
+        let topic_name = parts[0];
+        let addr_str = parts[1];
+
+        // Parse address
+        let addr: SocketAddr = addr_str.parse()
+            .map_err(|e| format!("Invalid address '{}': {}", addr_str, e))?;
+
+        // Create network backend based on role
+        let network = match role {
+            LinkRole::Producer => DirectBackend::new_producer(addr)?,
+            LinkRole::Consumer => DirectBackend::new_consumer(addr)?,
+        };
+
+        log::info!("Link '{}': Created as {:?} (network {})", topic_name, role, addr);
+
+        let metrics = Arc::new(AtomicLinkMetrics {
+            messages_sent: AtomicU64::new(0),
+            messages_received: AtomicU64::new(0),
+            send_failures: AtomicU64::new(0),
+            _padding: [0; 40],
+        });
+
+        Ok(Link {
+            shm_region: None,
+            network: Some(network),
+            is_network: true,
+            topic_name: topic_name.to_string(),
+            producer_node: "producer".to_string(),
+            consumer_node: "consumer".to_string(),
+            role,
+            header: None,
+            data_ptr: None,
+            last_seen_sequence: AtomicU64::new(0),
+            metrics,
+            _phantom: PhantomData,
+            _padding: [0; 6],
+        })
+    }
+
+    /// Create a local shared memory Link
+    fn create_local_link(topic: &str, role: LinkRole) -> HorusResult<Self> {
+        let element_size = mem::size_of::<T>();
+        let element_align = mem::align_of::<T>();
+        let header_size = mem::size_of::<LinkHeader>();
 
         // Single-slot design: header + one element
         let aligned_header_size = header_size.div_ceil(element_align) * element_align;
@@ -207,17 +454,19 @@ impl<T: crate::core::LogSummary> Link<T> {
         });
 
         Ok(Link {
-            shm_region,
+            shm_region: Some(shm_region),
+            network: None,
+            is_network: false,
             topic_name: topic_name.to_string(),
             producer_node: producer_node.to_string(),
             consumer_node: consumer_node.to_string(),
             role,
-            header,
-            data_ptr,
+            header: Some(header),
+            data_ptr: Some(data_ptr),
             last_seen_sequence: AtomicU64::new(0),
             metrics,
             _phantom: PhantomData,
-            _padding: [0; 8],
+            _padding: [0; 6],
         })
     }
 
@@ -225,20 +474,48 @@ impl<T: crate::core::LogSummary> Link<T> {
     /// Single-slot design: always overwrites with latest value
     /// Automatically logs if context is provided
     ///
+    /// Supports both local shared memory and network transparently
+    ///
     /// Optimizations applied:
-    /// - Single atomic operation (sequence increment)
-    /// - No buffer full checks (always succeeds)
+    /// - Single atomic operation (sequence increment) for local
+    /// - Lock-free queues for network
     /// - Relaxed atomics for metrics
     #[inline(always)]
     pub fn send(&self, msg: T, ctx: Option<&mut NodeInfo>) -> Result<(), T>
     where
-        T: std::fmt::Debug + Clone,
+        T: std::fmt::Debug + Clone + serde::Serialize,
     {
-        let header = unsafe { self.header.as_ref() };
+        // Network path
+        if self.is_network {
+            if let Some(ref network) = self.network {
+                match network.send(&msg) {
+                    Ok(_) => {
+                        self.metrics.messages_sent.fetch_add(1, Ordering::Relaxed);
+
+                        if unlikely(ctx.is_some()) {
+                            if let Some(ctx) = ctx {
+                                ctx.log_pub(&self.topic_name, &msg, 0);
+                            }
+                        }
+
+                        return Ok(());
+                    }
+                    Err(_) => {
+                        self.metrics.send_failures.fetch_add(1, Ordering::Relaxed);
+                        return Err(msg);
+                    }
+                }
+            }
+            return Err(msg); // Shouldn't happen
+        }
+
+        // Local shared memory path (optimized, no changes from original)
+        let header = unsafe { self.header.as_ref().unwrap().as_ref() };
+        let data_ptr = self.data_ptr.unwrap();
 
         // Write message to the single slot
         unsafe {
-            let slot = self.data_ptr.as_ptr() as *mut T;
+            let slot = data_ptr.as_ptr() as *mut T;
             std::ptr::write(slot, msg);
         }
 
@@ -251,7 +528,7 @@ impl<T: crate::core::LogSummary> Link<T> {
         // Zero-cost logging
         if unlikely(ctx.is_some()) {
             if let Some(ctx) = ctx {
-                let slot = unsafe { &*(self.data_ptr.as_ptr() as *const T) };
+                let slot = unsafe { &*(data_ptr.as_ptr() as *const T) };
                 ctx.log_pub(&self.topic_name, slot, 0);
             }
         }
@@ -263,16 +540,39 @@ impl<T: crate::core::LogSummary> Link<T> {
     /// Single-slot design: reads latest value if new, returns None if already seen
     /// Automatically logs if context is provided
     ///
+    /// Supports both local shared memory and network transparently
+    ///
     /// Optimizations applied:
-    /// - Single atomic load with Acquire (syncs with producer's Release)
+    /// - Single atomic load with Acquire (syncs with producer's Release) for local
+    /// - Lock-free queues for network
     /// - Local sequence tracking (no atomic stores to shared memory)
     /// - Relaxed atomics for metrics
     #[inline(always)]
     pub fn recv(&self, ctx: Option<&mut NodeInfo>) -> Option<T>
     where
-        T: std::fmt::Debug + Clone,
+        T: std::fmt::Debug + Clone + serde::de::DeserializeOwned,
     {
-        let header = unsafe { self.header.as_ref() };
+        // Network path
+        if self.is_network {
+            if let Some(ref network) = self.network {
+                if let Some(msg) = network.recv() {
+                    self.metrics.messages_received.fetch_add(1, Ordering::Relaxed);
+
+                    if unlikely(ctx.is_some()) {
+                        if let Some(ctx) = ctx {
+                            ctx.log_sub(&self.topic_name, &msg, 0);
+                        }
+                    }
+
+                    return Some(msg);
+                }
+            }
+            return None;
+        }
+
+        // Local shared memory path (optimized, no changes from original)
+        let header = unsafe { self.header.as_ref().unwrap().as_ref() };
+        let data_ptr = self.data_ptr.unwrap();
 
         // Read sequence with Acquire to synchronize with producer's Release
         let current_seq = header.sequence.load(Ordering::Acquire);
@@ -285,7 +585,7 @@ impl<T: crate::core::LogSummary> Link<T> {
 
         // Read the message
         let msg = unsafe {
-            let slot = self.data_ptr.as_ptr() as *const T;
+            let slot = data_ptr.as_ptr() as *const T;
             std::ptr::read(slot)
         };
 
@@ -310,7 +610,14 @@ impl<T: crate::core::LogSummary> Link<T> {
 
     /// Check if link has messages available (new data since last read)
     pub fn has_messages(&self) -> bool {
-        let header = unsafe { self.header.as_ref() };
+        if self.is_network {
+            // For network, we can't peek without consuming, so always return false
+            // Use recv() with a timeout of 0 to check
+            return false;
+        }
+
+        // Local shared memory
+        let header = unsafe { self.header.as_ref().unwrap().as_ref() };
         let current_seq = header.sequence.load(Ordering::Acquire);
         let last_seen = self.last_seen_sequence.load(Ordering::Relaxed);
         current_seq > last_seen
@@ -349,23 +656,9 @@ impl<T: crate::core::LogSummary> Link<T> {
     }
 }
 
-impl<T> Clone for Link<T> {
-    fn clone(&self) -> Self {
-        Self {
-            shm_region: self.shm_region.clone(),
-            topic_name: self.topic_name.clone(),
-            producer_node: self.producer_node.clone(),
-            consumer_node: self.consumer_node.clone(),
-            role: self.role,
-            header: self.header,
-            data_ptr: self.data_ptr,
-            last_seen_sequence: AtomicU64::new(self.last_seen_sequence.load(Ordering::Relaxed)),
-            metrics: self.metrics.clone(),
-            _phantom: PhantomData,
-            _padding: [0; 8],
-        }
-    }
-}
+// Note: Link does not implement Clone because network backends contain
+// non-cloneable resources (TCP streams, etc.). Create separate Link instances
+// for each producer/consumer endpoint.
 
 unsafe impl<T: Send> Send for Link<T> {}
 unsafe impl<T: Send> Sync for Link<T> {}

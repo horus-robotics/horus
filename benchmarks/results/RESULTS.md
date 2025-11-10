@@ -7,7 +7,7 @@
 ### Link (SPSC) - Cross-Core Latency
 
 **Optimized single-producer, single-consumer channel:**
-- **Median latency**: 312ns (624 cycles @ 2GHz)
+- **Median latency**: 248ns (496 cycles @ 2GHz)
 - **P95 latency**: 444ns
 - **P99 latency**: 578ns
 - **Burst throughput**: 6.05 MHz (6M+ msg/s)
@@ -23,7 +23,7 @@
 
 ### Key Performance Results
 
-**Link is 29% faster than Hub** in 1P1C scenarios
+**Link is 48% faster than Hub** in 1P1C scenarios
 - Best for point-to-point communication
 - Lowest latency for control loops
 
@@ -71,10 +71,10 @@ See [`latest_run.txt`](latest_run.txt) for most recent benchmark output.
 
 | Framework | Small Msg | Medium Msg | Large Msg | HORUS Speedup |
 |-----------|-----------|------------|-----------|---------------|
-| **HORUS Link (SPSC)** | **312 ns** | **~400 ns** | **~900 ns** | Baseline (Fastest) |
+| **HORUS Link (SPSC)** | **248 ns** | **~400 ns** | **~900 ns** | Baseline (Fastest) |
 | **HORUS Hub (MPMC)** | **481 ns** | **~620 ns** | **~1.4 μs** | Flexible pub/sub |
-| ROS2 (DDS) | 50-100 μs | 100-500 μs | 1-10 ms | **64-320x slower** |
-| ROS2 (FastDDS) | 20-50 μs | 50-200 μs | 500 μs-5 ms | **50-250x slower** |
+| ROS2 (DDS) | 50-100 μs | 100-500 μs | 1-10 ms | **80-403x slower** |
+| ROS2 (FastDDS) | 20-50 μs | 50-200 μs | 500 μs-5 ms | **80-202x slower** |
 
 ## Methodology
 
@@ -160,9 +160,9 @@ See [`../README.md`](../README.md) and [`../SUMMARY.md`](../SUMMARY.md) for:
 **HORUS delivers production-grade, sub-microsecond IPC performance:**
 
 **IPC Mechanisms:**
-- **Link (SPSC)**: 312ns median - Fastest for point-to-point
+- **Link (SPSC)**: 248ns median - Fastest for point-to-point
 - **Hub (MPMC)**: 481ns median - Flexible pub/sub
-- **29% performance advantage** with Link in 1P1C scenarios
+- **48% performance advantage** with Link in 1P1C scenarios
 
 **Production Validation:**
 - 6.2M+ test messages with zero corruptions

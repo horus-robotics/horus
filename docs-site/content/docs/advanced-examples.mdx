@@ -57,7 +57,7 @@ impl Node for StateMachineNode {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Check for obstacles
         let obstacle = self.obstacle_sub.recv(ctx).unwrap_or(false);
 
@@ -107,12 +107,10 @@ impl Node for StateMachineNode {
 
         // Log state transitions
         if self.state != prev_state {
-            if let Some(ctx) = ctx {
-                ctx.log_info(&format!(
+            ctx.log_info(&format!(
                     "State transition: {:?} -> {:?}",
                     prev_state, self.state
                 ));
-            }
         }
     }
 
@@ -182,19 +180,17 @@ impl Node for EmergencyStopNode {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let mut should_stop = false;
 
         // Check battery
         if let Some(battery) = self.battery_sub.recv(ctx) {
             if battery.is_critical() {  // Below 10%
                 should_stop = true;
-                if let Some(ctx) = ctx {
-                    ctx.log_error(&format!(
+                ctx.log_error(&format!(
                         " CRITICAL: Battery at {:.0}% - EMERGENCY STOP!",
                         battery.percentage
                     ));
-                }
             }
         }
 
@@ -202,12 +198,10 @@ impl Node for EmergencyStopNode {
         if let Some(min_dist) = self.lidar_sub.recv(ctx) {
             if min_dist < 0.2 {  // 20cm
                 should_stop = true;
-                if let Some(ctx) = ctx {
-                    ctx.log_error(&format!(
+                ctx.log_error(&format!(
                         " CRITICAL: Obstacle at {:.2}m - EMERGENCY STOP!",
                         min_dist
                     ));
-                }
             }
         }
 
@@ -253,7 +247,7 @@ impl Node for MotorController {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Check emergency stop FIRST
         if let Some(estop) = self.estop_sub.recv(ctx) {
             if estop != self.estop_active {
@@ -278,12 +272,10 @@ impl Node for MotorController {
         if let Some(cmd) = self.cmd_sub.recv(ctx) {
             self.motor_pub.send(cmd, ctx).ok();
 
-            if let Some(ctx) = ctx {
-                ctx.log_debug(&format!(
+            ctx.log_debug(&format!(
                     "Motors: linear={:.2}, angular={:.2}",
                     cmd.linear, cmd.angular
                 ));
-            }
         }
     }
 
@@ -318,25 +310,21 @@ impl Node for LoggerNode {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Log velocity commands
         if let Some(cmd) = self.cmd_sub.recv(ctx) {
-            if let Some(ctx) = ctx {
-                ctx.log_debug(&format!(
+            ctx.log_debug(&format!(
                     "LOG: cmd_vel({:.2}, {:.2})",
                     cmd.linear, cmd.angular
                 ));
-            }
         }
 
         // Log battery state
         if let Some(battery) = self.battery_sub.recv(ctx) {
-            if let Some(ctx) = ctx {
-                ctx.log_debug(&format!(
+            ctx.log_debug(&format!(
                     "LOG: battery({:.1}V, {:.0}%)",
                     battery.voltage, battery.percentage
                 ));
-            }
         }
 
         // In production: write to file, database, etc.
@@ -557,14 +545,12 @@ impl Node for TempSensor {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Fast sensor simulation
         let temp = 20.0 + (self.counter.sin() * 5.0);
         self.temp_pub.send(temp, ctx).ok();
 
-        if let Some(ctx) = ctx {
-            ctx.log_debug(&format!("Rust: {:.2}°C", temp));
-        }
+        ctx.log_debug(&format!("Rust: {:.2}°C", temp));
 
         self.counter += 0.1;
     }
@@ -626,7 +612,7 @@ struct Actuator {
 impl Node for Actuator {
     fn name(&self) -> &'static str { "RustActuator" }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(cmd) = self.cmd_sub.recv(ctx) {
             if let Some(ctx) = ctx {
                 let action = if cmd > 0.5 { "COOLING" } else { "IDLE" };

@@ -41,7 +41,7 @@ Every HORUS node implements the `Node` trait:
 pub trait Node: Send {
     fn name(&self) -> &'static str;
     fn init(&mut self, ctx: &mut NodeInfo) -> Result<()>;
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>);
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>);
     fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()>;
     fn get_publishers(&self) -> Vec<TopicMetadata>;
     fn get_subscribers(&self) -> Vec<TopicMetadata>;
@@ -61,7 +61,7 @@ fn name(&self) -> &'static str {
 **tick()**: Main execution loop called repeatedly by the scheduler
 
 ```rust
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     // Your node logic here
 }
 ```
@@ -167,13 +167,11 @@ impl Node for LifecycleDemo {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Called REPEATEDLY in main loop (~60 FPS default)
         self.counter += 1;
 
-        if let Some(ctx) = ctx {
-            ctx.log_debug(&format!("Tick #{}", self.counter));
-        }
+        ctx.log_debug(&format!("Tick #{}", self.counter));
     }
 
     fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
@@ -233,7 +231,7 @@ ctx.log_debug(&format!("Position: ({}, {})", x, y));
 When you pass `ctx` to `Hub::send()` or `Hub::recv()`, HORUS automatically logs IPC operations:
 
 ```rust
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     // Automatic pub logging - just pass ctx to send()
     self.velocity_pub.send(1.5, ctx).ok();
     // Output: [12:34:56.789] [IPC: 437ns | Tick: 12μs] MyNode --PUB--> 'cmd_vel' = 1.5
@@ -274,7 +272,7 @@ pub struct NodeMetrics {
 Access metrics in your node:
 
 ```rust
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     if let Some(ctx) = ctx {
         let avg_duration = ctx.metrics.avg_tick_duration_ms;
         if avg_duration > 1.0 {
@@ -364,7 +362,7 @@ impl Node for SensorNode {
         "SensorNode"
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let data = 42.0; // Read sensor
         self.data_pub.send(data, ctx).ok();
     }
@@ -382,7 +380,7 @@ node! {
     name: SensorNode,
     publishers: [sensor_data: f32],
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let data = 42.0;
         self.sensor_data.send(data, ctx).ok();
     }
@@ -405,7 +403,7 @@ struct Publisher {
 }
 
 impl Node for Publisher {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let data = self.generate_data();
         self.data_pub.send(data, ctx).ok();
     }
@@ -420,7 +418,7 @@ struct Subscriber {
 }
 
 impl Node for Subscriber {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(data) = self.data_sub.recv(ctx) {
             self.process(data);
         }
@@ -437,7 +435,7 @@ struct Filter {
 }
 
 impl Node for Filter {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(input) = self.input_sub.recv(ctx) {
             let output = input * 2.0;
             self.output_pub.send(output, ctx).ok();
@@ -456,7 +454,7 @@ struct Aggregator {
 }
 
 impl Node for Aggregator {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let (Some(a), Some(b)) = (self.input_a.recv(ctx), self.input_b.recv(ctx)) {
             let result = a + b;
             self.output_pub.send(result, ctx).ok();
@@ -473,13 +471,13 @@ The tick method should complete quickly (ideally &lt;1ms):
 
 ```rust
 // GOOD: Fast computation
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     let result = self.compute_quickly();
     self.pub.send(result, ctx).ok();
 }
 
 // BAD: Blocking I/O
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     let data = std::fs::read_to_string("file.txt").unwrap(); // Blocks!
     // ...
 }
@@ -502,7 +500,7 @@ fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
     Ok(())
 }
 
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     // Use pre-allocated resources
     self.buffer[0] = 42.0;
 }
@@ -543,10 +541,8 @@ fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
 The context is optional in tick():
 
 ```rust
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-    if let Some(ctx) = ctx {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         ctx.log_info("This is safe");
-    }
 }
 ```
 
@@ -586,7 +582,7 @@ If init() returns an error, the node transitions to **Error** state and won't ru
 Handle errors in tick() without panicking:
 
 ```rust
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     match self.data_sub.recv(ctx) {
         Some(data) => self.process(data),
         None => {
@@ -615,7 +611,7 @@ fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
 Run logic only under certain conditions:
 
 ```rust
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     self.tick_count += 1;
 
     // Execute every 10 ticks
@@ -642,7 +638,7 @@ struct RobotController {
 }
 
 impl Node for RobotController {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         match self.state {
             RobotState::Idle => {
                 if let Some(cmd) = self.cmd_sub.recv(ctx) {
@@ -676,7 +672,7 @@ struct Synchronizer {
 }
 
 impl Node for Synchronizer {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Update cached values
         if let Some(a) = self.topic_a.recv(ctx) {
             self.last_a = Some(a);

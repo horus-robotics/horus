@@ -80,7 +80,7 @@ impl Node for SensorNode {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Publish every 1 second
         if self.last_publish.elapsed() >= Duration::from_secs(1) {
             // Simulate realistic temperature with noise
@@ -94,9 +94,7 @@ impl Node for SensorNode {
             // Publish raw temperature
             self.temp_pub.send(temperature, ctx).ok();
 
-            if let Some(ctx) = ctx {
-                ctx.log_info(&format!("Published raw temp: {:.2}°C", temperature));
-            }
+            ctx.log_info(&format!("Published raw temp: {:.2}°C", temperature));
 
             self.reading += 1.0;
             self.last_publish = Instant::now();
@@ -141,7 +139,7 @@ impl Node for FilterNode {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Check for new temperature reading
         if let Some(raw_temp) = self.raw_sub.recv(ctx) {
             // Apply exponential moving average filter
@@ -155,12 +153,10 @@ impl Node for FilterNode {
             // Publish filtered temperature
             self.filtered_pub.send(filtered, ctx).ok();
 
-            if let Some(ctx) = ctx {
-                ctx.log_info(&format!(
+            ctx.log_info(&format!(
                     "Filtered: {:.2}°C -> {:.2}°C (removed {:.2}°C noise)",
                     raw_temp, filtered, raw_temp - filtered
                 ));
-            }
         }
     }
 
@@ -201,7 +197,7 @@ impl Node for DisplayNode {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(temp) = self.filtered_sub.recv(ctx) {
             self.display_counter += 1;
 
@@ -219,9 +215,7 @@ impl Node for DisplayNode {
                 self.display_counter, temp, status
             );
 
-            if let Some(ctx) = ctx {
-                ctx.log_debug(&format!("Displayed reading #{}", self.display_counter));
-            }
+            ctx.log_debug(&format!("Displayed reading #{}", self.display_counter));
         }
     }
 
@@ -426,7 +420,7 @@ error[E0433]: failed to resolve: use of undeclared type `Hub`
 ```
 
 **Fix:**
-- Ensure HORUS is installed: `horus --version`
+- Ensure HORUS is installed: `horus --help`
 - Check import: `use horus::prelude::*;`
 - Run from project directory (where `Cargo.toml` is)
 

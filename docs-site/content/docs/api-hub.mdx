@@ -1,7 +1,7 @@
 ---
 title: Hub API Reference
 description: Complete API reference for the Hub pub/sub system
-order: 41
+order: 411
 ---
 
 # Hub API Reference
@@ -187,7 +187,7 @@ pub fn send(&self, msg: T, ctx: Option<&mut NodeInfo>) -> Result<(), T>
 hub.send(42.0, None).ok();
 
 // With automatic logging (recommended)
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     hub.send(42.0, ctx).ok();
     // Automatically logs: [12:34:56.789] [IPC: 437ns] MyNode --PUB--> 'topic' = 42.0
 }
@@ -233,7 +233,7 @@ if let Some(velocity) = hub.recv(None) {
 }
 
 // With automatic logging (recommended)
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     if let Some(velocity) = hub.recv(ctx) {
         // Automatically logs: [12:34:56.789] [IPC: 142ns] MyNode <--SUB-- 'topic' = 42.0
         self.process(velocity);
@@ -359,6 +359,8 @@ let imu_hub: Hub<Imu> = Hub::new("imu")?;
 
 ## Communication Patterns
 
+> **Note**: Examples below focus on communication patterns. For full working examples with constructors, see [Core Concepts: Hub](/core-concepts-hub) and [Examples](/examples).
+
 ### One-to-One
 
 Single publisher, single subscriber:
@@ -369,8 +371,20 @@ struct PublisherNode {
     data_pub: Hub<f32>,
 }
 
+impl PublisherNode {
+    fn new() -> Result<Self> {
+        Ok(Self {
+            data_pub: Hub::new("data")?,
+        })
+    }
+}
+
 impl Node for PublisherNode {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn name(&self) -> &'static str {
+        "PublisherNode"
+    }
+
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         self.data_pub.send(42.0, ctx).ok();
     }
 }
@@ -380,8 +394,20 @@ struct SubscriberNode {
     data_sub: Hub<f32>,
 }
 
+impl SubscriberNode {
+    fn new() -> Result<Self> {
+        Ok(Self {
+            data_sub: Hub::new("data")?,
+        })
+    }
+}
+
 impl Node for SubscriberNode {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn name(&self) -> &'static str {
+        "SubscriberNode"
+    }
+
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(data) = self.data_sub.recv(ctx) {
             println!("Got: {}", data);
         }
@@ -435,7 +461,7 @@ Chain multiple nodes with pub/sub:
 
 ```rust
 impl Node for ProcessorNode {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Receive input
         if let Some(input) = self.input_sub.recv(ctx) {
             // Process
@@ -540,7 +566,7 @@ struct BufferedNode {
 }
 
 impl Node for BufferedNode {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Update cache if new message available
         if let Some(value) = self.data_sub.recv(ctx) {
             self.last_value = Some(value);
@@ -563,7 +589,7 @@ struct RateLimitedPublisher {
 }
 
 impl Node for RateLimitedPublisher {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         self.tick_count += 1;
 
         // Publish every 10 ticks (~6 Hz at 60 FPS)

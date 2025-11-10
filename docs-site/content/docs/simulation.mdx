@@ -1,7 +1,7 @@
 ---
 title: Simulation
 description: Test your robots in virtual environments with sim2d and sim3d
-order: 24
+order: 25
 ---
 
 # Simulation
@@ -102,8 +102,21 @@ struct NavigationNode {
     scan_sub: Hub<LaserScan>,
 }
 
+impl NavigationNode {
+    fn new() -> Result<Self> {
+        Ok(Self {
+            cmd_pub: Hub::new("cmd_vel")?,
+            scan_sub: Hub::new("scan")?,
+        })
+    }
+}
+
 impl Node for NavigationNode {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn name(&self) -> &'static str {
+        "NavigationNode"
+    }
+
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Read simulated LiDAR
         if let Some(scan) = self.scan_sub.recv(ctx) {
             // Compute motion command
@@ -255,7 +268,6 @@ As sim2d is under active development, be aware of:
 For production use, we recommend:
 - Testing critical algorithms in sim2d first
 - Validating on real hardware before deployment
-- Following the roadmap for upcoming features
 
 ---
 

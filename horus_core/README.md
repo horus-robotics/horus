@@ -64,7 +64,7 @@ From `horus_core/src/core/node.rs`:
 pub trait Node: Send {
     fn name(&self) -> &'static str;
     fn init(&mut self, ctx: &mut NodeInfo) -> Result<()>;
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>);
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>);
     fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()>;
     fn get_publishers(&self) -> Vec<TopicMetadata> { Vec::new() }
     fn get_subscribers(&self) -> Vec<TopicMetadata> { Vec::new() }
@@ -123,9 +123,9 @@ impl<T> Hub<T> {
 - Default capacity: 1024 slots per topic
 
 **Performance (on modern x86_64 systems):**
-- **Link (SPSC)**: 312ns median latency, 6M+ msg/s throughput
+- **Link (SPSC)**: 248ns median latency, 6M+ msg/s throughput
 - **Hub (MPMC)**: 481ns median latency, flexible pub/sub
-- Link is 29% faster than Hub in 1P1C scenarios
+- Link is 48% faster than Hub in 1P1C scenarios
 - Production-validated with 6.2M+ test messages
 
 *Performance varies by hardware. See `benchmarks/` directory for detailed results.*
@@ -202,7 +202,7 @@ impl Node for SensorNode {
     }
 
     // Required: Called repeatedly by scheduler
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let reading = self.counter as f64 * 0.1;
         let _ = self.publisher.send(reading, ctx);
         self.counter += 1;
@@ -241,12 +241,10 @@ impl Node for ControlNode {
     }
 
     // Required: Called repeatedly by scheduler
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(data) = self.subscriber.recv(ctx) {
             // Process the received data
-            if let Some(ctx) = ctx {
-                ctx.log_info(&format!("Received: {}", data));
-            }
+            ctx.log_info(&format!("Received: {}", data));
         }
     }
 
@@ -304,7 +302,7 @@ The HORUS scheduler has been enhanced with intelligent runtime optimization that
 **HORUS provides two IPC mechanisms optimized for different use cases:**
 
 **Link (SPSC) - Cross-Core:**
-- Median latency: 312ns (624 cycles @ 2GHz)
+- Median latency: 248ns (496 cycles @ 2GHz)
 - P95 latency: 444ns, P99 latency: 578ns
 - Burst throughput: 6.05 MHz (6M+ msg/s)
 - Bandwidth: Up to 369 MB/s
@@ -371,7 +369,7 @@ struct UnsafeMessage {
 
 ```rust
 impl Node for WellDesignedNode {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         //  Good: Bounded execution (one message per tick)
         if let Some(data) = self.input.recv(ctx) {
             let result = process_data(data);
@@ -395,15 +393,13 @@ impl Node for WellDesignedNode {
 
 ```rust
 impl Node for RobustNode {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Handle communication errors gracefully
         match self.publisher.send(data, ctx) {
             Ok(()) => { /* Success */ }
             Err(msg) => {
                 // Log error but don't panic - keep system running
-                if let Some(ctx) = ctx {
-                    ctx.log_warning("Message dropped due to full buffer");
-                }
+        ctx.log_warning("Message dropped due to full buffer");
             }
         }
     }
@@ -414,7 +410,7 @@ impl Node for RobustNode {
 
 ```rust
 impl Node for MyNode {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(ctx) = ctx {
             // Hub automatically logs via ctx.log_pub() and ctx.log_sub()
             // when you pass ctx to send/recv

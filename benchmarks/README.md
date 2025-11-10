@@ -12,7 +12,7 @@ This benchmark suite provides rigorous, statistically sound performance measurem
 ## Production-Validated Performance
 
 **Link (SPSC) - Cross-Core Latency:**
-- Median latency: 312ns (624 cycles @ 2GHz)
+- Median latency: 248ns (496 cycles @ 2GHz)
 - P95 latency: 444ns
 - P99 latency: 578ns
 - Burst throughput: 6.05 MHz (6M+ msg/s)
@@ -25,7 +25,7 @@ This benchmark suite provides rigorous, statistically sound performance measurem
 - Flexible pub/sub architecture
 
 **Comparison:**
-- Link is 29% faster than Hub in 1P1C scenarios
+- Link is 48% faster than Hub in 1P1C scenarios
 - Production-validated with 6.2M+ test messages
 - Zero corruptions detected
 
@@ -102,7 +102,7 @@ HORUS IPC systems demonstrate excellent performance characteristics:
 4. **Cache-Optimized**: Memory layout designed to minimize cache misses
 
 **Link vs Hub Trade-offs:**
-- **Link (SPSC)**: Fastest option for point-to-point communication (312ns median)
+- **Link (SPSC)**: Fastest option for point-to-point communication (248ns median)
 - **Hub (MPMC)**: Flexible pub/sub with slightly higher latency (481ns median)
 
 Results vary by message size, CPU architecture, and system load. Run benchmarks on your target hardware for accurate measurements.

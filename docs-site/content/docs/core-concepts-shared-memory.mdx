@@ -619,9 +619,7 @@ match hub.send(data, ctx) {
     Err(original_data) => {
         // Buffer full - decide what to do
         // Option 1: Log and drop
-        if let Some(ctx) = ctx {
-            ctx.log_warning("Buffer full, dropping message");
-        }
+        ctx.log_warning("Buffer full, dropping message");
 
         // Option 2: Retry with backoff
         // Option 3: Use larger buffer

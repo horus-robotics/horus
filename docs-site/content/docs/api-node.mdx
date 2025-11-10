@@ -1,7 +1,7 @@
 ---
 title: Node API Reference
 description: Complete API reference for the Node trait
-order: 41
+order: 413
 ---
 
 # Node API Reference
@@ -14,7 +14,7 @@ The `Node` trait is the core abstraction in HORUS. Implement this trait to creat
 pub trait Node: Send {
     fn name(&self) -> &'static str;
     fn init(&mut self, ctx: &mut NodeInfo) -> Result<()>;
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>);
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>);
     fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()>;
 }
 ```
@@ -45,7 +45,7 @@ impl Node for MyNode {
 Main execution loop called repeatedly by the scheduler (default ~60 FPS).
 
 ```rust
-fn tick(&mut self, ctx: Option<&mut NodeInfo>);
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>);
 ```
 
 **Parameters**:
@@ -53,7 +53,7 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>);
 
 **Example**:
 ```rust
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     let data = self.read_sensor();
     self.publisher.send(data, ctx).ok();
 }
@@ -267,7 +267,7 @@ impl Node for TemperatureSensor {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Simulate reading
         self.reading += 0.1;
 

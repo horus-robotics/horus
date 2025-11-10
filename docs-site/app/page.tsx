@@ -113,7 +113,7 @@ export default function HomePage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
             <Link
-              href="/getting-started"
+              href="/getting-started/installation"
               className="group relative px-8 py-3 bg-[var(--accent)] text-white rounded-lg font-semibold overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-[var(--accent)]/50"
             >
               <span className="relative z-10">Get Started</span>

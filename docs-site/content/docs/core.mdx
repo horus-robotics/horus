@@ -1,7 +1,7 @@
 ---
 title: Core Concepts
 description: Understanding HORUS architecture and IPC backends
-order: 99
+order: 4
 ---
 
 # Core Concepts
@@ -55,7 +55,7 @@ let mut sub2: Hub<SensorData> = Hub::new("sensors/imu")?;
 
 | Message Type | Size | Hub Latency | Link Latency | vs ROS2 |
 |--------------|------|-------------|--------------|---------|
-| **CmdVel** | 16 B | ~500 ns | 312 ns | **100-320x faster** |
+| **CmdVel** | 16 B | ~500 ns | 248 ns | **160-403x faster** |
 | **IMU** | 304 B | ~940 ns | ~400 ns | **53-250x faster** |
 | **LaserScan** | 1.5 KB | ~2.2 µs | ~900 ns | **23-111x faster** |
 | **Odometry** | 736 B | ~1.1 µs | ~600 ns | **45-167x faster** |
@@ -95,6 +95,7 @@ HORUS messages are **memory-safe** by design:
 
 ## Next Steps
 
-- [Getting Started](/getting-started) - Build your first HORUS node
+- [Installation](/getting-started/installation) - Get HORUS installed
+- [Quick Start](/getting-started/quick-start) - Build your first HORUS node
 - [Benchmarks](/benchmarks) - Production performance analysis
 - [Examples](/examples) - Real-world robotics applications

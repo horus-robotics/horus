@@ -189,7 +189,7 @@ impl SensorNode {
 impl Node for SensorNode {
     fn name(&self) -> &'static str { "SensorNode" }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let scan = self.read_lidar();
         self.output.send(scan, ctx).ok();
         thread::sleep(Duration::from_millis(10)); // 100Hz
@@ -321,7 +321,7 @@ struct FlightController {
 }
 
 impl Node for FlightController {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Read latest state (389ns)
         if let Some(state) = self.state_input.recv(ctx) {
             let commands = self.compute_pd_control(state);

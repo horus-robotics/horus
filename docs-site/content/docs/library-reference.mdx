@@ -823,15 +823,13 @@ impl MyNode {
 
 **Handle tick errors gracefully:**
 ```rust
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     match self.read_sensor() {
         Ok(data) => {
             self.output.send(data, ctx).ok();
         }
         Err(e) => {
-            if let Some(ctx) = ctx {
-                ctx.log_error(&format!("Sensor error: {}", e));
-            }
+            ctx.log_error(&format!("Sensor error: {}", e));
             self.error_count += 1;
         }
     }

@@ -433,7 +433,7 @@ impl Node for MotorControlNode {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Read sensors, compute control, send PWM
         self.pwm_value = self.compute_control();
         self.send_pwm_signal();

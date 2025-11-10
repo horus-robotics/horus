@@ -172,7 +172,7 @@ horus run controller.rs &
 # Both run at 60 Hz independently
 ```
 
-**Roadmap:** Configurable per-node tick rates and removal of the global 60 FPS limit are planned for future releases. See [Roadmap](/roadmap) for details.
+**Future:** Configurable per-node tick rates and removal of the global 60 FPS limit are planned for future releases.
 
 ## Priority-Based Execution
 
@@ -389,7 +389,7 @@ fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
 If a node panics during tick():
 
 ```rust
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     panic!("Something went wrong!");
 }
 ```
@@ -401,13 +401,11 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 **Better approach**:
 
 ```rust
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     match self.do_something() {
         Ok(result) => { /* process */ }
         Err(e) => {
-            if let Some(ctx) = ctx {
-                ctx.log_error(&format!("Error: {}", e));
-            }
+            ctx.log_error(&format!("Error: {}", e));
         }
     }
 }
@@ -481,7 +479,7 @@ Skip nodes based on conditions:
 
 ```rust
 impl Node for ConditionalNode {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if !self.should_run {
             return;  // Skip this tick
         }
@@ -543,13 +541,13 @@ Each tick should complete in &lt;1ms for 1kHz control:
 
 ```rust
 // GOOD: Fast tick
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     let data = self.read_sensor();
     self.pub.send(data, ctx).ok();
 }
 
 // BAD: Slow tick
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     std::thread::sleep(Duration::from_millis(100));  // Blocks!
 }
 ```
@@ -574,19 +572,17 @@ Don't panic in production code:
 
 ```rust
 // GOOD: Handle errors
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     match self.operation() {
         Ok(_) => {},
         Err(e) => {
-            if let Some(ctx) = ctx {
-                ctx.log_error(&format!("Error: {}", e));
-            }
+            ctx.log_error(&format!("Error: {}", e));
         }
     }
 }
 
 // BAD: Panic on error
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     self.operation().unwrap();  // Will crash scheduler!
 }
 ```
@@ -596,7 +592,7 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 Track your node metrics:
 
 ```rust
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     if let Some(ctx) = ctx {
         if ctx.metrics.avg_tick_duration_ms > 1.0 {
             ctx.log_warning("Tick duration exceeding 1ms");
@@ -674,14 +670,14 @@ Ensure tick() returns quickly:
 
 ```rust
 // WRONG: Infinite loop in tick
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     loop {  // Never returns!
         // ...
     }
 }
 
 // RIGHT: Return from tick
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     // Do work
     // Return naturally
 }
@@ -704,7 +700,7 @@ fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
 Profile your nodes:
 
 ```rust
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     if let Some(ctx) = ctx {
         let avg_ms = ctx.metrics.avg_tick_duration_ms;
         if avg_ms > 1.0 {

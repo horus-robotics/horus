@@ -5,7 +5,7 @@
 [![Version](https://img.shields.io/badge/version-0.1.4-blue.svg)](https://github.com/softmata/horus/releases)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-alpha-yellow.svg)](https://github.com/softmata/horus/releases)
-[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://docs.horus-registry.dev)
+[![Discord](https://img.shields.io/badge/Discord-Join%20Us-7289da?logo=discord&logoColor=white)](https://discord.gg/hEZC3ev2Nf)
 
 [![IPC Latency](https://img.shields.io/badge/IPC%20latency-248ns-brightgreen.svg)](#performance)
 [![Throughput](https://img.shields.io/badge/throughput-6M%2B%20msg%2Fs-green.svg)](#performance)
@@ -14,7 +14,7 @@
 
 A production-grade robotics framework built in Rust for **real-time performance** and **memory safety**. HORUS delivers sub-microsecond IPC latency (50-500x faster than ROS2) while maintaining a simpler developer experience.
 
-[Installation](#installation) • [Quick Start](#quick-start) • [Documentation](https://docs.horus-registry.dev) • [Marketplace](https://marketplace.horus-registry.dev) • [Benchmarks](https://docs.horus-registry.dev/benchmarks)
+[Installation](#installation) • [Quick Start](#quick-start) • [Documentation](https://docs.horus-registry.dev) • [Benchmarks](https://docs.horus-registry.dev/benchmarks)
 
 > **Interested in our work?** [Give us a star ](https://github.com/softmata/horus) to motivate and help others find it!
 
@@ -128,7 +128,7 @@ The installer will:
 ### Verify Installation
 
 ```bash
-horus --version
+horus --help
 ls ~/.horus/cache/
 ```
 
@@ -156,11 +156,13 @@ pub struct SensorNode {
 impl Node for SensorNode {
     fn name(&self) -> &'static str { "sensor_node" }
 
+    // init() is optional - only override if you need setup logic
     fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("SensorNode initialized");
         Ok(())
     }
 
+    // tick() is required - this is your main logic that runs every cycle
     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         // Simple sensor reading
         let reading = SensorReading(self.counter as f64 * 0.1, self.counter);
@@ -170,6 +172,7 @@ impl Node for SensorNode {
         self.counter += 1;
     }
 
+    // shutdown() is optional - only override if you need cleanup logic
     fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info(&format!("SensorNode sent {} readings", self.counter));
         Ok(())
@@ -214,7 +217,7 @@ horus_cpp/                  # C/C++ bindings
 horus_library/              # Standard library
   messages/                 # Standard message types
   apps/                     # Example applications
-  tools/                    # Development tools (sim2d/3d in progress)
+  tools/                    # Development tools
 benchmarks/                 # Performance testing
 docs-site/                  # Documentation website
 ```
@@ -273,9 +276,31 @@ $ horus run "nodes/*.py"
 
 Each file runs in a separate process with its own HORUS scheduler, communicating via shared memory IPC.
 
-**Important:** `horus run` is designed for **single-file HORUS projects** only (main.rs, main.py, main.c). It automatically generates a temporary workspace in `.horus/` and handles all dependencies.
+**Running nodes separately** (e.g., in different terminals):
 
-For **multi-crate workspaces** (projects with multiple `Cargo.toml` files or complex module structures), use `cargo` directly:
+Projects created with `horus new` include a `session_id` in `horus.yaml`:
+
+```yaml
+session_id: "my-project-session"  # Auto-generated from project name
+```
+
+This allows running nodes in separate terminals that can communicate:
+
+```bash
+# Terminal 1
+horus run sensor.rs
+
+# Terminal 2
+horus run controller.rs
+```
+
+Both share the same session → communication works!
+
+**Alternative**: Use `Hub::new_global()` for cross-session communication (no session_id needed).
+
+**Note:** `horus run` works for single-file projects and projects with `horus.yaml` or a single `Cargo.toml`. It automatically handles dependencies and builds in a managed workspace.
+
+For **Cargo workspaces** (projects with workspace members defined in the root `Cargo.toml`), use `cargo` directly:
 ```bash
 cargo build --release
 cargo run --release
@@ -294,26 +319,7 @@ horus pkg list                  # List packages
 ```bash
 horus env freeze                # Freeze environment
 horus env freeze -o custom.yaml # Custom file
-horus env freeze --publish      # Publish to registry
 horus env restore <file>        # Restore from file
-```
-
-### Publishing
-```bash
-horus pkg publish                # Publish current package to registry
-horus pkg unpublish <name> <ver> # Remove package from registry
-```
-
-**Requirements:** GitHub authentication (run `horus auth login` first)
-
-You can also publish via web interface at [marketplace.horus-registry.dev/publish](https://marketplace.horus-registry.dev/publish)
-
-### Authentication
-```bash
-horus auth login                # GitHub OAuth login
-horus auth generate-key         # Generate API key
-horus auth whoami               # Show current user
-horus auth logout               # Logout
 ```
 
 ### Dashboard
@@ -327,20 +333,6 @@ horus dashboard -t              # Terminal UI
 ```bash
 horus check                     # Validate horus.yaml
 horus check -q                  # Only show errors, suppress warnings
-```
-
-### Simulation
-```bash
-# Note: Simulation features are under active development
-# horus sim 2d                    # 2D simulator (in development)
-# horus sim 2d --world map.yaml   # With custom world config
-# horus sim 3d                    # 3D simulator (planned)
-```
-
-### Version Information
-```bash
-horus --version                 # Show version
-horus -V
 ```
 
 ## Core API
@@ -405,7 +397,7 @@ if let Some(msg) = hub.recv(None) {
 ```
 
 **Performance (on modern x86_64 systems):**
-- **Link (SPSC)**: Median 312ns, 6M+ msg/s throughput
+- **Link (SPSC)**: Median 248ns, 6M+ msg/s throughput
 - **Hub (MPMC)**: Median 481ns, flexible pub/sub
 - Production-validated with 6.2M+ test messages
 - Up to 369 MB/s bandwidth for burst messages
@@ -420,12 +412,22 @@ The core trait that all nodes must implement:
 use horus::prelude::*;
 
 pub trait Node: Send {
-    fn name(&self) -> &'static str;
-    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> { Ok(()) }
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>);
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> { Ok(()) }
+    fn name(&self) -> &'static str;                          // Required: Node identifier
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {   // Optional: Setup logic
+        Ok(())
+    }
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>);          // Required: Main loop logic
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> { // Optional: Cleanup logic
+        Ok(())
+    }
 }
 ```
+
+**Method requirements:**
+- **`name()`** - Required: Returns unique node identifier
+- **`tick()`** - Required: Your main logic that runs every cycle
+- **`init()`** - Optional: Override only if you need setup logic (default: empty)
+- **`shutdown()`** - Optional: Override only if you need cleanup logic (default: empty)
 
 **About the `ctx` parameter:**
 - `ctx: Option<&mut NodeInfo>` - Use `None` for maximum performance (no logging)
@@ -495,7 +497,7 @@ cd horus_library/apps/snakesim
 horus run
 
 # Terminal 2: Run GUI (visual display)
-cd snakesim_gui && cargo run --release
+cd snakesim_gui && horus run
 ```
 
 Multi-node game demonstrating:
@@ -503,16 +505,6 @@ Multi-node game demonstrating:
 - JoystickInputNode (priority 1): Joystick input
 - SnakeControlNode (priority 2): Game logic
 - GUI: Graphical display with animated snake (separate window)
-
-### Sim2D Physics Simulator (Under Development)
-```bash
-# Note: sim2d is under active development
-# From HORUS root directory
-# cd horus_library/tools/sim2d
-# cargo run --release
-```
-
-2D robotics simulator with Bevy visualization and Rapier2D physics (in development).
 
 ## Multi-Language Support
 
@@ -544,13 +536,17 @@ cargo test                  # All tests
 cargo test -p horus_core    # Specific component
 ```
 
-### Acceptance Tests
+### Integration Tests
 
-User acceptance tests are in `tests/acceptance/` documenting expected behavior.
+Integration tests are in `tests/` directory covering CLI commands and runtime execution.
 
 ```bash
-cat tests/acceptance/README.md
-cat tests/acceptance/horus_manager/01_new_command.md
+# Run all tests
+cd tests/horus_new && ./run_all.sh
+cd ../horus_run && ./run_all.sh
+
+# See tests/README.md for details
+cat tests/README.md
 ```
 
 ## Performance
@@ -588,42 +584,25 @@ cargo bench
 cargo run --release --bin production_bench
 ```
 
-## Community
-
-[![Installations](https://img.shields.io/endpoint?url=https://telemetry.horus-registry.dev/count/badge)](PRIVACY.md)
-
-Join our Discord community:
-
-**[Join HORUS Discord](https://discord.gg/hEZC3ev2Nf)**
-
 ## Contributing
 
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+We welcome contributions to HORUS! Whether you're fixing bugs, adding features, or improving documentation, your help is appreciated.
 
-Quick start:
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature/amazing-feature`
-3. Make changes and write tests
-4. Review acceptance tests in `tests/acceptance/`
-5. Run: `cargo test && cargo clippy`
-6. Commit: `git commit -m 'Add amazing feature'`
-7. Push and open Pull Request
+**Before contributing:**
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines
+- Check existing issues and pull requests to avoid duplicates
+- For major features, open an issue first to discuss the approach
+
+**Development workflow:**
+1. Fork the repository and create a feature branch
+2. Make your changes with appropriate tests
+3. Run `cargo test` to ensure tests pass
+4. Submit a pull request with a clear description
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for complete guidelines including code style, testing requirements, and PR process.
 
 ## License
 
 Apache License 2.0 - see [LICENSE](LICENSE) for details.
 
 By contributing, you agree to the [Contributor License Agreement](.github/CLA.md).
-
-## Why HORUS?
-
-- **Ultra-Low Latency**: Sub-microsecond IPC (248ns Link, 437ns Hub)
-- **High Throughput**: 6+ million messages per second
-- **Simple Setup**: No complex configuration files
-- **Memory Safe**: Rust + fixed-size messages
-- **Built-in Debugging**: Integrated dashboard
-- **Easy to Learn**: Simple `tick()` pattern
-- **Zero-Copy IPC**: Maximum performance
-- **Production-Validated**: 6.2M+ test messages, zero corruptions
-
-**HORUS: Real-time robotics made simple**

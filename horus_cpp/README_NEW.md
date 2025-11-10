@@ -373,7 +373,7 @@ horus dashboard
 [14:32:15.123] [INFO]    [lidar_driver] Initializing LiDAR...
 [14:32:15.456] [INFO]    [lidar_driver] LiDAR ready @ 10Hz
 [14:32:15.470] [PUBLISH] [lidar_driver] Published to 'scan' (481ns)
-[14:32:15.471] [SUBSCRIBE] [controller] Received from 'scan' (312ns)
+[14:32:15.471] [SUBSCRIBE] [controller] Received from 'scan' (248ns)
 ```
 
 **With `enable_logging=true`, every pub/sub shows IPC latency!**

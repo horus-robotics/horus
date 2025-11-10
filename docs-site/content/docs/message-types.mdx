@@ -827,7 +827,7 @@ struct LidarNode {
 }
 
 impl Node for LidarNode {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let mut scan = LaserScan::new();
         // Fill in scan data...
         scan.ranges[0] = 5.2;
@@ -848,7 +848,7 @@ struct ObstacleDetector {
 }
 
 impl Node for ObstacleDetector {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(scan) = self.scan_sub.recv(ctx) {
             // Find closest obstacle
             if let Some(min_range) = scan.min_range() {
@@ -884,7 +884,7 @@ struct Publisher {
 }
 
 impl Node for Publisher {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let cmd = CmdVel::new(1.0, 0.5);  // linear, angular
         self.cmd_pub.send(cmd, ctx).ok();
     }
@@ -898,7 +898,7 @@ struct Subscriber {
 }
 
 impl Node for Subscriber {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(cmd) = self.cmd_sub.recv(ctx) {
             // Use the message
             println!("linear={}, angular={}", cmd.linear, cmd.angular);

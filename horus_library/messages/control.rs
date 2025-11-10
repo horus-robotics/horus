@@ -465,6 +465,128 @@ impl LogSummary for TrajectoryPoint {
     }
 }
 
+/// PWM (Pulse Width Modulation) Command for DC Motor Control
+///
+/// Controls DC motors using PWM signals for speed/direction control.
+/// Commonly used with motor drivers like L298N, TB6612, DRV8833.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
+pub struct PwmCommand {
+    /// Motor channel ID (0-15)
+    pub channel_id: u8,
+    /// PWM duty cycle (-1.0 to 1.0, negative = reverse)
+    pub duty_cycle: f32,
+    /// PWM frequency in Hz (typically 1kHz-20kHz)
+    pub frequency: u32,
+    /// Enable motor driver output
+    pub enable: bool,
+    /// Brake mode (true = brake, false = coast when disabled)
+    pub brake_mode: bool,
+    /// Current limit in amperes (0 = no limit)
+    pub current_limit: f32,
+    /// Timestamp in nanoseconds since epoch
+    pub timestamp: u64,
+}
+
+impl PwmCommand {
+    /// Create a new PWM command
+    pub fn new(channel: u8, duty_cycle: f32) -> Self {
+        Self {
+            channel_id: channel,
+            duty_cycle: duty_cycle.clamp(-1.0, 1.0),
+            frequency: 10000, // 10kHz default
+            enable: true,
+            brake_mode: false,
+            current_limit: 0.0,
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos() as u64,
+        }
+    }
+
+    /// Create a forward command
+    pub fn forward(channel: u8, speed: f32) -> Self {
+        Self::new(channel, speed.clamp(0.0, 1.0))
+    }
+
+    /// Create a reverse command
+    pub fn reverse(channel: u8, speed: f32) -> Self {
+        Self::new(channel, -speed.clamp(0.0, 1.0))
+    }
+
+    /// Create a stop command with coast
+    pub fn coast(channel: u8) -> Self {
+        Self {
+            channel_id: channel,
+            duty_cycle: 0.0,
+            frequency: 10000,
+            enable: false,
+            brake_mode: false,
+            current_limit: 0.0,
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos() as u64,
+        }
+    }
+
+    /// Create a stop command with brake
+    pub fn brake(channel: u8) -> Self {
+        Self {
+            channel_id: channel,
+            duty_cycle: 0.0,
+            frequency: 10000,
+            enable: true,
+            brake_mode: true,
+            current_limit: 0.0,
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos() as u64,
+        }
+    }
+
+    /// Set PWM frequency
+    pub fn with_frequency(mut self, freq: u32) -> Self {
+        self.frequency = freq;
+        self
+    }
+
+    /// Set current limit
+    pub fn with_current_limit(mut self, limit: f32) -> Self {
+        self.current_limit = limit;
+        self
+    }
+
+    /// Check if values are valid
+    pub fn is_valid(&self) -> bool {
+        self.duty_cycle >= -1.0
+            && self.duty_cycle <= 1.0
+            && self.frequency > 0
+            && self.frequency <= 100000
+            && self.current_limit >= 0.0
+    }
+
+    /// Get absolute speed (0-1)
+    pub fn speed(&self) -> f32 {
+        self.duty_cycle.abs()
+    }
+
+    /// Get direction (true = forward, false = reverse)
+    pub fn is_forward(&self) -> bool {
+        self.duty_cycle >= 0.0
+    }
+}
+
+impl LogSummary for PwmCommand {
+    fn log_summary(&self) -> String {
+        format!("PWM[{}]: {:.1}% @ {}Hz",
+            self.channel_id,
+            self.duty_cycle * 100.0,
+            self.frequency)
+    }
+}
+
 impl LogSummary for JointCommand {
     fn log_summary(&self) -> String {
         format!("{:?}", self)

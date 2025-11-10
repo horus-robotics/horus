@@ -27,11 +27,14 @@
 //! }
 //! ```
 
+pub mod config;
 pub mod hub;
 pub mod link;
+pub mod network;
 pub mod traits;
 
 // Re-export commonly used types for convenience
+pub use config::{HorusConfig, HubConfig};
 pub use hub::Hub;
 pub use link::{Link, LinkMetrics};
 pub use traits::{Channel, Publisher, Subscriber};
@@ -74,31 +77,6 @@ where
     }
 }
 
-// Implement common traits for Link
-impl<T> PublisherTrait<T> for Link<T>
-where
-    T: Send + Sync + Clone + std::fmt::Debug + crate::core::LogSummary + 'static,
-{
-    fn send(&self, msg: T) -> crate::error::HorusResult<()> {
-        Link::send(self, msg, None).map_err(|_| {
-            crate::error::HorusError::Communication("Failed to send message".to_string())
-        })
-    }
-
-    fn try_send(&self, msg: T) -> bool {
-        Link::send(self, msg, None).is_ok()
-    }
-}
-
-impl<T> SubscriberTrait<T> for Link<T>
-where
-    T: Send + Sync + Clone + std::fmt::Debug + crate::core::LogSummary + 'static,
-{
-    fn recv(&self) -> Option<T> {
-        Link::recv(self, None)
-    }
-
-    fn has_messages(&self) -> bool {
-        Link::has_messages(self)
-    }
-}
+// Note: Link does not implement Publisher/Subscriber traits because it cannot
+// implement Clone (network backends contain non-cloneable resources).
+// Use Link::send() and Link::recv() methods directly instead.

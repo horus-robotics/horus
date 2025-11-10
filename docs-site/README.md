@@ -103,11 +103,20 @@ We welcome contributions! To contribute to the documentation:
 
 ### Writing Guidelines
 
+**IMPORTANT**: Before editing any `.mdx` files, read [MDX_GUIDELINES.md](./MDX_GUIDELINES.md) to avoid common rendering errors!
+
+Common mistakes to avoid:
+- Using `<` directly in text (e.g., `<1%` should be `&lt;1%`)
+- Writing generic types without backticks (e.g., `Hub<T>` should be `` `Hub<T>` ``)
+- Starting headings with numbers
+
+General guidelines:
 - Use clear, concise language
 - Include code examples
 - Test all code snippets
 - Follow existing formatting
 - Update navigation if adding new pages
+- Run `npm run build` before committing to catch MDX errors
 
 ## Performance Focus
 

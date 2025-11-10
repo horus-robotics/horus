@@ -410,7 +410,7 @@ pub extern "C" fn log_debug(msg: *const c_char) {
 
 // Message type definitions matching C structs
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Vector3 {
     pub x: f32,
     pub y: f32,
@@ -418,7 +418,7 @@ pub struct Vector3 {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Quaternion {
     pub x: f32,
     pub y: f32,
@@ -427,14 +427,14 @@ pub struct Quaternion {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Twist {
     pub linear: Vector3,
     pub angular: Vector3,
 }
 
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Pose {
     pub position: Vector3,
     pub orientation: Quaternion,

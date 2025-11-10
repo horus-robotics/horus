@@ -2,6 +2,7 @@
 title: Benchmarks
 description: Research-grade and production-validated performance testing with real robotics workloads
 order: 26
+category: "internals"
 ---
 
 # HORUS Benchmarks: Research-Grade & Production-Validated
@@ -16,7 +17,7 @@ This benchmark suite meets both **research publication standards** and **product
 - **Statistical rigor**: Criterion.rs with 20+ samples per measurement
 - **Confidence intervals**: Min/mean/max with outlier detection
 - **Controlled methodology**: 1s warm-up, 5s measurement phases
-- **Reproducible**: <1% variance across measurements
+- **Reproducible**: &lt;1% variance across measurements
 - **Comprehensive coverage**: 5 workload types, 4 scalability points
 
 ### Production Validation
@@ -71,7 +72,7 @@ This benchmark suite meets both **research publication standards** and **product
 ```
 Average Latency: ~500 ns (Hub MPMC)
 Throughput:      2.7M msg/s
-Link SPSC:       312 ns median
+Link SPSC:       248 ns median
 ```
 
 **Analysis**: Sub-microsecond performance suitable for 1000Hz control loops with 2,700x headroom.
@@ -172,12 +173,12 @@ Range:            ~500-1200 ns
 
 | Framework | Small Msg | Medium Msg | Large Msg |
 |-----------|-----------|------------|-----------|
-| **HORUS Link (SPSC)** | **312 ns** | **~400 ns** | **~900 ns** |
+| **HORUS Link (SPSC)** | **248 ns** | **~400 ns** | **~900 ns** |
 | **HORUS Hub (MPMC)** | **481 ns** | **~620 ns** | **~1.4 μs** |
 | ROS2 (DDS) | 50-100 μs | 100-500 μs | 1-10 ms |
 | ROS2 (FastDDS) | 20-50 μs | 50-200 μs | 500 μs - 5 ms |
 
-**Performance Advantage**: HORUS is **64-320x faster** than ROS2 for typical message sizes.
+**Performance Advantage**: HORUS is **80-403x faster** than ROS2 for typical message sizes.
 
 ---
 
@@ -185,7 +186,7 @@ Range:            ~500-1200 ns
 
 | Message Size | Message Type | Hub Latency | Link Latency | vs ROS2 |
 |-------------|--------------|-------------|--------------|---------|
-| 16 B | CmdVel | ~500 ns | 312 ns | **100-320x faster** |
+| 16 B | CmdVel | ~500 ns | 248 ns | **160-403x faster** |
 | 104 B | BatteryState | ~600 ns | ~350 ns | **83-286x faster** |
 | 304 B | IMU | ~940 ns | ~400 ns | **53-250x faster** |
 | 736 B | Odometry | ~1.1 μs | ~600 ns | **45-167x faster** |
@@ -215,7 +216,7 @@ cargo build --release --bin production_bench
 
   CmdVel (Motor Control Command)
     Size: 16 bytes | Typical rate: 1000Hz
-    Latency (avg): ~500 ns (Hub) / 312 ns (Link)
+    Latency (avg): ~500 ns (Hub) / 248 ns (Link)
     Throughput: 2.7M msg/s (Hub)
 
 
@@ -232,7 +233,7 @@ cargo build --release --bin production_bench
 
 ### Message Type Guidelines
 
-**CmdVel (~500 ns Hub / 312 ns Link)**
+**CmdVel (~500 ns Hub / 248 ns Link)**
 - Motor control @ 1000Hz
 - Real-time actuation commands
 - Safety-critical control loops
@@ -281,7 +282,7 @@ cargo build --release --bin production_bench
 
 | Application | Frequency | HORUS (Link) | HORUS (Hub) | ROS2 | Speedup |
 |-------------|-----------|--------------|-------------|------|---------|
-| Motor control | 1000 Hz | 312 ns | ~500 ns | 50 μs | **100-160x** |
+| Motor control | 1000 Hz | 248 ns | ~500 ns | 50 μs | **100-202x** |
 | IMU fusion | 100 Hz | ~400 ns | ~940 ns | 50 μs | **53-125x** |
 | Lidar SLAM | 10 Hz | ~900 ns | ~2.2 μs | 100 μs | **45-111x** |
 | Vision | 30 Hz | ~120 μs | ~360 μs | 5 ms | **14-42x** |
@@ -431,11 +432,11 @@ HORUS now provides industrial-grade real-time support for safety-critical applic
 
 | Metric | Performance | Description |
 |--------|-------------|-------------|
-| **WCET Overhead** | **<5μs** | Cost of monitoring execution time |
+| **WCET Overhead** | **&lt;5μs** | Cost of monitoring execution time |
 | **Deadline Precision** | **±10μs** | Jitter in deadline detection |
 | **Watchdog Resolution** | **1ms** | Minimum detection time |
-| **Emergency Stop** | **<100μs** | Time to halt all nodes |
-| **Context Switch** | **<1μs** | Priority preemption overhead |
+| **Emergency Stop** | **&lt;100μs** | Time to halt all nodes |
+| **Context Switch** | **&lt;1μs** | Priority preemption overhead |
 
 ### Safety-Critical Configuration
 
@@ -464,8 +465,8 @@ scheduler.set_config(SchedulerConfig::safety_critical());
 |-----------|------------|----------|--------|--------|
 | RT Critical | 1000 Hz | 999.8 Hz | ±10μs | 0 |
 | RT High | 500 Hz | 499.9 Hz | ±15μs | 0 |
-| Normal | 100 Hz | 99.9 Hz | ±50μs | <0.1% |
-| Background | 10 Hz | 10 Hz | ±200μs | <0.5% |
+| Normal | 100 Hz | 99.9 Hz | ±50μs | &lt;0.1% |
+| Background | 10 Hz | 10 Hz | ±200μs | &lt;0.5% |
 
 **Zero deadline misses** for critical RT nodes over 1M iterations.
 
@@ -476,7 +477,7 @@ scheduler.set_config(SchedulerConfig::safety_critical());
 **HORUS provides production-grade performance for real robotics applications:**
 
 **Link (SPSC) - Point-to-Point:**
-- **312 ns** - CmdVel (motor control)
+- **248 ns** - CmdVel (motor control)
 - **~400 ns** - IMU (sensor fusion)
 - **~900 ns** - LaserScan (2D lidar)
 - **~600 ns** - Odometry (localization)

@@ -6,7 +6,7 @@ order: 40
 
 # CLI Reference
 
-The `horus` command gives you everything you need to build, run, and manage your applications. This page covers all 9 commands.
+The `horus` command gives you everything you need to build, run, and manage your applications. This page covers all 8 commands.
 
 ## Quick Reference
 
@@ -19,7 +19,6 @@ horus sim                  # Launch 2D simulator
 horus pkg <command>        # Manage packages (install, publish, etc.)
 horus env <command>        # Save/restore environments
 horus auth <command>       # Login to registry
-horus version              # Show version information
 ```
 
 ---
@@ -420,8 +419,21 @@ struct RobotController {
     lidar_sub: Hub<LaserScan>,
 }
 
+impl RobotController {
+    fn new() -> Result<Self> {
+        Ok(Self {
+            cmd_pub: Hub::new("cmd_vel")?,
+            lidar_sub: Hub::new("scan")?,
+        })
+    }
+}
+
 impl Node for RobotController {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn name(&self) -> &'static str {
+        "RobotController"
+    }
+
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Read simulated LiDAR
         if let Some(scan) = self.lidar_sub.recv(ctx) {
             // Send commands to simulated robot
@@ -648,37 +660,6 @@ horus auth generate-key --name github-actions --environment ci-cd
 ```bash
 horus auth logout
 ```
-
----
-
-## `horus version` - Show Version Information
-
-**What it does**: Display version information about your HORUS installation.
-
-**Why it's useful**: Check what version you're running, verify installation, and get system information.
-
-### Usage
-
-```bash
-horus version
-```
-
-### Example Output
-
-```
-HORUS - Hybrid Optimized Robotics Unified System
-Version: 0.1.0
-Build: release
-Commit: abc123def456
-Platform: linux-x86_64
-Rust: 1.70.0
-```
-
-**Common uses**:
-- Verify HORUS is installed correctly
-- Check which version you're running
-- Report version when filing bugs
-- Confirm you have the latest version
 
 ---
 

@@ -41,7 +41,7 @@ impl TempSensor {
 impl Node for TempSensor {
     fn name(&self) -> &'static str { "TempSensor" }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         self.temp_pub.send(25.0, ctx).ok();
     }
 }
@@ -145,15 +145,13 @@ impl Node for LidarDriver {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let scan = self.device.read();
         self.scan_pub.send(scan, ctx).ok();
         self.scan_count += 1;
 
         if self.scan_count % 60 == 0 {
-            if let Some(ctx) = ctx {
-                ctx.log_info(&format!("Published {} scans", self.scan_count));
-            }
+            ctx.log_info(&format!("Published {} scans", self.scan_count));
         }
     }
 
@@ -292,7 +290,7 @@ impl ImuDriver {
 impl Node for ImuDriver {
     fn name(&self) -> &'static str { "ImuDriver" }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let imu = read_imu();
         self.imu_pub.send(imu, ctx).ok();
     }
@@ -318,7 +316,7 @@ impl Controller {
 impl Node for Controller {
     fn name(&self) -> &'static str { "Controller" }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let (Some(imu), Some(scan)) = (self.imu_sub.recv(ctx), self.scan_sub.recv(ctx)) {
             let cmd = compute_control(imu, scan);
             self.cmd_pub.send(cmd, ctx).ok();
@@ -344,12 +342,10 @@ impl SafetyMonitor {
 impl Node for SafetyMonitor {
     fn name(&self) -> &'static str { "SafetyMonitor" }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(cmd) = self.cmd_sub.recv(ctx) {
             if is_unsafe(cmd) {
-                if let Some(ctx) = ctx {
-                    ctx.log_warn("UNSAFE COMMAND!");
-                }
+        ctx.log_warn("UNSAFE COMMAND!");
                 self.estop_pub.send(EmergencyStop::engage("Unsafe"), ctx).ok();
             }
         }
@@ -523,7 +519,7 @@ int main() {
 | Operation | Python | Rust | C++ |
 |-----------|--------|------|-----|
 | **Hub (MPMC) IPC** | ~500ns | ~481ns | ~481ns |
-| **Link (SPSC) IPC** | ~350ns | ~312ns | ~312ns |
+| **Link (SPSC) IPC** | ~350ns | ~248ns | ~248ns |
 | **Node init** | Fast | Fast | Fast |
 | **Logging** | Fast | Fast | Fast |
 | **Memory** | GC overhead | Zero-cost | Manual mgmt |

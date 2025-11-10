@@ -1,3 +1,15 @@
+/**
+ * MDX compilation and rendering for HORUS documentation
+ *
+ * IMPORTANT for AI assistants and contributors:
+ * Before editing .mdx files, read MDX_GUIDELINES.md to avoid common rendering errors!
+ *
+ * Common pitfalls:
+ * - Using `<` in text (e.g., "<1%" should be "&lt;1%")
+ * - Generic types without backticks (e.g., "Hub<T>" should be "`Hub<T>`")
+ * - Headings starting with numbers (auto-fixed below but still discouraged)
+ */
+
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
@@ -61,9 +73,13 @@ export async function getDoc(slug: string[]): Promise<DocContent | null> {
       },
       components: {
         h2: ({ children, ...props }: any) => {
-          const id = typeof children === 'string'
+          let id = typeof children === 'string'
             ? children.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
             : '';
+          // Prefix IDs that start with a number (invalid HTML IDs)
+          if (id && /^[0-9]/.test(id)) {
+            id = 'section-' + id;
+          }
           return (
             <h2 id={id} {...props}>
               {children}
@@ -71,9 +87,13 @@ export async function getDoc(slug: string[]): Promise<DocContent | null> {
           );
         },
         h3: ({ children, ...props }: any) => {
-          const id = typeof children === 'string'
+          let id = typeof children === 'string'
             ? children.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
             : '';
+          // Prefix IDs that start with a number (invalid HTML IDs)
+          if (id && /^[0-9]/.test(id)) {
+            id = 'section-' + id;
+          }
           return (
             <h3 id={id} {...props}>
               {children}

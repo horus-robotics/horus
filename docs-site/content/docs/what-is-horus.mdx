@@ -30,10 +30,10 @@ Each node runs independently, sharing data through topics like `"camera/image"`,
 
 ### 1. Blazingly Fast Communication
 
-**HORUS**: Messages arrive in **312-481 nanoseconds**
+**HORUS**: Messages arrive in **248-481 nanoseconds**
 **Other frameworks**: Messages take **40,000-100,000 nanoseconds**
 
-That's **100-270x faster** than traditional approaches.
+That's **83-403x faster** than traditional approaches.
 
 **What this means for you:**
 - Real-time control systems stay responsive
@@ -162,7 +162,7 @@ impl Node for MySensor {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Read sensor, send data - runs repeatedly
     }
 
@@ -315,13 +315,13 @@ fn main() {
 **HORUS approach:**
 ```rust
 // SensorNode - reusable, testable, independent
-struct SensorNode { pub: Hub<f32> }
+struct SensorNode { data_pub: Hub<f32> }
 
 // ProcessNode - can swap implementation
-struct ProcessNode { sub: Hub<f32>, pub: Hub<f32> }
+struct ProcessNode { data_sub: Hub<f32>, processed_pub: Hub<f32> }
 
 // DisplayNode - can replace with LogNode, etc.
-struct DisplayNode { sub: Hub<f32> }
+struct DisplayNode { data_sub: Hub<f32> }
 ```
 
 **Benefits:**
@@ -339,7 +339,7 @@ struct DisplayNode { sub: Hub<f32> }
 - Large ecosystem of packages
 
 **HORUS:**
-- 0.312-0.481μs latency (sub-microsecond)
+- 0.248-0.481μs latency (sub-microsecond)
 - Pure code configuration (no XML)
 - Designed for single-machine performance
 - Growing ecosystem, modern Rust
@@ -356,7 +356,7 @@ struct DisplayNode { sub: Hub<f32> }
 - Persistence and replay
 
 **HORUS:**
-- 0.000312-0.000481ms latency
+- 0.000248-0.000481ms latency
 - Shared memory (single machine)
 - Minimal configuration
 - Ephemeral (no persistence)

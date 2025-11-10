@@ -7,7 +7,7 @@
 ### Production-Validated IPC Performance
 
 **Link (SPSC) - Cross-Core Latency:**
-- **Median latency**: 312ns (624 cycles @ 2GHz)
+- **Median latency**: 248ns (496 cycles @ 2GHz)
 - **P95 latency**: 444ns
 - **P99 latency**: 578ns
 - **Burst throughput**: 6.05 MHz (6M+ msg/s)
@@ -20,14 +20,14 @@
 - **Flexible pub/sub** architecture
 
 **Key Results:**
-- Link is **29% faster** than Hub in 1P1C scenarios
+- Link is **48% faster** than Hub in 1P1C scenarios
 - **Production-validated** with 6.2M+ test messages
 - **Zero corruptions** detected
 - Tested on modern x86_64 systems
 
 ### Performance by Message Type (Legacy Hub Measurements)
 
-*Note: These are older Hub measurements. Link (SPSC) shows 29% better performance.*
+*Note: These are older Hub measurements. Link (SPSC) shows 48% better performance.*
 
 | Message Type | Size | Latency Range | Avg Latency | Throughput | Target Rate | Headroom |
 |--------------|------|---------------|-------------|------------|-------------|----------|
@@ -45,7 +45,7 @@
 
 | IPC Type | HORUS (Link) | HORUS (Hub) | ROS2 (DDS) | ROS2 (FastDDS) | Speedup vs ROS2 |
 |----------|--------------|-------------|------------|----------------|-----------------|
-| **Small (16B)** | **312 ns** | **481 ns** | 50-100 μs | 20-50 μs | **64-320x faster** |
+| **Small (16B)** | **248 ns** | **481 ns** | 50-100 μs | 20-50 μs | **80-403x faster** |
 | **Medium (304B)** | **~400 ns** | **~620 ns** | 50-100 μs | 20-50 μs | **50-250x faster** |
 | **Large (1.5KB)** | **~900 ns** | **~1.4 μs** | 100-500 μs | 50-200 μs | **71-556x faster** |
 
@@ -102,9 +102,9 @@ cargo bench --bench production_messages
 **HORUS delivers production-grade performance** optimized for real-time robotics:
 
 **IPC Performance:**
-- **Link (SPSC)**: 312ns median, 6M+ msg/s - Best for point-to-point
+- **Link (SPSC)**: 248ns median, 6M+ msg/s - Best for point-to-point
 - **Hub (MPMC)**: 481ns median - Flexible pub/sub architecture
-- **29% faster** with Link vs Hub in 1P1C scenarios
+- **48% faster** with Link vs Hub in 1P1C scenarios
 
 **Use Case Guidelines:**
 - **Link**: Direct node-to-node communication, control loops

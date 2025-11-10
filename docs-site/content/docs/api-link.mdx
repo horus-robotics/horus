@@ -1,7 +1,7 @@
 ---
 title: Link API Reference
 description: Complete API reference for the Link SPSC system
-order: 41
+order: 412
 ---
 
 # Link API Reference
@@ -86,7 +86,7 @@ pub fn send(&self, msg: T, ctx: Option<&mut NodeInfo>) -> Result<(), T>
 link.send(42.0, None).ok();
 
 // With automatic logging (recommended)
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     link.send(42.0, ctx).ok();
 }
 ```
@@ -120,7 +120,7 @@ if let Some(value) = link.recv(None) {
 }
 
 // With automatic logging (recommended)
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     if let Some(value) = link.recv(ctx) {
         self.process(value);
     }
@@ -285,6 +285,8 @@ let imu_link: Link<Imu> = Link::producer("imu")?;
 
 ## Communication Patterns
 
+> **Note**: Examples below focus on communication patterns. For full working examples, see [Core Concepts: Link](/core-concepts-link) and [Examples](/examples).
+
 ### Point-to-Point Control Loop
 
 Typical motor controller with encoder feedback:
@@ -296,8 +298,21 @@ struct MotorDriver {
     encoder_output: Link<EncoderData>,  // Producer
 }
 
+impl MotorDriver {
+    fn new() -> Result<Self> {
+        Ok(Self {
+            cmd_input: Link::consumer("motor_cmd")?,
+            encoder_output: Link::producer("encoder")?,
+        })
+    }
+}
+
 impl Node for MotorDriver {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn name(&self) -> &'static str {
+        "MotorDriver"
+    }
+
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Receive command
         if let Some(cmd) = self.cmd_input.recv(ctx) {
             self.apply_voltage(cmd.voltage);
@@ -315,8 +330,21 @@ struct Controller {
     cmd_output: Link<MotorCommand>,     // Producer
 }
 
+impl Controller {
+    fn new() -> Result<Self> {
+        Ok(Self {
+            encoder_input: Link::consumer("encoder")?,
+            cmd_output: Link::producer("motor_cmd")?,
+        })
+    }
+}
+
 impl Node for Controller {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn name(&self) -> &'static str {
+        "Controller"
+    }
+
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Receive feedback
         if let Some(reading) = self.encoder_input.recv(ctx) {
             // PD control
@@ -458,7 +486,7 @@ struct ControllerNode {
 }
 
 impl Node for ControllerNode {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Update cache if new message available
         if let Some(reading) = self.encoder_input.recv(ctx) {
             self.last_reading = Some(reading);
@@ -483,7 +511,7 @@ struct SensorNode {
 }
 
 impl Node for SensorNode {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let value = self.read_sensor();
 
         // Only send if changed by >1%
@@ -508,7 +536,7 @@ struct WatchdogConsumer {
 }
 
 impl Node for WatchdogConsumer {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(value) = self.input.recv(ctx) {
             self.last_recv = Instant::now();
             self.process(value);

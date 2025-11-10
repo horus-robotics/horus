@@ -154,7 +154,7 @@ impl TempSensor {
 impl Node for TempSensor {
     fn name(&self) -> &'static str { "temp_sensor" }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -187,7 +187,7 @@ impl AlertMonitor {
 impl Node for AlertMonitor {
     fn name(&self) -> &'static str { "alert_monitor" }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(TempReading(temp, _)) = self.subscriber.recv(ctx) {
             if temp > self.threshold {
                 let alert = Alert(true, temp);

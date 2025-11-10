@@ -15,8 +15,10 @@
 //! - `LidarNode` - LiDAR scanning for mapping/obstacles
 //! - `ImuNode` - Inertial measurement unit for orientation
 //! - `EncoderNode` - Wheel encoder feedback
+//! - `GpsNode` - GPS/GNSS positioning for outdoor navigation
 //!
 //! ## Control & Actuation (Movement and Control)
+//! - `DcMotorNode` - DC motor control with PWM (L298N, TB6612, etc.)
 //! - `DifferentialDriveNode` - Mobile robot base control
 //! - `PidControllerNode` - Generic PID control
 //! - `ServoControllerNode` - Industrial servo control
@@ -29,8 +31,13 @@
 //! ## Industrial Integration (Production Ready)
 //! - `ModbusNode` - Modbus TCP/RTU protocol handler
 //! - `DigitalIONode` - Digital I/O interface
+//! - `SerialNode` - UART/Serial communication (GPS, Arduino, sensors)
+//! - `I2cBusNode` - I2C bus communication for sensors and peripherals
 //!
-//! ## Input Devices (Existing)
+//! ## Vision & Image Processing
+//! - `ImageProcessorNode` - Image preprocessing and filtering
+//!
+//! ## Input Devices
 //! - `KeyboardInputNode` - Keyboard input capture
 //! - `JoystickInputNode` - Gamepad/joystick input
 //!
@@ -64,10 +71,14 @@
 // Declare node modules (each in its own folder with README.md)
 pub mod camera;
 pub mod collision_detector;
+pub mod dc_motor;
 pub mod differential_drive;
 pub mod digital_io;
 pub mod emergency_stop;
 pub mod encoder;
+pub mod gps;
+pub mod i2c_bus;
+pub mod image_processor;
 pub mod imu;
 pub mod joystick;
 pub mod keyboard_input;
@@ -77,6 +88,7 @@ pub mod modbus;
 pub mod path_planner;
 pub mod pid_controller;
 pub mod safety_monitor;
+pub mod serial;
 pub mod servo_controller;
 
 // Re-export node types for convenience
@@ -87,10 +99,12 @@ pub use safety_monitor::SafetyMonitorNode;
 // Sensor Interface Nodes
 pub use camera::CameraNode;
 pub use encoder::EncoderNode;
+pub use gps::GpsNode;
 pub use imu::ImuNode;
 pub use lidar::LidarNode;
 
 // Control & Actuation Nodes
+pub use dc_motor::DcMotorNode;
 pub use differential_drive::DifferentialDriveNode;
 pub use pid_controller::PidControllerNode;
 pub use servo_controller::ServoControllerNode;
@@ -102,7 +116,12 @@ pub use path_planner::PathPlannerNode;
 
 // Industrial Integration Nodes
 pub use digital_io::DigitalIONode;
+pub use i2c_bus::I2cBusNode;
 pub use modbus::ModbusNode;
+pub use serial::SerialNode;
+
+// Vision & Image Processing Nodes
+pub use image_processor::ImageProcessorNode;
 
 // Input Device Nodes
 pub use joystick::JoystickInputNode;

@@ -591,7 +591,7 @@ impl Node for ImageProcessor {
         "ImageProcessor"
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Receive images from camera
         if let Some(image) = self.subscriber.recv_latest() {
             if let Some(ctx) = ctx {

@@ -38,6 +38,12 @@ lazy_static = "1.4"
 thiserror = "1.0"
 anyhow = "1.0"
 
+# TLS/Security (optional)
+rustls = { version = "0.23", optional = true }
+tokio-rustls = { version = "0.26", optional = true }
+rustls-pemfile = { version = "2.1", optional = true }
+rcgen = { version = "0.13", optional = true }  # For self-signed certs
+
 # Macros (optional)
 horus_macros = { path = "../horus_macros", optional = true }
 
@@ -48,6 +54,7 @@ criterion = "0.5"
 default = ["macros"]
 macros = ["horus_macros"]
 rtos = []
+tls = ["rustls", "tokio-rustls", "rustls-pemfile", "rcgen"]
 rt-linux = ["rtos"]
 freertos = ["rtos"]
 zephyr = ["rtos"]

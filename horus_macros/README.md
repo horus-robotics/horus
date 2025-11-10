@@ -94,9 +94,7 @@ node! {
     SimpleNode {
         tick(ctx) {
             // Just the required tick implementation
-            if let Some(ctx) = ctx {
-                ctx.log_info("Node running...");
-            }
+        ctx.log_info("Node running...");
         }
     }
 }
@@ -168,7 +166,7 @@ impl Node for MyRobotNode {
         "my_robot_node"  // Auto-converted to snake_case
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Your tick implementation
     }
 
@@ -270,7 +268,7 @@ impl MyNode {
 
 impl Node for MyNode {
     fn name(&self) -> &'static str { "my_node" }
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Implementation
     }
 }

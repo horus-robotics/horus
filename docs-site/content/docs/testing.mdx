@@ -72,7 +72,7 @@ impl Node for TemperatureSensor {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Increment reading each tick
         self.reading += 0.5;
 
@@ -235,7 +235,7 @@ impl Node for PublisherNode {
         "PublisherNode"
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         self.data_pub.send(42.0, ctx).ok();
     }
 }
@@ -260,7 +260,7 @@ impl Node for SubscriberNode {
         "SubscriberNode"
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(data) = self.data_sub.recv(ctx) {
             self.received.lock().unwrap().push(data);
         }
@@ -387,7 +387,7 @@ impl Node for TemperatureProcessor {
         "TemperatureProcessor"
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(celsius) = self.input_sub.recv(ctx) {
             let fahrenheit = self.process_temperature(celsius);
             self.output_pub.send(fahrenheit, ctx).ok();
@@ -499,7 +499,7 @@ impl GeneratorNode {
 impl Node for GeneratorNode {
     fn name(&self) -> &'static str { "GeneratorNode" }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         self.counter += 1;
         self.output_pub.send(self.counter, ctx).ok();
     }
@@ -523,7 +523,7 @@ impl DoublerNode {
 impl Node for DoublerNode {
     fn name(&self) -> &'static str { "DoublerNode" }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(n) = self.input_sub.recv(ctx) {
             self.output_pub.send(n * 2, ctx).ok();
         }
@@ -548,7 +548,7 @@ impl CollectorNode {
 impl Node for CollectorNode {
     fn name(&self) -> &'static str { "CollectorNode" }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(n) = self.input_sub.recv(ctx) {
             self.collected.lock().unwrap().push(n);
         }

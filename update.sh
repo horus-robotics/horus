@@ -370,7 +370,6 @@ echo ""
 echo -e "${GREEN} Update complete!${NC}"
 echo ""
 
-# Send update success telemetry
 # Show version comparison
 if [ "$OLD_VERSION" != "unknown" ] && [ -n "$UPDATED_VERSION" ]; then
     if [ "$OLD_VERSION" != "$UPDATED_VERSION" ]; then

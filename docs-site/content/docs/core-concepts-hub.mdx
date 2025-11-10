@@ -60,8 +60,20 @@ struct Publisher {
     velocity_pub: Hub<f32>,
 }
 
+impl Publisher {
+    fn new() -> Result<Self> {
+        Ok(Self {
+            velocity_pub: Hub::new("velocity")?,
+        })
+    }
+}
+
 impl Node for Publisher {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn name(&self) -> &'static str {
+        "Publisher"
+    }
+
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let velocity = 1.5;
 
         // Send message
@@ -86,8 +98,20 @@ struct Subscriber {
     velocity_sub: Hub<f32>,
 }
 
+impl Subscriber {
+    fn new() -> Result<Self> {
+        Ok(Self {
+            velocity_sub: Hub::new("velocity")?,
+        })
+    }
+}
+
 impl Node for Subscriber {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn name(&self) -> &'static str {
+        "Subscriber"
+    }
+
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Receive message
         if let Some(velocity) = self.velocity_sub.recv(ctx) {
             // Process the received message
@@ -262,7 +286,7 @@ struct PubNode {
 }
 
 impl Node for PubNode {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         self.data_pub.send(42.0, ctx).ok();
     }
 }
@@ -273,7 +297,7 @@ struct SubNode {
 }
 
 impl Node for SubNode {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(data) = self.data_sub.recv(ctx) {
             ctx.log_info(&format!("Got: {}", data));
         }
@@ -327,7 +351,7 @@ struct Aggregator {
 }
 
 impl Node for Aggregator {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Receives from any publisher on this topic
         if let Some(reading) = self.reading_sub.recv(ctx) {
             self.process(reading);
@@ -399,9 +423,7 @@ match hub.send(data, ctx) {
     Err(original_data) => {
         // Failed to send - shared memory full or not available
         // original_data contains the message that couldn't be sent
-        if let Some(ctx) = ctx {
-            ctx.log_warning("Failed to publish message");
-        }
+        ctx.log_warning("Failed to publish message");
     }
 }
 ```
@@ -477,7 +499,7 @@ Only publish when certain conditions are met:
 
 ```rust
 impl Node for ConditionalPublisher {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let data = self.read_sensor();
 
         // Only publish if above threshold
@@ -499,7 +521,7 @@ struct BufferedSubscriber {
 }
 
 impl Node for BufferedSubscriber {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Update cached value if new message available
         if let Some(value) = self.data_sub.recv(ctx) {
             self.last_value = Some(value);
@@ -525,7 +547,7 @@ struct RateLimitedPublisher {
 }
 
 impl Node for RateLimitedPublisher {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         self.tick_count += 1;
 
         // Publish every 10 ticks (~6 Hz at 60 FPS)
@@ -542,7 +564,7 @@ Filter messages before processing:
 
 ```rust
 impl Node for FilteringSubscriber {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(data) = self.data_sub.recv(ctx) {
             // Only process valid data
             if data.is_valid() && data.quality > 0.8 {
@@ -654,7 +676,7 @@ Hub::<Arc<LargeData>>::new("big_data");
 Always check for new messages:
 
 ```rust
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     // Check EVERY tick
     if let Some(msg) = self.sub.recv(ctx) {
         self.process(msg);
@@ -668,9 +690,7 @@ Don't ignore send errors:
 
 ```rust
 if let Err(data) = self.pub.send(data, ctx) {
-    if let Some(ctx) = ctx {
         ctx.log_warning("Publish failed");
-    }
 }
 ```
 

@@ -12,6 +12,7 @@ members = [
     "horus_library/apps/tanksim",
    # Tools
     "horus_library/tools/sim2d",
+    "horus_router",  # Router service
     "benchmarks",
     "horus_py",
 ]

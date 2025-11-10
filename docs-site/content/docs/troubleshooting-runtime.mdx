@@ -22,11 +22,11 @@ When your HORUS application isn't working:
 
 ## Hub Creation Errors
 
-### Error: "Hub creation failed" or "Failed to create Hub<T>"
+### Error: "Hub creation failed" or "Failed to create `Hub<T>`"
 
 **Symptom**: Application crashes on startup with:
 ```
-Error: Failed to create Hub<MyMessage>
+Error: Failed to create `Hub<MyMessage>`
 thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value'
 ```
 
@@ -123,7 +123,7 @@ thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value'
    **Fix**: Check multiple ticks:
    ```rust
    impl Node for SubscriberNode {
-       fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+       fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
            if let Some(msg) = self.hub.recv(ctx) {
                // Process message
            } else {
@@ -177,12 +177,12 @@ thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value'
    **Fix**: Keep tick() fast:
    ```rust
    // BAD: Blocks scheduler
-   fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+   fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
        std::thread::sleep(Duration::from_secs(5));  // BLOCKS EVERYTHING!
    }
 
    // GOOD: Use frame_time to control timing
-   fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+   fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
        // Quick operations only
        self.hub.send(data, ctx).ok();
    }
@@ -194,14 +194,14 @@ thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value'
    **Fix**: Remove infinite loops:
    ```rust
    // BAD: Never exits tick()
-   fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+   fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
        loop {
            // This runs forever!
        }
    }
 
    // GOOD: Scheduler calls tick() repeatedly
-   fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+   fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
        // Do work once per tick
        // Scheduler will call this again next frame
    }
@@ -339,13 +339,11 @@ Then open your browser to `http://localhost:7777` (or the displayed URL).
 HORUS nodes can log at different severity levels:
 
 ```rust
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-    if let Some(ctx) = ctx {
-        ctx.log_debug("Detailed info for debugging");
-        ctx.log_info("Normal informational message");
-        ctx.log_warning("Something unusual happened");
-        ctx.log_error("Something went wrong!");
-    }
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    ctx.log_debug("Detailed info for debugging");
+    ctx.log_info("Normal informational message");
+    ctx.log_warning("Something unusual happened");
+    ctx.log_error("Something went wrong!");
 }
 ```
 
@@ -377,10 +375,10 @@ Diff:                500000000 (500ms)
 
 ## Common Patterns and Anti-Patterns
 
-### -DO: Check recv() for None
+### ✓ DO: Check recv() for None
 
 ```rust
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     if let Some(msg) = self.hub.recv(ctx) {
         // Process message
     }
@@ -388,15 +386,15 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 }
 ```
 
-###  DON'T: Unwrap recv()
+### ✗ DON'T: Unwrap recv()
 
 ```rust
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     let msg = self.hub.recv(ctx).unwrap();  // PANIC if no message!
 }
 ```
 
-### -DO: Use Result for errors
+### ✓ DO: Use Result for errors
 
 ```rust
 impl Node for MyNode {
@@ -409,7 +407,7 @@ impl Node for MyNode {
 }
 ```
 
-###  DON'T: panic!() in nodes
+### ✗ DON'T: panic!() in nodes
 
 ```rust
 fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
@@ -420,20 +418,20 @@ fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
 }
 ```
 
-### -DO: Keep tick() fast
+### ✓ DO: Keep tick() fast
 
 ```rust
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     // Quick operations only
     let data = self.sensor.read_cached();
     self.hub.send(data, ctx).ok();
 }
 ```
 
-###  DON'T: Block in tick()
+### ✗ DON'T: Block in tick()
 
 ```rust
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     thread::sleep(Duration::from_millis(100));  // Blocks everything!
     let data = self.network.fetch();  // Network I/O blocks!
 }
@@ -450,7 +448,6 @@ If you're still having issues:
    - Create a new issue with:
      - Full error message
      - Minimal code example
-     - Output from `horus version`
      - OS and platform
 
 2. **Enable Verbose Logging**:

@@ -2,6 +2,7 @@
 title: Performance Optimization
 description: Get maximum performance from HORUS
 order: 22
+category: "advanced"
 ---
 
 # Performance Optimization
@@ -184,13 +185,13 @@ Target: **&lt;1ms per tick** for real-time control.
 
 ```rust
 // GOOD: Fast tick
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     let data = self.read_sensor();     // Quick read
     self.process_pub.send(data, ctx).ok();  // ~500ns
 }
 
 // BAD: Slow tick
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     let data = std::fs::read_to_string("config.yaml").unwrap();  // 1-10ms!
     // ...
 }
@@ -214,7 +215,7 @@ fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
     Ok(())
 }
 
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     // Use pre-allocated resources - no allocations here!
     self.buffer[0] = self.device.read();
 }
@@ -226,7 +227,7 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 
 ```rust
 // BAD: Unnecessary clone
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     if let Some(data) = self.sub.recv(ctx) {
         let copy = data.clone();  // Unnecessary!
         self.process(copy);
@@ -234,7 +235,7 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 }
 
 // GOOD: Direct use
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     if let Some(data) = self.sub.recv(ctx) {
         self.process(data);  // Already cloned by recv()
     }
@@ -247,13 +248,13 @@ fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
 
 ```rust
 // BAD: Logging every tick
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     ctx.log_debug(&format!("Tick #{}", self.counter));  // Slow!
     self.counter += 1;
 }
 
 // GOOD: Conditional logging
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     if self.counter % 1000 == 0 {  // Log every 1000 ticks
         ctx.log_info(&format!("Reached tick #{}", self.counter));
     }
@@ -353,7 +354,7 @@ ShmTopic::new("point_cloud", 10)?;  // 10 slots
 Every node tracks performance automatically:
 
 ```rust
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     if let Some(ctx) = ctx {
         if ctx.metrics.avg_tick_duration_ms > 1.0 {
             ctx.log_warning("Tick taking too long");
@@ -385,7 +386,7 @@ HORUS automatically logs IPC timing:
 ```rust
 use std::time::Instant;
 
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     let start = Instant::now();
 
     self.expensive_operation();
@@ -427,7 +428,7 @@ horus run --release
 
 ```rust
 // BAD
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     let buffer = vec![0.0; 1000];  // Heap allocation every tick!
 }
 
@@ -448,19 +449,15 @@ fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
 
 ```rust
 // BAD: 60 logs per second
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-    if let Some(ctx) = ctx {
-        ctx.log_debug("Tick");  // Every 16ms!
-    }
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    ctx.log_debug("Tick");  // Every 16ms!
 }
 
 // GOOD: 1 log per second
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     self.tick_count += 1;
     if self.tick_count % 60 == 0 {
-        if let Some(ctx) = ctx {
-            ctx.log_info("60 ticks completed");
-        }
+        ctx.log_info("60 ticks completed");
     }
 }
 ```
@@ -487,7 +484,7 @@ pub struct CompressedImage {
 
 ```rust
 // BAD: Blocking I/O
-fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     let data = std::fs::read("data.txt").unwrap();  // Blocks!
 }
 
@@ -528,7 +525,7 @@ struct BenchmarkNode {
 }
 
 impl Node for BenchmarkNode {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Publish
         self.start_time = Some(Instant::now());
         self.pub_hub.send(42.0, ctx).ok();
@@ -554,7 +551,7 @@ struct ThroughputTest {
 }
 
 impl Node for ThroughputTest {
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         for _ in 0..1000 {
             self.pub_hub.send(42.0, ctx).ok();
             self.message_count += 1;

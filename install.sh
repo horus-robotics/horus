@@ -499,9 +499,13 @@ if [ -d "horus_library/apps/snakesim" ]; then
     cp horus_library/apps/snakesim/horus.yaml "$EXAMPLES_DIR/snakesim/" 2>/dev/null || true
     cp horus_library/apps/snakesim/README.md "$EXAMPLES_DIR/snakesim/" 2>/dev/null || true
 
-    # Copy GUI files
-    cp horus_library/apps/snakesim/snakesim_gui/main.rs "$EXAMPLES_DIR/snakesim/snakesim_gui/" 2>/dev/null || true
-    cp horus_library/apps/snakesim/snakesim_gui/horus.yaml "$EXAMPLES_DIR/snakesim/snakesim_gui/" 2>/dev/null || true
+    # Copy GUI source files
+    if [ -f "horus_library/apps/snakesim/snakesim_gui/main.rs" ]; then
+        cp horus_library/apps/snakesim/snakesim_gui/main.rs "$EXAMPLES_DIR/snakesim/snakesim_gui/" 2>/dev/null || true
+    fi
+    if [ -f "horus_library/apps/snakesim/snakesim_gui/horus.yaml" ]; then
+        cp horus_library/apps/snakesim/snakesim_gui/horus.yaml "$EXAMPLES_DIR/snakesim/snakesim_gui/" 2>/dev/null || true
+    fi
 
     echo -e "${GREEN}${NC} Installed snakesim example with GUI"
 fi
@@ -660,9 +664,8 @@ echo -e "     ${CYAN}horus new my_robot${NC}"
 echo ""
 echo "  2. Or try the snake game example:"
 echo -e "     ${CYAN}cp -r ~/.horus/cache/horus@$HORUS_VERSION/examples/snakesim ~/my_snakesim${NC}"
-echo -e "     ${CYAN}cd ~/my_snakesim${NC}"
-echo -e "     Terminal 1: ${CYAN}horus run main.rs${NC}  (backend with keyboard input)"
-echo -e "     Terminal 2: ${CYAN}cd ~/my_snakesim && horus run snakesim_gui/main.rs${NC}  (GUI visualization)"
+echo -e "     Terminal 1: ${CYAN}cd ~/my_snakesim && horus run${NC}  (backend with keyboard input)"
+echo -e "     Terminal 2: ${CYAN}cd ~/my_snakesim/snakesim_gui && horus run${NC}  (GUI visualization)"
 echo -e "     Use Arrow Keys or WASD to control the snake!"
 echo ""
 echo "  3. Run your project:"
@@ -680,9 +683,7 @@ fi
 echo -e "For help: ${CYAN}horus --help${NC}"
 echo ""
 
-# Silent installation count (no prompt, just counting)
-# Sends one anonymous ping: {event: "install", os: "Linux", timestamp: 123}
-# No UUID, no tracking, pure counter. Opt-out: export HORUS_NO_TELEMETRY=1
+# Anonymous install counter (opt-out: export HORUS_NO_TELEMETRY=1)
 if [ -z "$HORUS_NO_TELEMETRY" ]; then
     (curl -X POST https://telemetry.horus-registry.dev/count \
          -H "Content-Type: application/json" \

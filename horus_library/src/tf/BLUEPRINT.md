@@ -465,7 +465,7 @@ impl TFListenerNode {
 impl Node for TFListenerNode {
     fn name(&self) -> &'static str { "TFListener" }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Process one transform per tick (bounded execution)
         if let Some(msg) = self.subscriber.recv(ctx) {
             let parent = String::from_utf8_lossy(&msg.parent_frame)
@@ -624,7 +624,7 @@ fn main() -> HorusResult<()> {
     impl Node for MyNode {
         fn name(&self) -> &'static str { "MyNode" }
 
-        fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
             // Get detection from camera
             if let Some(detection) = self.camera_sub.recv(ctx) {
                 // Detection is in camera_frame coordinates
