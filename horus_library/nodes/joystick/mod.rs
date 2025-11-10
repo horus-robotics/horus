@@ -1,5 +1,6 @@
 use crate::JoystickInput;
 use horus_core::error::HorusResult;
+use std::collections::HashMap;
 
 // Type alias for cleaner signatures
 type Result<T> = HorusResult<T>;
@@ -11,6 +12,32 @@ use gilrs::{Axis, Button, Event, EventType, Gilrs};
 #[cfg(not(feature = "gilrs"))]
 use std::time::{SystemTime, UNIX_EPOCH};
 
+/// Button mapping profile type
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ButtonMapping {
+    Xbox360,
+    PlayStation4,
+    Generic,
+}
+
+/// Axis calibration data
+#[derive(Debug, Clone, Copy)]
+pub struct AxisCalibration {
+    pub center: f32,
+    pub min: f32,
+    pub max: f32,
+}
+
+impl Default for AxisCalibration {
+    fn default() -> Self {
+        Self {
+            center: 0.0,
+            min: -1.0,
+            max: 1.0,
+        }
+    }
+}
+
 /// Joystick Input Node - Real gamepad/joystick input capture
 ///
 /// Captures real joystick/gamepad input using the gilrs library.
@@ -21,6 +48,25 @@ pub struct JoystickInputNode {
     gilrs: Gilrs,
     #[cfg(not(feature = "gilrs"))]
     last_input_time: u64,
+
+    // Configuration
+    device_id: u32,
+    deadzone: f32,
+    axis_invert_x: bool,
+    axis_invert_y: bool,
+    axis_invert_rx: bool,
+    axis_invert_ry: bool,
+    button_mapping: ButtonMapping,
+
+    // Custom mappings
+    custom_button_names: HashMap<u32, String>,
+    custom_axis_names: HashMap<u32, String>,
+
+    // Calibration data
+    axis_calibrations: HashMap<u32, AxisCalibration>,
+
+    // Per-axis deadzones
+    per_axis_deadzones: HashMap<u32, f32>,
 }
 
 impl JoystickInputNode {
@@ -43,6 +89,17 @@ impl JoystickInputNode {
             Ok(Self {
                 publisher: Hub::new(topic)?,
                 gilrs,
+                device_id: 0,
+                deadzone: 0.1,
+                axis_invert_x: false,
+                axis_invert_y: false,
+                axis_invert_rx: false,
+                axis_invert_ry: false,
+                button_mapping: ButtonMapping::Generic,
+                custom_button_names: HashMap::new(),
+                custom_axis_names: HashMap::new(),
+                axis_calibrations: HashMap::new(),
+                per_axis_deadzones: HashMap::new(),
             })
         }
 
@@ -51,8 +108,225 @@ impl JoystickInputNode {
             Ok(Self {
                 publisher: Hub::new(topic)?,
                 last_input_time: 0,
+                device_id: 0,
+                deadzone: 0.1,
+                axis_invert_x: false,
+                axis_invert_y: false,
+                axis_invert_rx: false,
+                axis_invert_ry: false,
+                button_mapping: ButtonMapping::Generic,
+                custom_button_names: HashMap::new(),
+                custom_axis_names: HashMap::new(),
+                axis_calibrations: HashMap::new(),
+                per_axis_deadzones: HashMap::new(),
             })
         }
+    }
+
+    /// Set the device ID for multi-controller setups
+    pub fn set_device_id(&mut self, device_id: u32) {
+        self.device_id = device_id;
+    }
+
+    /// Get the current device ID
+    pub fn get_device_id(&self) -> u32 {
+        self.device_id
+    }
+
+    /// Set global deadzone for all axes (0.0 to 1.0)
+    pub fn set_deadzone(&mut self, deadzone: f32) {
+        self.deadzone = deadzone.clamp(0.0, 1.0);
+    }
+
+    /// Get the current global deadzone
+    pub fn get_deadzone(&self) -> f32 {
+        self.deadzone
+    }
+
+    /// Set per-axis deadzone
+    pub fn set_axis_deadzone(&mut self, axis_id: u32, deadzone: f32) {
+        self.per_axis_deadzones.insert(axis_id, deadzone.clamp(0.0, 1.0));
+    }
+
+    /// Get per-axis deadzone (returns global deadzone if not set)
+    pub fn get_axis_deadzone(&self, axis_id: u32) -> f32 {
+        self.per_axis_deadzones.get(&axis_id).copied().unwrap_or(self.deadzone)
+    }
+
+    /// Set axis inversion for specific axes
+    pub fn set_axis_inversion(&mut self, invert_x: bool, invert_y: bool, invert_rx: bool, invert_ry: bool) {
+        self.axis_invert_x = invert_x;
+        self.axis_invert_y = invert_y;
+        self.axis_invert_rx = invert_rx;
+        self.axis_invert_ry = invert_ry;
+    }
+
+    /// Set button mapping profile
+    pub fn set_button_mapping(&mut self, mapping: ButtonMapping) {
+        self.button_mapping = mapping;
+    }
+
+    /// Get current button mapping profile
+    pub fn get_button_mapping(&self) -> ButtonMapping {
+        self.button_mapping
+    }
+
+    /// Set custom button name for a specific button ID
+    pub fn set_custom_button_name(&mut self, button_id: u32, name: String) {
+        self.custom_button_names.insert(button_id, name);
+    }
+
+    /// Set custom axis name for a specific axis ID
+    pub fn set_custom_axis_name(&mut self, axis_id: u32, name: String) {
+        self.custom_axis_names.insert(axis_id, name);
+    }
+
+    /// Calibrate a specific axis
+    pub fn calibrate_axis(&mut self, axis_id: u32, center: f32, min: f32, max: f32) {
+        self.axis_calibrations.insert(axis_id, AxisCalibration { center, min, max });
+    }
+
+    /// Start automatic axis calibration (call this and move all sticks to extremes)
+    pub fn calibrate_axes(&mut self) {
+        // Reset calibrations to defaults
+        self.axis_calibrations.clear();
+    }
+
+    /// Check if a controller is connected
+    #[cfg(feature = "gilrs")]
+    pub fn is_connected(&self) -> bool {
+        self.gilrs.gamepads().count() > 0
+    }
+
+    #[cfg(not(feature = "gilrs"))]
+    pub fn is_connected(&self) -> bool {
+        false
+    }
+
+    /// Get battery level (0.0 to 1.0) if supported
+    #[cfg(feature = "gilrs")]
+    pub fn get_battery_level(&self) -> Option<f32> {
+        // gilrs doesn't currently provide battery info API
+        // This is a placeholder for future implementation
+        None
+    }
+
+    #[cfg(not(feature = "gilrs"))]
+    pub fn get_battery_level(&self) -> Option<f32> {
+        None
+    }
+
+    /// Apply deadzone to an axis value
+    fn apply_deadzone(&self, value: f32, axis_id: u32) -> f32 {
+        let deadzone = self.get_axis_deadzone(axis_id);
+
+        if value.abs() < deadzone {
+            0.0
+        } else {
+            // Scale to maintain full range after deadzone
+            let sign = value.signum();
+            let abs_value = value.abs();
+            sign * (abs_value - deadzone) / (1.0 - deadzone)
+        }
+    }
+
+    /// Apply calibration to an axis value
+    fn apply_calibration(&self, value: f32, axis_id: u32) -> f32 {
+        if let Some(cal) = self.axis_calibrations.get(&axis_id) {
+            // Apply center offset
+            let centered = value - cal.center;
+
+            // Normalize to -1.0 to 1.0 range
+            if centered < 0.0 {
+                (centered / (cal.center - cal.min)).clamp(-1.0, 0.0)
+            } else {
+                (centered / (cal.max - cal.center)).clamp(0.0, 1.0)
+            }
+        } else {
+            value
+        }
+    }
+
+    /// Apply axis inversion
+    fn apply_inversion(&self, value: f32, axis_id: u32) -> f32 {
+        let should_invert = match axis_id {
+            0 => self.axis_invert_x,   // LeftStickX
+            1 => self.axis_invert_y,   // LeftStickY
+            3 => self.axis_invert_rx,  // RightStickX
+            4 => self.axis_invert_ry,  // RightStickY
+            _ => false,
+        };
+
+        if should_invert {
+            -value
+        } else {
+            value
+        }
+    }
+
+    /// Process axis value through all filters (calibration, deadzone, inversion)
+    fn process_axis_value(&self, value: f32, axis_id: u32) -> f32 {
+        let calibrated = self.apply_calibration(value, axis_id);
+        let deadzone_applied = self.apply_deadzone(calibrated, axis_id);
+        self.apply_inversion(deadzone_applied, axis_id)
+    }
+
+    /// Get button name based on mapping profile
+    #[cfg(feature = "gilrs")]
+    fn get_button_name(&self, button: Button, button_id: u32) -> String {
+        // Check custom mapping first
+        if let Some(custom_name) = self.custom_button_names.get(&button_id) {
+            return custom_name.clone();
+        }
+
+        // Apply profile-specific naming
+        match self.button_mapping {
+            ButtonMapping::Xbox360 => match button {
+                Button::South => "A".to_string(),
+                Button::East => "B".to_string(),
+                Button::North => "X".to_string(),
+                Button::West => "Y".to_string(),
+                Button::LeftTrigger => "LB".to_string(),
+                Button::LeftTrigger2 => "LT".to_string(),
+                Button::RightTrigger => "RB".to_string(),
+                Button::RightTrigger2 => "RT".to_string(),
+                Button::Select => "Back".to_string(),
+                Button::Start => "Start".to_string(),
+                Button::Mode => "Xbox".to_string(),
+                Button::LeftThumb => "LS".to_string(),
+                Button::RightThumb => "RS".to_string(),
+                _ => format!("{:?}", button),
+            },
+            ButtonMapping::PlayStation4 => match button {
+                Button::South => "Cross".to_string(),
+                Button::East => "Circle".to_string(),
+                Button::North => "Square".to_string(),
+                Button::West => "Triangle".to_string(),
+                Button::LeftTrigger => "L1".to_string(),
+                Button::LeftTrigger2 => "L2".to_string(),
+                Button::RightTrigger => "R1".to_string(),
+                Button::RightTrigger2 => "R2".to_string(),
+                Button::Select => "Share".to_string(),
+                Button::Start => "Options".to_string(),
+                Button::Mode => "PS".to_string(),
+                Button::LeftThumb => "L3".to_string(),
+                Button::RightThumb => "R3".to_string(),
+                _ => format!("{:?}", button),
+            },
+            ButtonMapping::Generic => format!("{:?}", button),
+        }
+    }
+
+    /// Get axis name based on mapping
+    #[cfg(feature = "gilrs")]
+    fn get_axis_name(&self, axis: Axis, axis_id: u32) -> String {
+        // Check custom mapping first
+        if let Some(custom_name) = self.custom_axis_names.get(&axis_id) {
+            return custom_name.clone();
+        }
+
+        // Use standard naming
+        format!("{:?}", axis)
     }
 }
 
@@ -88,8 +362,8 @@ impl Node for JoystickInputNode {
 
                 match event {
                     EventType::ButtonPressed(button, _) => {
-                        let button_name = format!("{:?}", button);
                         let button_id = button_to_id(button);
+                        let button_name = self.get_button_name(button, button_id);
 
                         let joystick_input = JoystickInput::new_button(
                             gamepad_id,
@@ -105,8 +379,8 @@ impl Node for JoystickInputNode {
                         ));
                     }
                     EventType::ButtonReleased(button, _) => {
-                        let button_name = format!("{:?}", button);
                         let button_id = button_to_id(button);
+                        let button_name = self.get_button_name(button, button_id);
 
                         let joystick_input =
                             JoystickInput::new_button(gamepad_id, button_id, button_name, false);
@@ -114,27 +388,38 @@ impl Node for JoystickInputNode {
                         self.publisher.send(joystick_input, ctx.as_deref_mut()).ok();
                     }
                     EventType::AxisChanged(axis, value, _) => {
-                        let axis_name = format!("{:?}", axis);
                         let axis_id = axis_to_id(axis);
+                        let axis_name = self.get_axis_name(axis, axis_id);
+
+                        // Process axis value through calibration, deadzone, and inversion
+                        let processed_value = self.process_axis_value(value, axis_id);
 
                         let joystick_input =
-                            JoystickInput::new_axis(gamepad_id, axis_id, axis_name.clone(), value);
+                            JoystickInput::new_axis(gamepad_id, axis_id, axis_name.clone(), processed_value);
 
                         self.publisher.send(joystick_input, ctx.as_deref_mut()).ok();
 
                         // Only log significant axis movements to avoid spam
-                        if value.abs() > 0.5 {
+                        if processed_value.abs() > 0.5 {
                             ctx.log_debug(&format!(
                                 "Axis {}: {:.2} (gamepad {})",
-                                axis_name, value, gamepad_id
+                                axis_name, processed_value, gamepad_id
                             ));
                         }
                     }
                     EventType::Connected => {
                         ctx.log_info(&format!("Gamepad {} connected", gamepad_id));
+
+                        // Publish connection event
+                        let connection_event = JoystickInput::new_connection(gamepad_id, true);
+                        self.publisher.send(connection_event, ctx.as_deref_mut()).ok();
                     }
                     EventType::Disconnected => {
                         ctx.log_info(&format!("Gamepad {} disconnected", gamepad_id));
+
+                        // Publish disconnection event
+                        let disconnection_event = JoystickInput::new_connection(gamepad_id, false);
+                        self.publisher.send(disconnection_event, ctx.as_deref_mut()).ok();
                     }
                     _ => {}
                 }
