@@ -489,25 +489,29 @@ echo -e "${CYAN}${NC} Installing examples..."
 EXAMPLES_DIR="$HORUS_DIR/examples"
 mkdir -p "$EXAMPLES_DIR"
 
-# Copy snakesim example
+# Copy snakesim example (complete directory structure)
 if [ -d "horus_library/apps/snakesim" ]; then
-    mkdir -p "$EXAMPLES_DIR/snakesim"
-    mkdir -p "$EXAMPLES_DIR/snakesim/snakesim_gui"
+    echo -e "${CYAN}  ${NC} Installing Snake Game example..."
 
-    # Copy backend files
-    cp horus_library/apps/snakesim/main.rs "$EXAMPLES_DIR/snakesim/" 2>/dev/null || true
-    cp horus_library/apps/snakesim/horus.yaml "$EXAMPLES_DIR/snakesim/" 2>/dev/null || true
-    cp horus_library/apps/snakesim/README.md "$EXAMPLES_DIR/snakesim/" 2>/dev/null || true
+    # Copy entire snakesim directory to preserve structure
+    cp -r horus_library/apps/snakesim "$EXAMPLES_DIR/" 2>/dev/null || true
 
-    # Copy GUI source files
-    if [ -f "horus_library/apps/snakesim/snakesim_gui/main.rs" ]; then
-        cp horus_library/apps/snakesim/snakesim_gui/main.rs "$EXAMPLES_DIR/snakesim/snakesim_gui/" 2>/dev/null || true
+    # Clean up unnecessary files from the copied example
+    rm -rf "$EXAMPLES_DIR/snakesim/.horus" 2>/dev/null || true
+    rm -rf "$EXAMPLES_DIR/snakesim/.gitignore" 2>/dev/null || true
+    rm -rf "$EXAMPLES_DIR/snakesim/snakesim_gui/.horus" 2>/dev/null || true
+    rm -rf "$EXAMPLES_DIR/snakesim/snakesim_gui/.claude" 2>/dev/null || true
+
+    # Verify the copy
+    if [ -f "$EXAMPLES_DIR/snakesim/main.rs" ] && [ -f "$EXAMPLES_DIR/snakesim/snakesim_gui/main.rs" ]; then
+        echo -e "${GREEN}${NC} Installed Snake Game example"
+        echo -e "${CYAN}     ${NC} Backend: main.rs + horus.yaml"
+        echo -e "${CYAN}     ${NC} GUI: snakesim_gui/main.rs + horus.yaml"
+    else
+        echo -e "${YELLOW}${NC}  Warning: Snake Game example may be incomplete"
     fi
-    if [ -f "horus_library/apps/snakesim/snakesim_gui/horus.yaml" ]; then
-        cp horus_library/apps/snakesim/snakesim_gui/horus.yaml "$EXAMPLES_DIR/snakesim/snakesim_gui/" 2>/dev/null || true
-    fi
-
-    echo -e "${GREEN}${NC} Installed snakesim example with GUI"
+else
+    echo -e "${YELLOW}${NC}  Snake Game example not found in source"
 fi
 
 echo ""
@@ -662,11 +666,14 @@ echo -e "${CYAN}Next steps:${NC}"
 echo "  1. Create a new project:"
 echo -e "     ${CYAN}horus new my_robot${NC}"
 echo ""
-echo "  2. Or try the snake game example:"
-echo -e "     ${CYAN}cp -r ~/.horus/cache/horus@$HORUS_VERSION/examples/snakesim ~/my_snakesim${NC}"
-echo -e "     Terminal 1: ${CYAN}cd ~/my_snakesim && horus run${NC}  (backend with keyboard input)"
-echo -e "     Terminal 2: ${CYAN}cd ~/my_snakesim/snakesim_gui && horus run${NC}  (GUI visualization)"
-echo -e "     Use Arrow Keys or WASD to control the snake!"
+echo "  2. Or try the Snake Game example:"
+echo -e "     ${CYAN}cp -r ~/.horus/cache/horus@${HORUS_VERSION}/examples/snakesim ~/my_snakesim${NC}"
+echo -e "     ${CYAN}cd ~/my_snakesim${NC}"
+echo ""
+echo -e "     Terminal 1 (Backend): ${CYAN}horus run${NC}"
+echo -e "     Terminal 2 (GUI): ${CYAN}cd snakesim_gui && horus run${NC}"
+echo ""
+echo -e "     Use ${CYAN}Arrow Keys${NC} or ${CYAN}WASD${NC} to control the snake!"
 echo ""
 echo "  3. Run your project:"
 echo -e "     ${CYAN}cd my_robot${NC}"

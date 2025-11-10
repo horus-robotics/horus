@@ -74,6 +74,13 @@ pub mod prelude {
 
     // Re-export all message types from horus_library for convenience
     pub use horus_library::messages::*;
+
+    // Re-export commonly used node types from horus_library
+    pub use horus_library::nodes::{
+        DifferentialDriveNode, DigitalIONode, EmergencyStopNode, EncoderNode, ImuNode,
+        JoystickInputNode, KeyboardInputNode, LidarNode, LocalizationNode, ModbusNode,
+        PathPlannerNode, PidControllerNode, ServoControllerNode,
+    };
 }
 
 /// Version information
