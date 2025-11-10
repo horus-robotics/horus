@@ -430,6 +430,9 @@ impl Scheduler {
 
                 if should_run && registered.initialized {
                     if let Some(ref mut ctx) = registered.context {
+                        // Write final "Stopped" heartbeat before shutdown - node self-reports
+                        ctx.record_shutdown();
+
                         match registered.node.shutdown(ctx) {
                             Ok(()) => println!("Shutdown node '{}' successfully", node_name),
                             Err(e) => println!("Error shutting down node '{}': {}", node_name, e),
@@ -438,9 +441,9 @@ impl Scheduler {
                 }
             }
 
-            // Clean up registry file, heartbeats, and session
+            // Clean up registry file and session (keep heartbeats for dashboards)
             self.cleanup_registry();
-            Self::cleanup_heartbeats();
+            // Note: Don't cleanup_heartbeats() - let dashboards see final state
             Self::cleanup_session();
 
             println!("Scheduler shutdown complete");
@@ -557,13 +560,6 @@ impl Scheduler {
         // Heartbeats are intentionally global (not session-isolated) so dashboard can monitor all nodes
         let dir = PathBuf::from("/dev/shm/horus/heartbeats");
         let _ = fs::create_dir_all(&dir);
-    }
-
-    /// Write heartbeat for a node
-    fn write_heartbeat(node_name: &str, context: &NodeInfo) {
-        let heartbeat = NodeHeartbeat::from_metrics(context.state().clone(), context.metrics());
-
-        let _ = heartbeat.write_to_file(node_name);
     }
 
     /// Clean up all heartbeat files
@@ -799,8 +795,7 @@ impl Scheduler {
                         self.nodes[i].circuit_breaker.record_success();
 
                         if let Some(ref mut context) = self.nodes[i].context {
-                            context.record_tick();
-                            Self::write_heartbeat(node_name, context);
+                            context.record_tick(); // Node writes its own heartbeat
                         }
                     }
                     Err(panic_err) => {
@@ -816,7 +811,7 @@ impl Scheduler {
 
                         let registered = &mut self.nodes[i];
                         if let Some(ref mut context) = registered.context {
-                            context.record_tick_failure(error_msg.clone());
+                            context.record_tick_failure(error_msg.clone()); // Node writes its own heartbeat
                             eprintln!(" {} failed: {}", node_name, error_msg);
 
                             registered.node.on_error(&error_msg, context);
@@ -847,8 +842,6 @@ impl Scheduler {
                             } else {
                                 context.transition_to_error(error_msg);
                             }
-
-                            Self::write_heartbeat(node_name, context);
                         }
                     }
                 }
@@ -1005,8 +998,7 @@ impl Scheduler {
                 self.nodes[idx].circuit_breaker.record_success();
 
                 if let Some(ref mut context) = self.nodes[idx].context {
-                    context.record_tick();
-                    Self::write_heartbeat(node_name, context);
+                    context.record_tick(); // Node writes its own heartbeat
                 }
             }
             Err(panic_err) => {
@@ -1022,7 +1014,7 @@ impl Scheduler {
 
                 let registered = &mut self.nodes[idx];
                 if let Some(ref mut context) = registered.context {
-                    context.record_tick_failure(error_msg.clone());
+                    context.record_tick_failure(error_msg.clone()); // Node writes its own heartbeat
                     eprintln!(" {} failed: {}", node_name, error_msg);
 
                     registered.node.on_error(&error_msg, context);
@@ -1051,8 +1043,6 @@ impl Scheduler {
                     } else {
                         context.transition_to_error(error_msg);
                     }
-
-                    Self::write_heartbeat(node_name, context);
                 }
             }
         }

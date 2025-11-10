@@ -4,6 +4,67 @@ use crate::error::HorusResult;
 use crate::memory::shm_topic::ShmTopic;
 use std::sync::Arc;
 use std::time::Instant;
+use std::sync::mpsc::{channel, Sender};
+use std::sync::OnceLock;
+
+/// Metadata record for async pub/sub graph visualization
+#[derive(Debug, Clone)]
+struct MetadataRecord {
+    node_name: String,
+    topic_name: String,
+    direction: String,
+    timestamp: u64,
+}
+
+/// Lazy static channel for async metadata writing
+/// Background thread handles all file I/O off the critical path
+static METADATA_CHANNEL: OnceLock<Sender<MetadataRecord>> = OnceLock::new();
+
+/// Initialize the metadata background thread (called once)
+fn get_metadata_channel() -> &'static Sender<MetadataRecord> {
+    METADATA_CHANNEL.get_or_init(|| {
+        let (tx, rx) = channel::<MetadataRecord>();
+
+        // Spawn background thread to handle metadata writing
+        std::thread::Builder::new()
+            .name("horus-metadata-writer".to_string())
+            .spawn(move || {
+                use std::collections::HashMap;
+                use std::fs;
+                use std::path::PathBuf;
+
+                // Track last write time per file to rate-limit
+                let mut last_write: HashMap<String, u64> = HashMap::new();
+
+                while let Ok(record) = rx.recv() {
+                    // Rate limiting: only write once every 5 seconds per connection
+                    let key = format!("{}_{}_{}", record.node_name, record.topic_name, record.direction);
+                    if let Some(&last_ts) = last_write.get(&key) {
+                        if record.timestamp - last_ts < 5 {
+                            continue; // Skip, written recently
+                        }
+                    }
+
+                    // Perform the file I/O (off critical path)
+                    let metadata_dir = PathBuf::from("/dev/shm/horus/pubsub_metadata");
+                    let _ = fs::create_dir_all(&metadata_dir);
+
+                    let safe_node_name = record.node_name.replace('/', "_").replace(' ', "_");
+                    let safe_topic_name = record.topic_name.replace('/', "_").replace(' ', "_");
+                    let filename = format!("{}_{}_{}", safe_node_name, safe_topic_name, record.direction);
+                    let filepath = metadata_dir.join(filename);
+
+                    let _ = fs::write(&filepath, record.timestamp.to_string());
+
+                    // Update last write time
+                    last_write.insert(key, record.timestamp);
+                }
+            })
+            .expect("Failed to spawn metadata writer thread");
+
+        tx
+    })
+}
 
 /// Connection state for Hub connections
 #[derive(Debug, Clone, PartialEq)]
@@ -341,18 +402,22 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug + serde::Serialize + ser
             // Shouldn't happen (is_network true but no network backend), fall through to shm
         }
 
-        // Local shared memory path (UNCHANGED - existing code)
+        // Local shared memory path (OPTIMIZED - time only IPC)
         match self.shm_topic.loan() {
             Ok(mut sample) => {
                 // Fast path: when ctx is None (benchmarks), bypass logging completely
                 if let Some(ctx) = ctx {
                     // Logging enabled: get lightweight summary BEFORE moving msg
                     let summary = msg.log_summary();
-                    let ipc_start = Instant::now();
 
+                    // TIME ONLY THE ACTUAL IPC OPERATION
+                    let ipc_start = Instant::now();
                     sample.write(msg);
                     drop(sample);
+                    let ipc_ns = ipc_start.elapsed().as_nanos() as u64;
+                    // END TIMING - everything after this is logging overhead
 
+                    // Post-IPC operations (not timed - happen after IPC completes)
                     self.metrics
                         .messages_sent
                         .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -361,10 +426,10 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug + serde::Serialize + ser
                         std::sync::atomic::Ordering::Relaxed,
                     );
 
-                    // Record pub/sub metadata for graph visualization
+                    // Record pub/sub metadata (now async, ~100ns overhead)
                     self.record_pubsub_activity(ctx.name(), "pub");
 
-                    let ipc_ns = ipc_start.elapsed().as_nanos() as u64;
+                    // Log with accurate IPC timing
                     ctx.log_pub_summary(&self.topic_name, &summary, ipc_ns);
                 } else {
                     // No logging: zero overhead path for benchmarks
@@ -479,42 +544,24 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug + serde::Serialize + ser
     }
 
     /// Record pub/sub activity for graph visualization discovery
-    /// Writes lightweight metadata to /dev/shm/horus/pubsub_metadata/
+    /// Writes lightweight metadata asynchronously to /dev/shm/horus/pubsub_metadata/
+    /// This is now non-blocking (~100ns) - file I/O happens on background thread
+    #[inline(always)]
     fn record_pubsub_activity(&self, node_name: &str, direction: &str) {
-        use std::fs;
-        use std::path::PathBuf;
-
-        // Create pubsub metadata directory if it doesn't exist
-        let metadata_dir = PathBuf::from("/dev/shm/horus/pubsub_metadata");
-        let _ = fs::create_dir_all(&metadata_dir);
-
-        // File naming: node_name_topic_name_direction
-        // e.g., MyControlNode_sensor_data_sub
-        let safe_node_name = node_name.replace('/', "_").replace(' ', "_");
-        let safe_topic_name = self.topic_name.replace('/', "_").replace(' ', "_");
-        let filename = format!("{}_{}_{}", safe_node_name, safe_topic_name, direction);
-        let filepath = metadata_dir.join(filename);
-
-        // Write minimal metadata (just timestamp to show activity)
-        // File existence is enough to know the relationship exists
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
 
-        // Only write once every 5 seconds to reduce I/O
-        // Check if file exists and is recent
-        if let Ok(metadata) = fs::metadata(&filepath) {
-            if let Ok(modified) = metadata.modified() {
-                if let Ok(elapsed) = modified.elapsed() {
-                    if elapsed.as_secs() < 5 {
-                        return; // File is recent, skip write
-                    }
-                }
-            }
-        }
+        let record = MetadataRecord {
+            node_name: node_name.to_string(),
+            topic_name: self.topic_name.clone(),
+            direction: direction.to_string(),
+            timestamp,
+        };
 
-        // Write timestamp (lightweight operation)
-        let _ = fs::write(&filepath, timestamp.to_string());
+        // Send to background thread (non-blocking, ~100ns)
+        // If channel is full or closed, silently drop (metadata is best-effort)
+        let _ = get_metadata_channel().send(record);
     }
 }

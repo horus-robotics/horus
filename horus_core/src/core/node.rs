@@ -378,6 +378,10 @@ impl NodeInfo {
         self.set_state(NodeState::Crashed(crash_msg));
     }
 
+    pub fn transition_to_stopped(&mut self) {
+        self.set_state(NodeState::Stopped);
+    }
+
     // Lifecycle Methods
     pub fn initialize(&mut self) -> crate::error::HorusResult<()> {
         self.set_state(NodeState::Initializing);
@@ -451,6 +455,21 @@ impl NodeInfo {
             // Update uptime
             self.metrics.uptime_seconds = self.creation_time.elapsed().as_secs_f64();
         }
+
+        // Each node writes its own heartbeat - scheduler doesn't do monitoring
+        self.write_heartbeat();
+    }
+
+    /// Write heartbeat for this node (called automatically after each successful tick)
+    fn write_heartbeat(&self) {
+        let heartbeat = NodeHeartbeat::from_metrics(self.state.clone(), &self.metrics);
+        let _ = heartbeat.write_to_file(&self.name);
+    }
+
+    /// Record node shutdown and write final heartbeat
+    pub fn record_shutdown(&mut self) {
+        self.transition_to_stopped();
+        self.write_heartbeat();
     }
 
     pub fn record_tick_failure(&mut self, error_msg: String) {
@@ -470,6 +489,9 @@ impl NodeInfo {
         }
 
         self.log_error(&error_msg);
+
+        // Write heartbeat even on failures so monitoring can see error count
+        self.write_heartbeat();
     }
 
     /// Get elapsed time since tick started in microseconds

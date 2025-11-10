@@ -1,6 +1,6 @@
 name: snakesim
 version: "0.1.0"
-description: "Snake game controller - converts keyboard/joystick input to snake state"
+description: "Snake game controller - converts keyboard and joystick input to snake state"
 author: "HORUS Team"
 license: "Apache-2.0"
 session_id: "snakesim-session"
@@ -11,3 +11,6 @@ dependencies:
     version: "1"
     features:
       - derive
+
+features:
+  - input-nodes  # Enables keyboard and joystick input

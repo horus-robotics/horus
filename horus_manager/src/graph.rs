@@ -1244,26 +1244,36 @@ fn discover_runtime_pubsub(topic_name: &str) -> Result<(Vec<String>, Vec<String>
         let filename = entry.file_name();
         let filename_str = filename.to_string_lossy();
 
-        // File format: NodeName_topicname_direction
-        // e.g., KeyboardInputNode_snakeinput_pub
-        let parts: Vec<&str> = filename_str.split('_').collect();
-        if parts.len() < 3 {
+        // File format: {node_name}_{topic_name}_{direction}
+        // e.g., JoystickInputNode_joystick_input_pub
+        // Both node_name and topic_name can contain underscores!
+
+        // Extract direction (last part after final underscore)
+        let direction = if filename_str.ends_with("_pub") {
+            "pub"
+        } else if filename_str.ends_with("_sub") {
+            "sub"
+        } else {
             continue;
-        }
+        };
 
-        let direction = parts.last().unwrap();
+        // Remove the direction suffix to get: {node_name}_{topic_name}
+        let without_direction = if direction == "pub" {
+            filename_str.strip_suffix("_pub").unwrap()
+        } else {
+            filename_str.strip_suffix("_sub").unwrap()
+        };
 
-        // Check if this file is for our topic
-        // Need to handle topic names with underscores
-        let file_topic_with_direction = &filename_str;
-        if file_topic_with_direction.contains(&format!("_{}_", safe_topic))
-            || file_topic_with_direction.ends_with(&format!("_{}_pub", safe_topic))
-            || file_topic_with_direction.ends_with(&format!("_{}_sub", safe_topic))
-        {
-            // Extract node name (everything before last two underscores)
-            let node_name = parts[..parts.len() - 2].join("_");
+        // Check if this file matches our topic by checking if it ends with the topic name
+        // Format should be: {node_name}_{safe_topic}
+        if without_direction.ends_with(&format!("_{}", safe_topic)) {
+            // Extract node name by removing the topic suffix
+            let node_name = without_direction
+                .strip_suffix(&format!("_{}", safe_topic))
+                .unwrap()
+                .to_string();
 
-            match *direction {
+            match direction {
                 "pub" => {
                     if !publishers.contains(&node_name) {
                         publishers.push(node_name);
@@ -1351,6 +1361,23 @@ pub fn discover_graph_data() -> (Vec<GraphNode>, Vec<GraphEdge>) {
                         });
                     }
                 }
+            }
+        }
+    }
+
+    // Update process node activity based on active publish edges
+    // A process is "active" if it's running AND has at least one active publish edge
+    for node in &mut graph_nodes {
+        if node.node_type == NodeType::Process {
+            // Check if this node has any active outgoing (publish) edges
+            let has_active_publish = graph_edges.iter().any(|edge| {
+                edge.from == node.id && edge.edge_type == EdgeType::Publish && edge.active
+            });
+
+            // Keep node.active if it was already active (process running)
+            // Only show as actively publishing if there's an active edge
+            if node.active {
+                node.active = has_active_publish;
             }
         }
     }

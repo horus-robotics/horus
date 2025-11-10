@@ -246,9 +246,9 @@ fn create_horus_yaml(
         "rust" => {
             if use_macro {
                 r#"dependencies:
-  - horus@0.1.0
-  - horus_macros@0.1.0
-  - horus_library@0.1.0  # Standard robotics messages (CmdVel, etc.)
+  - horus
+  - horus_macros
+  - horus_library  # Standard robotics messages (CmdVel, etc.)
 
   # For path dependencies (local development):
   # my_driver:
@@ -256,8 +256,8 @@ fn create_horus_yaml(
 "#
             } else {
                 r#"dependencies:
-  - horus@0.1.0
-  - horus_library@0.1.0  # Standard robotics messages (CmdVel, etc.)
+  - horus
+  - horus_library  # Standard robotics messages (CmdVel, etc.)
 
   # For path dependencies (local development):
   # my_driver:
@@ -267,7 +267,7 @@ fn create_horus_yaml(
         }
         "python" => {
             r#"dependencies:
-  - horus_py@0.1.0
+  - horus_py
   # Add Python packages as needed
 
   # For path dependencies (local development):
@@ -277,7 +277,7 @@ fn create_horus_yaml(
         }
         "cpp" => {
             r#"dependencies:
-  - horus_cpp@0.1.0
+  - horus_cpp
   # Add C++ libraries as needed
 
   # For path dependencies (local development):

@@ -5,7 +5,7 @@ A simple snake game controller built with HORUS that demonstrates keyboard and j
 ## Architecture
 
 This is a proper HORUS project with a single-file structure:
-- `main.rs` - Backend controller (keyboard input + game logic)
+- `main.rs` - Backend controller (keyboard + joystick input + game logic)
 - `snakesim_gui/` - Separate GUI application (optional visualization)
 
 ## Running
@@ -26,12 +26,21 @@ cargo run
 
 ## Controls
 
+### Keyboard
 - Arrow Keys or WASD - Control snake direction
   - Up/W: Move up
   - Down/S: Move down
   - Left/A: Move left
   - Right/D: Move right
 - ESC - Quit keyboard capture
+
+### Joystick/Gamepad
+- D-Pad - Control snake direction (Up/Down/Left/Right)
+- Left Stick - Control snake direction (analog input with threshold)
+  - Push up: Move up
+  - Push down: Move down
+  - Push left: Move left
+  - Push right: Move right
 
 ## Running with GUI
 
@@ -58,15 +67,32 @@ Use **Arrow Keys or WASD** in Terminal 1 to control the snake, and watch it move
 
 ## Technical Details
 
-- Uses HORUS Hub for pub/sub messaging
-- SnakeState messages published to "snakestate" topic
-- Keyboard and joystick input on "snakeinput" topic
+- Uses HORUS Hub for pub/sub messaging (MPMC)
+- **Input Topics:**
+  - `keyboard_input` - KeyboardInput messages from KeyboardInputNode
+  - `joystick_input` - JoystickInput messages from JoystickInputNode
+- **Output Topic:**
+  - `snakestate` - Snake direction (u32) from SnakeControlNode
 - Priority-based scheduler:
-  - Priority 0: KeyboardInputNode
-  - Priority 1: JoystickInputNode
-  - Priority 2: SnakeControlNode
+  - Priority 0: KeyboardInputNode (captures keyboard events)
+  - Priority 0: JoystickInputNode (captures gamepad events)
+  - Priority 1: SnakeControlNode (converts inputs to directions)
+
+## Message Flow
+
+```
+KeyboardInputNode → [keyboard_input] ↘
+                                       → SnakeControlNode → [snakestate] → GUI
+JoystickInputNode → [joystick_input] ↗
+```
+
+Since Hub is MPMC (Multi-Producer, Multi-Consumer), both input nodes can publish simultaneously, and SnakeControlNode subscribes to both topics.
 
 ## Message Types
 
-### SnakeState
+### Input Messages
+- `KeyboardInput` - Keyboard events (key code, pressed state)
+- `JoystickInput` - Joystick events (buttons, axes, d-pad)
+
+### Output Messages
 - `direction: u32` - Snake direction (1=Up, 2=Down, 3=Left, 4=Right)

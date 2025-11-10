@@ -267,8 +267,8 @@ impl TuiDashboard {
 
     fn run_app<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> Result<()> {
         loop {
-            // Update data if not paused
-            if !self.paused && self.last_update.elapsed() > Duration::from_secs(1) {
+            // Update data if not paused (250ms refresh for real-time feel)
+            if !self.paused && self.last_update.elapsed() > Duration::from_millis(250) {
                 self.update_data()?;
                 self.last_update = Instant::now();
             }
@@ -1022,13 +1022,14 @@ impl TuiDashboard {
 
             // Add arrowhead pointing toward destination (to)
             // Arrow direction is based on actual data flow: from -> to
-            let arrow = if x1 < x2 {
-                "→"  // Left to right: arrow points right
+            // Place arrow one position before destination so it doesn't get overwritten by the node
+            let (arrow, arrow_x) = if x1 < x2 {
+                ("→", x2.saturating_sub(1))  // Left to right: arrow points right
             } else {
-                "←"  // Right to left: arrow points left
+                ("←", x2 + 1)  // Right to left: arrow points left
             };
-            if x2 < width && y2 < height {
-                canvas[y2][x2] = arrow.to_string();
+            if arrow_x < width && y2 < height && arrow_x != x2 {
+                canvas[y2][arrow_x] = arrow.to_string();
             }
         } else if x1 == x2 {
             // Vertical line
@@ -1040,13 +1041,14 @@ impl TuiDashboard {
             }
 
             // Add arrowhead pointing toward destination (to)
-            let arrow = if y1 < y2 {
-                "↓"  // Top to bottom: arrow points down
+            // Place arrow one position before destination so it doesn't get overwritten by the node
+            let (arrow, arrow_y) = if y1 < y2 {
+                ("↓", y2.saturating_sub(1))  // Top to bottom: arrow points down
             } else {
-                "↑"  // Bottom to top: arrow points up
+                ("↑", y2 + 1)  // Bottom to top: arrow points up
             };
-            if x2 < width && y2 < height {
-                canvas[y2][x2] = arrow.to_string();
+            if x2 < width && arrow_y < height && arrow_y != y2 {
+                canvas[arrow_y][x2] = arrow.to_string();
             }
         } else {
             // Diagonal or complex line - draw L-shaped connector
@@ -1079,13 +1081,14 @@ impl TuiDashboard {
 
             // Add arrowhead at destination pointing toward final position
             // For L-shaped connectors, the final segment is vertical
-            let arrow = if y1 < y2 {
-                "↓"  // Arrow points down to destination
+            // Place arrow one position before destination so it doesn't get overwritten by the node
+            let (arrow, arrow_y) = if y1 < y2 {
+                ("↓", y2.saturating_sub(1))  // Arrow points down to destination
             } else {
-                "↑"  // Arrow points up to destination
+                ("↑", y2 + 1)  // Arrow points up to destination
             };
-            if x2 < width && y2 < height {
-                canvas[y2][x2] = arrow.to_string();
+            if x2 < width && arrow_y < height && arrow_y != y2 {
+                canvas[arrow_y][x2] = arrow.to_string();
             }
         }
     }
