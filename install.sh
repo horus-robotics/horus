@@ -76,6 +76,172 @@ fi
 
 echo -e "${CYAN}${NC} Detected pkg-config: $(pkg-config --version)"
 
+# Check for required system libraries
+echo ""
+echo -e "${CYAN}${NC} Checking system dependencies..."
+
+MISSING_LIBS=""
+
+# Core libraries
+if ! pkg-config --exists openssl 2>/dev/null; then
+    echo -e "${YELLOW}${NC}  OpenSSL development library not found"
+    MISSING_LIBS="${MISSING_LIBS} openssl"
+fi
+
+if ! pkg-config --exists libudev 2>/dev/null; then
+    echo -e "${YELLOW}${NC}  udev development library not found"
+    MISSING_LIBS="${MISSING_LIBS} udev"
+fi
+
+if ! pkg-config --exists alsa 2>/dev/null; then
+    echo -e "${YELLOW}${NC}  ALSA development library not found"
+    MISSING_LIBS="${MISSING_LIBS} alsa"
+fi
+
+# GUI/Graphics libraries (required for sim2d and dashboard)
+if [ "$(uname -s)" = "Linux" ]; then
+    if ! pkg-config --exists x11 2>/dev/null; then
+        echo -e "${YELLOW}${NC}  X11 development library not found"
+        MISSING_LIBS="${MISSING_LIBS} x11"
+    fi
+
+    if ! pkg-config --exists xrandr 2>/dev/null; then
+        echo -e "${YELLOW}${NC}  Xrandr development library not found"
+        MISSING_LIBS="${MISSING_LIBS} xrandr"
+    fi
+
+    if ! pkg-config --exists xi 2>/dev/null; then
+        echo -e "${YELLOW}${NC}  Xi (X11 Input) development library not found"
+        MISSING_LIBS="${MISSING_LIBS} xi"
+    fi
+
+    if ! pkg-config --exists xcursor 2>/dev/null; then
+        echo -e "${YELLOW}${NC}  Xcursor development library not found"
+        MISSING_LIBS="${MISSING_LIBS} xcursor"
+    fi
+
+    if ! pkg-config --exists wayland-client 2>/dev/null; then
+        echo -e "${YELLOW}${NC}  Wayland development library not found"
+        MISSING_LIBS="${MISSING_LIBS} wayland"
+    fi
+
+    if ! pkg-config --exists xkbcommon 2>/dev/null; then
+        echo -e "${YELLOW}${NC}  xkbcommon development library not found"
+        MISSING_LIBS="${MISSING_LIBS} xkbcommon"
+    fi
+fi
+
+# Optional but recommended libraries
+OPTIONAL_MISSING=""
+
+if ! pkg-config --exists libv4l2 2>/dev/null; then
+    echo -e "${YELLOW}${NC}  libv4l2 not found (optional - needed for camera support)"
+    OPTIONAL_MISSING="${OPTIONAL_MISSING} libv4l2"
+fi
+
+if ! pkg-config --exists fontconfig 2>/dev/null; then
+    echo -e "${YELLOW}${NC}  fontconfig not found (optional - improves text rendering)"
+    OPTIONAL_MISSING="${OPTIONAL_MISSING} fontconfig"
+fi
+
+# Hardware driver libraries (optional - for real hardware access)
+HARDWARE_MISSING=""
+
+# Check for RealSense camera support
+if ! pkg-config --exists realsense2 2>/dev/null; then
+    echo -e "${YELLOW}${NC}  librealsense2 not found (optional - for RealSense depth cameras)"
+    HARDWARE_MISSING="${HARDWARE_MISSING} realsense"
+fi
+
+# Check for CAN utilities (useful for debugging SocketCAN)
+if ! command -v cansend &> /dev/null; then
+    echo -e "${YELLOW}${NC}  can-utils not found (optional - for CAN bus debugging)"
+    HARDWARE_MISSING="${HARDWARE_MISSING} can-utils"
+fi
+
+if [ ! -z "$MISSING_LIBS" ]; then
+    echo ""
+    echo -e "${RED} Missing REQUIRED system libraries!${NC}"
+    echo ""
+    echo "Please install the following packages:"
+    echo ""
+    echo -e "${CYAN}Ubuntu/Debian/Raspberry Pi OS:${NC}"
+    echo "  sudo apt update"
+    echo "  sudo apt install -y build-essential pkg-config \\"
+    echo "    libssl-dev libudev-dev libasound2-dev \\"
+    echo "    libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev \\"
+    echo "    libwayland-dev wayland-protocols libxkbcommon-dev \\"
+    echo "    libvulkan-dev libfontconfig-dev libfreetype-dev \\"
+    echo "    libv4l-dev"
+    echo ""
+    echo -e "${CYAN}Fedora/RHEL/CentOS:${NC}"
+    echo "  sudo dnf groupinstall \"Development Tools\""
+    echo "  sudo dnf install -y pkg-config openssl-devel systemd-devel alsa-lib-devel \\"
+    echo "    libX11-devel libXrandr-devel libXi-devel libXcursor-devel libXinerama-devel \\"
+    echo "    wayland-devel wayland-protocols-devel libxkbcommon-devel \\"
+    echo "    vulkan-devel fontconfig-devel freetype-devel \\"
+    echo "    libv4l-devel"
+    echo ""
+    echo -e "${CYAN}Arch Linux:${NC}"
+    echo "  sudo pacman -S base-devel pkg-config openssl systemd alsa-lib \\"
+    echo "    libx11 libxrandr libxi libxcursor libxinerama \\"
+    echo "    wayland wayland-protocols libxkbcommon \\"
+    echo "    vulkan-icd-loader fontconfig freetype2 \\"
+    echo "    v4l-utils"
+    echo ""
+    echo -e "${CYAN}macOS:${NC}"
+    echo "  xcode-select --install"
+    echo "  brew install pkg-config"
+    echo ""
+
+    # Platform-specific notes
+    if grep -q "Raspberry Pi" /proc/cpuinfo 2>/dev/null || grep -q "BCM" /proc/cpuinfo 2>/dev/null; then
+        echo -e "${CYAN}Raspberry Pi detected - Additional packages:${NC}"
+        echo "  sudo apt install -y libraspberrypi-dev i2c-tools python3-smbus"
+        echo ""
+        echo -e "${CYAN}Enable hardware interfaces (I2C, SPI, Serial):${NC}"
+        echo "  sudo raspi-config"
+        echo "  # Navigate to: Interface Options → I2C → Enable"
+        echo "  # Navigate to: Interface Options → SPI → Enable"
+        echo "  # Navigate to: Interface Options → Serial Port → Enable"
+        echo ""
+    fi
+
+    if [ -f "/etc/nv_tegra_release" ] || grep -q "tegra" /proc/cpuinfo 2>/dev/null; then
+        echo -e "${CYAN}NVIDIA Jetson detected - Additional packages:${NC}"
+        echo "  sudo apt install -y nvidia-jetpack"
+        echo "  # For GPU acceleration, ensure CUDA toolkit is installed"
+        echo ""
+    fi
+
+    exit 1
+fi
+
+echo -e "${GREEN}${NC} All required system dependencies found"
+
+if [ ! -z "$OPTIONAL_MISSING" ]; then
+    echo -e "${YELLOW}${NC} Some optional dependencies missing (camera/font support may be limited)"
+fi
+
+if [ ! -z "$HARDWARE_MISSING" ]; then
+    echo -e "${CYAN}${NC}  Optional hardware driver packages available:"
+    echo ""
+    if [[ "$HARDWARE_MISSING" == *"realsense"* ]]; then
+        echo -e "  ${CYAN}RealSense Depth Cameras:${NC}"
+        echo "    Ubuntu/Debian: sudo apt install -y librealsense2-dev librealsense2-utils"
+        echo "    See: https://github.com/IntelRealSense/librealsense/blob/master/doc/distribution_linux.md"
+        echo ""
+    fi
+    if [[ "$HARDWARE_MISSING" == *"can-utils"* ]]; then
+        echo -e "  ${CYAN}CAN Bus Debugging Tools:${NC}"
+        echo "    Ubuntu/Debian: sudo apt install -y can-utils"
+        echo "    Usage: candump can0, cansend can0 123#DEADBEEF"
+        echo ""
+    fi
+    echo -e "  ${CYAN}Note:${NC} Hardware features are optional. You can install these later if needed."
+    echo ""
+fi
+
 # Check if Python is installed (for horus_py)
 if command -v python3 &> /dev/null; then
     PYTHON_VERSION=$(python3 --version | awk '{print $2}')
@@ -388,19 +554,42 @@ if [ "$PYTHON_AVAILABLE" = true ]; then
     # Check if maturin is installed
     if ! command -v maturin &> /dev/null; then
         echo -e "${CYAN}  ${NC} Installing maturin (Python/Rust build tool)..."
-        pip3 install maturin --user --quiet
 
-        if [ $? -ne 0 ]; then
-            echo -e "${RED}${NC} Failed to install maturin"
-            echo -e "${YELLOW}${NC}  Skipping horus_py installation"
-            echo -e "  You can install it manually later:"
-            echo -e "    ${CYAN}pip install maturin${NC}"
-            echo -e "    ${CYAN}cd horus_py && maturin develop --release${NC}"
-            PYTHON_AVAILABLE=false
-        else
+        # Try installing with pip (handling PEP 668 externally-managed-environment)
+        # First try --user flag
+        if pip3 install maturin --user --quiet 2>/dev/null; then
             # Add user bin to PATH for this session
             export PATH="$HOME/.local/bin:$PATH"
-            echo -e "${GREEN}${NC} Installed maturin"
+            echo -e "${GREEN}${NC} Installed maturin via pip (user)"
+        # Try system package manager on Debian/Ubuntu/Raspberry Pi OS
+        elif command -v apt &> /dev/null && sudo apt install -y python3-maturin >/dev/null 2>&1; then
+            echo -e "${GREEN}${NC} Installed maturin via apt"
+        # Try with --break-system-packages (not recommended but works)
+        elif pip3 install maturin --user --break-system-packages --quiet 2>/dev/null; then
+            export PATH="$HOME/.local/bin:$PATH"
+            echo -e "${GREEN}${NC} Installed maturin via pip (--break-system-packages)"
+            echo -e "${YELLOW}  ${NC} Note: Used --break-system-packages flag"
+        else
+            echo -e "${YELLOW}${NC}  Could not install maturin automatically"
+            echo -e "${YELLOW}${NC}  Skipping horus_py installation"
+            echo ""
+            echo -e "  ${CYAN}To install Python bindings manually:${NC}"
+            echo -e "    Option 1 (System package):"
+            echo -e "      ${CYAN}sudo apt install python3-maturin${NC}  (Debian/Ubuntu/Raspberry Pi)"
+            echo ""
+            echo -e "    Option 2 (Virtual environment):"
+            echo -e "      ${CYAN}python3 -m venv ~/.horus_venv${NC}"
+            echo -e "      ${CYAN}source ~/.horus_venv/bin/activate${NC}"
+            echo -e "      ${CYAN}pip install maturin${NC}"
+            echo -e "      ${CYAN}cd horus_py && maturin develop --release${NC}"
+            echo ""
+            PYTHON_AVAILABLE=false
+        fi
+
+        # Verify maturin is now available
+        if [ "$PYTHON_AVAILABLE" = true ] && ! command -v maturin &> /dev/null; then
+            echo -e "${YELLOW}${NC}  maturin installed but not in PATH"
+            PYTHON_AVAILABLE=false
         fi
     else
         echo -e "${CYAN}  ${NC} maturin already installed: $(maturin --version)"

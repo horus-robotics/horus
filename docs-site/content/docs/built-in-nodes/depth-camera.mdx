@@ -1,0 +1,62 @@
+---
+title: DepthCameraNode
+description: 3D depth camera for spatial perception and obstacle avoidance
+---
+
+# DepthCameraNode
+
+3D depth camera node supporting Intel RealSense, ZED, and Kinect sensors. Provides RGB-D (color + depth) data for 3D perception, object detection, and navigation.
+
+## Source Code
+
+- [DepthCameraNode Implementation](https://github.com/softmata/horus/tree/main/horus_library/nodes/depth_camera)
+- [Perception Messages](https://github.com/softmata/horus/blob/main/horus_library/messages/perception.rs)
+
+## Features
+
+- Intel RealSense D400/L500 series
+- Stereolabs ZED/ZED2
+- Kinect/Kinect Azure
+- RGB-D output
+- Point cloud generation
+- Configurable resolution and framerate
+- Hardware fallback to simulation
+
+## Quick Start
+
+```rust
+use horus_library::prelude::*;
+
+fn main() -> Result<()> {
+    let mut scheduler = Scheduler::new();
+
+    let mut depth_cam = DepthCameraNode::new()?;
+    depth_cam.set_sensor_type(DepthCameraType::RealSenseD435);
+    depth_cam.set_resolution(640, 480);
+
+    scheduler.add(Box::new(depth_cam), 1, Some(true));
+    scheduler.run()?;
+    Ok(())
+}
+```
+
+## Usage
+
+```rust
+let hub = Hub::<DepthFrame>::new("depth_camera/frame")?;
+
+if let Some(frame) = hub.recv(None) {
+    for point in &frame.points {
+        if point.z < 1.0 {  // Obstacle within 1m
+            println!("Obstacle at ({:.2}, {:.2}, {:.2})",
+                point.x, point.y, point.z);
+        }
+    }
+}
+```
+
+## See Also
+
+- [CameraNode](./camera) - 2D vision
+- [LidarNode](./lidar) - 2D/3D laser scanning
+- [CollisionDetectorNode](./collision-detector) - Collision avoidance

@@ -233,28 +233,32 @@ horus auth logout
 
 ### 7. `horus sim` - Simulation Tools
 
-Launch 2D or 3D simulators for testing robotics code.
+Launch 2D or 3D simulators for testing robotics code. Runs 3D simulator by default.
 
 ```bash
 # Note: Simulation features are under active development
 
-# Run 2D simulator (in development)
-# horus sim 2d --world world.yaml --robot robot.yaml
+# Run 3D simulator (default, planned)
+horus sim
+horus sim --headless
+horus sim --seed 12345
 
-# Run in headless mode
-# horus sim 2d --headless
-
-# 3D simulator (planned)
-# horus sim 3d
+# Run 2D simulator (use --2d flag)
+horus sim --2d --world world.yaml --robot robot.yaml
+horus sim --2d --headless
 ```
 
-**Subcommands:**
-- `2d` - Launch 2D physics simulator (under development)
-  - `--world <FILE>` - World configuration
-  - `--robot <FILE>` - Robot configuration
-  - `--name <NAME>` - Robot name (default: "robot")
-  - `--headless` - Run without GUI
-- `3d` - Launch 3D simulator (planned)
+**Flags:**
+- `--2d` - Run 2D simulator instead of 3D (default: false)
+- `--headless` - Run without GUI/rendering (both 2D and 3D)
+- `--seed <NUM>` - Random seed for deterministic simulation (3D only)
+- `--world <FILE>` - World configuration file (2D only)
+- `--robot <FILE>` - Robot configuration file (2D only)
+- `--topic <NAME>` - HORUS topic for velocity commands (2D only, default: "cmd_vel")
+- `--name <NAME>` - Robot name for logging (2D only, default: "robot")
+- `--world_image <FILE>` - World image file (PNG, JPG, PGM) for occupancy grid (2D only)
+- `--resolution <NUM>` - Resolution in meters per pixel for world image (2D only)
+- `--threshold <NUM>` - Obstacle threshold 0-255, darker = obstacle (2D only)
 
 ### 8. `horus version` - Version Information
 

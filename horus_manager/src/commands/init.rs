@@ -22,14 +22,14 @@ pub fn run_init(
 
 /// Initialize a HORUS workspace in the current directory
 fn initialize_workspace(workspace_name: Option<String>) -> Result<()> {
-    println!("{}", "🚀 Initializing HORUS workspace".cyan().bold());
+    println!("{}", "Initializing HORUS workspace".cyan().bold());
     println!();
 
     // Register workspace using existing workspace module
     crate::workspace::register_current_workspace(workspace_name)?;
 
     println!();
-    println!("{}", "✓ Workspace initialized successfully!".green().bold());
+    println!("{}", "Workspace initialized successfully!".green().bold());
     println!();
     println!("Next steps:");
     println!("  1. Create a new project: {}", "horus new my_robot".yellow());
@@ -47,7 +47,7 @@ fn initialize_workspace(workspace_name: Option<String>) -> Result<()> {
     if !crate::security::TlsConfig::is_mkcert_installed()
         || !crate::security::TlsConfig::is_mkcert_ca_installed()
     {
-        println!("{}", "💡 Tip:".cyan().bold());
+        println!("{}", "Tip:".cyan().bold());
         println!(
             "   For trusted HTTPS in dashboard (no browser warnings), run:"
         );
@@ -66,7 +66,7 @@ fn setup_certificates(regenerate: bool) -> Result<()> {
     if regenerate {
         println!(
             "{}",
-            "🔄 Regenerating TLS certificates".cyan().bold()
+            "Regenerating TLS certificates".cyan().bold()
         );
         println!();
 
@@ -75,7 +75,7 @@ fn setup_certificates(regenerate: bool) -> Result<()> {
             println!("   Removing existing certificates...");
             let _ = std::fs::remove_file(&tls_config.cert_path);
             let _ = std::fs::remove_file(&tls_config.key_path);
-            println!("   ✓ Removed old certificates");
+            println!("   Removed old certificates");
             println!();
         }
     }

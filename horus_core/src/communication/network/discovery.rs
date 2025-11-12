@@ -28,6 +28,8 @@ pub struct DiscoveryService {
     socket: UdpSocket,
     multicast_addr: SocketAddr,
     peers: Arc<Mutex<HashMap<SocketAddr, PeerInfo>>>,
+    /// Topics we're publishing (for auto-response to discovery requests)
+    published_topics: Arc<Mutex<HashMap<String, u16>>>, // topic -> port
 }
 
 impl DiscoveryService {
@@ -58,6 +60,7 @@ impl DiscoveryService {
             socket,
             multicast_addr,
             peers: Arc::new(Mutex::new(HashMap::new())),
+            published_topics: Arc::new(Mutex::new(HashMap::new())),
         };
 
         // Spawn receiver thread
@@ -98,6 +101,12 @@ impl DiscoveryService {
 
     /// Announce that we're publishing a topic
     pub fn announce(&self, topic: &str, port: u16) -> HorusResult<()> {
+        // Register this as a published topic (for auto-response)
+        {
+            let mut published = self.published_topics.lock().unwrap();
+            published.insert(topic.to_string(), port);
+        }
+
         let packet = HorusPacket::new_discovery_response(topic.to_string(), port);
 
         let mut buffer = Vec::new();
@@ -130,6 +139,8 @@ impl DiscoveryService {
             .try_clone()
             .expect("Failed to clone discovery socket");
         let peers = Arc::clone(&self.peers);
+        let published_topics = Arc::clone(&self.published_topics);
+        let multicast_addr = self.multicast_addr;
 
         std::thread::spawn(move || {
             let mut buffer = vec![0u8; 65536];
@@ -141,9 +152,18 @@ impl DiscoveryService {
                             Ok(packet) => {
                                 match packet.msg_type {
                                     MessageType::DiscoveryRequest => {
-                                        // Someone is looking for a topic
-                                        // TODO: Auto-respond if we publish that topic
-                                        // (requires tracking our published topics)
+                                        // Someone is looking for a topic - auto-respond if we publish it
+                                        let published = published_topics.lock().unwrap();
+                                        if let Some(&port) = published.get(&packet.topic) {
+                                            // We publish this topic! Respond immediately
+                                            let response = HorusPacket::new_discovery_response(
+                                                packet.topic.clone(),
+                                                port,
+                                            );
+                                            let mut response_buffer = Vec::new();
+                                            response.encode(&mut response_buffer);
+                                            let _ = socket.send_to(&response_buffer, multicast_addr);
+                                        }
                                     }
                                     MessageType::DiscoveryResponse => {
                                         // Someone announced they publish a topic

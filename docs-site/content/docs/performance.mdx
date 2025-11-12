@@ -282,14 +282,14 @@ let scheduler = Scheduler::new();
 ### Use Priority Levels
 
 ```rust
-// Critical tasks run first
-scheduler.add_with_priority(safety, NodePriority::Critical);
+// Critical tasks run first (priority 0 = highest)
+scheduler.add(Box::new(safety), 0, None);
 
-// Logging runs last
-scheduler.add_with_priority(logger, NodePriority::Background);
+// Logging runs last (priority 100 = lowest)
+scheduler.add(Box::new(logger), 100, None);
 ```
 
-**Predictable execution order** = better performance.
+**Predictable execution order** = better performance. Use lower numbers for higher priority tasks.
 
 ### Minimize Node Count
 

@@ -9,6 +9,7 @@ interface DocLink {
   title: string;
   href: string;
   order?: number;
+  children?: DocLink[];
 }
 
 interface SidebarSection {
@@ -82,7 +83,17 @@ const sections: SidebarSection[] = [
     title: "Performance",
     links: [
       { title: "Optimization Guide", href: "/performance", order: 1 },
-      { title: "Benchmarks", href: "/benchmarks", order: 2 },
+      {
+        title: "Benchmarks",
+        href: "/benchmarks",
+        order: 2,
+        children: [
+          { title: "Methodology", href: "/benchmarks/methodology", order: 1 },
+          { title: "Detailed Results", href: "/benchmarks/results", order: 2 },
+          { title: "vs ROS2", href: "/benchmarks/comparison-ros2", order: 3 },
+          { title: "vs Zenoh", href: "/benchmarks/comparison-zenoh", order: 4 },
+        ]
+      },
     ],
   },
   {
@@ -121,8 +132,15 @@ export function DocsSidebar({ isOpen = true, onClose }: DocsSidebarProps) {
     "API Reference": true,
   });
 
+  // Track expanded nested items (by href)
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+
   const toggleSection = (title: string) => {
     setExpandedSections((prev) => ({ ...prev, [title]: !prev[title] }));
+  };
+
+  const toggleItem = (href: string) => {
+    setExpandedItems((prev) => ({ ...prev, [href]: !prev[href] }));
   };
 
   // Close sidebar on mobile when clicking a link
@@ -143,6 +161,54 @@ export function DocsSidebar({ isOpen = true, onClose }: DocsSidebarProps) {
       document.body.style.overflow = '';
     };
   }, [isOpen, onClose]);
+
+  // Recursive component to render link with potential children
+  const renderLink = (link: DocLink, depth: number = 0) => {
+    const isActive = pathname === link.href;
+    const hasChildren = link.children && link.children.length > 0;
+    const isExpanded = expandedItems[link.href];
+
+    return (
+      <li key={link.href}>
+        <div className="flex items-center">
+          {hasChildren && (
+            <button
+              onClick={() => toggleItem(link.href)}
+              className="p-1 hover:bg-[var(--surface)] rounded transition-colors touch-manipulation"
+              aria-label={isExpanded ? "Collapse" : "Expand"}
+            >
+              {isExpanded ? (
+                <FiChevronDown className="w-3 h-3 text-[var(--text-secondary)]" />
+              ) : (
+                <FiChevronRight className="w-3 h-3 text-[var(--text-secondary)]" />
+              )}
+            </button>
+          )}
+          <Link
+            href={link.href}
+            onClick={handleLinkClick}
+            className={`flex-1 block px-3 py-2 rounded text-sm transition-colors touch-manipulation ${
+              hasChildren ? "" : depth > 0 ? "ml-4" : ""
+            } ${
+              isActive
+                ? "bg-[var(--accent)]/10 text-[var(--accent)] font-medium border-l-2 border-[var(--accent)]"
+                : "text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--border)]"
+            }`}
+          >
+            {link.title}
+          </Link>
+        </div>
+
+        {hasChildren && isExpanded && (
+          <ul className="space-y-1 ml-6 mt-1">
+            {link.children!
+              .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
+              .map((child) => renderLink(child, depth + 1))}
+          </ul>
+        )}
+      </li>
+    );
+  };
 
   const sidebarContent = (
     <div className="p-6 space-y-6 pb-12">
@@ -167,25 +233,7 @@ export function DocsSidebar({ isOpen = true, onClose }: DocsSidebarProps) {
               <ul className="space-y-1 ml-6">
                 {section.links
                   .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
-                  .map((link) => {
-                    const isActive = pathname === link.href;
-
-                    return (
-                      <li key={link.href}>
-                        <Link
-                          href={link.href}
-                          onClick={handleLinkClick}
-                          className={`block px-3 py-2 rounded text-sm transition-colors touch-manipulation ${
-                            isActive
-                              ? "bg-[var(--accent)]/10 text-[var(--accent)] font-medium border-l-2 border-[var(--accent)]"
-                              : "text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--border)]"
-                          }`}
-                        >
-                          {link.title}
-                        </Link>
-                      </li>
-                    );
-                  })}
+                  .map((link) => renderLink(link, 0))}
               </ul>
             )}
           </div>

@@ -57,10 +57,11 @@ enum Commands {
         use_macro: bool,
     },
 
-    /// Run a HORUS project or file
+    /// Run a HORUS project or file(s)
     Run {
-        /// File to run (optional, auto-detects if not specified)
-        file: Option<PathBuf>,
+        /// File(s) to run (optional, auto-detects if not specified)
+        /// Can specify multiple files: horus run file1.py file2.rs file3.py
+        files: Vec<PathBuf>,
 
         /// Build only, don't run
         #[arg(short = 'b', long = "build-only")]
@@ -74,8 +75,8 @@ enum Commands {
         #[arg(short = 'c', long = "clean")]
         clean: bool,
 
-        /// Additional arguments to pass to the program
-        #[arg(trailing_var_arg = true)]
+        /// Additional arguments to pass to the program (use -- to separate)
+        #[arg(last = true)]
         args: Vec<String>,
     },
 
@@ -119,10 +120,49 @@ enum Commands {
         command: AuthCommands,
     },
 
-    /// Simulation tools (sim2d, sim3d)
+    /// Simulation tools (sim3d by default, use --2d for sim2d)
     Sim {
-        #[command(subcommand)]
-        command: SimCommands,
+        /// Run 2D simulator instead of 3D
+        #[arg(long = "2d")]
+        sim_2d: bool,
+
+        /// Headless mode (no rendering/GUI)
+        #[arg(long)]
+        headless: bool,
+
+        // Sim3d specific arguments
+        /// Random seed for deterministic simulation (3D only)
+        #[arg(long)]
+        seed: Option<u64>,
+
+        // Sim2d specific arguments
+        /// World configuration file (2D only)
+        #[arg(long)]
+        world: Option<PathBuf>,
+
+        /// World image file (PNG, JPG, PGM) - occupancy grid (2D only)
+        #[arg(long)]
+        world_image: Option<PathBuf>,
+
+        /// Resolution in meters per pixel for world image (2D only)
+        #[arg(long)]
+        resolution: Option<f32>,
+
+        /// Obstacle threshold 0-255, darker = obstacle (2D only)
+        #[arg(long)]
+        threshold: Option<u8>,
+
+        /// Robot configuration file (2D only)
+        #[arg(long)]
+        robot: Option<PathBuf>,
+
+        /// HORUS topic for velocity commands (2D only)
+        #[arg(long, default_value = "cmd_vel")]
+        topic: String,
+
+        /// Robot name for logging (2D only)
+        #[arg(long, default_value = "robot")]
+        name: String,
     },
 
     /// Generate shell completion scripts
@@ -233,56 +273,7 @@ enum AuthCommands {
     Whoami,
 }
 
-#[derive(Subcommand)]
-enum SimCommands {
-    /// Run 2D simulator (sim2d)
-    #[command(name = "2d")]
-    Sim2d {
-        /// World configuration file
-        #[arg(long)]
-        world: Option<PathBuf>,
-
-        /// World image file (PNG, JPG, PGM) - occupancy grid
-        #[arg(long)]
-        world_image: Option<PathBuf>,
-
-        /// Resolution in meters per pixel (for world image)
-        #[arg(long)]
-        resolution: Option<f32>,
-
-        /// Obstacle threshold (0-255, darker = obstacle)
-        #[arg(long)]
-        threshold: Option<u8>,
-
-        /// Robot configuration file
-        #[arg(long)]
-        robot: Option<PathBuf>,
-
-        /// HORUS topic for velocity commands
-        #[arg(long, default_value = "cmd_vel")]
-        topic: String,
-
-        /// Robot name for logging
-        #[arg(long, default_value = "robot")]
-        name: String,
-
-        /// Run in headless mode (no GUI)
-        #[arg(long)]
-        headless: bool,
-    },
-
-    /// Run 3D simulator (sim3d) - Coming soon
-    #[command(name = "3d")]
-    Sim3d {
-        /// Headless mode (no rendering)
-        #[arg(long)]
-        headless: bool,
-
-        /// Random seed for deterministic simulation
-        #[arg(long)]
-        seed: Option<u64>,
-    },
-}
+// SimCommands enum removed - sim now uses flags directly with 3D as default
 
 fn main() {
     let cli = Cli::parse();
@@ -329,7 +320,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
         }
 
         Commands::Run {
-            file,
+            files,
             build_only,
             release,
             clean,
@@ -337,11 +328,11 @@ fn run_command(command: Commands) -> HorusResult<()> {
         } => {
             if build_only {
                 // Build-only mode - compile but don't execute
-                commands::run::execute_build_only(file, release, clean)
+                commands::run::execute_build_only(files, release, clean)
                     .map_err(|e| HorusError::Config(e.to_string()))
             } else {
                 // Normal run mode (build if needed, then run)
-                commands::run::execute_run(file, args, release, clean)
+                commands::run::execute_run(files, args, release, clean)
                     .map_err(|e| HorusError::Config(e.to_string()))
             }
         }
@@ -390,6 +381,13 @@ fn run_command(command: Commands) -> HorusResult<()> {
                             return Err(HorusError::Config(format!("Rust syntax error: {}", e)));
                         }
                     }
+
+                    // Check hardware requirements
+                    use horus_manager::commands::run::check_hardware_requirements;
+                    if let Err(e) = check_hardware_requirements(&horus_yaml_path, "rust") {
+                        eprintln!("\n{} Hardware check error: {}", "⚠".yellow(), e);
+                    }
+
                     return Ok(());
                 }
                 Some("py") => {
@@ -2383,17 +2381,20 @@ fn run_command(command: Commands) -> HorusResult<()> {
             AuthCommands::Whoami => commands::github_auth::whoami(),
         },
 
-        Commands::Sim { command } => match command {
-            SimCommands::Sim2d {
-                world,
-                world_image,
-                resolution,
-                threshold,
-                robot,
-                topic,
-                name,
-                headless,
-            } => {
+        Commands::Sim {
+            sim_2d,
+            headless,
+            seed,
+            world,
+            world_image,
+            resolution,
+            threshold,
+            robot,
+            topic,
+            name,
+        } => {
+            if sim_2d {
+                // Run sim2d
                 use std::env;
                 use std::process::Command;
 
@@ -2495,8 +2496,8 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 }
 
                 Ok(())
-            }
-            SimCommands::Sim3d { headless, seed } => {
+            } else {
+                // Run sim3d (default)
                 println!("{} Starting sim3d...", "".cyan());
                 if headless {
                     println!("  Mode: Headless");

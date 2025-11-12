@@ -49,7 +49,7 @@ fn bench_local_shm(c: &mut Criterion) {
         });
     });
 
-    println!("✓ Local shared memory benchmark completed");
+    println!("Local shared memory benchmark completed");
 }
 
 /// Benchmark Unix socket (localhost)
@@ -87,7 +87,7 @@ fn bench_unix_socket(c: &mut Criterion) {
     });
 
     pub_handle.join().unwrap();
-    println!("✓ Unix socket benchmark completed");
+    println!("Unix socket benchmark completed");
 }
 
 /// Benchmark UDP direct (localhost loopback)
@@ -120,7 +120,7 @@ fn bench_udp_loopback(c: &mut Criterion) {
         });
     });
 
-    println!("✓ UDP direct benchmark completed");
+    println!("UDP direct benchmark completed");
 }
 
 /// Benchmark protocol encode/decode
@@ -147,7 +147,7 @@ fn bench_protocol(c: &mut Criterion) {
         });
     });
 
-    println!("✓ Protocol encode/decode benchmark completed");
+    println!("Protocol encode/decode benchmark completed");
 }
 
 /// Comparison benchmark across different message sizes
@@ -182,7 +182,7 @@ fn bench_message_sizes(c: &mut Criterion) {
     }
 
     group.finish();
-    println!("✓ Message size comparison completed");
+    println!("Message size comparison completed");
 }
 
 criterion_group!(

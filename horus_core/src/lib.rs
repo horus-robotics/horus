@@ -44,7 +44,7 @@ pub mod rtos;
 pub use communication::{Hub, Link, LinkMetrics};
 pub use core::{
     HealthStatus, Node, NodeConfig, NodeHeartbeat, NodeInfo, NodeInfoExt, NodeMetrics,
-    NodePriority, NodeState, TopicMetadata,
+    NodeState, TopicMetadata,
 };
 pub use error::{HorusError, HorusResult};
 pub use params::RuntimeParams;

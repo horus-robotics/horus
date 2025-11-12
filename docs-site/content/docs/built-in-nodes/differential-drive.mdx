@@ -1,0 +1,75 @@
+---
+title: DifferentialDriveNode
+description: Differential drive kinematics for 2-wheeled robots
+---
+
+# DifferentialDriveNode
+
+Differential drive controller for 2-wheeled mobile robots. Converts linear and angular velocity commands to left/right wheel velocities using inverse kinematics.
+
+## Source Code
+
+- [DifferentialDriveNode Implementation](https://github.com/softmata/horus/tree/main/horus_library/nodes/differential_drive)
+- [Velocity Command Messages](https://github.com/softmata/horus/blob/main/horus_library/messages/cmd_vel.rs)
+
+## Features
+
+- Velocity command input (linear + angular)
+- Wheel velocity output (left + right)
+- Configurable wheel base and diameter
+- Acceleration limiting
+- Skid-steer support
+- Odometry integration
+- Simulation support
+
+## Quick Start
+
+```rust
+use horus_library::prelude::*;
+
+fn main() -> Result<()> {
+    let mut scheduler = Scheduler::new();
+
+    let mut diff_drive = DifferentialDriveNode::new()?;
+    diff_drive.set_wheel_base(0.3);      // 0.3m between wheels
+    diff_drive.set_wheel_diameter(0.1);   // 0.1m wheels
+    diff_drive.set_max_velocity(1.0);     // 1 m/s max
+
+    scheduler.add(Box::new(diff_drive), 1, Some(true));
+    scheduler.run()?;
+    Ok(())
+}
+```
+
+## Configuration
+
+```rust
+diff_drive.set_wheel_base(0.25);         // Distance between wheels (m)
+diff_drive.set_wheel_diameter(0.08);     // Wheel diameter (m)
+diff_drive.set_max_velocity(1.5);        // Max linear velocity (m/s)
+diff_drive.set_max_angular_velocity(2.0); // Max angular velocity (rad/s)
+```
+
+## Usage
+
+```rust
+let hub = Hub::<TwistCommand>::new("diff_drive/cmd_vel")?;
+
+// Drive forward at 0.5 m/s
+hub.send(TwistCommand {
+    linear_x: 0.5,
+    angular_z: 0.0,
+}, None)?;
+
+// Turn in place
+hub.send(TwistCommand {
+    linear_x: 0.0,
+    angular_z: 1.0,  // 1 rad/s
+}, None)?;
+```
+
+## See Also
+
+- [OdometryNode](./odometry) - Position tracking
+- [DcMotorNode](./dc-motor) - Motor control
+- [RoboclawMotorNode](./roboclaw-motor) - Motor controller

@@ -1,0 +1,137 @@
+---
+title: GpsNode
+description: GPS/GNSS receiver for positioning and navigation
+---
+
+# GpsNode
+
+GPS/GNSS receiver node supporting NMEA protocol for position, velocity, and time data. Compatible with u-blox, MediaTek, and other NMEA-compatible GPS modules for outdoor navigation and geo-fencing.
+
+## Source Code
+
+- [GpsNode Implementation](https://github.com/softmata/horus/tree/main/horus_library/nodes/gps)
+- [Navigation Messages](https://github.com/softmata/horus/blob/main/horus_library/messages/navigation.rs)
+
+## Features
+
+- NMEA 0183 protocol support
+- GPS, GLONASS, Galileo, BeiDou
+- Position (lat/lon), altitude, speed
+- Course/heading, satellite count
+- HDOP/VDOP (accuracy metrics)
+- Fix quality indication
+- Configurable baud rates
+- Hardware fallback to simulation
+
+## Quick Start
+
+```rust
+use horus_library::prelude::*;
+
+fn main() -> Result<()> {
+    let mut scheduler = Scheduler::new();
+
+    // Create GPS node
+    let mut gps = GpsNode::new("/dev/ttyUSB0")?;
+    gps.set_baud_rate(9600);  // Standard GPS baud rate
+
+    scheduler.add(Box::new(gps), 1, Some(true));
+    scheduler.run()?;
+    Ok(())
+}
+```
+
+## Hardware Setup
+
+### Wiring
+
+```
+Raspberry Pi    GPS Module
+GPIO TX   -->   RX
+GPIO RX   <--   TX
+3.3V/5V   -->   VCC
+GND       ---   GND
+```
+
+### Enable in Project
+
+```toml
+[dependencies]
+horus_library = { version = "0.1", features = ["serial-hardware"] }
+```
+
+## Configuration
+
+```rust
+let mut gps = GpsNode::new("/dev/ttyUSB0")?;
+gps.set_baud_rate(9600);
+gps.set_update_rate(1);  // 1 Hz (default for most modules)
+```
+
+## Usage Patterns
+
+### Reading GPS Data
+
+```rust
+let hub = Hub::<GpsData>::new("gps/data")?;
+
+if let Some(data) = hub.recv(None) {
+    if data.fix_quality > 0 {
+        println!("Lat: {:.6}°, Lon: {:.6}°, Alt: {:.1}m",
+            data.latitude, data.longitude, data.altitude);
+        println!("Speed: {:.2} km/h, Satellites: {}",
+            data.speed_kmh, data.satellites);
+    } else {
+        println!("No GPS fix");
+    }
+}
+```
+
+### Geo-Fencing
+
+```rust
+// Check if position is within boundary
+let home_lat = 37.7749;
+let home_lon = -122.4194;
+let radius_m = 100.0;
+
+if let Some(data) = hub.recv(None) {
+    let distance = calculate_distance(
+        data.latitude, data.longitude,
+        home_lat, home_lon
+    );
+
+    if distance > radius_m {
+        println!("Outside geo-fence!");
+    }
+}
+```
+
+## Message Format
+
+```rust
+pub struct GpsData {
+    pub latitude: f64,      // Decimal degrees
+    pub longitude: f64,
+    pub altitude: f32,      // Meters above sea level
+    pub speed_kmh: f32,
+    pub course: f32,        // Degrees (0-360)
+    pub satellites: u8,
+    pub fix_quality: u8,    // 0=no fix, 1=GPS, 2=DGPS
+    pub hdop: f32,          // Horizontal dilution of precision
+    pub timestamp: u64,
+}
+```
+
+## Best Practices
+
+1. **Wait for fix before navigation**
+2. **Check HDOP for accuracy (< 2.0 is good)**
+3. **Use outdoor with clear sky view**
+4. **Allow 30-60 seconds for cold start**
+
+## See Also
+
+- [ImuNode](./imu) - Inertial measurement
+- [OdometryNode](./odometry) - Dead reckoning
+- [LocalizationNode](./localization) - Sensor fusion

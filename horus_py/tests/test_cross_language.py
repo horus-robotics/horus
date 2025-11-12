@@ -27,7 +27,7 @@ def build_rust_binary(rust_code: str, binary_name: str) -> str:
         # Write Cargo.toml
         cargo_toml = """[package]
 name = "test_project"
-version = "0.1.0"
+version = "0.1.4"
 edition = "2021"
 
 [dependencies]

@@ -111,28 +111,133 @@ else
     ERRORS=$((ERRORS + 1))
 fi
 
-# Check for common system libraries
-declare -a LIBS=("openssl" "udev")
+# Check for required system libraries
+declare -a REQUIRED_LIBS=("openssl" "libudev")
 declare -a MISSING_LIBS=()
 
-for lib in "${LIBS[@]}"; do
+for lib in "${REQUIRED_LIBS[@]}"; do
     if pkg-config --exists "$lib" 2>/dev/null; then
         VERSION=$(pkg-config --modversion "$lib" 2>/dev/null || echo "unknown")
         echo -e "  $CHECK lib$lib: $VERSION"
     else
-        echo -e "  $WARN lib$lib: not found (optional)"
+        echo -e "  $CROSS lib$lib: not found (REQUIRED)"
         MISSING_LIBS+=("$lib")
-        WARNINGS=$((WARNINGS + 1))
+        ERRORS=$((ERRORS + 1))
     fi
 done
 
-if [ ${#MISSING_LIBS[@]} -gt 0 ]; then
+# Check for GUI/Graphics libraries (required for sim2d and dashboard)
+declare -a GUI_LIBS=("x11" "xrandr" "xi" "xcursor")
+declare -a MISSING_GUI_LIBS=()
+
+echo ""
+echo -e "${INFO} Checking graphics/GUI libraries..."
+for lib in "${GUI_LIBS[@]}"; do
+    if pkg-config --exists "$lib" 2>/dev/null; then
+        VERSION=$(pkg-config --modversion "$lib" 2>/dev/null || echo "unknown")
+        echo -e "  $CHECK lib$lib: $VERSION"
+    else
+        echo -e "  $CROSS lib$lib: not found (REQUIRED)"
+        MISSING_GUI_LIBS+=("$lib")
+        ERRORS=$((ERRORS + 1))
+    fi
+done
+
+# Check for Wayland (Linux only)
+if [ "$(uname -s)" = "Linux" ]; then
+    if pkg-config --exists "wayland-client" 2>/dev/null; then
+        WAYLAND_VERSION=$(pkg-config --modversion "wayland-client")
+        echo -e "  $CHECK wayland-client: $WAYLAND_VERSION"
+    else
+        echo -e "  $CROSS wayland-client: not found (REQUIRED)"
+        MISSING_LIBS+=("wayland-client")
+        ERRORS=$((ERRORS + 1))
+    fi
+
+    if pkg-config --exists "xkbcommon" 2>/dev/null; then
+        echo -e "  $CHECK xkbcommon: $(pkg-config --modversion xkbcommon)"
+    else
+        echo -e "  $CROSS xkbcommon: not found (REQUIRED)"
+        MISSING_LIBS+=("xkbcommon")
+        ERRORS=$((ERRORS + 1))
+    fi
+fi
+
+# Check for ALSA (audio, required for Bevy)
+if pkg-config --exists "alsa" 2>/dev/null; then
+    echo -e "  $CHECK alsa: $(pkg-config --modversion alsa)"
+else
+    echo -e "  $CROSS alsa: not found (REQUIRED)"
+    MISSING_LIBS+=("alsa")
+    ERRORS=$((ERRORS + 1))
+fi
+
+# Check for optional but recommended libraries
+echo ""
+echo -e "${INFO} Checking optional libraries..."
+
+# V4L2 for camera support
+if pkg-config --exists "libv4l2" 2>/dev/null; then
+    echo -e "  $CHECK libv4l2: $(pkg-config --modversion libv4l2) (camera support)"
+else
+    echo -e "  $WARN libv4l2: not found (optional - needed for camera nodes)"
+    WARNINGS=$((WARNINGS + 1))
+fi
+
+# Fontconfig for text rendering
+if pkg-config --exists "fontconfig" 2>/dev/null; then
+    echo -e "  $CHECK fontconfig: $(pkg-config --modversion fontconfig)"
+else
+    echo -e "  $WARN fontconfig: not found (optional - improves text rendering)"
+    WARNINGS=$((WARNINGS + 1))
+fi
+
+if [ ${#MISSING_LIBS[@]} -gt 0 ] || [ ${#MISSING_GUI_LIBS[@]} -gt 0 ]; then
     echo ""
-    echo -e "  ${YELLOW}Missing optional libraries:${NC}"
-    echo -e "    ${CYAN}Ubuntu/Debian:${NC}"
-    echo "      sudo apt install libssl-dev libudev-dev"
-    echo -e "    ${CYAN}Fedora/RHEL:${NC}"
-    echo "      sudo dnf install openssl-devel systemd-devel"
+    echo -e "${RED} Missing REQUIRED system libraries!${NC}"
+    echo ""
+    echo "Install all required packages:"
+    echo ""
+    echo -e "${CYAN}Ubuntu/Debian/Raspberry Pi OS:${NC}"
+    echo "  sudo apt update"
+    echo "  sudo apt install -y build-essential pkg-config \\"
+    echo "    libssl-dev libudev-dev libasound2-dev \\"
+    echo "    libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev \\"
+    echo "    libwayland-dev wayland-protocols libxkbcommon-dev \\"
+    echo "    libvulkan-dev libfontconfig-dev libfreetype-dev \\"
+    echo "    libv4l-dev"
+    echo ""
+    echo -e "${CYAN}Fedora/RHEL/CentOS:${NC}"
+    echo "  sudo dnf groupinstall \"Development Tools\""
+    echo "  sudo dnf install -y pkg-config openssl-devel systemd-devel alsa-lib-devel \\"
+    echo "    libX11-devel libXrandr-devel libXi-devel libXcursor-devel libXinerama-devel \\"
+    echo "    wayland-devel wayland-protocols-devel libxkbcommon-devel \\"
+    echo "    vulkan-devel fontconfig-devel freetype-devel \\"
+    echo "    libv4l-devel"
+    echo ""
+    echo -e "${CYAN}Arch Linux:${NC}"
+    echo "  sudo pacman -S base-devel pkg-config openssl systemd alsa-lib \\"
+    echo "    libx11 libxrandr libxi libxcursor libxinerama \\"
+    echo "    wayland wayland-protocols libxkbcommon \\"
+    echo "    vulkan-icd-loader fontconfig freetype2 \\"
+    echo "    v4l-utils"
+    echo ""
+
+    # Platform-specific detection and recommendations
+    if grep -q "Raspberry Pi" /proc/cpuinfo 2>/dev/null || grep -q "BCM" /proc/cpuinfo 2>/dev/null; then
+        echo -e "${CYAN}Raspberry Pi detected - Additional recommended packages:${NC}"
+        echo "  sudo apt install -y libraspberrypi-dev i2c-tools python3-smbus"
+        echo "  # For GPIO access, enable I2C and SPI in raspi-config"
+        echo ""
+    fi
+
+    if [ -f "/etc/nv_tegra_release" ] || grep -q "tegra" /proc/cpuinfo 2>/dev/null; then
+        echo -e "${CYAN}NVIDIA Jetson detected - Additional recommended packages:${NC}"
+        echo "  sudo apt install -y nvidia-jetpack"
+        echo "  # For GPU-accelerated vision tasks, ensure CUDA toolkit is installed"
+        echo "  # Check with: nvcc --version"
+        echo ""
+    fi
 fi
 
 echo ""

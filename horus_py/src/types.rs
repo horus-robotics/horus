@@ -1,4 +1,4 @@
-use horus::{NodeConfig as CoreNodeConfig, NodePriority as CoreNodePriority};
+use horus::{NodeConfig as CoreNodeConfig};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use std::collections::HashMap;
@@ -54,86 +54,70 @@ impl PyMessage {
     }
 }
 
-/// Python wrapper for NodePriority
+/// Priority constants for Python users
+///
+/// Priorities are now represented as u32 values for maximum flexibility.
+/// Lower numbers = higher priority. You can use any u32 value, but here
+/// are some common presets:
+///
+/// - PRIORITY_CRITICAL = 0 (highest priority, for emergency/safety nodes)
+/// - PRIORITY_HIGH = 10 (for important control loops)
+/// - PRIORITY_NORMAL = 50 (default priority for most nodes)
+/// - PRIORITY_LOW = 80 (for background processing)
+/// - PRIORITY_BACKGROUND = 100 (lowest priority, for logging/telemetry)
+///
+/// You can also use any custom value between 0-255 for fine-grained control.
 #[pyclass]
-#[derive(Clone, Copy)]
-pub struct PyNodePriority {
-    value: CoreNodePriority,
-}
+pub struct Priority;
 
 #[pymethods]
-impl PyNodePriority {
-    #[new]
-    fn new(priority: String) -> PyResult<Self> {
-        let value = match priority.to_lowercase().as_str() {
-            "critical" => CoreNodePriority::Critical,
-            "high" => CoreNodePriority::High,
-            "normal" => CoreNodePriority::Normal,
-            "low" => CoreNodePriority::Low,
-            "background" => CoreNodePriority::Background,
+impl Priority {
+    #[classattr]
+    const CRITICAL: u32 = 0;
+
+    #[classattr]
+    const HIGH: u32 = 10;
+
+    #[classattr]
+    const NORMAL: u32 = 50;
+
+    #[classattr]
+    const LOW: u32 = 80;
+
+    #[classattr]
+    const BACKGROUND: u32 = 100;
+
+    /// Parse a priority string into a u32 value
+    #[staticmethod]
+    fn from_string(priority: String) -> PyResult<u32> {
+        match priority.to_lowercase().as_str() {
+            "critical" => Ok(0),
+            "high" => Ok(10),
+            "normal" => Ok(50),
+            "low" => Ok(80),
+            "background" => Ok(100),
             _ => {
-                return Err(PyValueError::new_err(format!(
-                "Invalid priority '{}'. Must be one of: critical, high, normal, low, background",
-                priority
-            )))
+                // Try parsing as number
+                priority.parse::<u32>().map_err(|_| {
+                    PyValueError::new_err(format!(
+                        "Invalid priority '{}'. Use 'critical', 'high', 'normal', 'low', 'background', or a numeric value (0-255)",
+                        priority
+                    ))
+                })
             }
-        };
-        Ok(PyNodePriority { value })
-    }
-
-    #[staticmethod]
-    fn critical() -> Self {
-        PyNodePriority {
-            value: CoreNodePriority::Critical,
         }
     }
 
+    /// Convert a u32 priority to a descriptive string
     #[staticmethod]
-    fn high() -> Self {
-        PyNodePriority {
-            value: CoreNodePriority::High,
-        }
-    }
-
-    #[staticmethod]
-    fn normal() -> Self {
-        PyNodePriority {
-            value: CoreNodePriority::Normal,
-        }
-    }
-
-    #[staticmethod]
-    fn low() -> Self {
-        PyNodePriority {
-            value: CoreNodePriority::Low,
-        }
-    }
-
-    #[staticmethod]
-    fn background() -> Self {
-        PyNodePriority {
-            value: CoreNodePriority::Background,
-        }
-    }
-
-    fn __repr__(&self) -> String {
-        let name = match self.value {
-            CoreNodePriority::Critical => "critical",
-            CoreNodePriority::High => "high",
-            CoreNodePriority::Normal => "normal",
-            CoreNodePriority::Low => "low",
-            CoreNodePriority::Background => "background",
-        };
-        format!("NodePriority.{}", name)
-    }
-
-    fn __str__(&self) -> String {
-        match self.value {
-            CoreNodePriority::Critical => "critical".to_string(),
-            CoreNodePriority::High => "high".to_string(),
-            CoreNodePriority::Normal => "normal".to_string(),
-            CoreNodePriority::Low => "low".to_string(),
-            CoreNodePriority::Background => "background".to_string(),
+    fn to_string(priority: u32) -> String {
+        match priority {
+            0 => "critical".to_string(),
+            10 => "high".to_string(),
+            50 => "normal".to_string(),
+            80 => "low".to_string(),
+            100 => "background".to_string(),
+            n => format!("custom({})", n),
         }
     }
 }

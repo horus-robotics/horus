@@ -414,9 +414,8 @@ fn test_full_framework_workflow() -> bool {
     assert!(sensor_info.is_some(), "Should find sensor_node");
     println!("   Queried node information");
 
-    // Step 6: Modify node settings
-    let success = scheduler.set_node_logging("controller_node", false);
-    assert!(success, "Should successfully set logging");
+    // Step 6: Modify node settings (now chainable, logs warning if not found)
+    scheduler.set_node_logging("controller_node", false);
     println!("   Modified node settings");
 
     // Step 7: Get monitoring summary

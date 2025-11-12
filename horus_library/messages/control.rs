@@ -592,3 +592,159 @@ impl LogSummary for JointCommand {
         format!("{:?}", self)
     }
 }
+
+/// Stepper Motor Command for precise position control
+///
+/// Controls stepper motors with step/direction interface.
+/// Compatible with drivers like A4988, DRV8825, TMC2208, etc.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
+pub struct StepperCommand {
+    /// Motor ID (for multi-motor systems)
+    pub motor_id: u8,
+    /// Control mode (0=steps, 1=position, 2=velocity, 3=homing)
+    pub mode: u8,
+    /// Target value (steps, position in radians, or velocity in rad/s)
+    pub target: f64,
+    /// Maximum velocity in steps/sec (0 = use default)
+    pub max_velocity: f64,
+    /// Acceleration in steps/sec² (0 = use default)
+    pub acceleration: f64,
+    /// Enable motor (false = disable holding torque)
+    pub enable: bool,
+    /// Microstepping mode (1, 2, 4, 8, 16, 32, 64, 128, 256)
+    pub microsteps: u16,
+    /// Current limit in milliamps (0 = use default)
+    pub current_limit: u16,
+    /// Timestamp in nanoseconds since epoch
+    pub timestamp: u64,
+}
+
+impl StepperCommand {
+    pub const MODE_STEPS: u8 = 0;
+    pub const MODE_POSITION: u8 = 1;
+    pub const MODE_VELOCITY: u8 = 2;
+    pub const MODE_HOMING: u8 = 3;
+
+    /// Create a relative steps command
+    pub fn steps(motor_id: u8, steps: i64) -> Self {
+        Self {
+            motor_id,
+            mode: Self::MODE_STEPS,
+            target: steps as f64,
+            max_velocity: 0.0,
+            acceleration: 0.0,
+            enable: true,
+            microsteps: 16,
+            current_limit: 0,
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos() as u64,
+        }
+    }
+
+    /// Create an absolute position command
+    pub fn position(motor_id: u8, position: f64, max_velocity: f64) -> Self {
+        Self {
+            motor_id,
+            mode: Self::MODE_POSITION,
+            target: position,
+            max_velocity,
+            acceleration: 0.0,
+            enable: true,
+            microsteps: 16,
+            current_limit: 0,
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos() as u64,
+        }
+    }
+
+    /// Create a continuous velocity command
+    pub fn velocity(motor_id: u8, velocity: f64) -> Self {
+        Self {
+            motor_id,
+            mode: Self::MODE_VELOCITY,
+            target: velocity,
+            max_velocity: f64::INFINITY,
+            acceleration: 0.0,
+            enable: true,
+            microsteps: 16,
+            current_limit: 0,
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos() as u64,
+        }
+    }
+
+    /// Create a homing command
+    pub fn home(motor_id: u8, homing_velocity: f64) -> Self {
+        Self {
+            motor_id,
+            mode: Self::MODE_HOMING,
+            target: homing_velocity,
+            max_velocity: 0.0,
+            acceleration: 0.0,
+            enable: true,
+            microsteps: 16,
+            current_limit: 0,
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos() as u64,
+        }
+    }
+
+    /// Disable motor and release holding torque
+    pub fn disable(motor_id: u8) -> Self {
+        Self {
+            motor_id,
+            mode: Self::MODE_VELOCITY,
+            target: 0.0,
+            max_velocity: 0.0,
+            acceleration: 0.0,
+            enable: false,
+            microsteps: 16,
+            current_limit: 0,
+            timestamp: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos() as u64,
+        }
+    }
+
+    /// Set microstepping mode
+    pub fn with_microsteps(mut self, microsteps: u16) -> Self {
+        self.microsteps = microsteps;
+        self
+    }
+
+    /// Set acceleration
+    pub fn with_acceleration(mut self, acceleration: f64) -> Self {
+        self.acceleration = acceleration;
+        self
+    }
+
+    /// Set current limit in milliamps
+    pub fn with_current_limit(mut self, limit: u16) -> Self {
+        self.current_limit = limit;
+        self
+    }
+
+    /// Check if values are valid
+    pub fn is_valid(&self) -> bool {
+        self.target.is_finite()
+            && (self.max_velocity.is_finite() || self.max_velocity.is_infinite())
+            && (self.acceleration.is_finite() || self.acceleration == 0.0)
+            && matches!(self.microsteps, 1 | 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256)
+    }
+}
+
+impl LogSummary for StepperCommand {
+    fn log_summary(&self) -> String {
+        format!("Stepper[{}]: mode={}, target={:.2}, v={:.1} steps/s",
+            self.motor_id, self.mode, self.target, self.max_velocity)
+    }
+}

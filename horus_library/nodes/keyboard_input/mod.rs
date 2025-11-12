@@ -433,7 +433,8 @@ impl Node for KeyboardInputNode {
                 if let Some(key_input) = self.capture_keyboard_event() {
                     // Handle Ctrl+C to quit
                     if key_input.has_modifier("Ctrl") && key_input.code == keycodes::KEY_C {
-                        println!("\n🛑 Received Ctrl+C, shutting down gracefully...");
+                        use colored::Colorize;
+                        println!("{}", "\nReceived Ctrl+C, shutting down gracefully...".red());
                         let _ = disable_raw_mode();
                         self.terminal_enabled = false;
                         // Signal to exit by triggering standard Ctrl+C handler

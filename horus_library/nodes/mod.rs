@@ -12,16 +12,24 @@
 //!
 //! ## Sensor Interfaces (Essential Building Blocks)
 //! - `CameraNode` - Vision input from cameras
+//! - `DepthCameraNode` - RGB-D cameras (RealSense, ZED, Kinect, etc.)
 //! - `LidarNode` - LiDAR scanning for mapping/obstacles
 //! - `ImuNode` - Inertial measurement unit for orientation
 //! - `EncoderNode` - Wheel encoder feedback
 //! - `GpsNode` - GPS/GNSS positioning for outdoor navigation
+//! - `UltrasonicNode` - Ultrasonic distance sensors (HC-SR04, JSN-SR04T, etc.)
+//! - `BatteryMonitorNode` - Battery voltage, current, and health monitoring
+//! - `ForceTorqueSensorNode` - 6-axis force/torque sensors (ATI, Robotiq, OnRobot, etc.)
 //!
 //! ## Control & Actuation (Movement and Control)
 //! - `DcMotorNode` - DC motor control with PWM (L298N, TB6612, etc.)
+//! - `BldcMotorNode` - Brushless DC motor control (ESC protocols: PWM, DShot, OneShot, CAN)
+//! - `StepperMotorNode` - Stepper motor control (A4988, DRV8825, TMC2208, etc.)
 //! - `DifferentialDriveNode` - Mobile robot base control
+//! - `DynamixelNode` - Dynamixel smart servo control (Protocol 1.0/2.0)
+//! - `RoboclawMotorNode` - Roboclaw motor controller (BasicMicro 2x7A to 2x160A models)
 //! - `PidControllerNode` - Generic PID control
-//! - `ServoControllerNode` - Industrial servo control
+//! - `ServoControllerNode` - RC/Industrial servo control
 //!
 //! ## Navigation (Path Planning and Localization)
 //! - `PathPlannerNode` - A*/RRT path planning algorithms
@@ -29,6 +37,7 @@
 //! - `CollisionDetectorNode` - Real-time collision avoidance
 //!
 //! ## Industrial Integration (Production Ready)
+//! - `CanBusNode` - CAN bus communication (SocketCAN, automotive, industrial)
 //! - `ModbusNode` - Modbus TCP/RTU protocol handler
 //! - `DigitalIONode` - Digital I/O interface
 //! - `SerialNode` - UART/Serial communication (GPS, Arduino, sensors)
@@ -69,13 +78,19 @@
 //! ```
 
 // Declare node modules (each in its own folder with README.md)
+pub mod battery_monitor;
+pub mod bldc_motor;
 pub mod camera;
+pub mod can_bus;
 pub mod collision_detector;
 pub mod dc_motor;
+pub mod depth_camera;
 pub mod differential_drive;
 pub mod digital_io;
+pub mod dynamixel;
 pub mod emergency_stop;
 pub mod encoder;
+pub mod force_torque_sensor;
 pub mod gps;
 pub mod i2c_bus;
 pub mod image_processor;
@@ -85,11 +100,16 @@ pub mod keyboard_input;
 pub mod lidar;
 pub mod localization;
 pub mod modbus;
+pub mod odometry;
 pub mod path_planner;
 pub mod pid_controller;
+pub mod roboclaw_motor;
 pub mod safety_monitor;
 pub mod serial;
 pub mod servo_controller;
+pub mod spi_bus;
+pub mod stepper_motor;
+pub mod ultrasonic;
 
 // Re-export node types for convenience
 // Safety & Monitoring Nodes
@@ -97,28 +117,39 @@ pub use emergency_stop::EmergencyStopNode;
 pub use safety_monitor::SafetyMonitorNode;
 
 // Sensor Interface Nodes
+pub use battery_monitor::BatteryMonitorNode;
 pub use camera::CameraNode;
+pub use depth_camera::DepthCameraNode;
 pub use encoder::EncoderNode;
-pub use gps::GpsNode;
-pub use imu::ImuNode;
-pub use lidar::LidarNode;
+pub use force_torque_sensor::ForceTorqueSensorNode;
+pub use gps::{GpsBackend, GpsNode};
+pub use imu::{ImuBackend, ImuNode};
+pub use lidar::{LidarBackend, LidarNode};
+pub use ultrasonic::UltrasonicNode;
 
 // Control & Actuation Nodes
+pub use bldc_motor::BldcMotorNode;
 pub use dc_motor::DcMotorNode;
 pub use differential_drive::DifferentialDriveNode;
+pub use dynamixel::DynamixelNode;
 pub use pid_controller::PidControllerNode;
+pub use roboclaw_motor::RoboclawMotorNode;
 pub use servo_controller::ServoControllerNode;
+pub use stepper_motor::StepperMotorNode;
 
 // Navigation Nodes
 pub use collision_detector::CollisionDetectorNode;
 pub use localization::LocalizationNode;
+pub use odometry::OdometryNode;
 pub use path_planner::PathPlannerNode;
 
 // Industrial Integration Nodes
+pub use can_bus::CanBusNode;
 pub use digital_io::DigitalIONode;
 pub use i2c_bus::I2cBusNode;
 pub use modbus::ModbusNode;
 pub use serial::SerialNode;
+pub use spi_bus::SpiBusNode;
 
 // Vision & Image Processing Nodes
 pub use image_processor::ImageProcessorNode;

@@ -96,7 +96,7 @@ pub struct Scheduler {
 struct RegisteredNode {
     node: Box<dyn Node>,
     context: NodeInfo,
-    priority: NodePriority,
+    priority: u32,  // Lower number = higher priority
 }
 ```
 
@@ -178,15 +178,18 @@ horus run controller.rs &
 
 ### Priority Levels
 
+Priorities are `u32` values where **lower numbers = higher priority**:
+
 ```rust
-pub enum NodePriority {
-    Critical = 0,   // Highest priority - safety systems
-    High = 1,       // Control loops, actuators
-    Normal = 2,     // Default - sensors, processing
-    Low = 3,        // Non-critical computation
-    Background = 4, // Logging, monitoring
-}
+// Recommended priority constants
+const CRITICAL: u32    = 0;   // Highest priority - safety systems
+const HIGH: u32        = 10;  // Control loops, actuators
+const NORMAL: u32      = 50;  // Default - sensors, processing
+const LOW: u32         = 80;  // Non-critical computation
+const BACKGROUND: u32  = 100; // Logging, monitoring
 ```
+
+You can use any u32 value for fine-grained control.
 
 ### Execution Order
 
@@ -195,11 +198,11 @@ Nodes execute **in priority order** every tick:
 ```rust
 let mut scheduler = Scheduler::new();
 
-// Execution order: Safety  Controller  Sensor  Logger
-scheduler.add(Box::new(safety_monitor), 0, Some(true));    // Runs 1st (Critical)
-scheduler.add(Box::new(controller), 1, Some(true));         // Runs 2nd (High)
-scheduler.add(Box::new(sensor), 2, Some(true));             // Runs 3rd (Normal)
-scheduler.add(Box::new(logger), 4, Some(true));             // Runs 4th (Background)
+// Execution order: Safety → Controller → Sensor → Logger
+scheduler.add(Box::new(safety_monitor), 0, Some(true));    // Runs 1st (priority 0 - highest)
+scheduler.add(Box::new(controller), 10, Some(true));        // Runs 2nd (priority 10)
+scheduler.add(Box::new(sensor), 50, Some(true));            // Runs 3rd (priority 50)
+scheduler.add(Box::new(logger), 100, Some(true));           // Runs 4th (priority 100 - lowest)
 
 scheduler.run()?;
 ```

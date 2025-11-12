@@ -63,7 +63,7 @@ fn main() -> AnyResult<()> {
     // Run the scheduler
     let _ = scheduler.run();
 
-    println!("\n🛑 TankSim shutdown complete.\n");
+    println!("\nTankSim shutdown complete.\n");
 
     Ok(())
 }

@@ -1,0 +1,122 @@
+---
+title: ImuNode
+description: Inertial Measurement Unit with accelerometer, gyroscope, and magnetometer
+---
+
+# ImuNode
+
+Inertial Measurement Unit (IMU) node supporting MPU6050, MPU9250, BNO055, and other I2C-based IMUs. Provides accelerometer, gyroscope, magnetometer data, and sensor fusion for orientation estimation in robots, drones, and stabilization systems.
+
+## Source Code
+
+- [ImuNode Implementation](https://github.com/softmata/horus/tree/main/horus_library/nodes/imu)
+- [IMU Sensor Messages](https://github.com/softmata/horus/blob/main/horus_library/messages/sensor.rs)
+
+## Features
+
+- MPU6050/6500 (6-axis: accel + gyro)
+- MPU9250 (9-axis: accel + gyro + mag)
+- BNO055 (9-axis with hardware fusion)
+- LSM6DS3, LSM9DS1 support
+- Raw sensor data output
+- Sensor fusion (Mahony/Madgwick filters)
+- Quaternion and Euler angle output
+- Calibration routines
+- Configurable sample rates (up to 1kHz)
+- DMP (Digital Motion Processor) support
+- Hardware fallback to simulation
+
+## Quick Start
+
+```rust
+use horus_library::prelude::*;
+
+fn main() -> Result<()> {
+    let mut scheduler = Scheduler::new();
+
+    // Create IMU node
+    let mut imu = ImuNode::new()?;
+    imu.set_sensor_type(ImuType::MPU6050);
+    imu.set_i2c_address(0x68);  // Default address
+
+    scheduler.add(Box::new(imu), 1, Some(true));
+    scheduler.run()?;
+    Ok(())
+}
+```
+
+## Hardware Setup
+
+### MPU6050/6500 Wiring
+
+```
+Raspberry Pi    MPU6050
+GPIO 2 (SDA) --> SDA
+GPIO 3 (SCL) --> SCL
+3.3V         --> VCC
+GND          --- GND
+```
+
+### BNO055 Wiring
+
+```
+Raspberry Pi    BNO055
+GPIO 2 (SDA) --> SDA
+GPIO 3 (SCL) --> SCL
+3.3V         --> VIN
+GND          --- GND
+                PS0 --> GND (I2C mode)
+                PS1 --> GND
+```
+
+### Enable in Project
+
+```toml
+[dependencies]
+horus_library = { version = "0.1", features = ["i2c-hardware"] }
+```
+
+## Configuration
+
+```rust
+let mut imu = ImuNode::new()?;
+
+// Select IMU type
+imu.set_sensor_type(ImuType::MPU6050);
+imu.set_sensor_type(ImuType::BNO055);
+
+// Configure
+imu.set_sample_rate(100);  // 100 Hz
+imu.enable_fusion(true);   // Enable orientation fusion
+imu.calibrate()?;          // Run calibration
+```
+
+## Usage Patterns
+
+### Reading IMU Data
+
+```rust
+let hub = Hub::<ImuData>::new("imu/data")?;
+
+if let Some(data) = hub.recv(None) {
+    println!("Accel: [{:.2}, {:.2}, {:.2}] m/s²",
+        data.accel_x, data.accel_y, data.accel_z);
+    println!("Gyro: [{:.2}, {:.2}, {:.2}] °/s",
+        data.gyro_x, data.gyro_y, data.gyro_z);
+    println!("Roll: {:.1}°, Pitch: {:.1}°, Yaw: {:.1}°",
+        data.roll, data.pitch, data.yaw);
+}
+```
+
+## Best Practices
+
+1. **Always calibrate on startup**
+2. **Enable sensor fusion for orientation**
+3. **Mount IMU at robot center of mass**
+4. **Align IMU axes with robot frame**
+
+## See Also
+
+- [GpsNode](./gps) - GPS positioning
+- [EncoderNode](./encoder) - Wheel encoders
+- [OdometryNode](./odometry) - Position tracking

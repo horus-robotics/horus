@@ -24,6 +24,8 @@ try:
         PyHub as _PyHub,
         PyScheduler as _PyScheduler,
         PyNodeState as NodeState,
+        PyRobotPreset as RobotPreset,
+        PySchedulerConfig as SchedulerConfig,
         get_version,
     )
 except ImportError:
@@ -33,6 +35,7 @@ except ImportError:
     _NodeInfo = None
     _PyHub = None
     _PyScheduler = None
+
     # Mock NodeState for testing
     class NodeState:
         UNINITIALIZED = "uninitialized"
@@ -43,6 +46,26 @@ except ImportError:
         STOPPED = "stopped"
         ERROR = "error"
         CRASHED = "crashed"
+
+    # Mock RobotPreset for testing
+    class RobotPreset:
+        Standard = "Standard"
+        SafetyCritical = "SafetyCritical"
+        HardRealTime = "HardRealTime"
+        HighPerformance = "HighPerformance"
+        Educational = "Educational"
+        Mobile = "Mobile"
+        Underwater = "Underwater"
+        Space = "Space"
+        Swarm = "Swarm"
+        SoftRobotics = "SoftRobotics"
+        Custom = "Custom"
+
+    # Mock SchedulerConfig for testing
+    class SchedulerConfig:
+        def __init__(self, preset=None):
+            pass
+
     def get_version(): return "0.1.0-mock"
 
 __version__ = "0.1.4"
@@ -563,13 +586,31 @@ class Scheduler:
         scheduler.add(node1, 0, True).add(node2, 1, False).run()
     """
 
-    def __init__(self):
-        """Create a scheduler."""
+    def __init__(self, config: Optional['SchedulerConfig'] = None):
+        """
+        Create a scheduler.
+
+        Args:
+            config: Optional SchedulerConfig to configure the scheduler
+        """
         if _PyScheduler:
-            self._scheduler = _PyScheduler()
+            self._scheduler = _PyScheduler(config) if config else _PyScheduler()
         else:
             self._scheduler = None
         self._nodes = []
+
+    @staticmethod
+    def from_config(config: 'SchedulerConfig') -> 'Scheduler':
+        """
+        Create a scheduler from a configuration.
+
+        Args:
+            config: SchedulerConfig instance
+
+        Returns:
+            Configured Scheduler instance
+        """
+        return Scheduler(config=config)
 
     def add(self, node: 'Node', priority: int, logging: bool = False) -> 'Scheduler':
         """
@@ -623,7 +664,7 @@ class Scheduler:
                 else:
                     self._scheduler.run()
             except KeyboardInterrupt:
-                print("\n\n Ctrl+C received, shutting down gracefully...")
+                print("\nCtrl+C received, shutting down gracefully...")
                 self._scheduler.stop()
             finally:
                 # Shutdown all nodes
@@ -643,7 +684,7 @@ class Scheduler:
                         node._internal_tick()
                     time.sleep(0.03)  # ~30Hz
             except KeyboardInterrupt:
-                print("\n\n Ctrl+C received, shutting down gracefully...")
+                print("\nCtrl+C received, shutting down gracefully...")
             finally:
                 for node in self._nodes:
                     node._internal_shutdown()
@@ -698,6 +739,153 @@ class Scheduler:
         # Update Rust scheduler if available
         if self._scheduler:
             self._scheduler.set_node_rate(node_name, rate_hz)
+
+    def get_all_nodes(self) -> List[Dict[str, Any]]:
+        """
+        Get information about all registered nodes.
+
+        Returns:
+            List of dictionaries containing node information:
+            - name: Node name
+            - priority: Execution priority
+            - rate_hz: Node execution rate
+            - logging_enabled: Whether logging is enabled
+            - total_ticks: Total number of ticks executed
+            - successful_ticks: Number of successful ticks
+            - failed_ticks: Number of failed ticks
+            - failure_count: Total failure count
+            - consecutive_failures: Current consecutive failure count
+            - circuit_open: Whether circuit breaker is open
+            - avg_tick_duration_ms: Average tick duration
+            - uptime_seconds: Node uptime
+            - state: Node state
+
+        Example:
+            nodes = scheduler.get_all_nodes()
+            for node in nodes:
+                print(f"{node['name']}: {node['total_ticks']} ticks, {node['failure_count']} failures")
+        """
+        if self._scheduler:
+            return self._scheduler.get_all_nodes()
+        return []
+
+    def get_node_count(self) -> int:
+        """
+        Get the number of registered nodes.
+
+        Returns:
+            Number of nodes in the scheduler
+
+        Example:
+            count = scheduler.get_node_count()
+            print(f"Running {count} nodes")
+        """
+        if self._scheduler:
+            return self._scheduler.get_node_count()
+        return len(self._nodes)
+
+    def has_node(self, name: str) -> bool:
+        """
+        Check if a node with the given name exists.
+
+        Args:
+            name: Node name to check
+
+        Returns:
+            True if node exists, False otherwise
+
+        Example:
+            if scheduler.has_node("sensor"):
+                stats = scheduler.get_node_stats("sensor")
+        """
+        if self._scheduler:
+            return self._scheduler.has_node(name)
+        return any(node.name == name for node in self._nodes)
+
+    def get_node_names(self) -> List[str]:
+        """
+        Get list of all node names.
+
+        Returns:
+            List of node names
+
+        Example:
+            names = scheduler.get_node_names()
+            print(f"Nodes: {', '.join(names)}")
+        """
+        if self._scheduler:
+            return self._scheduler.get_node_names()
+        return [node.name for node in self._nodes]
+
+    def set_node_deadline(self, node_name: str, deadline_ms: Optional[float] = None) -> None:
+        """
+        Set a soft real-time deadline for a specific node.
+
+        This enables deadline monitoring for the node. If the node's tick()
+        execution exceeds the deadline, a warning will be logged and the
+        deadline_misses counter will be incremented.
+
+        Args:
+            node_name: Name of the node to configure
+            deadline_ms: Deadline in milliseconds (0-10000), or None to disable deadline monitoring
+
+        Raises:
+            RuntimeError: If node not found or deadline is out of range
+
+        Example:
+            # Set 10ms deadline for sensor node
+            scheduler.set_node_deadline("sensor_node", 10.0)
+
+            # Set 50ms deadline for control node
+            scheduler.set_node_deadline("control_node", 50.0)
+
+            # Disable deadline monitoring
+            scheduler.set_node_deadline("sensor_node", None)
+
+        Note:
+            - Deadlines are "soft" - violations are logged but don't stop execution
+            - Deadline monitoring must be enabled in SchedulerConfig (deadline_monitoring=True)
+            - Use get_node_stats() or get_all_nodes() to query deadline_misses
+        """
+        if not self._scheduler:
+            raise RuntimeError("Cannot set deadline before scheduler is started")
+        self._scheduler.set_node_deadline(node_name, deadline_ms)
+
+    def set_node_watchdog(self, node_name: str, enabled: bool, timeout_ms: Optional[int] = None) -> None:
+        """
+        Enable or disable watchdog timer for a specific node.
+
+        A watchdog timer monitors node liveness. If the node fails to execute
+        successfully within the timeout period, the watchdog expires and a
+        warning is logged.
+
+        Args:
+            node_name: Name of the node to configure
+            enabled: Enable (True) or disable (False) watchdog
+            timeout_ms: Timeout in milliseconds (10-60000), or None to use global default
+
+        Raises:
+            RuntimeError: If node not found or timeout is out of range
+
+        Example:
+            # Enable watchdog with 1000ms timeout
+            scheduler.set_node_watchdog("critical_node", True, 1000)
+
+            # Enable with default timeout
+            scheduler.set_node_watchdog("sensor_node", True)
+
+            # Disable watchdog
+            scheduler.set_node_watchdog("sensor_node", False)
+
+        Note:
+            - Watchdog is automatically fed on successful tick execution
+            - Global watchdog_enabled flag must be True in SchedulerConfig
+            - Use get_node_stats() to check watchdog_expired status
+            - Watchdog expiration is logged but doesn't stop execution
+        """
+        if not self._scheduler:
+            raise RuntimeError("Cannot set watchdog before scheduler is started")
+        self._scheduler.set_node_watchdog(node_name, enabled, timeout_ms)
 
 
 # Convenience functions
@@ -780,8 +968,12 @@ __all__ = [
     "Node",
     "Scheduler",
     "NodeState",
+    "Hub",
     "run",
 ]
+
+# Alias for direct Hub access (for benchmarks and advanced usage)
+Hub = _PyHub
 
 # Add library messages to __all__ if available
 if _has_library:

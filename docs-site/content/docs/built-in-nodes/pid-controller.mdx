@@ -1,0 +1,80 @@
+---
+title: PidControllerNode
+description: PID control loop for precise servo control
+---
+
+# PidControllerNode
+
+Proportional-Integral-Derivative (PID) controller node for closed-loop control of position, velocity, temperature, and other process variables. Provides tunable PID gains and anti-windup.
+
+## Source Code
+
+- [PidControllerNode Implementation](https://github.com/softmata/horus/tree/main/horus_library/nodes/pid_controller)
+- [Control Messages](https://github.com/softmata/horus/blob/main/horus_library/messages/control.rs)
+
+## Features
+
+- P, PI, PD, and PID control modes
+- Anti-windup protection
+- Derivative filtering
+- Setpoint ramping
+- Output limiting
+- Auto-tuning (Ziegler-Nichols)
+- Multiple controllers
+- Simulation support
+
+## Quick Start
+
+```rust
+use horus_library::prelude::*;
+
+fn main() -> Result<()> {
+    let mut scheduler = Scheduler::new();
+
+    let mut pid = PidControllerNode::new()?;
+    pid.set_gains(0, 1.0, 0.1, 0.05);  // P, I, D
+    pid.set_setpoint(0, 100.0);
+    pid.set_sample_rate(100);  // 100 Hz
+
+    scheduler.add(Box::new(pid), 1, Some(true));
+    scheduler.run()?;
+    Ok(())
+}
+```
+
+## Configuration
+
+```rust
+// Set PID gains
+pid.set_gains(0, 2.0, 0.5, 0.1);  // Kp, Ki, Kd
+
+// Set output limits
+pid.set_output_limits(0, -100.0, 100.0);
+
+// Enable anti-windup
+pid.enable_anti_windup(0, true);
+```
+
+## Usage
+
+```rust
+let cmd_hub = Hub::<PidCommand>::new("pid/command")?;
+let out_hub = Hub::<PidOutput>::new("pid/output")?;
+
+// Set setpoint
+cmd_hub.send(PidCommand {
+    controller_id: 0,
+    setpoint: 150.0,
+}, None)?;
+
+// Read output
+if let Some(output) = out_hub.recv(None) {
+    println!("PID output: {:.2}", output.value);
+}
+```
+
+## See Also
+
+- [DifferentialDriveNode](./differential-drive) - Drive control
+- [StepperMotorNode](./stepper-motor) - Position control
+- [RoboclawMotorNode](./roboclaw-motor) - Motor with PID

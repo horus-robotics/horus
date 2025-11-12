@@ -14,11 +14,16 @@
 
 A production-grade robotics framework built in Rust for **real-time performance** and **memory safety**. HORUS delivers sub-microsecond IPC latency (50-500x faster than ROS2) while maintaining a simpler developer experience.
 
-[Installation](#installation) • [Quick Start](#quick-start) • [Documentation](https://docs.horus-registry.dev) • [Benchmarks](https://docs.horus-registry.dev/benchmarks)
-
-> **Interested in our work?** [Give us a star ](https://github.com/softmata/horus) to motivate and help others find it!
+[![Documentation](https://img.shields.io/badge/Documentation-Read%20the%20Docs-blue?style=for-the-badge)](https://docs.horus-registry.dev)
+[![Installation](https://img.shields.io/badge/Installation-Get%20Started-green?style=for-the-badge)](https://docs.horus-registry.dev/installation)
+[![Benchmarks](https://img.shields.io/badge/Benchmarks-Performance-red?style=for-the-badge)](https://docs.horus-registry.dev/benchmarks)
 
 </div>
+
+---
+
+> [!IMPORTANT]
+> **Having issues?** If something breaks while using HORUS, please [create an issue](https://github.com/softmata/horus/issues) on GitHub. We appreciate your feedback and will help resolve problems quickly.
 
 ---
 
@@ -45,12 +50,6 @@ A production-grade robotics framework built in Rust for **real-time performance*
 - Edge/embedded robotics
 - New projects wanting modern tooling
 - Teams valuing simplicity and performance
-
-**When to use ROS2:**
-- Legacy ROS1 migration
-- Need existing ROS2 packages
-- Large teams already trained in ROS
-- Projects requiring RViz/Gazebo integration
 
 ## Key Features
 
@@ -200,49 +199,7 @@ fn main() -> Result<()> {
 horus run --release
 ```
 
-## Project Structure
-
-```
-HORUS/
-horus/                      # Main unified crate
-horus_core/                 # Core framework
-  communication/            # Hub, shared memory
-  scheduling/               # Scheduler
-  core/                     # Node trait, NodeInfo
-  memory/                   # Shared memory management
-horus_manager/              # CLI tool
-horus_macros/               # node! procedural macro
-horus_py/                   # Python bindings
-horus_cpp/                  # C/C++ bindings
-horus_library/              # Standard library
-  messages/                 # Standard message types
-  apps/                     # Example applications
-  tools/                    # Development tools
-benchmarks/                 # Performance testing
-docs-site/                  # Documentation website
-```
-
-## CLI Commands
-
-### Project Management
-```bash
-horus new <name>                # Create new project
-horus new my_robot -r           # Rust project
-horus new my_robot -p           # Python project
-horus new my_robot -c           # C project
-horus new my_robot -m           # Rust with macros
-```
-
-### Build and Run
-```bash
-horus run                       # Auto-detect and run
-horus run main.rs               # Run specific file
-horus run --release             # Optimized build
-horus run --build-only          # Build without running
-horus run --clean               # Clean build cache
-```
-
-#### Concurrent Multi-Process Execution
+## Concurrent Multi-Process Execution
 
 HORUS supports running multiple nodes concurrently as separate processes using glob patterns:
 
@@ -299,41 +256,6 @@ Both share the same session → communication works!
 **Alternative**: Use `Hub::new_global()` for cross-session communication (no session_id needed).
 
 **Note:** `horus run` works for single-file projects and projects with `horus.yaml` or a single `Cargo.toml`. It automatically handles dependencies and builds in a managed workspace.
-
-For **Cargo workspaces** (projects with workspace members defined in the root `Cargo.toml`), use `cargo` directly:
-```bash
-cargo build --release
-cargo run --release
-```
-
-### Package Management
-```bash
-horus pkg install <package>     # Install package
-horus pkg install <pkg> -v 1.0  # Specific version
-horus pkg install <pkg> -g      # Install globally
-horus pkg remove <package>      # Remove package
-horus pkg list                  # List packages
-```
-
-### Environment Management
-```bash
-horus env freeze                # Freeze environment
-horus env freeze -o custom.yaml # Custom file
-horus env restore <file>        # Restore from file
-```
-
-### Dashboard
-```bash
-horus dashboard                 # Web dashboard
-horus dashboard 3001            # Custom port
-horus dashboard -t              # Terminal UI
-```
-
-### Validation
-```bash
-horus check                     # Validate horus.yaml
-horus check -q                  # Only show errors, suppress warnings
-```
 
 ## Core API
 
@@ -401,8 +323,6 @@ if let Some(msg) = hub.recv(None) {
 - **Hub (MPMC)**: Median 481ns, flexible pub/sub
 - Production-validated with 6.2M+ test messages
 - Up to 369 MB/s bandwidth for burst messages
-
-*Performance varies by hardware. Run `cargo test --release` to benchmark on your system.*
 
 ### Node Trait
 
@@ -524,31 +444,6 @@ horus.run(node, duration=5)
 
 See [horus_py/README.md](horus_py/README.md) for complete documentation.
 
-### C/C++
-
-See [horus_cpp/README.md](horus_cpp/README.md) for C/C++ bindings documentation.
-
-## Testing
-
-### Unit Tests
-```bash
-cargo test                  # All tests
-cargo test -p horus_core    # Specific component
-```
-
-### Integration Tests
-
-Integration tests are in `tests/` directory covering CLI commands and runtime execution.
-
-```bash
-# Run all tests
-cd tests/horus_new && ./run_all.sh
-cd ../horus_run && ./run_all.sh
-
-# See tests/README.md for details
-cat tests/README.md
-```
-
 ## Performance
 
 ### Enhanced Scheduler Features
@@ -573,17 +468,6 @@ Latest comprehensive benchmarks show excellent performance across different work
 | **MixedRealistic** | 4.064s | Real-world mixed workload simulation |
 | **Scalability (10-200 nodes)** | 106-120ms | Near-linear scaling across system sizes |
 
-### Running Benchmarks
-```bash
-# Run comprehensive benchmarks
-cargo bench --package horus_core --bench comprehensive_benchmark
-
-# Run specific benchmark suite
-cd benchmarks
-cargo bench
-cargo run --release --bin production_bench
-```
-
 ## Contributing
 
 We welcome contributions to HORUS! Whether you're fixing bugs, adding features, or improving documentation, your help is appreciated.
@@ -596,8 +480,7 @@ We welcome contributions to HORUS! Whether you're fixing bugs, adding features, 
 **Development workflow:**
 1. Fork the repository and create a feature branch
 2. Make your changes with appropriate tests
-3. Run `cargo test` to ensure tests pass
-4. Submit a pull request with a clear description
+3. Submit a pull request with a clear description
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for complete guidelines including code style, testing requirements, and PR process.
 

@@ -256,6 +256,21 @@ where
         self.recv_rx.as_ref()?.recv_timeout(timeout).ok()
     }
 
+    /// Check if messages are available without consuming them (consumer only)
+    ///
+    /// Returns `true` if there are messages in the receive queue, `false` otherwise.
+    /// This is a non-blocking peek operation.
+    ///
+    /// # Returns
+    ///
+    /// - `true` if messages are available
+    /// - `false` if no messages are available or this is a producer
+    pub fn has_messages(&self) -> bool {
+        self.recv_rx.as_ref()
+            .map(|rx| !rx.is_empty())
+            .unwrap_or(false)
+    }
+
     /// Get the role
     pub fn role(&self) -> DirectRole {
         self.role

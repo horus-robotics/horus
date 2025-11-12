@@ -165,19 +165,20 @@ fn get_publishers(&self) -> Vec<TopicMetadata> {
 }
 ```
 
-### NodePriority
+### Node Priority
 
-Execution priority levels:
+Execution priority values (lower = higher priority):
 
 ```rust
-pub enum NodePriority {
-    Critical = 0,    // Highest
-    High = 1,
-    Normal = 2,      // Default
-    Low = 3,
-    Background = 4,  // Lowest
-}
+// Recommended priority constants
+const CRITICAL: u32    = 0;   // Highest
+const HIGH: u32        = 10;
+const NORMAL: u32      = 50;  // Default
+const LOW: u32         = 80;
+const BACKGROUND: u32  = 100; // Lowest
 ```
+
+You can use any u32 value for fine-grained control.
 
 ### NodeState
 

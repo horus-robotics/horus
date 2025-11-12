@@ -22,7 +22,7 @@ pub mod rt_node;
 
 pub use log_buffer::{LogEntry, LogType, SharedLogBuffer, GLOBAL_LOG_BUFFER};
 pub use node::{
-    HealthStatus, LogSummary, Node, NodeConfig, NodeHeartbeat, NodeInfo, NodeMetrics, NodePriority,
+    HealthStatus, LogSummary, Node, NodeConfig, NodeHeartbeat, NodeInfo, NodeMetrics,
     NodeState, TopicMetadata,
 };
 pub use node_info_ext::NodeInfoExt;

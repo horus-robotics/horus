@@ -212,11 +212,12 @@ import horus
 from horus._horus import PyLaserScanHub
 from horus.library import LaserScan
 
+# Create Hub once outside tick function
+hub = PyLaserScanHub("lidar")
+
 def tick(node):
     scan = LaserScan()
     scan.ranges = read_lidar()  # Your hardware driver
-
-    hub = PyLaserScanHub("lidar")
     hub.send(scan)
 
 node = horus.Node(name="lidar_sensor", tick=tick, rate=10)

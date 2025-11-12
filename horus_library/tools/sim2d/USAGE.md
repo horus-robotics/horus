@@ -7,7 +7,7 @@ Complete guide to using sim2d - HORUS 2D Robot Simulator with image support and 
 ### Basic Usage (GUI Mode)
 ```bash
 # Run with default world
-horus sim 2d
+horus sim --2d
 
 # Or directly via cargo
 cd horus_library/tools/sim2d
@@ -17,10 +17,10 @@ cargo run --release
 ### Headless Mode (No GUI)
 ```bash
 # Perfect for CI/CD, servers, SSH
-horus sim 2d --headless
+horus sim --2d --headless
 
 # With custom config
-horus sim 2d --headless --world world.yaml --topic /robot/cmd_vel
+horus sim --2d --headless --world world.yaml --topic /robot/cmd_vel
 ```
 
 ## Configuration Formats
@@ -78,16 +78,16 @@ h = 6.0
 
 ```bash
 # PNG, JPG, or PGM occupancy grid
-horus sim 2d --world-image floor_plan.png
+horus sim --2d --world-image floor_plan.png
 
 # Custom resolution (meters per pixel)
-horus sim 2d --world-image map.pgm --resolution 0.05
+horus sim --2d --world-image map.pgm --resolution 0.05
 
 # Custom threshold (0-255, darker = obstacle)
-horus sim 2d --world-image building.jpg --threshold 100
+horus sim --2d --world-image building.jpg --threshold 100
 
 # All together
-horus sim 2d \
+horus sim --2d \
   --world-image warehouse.png \
   --resolution 0.02 \
   --threshold 128 \
@@ -125,7 +125,7 @@ img.save('test_map.png')
 
 Then use it:
 ```bash
-horus sim 2d --world-image test_map.png --resolution 0.05
+horus sim --2d --world-image test_map.png --resolution 0.05
 # Creates 20m × 20m world
 ```
 
@@ -151,7 +151,7 @@ Options:
 ### Pattern 1: Development (GUI)
 ```bash
 # Terminal 1: Visual simulator
-horus sim 2d --world-image office.png
+horus sim --2d --world-image office.png
 
 # Terminal 2: Control logic
 cat > controller.rs << 'EOF'
@@ -178,7 +178,7 @@ horus run controller.rs
 # test_navigation.sh
 
 # Start headless simulator in background
-horus sim 2d --headless --world-image test_map.png &
+horus sim --2d --headless --world-image test_map.png &
 SIM_PID=$!
 
 # Run navigation test
@@ -191,7 +191,7 @@ kill $SIM_PID
 ### Pattern 3: ROS Map Compatibility
 ```bash
 # Use ROS PGM map directly
-horus sim 2d \
+horus sim --2d \
   --world-image /path/to/ros/map.pgm \
   --resolution 0.05 \
   --threshold 254
@@ -200,10 +200,10 @@ horus sim 2d \
 ### Pattern 4: Multi-Robot Simulation
 ```bash
 # Robot 1
-horus sim 2d --topic /robot1/cmd_vel --name robot1 &
+horus sim --2d --topic /robot1/cmd_vel --name robot1 &
 
 # Robot 2
-horus sim 2d --topic /robot2/cmd_vel --name robot2 &
+horus sim --2d --topic /robot2/cmd_vel --name robot2 &
 
 # Control both
 horus run multi_robot_controller.rs
@@ -221,7 +221,7 @@ horus run multi_robot_controller.rs
 ### Load Existing ROS Map
 ```bash
 # From ROS workspace
-horus sim 2d \
+horus sim --2d \
   --world-image ~/ros_ws/maps/office.pgm \
   --resolution 0.05 \
   --threshold 254
@@ -231,12 +231,12 @@ horus sim 2d \
 1. Draw map in any image editor (Paint, GIMP, etc.)
 2. Black = obstacles, White = free space
 3. Save as PNG
-4. Load: `horus sim 2d --world-image sketch.png`
+4. Load: `horus sim --2d --world-image sketch.png`
 
 ### Test Navigation Algorithm
 ```bash
 # Headless for faster testing
-horus sim 2d --headless --world-image maze.png &
+horus sim --2d --headless --world-image maze.png &
 
 # Run navigation
 horus run path_planner.rs
@@ -248,7 +248,7 @@ horus run path_planner.rs
 ```bash
 for map in maps/*.png; do
     echo "Testing with $map"
-    timeout 60s horus sim 2d --headless --world-image "$map" &
+    timeout 60s horus sim --2d --headless --world-image "$map" &
     SIM_PID=$!
 
     horus run test_suite.rs
@@ -279,7 +279,7 @@ done
 
 **"Failed to create window" in SSH**
 - Use `--headless` flag
-- Or use `xvfb-run horus sim 2d`
+- Or use `xvfb-run horus sim --2d`
 
 **Robot doesn't move in headless**
 - Headless mode still requires controller
@@ -315,7 +315,7 @@ See `examples/` for:
 ## Next Steps
 
 1. Create your first map: `python create_map.py`
-2. Run simulator: `horus sim 2d --world-image map.png`
+2. Run simulator: `horus sim --2d --world-image map.png`
 3. Control robot: `horus run your_controller.rs`
 4. Deploy to real robot: Use same HORUS topics!
 
@@ -323,4 +323,4 @@ See `examples/` for:
 
 - Main README: `../../../README.md`
 - HORUS Docs: `../../../docs-site/`
-- CLI Reference: See `horus sim 2d --help`
+- CLI Reference: See `horus sim --2d --help`

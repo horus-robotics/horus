@@ -31,25 +31,39 @@ HORUS requires Linux with `/dev/shm` support:
   - For **Windows**: Use WSL 2 (see instructions below)
   - For **macOS**: Use Docker or Linux VM (see instructions below)
 - **Rust 1.70+**: We'll install this in Step 1
-- **Build Tools**: C compiler, pkg-config, and system libraries
+- **Build Tools & System Libraries**: C compiler, pkg-config, and all required development libraries
   ```bash
-  # Ubuntu/Debian - COMPLETE dependencies (copy-paste this!)
-  sudo apt update && sudo apt install \
-    build-essential \
-    pkg-config \
-    libudev-dev \
-    libssl-dev \
-    libasound2-dev
+  # Ubuntu/Debian/Raspberry Pi OS - COMPLETE dependencies (copy-paste this!)
+  sudo apt update
+  sudo apt install -y build-essential pkg-config \
+    libssl-dev libudev-dev libasound2-dev \
+    libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev \
+    libwayland-dev wayland-protocols libxkbcommon-dev \
+    libvulkan-dev libfontconfig-dev libfreetype-dev \
+    libv4l-dev
 
-  # Fedora/RHEL
+  # Fedora/RHEL/CentOS
   sudo dnf groupinstall "Development Tools"
-  sudo dnf install pkg-config systemd-devel openssl-devel alsa-lib-devel
+  sudo dnf install -y pkg-config openssl-devel systemd-devel alsa-lib-devel \
+    libX11-devel libXrandr-devel libXi-devel libXcursor-devel libXinerama-devel \
+    wayland-devel wayland-protocols-devel libxkbcommon-devel \
+    vulkan-devel fontconfig-devel freetype-devel \
+    libv4l-devel
 
   # Arch Linux
-  sudo pacman -S base-devel pkg-config systemd openssl alsa-lib
+  sudo pacman -S base-devel pkg-config openssl systemd alsa-lib \
+    libx11 libxrandr libxi libxcursor libxinerama \
+    wayland wayland-protocols libxkbcommon \
+    vulkan-icd-loader fontconfig freetype2 \
+    v4l-utils
   ```
 - **10-15 minutes**: For first-time installation
 - **Internet connection**: To download dependencies
+
+**What these packages do:**
+- **Core**: `libssl-dev` (networking), `libudev-dev` (device detection), `libasound2-dev` (audio)
+- **Graphics/GUI**: X11, Wayland libraries (required for sim2d and dashboard)
+- **Optional**: `libv4l-dev` (camera support), fontconfig (improved text rendering)
 
 **Don't worry if you don't have:**
 - Rust (we'll install it)
@@ -186,13 +200,15 @@ Run the comprehensive verification script to ensure everything is working:
 
 **What it checks:**
 - [+] System requirements (Rust, Cargo, C compiler, pkg-config)
-- [+] System libraries (OpenSSL, udev)
+- [+] System libraries (OpenSSL, udev, ALSA, X11, Wayland, etc.)
+- [+] Graphics libraries (required for sim2d and dashboard)
 - [+] HORUS binary and installation path
 - [+] Core libraries in `~/.horus/cache/`
-- [+] All subcommands (`new`, `run`, `dashboard`, `pkg`, `env`, `auth`)
+- [+] All subcommands (`new`, `run`, `dashboard`, `pkg`, `env`, `auth`, `sim`)
 - [+] Build verification (`cargo check` with 0 warnings)
 - [+] Debug binary functionality
-- [+] Optional features (Python/C bindings)
+- [+] Optional features (Python/C bindings, camera support)
+- [+] Platform-specific packages (Raspberry Pi GPIO, Jetson CUDA)
 - [+] Disk usage stats
 
 **Example output:**
@@ -271,23 +287,222 @@ See [Multi-Language](/multi-language) for C examples.
 
 ### Linux (Ubuntu/Debian)
 
-Most things "just work" on Linux. If you hit build errors:
+Most things "just work" on Linux. If you hit build errors, install all required packages:
 
 ```bash
-sudo apt update && sudo apt install \
-  build-essential \
-  pkg-config \
-  libudev-dev \
-  libssl-dev \
-  libasound2-dev
+sudo apt update
+sudo apt install -y build-essential pkg-config \
+  libssl-dev libudev-dev libasound2-dev \
+  libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev \
+  libwayland-dev wayland-protocols libxkbcommon-dev \
+  libvulkan-dev libfontconfig-dev libfreetype-dev \
+  libv4l-dev
 ```
 
 ### Linux (Fedora/RHEL)
 
 ```bash
 sudo dnf groupinstall "Development Tools"
-sudo dnf install pkg-config systemd-devel openssl-devel alsa-lib-devel
+sudo dnf install -y pkg-config openssl-devel systemd-devel alsa-lib-devel \
+  libX11-devel libXrandr-devel libXi-devel libXcursor-devel libXinerama-devel \
+  wayland-devel wayland-protocols-devel libxkbcommon-devel \
+  vulkan-devel fontconfig-devel freetype-devel \
+  libv4l-devel
 ```
+
+### Raspberry Pi
+
+HORUS fully supports Raspberry Pi (tested on Pi 3, 4, and 5). Install Ubuntu Server or Raspberry Pi OS, then:
+
+```bash
+# Install all dependencies
+sudo apt update
+sudo apt install -y build-essential pkg-config \
+  libssl-dev libudev-dev libasound2-dev \
+  libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev \
+  libwayland-dev wayland-protocols libxkbcommon-dev \
+  libvulkan-dev libfontconfig-dev libfreetype-dev \
+  libv4l-dev
+
+# Raspberry Pi specific packages (GPIO, I2C, SPI support)
+sudo apt install -y libraspberrypi-dev i2c-tools python3-smbus
+
+# Enable I2C and SPI (required for sensors)
+sudo raspi-config
+# Navigate to: Interface Options → I2C → Enable
+# Navigate to: Interface Options → SPI → Enable
+```
+
+**Performance tips:**
+- Use 64-bit OS for better performance
+- Compile with `--release` flag (much faster than debug)
+- Allocate more RAM to GPU if using camera nodes (in `/boot/config.txt`)
+
+### NVIDIA Jetson Nano
+
+HORUS supports Jetson Nano with GPU acceleration for vision tasks:
+
+```bash
+# Install all dependencies
+sudo apt update
+sudo apt install -y build-essential pkg-config \
+  libssl-dev libudev-dev libasound2-dev \
+  libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev \
+  libwayland-dev wayland-protocols libxkbcommon-dev \
+  libvulkan-dev libfontconfig-dev libfreetype-dev \
+  libv4l-dev
+
+# Jetson specific packages (GPU acceleration)
+sudo apt install -y nvidia-jetpack
+
+# Verify CUDA is installed
+nvcc --version
+```
+
+**GPU acceleration:**
+- HORUS can leverage CUDA for vision processing nodes
+- Ensure JetPack is installed for full GPU support
+- Camera nodes automatically use hardware H.264 encoding
+
+## Hardware Driver Support (Optional)
+
+HORUS includes hardware drivers for real robotics hardware. **These are completely optional** - the default installation does NOT require any hardware packages or drivers.
+
+**Key points:**
+- Default `./install.sh` works without any hardware packages
+- Nodes automatically use simulation mode without hardware
+- Hardware features are only compiled when explicitly enabled
+- You can install HORUS on your laptop and deploy to hardware later
+
+**When you need hardware packages:**
+- Only when you want to enable hardware features with `--features="can-hardware"` etc.
+- Only for production deployment on actual robots
+- Never needed for development, testing, or simulation
+
+### Available Hardware Drivers
+
+| Driver | Hardware | System Packages | Status |
+|--------|----------|-----------------|--------|
+| **SocketCAN** | CAN bus devices | `can-utils` (optional) | Implemented |
+| **spidev** | SPI devices | None (kernel interface) | Implemented |
+| **i2cdev** | I2C devices | `i2c-tools` (Pi only) | Implemented |
+| **Serial** | Serial devices | None (kernel interface) | Implemented |
+| **GPIO** | GPIO pins | `libraspberrypi-dev` (Pi only) | Implemented |
+| **PWM** | PWM outputs | `libraspberrypi-dev` (Pi only) | Implemented |
+| **RealSense** | Intel depth cameras | `librealsense2-dev` | Optional |
+| **Modbus TCP** | Force-torque sensors | None (pure Rust) | Planned |
+
+### Installing Hardware Driver Packages
+
+**For Raspberry Pi GPIO/I2C/SPI/PWM:**
+```bash
+sudo apt install -y libraspberrypi-dev i2c-tools python3-smbus
+
+# Enable hardware interfaces
+sudo raspi-config
+# Navigate to: Interface Options → I2C → Enable
+# Navigate to: Interface Options → SPI → Enable
+# Navigate to: Interface Options → Serial Port → Enable
+```
+
+**For CAN bus debugging tools:**
+```bash
+sudo apt install -y can-utils
+
+# Setup virtual CAN for testing
+sudo modprobe vcan
+sudo ip link add dev vcan0 type vcan
+sudo ip link set up vcan0
+
+# Test CAN tools
+cansend vcan0 123#DEADBEEF
+candump vcan0
+```
+
+**For Intel RealSense depth cameras:**
+```bash
+# Add Intel RealSense repository
+sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-key F6E65AC044F831AC80A06380C8B3A55A6F3EFCDE
+sudo add-apt-repository "deb https://librealsense.intel.com/Debian/apt-repo $(lsb_release -cs) main" -u
+
+# Install RealSense SDK
+sudo apt install -y librealsense2-dev librealsense2-utils
+
+# Test camera
+realsense-viewer
+```
+
+### Workflow: Development to Hardware Deployment
+
+**Development (on your laptop):**
+```bash
+# 1. Install HORUS normally (no hardware packages needed)
+./install.sh
+
+# 2. Create and run your project
+horus new my_robot
+cd my_robot
+horus run   # Runs in simulation mode
+```
+
+**Deployment (on the robot):**
+```bash
+# 1. Install system packages on the robot
+sudo apt install libraspberrypi-dev i2c-tools can-utils
+
+# 2. Enable hardware features in YOUR project's Cargo.toml
+# Edit my_robot/Cargo.toml:
+[dependencies]
+horus_library = { version = "0.1", features = ["gpio-hardware", "i2c-hardware"] }
+
+# 3. Build and run on the robot
+cargo build --release
+./target/release/my_robot   # Now uses real hardware!
+```
+
+**OR use command-line flags** (no Cargo.toml edit needed):
+```bash
+# On the robot, in your project directory
+cargo build --release --features="gpio-hardware,i2c-hardware"
+```
+
+**Important:** You enable hardware features **in your project**, not in the global HORUS installation. Cargo will automatically recompile `horus_library` with the right features when building your project.
+
+**Available features:**
+- `can-hardware` - SocketCAN support for CAN bus
+- `spi-hardware` - spidev support for SPI devices
+- `i2c-hardware` - i2cdev support for I2C devices
+- `serial-hardware` - serialport support for serial devices
+- `gpio-hardware` - GPIO/PWM support (Raspberry Pi)
+- `motor-hardware` - Alias for serial-hardware (Dynamixel, Roboclaw)
+- `all-hardware` - Enable all hardware features
+
+**How hardware fallback works:**
+1. Node attempts to initialize hardware (e.g., open `/dev/spidev0.0`)
+2. If hardware is unavailable, node logs a warning and uses simulation
+3. Status messages show `(HW)` for hardware mode, `(SIM)` for simulation
+4. This allows development on laptops and deployment on hardware without code changes
+
+### Supported Hardware Nodes
+
+**Communication Buses:**
+- `CanBusNode` - CAN bus (SocketCAN)
+- `SpiBusNode` - SPI bus (spidev)
+- `I2cBusNode` - I2C bus (i2cdev)
+
+**Motors & Actuators:**
+- `DynamixelNode` - Dynamixel smart servos (serial)
+- `RoboclawMotorNode` - Roboclaw motor controllers (serial)
+- `StepperMotorNode` - Stepper motors (GPIO)
+- `BldcMotorNode` - BLDC motors / ESCs (PWM)
+
+**Sensors:**
+- `UltrasonicNode` - Ultrasonic distance sensors (GPIO)
+- `BatteryMonitorNode` - INA219/INA226 power monitors (I2C)
+- `ForceTorqueSensorNode` - F/T sensors (Modbus TCP, serial)
+- `DepthCameraNode` - RealSense cameras (librealsense2)
+
+See the [Hardware Nodes](/nodes/hardware) documentation for detailed usage examples.
 
 ### Windows (WSL 2)
 
@@ -415,13 +630,31 @@ rm -f /dev/shm/horus_logs
 
 ## Troubleshooting
 
-Having installation issues? See the **[Troubleshooting & Maintenance Guide](/troubleshooting)** for:
+Having installation issues? Try the recovery installer first:
 
-- Common installation errors and fixes
+```bash
+./recovery_install.sh
+```
+
+**The recovery installer will:**
+- ✓ Detect all missing system packages (now checks 15+ libraries!)
+- ✓ Show platform-specific install commands (auto-detects Raspberry Pi/Jetson)
+- ✓ Stop immediately with clear errors if packages are missing
+- ✓ Clean all build artifacts and caches
+- ✓ Fresh installation from scratch
+- ✓ Comprehensive verification
+
+**Common issues:**
+- **Missing packages**: The script now detects ALL required packages including X11, Wayland, graphics libraries
+- **Raspberry Pi**: Auto-detects and suggests GPIO/I2C packages
+- **Jetson Nano**: Auto-detects and suggests CUDA/JetPack packages
+
+See the **[Troubleshooting & Maintenance Guide](/troubleshooting)** for:
+- Common installation errors and detailed fixes
 - System dependency issues
 - Update and recovery scripts (`update.sh`, `verify.sh`, `recovery_install.sh`)
 - Platform-specific problems
-- 15+ solved issues with detailed solutions
+- 15+ solved issues with step-by-step solutions
 
 ## Optional: Setup Trusted Certificates
 

@@ -176,7 +176,7 @@ impl CargoPackage {
     }
 }
 
-pub fn execute_build_only(file: Option<PathBuf>, release: bool, clean: bool) -> Result<()> {
+pub fn execute_build_only(files: Vec<PathBuf>, release: bool, clean: bool) -> Result<()> {
     // Handle clean build
     if clean {
         println!("{} Cleaning build cache...", "🧹".cyan());
@@ -190,13 +190,21 @@ pub fn execute_build_only(file: Option<PathBuf>, release: bool, clean: bool) -> 
         mode.yellow()
     );
 
-    // Resolve target file
-    let target_file = match file {
-        Some(f) => f,
-        None => auto_detect_main_file()?,
+    // Resolve target file(s)
+    let target_files: Vec<PathBuf> = if files.is_empty() {
+        vec![auto_detect_main_file()?]
+    } else {
+        files
     };
 
-    let language = detect_language(&target_file)?;
+    // Bail out - execute_build_only doesn't support multiple files yet
+    // For multi-file execution, use execute_run which calls execute_multiple_files
+    if target_files.len() > 1 {
+        bail!("Build-only mode doesn't support multiple files. Use 'horus run' to execute multiple files concurrently.");
+    }
+
+    let target_file = &target_files[0];
+    let language = detect_language(target_file)?;
     println!(
         "{} Detected: {} ({})",
         "".cyan(),
@@ -409,6 +417,11 @@ path = "{}"
             }
 
             // Also add dependencies directly from horus.yaml (in case some weren't parsed by resolve_dependencies)
+            // Track already-added cargo packages to avoid duplicates
+            let added_cargo_deps: HashSet<String> = cargo_packages.iter()
+                .map(|pkg| pkg.name.clone())
+                .collect();
+
             if Path::new("horus.yaml").exists() {
                 if let Ok(yaml_content) = fs::read_to_string("horus.yaml") {
                     if let Ok(yaml) = serde_yaml::from_str::<serde_yaml::Value>(&yaml_content) {
@@ -416,7 +429,13 @@ path = "{}"
                             if let serde_yaml::Value::Sequence(list) = deps_value {
                                 for item in list {
                                     if let Some(dep_str) = parse_yaml_cargo_dependency(item) {
-                                        cargo_toml.push_str(&format!("{}\n", dep_str));
+                                        // Extract dependency name from the generated string (e.g., "serde = ..." -> "serde")
+                                        let dep_name = dep_str.split('=').next().unwrap().trim();
+
+                                        // Skip if already added from cargo_packages
+                                        if !added_cargo_deps.contains(dep_name) {
+                                            cargo_toml.push_str(&format!("{}\n", dep_str));
+                                        }
                                     }
                                 }
                             }
@@ -458,7 +477,7 @@ path = "{}"
 }
 
 pub fn execute_run(
-    file: Option<PathBuf>,
+    files: Vec<PathBuf>,
     args: Vec<String>,
     release: bool,
     clean: bool,
@@ -476,10 +495,14 @@ pub fn execute_run(
         mode.yellow()
     );
 
-    // Step 1: Resolve target(s) - file, directory, or pattern
-    let execution_targets = match file {
-        Some(f) => resolve_execution_target(f)?,
-        None => vec![ExecutionTarget::File(auto_detect_main_file()?)],
+    // Step 1: Resolve target(s) - file(s), directory, or pattern
+    let execution_targets = if files.is_empty() {
+        vec![ExecutionTarget::File(auto_detect_main_file()?)]
+    } else if files.len() == 1 {
+        resolve_execution_target(files[0].clone())?
+    } else {
+        // Multiple files provided - treat as ExecutionTarget::Multiple
+        vec![ExecutionTarget::Multiple(files)]
     };
 
     // Step 2: Execute based on target type
@@ -547,6 +570,11 @@ fn execute_single_file(
         if let Err(e) = static_analysis::check_link_usage(&file_path) {
             eprintln!("⚠ Static analysis error: {}", e);
         }
+    }
+
+    // Check hardware requirements
+    if let Err(e) = check_hardware_requirements(&file_path, &language) {
+        eprintln!("⚠ Hardware check error: {}", e);
     }
 
     if !dependencies.is_empty() {
@@ -1214,9 +1242,27 @@ fn build_rust_files_batch(
         all_dependencies.extend(dependencies);
     }
 
-    // Resolve all dependencies once
-    if !all_dependencies.is_empty() {
-        resolve_dependencies(all_dependencies)?;
+    // For Rust files, cargo dependencies are handled in Cargo.toml generation
+    // So filter them out here to avoid trying to `cargo install` library crates
+    let dependencies_to_resolve: HashSet<String> = {
+        let (horus_pkgs, pip_pkgs, _cargo_pkgs) =
+            split_dependencies_with_context(all_dependencies.clone(), Some("rust"));
+        // Reconstruct set with only HORUS and pip packages
+        horus_pkgs
+            .into_iter()
+            .chain(pip_pkgs.into_iter().map(|p| {
+                if let Some(ref v) = p.version {
+                    format!("pip:{}=={}", p.name, v)
+                } else {
+                    format!("pip:{}", p.name)
+                }
+            }))
+            .collect()
+    };
+
+    // Resolve all dependencies once (excluding cargo packages)
+    if !dependencies_to_resolve.is_empty() {
+        resolve_dependencies(dependencies_to_resolve)?;
     }
 
     // Generate single Cargo.toml with multiple binary targets
@@ -1227,6 +1273,9 @@ fn build_rust_files_batch(
 name = "horus-multi-node"
 version = "0.1.0"
 edition = "2021"
+
+# Opt out of parent workspace
+[workspace]
 
 "#,
     );
@@ -3371,8 +3420,8 @@ fn execute_python_node(file: PathBuf, args: Vec<String>, _release: bool) -> Resu
         let r = running.clone();
         ctrlc::set_handler(move || {
             println!(
-                "\n{} Ctrl+C received, stopping Python process...",
-                "".yellow()
+                "{}",
+                "\nCtrl+C received, stopping Python process...".red()
             );
             r.store(false, Ordering::SeqCst);
             // Send SIGINT to child process on Unix systems
@@ -3410,8 +3459,8 @@ fn execute_python_node(file: PathBuf, args: Vec<String>, _release: bool) -> Resu
         let r = running.clone();
         ctrlc::set_handler(move || {
             println!(
-                "\n{} Ctrl+C received, stopping Python process...",
-                "".yellow()
+                "{}",
+                "\nCtrl+C received, stopping Python process...".red()
             );
             r.store(false, Ordering::SeqCst);
             // Send SIGINT to child process on Unix systems
@@ -3540,7 +3589,7 @@ class HorusSchedulerIntegration:
             exit_code = e.code if e.code is not None else 0
         except KeyboardInterrupt:
             # Ctrl+C received - exit cleanly
-            print("\n🛑 Graceful shutdown initiated...", file=sys.stderr)
+            print("\nGraceful shutdown initiated...", file=sys.stderr)
             exit_code = 0
         except Exception as e:
             print(f" Node execution failed: {{e}}", file=sys.stderr)
@@ -3769,6 +3818,11 @@ path = "{}"
             }
 
             // Also add dependencies directly from horus.yaml (in case some weren't parsed by resolve_dependencies)
+            // Track already-added cargo packages to avoid duplicates
+            let added_cargo_deps: HashSet<String> = cargo_packages.iter()
+                .map(|pkg| pkg.name.clone())
+                .collect();
+
             if Path::new("horus.yaml").exists() {
                 if let Ok(yaml_content) = fs::read_to_string("horus.yaml") {
                     if let Ok(yaml) = serde_yaml::from_str::<serde_yaml::Value>(&yaml_content) {
@@ -3776,7 +3830,13 @@ path = "{}"
                             if let serde_yaml::Value::Sequence(list) = deps_value {
                                 for item in list {
                                     if let Some(dep_str) = parse_yaml_cargo_dependency(item) {
-                                        cargo_toml.push_str(&format!("{}\n", dep_str));
+                                        // Extract dependency name from the generated string (e.g., "serde = ..." -> "serde")
+                                        let dep_name = dep_str.split('=').next().unwrap().trim();
+
+                                        // Skip if already added from cargo_packages
+                                        if !added_cargo_deps.contains(dep_name) {
+                                            cargo_toml.push_str(&format!("{}\n", dep_str));
+                                        }
                                     }
                                 }
                             }
@@ -4789,4 +4849,148 @@ fn parse_session_id_from_horus_yaml(path: &str) -> Result<Option<String>> {
     }
 
     Ok(None)
+}
+
+/// Detect hardware nodes being used and check if hardware support is properly configured
+pub fn check_hardware_requirements(file_path: &Path, language: &str) -> Result<()> {
+    // Only check Rust files for now
+    if language != "rust" {
+        return Ok(());
+    }
+
+    let content = fs::read_to_string(file_path)?;
+
+    // Detect hardware nodes being used
+    let hardware_nodes = vec![
+        ("I2cBusNode", "i2c-hardware", "/dev/i2c-*", "sudo apt install i2c-tools"),
+        ("SpiBusNode", "spi-hardware", "/dev/spidev*", "sudo raspi-config -> Interface Options -> SPI"),
+        ("CanBusNode", "can-hardware", "/sys/class/net/can*", "sudo apt install can-utils"),
+        ("UltrasonicNode", "gpio-hardware", "/sys/class/gpio", "sudo apt install libraspberrypi-dev"),
+        ("StepperMotorNode", "gpio-hardware", "/sys/class/gpio", "sudo apt install libraspberrypi-dev"),
+        ("BldcMotorNode", "gpio-hardware", "/sys/class/gpio", "sudo apt install libraspberrypi-dev"),
+        ("DynamixelNode", "serial-hardware", "/dev/tty*", "Serial port access"),
+        ("RoboclawMotorNode", "serial-hardware", "/dev/tty*", "Serial port access"),
+        ("BatteryMonitorNode", "i2c-hardware", "/dev/i2c-*", "sudo apt install i2c-tools"),
+    ];
+
+    let mut detected_nodes = Vec::new();
+    let mut missing_features = Vec::new();
+    let mut missing_devices = Vec::new();
+
+    // Scan for hardware node usage
+    for (node_name, feature, device_pattern, install_cmd) in &hardware_nodes {
+        if content.contains(node_name) {
+            detected_nodes.push((*node_name, *feature, *device_pattern, *install_cmd));
+        }
+    }
+
+    if detected_nodes.is_empty() {
+        return Ok(()); // No hardware nodes detected
+    }
+
+    // Check if hardware features are enabled
+    let features_enabled = check_cargo_features(file_path, &detected_nodes)?;
+
+    // Check if hardware devices exist
+    for (node_name, _feature, device_pattern, _install_cmd) in &detected_nodes {
+        if !check_device_exists(device_pattern) {
+            missing_devices.push((*node_name, *device_pattern));
+        }
+    }
+
+    // Collect features that should be enabled
+    let mut required_features = HashSet::new();
+    for (_node, feature, _, _) in &detected_nodes {
+        required_features.insert(*feature);
+    }
+
+    for feature in &required_features {
+        if !features_enabled.contains(*feature) {
+            missing_features.push(*feature);
+        }
+    }
+
+    // Print warnings if issues detected
+    if !missing_features.is_empty() || !missing_devices.is_empty() {
+        eprintln!("\n{}", "⚠ Hardware Configuration Check".yellow().bold());
+
+        if !detected_nodes.is_empty() {
+            eprintln!("\n{}", "Detected hardware nodes:".cyan());
+            for (node, _, _, _) in &detected_nodes {
+                eprintln!("  {} {}", "•".dimmed(), node);
+            }
+        }
+
+        if !missing_features.is_empty() {
+            eprintln!("\n{}", "Missing cargo features:".yellow());
+            for feature in &missing_features {
+                eprintln!("  {} {}", "•".dimmed(), feature);
+            }
+            eprintln!("\n{}", "To enable hardware support:".green());
+            let features_list = missing_features.join(",");
+            eprintln!("  {} cargo build --features=\"{}\"", ">".cyan(), features_list);
+            eprintln!("\n{}", "Or add to your Cargo.toml:".green());
+            eprintln!("  horus_library = {{ version = \"0.1\", features = [{}] }}",
+                missing_features.iter().map(|f| format!("\"{}\"", f)).collect::<Vec<_>>().join(", "));
+        }
+
+        if !missing_devices.is_empty() {
+            eprintln!("\n{}", "Hardware devices not found:".yellow());
+            for (node, device) in &missing_devices {
+                eprintln!("  {} {} requires {}", "•".dimmed(), node, device);
+            }
+            eprintln!("\n{}", "System packages may be needed:".green());
+            let mut printed_cmds = HashSet::new();
+            for (_, _, _, install_cmd) in &detected_nodes {
+                if printed_cmds.insert(*install_cmd) {
+                    eprintln!("  {} {}", ">".cyan(), install_cmd);
+                }
+            }
+        }
+
+        eprintln!("\n{}", "Note: Nodes will automatically fall back to SIMULATION mode if hardware is unavailable.".dimmed());
+        eprintln!();
+    }
+
+    Ok(())
+}
+
+/// Check if cargo features are enabled for hardware nodes
+fn check_cargo_features(file_path: &Path, detected_nodes: &[(&str, &str, &str, &str)]) -> Result<HashSet<String>> {
+    let mut enabled_features = HashSet::new();
+
+    // Check Cargo.toml if it exists
+    let cargo_toml = if let Some(parent) = file_path.parent() {
+        parent.join("Cargo.toml")
+    } else {
+        PathBuf::from("Cargo.toml")
+    };
+
+    if cargo_toml.exists() {
+        if let Ok(content) = fs::read_to_string(&cargo_toml) {
+            // Simple parsing - look for horus_library with features
+            if content.contains("features") {
+                for (_, feature, _, _) in detected_nodes {
+                    if content.contains(feature) {
+                        enabled_features.insert(feature.to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(enabled_features)
+}
+
+/// Check if hardware device exists
+fn check_device_exists(pattern: &str) -> bool {
+    // Simple check - use glob to see if any devices match the pattern
+    if let Ok(paths) = glob(pattern) {
+        for path in paths {
+            if path.is_ok() {
+                return true; // At least one device exists
+            }
+        }
+    }
+    false
 }

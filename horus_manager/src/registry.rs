@@ -1351,7 +1351,7 @@ impl RegistryClient {
 
     pub fn upload_environment(&self, manifest: &EnvironmentManifest) -> Result<()> {
         println!(
-            "📤 Publishing environment {} to registry...",
+            "Publishing environment {} to registry...",
             manifest.horus_id
         );
 

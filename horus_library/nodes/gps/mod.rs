@@ -6,11 +6,31 @@ type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo, NodeInfoExt};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[cfg(feature = "nmea-gps")]
+use serialport::{SerialPort, SerialPortBuilder};
+
+#[cfg(feature = "nmea-gps")]
+use nmea::Nmea;
+
+#[cfg(feature = "nmea-gps")]
+use std::io::{BufRead, BufReader};
+
+/// GPS backend type
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum GpsBackend {
+    Simulation,
+    NmeaSerial,
+}
+
 /// GPS/GNSS Position Node
 ///
 /// Provides GPS/GNSS position data from satellite navigation receivers.
-/// Supports various GPS modules (u-blox, NMEA parsers, etc.).
+/// Supports various GPS modules via NMEA serial protocol.
 /// Publishes latitude, longitude, altitude, and accuracy information.
+///
+/// Supported backends:
+/// - NMEA Serial (most GPS modules: u-blox, MTK, etc.)
+/// - Simulation mode for testing
 pub struct GpsNode {
     publisher: Hub<NavSatFix>,
 
@@ -19,41 +39,72 @@ pub struct GpsNode {
     min_satellites: u16,
     max_hdop: f32,
     frame_id: String,
+    backend: GpsBackend,
+    serial_port: String,
+    baud_rate: u32,
 
     // State
     last_fix: NavSatFix,
     fix_count: u64,
     last_update_time: u64,
 
+    // Hardware drivers
+    #[cfg(feature = "nmea-gps")]
+    nmea_parser: Option<Nmea>,
+
+    #[cfg(feature = "nmea-gps")]
+    serial: Option<Box<dyn SerialPort>>,
+
     // Simulation state
     sim_latitude: f64,
     sim_longitude: f64,
     sim_altitude: f64,
-    sim_enabled: bool,
 }
 
 impl GpsNode {
-    /// Create a new GPS node with default topic "gps/fix"
+    /// Create a new GPS node with default topic "gps/fix" in simulation mode
     pub fn new() -> Result<Self> {
-        Self::new_with_topic("gps/fix")
+        Self::new_with_backend("gps/fix", GpsBackend::Simulation)
     }
 
-    /// Create a new GPS node with custom topic
+    /// Create a new GPS node with custom topic in simulation mode
     pub fn new_with_topic(topic: &str) -> Result<Self> {
+        Self::new_with_backend(topic, GpsBackend::Simulation)
+    }
+
+    /// Create a new GPS node with specific backend
+    pub fn new_with_backend(topic: &str, backend: GpsBackend) -> Result<Self> {
         Ok(Self {
             publisher: Hub::new(topic)?,
             update_rate_hz: 1.0, // 1 Hz default (typical for GPS)
             min_satellites: 4,    // Minimum for 3D fix
             max_hdop: 20.0,       // Maximum acceptable HDOP
             frame_id: "gps".to_string(),
+            backend,
+            serial_port: "/dev/ttyUSB0".to_string(), // Common GPS serial port
+            baud_rate: 9600,      // Standard GPS baud rate
             last_fix: NavSatFix::default(),
             fix_count: 0,
             last_update_time: 0,
+            #[cfg(feature = "nmea-gps")]
+            nmea_parser: None,
+            #[cfg(feature = "nmea-gps")]
+            serial: None,
             sim_latitude: 37.7749,  // San Francisco (default)
             sim_longitude: -122.4194,
             sim_altitude: 10.0,
-            sim_enabled: false,
         })
+    }
+
+    /// Set GPS backend
+    pub fn set_backend(&mut self, backend: GpsBackend) {
+        self.backend = backend;
+    }
+
+    /// Set serial port configuration for NMEA GPS
+    pub fn set_serial_config(&mut self, port: &str, baud_rate: u32) {
+        self.serial_port = port.to_string();
+        self.baud_rate = baud_rate;
     }
 
     /// Set GPS update rate in Hz (typically 1-10 Hz)
@@ -93,17 +144,58 @@ impl GpsNode {
             && self.last_fix.hdop <= self.max_hdop
     }
 
-    /// Enable simulation mode with custom coordinates
-    pub fn enable_simulation(&mut self, lat: f64, lon: f64, alt: f64) {
+    /// Set simulation coordinates
+    pub fn set_simulation_position(&mut self, lat: f64, lon: f64, alt: f64) {
         self.sim_latitude = lat;
         self.sim_longitude = lon;
         self.sim_altitude = alt;
-        self.sim_enabled = true;
     }
 
-    /// Disable simulation mode
-    pub fn disable_simulation(&mut self) {
-        self.sim_enabled = false;
+    /// Initialize GPS hardware
+    fn initialize_gps(&mut self) -> bool {
+        match self.backend {
+            GpsBackend::Simulation => {
+                // Simulation mode requires no hardware initialization
+                true
+            }
+            #[cfg(feature = "nmea-gps")]
+            GpsBackend::NmeaSerial => {
+                use serialport::available_ports;
+
+                // Check if port exists
+                if let Ok(ports) = available_ports() {
+                    let port_exists = ports.iter().any(|p| p.port_name == self.serial_port);
+                    if !port_exists {
+                        eprintln!("Serial port {} not found", self.serial_port);
+                        eprintln!("Available ports:");
+                        for port in ports {
+                            eprintln!("  - {}", port.port_name);
+                        }
+                        return false;
+                    }
+                }
+
+                // Open serial port
+                match serialport::new(&self.serial_port, self.baud_rate)
+                    .timeout(std::time::Duration::from_millis(1000))
+                    .open()
+                {
+                    Ok(port) => {
+                        self.serial = Some(port);
+                        self.nmea_parser = Some(Nmea::default());
+                        true
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to open GPS serial port {}: {:?}", self.serial_port, e);
+                        false
+                    }
+                }
+            }
+            _ => {
+                eprintln!("Unsupported GPS backend: {:?}", self.backend);
+                false
+            }
+        }
     }
 
     /// Read GPS data from receiver
@@ -121,37 +213,88 @@ impl GpsNode {
 
         self.last_update_time = current_time;
 
-        // In real implementation, this would read from actual GPS hardware
-        // For now, generate simulated data if enabled
-        if self.sim_enabled {
-            let mut fix = NavSatFix::from_coordinates(
-                self.sim_latitude,
-                self.sim_longitude,
-                self.sim_altitude,
-            );
+        match self.backend {
+            GpsBackend::Simulation => {
+                let mut fix = NavSatFix::from_coordinates(
+                    self.sim_latitude,
+                    self.sim_longitude,
+                    self.sim_altitude,
+                );
 
-            // Add realistic GPS characteristics
-            fix.satellites_visible = 8;
-            fix.hdop = 1.2;
-            fix.vdop = 1.8;
-            fix.speed = 0.0;
-            fix.heading = 0.0;
-            fix.position_covariance_type = NavSatFix::COVARIANCE_TYPE_APPROXIMATED;
+                // Add realistic GPS characteristics
+                fix.satellites_visible = 8;
+                fix.hdop = 1.2;
+                fix.vdop = 1.8;
+                fix.speed = 0.0;
+                fix.heading = 0.0;
+                fix.position_covariance_type = NavSatFix::COVARIANCE_TYPE_APPROXIMATED;
 
-            // Set covariance (rough GPS accuracy ~3m)
-            fix.position_covariance[0] = 9.0; // lat variance
-            fix.position_covariance[4] = 9.0; // lon variance
-            fix.position_covariance[8] = 16.0; // alt variance
+                // Set covariance (rough GPS accuracy ~3m)
+                fix.position_covariance[0] = 9.0; // lat variance
+                fix.position_covariance[4] = 9.0; // lon variance
+                fix.position_covariance[8] = 16.0; // alt variance
 
-            ctx.log_debug(&format!(
-                "GPS: {:.6}, {:.6}, alt={:.1}m, sats={}",
-                fix.latitude, fix.longitude, fix.altitude, fix.satellites_visible
-            ));
+                ctx.log_debug(&format!(
+                    "GPS: {:.6}, {:.6}, alt={:.1}m, sats={}",
+                    fix.latitude, fix.longitude, fix.altitude, fix.satellites_visible
+                ));
 
-            Some(fix)
-        } else {
-            // No GPS data available (would read from hardware here)
-            None
+                Some(fix)
+            }
+            #[cfg(feature = "nmea-gps")]
+            GpsBackend::NmeaSerial => {
+                if let (Some(ref mut serial), Some(ref mut nmea)) = (&mut self.serial, &mut self.nmea_parser) {
+                    let mut reader = BufReader::new(serial.try_clone().ok()?);
+                    let mut line = String::new();
+
+                    // Try to read a line from serial port
+                    match reader.read_line(&mut line) {
+                        Ok(0) => None, // EOF
+                        Ok(_) => {
+                            // Parse NMEA sentence
+                            if let Ok(_) = nmea.parse(&line) {
+                                // Check if we have a valid fix
+                                if let (Some(lat), Some(lon)) = (nmea.latitude, nmea.longitude) {
+                                    let mut fix = NavSatFix::from_coordinates(
+                                        lat,
+                                        lon,
+                                        nmea.altitude.unwrap_or(0.0),
+                                    );
+
+                                    fix.satellites_visible = nmea.num_of_fix_satellites.unwrap_or(0) as u16;
+                                    fix.hdop = nmea.hdop.unwrap_or(99.99) as f32;
+                                    fix.vdop = nmea.vdop.unwrap_or(99.99) as f32;
+                                    fix.speed = nmea.speed_over_ground.unwrap_or(0.0) as f32;
+                                    fix.heading = nmea.true_course.unwrap_or(0.0) as f32;
+
+                                    // Estimate covariance from HDOP (rough approximation)
+                                    let horizontal_accuracy = fix.hdop * 5.0; // meters
+                                    fix.position_covariance[0] = (horizontal_accuracy * horizontal_accuracy) as f64;
+                                    fix.position_covariance[4] = (horizontal_accuracy * horizontal_accuracy) as f64;
+                                    fix.position_covariance[8] = (horizontal_accuracy * horizontal_accuracy * 2.0) as f64;
+                                    fix.position_covariance_type = NavSatFix::COVARIANCE_TYPE_APPROXIMATED;
+
+                                    ctx.log_debug(&format!(
+                                        "GPS NMEA: {:.6}, {:.6}, alt={:.1}m, sats={}, HDOP={:.1}",
+                                        fix.latitude, fix.longitude, fix.altitude,
+                                        fix.satellites_visible, fix.hdop
+                                    ));
+
+                                    Some(fix)
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        }
+                        Err(_) => None,
+                    }
+                } else {
+                    None
+                }
+            }
+            _ => None,
         }
     }
 
@@ -192,9 +335,21 @@ impl Node for GpsNode {
 
     fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("GPS node initialized");
-        if self.sim_enabled {
-            ctx.log_info("GPS simulation mode enabled");
+
+        match self.backend {
+            GpsBackend::Simulation => {
+                ctx.log_info("GPS simulation mode enabled");
+            }
+            GpsBackend::NmeaSerial => {
+                ctx.log_info(&format!("GPS NMEA serial: {} @ {} baud", self.serial_port, self.baud_rate));
+            }
         }
+
+        // Initialize hardware
+        if !self.initialize_gps() {
+            ctx.log_error("Failed to initialize GPS hardware");
+        }
+
         Ok(())
     }
 

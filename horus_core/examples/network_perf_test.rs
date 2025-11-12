@@ -54,7 +54,7 @@ fn bench_local_shm() {
     println!("  Target: <200 ns");
 
     if avg_ns < 200 {
-        println!("  ✓ PASS");
+        println!("  PASS");
     } else {
         println!("  ✗ FAIL (exceeded target)");
     }
@@ -114,7 +114,7 @@ fn bench_unix_socket() {
     println!("  Target: <5 μs");
 
     if avg_us < 5.0 {
-        println!("  ✓ PASS");
+        println!("  PASS");
     } else {
         println!("  ✗ FAIL (exceeded target)");
     }
@@ -165,7 +165,7 @@ fn bench_udp_direct() {
     println!("  Target: <50 μs");
 
     if avg_us < 50.0 {
-        println!("  ✓ PASS");
+        println!("  PASS");
     } else {
         println!("  ✗ FAIL (exceeded target)");
     }

@@ -44,7 +44,11 @@ impl fmt::Display for NodeState {
     }
 }
 
-/// Priority levels for node execution
+/// Priority levels for node execution (DEPRECATED - use u32 directly)
+///
+/// This enum is deprecated in favor of using u32 directly for more flexibility.
+/// Use numeric priorities instead: 0 = highest priority, higher numbers = lower priority.
+#[deprecated(since = "0.2.0", note = "Use u32 directly for priority. Lower numbers = higher priority.")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NodePriority {
     Critical = 0,
@@ -273,7 +277,7 @@ pub struct NodeInfo {
 
     // Configuration
     config: NodeConfig,
-    priority: NodePriority,
+    priority: u32,
 
     // Performance tracking
     metrics: NodeMetrics,
@@ -328,7 +332,7 @@ impl NodeInfo {
             previous_state: NodeState::Uninitialized,
             state_change_time: now,
             config,
-            priority: NodePriority::Normal,
+            priority: 50, // Normal priority (middle range)
             metrics: NodeMetrics::default(),
             creation_time: now,
             last_tick_time: None,
@@ -762,7 +766,7 @@ impl NodeInfo {
     pub fn instance_id(&self) -> &str {
         &self.instance_id
     }
-    pub fn priority(&self) -> NodePriority {
+    pub fn priority(&self) -> u32 {
         self.priority
     }
     pub fn config(&self) -> &NodeConfig {
@@ -785,7 +789,7 @@ impl NodeInfo {
     }
 
     // Setters
-    pub fn set_priority(&mut self, priority: NodePriority) {
+    pub fn set_priority(&mut self, priority: u32) {
         self.priority = priority;
     }
     pub fn set_config(&mut self, config: NodeConfig) {
@@ -849,8 +853,9 @@ pub trait Node: Send {
     }
 
     /// Get node priority (optional override)
-    fn priority(&self) -> NodePriority {
-        NodePriority::Normal
+    /// Lower numbers = higher priority. Default is 50 (normal priority).
+    fn priority(&self) -> u32 {
+        50 // Normal priority
     }
 
     /// Get node configuration (optional override)

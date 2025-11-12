@@ -44,20 +44,20 @@ export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1
 **Terminal 1 - Start sim2d:**
 ```bash
 # Via HORUS CLI (recommended)
-horus sim 2d
+horus sim --2d
 
 # Or directly via cargo
 cd horus_library/tools/sim2d
 cargo run --release
 
 # With custom world image (NEW!)
-horus sim 2d --world-image floor_plan.png
+horus sim --2d --world-image floor_plan.png
 
 # Headless mode for CI/CD (NEW!)
-horus sim 2d --headless
+horus sim --2d --headless
 
 # Full configuration
-horus sim 2d \
+horus sim --2d \
   --world-image map.png \
   --resolution 0.05 \
   --robot configs/robot.yaml \
@@ -320,7 +320,7 @@ img.save('test_map.png')
 EOF
 
 # Load it in sim2d
-horus sim 2d --world-image test_map.png --resolution 0.05
+horus sim --2d --world-image test_map.png --resolution 0.05
 ```
 
 ### How It Works
@@ -345,7 +345,7 @@ horus sim 2d --world-image test_map.png --resolution 0.05
 
 ```bash
 # Use ROS PGM maps directly!
-horus sim 2d \
+horus sim --2d \
   --world-image ~/ros_ws/maps/office.pgm \
   --resolution 0.05 \
   --threshold 254
@@ -357,13 +357,13 @@ Run sim2d without GUI - perfect for CI/CD, servers, and SSH!
 
 ```bash
 # Headless - no window, physics only
-horus sim 2d --headless
+horus sim --2d --headless
 
 # With image
-horus sim 2d --headless --world-image map.png
+horus sim --2d --headless --world-image map.png
 
 # CI/CD example
-horus sim 2d --headless --world-image test_env.png &
+horus sim --2d --headless --world-image test_env.png &
 SIM_PID=$!
 timeout 60s horus run navigation_test.rs
 kill $SIM_PID

@@ -1,0 +1,63 @@
+---
+title: LidarNode
+description: 2D/3D LiDAR laser rangefinder for mapping and obstacle detection
+---
+
+# LidarNode
+
+LiDAR (Light Detection and Ranging) node for 2D and 3D laser rangefinding. Supports RPLidar, YDLIDAR, Hokuyo, SICK, and Velodyne sensors for SLAM, navigation, and obstacle detection.
+
+## Source Code
+
+- [LidarNode Implementation](https://github.com/softmata/horus/tree/main/horus_library/nodes/lidar)
+- [Perception Messages](https://github.com/softmata/horus/blob/main/horus_library/messages/perception.rs)
+
+## Features
+
+- RPLidar A1/A2/A3, YDLIDAR X2/X4
+- Hokuyo URG series, SICK TiM/LMS
+- Velodyne (3D LiDAR)
+- 360° scanning
+- Configurable scan rate (5-20 Hz)
+- Point cloud output
+- Obstacle detection
+- Hardware fallback to simulation
+
+## Quick Start
+
+```rust
+use horus_library::prelude::*;
+
+fn main() -> Result<()> {
+    let mut scheduler = Scheduler::new();
+
+    let mut lidar = LidarNode::new("/dev/ttyUSB0")?;
+    lidar.set_sensor_type(LidarType::RPLidarA2);
+    lidar.set_scan_rate(10);  // 10 Hz
+
+    scheduler.add(Box::new(lidar), 1, Some(true));
+    scheduler.run()?;
+    Ok(())
+}
+```
+
+## Usage
+
+```rust
+let hub = Hub::<LidarScan>::new("lidar/scan")?;
+
+if let Some(scan) = hub.recv(None) {
+    for point in &scan.points {
+        if point.distance < 0.5 {  // Obstacle within 0.5m
+            println!("Obstacle at {:.2}m, angle {}°",
+                point.distance, point.angle);
+        }
+    }
+}
+```
+
+## See Also
+
+- [UltrasonicNode](./ultrasonic) - Short-range sensors
+- [DepthCameraNode](./depth-camera) - 3D depth sensing
+- [CollisionDetectorNode](./collision-detector) - Collision avoidance

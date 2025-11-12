@@ -6,10 +6,25 @@ type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[cfg(feature = "rplidar")]
+use rplidar_drv::{RplidarDevice, RplidarHostProtocol, ScanOptions};
+
+/// LiDAR backend type
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum LidarBackend {
+    Simulation,
+    RplidarA1,
+    RplidarA2,
+    RplidarA3,
+}
+
 /// LiDAR Node - Generic LiDAR interface for obstacle detection and mapping
 ///
 /// Captures laser scan data from various LiDAR sensors and publishes LaserScan messages.
-/// Supports multiple backends (RPLidar, serial communication) and configurable scan parameters.
+/// Supports multiple hardware backends:
+/// - RPLidar A1/A2/A3 series
+/// - YDLIDAR (future)
+/// - Simulation mode for testing
 pub struct LidarNode {
     publisher: Hub<LaserScan>,
 
@@ -19,32 +34,64 @@ pub struct LidarNode {
     min_range: f32,
     max_range: f32,
     angle_increment: f32,
+    backend: LidarBackend,
+    serial_port: String,
 
     // State
     is_initialized: bool,
     scan_count: u64,
     last_scan_time: u64,
+
+    // Hardware drivers
+    #[cfg(feature = "rplidar")]
+    rplidar: Option<RplidarDevice<RplidarHostProtocol>>,
 }
 
 impl LidarNode {
-    /// Create a new LiDAR node with default topic "scan"
+    /// Create a new LiDAR node with default topic "scan" in simulation mode
     pub fn new() -> Result<Self> {
-        Self::new_with_topic("scan")
+        Self::new_with_backend("scan", LidarBackend::Simulation)
     }
 
-    /// Create a new LiDAR node with custom topic
+    /// Create a new LiDAR node with custom topic in simulation mode
     pub fn new_with_topic(topic: &str) -> Result<Self> {
+        Self::new_with_backend(topic, LidarBackend::Simulation)
+    }
+
+    /// Create a new LiDAR node with specific backend
+    pub fn new_with_backend(topic: &str, backend: LidarBackend) -> Result<Self> {
         Ok(Self {
             publisher: Hub::new(topic)?,
             frame_id: "laser_frame".to_string(),
             scan_frequency: 10.0,
             min_range: 0.1,
-            max_range: 30.0,
+            max_range: match backend {
+                LidarBackend::RplidarA1 => 12.0,  // A1: 12m max range
+                LidarBackend::RplidarA2 => 16.0,  // A2: 16m max range
+                LidarBackend::RplidarA3 => 25.0,  // A3: 25m max range
+                _ => 30.0,
+            },
             angle_increment: std::f32::consts::PI / 180.0, // 1 degree
+            backend,
+            serial_port: "/dev/ttyUSB0".to_string(),
             is_initialized: false,
             scan_count: 0,
             last_scan_time: 0,
+            #[cfg(feature = "rplidar")]
+            rplidar: None,
         })
+    }
+
+    /// Set LiDAR backend
+    pub fn set_backend(&mut self, backend: LidarBackend) {
+        self.backend = backend;
+        self.is_initialized = false;
+    }
+
+    /// Set serial port for LiDAR
+    pub fn set_serial_port(&mut self, port: &str) {
+        self.serial_port = port.to_string();
+        self.is_initialized = false;
     }
 
     /// Set frame ID for coordinate system
@@ -92,33 +139,141 @@ impl LidarNode {
             return true;
         }
 
-        // Try to initialize LiDAR hardware
-        // This would connect to actual hardware in a real implementation
-        self.is_initialized = true;
-        true
+        match self.backend {
+            LidarBackend::Simulation => {
+                self.is_initialized = true;
+                true
+            }
+            #[cfg(feature = "rplidar")]
+            LidarBackend::RplidarA1 | LidarBackend::RplidarA2 | LidarBackend::RplidarA3 => {
+                match RplidarDevice::open_port(&self.serial_port) {
+                    Ok(mut device) => {
+                        // Get device info
+                        match device.get_device_info() {
+                            Ok(info) => {
+                                eprintln!("RPLidar connected: model={}, firmware={}.{}, hardware={}",
+                                    info.model, info.firmware_version.0, info.firmware_version.1,
+                                    info.hardware_version);
+                            }
+                            Err(e) => {
+                                eprintln!("Failed to get RPLidar info: {:?}", e);
+                            }
+                        }
+
+                        // Check health
+                        match device.check_health() {
+                            Ok(health) => {
+                                if !health.is_healthy() {
+                                    eprintln!("RPLidar health warning: {:?}", health);
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("Failed to check RPLidar health: {:?}", e);
+                            }
+                        }
+
+                        // Start motor
+                        if let Err(e) = device.start_motor() {
+                            eprintln!("Failed to start RPLidar motor: {:?}", e);
+                            return false;
+                        }
+
+                        self.rplidar = Some(device);
+                        self.is_initialized = true;
+                        true
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to open RPLidar on {}: {:?}", self.serial_port, e);
+                        false
+                    }
+                }
+            }
+            _ => {
+                eprintln!("Unsupported LiDAR backend: {:?}", self.backend);
+                false
+            }
+        }
     }
 
-    fn generate_scan_data(&self) -> Vec<f32> {
-        // Generate synthetic scan data for testing
-        let num_points = (2.0 * std::f32::consts::PI / self.angle_increment) as usize;
-        let mut ranges = Vec::with_capacity(num_points);
+    fn generate_scan_data(&mut self) -> Option<Vec<f32>> {
+        match self.backend {
+            LidarBackend::Simulation => {
+                // Generate synthetic scan data for testing
+                let num_points = (2.0 * std::f32::consts::PI / self.angle_increment) as usize;
+                let mut ranges = Vec::with_capacity(num_points);
 
-        for i in 0..num_points {
-            let angle = i as f32 * self.angle_increment;
+                for i in 0..num_points {
+                    let angle = i as f32 * self.angle_increment;
 
-            // Create some obstacles at different distances
-            let range = if angle.cos() > 0.8 {
-                2.0 + 0.5 * angle.sin() // Wall-like obstacle
-            } else if (angle - std::f32::consts::PI / 2.0).abs() < 0.5 {
-                1.0 // Closer obstacle
-            } else {
-                self.max_range // No obstacle detected
-            };
+                    // Create some obstacles at different distances
+                    let range = if angle.cos() > 0.8 {
+                        2.0 + 0.5 * angle.sin() // Wall-like obstacle
+                    } else if (angle - std::f32::consts::PI / 2.0).abs() < 0.5 {
+                        1.0 // Closer obstacle
+                    } else {
+                        self.max_range // No obstacle detected
+                    };
 
-            ranges.push(range.min(self.max_range).max(self.min_range));
+                    ranges.push(range.min(self.max_range).max(self.min_range));
+                }
+
+                Some(ranges)
+            }
+            #[cfg(feature = "rplidar")]
+            LidarBackend::RplidarA1 | LidarBackend::RplidarA2 | LidarBackend::RplidarA3 => {
+                if let Some(ref mut device) = self.rplidar {
+                    // Start scan
+                    match device.start_scan() {
+                        Ok(mut scan) => {
+                            let mut ranges = vec![0.0; 360];
+
+                            // Collect one full rotation of scan data
+                            let mut got_full_scan = false;
+                            for _ in 0..400 {
+                                // Read up to 400 points (more than 360 degrees)
+                                match scan.next() {
+                                    Ok(Some(measurement)) => {
+                                        let angle_deg = measurement.angle();
+                                        let distance_m = measurement.distance() / 1000.0; // mm to meters
+                                        let quality = measurement.quality();
+
+                                        // Only use high-quality measurements
+                                        if quality > 10 && distance_m >= self.min_range
+                                            && distance_m <= self.max_range
+                                        {
+                                            let idx = angle_deg as usize % 360;
+                                            ranges[idx] = distance_m;
+                                        }
+
+                                        // Check if we completed a rotation
+                                        if measurement.is_sync() && got_full_scan {
+                                            break;
+                                        }
+                                        if !got_full_scan && angle_deg > 180.0 {
+                                            got_full_scan = true;
+                                        }
+                                    }
+                                    Ok(None) => break,
+                                    Err(e) => {
+                                        eprintln!("RPLidar scan error: {:?}", e);
+                                        break;
+                                    }
+                                }
+                            }
+
+                            Some(ranges)
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to start RPLidar scan: {:?}", e);
+                            None
+                        }
+                    }
+                } else {
+                    None
+                }
+            }
+            _ => None,
         }
-
-        ranges
     }
 
     fn publish_scan(&self, ranges: Vec<f32>) {
@@ -159,14 +314,25 @@ impl Node for LidarNode {
         }
 
         // Generate and publish scan data
-        let ranges = self.generate_scan_data();
-        self.scan_count += 1;
-        self.last_scan_time = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_millis() as u64;
+        if let Some(ranges) = self.generate_scan_data() {
+            self.scan_count += 1;
+            self.last_scan_time = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as u64;
 
-        self.publish_scan(ranges);
+            self.publish_scan(ranges);
+        }
+    }
+}
+
+impl Drop for LidarNode {
+    fn drop(&mut self) {
+        // Stop motor when node is dropped
+        #[cfg(feature = "rplidar")]
+        if let Some(ref mut device) = self.rplidar {
+            let _ = device.stop_motor();
+        }
     }
 }
 

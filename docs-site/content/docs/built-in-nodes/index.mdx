@@ -1,0 +1,326 @@
+---
+title: Built-In Nodes/Drivers
+description: Production-ready nodes and hardware drivers included in horus_library
+order: 18
+---
+
+# Built-In Nodes/Drivers
+
+The `horus_library` includes a comprehensive collection of **production-ready nodes** and **hardware drivers** for building robotics applications. All hardware nodes support automatic **simulation fallback** when hardware is unavailable.
+
+## Quick Start
+
+```rust
+use horus_library::prelude::*;
+
+fn main() -> Result<()> {
+    let mut scheduler = Scheduler::new();
+
+    // Add any built-in node
+    let ultrasonic = UltrasonicNode::new()?;
+    scheduler.add(Box::new(ultrasonic), 1, Some(true));
+
+    scheduler.run()?;
+    Ok(())
+}
+```
+
+---
+
+## HORUS Philosophy: Plug-and-Play Nodes, Not Raw Drivers
+
+HORUS takes a different approach than traditional robotics frameworks. Instead of just importing low-level hardware drivers, **HORUS provides fully-integrated, configurable nodes** that are ready to use out of the box.
+
+### Why Nodes, Not Drivers?
+
+Traditional approach (raw drivers):
+```rust
+// Traditional: Import driver, manually configure everything
+use sensor_driver::SensorX;
+let mut sensor = SensorX::new()?;
+sensor.set_register(0x2A, 0xFF);  // What does this do?
+sensor.configure_mode(3);          // Magic numbers
+// ...lots of low-level setup
+```
+
+HORUS approach (plug-and-play nodes):
+```rust
+// HORUS: Pre-configured, high-level node with clear API
+let mut sensor = SensorXNode::new()?;
+sensor.set_sample_rate(100);      // Clear, intuitive configuration
+sensor.set_filter_mode(FilterMode::Median);
+sensor.calibrate()?;
+// Ready to use with intelligent defaults
+```
+
+### Customization with Freedom
+
+Every built-in node is **fully customizable** while maintaining simplicity:
+
+- **Flexible configuration**: Map pins, addresses, parameters to your specific setup
+- **Intelligent defaults**: Works immediately, tune as needed
+- **Clear abstractions**: No magic numbers or register manipulation
+- **Hardware/simulation fallback**: Test without physical hardware
+- **Message-based interface**: Standard pub/sub communication across all nodes
+
+### Custom Drivers & Community Nodes
+
+The built-in nodes cover common robotics hardware, but **HORUS supports any custom driver or hardware**.
+
+**Need a driver not listed here?**
+
+You have two options:
+
+1. **Create your own node** - Follow the [Creating Custom Nodes](/creating-custom-nodes) guide to wrap any hardware driver into a HORUS node with the same plug-and-play experience
+2. **Publish to the Marketplace** - Share your custom nodes with the community through the [HORUS Marketplace](/marketplace)
+
+```bash
+# Publish your custom node package
+horus pkg publish my-custom-driver
+
+# Others can install it
+horus pkg install your-username/my-custom-driver
+```
+
+The marketplace enables:
+- Share custom hardware nodes (CAN devices, specialized sensors, custom motors, etc.)
+- Distribute pre-configured, customizable versions of existing drivers
+- Build a library of plug-and-play robotics components
+- Contribute to the HORUS ecosystem
+
+See **[Publishing Packages](/publishing-packages)** for the complete guide.
+
+---
+
+## Node Categories
+
+### Communication Protocols
+
+Hardware interfaces for industry-standard communication protocols:
+
+- **[I2cBusNode](./i2c-bus)** - I2C/TWI devices (sensors, displays, power monitors)
+- **[SpiBusNode](./spi-bus)** - SPI devices (ADCs, SD cards, displays)
+- **[CanBusNode](./can-bus)** - CAN bus with J1939, CANopen, DeviceNet support
+- **[SerialNode](./serial)** - UART/RS232/RS485 serial communication
+- **[ModbusNode](./modbus)** - Modbus RTU/TCP for industrial devices
+
+### Motor Controllers
+
+Drive various types of motors with precise control:
+
+- **[StepperMotorNode](./stepper-motor)** - Stepper motors with motion profiling (up to 8 motors)
+- **[BldcMotorNode](./bldc-motor)** - Brushless motors/ESCs (10 protocols, up to 8 motors)
+- **[DynamixelNode](./dynamixel)** - Dynamixel smart servos (18+ models, both protocols)
+- **[RoboclawMotorNode](./roboclaw-motor)** - Roboclaw dual motor controllers
+- **[DcMotorNode](./dc-motor)** - Basic DC motor control
+- **[ServoControllerNode](./servo-controller)** - Standard PWM servos
+
+### Sensors
+
+Interface with common robotics sensors:
+
+- **[UltrasonicNode](./ultrasonic)** - HC-SR04 distance sensors
+- **[BatteryMonitorNode](./battery-monitor)** - INA219/INA226 power monitoring
+- **[ImuNode](./imu)** - Inertial measurement units (MPU6050, BNO055)
+- **[GpsNode](./gps)** - GPS/GNSS receivers
+- **[EncoderNode](./encoder)** - Quadrature encoders
+- **[LidarNode](./lidar)** - Laser range finders
+- **[DepthCameraNode](./depth-camera)** - RealSense/ZED depth cameras
+- **[CameraNode](./camera)** - Vision cameras
+- **[ForceTorqueSensorNode](./force-torque)** - Force/torque sensors
+
+### Control & Navigation
+
+High-level control algorithms:
+
+- **[PidControllerNode](./pid-controller)** - PID control loops
+- **[DifferentialDriveNode](./differential-drive)** - 2-wheel robot base control
+- **[OdometryNode](./odometry)** - Position tracking from wheel encoders
+- **[PathPlannerNode](./path-planner)** - Path planning algorithms
+- **[LocalizationNode](./localization)** - Robot localization
+
+### Safety & Monitoring
+
+Safety systems and diagnostics:
+
+- **[EmergencyStopNode](./emergency-stop)** - E-stop handling
+- **[SafetyMonitorNode](./safety-monitor)** - System health monitoring
+- **[CollisionDetectorNode](./collision-detector)** - Collision detection
+- **[DigitalIONode](./digital-io)** - GPIO input/output
+
+### User Interfaces
+
+Human-robot interaction:
+
+- **[JoystickNode](./joystick)** - Game controller input
+- **[KeyboardInputNode](./keyboard-input)** - Keyboard control
+- **[ImageProcessorNode](./image-processor)** - Image processing utilities
+
+---
+
+## Hardware Support
+
+### Automatic Fallback
+
+All hardware nodes gracefully fall back to **simulation mode** when hardware is unavailable:
+
+```rust
+// Automatically uses hardware if available, simulation otherwise
+let ultrasonic = UltrasonicNode::new()?;
+```
+
+Console output:
+```
+[INFO] UltrasonicNode sensor 0: (SIM) distance 1.234 m
+```
+
+### Hardware Detection
+
+The `horus run` and `horus check` commands automatically detect hardware requirements:
+
+```bash
+$ horus run robot.rs
+
+⚠ Hardware Configuration Check
+
+Missing cargo features:
+  • i2c-hardware
+  • gpio-hardware
+
+To enable hardware support:
+  > cargo build --features="i2c-hardware,gpio-hardware"
+
+Note: Nodes will automatically fall back to SIMULATION mode if hardware is unavailable.
+```
+
+### Enabling Hardware Support
+
+**1. Install system packages:**
+
+```bash
+# Raspberry Pi / Debian-based
+sudo apt install libraspberrypi-dev i2c-tools can-utils
+
+# Enable interfaces
+sudo raspi-config  # Interface Options -> I2C, SPI, etc.
+```
+
+**2. Enable cargo features in your project:**
+
+```toml
+[dependencies]
+horus_library = { version = "0.1", features = ["i2c-hardware", "gpio-hardware"] }
+```
+
+**3. Build with hardware support:**
+
+```bash
+cargo build --release --features="i2c-hardware,gpio-hardware"
+```
+
+See **[Installation Guide](/getting-started/installation#hardware-driver-support)** for platform-specific instructions.
+
+---
+
+## Feature Flags
+
+Hardware support is opt-in via cargo features:
+
+| Feature | Description | System Requirements |
+|---------|-------------|---------------------|
+| `i2c-hardware` | I2C bus access | i2c-tools, /dev/i2c-* |
+| `spi-hardware` | SPI bus access | /dev/spidev*.* |
+| `gpio-hardware` | GPIO/PWM access | libraspberrypi-dev |
+| `can-hardware` | CAN bus access | can-utils, SocketCAN |
+| `serial-hardware` | Serial port access | /dev/tty*, dialout group |
+
+**Default:** All hardware features are **disabled** (simulation only)
+
+---
+
+## Common Patterns
+
+### Multi-Sensor Setup
+
+```rust
+use horus_library::prelude::*;
+
+fn main() -> Result<()> {
+    let mut scheduler = Scheduler::new();
+
+    // All sensors at same priority (run in parallel)
+    scheduler.add(Box::new(UltrasonicNode::new()?), 2, Some(true));
+    scheduler.add(Box::new(ImuNode::new()?), 2, Some(true));
+    scheduler.add(Box::new(GpsNode::new()?), 2, Some(true));
+
+    scheduler.run()?;
+    Ok(())
+}
+```
+
+### Motor Control System
+
+```rust
+use horus_library::prelude::*;
+
+fn main() -> Result<()> {
+    let mut scheduler = Scheduler::new();
+
+    // Control pipeline
+    scheduler.add(Box::new(JoystickNode::new()?), 1, Some(true));
+    scheduler.add(Box::new(DifferentialDriveNode::new(...)?), 2, Some(true));
+    scheduler.add(Box::new(DcMotorNode::new()?), 3, Some(true));
+
+    scheduler.run()?;
+    Ok(())
+}
+```
+
+### Communication Gateway
+
+```rust
+use horus_library::prelude::*;
+
+fn main() -> Result<()> {
+    let mut scheduler = Scheduler::new();
+
+    // Protocol bridges
+    scheduler.add(Box::new(I2cBusNode::new()?), 1, Some(true));
+    scheduler.add(Box::new(CanBusNode::new("can0")?), 1, Some(true));
+    scheduler.add(Box::new(SerialNode::new("/dev/ttyUSB0")?), 1, Some(true));
+
+    scheduler.run()?;
+    Ok(())
+}
+```
+
+---
+
+## Next Steps
+
+- Browse individual node documentation for detailed configuration options
+- Check **[Using Pre-Built Nodes](/using-prebuilt-nodes)** for composition patterns
+- See **[Basic Examples](/basic-examples)** for complete working systems
+- Review **[Hardware Installation](/getting-started/installation#hardware-driver-support)** for setup
+
+---
+
+## Node Documentation Index
+
+### Communication
+- [I2C Bus](./i2c-bus) | [SPI Bus](./spi-bus) | [CAN Bus](./can-bus) | [Serial](./serial) | [Modbus](./modbus)
+
+### Motors
+- [Stepper](./stepper-motor) | [BLDC](./bldc-motor) | [Dynamixel](./dynamixel) | [Roboclaw](./roboclaw-motor) | [DC Motor](./dc-motor) | [Servo](./servo-controller)
+
+### Sensors
+- [Ultrasonic](./ultrasonic) | [Battery](./battery-monitor) | [IMU](./imu) | [GPS](./gps) | [Encoder](./encoder) | [LiDAR](./lidar) | [Depth Camera](./depth-camera) | [Camera](./camera) | [Force/Torque](./force-torque)
+
+### Control
+- [PID](./pid-controller) | [Diff Drive](./differential-drive) | [Odometry](./odometry) | [Path Planner](./path-planner) | [Localization](./localization)
+
+### Safety & I/O
+- [Emergency Stop](./emergency-stop) | [Safety Monitor](./safety-monitor) | [Collision Detection](./collision-detector) | [Digital I/O](./digital-io)
+
+### Interfaces
+- [Joystick](./joystick) | [Keyboard](./keyboard-input) | [Image Processor](./image-processor)

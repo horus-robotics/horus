@@ -87,7 +87,7 @@ impl TlsConfig {
             anyhow::bail!("mkcert CA is not installed. Run 'mkcert -install' first.");
         }
 
-        println!("🔐 Generating trusted TLS certificate using mkcert...");
+        println!("Generating trusted TLS certificate using mkcert...");
 
         // Build list of hostnames/IPs to include
         let mut hosts = vec!["localhost".to_string(), "127.0.0.1".to_string(), "::1".to_string()];
@@ -117,12 +117,12 @@ impl TlsConfig {
             );
         }
 
-        println!("✓ Trusted certificate generated successfully!");
+        println!("Trusted certificate generated successfully!");
         println!("   Cert: {}", self.cert_path.display());
         println!("   Key:  {}", self.key_path.display());
         println!("   Hostnames: {}", hosts.join(", "));
         println!();
-        println!("✓ No browser warnings - certificate is trusted by your system!");
+        println!("No browser warnings - certificate is trusted by your system!");
 
         Ok(())
     }
@@ -130,7 +130,7 @@ impl TlsConfig {
     /// Generate self-signed certificate
     pub fn generate_self_signed_cert(&self, hostname: &str) -> Result<()> {
 
-        println!("🔐 Generating self-signed TLS certificate...");
+        println!("Generating self-signed TLS certificate...");
         println!("   Hostname: {}", hostname);
 
         // Use openssl to generate self-signed certificate
@@ -175,7 +175,7 @@ impl TlsConfig {
             // Try mkcert first
             if Self::is_mkcert_installed() && Self::is_mkcert_ca_installed() {
                 if let Err(e) = self.generate_mkcert_cert() {
-                    eprintln!("⚠️  mkcert failed: {}", e);
+                    eprintln!("WARNING: mkcert failed: {}", e);
                     eprintln!("   Falling back to self-signed certificate...\n");
                     self.generate_self_signed_cert(hostname)?;
                 }
@@ -195,21 +195,21 @@ impl TlsConfig {
 
     /// Setup certificates with mkcert (interactive)
     pub fn setup_trusted_certificates(&self) -> Result<()> {
-        println!("🔐 Setting up trusted TLS certificates for HORUS dashboard\n");
+        println!("Setting up trusted TLS certificates for HORUS dashboard\n");
 
         // Check if mkcert is installed
         if !Self::is_mkcert_installed() {
-            println!("⚠️  mkcert is not installed");
+            println!("WARNING: mkcert is not installed");
             print_mkcert_installation();
             anyhow::bail!("Please install mkcert and run 'horus init --setup-certs' again");
         }
 
-        println!("✓ mkcert is installed");
+        println!("mkcert is installed");
 
         // Check if CA is installed
         if !Self::is_mkcert_ca_installed() {
-            println!("⚠️  mkcert CA is not installed");
-            println!("\nℹ️  Installing mkcert CA (will ask for sudo password)...");
+            println!("WARNING: mkcert CA is not installed");
+            println!("\nInstalling mkcert CA (will ask for sudo password)...");
             println!("   This is a one-time setup per device\n");
 
             let status = Command::new("mkcert")
@@ -221,14 +221,14 @@ impl TlsConfig {
                 anyhow::bail!("Failed to install mkcert CA");
             }
 
-            println!("\n✓ mkcert CA installed successfully!");
+            println!("\nmkcert CA installed successfully!");
         } else {
-            println!("✓ mkcert CA is already installed");
+            println!("mkcert CA is already installed");
         }
 
         // Remove existing certificates if any
         if self.certificates_exist() {
-            println!("\nℹ️  Removing existing certificates...");
+            println!("\nRemoving existing certificates...");
             let _ = fs::remove_file(&self.cert_path);
             let _ = fs::remove_file(&self.key_path);
         }
@@ -237,7 +237,7 @@ impl TlsConfig {
         println!();
         self.generate_mkcert_cert()?;
 
-        println!("\n🎉 Certificate setup complete!");
+        println!("\nCertificate setup complete!");
         println!("   Your HORUS dashboard will now be trusted by all browsers");
         println!("   on this device with no security warnings!\n");
 
@@ -294,9 +294,9 @@ pub fn print_mkcert_installation() {
 
 /// Print instructions for setting up mkcert
 pub fn print_mkcert_instructions() {
-    println!("⚠️  Using self-signed certificate - browsers will show security warnings");
+    println!("WARNING: Using self-signed certificate - browsers will show security warnings");
     println!();
-    println!("💡 For trusted certificates (no browser warnings), install mkcert:");
+    println!("For trusted certificates (no browser warnings), install mkcert:");
     println!("   1. Install mkcert:");
 
     #[cfg(target_os = "linux")]

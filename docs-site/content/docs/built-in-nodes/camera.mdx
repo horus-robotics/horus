@@ -1,0 +1,58 @@
+---
+title: CameraNode
+description: Vision camera for image capture and computer vision
+---
+
+# CameraNode
+
+Vision camera node for image capture supporting USB cameras, Raspberry Pi Camera Module, and network cameras. Provides image streaming for computer vision, object detection, and visual navigation.
+
+## Source Code
+
+- [CameraNode Implementation](https://github.com/softmata/horus/tree/main/horus_library/nodes/camera)
+- [Vision Messages](https://github.com/softmata/horus/blob/main/horus_library/messages/vision.rs)
+
+## Features
+
+- USB cameras (V4L2)
+- Raspberry Pi Camera Module
+- IP cameras (RTSP/HTTP)
+- Configurable resolution and framerate
+- JPEG/PNG image output
+- OpenCV integration
+- Hardware fallback to simulation
+
+## Quick Start
+
+```rust
+use horus_library::prelude::*;
+
+fn main() -> Result<()> {
+    let mut scheduler = Scheduler::new();
+
+    let mut camera = CameraNode::new(0)?;  // Camera index 0
+    camera.set_resolution(640, 480);
+    camera.set_framerate(30);
+
+    scheduler.add(Box::new(camera), 1, Some(true));
+    scheduler.run()?;
+    Ok(())
+}
+```
+
+## Usage
+
+```rust
+let hub = Hub::<CameraFrame>::new("camera/frame")?;
+
+if let Some(frame) = hub.recv(None) {
+    println!("Frame: {}x{}, {} bytes",
+        frame.width, frame.height, frame.data.len());
+    // Process image...
+}
+```
+
+## See Also
+
+- [DepthCameraNode](./depth-camera) - 3D depth cameras
+- [ImageProcessorNode](./image-processor) - Image processing

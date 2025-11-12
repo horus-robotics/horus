@@ -49,12 +49,21 @@ impl BenchmarkResult {
         let len = latencies_ns.len();
         let mean = latencies_ns.iter().sum::<f64>() / len as f64;
 
+        // Calculate median correctly for even-length arrays
+        let median_value = if len % 2 == 0 {
+            // Even length: average the two middle values
+            (latencies_ns[len / 2 - 1] + latencies_ns[len / 2]) / 2.0
+        } else {
+            // Odd length: take the middle value
+            latencies_ns[len / 2]
+        };
+
         Statistics {
             mean: Duration::from_nanos(mean as u64),
-            median: Duration::from_nanos(latencies_ns[len / 2] as u64),
-            p50: Duration::from_nanos(latencies_ns[len / 2] as u64),
-            p95: Duration::from_nanos(latencies_ns[len * 95 / 100] as u64),
-            p99: Duration::from_nanos(latencies_ns[len * 99 / 100] as u64),
+            median: Duration::from_nanos(median_value as u64),
+            p50: Duration::from_nanos(median_value as u64),
+            p95: Duration::from_nanos(calculate_percentile(&latencies_ns, 95.0) as u64),
+            p99: Duration::from_nanos(calculate_percentile(&latencies_ns, 99.0) as u64),
             min: Duration::from_nanos(latencies_ns[0] as u64),
             max: Duration::from_nanos(latencies_ns[len - 1] as u64),
             std_dev: calculate_std_dev(&latencies_ns, mean),
@@ -104,10 +113,43 @@ impl Statistics {
     }
 }
 
-/// Calculate standard deviation
+/// Calculate standard deviation using unbiased sample variance (n-1 denominator)
 fn calculate_std_dev(values: &[f64], mean: f64) -> f64 {
-    let variance = values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64;
+    if values.len() < 2 {
+        return 0.0;
+    }
+    // Use n-1 for unbiased sample variance estimator
+    let variance = values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / (values.len() - 1) as f64;
     variance.sqrt()
+}
+
+/// Calculate percentile using linear interpolation (NIST R-7 method)
+/// This is the standard method used by NumPy, Excel, and most statistical packages
+fn calculate_percentile(values: &[f64], percentile: f64) -> f64 {
+    if values.is_empty() {
+        return 0.0;
+    }
+
+    let n = values.len();
+    if n == 1 {
+        return values[0];
+    }
+
+    // NIST R-7 method: h = (n-1) * p/100
+    let h = (n - 1) as f64 * (percentile / 100.0);
+    let h_floor = h.floor() as usize;
+    let h_ceil = h.ceil() as usize;
+
+    if h_floor >= n - 1 {
+        return values[n - 1];
+    }
+
+    // Linear interpolation between floor and ceil
+    let lower = values[h_floor];
+    let upper = values[h_ceil];
+    let weight = h - h_floor as f64;
+
+    lower + weight * (upper - lower)
 }
 
 /// Benchmark message for testing

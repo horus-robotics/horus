@@ -12,12 +12,16 @@ members = [
     "horus_library/apps/tanksim",
    # Tools
     "horus_library/tools/sim2d",
+    "horus_library/tools/sim3d",
     "horus_router",  # Router service
     "benchmarks",
     "horus_py",
 ]
 exclude = [
     ".horus",  # Exclude horus run temporary workspace
+    "*/.horus",
+    "**/.horus",
+    "tests/*/.horus",
 ]
 
 [workspace.dependencies]

@@ -183,15 +183,22 @@ fn on_error(&mut self, error: &str, ctx: &mut NodeInfo) {
 
 ### `priority()`
 
-Returns the execution priority for this node.
+Returns the execution priority for this node. Lower numbers = higher priority.
 
 ```rust
-fn priority(&self) -> NodePriority {
-    NodePriority::Normal
+fn priority(&self) -> u32 {
+    50  // Normal priority (default)
 }
 ```
 
-**Returns**: `NodePriority` enum value (Critical=0, High=1, Normal=2, Low=3, Background=4)
+**Returns**: `u32` priority value. Common values:
+- `0` = Critical (highest priority)
+- `10` = High
+- `50` = Normal (default)
+- `80` = Low
+- `100` = Background (lowest priority)
+
+You can use any u32 value for fine-grained control.
 
 ### `is_healthy()`
 
@@ -396,17 +403,18 @@ Nodes can be in these states (managed automatically by scheduler):
 
 ## Priority Levels
 
+Priorities are represented as `u32` values where **lower numbers = higher priority**.
+
 ```rust
-pub enum NodePriority {
-    Critical = 0,    // Highest priority
-    High = 1,
-    Normal = 2,      // Default
-    Low = 3,
-    Background = 4,  // Lowest priority
-}
+// Recommended priority constants
+const CRITICAL: u32    = 0;   // Highest priority
+const HIGH: u32        = 10;
+const NORMAL: u32      = 50;  // Default
+const LOW: u32         = 80;
+const BACKGROUND: u32  = 100; // Lowest priority
 ```
 
-Nodes execute in priority order each tick. Use priorities to ensure critical nodes run first.
+Nodes execute in priority order each tick. Use priorities to ensure critical nodes run first. You can use any u32 value (0-4294967295) for fine-grained control.
 
 ## See Also
 

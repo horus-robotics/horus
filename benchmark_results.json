@@ -1,0 +1,54 @@
+[
+  {
+    "platform": {
+      "cpu_vendor": "Intel",
+      "cpu_model": "Intel(R) Core(TM) i7-10750H CPU @ 2.60GHz",
+      "cpu_family": 6,
+      "cpu_stepping": 2,
+      "base_frequency_ghz": 2.592681990130096,
+      "num_physical_cores": 6,
+      "num_logical_cores": 12,
+      "cache_l1d_kb": 32,
+      "cache_l1i_kb": 32,
+      "cache_l2_kb": 256,
+      "cache_l3_kb": 12288,
+      "os": "linux",
+      "kernel_version": "6.14.0-35-generic",
+      "arch": "x86_64"
+    },
+    "timestamp": "1762904899",
+    "link_stats": {
+      "median_cycles": 1060,
+      "median_ns": 408,
+      "mean_cycles": 1064.96834144062,
+      "std_dev_cycles": 98.41756917388845,
+      "p95_cycles": 1242,
+      "p99_cycles": 1302,
+      "min_cycles": 818,
+      "max_cycles": 1326,
+      "ci_lower_cycles": 1060,
+      "ci_upper_cycles": 1060,
+      "sample_count": 485777,
+      "outliers_removed": 14223
+    },
+    "hub_stats": {
+      "median_cycles": 1708,
+      "median_ns": 658,
+      "mean_cycles": 1767.9985277017927,
+      "std_dev_cycles": 398.8892096441385,
+      "p95_cycles": 2536,
+      "p99_cycles": 2896,
+      "min_cycles": 838,
+      "max_cycles": 3060,
+      "ci_lower_cycles": 1704,
+      "ci_upper_cycles": 1710,
+      "sample_count": 119541,
+      "outliers_removed": 10619
+    },
+    "rdtsc_overhead_cycles": 30,
+    "tsc_drift_cycles": 0,
+    "tsc_verification_passed": false,
+    "cpu_frequency_source": "rdtsc_measured",
+    "measurement_quality": "invalid"
+  }
+]

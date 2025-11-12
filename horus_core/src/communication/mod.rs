@@ -36,7 +36,7 @@ pub mod traits;
 // Re-export commonly used types for convenience
 pub use config::{HorusConfig, HubConfig};
 pub use hub::Hub;
-pub use link::{Link, LinkMetrics};
+pub use link::{ConnectionState, Link, LinkMetrics, LinkRole};
 pub use traits::{Channel, Publisher, Subscriber};
 
 use crate::communication::traits::{Publisher as PublisherTrait, Subscriber as SubscriberTrait};

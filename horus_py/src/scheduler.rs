@@ -1,3 +1,4 @@
+use crate::config::PySchedulerConfig;
 use crate::node::PyNodeInfo;
 use horus::{NodeHeartbeat, NodeInfo as CoreNodeInfo};
 use pyo3::exceptions::PyRuntimeError;
@@ -19,6 +20,20 @@ struct RegisteredNode {
     cached_info: Option<Py<PyNodeInfo>>, // Cache PyNodeInfo to avoid creating new ones every tick
     rate_hz: f64,                        // Phase 1: Per-node rate control
     last_tick: Instant,                  // Phase 1: Track last execution time
+    // Fault tolerance fields
+    failure_count: u32,                  // Total failures
+    consecutive_failures: u32,           // Consecutive failures (reset on success)
+    circuit_open: bool,                  // Circuit breaker state
+    last_restart_attempt: Option<Instant>, // Track when we last tried to restart
+    // Soft real-time fields
+    deadline_ms: Option<f64>,            // Optional deadline in milliseconds
+    deadline_misses: u64,                // Counter for deadline violations
+    last_tick_duration_ms: f64,          // Last tick execution time
+    // Watchdog fields
+    watchdog_enabled: bool,              // Is watchdog enabled for this node?
+    watchdog_timeout_ms: u64,            // Watchdog timeout in milliseconds
+    last_watchdog_feed: Instant,         // Last time watchdog was fed
+    watchdog_expired: bool,              // Has watchdog expired?
 }
 
 /// Python wrapper for HORUS Scheduler with per-node rate control
@@ -30,25 +45,55 @@ struct RegisteredNode {
 pub struct PyScheduler {
     nodes: Arc<Mutex<Vec<RegisteredNode>>>,
     running: Arc<Mutex<bool>>,
-    tick_rate_hz: f64,      // Global scheduler tick rate
-    scheduler_name: String, // Scheduler name for registry
-    working_dir: PathBuf,   // Working directory for registry
+    tick_rate_hz: f64,            // Global scheduler tick rate
+    scheduler_name: String,       // Scheduler name for registry
+    working_dir: PathBuf,         // Working directory for registry
+    circuit_breaker_enabled: bool, // Fault tolerance: circuit breaker
+    max_failures: u32,             // Max failures before circuit opens
+    auto_restart: bool,            // Auto-restart failed nodes
+    deadline_monitoring: bool,     // Soft real-time: enable deadline warnings
+    watchdog_enabled: bool,        // Global watchdog enable flag
+    watchdog_timeout_ms: u64,      // Default watchdog timeout
 }
 
 #[pymethods]
 impl PyScheduler {
     #[new]
-    pub fn new() -> PyResult<Self> {
+    #[pyo3(signature = (config=None))]
+    pub fn new(config: Option<PySchedulerConfig>) -> PyResult<Self> {
         // Create heartbeat directory for dashboard monitoring
         Self::setup_heartbeat_directory();
+
+        // Extract config values or use defaults
+        let (tick_rate, circuit_breaker, max_failures, auto_restart, deadline_monitoring, watchdog_enabled, watchdog_timeout_ms) = if let Some(ref cfg) = config {
+            (cfg.tick_rate, cfg.circuit_breaker, cfg.max_failures, cfg.auto_restart, cfg.deadline_monitoring, cfg.watchdog_enabled, cfg.watchdog_timeout_ms)
+        } else {
+            (100.0, true, 5, true, false, false, 1000) // Standard defaults
+        };
 
         Ok(PyScheduler {
             nodes: Arc::new(Mutex::new(Vec::new())),
             running: Arc::new(Mutex::new(false)),
-            tick_rate_hz: 100.0, // Default 100Hz
+            tick_rate_hz: tick_rate,
             scheduler_name: "PythonScheduler".to_string(),
             working_dir: std::env::current_dir().unwrap_or_else(|_| PathBuf::from("/")),
+            circuit_breaker_enabled: circuit_breaker,
+            max_failures,
+            auto_restart,
+            deadline_monitoring,
+            watchdog_enabled,
+            watchdog_timeout_ms,
         })
+    }
+
+    /// Create scheduler from a configuration preset
+    ///
+    /// Example:
+    ///     config = horus.SchedulerConfig.mobile()
+    ///     scheduler = horus.Scheduler.from_config(config)
+    #[staticmethod]
+    pub fn from_config(config: PySchedulerConfig) -> PyResult<Self> {
+        Self::new(Some(config))
     }
 
     /// Add a node with priority, logging, and optional rate control
@@ -85,6 +130,20 @@ impl PyScheduler {
             cached_info: None,         // Will be created on first use
             rate_hz: node_rate,        // Phase 1: Per-node rate
             last_tick: Instant::now(), // Phase 1: Initialize timestamp
+            // Fault tolerance fields
+            failure_count: 0,
+            consecutive_failures: 0,
+            circuit_open: false,
+            last_restart_attempt: None,
+            // Soft real-time fields
+            deadline_ms: None,         // No deadline by default
+            deadline_misses: 0,
+            last_tick_duration_ms: 0.0,
+            // Watchdog fields
+            watchdog_enabled: false,   // Disabled by default, enable per-node
+            watchdog_timeout_ms: self.watchdog_timeout_ms, // Use global default
+            last_watchdog_feed: Instant::now(),
+            watchdog_expired: false,
         });
 
         println!(
@@ -122,6 +181,101 @@ impl PyScheduler {
         )))
     }
 
+    /// Set per-node deadline for soft real-time scheduling
+    ///
+    /// Args:
+    ///     node_name: Name of the node
+    ///     deadline_ms: Deadline in milliseconds (None to disable)
+    ///
+    /// The deadline is the maximum allowed execution time for a single tick.
+    /// If a tick takes longer than the deadline, it's counted as a deadline miss.
+    #[pyo3(signature = (node_name, deadline_ms=None))]
+    fn set_node_deadline(&mut self, node_name: String, deadline_ms: Option<f64>) -> PyResult<()> {
+        if let Some(d) = deadline_ms {
+            if d <= 0.0 || d > 10000.0 {
+                return Err(PyRuntimeError::new_err(
+                    "Deadline must be between 0 and 10000 ms",
+                ));
+            }
+        }
+
+        let mut nodes = self
+            .nodes
+            .lock()
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
+
+        for registered in nodes.iter_mut() {
+            if registered.name == node_name {
+                registered.deadline_ms = deadline_ms;
+                if let Some(d) = deadline_ms {
+                    println!("Set node '{}' deadline to {}ms", node_name, d);
+                } else {
+                    println!("Cleared deadline for node '{}'", node_name);
+                }
+                return Ok(());
+            }
+        }
+
+        Err(PyRuntimeError::new_err(format!(
+            "Node '{}' not found",
+            node_name
+        )))
+    }
+
+    /// Enable/disable watchdog timer for a specific node
+    ///
+    /// Args:
+    ///     node_name: Name of the node
+    ///     enabled: Enable or disable watchdog
+    ///     timeout_ms: Optional timeout in milliseconds (uses global default if None)
+    ///
+    /// When enabled, the watchdog will be automatically fed on successful ticks.
+    /// If the node fails to tick within the timeout, the watchdog expires.
+    #[pyo3(signature = (node_name, enabled, timeout_ms=None))]
+    fn set_node_watchdog(
+        &mut self,
+        node_name: String,
+        enabled: bool,
+        timeout_ms: Option<u64>,
+    ) -> PyResult<()> {
+        let timeout = timeout_ms.unwrap_or(self.watchdog_timeout_ms);
+
+        if timeout < 10 || timeout > 60000 {
+            return Err(PyRuntimeError::new_err(
+                "Watchdog timeout must be between 10 and 60000 ms",
+            ));
+        }
+
+        let mut nodes = self
+            .nodes
+            .lock()
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
+
+        for registered in nodes.iter_mut() {
+            if registered.name == node_name {
+                registered.watchdog_enabled = enabled;
+                registered.watchdog_timeout_ms = timeout;
+                registered.last_watchdog_feed = Instant::now();
+                registered.watchdog_expired = false;
+
+                if enabled {
+                    println!(
+                        "Enabled watchdog for node '{}' with {}ms timeout",
+                        node_name, timeout
+                    );
+                } else {
+                    println!("Disabled watchdog for node '{}'", node_name);
+                }
+                return Ok(());
+            }
+        }
+
+        Err(PyRuntimeError::new_err(format!(
+            "Node '{}' not found",
+            node_name
+        )))
+    }
+
     /// Phase 1: Get node statistics
     fn get_node_stats(&self, py: Python, node_name: String) -> PyResult<PyObject> {
         let nodes = self
@@ -137,11 +291,44 @@ impl PyScheduler {
                 dict.set_item("rate_hz", registered.rate_hz)?;
                 dict.set_item("logging_enabled", registered.logging_enabled)?;
 
+                // Fault tolerance info
+                dict.set_item("failure_count", registered.failure_count)?;
+                dict.set_item("consecutive_failures", registered.consecutive_failures)?;
+                dict.set_item("circuit_open", registered.circuit_open)?;
+
+                // Soft real-time info
+                if let Some(deadline) = registered.deadline_ms {
+                    dict.set_item("deadline_ms", deadline)?;
+                } else {
+                    dict.set_item("deadline_ms", py.None())?;
+                }
+                dict.set_item("deadline_misses", registered.deadline_misses)?;
+                dict.set_item("last_tick_duration_ms", registered.last_tick_duration_ms)?;
+
+                // Watchdog info
+                dict.set_item("watchdog_enabled", registered.watchdog_enabled)?;
+                dict.set_item("watchdog_timeout_ms", registered.watchdog_timeout_ms)?;
+                dict.set_item("watchdog_expired", registered.watchdog_expired)?;
+                if registered.watchdog_enabled {
+                    let time_since_feed = registered.last_watchdog_feed.elapsed().as_millis() as u64;
+                    dict.set_item("watchdog_time_since_feed_ms", time_since_feed)?;
+                } else {
+                    dict.set_item("watchdog_time_since_feed_ms", py.None())?;
+                }
+
                 // Get metrics from NodeInfo
                 if let Ok(ctx) = registered.context.lock() {
                     let metrics = ctx.metrics();
                     dict.set_item("total_ticks", metrics.total_ticks)?;
+                    dict.set_item("successful_ticks", metrics.successful_ticks)?;
+                    dict.set_item("failed_ticks", metrics.failed_ticks)?;
                     dict.set_item("errors_count", metrics.errors_count)?;
+                    dict.set_item("avg_tick_duration_ms", metrics.avg_tick_duration_ms)?;
+                    dict.set_item("min_tick_duration_ms", metrics.min_tick_duration_ms)?;
+                    dict.set_item("max_tick_duration_ms", metrics.max_tick_duration_ms)?;
+                    dict.set_item("last_tick_duration_ms", metrics.last_tick_duration_ms)?;
+                    dict.set_item("uptime_seconds", ctx.uptime().as_secs_f64())?;
+                    dict.set_item("state", format!("{}", ctx.state()))?;
                 }
 
                 return Ok(dict.into());
@@ -269,6 +456,27 @@ impl PyScheduler {
                     // Update last tick time
                     registered.last_tick = now;
 
+                    // Check watchdog expiration
+                    if registered.watchdog_enabled && self.watchdog_enabled {
+                        let time_since_feed = registered.last_watchdog_feed.elapsed().as_millis() as u64;
+                        if time_since_feed > registered.watchdog_timeout_ms {
+                            if !registered.watchdog_expired {
+                                registered.watchdog_expired = true;
+                                use colored::Colorize;
+                                eprintln!(
+                                    "{}",
+                                    format!(
+                                        "Watchdog expired: node '{}' not fed for {}ms (timeout: {}ms)",
+                                        registered.name,
+                                        time_since_feed,
+                                        registered.watchdog_timeout_ms
+                                    )
+                                    .red()
+                                );
+                            }
+                        }
+                    }
+
                     // Start tick timing
                     if let Ok(mut ctx) = registered.context.lock() {
                         ctx.start_tick();
@@ -289,27 +497,101 @@ impl PyScheduler {
                         new_info
                     };
 
+                    // Measure tick start time
+                    let tick_start = Instant::now();
+
                     // Try calling with NodeInfo parameter first, fallback to no-arg version
                     let result = registered
                         .node
                         .call_method1(py, "tick", (py_info,))
                         .or_else(|_| registered.node.call_method0(py, "tick"));
 
-                    if let Err(e) = result {
-                        // Check if this is a KeyboardInterrupt - if so, stop the scheduler immediately
-                        if e.is_instance_of::<pyo3::exceptions::PyKeyboardInterrupt>(py) {
-                            eprintln!("\n🛑 Keyboard interrupt received, shutting down...");
-                            if let Ok(mut r) = self.running.lock() {
-                                *r = false;
+                    // Measure tick duration
+                    let tick_duration = tick_start.elapsed();
+                    let tick_duration_ms = tick_duration.as_secs_f64() * 1000.0;
+                    registered.last_tick_duration_ms = tick_duration_ms;
+
+                    // Check deadline
+                    if let Some(deadline_ms) = registered.deadline_ms {
+                        if tick_duration_ms > deadline_ms {
+                            registered.deadline_misses += 1;
+                            if self.deadline_monitoring {
+                                use colored::Colorize;
+                                eprintln!(
+                                    "{}",
+                                    format!(
+                                        "Deadline miss: node '{}' took {:.3}ms (deadline: {}ms, miss #{})",
+                                        registered.name,
+                                        tick_duration_ms,
+                                        deadline_ms,
+                                        registered.deadline_misses
+                                    )
+                                    .yellow()
+                                );
                             }
-                            break;
                         }
-                        eprintln!("Error in node '{}' tick: {:?}", registered.name, e);
                     }
 
-                    // Record tick completion
-                    if let Ok(mut ctx) = registered.context.lock() {
-                        ctx.record_tick();
+                    match result {
+                        Ok(_) => {
+                            // Success - reset consecutive failures
+                            registered.consecutive_failures = 0;
+
+                            // Feed watchdog on successful tick
+                            if registered.watchdog_enabled {
+                                registered.last_watchdog_feed = Instant::now();
+                                registered.watchdog_expired = false;
+                            }
+
+                            // Record tick completion
+                            if let Ok(mut ctx) = registered.context.lock() {
+                                ctx.record_tick();
+                            }
+                        }
+                        Err(e) => {
+                            // Check if this is a KeyboardInterrupt - if so, stop the scheduler immediately
+                            if e.is_instance_of::<pyo3::exceptions::PyKeyboardInterrupt>(py) {
+                                use colored::Colorize;
+                                eprintln!("{}", "\nKeyboard interrupt received, shutting down...".red());
+                                if let Ok(mut r) = self.running.lock() {
+                                    *r = false;
+                                }
+                                break;
+                            }
+
+                            // Track failures
+                            registered.failure_count += 1;
+                            registered.consecutive_failures += 1;
+
+                            use colored::Colorize;
+                            eprintln!(
+                                "{}",
+                                format!(
+                                    "Error in node '{}' tick (failure {}/{}): {:?}",
+                                    registered.name,
+                                    registered.consecutive_failures,
+                                    self.max_failures,
+                                    e
+                                )
+                                .red()
+                            );
+
+                            // Check if we should open the circuit breaker
+                            if self.circuit_breaker_enabled
+                                && registered.consecutive_failures >= self.max_failures
+                            {
+                                registered.circuit_open = true;
+                                eprintln!(
+                                    "{}",
+                                    format!(
+                                        "Circuit breaker opened for node '{}' after {} consecutive failures",
+                                        registered.name, registered.consecutive_failures
+                                    )
+                                    .yellow()
+                                    .bold()
+                                );
+                            }
+                        }
                     }
 
                     // Write heartbeat for dashboard monitoring
@@ -401,7 +683,7 @@ impl PyScheduler {
         // Set up Ctrl+C handler for immediate shutdown
         let running_clone = self.running.clone();
         let _ = ctrlc::set_handler(move || {
-            eprintln!("\n🛑 Ctrl+C received! Shutting down scheduler...");
+            eprintln!("{}", "\nCtrl+C received! Shutting down scheduler...");
             if let Ok(mut r) = running_clone.lock() {
                 *r = false;
             }
@@ -472,6 +754,35 @@ impl PyScheduler {
                 nodes.sort_by_key(|r| r.priority);
 
                 for registered in nodes.iter_mut() {
+                    // Skip nodes with open circuit breaker
+                    if self.circuit_breaker_enabled && registered.circuit_open {
+                        // Check if we should attempt auto-restart
+                        if self.auto_restart {
+                            let should_retry = match registered.last_restart_attempt {
+                                None => true, // First restart attempt
+                                Some(last_attempt) => {
+                                    // Wait at least 5 seconds between restart attempts
+                                    last_attempt.elapsed() >= Duration::from_secs(5)
+                                }
+                            };
+
+                            if should_retry {
+                                use colored::Colorize;
+                                eprintln!(
+                                    "{}",
+                                    format!("Attempting to restart node '{}'...", registered.name).yellow()
+                                );
+                                registered.circuit_open = false;
+                                registered.consecutive_failures = 0;
+                                registered.last_restart_attempt = Some(Instant::now());
+                            }
+                        }
+
+                        if registered.circuit_open {
+                            continue; // Still open, skip this node
+                        }
+                    }
+
                     // Phase 1: Check if enough time has elapsed for this node's rate
                     let now = Instant::now();
                     let elapsed_secs = (now - registered.last_tick).as_secs_f64();
@@ -484,6 +795,27 @@ impl PyScheduler {
 
                     // Update last tick time
                     registered.last_tick = now;
+
+                    // Check watchdog expiration
+                    if registered.watchdog_enabled && self.watchdog_enabled {
+                        let time_since_feed = registered.last_watchdog_feed.elapsed().as_millis() as u64;
+                        if time_since_feed > registered.watchdog_timeout_ms {
+                            if !registered.watchdog_expired {
+                                registered.watchdog_expired = true;
+                                use colored::Colorize;
+                                eprintln!(
+                                    "{}",
+                                    format!(
+                                        "Watchdog expired: node '{}' not fed for {}ms (timeout: {}ms)",
+                                        registered.name,
+                                        time_since_feed,
+                                        registered.watchdog_timeout_ms
+                                    )
+                                    .red()
+                                );
+                            }
+                        }
+                    }
 
                     // Start tick timing
                     if let Ok(mut ctx) = registered.context.lock() {
@@ -505,27 +837,101 @@ impl PyScheduler {
                         new_info
                     };
 
+                    // Measure tick start time
+                    let tick_start = Instant::now();
+
                     // Try calling with NodeInfo parameter first, fallback to no-arg version
                     let result = registered
                         .node
                         .call_method1(py, "tick", (py_info,))
                         .or_else(|_| registered.node.call_method0(py, "tick"));
 
-                    if let Err(e) = result {
-                        // Check if this is a KeyboardInterrupt - if so, stop the scheduler immediately
-                        if e.is_instance_of::<pyo3::exceptions::PyKeyboardInterrupt>(py) {
-                            eprintln!("\n🛑 Keyboard interrupt received, shutting down...");
-                            if let Ok(mut r) = self.running.lock() {
-                                *r = false;
+                    // Measure tick duration
+                    let tick_duration = tick_start.elapsed();
+                    let tick_duration_ms = tick_duration.as_secs_f64() * 1000.0;
+                    registered.last_tick_duration_ms = tick_duration_ms;
+
+                    // Check deadline
+                    if let Some(deadline_ms) = registered.deadline_ms {
+                        if tick_duration_ms > deadline_ms {
+                            registered.deadline_misses += 1;
+                            if self.deadline_monitoring {
+                                use colored::Colorize;
+                                eprintln!(
+                                    "{}",
+                                    format!(
+                                        "Deadline miss: node '{}' took {:.3}ms (deadline: {}ms, miss #{})",
+                                        registered.name,
+                                        tick_duration_ms,
+                                        deadline_ms,
+                                        registered.deadline_misses
+                                    )
+                                    .yellow()
+                                );
                             }
-                            break;
                         }
-                        eprintln!("Error in node '{}' tick: {:?}", registered.name, e);
                     }
 
-                    // Record tick completion
-                    if let Ok(mut ctx) = registered.context.lock() {
-                        ctx.record_tick();
+                    match result {
+                        Ok(_) => {
+                            // Success - reset consecutive failures
+                            registered.consecutive_failures = 0;
+
+                            // Feed watchdog on successful tick
+                            if registered.watchdog_enabled {
+                                registered.last_watchdog_feed = Instant::now();
+                                registered.watchdog_expired = false;
+                            }
+
+                            // Record tick completion
+                            if let Ok(mut ctx) = registered.context.lock() {
+                                ctx.record_tick();
+                            }
+                        }
+                        Err(e) => {
+                            // Check if this is a KeyboardInterrupt - if so, stop the scheduler immediately
+                            if e.is_instance_of::<pyo3::exceptions::PyKeyboardInterrupt>(py) {
+                                use colored::Colorize;
+                                eprintln!("{}", "\nKeyboard interrupt received, shutting down...".red());
+                                if let Ok(mut r) = self.running.lock() {
+                                    *r = false;
+                                }
+                                break;
+                            }
+
+                            // Track failures
+                            registered.failure_count += 1;
+                            registered.consecutive_failures += 1;
+
+                            use colored::Colorize;
+                            eprintln!(
+                                "{}",
+                                format!(
+                                    "Error in node '{}' tick (failure {}/{}): {:?}",
+                                    registered.name,
+                                    registered.consecutive_failures,
+                                    self.max_failures,
+                                    e
+                                )
+                                .red()
+                            );
+
+                            // Check if we should open the circuit breaker
+                            if self.circuit_breaker_enabled
+                                && registered.consecutive_failures >= self.max_failures
+                            {
+                                registered.circuit_open = true;
+                                eprintln!(
+                                    "{}",
+                                    format!(
+                                        "Circuit breaker opened for node '{}' after {} consecutive failures",
+                                        registered.name, registered.consecutive_failures
+                                    )
+                                    .yellow()
+                                    .bold()
+                                );
+                            }
+                        }
                     }
 
                     // Write heartbeat for dashboard monitoring
@@ -605,6 +1011,102 @@ impl PyScheduler {
             .lock()
             .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock running flag: {}", e)))?;
         Ok(*running)
+    }
+
+    /// Get list of all nodes with basic information
+    ///
+    /// Returns a list of dictionaries containing node information:
+    /// - name: Node name
+    /// - priority: Execution priority
+    /// - rate_hz: Node execution rate
+    /// - logging_enabled: Whether logging is enabled
+    /// - total_ticks: Total number of ticks executed
+    /// - failure_count: Total failure count
+    /// - consecutive_failures: Current consecutive failure count
+    /// - circuit_open: Whether circuit breaker is open
+    fn get_all_nodes(&self, py: Python) -> PyResult<Vec<PyObject>> {
+        let nodes = self
+            .nodes
+            .lock()
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
+
+        let mut result = Vec::new();
+
+        for registered in nodes.iter() {
+            let dict = PyDict::new_bound(py);
+            dict.set_item("name", &registered.name)?;
+            dict.set_item("priority", registered.priority)?;
+            dict.set_item("rate_hz", registered.rate_hz)?;
+            dict.set_item("logging_enabled", registered.logging_enabled)?;
+
+            // Fault tolerance info
+            dict.set_item("failure_count", registered.failure_count)?;
+            dict.set_item("consecutive_failures", registered.consecutive_failures)?;
+            dict.set_item("circuit_open", registered.circuit_open)?;
+
+            // Soft real-time info
+            if let Some(deadline) = registered.deadline_ms {
+                dict.set_item("deadline_ms", deadline)?;
+            } else {
+                dict.set_item("deadline_ms", py.None())?;
+            }
+            dict.set_item("deadline_misses", registered.deadline_misses)?;
+            dict.set_item("last_tick_duration_ms", registered.last_tick_duration_ms)?;
+
+            // Watchdog info
+            dict.set_item("watchdog_enabled", registered.watchdog_enabled)?;
+            dict.set_item("watchdog_timeout_ms", registered.watchdog_timeout_ms)?;
+            dict.set_item("watchdog_expired", registered.watchdog_expired)?;
+            if registered.watchdog_enabled {
+                let time_since_feed = registered.last_watchdog_feed.elapsed().as_millis() as u64;
+                dict.set_item("watchdog_time_since_feed_ms", time_since_feed)?;
+            } else {
+                dict.set_item("watchdog_time_since_feed_ms", py.None())?;
+            }
+
+            // Get metrics from NodeInfo
+            if let Ok(ctx) = registered.context.lock() {
+                let metrics = ctx.metrics();
+                dict.set_item("total_ticks", metrics.total_ticks)?;
+                dict.set_item("successful_ticks", metrics.successful_ticks)?;
+                dict.set_item("failed_ticks", metrics.failed_ticks)?;
+                dict.set_item("errors_count", metrics.errors_count)?;
+                dict.set_item("avg_tick_duration_ms", metrics.avg_tick_duration_ms)?;
+                dict.set_item("uptime_seconds", ctx.uptime().as_secs_f64())?;
+                dict.set_item("state", format!("{}", ctx.state()))?;
+            }
+
+            result.push(dict.into());
+        }
+
+        Ok(result)
+    }
+
+    /// Get count of all registered nodes
+    fn get_node_count(&self) -> PyResult<usize> {
+        let nodes = self
+            .nodes
+            .lock()
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
+        Ok(nodes.len())
+    }
+
+    /// Check if a node exists by name
+    fn has_node(&self, name: String) -> PyResult<bool> {
+        let nodes = self
+            .nodes
+            .lock()
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
+        Ok(nodes.iter().any(|n| n.name == name))
+    }
+
+    /// Get list of node names
+    fn get_node_names(&self) -> PyResult<Vec<String>> {
+        let nodes = self
+            .nodes
+            .lock()
+            .map_err(|e| PyRuntimeError::new_err(format!("Failed to lock nodes: {}", e)))?;
+        Ok(nodes.iter().map(|n| n.name.clone()).collect())
     }
 
     /// Run specific nodes by name (continuously until stop() is called)
@@ -719,7 +1221,8 @@ impl PyScheduler {
                     if let Err(e) = result {
                         // Check if this is a KeyboardInterrupt - if so, stop the scheduler immediately
                         if e.is_instance_of::<pyo3::exceptions::PyKeyboardInterrupt>(py) {
-                            eprintln!("\n🛑 Keyboard interrupt received, shutting down...");
+                            use colored::Colorize;
+                            eprintln!("{}", "\nKeyboard interrupt received, shutting down...".red());
                             if let Ok(mut r) = self.running.lock() {
                                 *r = false;
                             }
@@ -908,7 +1411,8 @@ impl PyScheduler {
                     if let Err(e) = result {
                         // Check if this is a KeyboardInterrupt - if so, stop the scheduler immediately
                         if e.is_instance_of::<pyo3::exceptions::PyKeyboardInterrupt>(py) {
-                            eprintln!("\n🛑 Keyboard interrupt received, shutting down...");
+                            use colored::Colorize;
+                            eprintln!("{}", "\nKeyboard interrupt received, shutting down...".red());
                             if let Ok(mut r) = self.running.lock() {
                                 *r = false;
                             }

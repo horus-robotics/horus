@@ -46,7 +46,7 @@ pub use sensor::{BatteryState, Imu, LaserScan, NavSatFix, Odometry, Range};
 // Control
 pub use control::{
     DifferentialDriveCommand, JointCommand, MotorCommand, PidConfig, PwmCommand, ServoCommand,
-    TrajectoryPoint,
+    StepperCommand, TrajectoryPoint,
 };
 
 // Diagnostics
@@ -66,7 +66,8 @@ pub use force::{ForceCommand, ImpedanceParameters, TactileArray, WrenchStamped};
 
 // Industrial I/O
 pub use io::{
-    AnalogIO, DigitalIO, EtherNetIPMessage, I2cMessage, ModbusMessage, NetworkStatus, SerialData,
+    AnalogIO, CanFrame, DigitalIO, EtherNetIPMessage, I2cMessage, ModbusMessage, NetworkStatus,
+    SerialData, SpiMessage,
 };
 
 // Perception

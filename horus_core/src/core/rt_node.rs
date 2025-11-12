@@ -75,8 +75,67 @@ pub struct RTStats {
     pub worst_execution: Duration,
     /// Last execution time
     pub last_execution: Duration,
-    /// Jitter (variance in execution time)
+    /// Jitter (variance in execution time) in microseconds
     pub jitter_us: f64,
+    /// Average execution time (for jitter calculation)
+    pub avg_execution_us: f64,
+    /// Total ticks (for statistics)
+    pub total_ticks: u64,
+}
+
+impl RTStats {
+    /// Update statistics with new execution time
+    pub fn record_execution(&mut self, duration: Duration) {
+        let duration_us = duration.as_micros() as f64;
+
+        // Update worst case
+        if duration > self.worst_execution {
+            self.worst_execution = duration;
+        }
+
+        // Update last
+        self.last_execution = duration;
+
+        // Increment tick count
+        self.total_ticks += 1;
+
+        // Calculate moving average (EMA with alpha=0.1)
+        if self.total_ticks == 1 {
+            self.avg_execution_us = duration_us;
+            self.jitter_us = 0.0;
+        } else {
+            let alpha = 0.1;
+            let prev_avg = self.avg_execution_us;
+            self.avg_execution_us = (alpha * duration_us) + ((1.0 - alpha) * prev_avg);
+
+            // Calculate jitter as absolute deviation from average
+            let deviation = (duration_us - self.avg_execution_us).abs();
+            self.jitter_us = (alpha * deviation) + ((1.0 - alpha) * self.jitter_us);
+        }
+    }
+
+    /// Record a deadline miss
+    pub fn record_deadline_miss(&mut self) {
+        self.deadline_misses += 1;
+    }
+
+    /// Record a WCET violation
+    pub fn record_wcet_violation(&mut self) {
+        self.wcet_violations += 1;
+    }
+
+    /// Get human-readable statistics
+    pub fn summary(&self) -> String {
+        format!(
+            "Ticks: {}, Worst: {:.1}μs, Avg: {:.1}μs, Jitter: {:.1}μs, Deadline misses: {}, WCET violations: {}",
+            self.total_ticks,
+            self.worst_execution.as_micros(),
+            self.avg_execution_us,
+            self.jitter_us,
+            self.deadline_misses,
+            self.wcet_violations
+        )
+    }
 }
 
 /// Real-time node trait for time-critical applications

@@ -189,10 +189,10 @@ pub async fn run(port: u16) -> anyhow::Result<()> {
     // Check certificate status and show appropriate message
     if crate::security::TlsConfig::is_mkcert_installed() && crate::security::TlsConfig::is_mkcert_ca_installed() {
         // Likely using trusted certificate
-        println!("\n✓ Trusted certificate detected - No browser warnings!");
+        println!("\nTrusted certificate detected - No browser warnings!");
     } else {
         // Using self-signed certificate
-        println!("\n⚠️  Your browser may show a security warning (self-signed certificate)");
+        println!("\nWARNING: Your browser may show a security warning (self-signed certificate)");
         println!("   This is normal - the connection is still encrypted.");
         println!("   To remove warnings, install mkcert: horus init --setup-certs");
     }
@@ -296,16 +296,15 @@ async fn status_handler() -> impl IntoResponse {
 
     (
         StatusCode::OK,
-        serde_json::json!({
+        Json(serde_json::json!({
             "status": system_status,
             "health": system_health,
             "health_color": health_color,
             "version": "0.1.0",
             "nodes": nodes_count,
             "topics": topics_count
-        })
-        .to_string(),
-    )
+        }))
+    ).into_response()
 }
 
 async fn nodes_handler() -> impl IntoResponse {
@@ -331,11 +330,10 @@ async fn nodes_handler() -> impl IntoResponse {
 
     (
         StatusCode::OK,
-        serde_json::json!({
+        Json(serde_json::json!({
             "nodes": nodes
-        })
-        .to_string(),
-    )
+        }))
+    ).into_response()
 }
 
 async fn topics_handler() -> impl IntoResponse {
@@ -363,11 +361,10 @@ async fn topics_handler() -> impl IntoResponse {
 
     (
         StatusCode::OK,
-        serde_json::json!({
+        Json(serde_json::json!({
             "topics": topics
-        })
-        .to_string(),
-    )
+        }))
+    ).into_response()
 }
 
 async fn graph_handler() -> impl IntoResponse {
@@ -407,12 +404,11 @@ async fn graph_handler() -> impl IntoResponse {
 
     (
         StatusCode::OK,
-        serde_json::json!({
+        Json(serde_json::json!({
             "nodes": graph_nodes,
             "edges": graph_edges
-        })
-        .to_string(),
-    )
+        }))
+    ).into_response()
 }
 
 async fn logs_all_handler() -> impl IntoResponse {
@@ -422,11 +418,10 @@ async fn logs_all_handler() -> impl IntoResponse {
 
     (
         StatusCode::OK,
-        serde_json::json!({
+        Json(serde_json::json!({
             "logs": logs
-        })
-        .to_string(),
-    )
+        }))
+    ).into_response()
 }
 
 async fn logs_node_handler(Path(node_name): Path<String>) -> impl IntoResponse {
@@ -438,12 +433,11 @@ async fn logs_node_handler(Path(node_name): Path<String>) -> impl IntoResponse {
 
     (
         StatusCode::OK,
-        serde_json::json!({
+        Json(serde_json::json!({
             "node": node_name,
             "logs": logs
-        })
-        .to_string(),
-    )
+        }))
+    ).into_response()
 }
 
 async fn logs_topic_handler(Path(topic_name): Path<String>) -> impl IntoResponse {
@@ -469,12 +463,11 @@ async fn logs_topic_handler(Path(topic_name): Path<String>) -> impl IntoResponse
 
     (
         StatusCode::OK,
-        serde_json::json!({
+        Json(serde_json::json!({
             "topic": topic_name,
             "logs": logs
-        })
-        .to_string(),
-    )
+        }))
+    ).into_response()
 }
 
 // Marketplace handlers
@@ -508,19 +501,17 @@ async fn packages_registry_handler(Query(query): Query<SearchQuery>) -> impl Int
 
             (
                 StatusCode::OK,
-                serde_json::json!({
+                Json(serde_json::json!({
                     "packages": pkgs
-                })
-                .to_string(),
-            )
+                }))
+            ).into_response()
         }
         _ => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            serde_json::json!({
+            Json(serde_json::json!({
                 "error": "Failed to search packages"
-            })
-            .to_string(),
-        ),
+            }))
+        ).into_response(),
     }
 }
 
@@ -812,14 +803,13 @@ async fn packages_environments_handler() -> impl IntoResponse {
     .await;
 
     match result {
-        Ok(data) => (StatusCode::OK, data.to_string()),
+        Ok(data) => (StatusCode::OK, Json(data)).into_response(),
         Err(_) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            serde_json::json!({
+            Json(serde_json::json!({
                 "error": "Failed to list environments"
-            })
-            .to_string(),
-        ),
+            }))
+        ).into_response(),
     }
 }
 
@@ -909,28 +899,25 @@ async fn packages_install_handler(Json(req): Json<InstallRequest>) -> impl IntoR
     match result {
         Ok(Ok(_)) => (
             StatusCode::OK,
-            serde_json::json!({
+            Json(serde_json::json!({
                 "success": true,
                 "message": format!("Successfully installed {}", package_name)
-            })
-            .to_string(),
-        ),
+            }))
+        ).into_response(),
         Ok(Err(e)) => (
             StatusCode::BAD_REQUEST,
-            serde_json::json!({
+            Json(serde_json::json!({
                 "success": false,
                 "error": e.to_string()
-            })
-            .to_string(),
-        ),
+            }))
+        ).into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            serde_json::json!({
+            Json(serde_json::json!({
                 "success": false,
                 "error": format!("Task failed: {}", e)
-            })
-            .to_string(),
-        ),
+            }))
+        ).into_response(),
     }
 }
 
@@ -1008,28 +995,25 @@ async fn packages_uninstall_handler(Json(req): Json<UninstallRequest>) -> impl I
     match result {
         Ok(Ok(_)) => (
             StatusCode::OK,
-            serde_json::json!({
+            Json(serde_json::json!({
                 "success": true,
                 "message": format!("Successfully uninstalled {} from {}", package_msg, parent_package_msg)
-            })
-            .to_string(),
-        ),
+            }))
+        ).into_response(),
         Ok(Err(e)) => (
             StatusCode::BAD_REQUEST,
-            serde_json::json!({
+            Json(serde_json::json!({
                 "success": false,
                 "error": e.to_string()
-            })
-            .to_string(),
-        ),
+            }))
+        ).into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            serde_json::json!({
+            Json(serde_json::json!({
                 "success": false,
                 "error": format!("Task failed: {}", e)
-            })
-            .to_string(),
-        ),
+            }))
+        ).into_response(),
     }
 }
 
@@ -1045,28 +1029,25 @@ async fn packages_publish_handler() -> impl IntoResponse {
     match result {
         Ok(Ok(_)) => (
             StatusCode::OK,
-            serde_json::json!({
+            Json(serde_json::json!({
                 "success": true,
                 "message": "Package published successfully"
-            })
-            .to_string(),
-        ),
+            }))
+        ).into_response(),
         Ok(Err(e)) => (
             StatusCode::BAD_REQUEST,
-            serde_json::json!({
+            Json(serde_json::json!({
                 "success": false,
                 "error": e.to_string()
-            })
-            .to_string(),
-        ),
+            }))
+        ).into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            serde_json::json!({
+            Json(serde_json::json!({
                 "success": false,
                 "error": format!("Task failed: {}", e)
-            })
-            .to_string(),
-        ),
+            }))
+        ).into_response(),
     }
 }
 

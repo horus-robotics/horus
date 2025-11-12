@@ -1,0 +1,69 @@
+---
+title: EncoderNode
+description: Quadrature encoder reading for position and velocity measurement
+---
+
+# EncoderNode
+
+Quadrature encoder node for reading rotary encoders on motors and wheels. Provides position, velocity, and direction information for closed-loop control and odometry.
+
+## Source Code
+
+- [EncoderNode Implementation](https://github.com/softmata/horus/tree/main/horus_library/nodes/encoder)
+- [Encoder Sensor Messages](https://github.com/softmata/horus/blob/main/horus_library/messages/sensor.rs)
+
+## Features
+
+- Quadrature encoder support (AB phase)
+- Up to 8 encoders
+- Position counting (32-bit)
+- Velocity calculation
+- Direction detection
+- Configurable CPR (counts per revolution)
+- Index pulse support (Z channel)
+- Hardware interrupts for accuracy
+- Simulation fallback
+
+## Quick Start
+
+```rust
+use horus_library::prelude::*;
+
+fn main() -> Result<()> {
+    let mut scheduler = Scheduler::new();
+
+    let mut encoder = EncoderNode::new()?;
+    encoder.add_encoder(0, 23, 24);  // ID, pin A, pin B
+    encoder.set_cpr(0, 600);  // 600 counts per revolution
+
+    scheduler.add(Box::new(encoder), 1, Some(true));
+    scheduler.run()?;
+    Ok(())
+}
+```
+
+## Configuration
+
+```rust
+encoder.add_encoder(0, 23, 24);  // Encoder 0: GPIO 23 (A), 24 (B)
+encoder.set_cpr(0, 600);         // Counts per revolution
+encoder.set_sample_rate(100);    // 100 Hz velocity calculation
+encoder.invert_direction(0, false);
+```
+
+## Usage
+
+```rust
+let hub = Hub::<EncoderData>::new("encoder/data")?;
+
+if let Some(data) = hub.recv(None) {
+    println!("Encoder {}: {} counts, {:.1} RPM",
+        data.encoder_id, data.position, data.rpm);
+}
+```
+
+## See Also
+
+- [OdometryNode](./odometry) - Wheel odometry
+- [StepperMotorNode](./stepper-motor) - With position feedback
+- [RoboclawMotorNode](./roboclaw-motor) - Integrated encoder support

@@ -7,6 +7,12 @@ use horus_core::{Hub, Node, NodeInfo, NodeInfoExt};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+// I2C hardware support
+#[cfg(feature = "i2c-hardware")]
+use i2cdev::linux::{LinuxI2CDevice, LinuxI2CError};
+#[cfg(feature = "i2c-hardware")]
+use i2cdev::core::I2CDevice;
+
 /// I2C Bus Communication Node
 ///
 /// Handles I2C bus communication with devices like sensors, displays,
@@ -15,6 +21,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub struct I2cBusNode {
     request_subscriber: Hub<I2cMessage>,  // I2C transaction requests
     response_publisher: Hub<I2cMessage>,  // I2C transaction responses
+
+    // Hardware devices (per I2C address)
+    #[cfg(feature = "i2c-hardware")]
+    i2c_devices: HashMap<u16, LinuxI2CDevice>,
+    hardware_enabled: bool,
 
     // Configuration
     bus_number: u8,
@@ -44,6 +55,9 @@ impl I2cBusNode {
         Ok(Self {
             request_subscriber: Hub::new(request_topic)?,
             response_publisher: Hub::new(response_topic)?,
+            #[cfg(feature = "i2c-hardware")]
+            i2c_devices: HashMap::new(),
+            hardware_enabled: false,
             bus_number,
             clock_speed: I2cMessage::SPEED_STANDARD,
             retry_count: 3,
@@ -116,8 +130,50 @@ impl I2cBusNode {
             ));
         }
 
-        // In real implementation, this would communicate with actual I2C hardware
-        // For simulation, use simulated devices if available
+        // Try hardware first, fall back to simulation
+        #[cfg(feature = "i2c-hardware")]
+        if self.hardware_enabled || !self.i2c_devices.is_empty() {
+            match self.execute_hardware(&mut request) {
+                Ok(()) => {
+                    request.success = true;
+                    request.error_code = 0;
+                    self.hardware_enabled = true;
+                    // Skip simulation, return early after stats update
+                    if request.success {
+                        self.transactions_successful += 1;
+                    } else {
+                        self.transactions_failed += 1;
+                        self.last_error_code = request.error_code;
+                    }
+                    request.timestamp = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_nanos() as u64;
+                    return request;
+                }
+                Err(e) => {
+                    // Provide detailed troubleshooting information (only log once)
+                    if self.hardware_enabled || self.transactions_total == 1 {
+                        let device_path = format!("/dev/i2c-{}", self.bus_number);
+                        ctx.log_warning(&format!(
+                            "I2cBusNode: Hardware unavailable - using SIMULATION mode"
+                        ));
+                        ctx.log_warning(&format!("  Tried: {}", device_path));
+                        ctx.log_warning(&format!("  Error: {}", e));
+                        ctx.log_warning("  Fix:");
+                        ctx.log_warning("    1. Install: sudo apt install i2c-tools");
+                        ctx.log_warning("    2. Enable I2C: sudo raspi-config -> Interface Options -> I2C");
+                        ctx.log_warning("    3. Add user to group: sudo usermod -a -G i2c $USER");
+                        ctx.log_warning("    4. Reboot or re-login");
+                        ctx.log_warning("    5. Rebuild with: cargo build --features=\"i2c-hardware\"");
+                    }
+                    self.hardware_enabled = false;
+                    // Fall through to simulation
+                }
+            }
+        }
+
+        // Simulation fallback
         if let Some(device_memory) = self.sim_devices.get_mut(&request.device_address) {
             match request.transaction_type {
                 I2cMessage::TYPE_READ => {
@@ -218,6 +274,77 @@ impl I2cBusNode {
         ctx.log_info(&format!("I2C scan complete: {} devices found", found_devices.len()));
 
         found_devices
+    }
+
+    // ========== Hardware Backend Functions (i2cdev) ==========
+
+    /// Open I2C hardware device for a specific address
+    #[cfg(feature = "i2c-hardware")]
+    fn open_hardware_device(&mut self, address: u16, mut ctx: Option<&mut NodeInfo>) -> std::io::Result<()> {
+        // Construct device path: /dev/i2c-{bus}
+        let device_path = format!("/dev/i2c-{}", self.bus_number);
+
+        // Open the I2C device for this address
+        let dev = LinuxI2CDevice::new(&device_path, address)?;
+
+        self.i2c_devices.insert(address, dev);
+        ctx.log_info(&format!(
+            "Opened I2C device: {} address 0x{:02X}",
+            device_path, address
+        ));
+
+        Ok(())
+    }
+
+    /// Execute transaction via hardware
+    #[cfg(feature = "i2c-hardware")]
+    fn execute_hardware(&mut self, request: &mut I2cMessage) -> std::io::Result<()> {
+        // Ensure device is open for this address
+        if !self.i2c_devices.contains_key(&request.device_address) {
+            self.open_hardware_device(request.device_address, None)?;
+        }
+
+        let dev = self.i2c_devices.get_mut(&request.device_address).ok_or_else(|| {
+            std::io::Error::new(std::io::ErrorKind::NotFound, "I2C device not found")
+        })?;
+
+        // Execute based on transaction type
+        match request.transaction_type {
+            I2cMessage::TYPE_READ => {
+                // Simple read from device
+                let mut buf = vec![0u8; request.data_length as usize];
+                dev.read(&mut buf)?;
+                request.data[..buf.len()].copy_from_slice(&buf);
+            }
+            I2cMessage::TYPE_WRITE => {
+                // Simple write to device
+                let data = &request.data[..request.data_length as usize];
+                dev.write(data)?;
+            }
+            I2cMessage::TYPE_READ_REGISTER => {
+                // Write register address, then read data
+                let reg_addr = [request.register_address];
+                dev.write(&reg_addr)?;
+
+                let mut buf = vec![0u8; request.data_length as usize];
+                dev.read(&mut buf)?;
+                request.data[..buf.len()].copy_from_slice(&buf);
+            }
+            I2cMessage::TYPE_WRITE_REGISTER => {
+                // Write register address followed by data
+                let mut write_buf = vec![request.register_address];
+                write_buf.extend_from_slice(&request.data[..request.data_length as usize]);
+                dev.write(&write_buf)?;
+            }
+            _ => {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    "Unknown transaction type"
+                ));
+            }
+        }
+
+        Ok(())
     }
 }
 

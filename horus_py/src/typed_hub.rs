@@ -7,6 +7,8 @@ use pyo3::prelude::*;
 #[pyclass(module = "horus._horus")]
 #[derive(Clone)]
 pub struct PyPose2DHub {
+    #[allow(dead_code)]
+    topic: String,
     hub: Hub<geometry::Pose2D>,
 }
 
@@ -17,11 +19,18 @@ impl PyPose2DHub {
         let hub = Hub::new(&topic)
             .map_err(|e| PyRuntimeError::new_err(format!("Failed to create hub: {}", e)))?;
 
-        Ok(PyPose2DHub { hub })
+        Ok(PyPose2DHub { topic, hub })
     }
 
     /// Send a Pose2D message (compatible with Rust Hub<Pose2D>)
-    fn send(&self, py: Python, pose: PyObject) -> PyResult<bool> {
+    ///
+    /// Args:
+    ///     pose: Pose2D object to send
+    ///     node: Optional Node for automatic logging with IPC timing
+    #[pyo3(signature = (pose, node=None))]
+    fn send(&self, py: Python, pose: PyObject, node: Option<PyObject>) -> PyResult<bool> {
+        use std::time::Instant;
+
         // Extract x, y, theta from Python Pose2D object
         let x: f64 = pose.getattr(py, "x")?.extract(py)?;
         let y: f64 = pose.getattr(py, "y")?.extract(py)?;
@@ -29,21 +38,58 @@ impl PyPose2DHub {
 
         let rust_pose = geometry::Pose2D::new(x, y, theta);
 
-        match self.hub.send(rust_pose, None) {
+        // Measure IPC timing if node provided
+        let start = Instant::now();
+        let result = match self.hub.send(rust_pose.clone(), None) {
             Ok(_) => Ok(true),
             Err(_) => Ok(false),
+        };
+        let ipc_ns = start.elapsed().as_nanos() as u64;
+
+        // Log if node provided
+        if let Some(node_obj) = node {
+            if let Ok(info) = node_obj.getattr(py, "info") {
+                if !info.is_none(py) {
+                    let data_repr = format!("Pose2D(x={:.2}, y={:.2}, theta={:.2})", x, y, theta);
+                    let _ = info.call_method1(py, "log_pub", (&self.topic, data_repr, ipc_ns));
+                }
+            }
         }
+
+        result
     }
 
     /// Receive a Pose2D message (compatible with Rust Hub<Pose2D>)
-    fn recv(&self, py: Python) -> PyResult<Option<PyObject>> {
-        if let Some(rust_pose) = self.hub.recv(None) {
+    ///
+    /// Args:
+    ///     node: Optional Node for automatic logging with IPC timing
+    #[pyo3(signature = (node=None))]
+    fn recv(&self, py: Python, node: Option<PyObject>) -> PyResult<Option<PyObject>> {
+        use std::time::Instant;
+
+        let start = Instant::now();
+        let result = self.hub.recv(None);
+        let ipc_ns = start.elapsed().as_nanos() as u64;
+
+        if let Some(rust_pose) = result {
             // Import Pose2D class from horus.library
             let library_mod = py.import_bound("horus.library")?;
             let pose2d_class = library_mod.getattr("Pose2D")?;
 
             // Create Python Pose2D object
             let py_pose = pose2d_class.call1((rust_pose.x, rust_pose.y, rust_pose.theta))?;
+
+            // Log if node provided
+            if let Some(node_obj) = node {
+                if let Ok(info) = node_obj.getattr(py, "info") {
+                    if !info.is_none(py) {
+                        let data_repr = format!("Pose2D(x={:.2}, y={:.2}, theta={:.2})",
+                                                rust_pose.x, rust_pose.y, rust_pose.theta);
+                        let _ = info.call_method1(py, "log_sub", (&self.topic, data_repr, ipc_ns));
+                    }
+                }
+            }
+
             Ok(Some(py_pose.into()))
         } else {
             Ok(None)
@@ -55,6 +101,8 @@ impl PyPose2DHub {
 #[pyclass(module = "horus._horus")]
 #[derive(Clone)]
 pub struct PyCmdVelHub {
+    #[allow(dead_code)]
+    topic: String,
     hub: Hub<cmd_vel::CmdVel>,
 }
 
@@ -65,7 +113,7 @@ impl PyCmdVelHub {
         let hub = Hub::new(&topic)
             .map_err(|e| PyRuntimeError::new_err(format!("Failed to create hub: {}", e)))?;
 
-        Ok(PyCmdVelHub { hub })
+        Ok(PyCmdVelHub { topic, hub })
     }
 
     /// Send a CmdVel message (compatible with Rust Hub<CmdVel>)

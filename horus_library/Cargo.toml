@@ -17,6 +17,7 @@ thiserror = "1.0"
 bytemuck = { version = "1.0", features = ["derive"] }
 approx = "0.5"
 bincode = "1.3"
+colored = "2.0"
 iceoryx2-bb-elementary-traits = { version = "0.7.0", optional = true }
 
 # HORUS core dependency
@@ -33,6 +34,30 @@ tokio-modbus = { version = "0.7", optional = true }
 crossterm = { version = "0.27", optional = true }
 gilrs = { version = "0.10", optional = true }
 
+# IMU drivers
+mpu6050 = { version = "0.1", optional = true }
+bno055 = { version = "0.4", optional = true }
+icm20948 = { version = "0.0.1", optional = true }
+
+# GPS/GNSS drivers
+nmea = { version = "0.5", optional = true }
+
+# I2C/SPI bus support
+linux-embedded-hal = { version = "0.4", optional = true }
+embedded-hal = { version = "1.0", optional = true }
+spidev = { version = "0.6", optional = true }
+i2cdev = { version = "0.6", optional = true }
+
+# CAN bus support
+socketcan = { version = "3.0", optional = true }
+
+# GPIO support
+sysfs_gpio = { version = "0.6", optional = true }
+
+# Additional sensor drivers
+# ydlidar = { version = "0.2", optional = true }
+hc-sr04 = { version = "0.1", optional = true }
+
 [features]
 default = ["control-nodes", "input-nodes"]
 iceoryx2 = ["iceoryx2-bb-elementary-traits"]
@@ -44,12 +69,32 @@ control-nodes = []
 industrial-nodes = ["tokio-modbus"]
 input-nodes = ["crossterm", "gilrs"]
 
+# Hardware support bundles
+imu-hardware = ["mpu6050", "bno055", "icm20948", "linux-embedded-hal", "embedded-hal"]
+gps-hardware = ["nmea", "serialport"]
+lidar-hardware = ["rplidar_drv", "serialport"]
+can-hardware = ["socketcan"]
+spi-hardware = ["spidev", "linux-embedded-hal"]
+i2c-hardware = ["i2cdev", "linux-embedded-hal"]
+gpio-hardware = ["sysfs_gpio", "rppal"]
+motor-hardware = ["serialport", "gpio-hardware"]
+full-hardware = ["imu-hardware", "gps-hardware", "lidar-hardware", "raspberry-pi", "can-hardware", "spi-hardware", "i2c-hardware", "gpio-hardware", "motor-hardware"]
+
 # Individual node features
-raspberry-pi = ["rppal"]
+raspberry-pi = ["rppal", "linux-embedded-hal"]
 opencv-backend = ["opencv"]
 v4l2-backend = ["nokhwa"]
-rplidar = ["rplidar_drv"]
+rplidar = ["rplidar_drv", "serialport"]
+ydlidar-backend = ["serialport"]
 modbus-tcp = ["tokio-modbus"]
+
+# IMU sensor support
+mpu6050-imu = ["mpu6050", "linux-embedded-hal", "embedded-hal"]
+bno055-imu = ["bno055", "linux-embedded-hal", "embedded-hal"]
+icm20948-imu = ["icm20948", "linux-embedded-hal", "embedded-hal"]
+
+# GPS sensor support
+nmea-gps = ["nmea", "serialport"]
 
 [lib]
 name = "horus_library"

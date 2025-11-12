@@ -467,17 +467,22 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 **Solution:**
 ```bash
-# Ubuntu/Debian
-sudo apt update && sudo apt install \
-  build-essential \
-  pkg-config \
-  libudev-dev \
-  libssl-dev \
-  libasound2-dev
+# Ubuntu/Debian/Raspberry Pi OS - Install ALL required packages
+sudo apt update
+sudo apt install -y build-essential pkg-config \
+  libssl-dev libudev-dev libasound2-dev \
+  libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev \
+  libwayland-dev wayland-protocols libxkbcommon-dev \
+  libvulkan-dev libfontconfig-dev libfreetype-dev \
+  libv4l-dev
 
 # Fedora/RHEL
 sudo dnf groupinstall "Development Tools"
-sudo dnf install pkg-config systemd-devel openssl-devel alsa-lib-devel
+sudo dnf install -y pkg-config openssl-devel systemd-devel alsa-lib-devel \
+  libX11-devel libXrandr-devel libXi-devel libXcursor-devel libXinerama-devel \
+  wayland-devel wayland-protocols-devel libxkbcommon-devel \
+  vulkan-devel fontconfig-devel freetype-devel \
+  libv4l-devel
 ```
 
 ---
@@ -486,20 +491,22 @@ sudo dnf install pkg-config systemd-devel openssl-devel alsa-lib-devel
 
 ```
 error: linking with `cc` failed: exit status: 1
+error: could not find native static library `X11`, perhaps an -L flag is missing?
 ```
 
 **Solution:**
 ```bash
-# Install missing system libraries
-# Ubuntu/Debian
-sudo apt update && sudo apt install \
-  build-essential \
-  pkg-config \
-  libudev-dev \
-  libssl-dev \
-  libasound2-dev
+# Install ALL missing system libraries (most common cause)
+# Ubuntu/Debian/Raspberry Pi OS
+sudo apt update
+sudo apt install -y build-essential pkg-config \
+  libssl-dev libudev-dev libasound2-dev \
+  libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev \
+  libwayland-dev wayland-protocols libxkbcommon-dev \
+  libvulkan-dev libfontconfig-dev libfreetype-dev \
+  libv4l-dev
 
-# Or run recovery
+# Or run recovery (auto-detects missing packages)
 ./recovery_install.sh
 ```
 

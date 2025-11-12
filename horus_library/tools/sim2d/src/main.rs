@@ -803,7 +803,7 @@ fn robot_visual_reload_system(
         return;
     }
 
-    info!("🔄 Robot config changed - reloading visual components");
+    info!("Robot config changed - reloading visual components");
 
     // Despawn all existing visual components
     for entity in visual_components.iter() {
@@ -1014,7 +1014,7 @@ fn world_reload_system(
         return;
     }
 
-    info!("🔄 Reloading world...");
+    info!("Reloading world...");
 
     // Destructure physics_world to avoid borrow checker issues
     let PhysicsWorld {

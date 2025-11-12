@@ -1,0 +1,124 @@
+---
+title: ImageProcessorNode
+description: Computer vision and image processing utilities
+---
+
+# ImageProcessorNode
+
+Image processing node providing computer vision utilities for object detection, color filtering, edge detection, and feature extraction using OpenCV.
+
+## Source Code
+
+- [ImageProcessorNode Implementation](https://github.com/softmata/horus/tree/main/horus_library/nodes/image_processor)
+- [Vision Messages](https://github.com/softmata/horus/blob/main/horus_library/messages/vision.rs)
+
+## Features
+
+- Color space conversion (RGB, HSV, grayscale)
+- Thresholding and filtering
+- Edge detection (Canny, Sobel)
+- Blob detection
+- Contour finding
+- Object tracking
+- ArUco marker detection
+- QR code detection
+- Image resizing and cropping
+- Simulation support
+
+## Quick Start
+
+```rust
+use horus_library::prelude::*;
+
+fn main() -> Result<()> {
+    let mut scheduler = Scheduler::new();
+
+    let mut processor = ImageProcessorNode::new()?;
+    processor.enable_color_filter(true);
+    processor.set_hsv_range(
+        (100, 100, 100),  // Lower HSV
+        (130, 255, 255)   // Upper HSV (blue)
+    );
+
+    scheduler.add(Box::new(processor), 1, Some(true));
+    scheduler.run()?;
+    Ok(())
+}
+```
+
+## Configuration
+
+```rust
+// Enable processing features
+processor.enable_edge_detection(true);
+processor.set_canny_thresholds(50, 150);
+
+// Color filtering
+processor.enable_color_filter(true);
+processor.set_hsv_range((0, 120, 70), (10, 255, 255));  // Red
+```
+
+## Usage
+
+### Object Detection
+
+```rust
+let frame_hub = Hub::<CameraFrame>::new("camera/frame")?;
+let objects_hub = Hub::<DetectedObjects>::new("vision/objects")?;
+
+if let Some(frame) = frame_hub.recv(None) {
+    // Process frame...
+}
+
+if let Some(objects) = objects_hub.recv(None) {
+    for obj in &objects.objects {
+        println!("Object at ({}, {}), size: {}x{}",
+            obj.x, obj.y, obj.width, obj.height);
+    }
+}
+```
+
+### Color Tracking
+
+```rust
+// Track red objects
+processor.set_hsv_range((0, 120, 70), (10, 255, 255));
+
+let blobs_hub = Hub::<BlobList>::new("vision/blobs")?;
+if let Some(blobs) = blobs_hub.recv(None) {
+    if let Some(largest) = blobs.largest() {
+        println!("Largest blob at ({}, {})", largest.x, largest.y);
+    }
+}
+```
+
+### ArUco Markers
+
+```rust
+processor.enable_aruco_detection(true);
+processor.set_aruco_dictionary(ArucoDictionary::Dict4x4_50);
+
+let markers_hub = Hub::<ArucoMarkers>::new("vision/markers")?;
+if let Some(markers) = markers_hub.recv(None) {
+    for marker in &markers.markers {
+        println!("Marker ID: {}, pose: {:?}", marker.id, marker.pose);
+    }
+}
+```
+
+## Common Operations
+
+### HSV Color Ranges
+
+```rust
+// Red: (0, 120, 70) to (10, 255, 255)
+// Green: (40, 40, 40) to (80, 255, 255)
+// Blue: (100, 100, 100) to (130, 255, 255)
+// Yellow: (20, 100, 100) to (30, 255, 255)
+```
+
+## See Also
+
+- [CameraNode](./camera) - Image capture
+- [DepthCameraNode](./depth-camera) - 3D vision
+- [CollisionDetectorNode](./collision-detector) - Obstacle avoidance

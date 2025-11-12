@@ -12,7 +12,7 @@ After reading this guide, you will understand:
 - How nodes are self-contained units of computation that run in the scheduler
 - The Node trait's lifecycle methods (init, tick, shutdown) and when each is called
 - How NodeInfo provides logging, metrics, and timing context to your nodes
-- When to use different NodePriority levels (Critical for safety, Background for logging)
+- When to use different priority levels (0 for safety-critical, 100 for background logging)
 - Communication patterns (publisher, subscriber, pipeline, aggregator) for building node graphs
 
 Nodes are the fundamental building blocks of HORUS applications. Every component in your robotics system is a node - sensors, actuators, controllers, filters, and more.
@@ -192,7 +192,7 @@ The `NodeInfo` struct provides comprehensive context and utilities for nodes:
 pub struct NodeInfo {
     pub name: &'static str,
     pub state: NodeState,
-    pub priority: NodePriority,
+    pub priority: u32,  // Lower number = higher priority (0 = highest)
     pub metrics: NodeMetrics,
     pub publishers: Vec<TopicMetadata>,
     pub subscribers: Vec<TopicMetadata>,
@@ -296,15 +296,20 @@ Nodes execute in **priority order** each tick cycle:
 
 ### Priority Levels
 
+Priorities are represented as `u32` values where **lower numbers = higher priority**.
+
+Common priority values:
+
 ```rust
-pub enum NodePriority {
-    Critical = 0,   // Highest priority
-    High = 1,
-    Normal = 2,     // Default
-    Low = 3,
-    Background = 4, // Lowest priority
-}
+// Recommended priority constants
+const CRITICAL: u32    = 0;   // Highest priority
+const HIGH: u32        = 10;
+const NORMAL: u32      = 50;  // Default
+const LOW: u32         = 80;
+const BACKGROUND: u32  = 100; // Lowest priority
 ```
+
+You can use **any u32 value** for fine-grained control (e.g., 5, 15, 25, 37, 42, etc.).
 
 ### Priority Usage
 
@@ -313,30 +318,38 @@ use horus::prelude::*;
 
 let mut scheduler = Scheduler::new();
 
-// Safety monitor runs FIRST every tick
-scheduler.add_with_priority(safety_node, NodePriority::Critical);
+// Safety monitor runs FIRST every tick (priority 0)
+scheduler.add(Box::new(safety_node), 0, None);
 
-// Controller runs second
-scheduler.add_with_priority(control_node, NodePriority::High);
+// Controller runs second (priority 10)
+scheduler.add(Box::new(control_node), 10, None);
 
-// Sensors run third
-scheduler.add_with_priority(sensor_node, NodePriority::Normal);
+// Sensors run third (priority 50)
+scheduler.add(Box::new(sensor_node), 50, None);
 
-// Logging runs LAST
-scheduler.add_with_priority(logger_node, NodePriority::Background);
+// Logging runs LAST (priority 100)
+scheduler.add(Box::new(logger_node), 100, None);
+
+// Fine-grained priorities for complex systems
+scheduler.add(Box::new(emergency_stop), 0, None);    // Highest
+scheduler.add(Box::new(motor_control), 15, None);    // Between HIGH and NORMAL
+scheduler.add(Box::new(vision_processing), 55, None); // Slightly lower than normal
+scheduler.add(Box::new(telemetry), 90, None);        // Between LOW and BACKGROUND
 ```
 
 ### Priority Guidelines
 
-**Critical (0)**: Safety monitors, emergency stops, fault detection
+**0 (Critical)**: Safety monitors, emergency stops, fault detection
 
-**High (1)**: Control loops, actuator commands, real-time feedback
+**10 (High)**: Control loops, actuator commands, real-time feedback
 
-**Normal (2)**: Sensor processing, state estimation, path planning
+**50 (Normal)**: Sensor processing, state estimation, path planning
 
-**Low (3)**: Non-critical computation, filtering, analysis
+**80 (Low)**: Non-critical computation, filtering, analysis
 
-**Background (4)**: Logging, monitoring, diagnostics, data recording
+**100 (Background)**: Logging, monitoring, diagnostics, data recording
+
+**Custom Values**: Use any value between 0-255 for fine-grained priority control in complex systems
 
 ## Creating Nodes
 
