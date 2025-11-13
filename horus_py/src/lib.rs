@@ -4,7 +4,7 @@ mod config;
 mod hub;
 mod node;
 mod scheduler;
-mod typed_hub;
+// mod typed_hub;  // Old separate typed hubs - replaced by polymorphic Hub
 mod types;
 
 use config::{PyRobotPreset, PySchedulerConfig};
@@ -33,8 +33,8 @@ fn _horus(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Priority constants
     m.add_class::<Priority>()?;
 
-    // Typed hubs for cross-language communication
-    typed_hub::register_typed_hubs(m)?;
+    // Typed hubs now handled by polymorphic Hub class
+    // typed_hub::register_typed_hubs(m)?;  // Old implementation - replaced
 
     //  CHANGED: Priority system now uses u32 instead of enum
     // - Priority class provides constants: CRITICAL=0, HIGH=10, NORMAL=50, LOW=80, BACKGROUND=100

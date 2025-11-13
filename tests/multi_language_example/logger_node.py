@@ -2,47 +2,30 @@
 """
 Python Logger Node - Multi-Language Example
 
-Subscribes to velocity commands from Rust node to demonstrate Rust -> Python communication.
-Uses generic PyHub with MessagePack deserialization for cross-language compatibility.
+Subscribes to velocity commands using standardized CmdVel message.
+Demonstrates seamless Rust -> Python communication with typed messages.
 """
 
 import horus
-from horus._horus import PyHub
-import pickle
+from horus import CmdVel, Hub
 
-# Create generic hub for cross-language communication (once, outside tick)
-_cmd_hub = PyHub("cmd_vel")
+# Create typed hub - type determines topic name and memory layout
+_cmd_hub = Hub(CmdVel)
 
 
 def tick(node):
     """Called at 5Hz - logs velocity commands from Rust node"""
-    # Try to receive velocity command with automatic logging
-    msg_bytes = _cmd_hub.recv(node)
+    # Receive typed CmdVel object from Rust (automatic deserialization!)
+    cmd = _cmd_hub.recv(node)
 
-    if msg_bytes:
-        # Deserialize message (MessagePack format from Rust)
-        import msgpack
-        cmd = msgpack.unpackb(msg_bytes, raw=False)
-
-        # Calculate speed magnitude
-        linear = cmd.get('linear', 0.0)
-        angular = cmd.get('angular', 0.0)
-        speed = abs(linear) + abs(angular)
-        status = "MOVING" if speed > 0.1 else "STOPPED"
-
-        node.log_info(f"Received cmd from Rust: linear={linear:.2f} m/s, "
-                      f"angular={angular:.2f} rad/s [{status}]")
-    else:
-        node.log_debug("No command received (waiting for controller)")
+    if cmd:
+        # Access fields directly - same API as Rust!
+        # Automatic logging already happened in recv
+        # print(f"Logger: CmdVel(linear={cmd.linear:.2f}, angular={cmd.angular:.2f})")
+        pass
 
 
 def main():
-    print("=" * 60)
-    print("Python Logger Node - Multi-Language Example")
-    print("=" * 60)
-    print("Subscribing to 'cmd_vel' from Rust controller at 5Hz")
-    print()
-
     # Create node with 5Hz tick rate (slower logging)
     node = horus.Node(
         name="logger_node",

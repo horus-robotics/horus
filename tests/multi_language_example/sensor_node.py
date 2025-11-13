@@ -2,20 +2,20 @@
 """
 Python Sensor Node - Multi-Language Example
 
-Publishes robot pose data at 10Hz to demonstrate Python -> Rust communication.
-Uses generic PyHub with MessagePack serialization for cross-language compatibility.
+Publishes robot pose data at 10Hz using standardized Pose2D message.
+Demonstrates seamless Python -> Rust communication with typed messages.
 """
 
 import horus
-from horus._horus import PyHub
+from horus import Pose2D, Hub  # Standardized message type and Hub
 import math
 import time
 
 # Track start time for elapsed time calculation
 _start_time = time.time()
 
-# Create generic hub for cross-language communication (once, outside tick)
-_pose_hub = PyHub("robot_pose")
+# Create typed hub - type determines topic name and memory layout
+_pose_hub = Hub(Pose2D)
 
 
 def tick(node):
@@ -26,21 +26,11 @@ def tick(node):
     y = 2.0 * math.sin(t * 0.5)
     theta = t * 0.5 + math.pi / 2  # Tangent to circle
 
-    # Send pose message as dict (will be serialized with MessagePack)
-    pose = {"x": x, "y": y, "theta": theta}
-    _pose_hub.send(pose, node)  # Automatic logging
-
-    node.log_info(f"Published pose: x={x:.2f}, y={y:.2f}, theta={theta:.2f} rad")
-
+    # Create typed message - same API as Rust!
+    pose = Pose2D(x=x, y=y, theta=theta)
+    _pose_hub.send(pose, node)  # Automatic serialization and logging
 
 def main():
-    print("=" * 60)
-    print("Python Sensor Node - Multi-Language Example")
-    print("=" * 60)
-    print("Publishing robot poses at 10Hz on topic 'robot_pose'")
-    print("Simulating robot moving in a circle (radius 2m)")
-    print()
-
     # Create node with 10Hz tick rate
     node = horus.Node(
         name="sensor_node",

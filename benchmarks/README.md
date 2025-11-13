@@ -36,7 +36,7 @@ cargo build --release --bin ipc_benchmark
 ./target/release/ipc_benchmark
 
 # View results
-jq '.[-1]' benchmark_results.json
+jq '.[-1]' benchmarks/benchmark_results.json
 ```
 
 **Documentation**:
@@ -84,7 +84,7 @@ benchmarks/
 
 ## Results
 
-**Location**: `benchmark_results.json` (created in current directory after running benchmark)
+**Location**: `benchmarks/benchmark_results.json` (created in benchmarks directory after running benchmark)
 
 **Format**: JSON array with complete metadata including:
 - Platform information (CPU model, cores, cache sizes)
@@ -94,12 +94,12 @@ benchmarks/
 
 **View latest result**:
 ```bash
-jq '.[-1]' benchmark_results.json
+jq '.[-1]' benchmarks/benchmark_results.json
 ```
 
 **Filter by quality**:
 ```bash
-jq '.[] | select(.measurement_quality == "high")' benchmark_results.json
+jq '.[] | select(.measurement_quality == "high")' benchmarks/benchmark_results.json
 ```
 
 ## For Academic Publication
@@ -143,7 +143,7 @@ cargo build --release --bin ipc_benchmark
 cd benchmarks && sudo ./benchmark_setup.sh && cd .. && ./target/release/ipc_benchmark
 
 # View results
-jq '.[-1]' benchmark_results.json
+jq '.[-1]' benchmarks/benchmark_results.json
 
 # Run tests
 cargo test --bin ipc_benchmark

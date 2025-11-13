@@ -507,7 +507,13 @@ fn print_platform_info(platform: &PlatformInfo) {
 
 /// Save benchmark results to JSON database
 fn save_results(result: &BenchmarkResult) -> Result<(), String> {
-    let db_path = "benchmark_results.json";
+    let db_path = "benchmarks/benchmark_results.json";
+
+    // Ensure benchmarks directory exists
+    if let Some(parent) = std::path::Path::new(db_path).parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create benchmarks directory: {}", e))?;
+    }
 
     // Load existing results
     let mut results: Vec<BenchmarkResult> = if std::path::Path::new(db_path).exists() {
@@ -533,7 +539,7 @@ fn save_results(result: &BenchmarkResult) -> Result<(), String> {
 
 /// Load all benchmark results from database
 fn load_results() -> Vec<BenchmarkResult> {
-    let db_path = "benchmark_results.json";
+    let db_path = "benchmarks/benchmark_results.json";
     if let Ok(content) = std::fs::read_to_string(db_path) {
         serde_json::from_str(&content).unwrap_or_else(|_| Vec::new())
     } else {

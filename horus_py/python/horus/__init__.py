@@ -21,7 +21,7 @@ try:
     from horus._horus import (
         PyNode as _PyNode,
         PyNodeInfo as _NodeInfo,
-        PyHub as _PyHub,
+        Hub,  # New type-based Hub (exported as "Hub" from Rust)
         PyScheduler as _PyScheduler,
         PyNodeState as NodeState,
         PyRobotPreset as RobotPreset,
@@ -33,7 +33,7 @@ except ImportError:
     print("Warning: Rust bindings not available. Running in mock mode.")
     _PyNode = None
     _NodeInfo = None
-    _PyHub = None
+    Hub = None  # New type-based Hub
     _PyScheduler = None
 
     # Mock NodeState for testing
@@ -943,25 +943,20 @@ def run(*nodes: Node, duration: Optional[float] = None, logging: bool = True) ->
     scheduler.run(duration)
 
 
-# Try to import horus.library messages if available
+# Import Python message types for cross-language communication
 try:
-    from horus.library import (
+    from horus.messages import (
         # Geometry messages
         Pose2D,
         Twist,
-        Transform,
         Point3,
-        Vector3,
-        Quaternion,
         # Control messages
         CmdVel,
-        # Sensor messages
-        LaserScan,
     )
-    _has_library = True
+    _has_messages = True
 except ImportError:
-    _has_library = False
-    # Don't fail if horus-library isn't installed
+    _has_messages = False
+    # Messages module not available
 
 __all__ = [
     # Core API
@@ -972,21 +967,16 @@ __all__ = [
     "run",
 ]
 
-# Alias for direct Hub access (for benchmarks and advanced usage)
-Hub = _PyHub
+# NOTE: Hub is now imported directly from Rust (no alias needed)
+# Old: Hub = _PyHub (removed - Hub is imported directly on line 24)
 
-# Add library messages to __all__ if available
-if _has_library:
+# Add message types to __all__ if available
+if _has_messages:
     __all__.extend([
         # Geometry messages
         "Pose2D",
         "Twist",
-        "Transform",
         "Point3",
-        "Vector3",
-        "Quaternion",
         # Control messages
         "CmdVel",
-        # Sensor messages
-        "LaserScan",
     ])

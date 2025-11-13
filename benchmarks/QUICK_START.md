@@ -25,7 +25,7 @@ The HORUS IPC Benchmark is an **A+ grade research-grade** benchmark for measurin
 
 | File | Purpose |
 |------|---------|
-| **`benchmark_results.json`** | Results database (created after run) |
+| **`benchmarks/benchmark_results.json`** | Results database (created after run) |
 | **`results/RESULTS.md`** | Historical results and analysis |
 | **`QUICK_START.md`** | This guide |
 
@@ -59,7 +59,7 @@ cargo build --release --bin ipc_benchmark
 ```
 
 **Duration**: ~5-8 minutes (with bootstrap CI)
-**Results saved to**: `benchmark_results.json`
+**Results saved to**: `benchmarks/benchmark_results.json`
 
 ---
 
@@ -87,7 +87,7 @@ sudo ./benchmark_restore.sh
 
 ### Primary Results File
 
-**Location**: `benchmark_results.json` (in current directory)
+**Location**: `benchmarks/benchmark_results.json` (in benchmarks directory)
 
 **Format**: JSON array with complete metadata
 
@@ -126,16 +126,16 @@ sudo ./benchmark_restore.sh
 
 ```bash
 # Pretty-print latest result
-jq '.[-1]' benchmark_results.json
+jq '.[-1]' benchmarks/benchmark_results.json
 
 # View only high-quality results
-jq '.[] | select(.measurement_quality == "high")' benchmark_results.json
+jq '.[] | select(.measurement_quality == "high")' benchmarks/benchmark_results.json
 
 # Compare Link vs Hub latencies
-jq '.[] | {link: .link_stats.median_ns, hub: .hub_stats.median_ns}' benchmark_results.json
+jq '.[] | {link: .link_stats.median_ns, hub: .hub_stats.median_ns}' benchmarks/benchmark_results.json
 
 # Count results by quality
-jq 'group_by(.measurement_quality) | map({quality:.[0].measurement_quality, count:length})' benchmark_results.json
+jq 'group_by(.measurement_quality) | map({quality:.[0].measurement_quality, count:length})' benchmarks/benchmark_results.json
 ```
 
 ---
@@ -345,7 +345,7 @@ cd ..
 
 | File | Location | Purpose |
 |------|----------|---------|
-| **benchmark_results.json** | Current directory | Results database |
+| **benchmark_results.json** | benchmarks/ directory | Results database |
 | **/tmp/barrier_hub_[PID]** | /tmp | Temporary barrier files (auto-cleaned) |
 | **/tmp/barrier_link_[PID]** | /tmp | Temporary barrier files (auto-cleaned) |
 
@@ -440,7 +440,7 @@ cargo build --release --bin ipc_benchmark
 cd benchmarks && sudo ./benchmark_setup.sh && cd .. && ./target/release/ipc_benchmark
 
 # View results
-jq '.[-1]' benchmark_results.json
+jq '.[-1]' benchmarks/benchmark_results.json
 
 # Run tests
 cargo test --bin ipc_benchmark
@@ -452,16 +452,15 @@ cd benchmarks && sudo ./benchmark_restore.sh
 ### File Locations
 
 ```
-Current directory/
-├── benchmark_results.json          ← Results saved here
-└── target/release/ipc_benchmark    ← Binary here
-
-benchmarks/
-├── src/bin/ipc_benchmark.rs        ← Main benchmark source
-├── METHODOLOGY.md                  ← Formal methodology
-├── BENCHMARK_README.md             ← Detailed docs
-├── QUICK_START.md                  ← This file
-└── benchmark_setup.sh              ← System optimization
+HORUS/
+├── target/release/ipc_benchmark    ← Binary here
+└── benchmarks/
+    ├── benchmark_results.json      ← Results saved here
+    ├── src/bin/ipc_benchmark.rs    ← Main benchmark source
+    ├── METHODOLOGY.md              ← Formal methodology
+    ├── BENCHMARK_README.md         ← Detailed docs
+    ├── QUICK_START.md              ← This file
+    └── benchmark_setup.sh          ← System optimization
 ```
 
 ---
@@ -469,7 +468,7 @@ benchmarks/
 ## Next Steps
 
 1. **Run benchmark**: `./target/release/ipc_benchmark`
-2. **Check results**: `jq '.[-1]' benchmark_results.json`
+2. **Check results**: `jq '.[-1]' benchmarks/benchmark_results.json`
 3. **Verify quality**: Look for "HIGH QUALITY" in output
 4. **For publication**: Read `METHODOLOGY.md`
 

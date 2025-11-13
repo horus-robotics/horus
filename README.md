@@ -409,6 +409,12 @@ node! {
 ## Example Applications
 
 ### SnakeSim
+
+<div align="center">
+  <img src="examples/snakesim_demo.gif" alt="SnakeSim Demo" width="600"/>
+  <p><i>Multi-node snake game with real-time input processing and graphical display</i></p>
+</div>
+
 ```bash
 # From HORUS root directory
 cd horus_library/apps/snakesim
@@ -420,6 +426,65 @@ horus run
 cd snakesim_gui && horus run
 ```
 
+**Architecture:**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        SnakeSim System                              │
+└─────────────────────────────────────────────────────────────────────┘
+
+    ┌────────────────────┐         ┌────────────────────┐
+    │ KeyboardInputNode  │         │ JoystickInputNode  │
+    │   (Priority 0)     │         │   (Priority 1)     │
+    │                    │         │                    │
+    │ - Arrow keys/WASD  │         │ - Joystick input   │
+    │ - Real-time input  │         │ - Analog control   │
+    └──────────┬─────────┘         └──────────┬─────────┘
+               │                              │
+               │ pub: input_events            │ pub: input_events
+               │                              │
+               └──────────────┬───────────────┘
+                              │
+                              ▼
+               ┌──────────────────────────────┐
+               │    Shared Memory (IPC)       │
+               │    Topic: input_events       │
+               └──────────────┬───────────────┘
+                              │
+                              │ sub: input_events
+                              │
+                              ▼
+               ┌──────────────────────────────┐
+               │   SnakeControlNode           │
+               │     (Priority 2)             │
+               │                              │
+               │  - Game state management     │
+               │  - Collision detection       │
+               │  - Score tracking            │
+               └──────────────┬───────────────┘
+                              │
+                              │ pub: game_state
+                              │
+                              ▼
+               ┌──────────────────────────────┐
+               │    Shared Memory (IPC)       │
+               │    Topic: game_state         │
+               └──────────────┬───────────────┘
+                              │
+                              │ sub: game_state
+                              │
+                              ▼
+               ┌──────────────────────────────┐
+               │   GUI Node (Separate Window) │
+               │                              │
+               │  - Visual rendering          │
+               │  - Animated snake display    │
+               │  - Score display             │
+               └──────────────────────────────┘
+
+Priority-based scheduling ensures input is processed before game logic
+```
+
 Multi-node game demonstrating:
 - KeyboardInputNode (priority 0): Arrow key/WASD input
 - JoystickInputNode (priority 1): Joystick input
@@ -427,6 +492,68 @@ Multi-node game demonstrating:
 - GUI: Graphical display with animated snake (separate window)
 
 ## Multi-Language Support
+
+HORUS enables **Python and Rust nodes to run together in a single system**, communicating seamlessly through shared topics. This hybrid approach combines:
+
+- **Rust nodes** for low-level real-time control (motor controllers, sensor fusion, safety monitors)
+- **Python nodes** for high-level algorithms (AI/ML models, computer vision, path planning)
+
+All nodes communicate through the same high-performance IPC layer, regardless of language.
+
+### Multi-Language Example
+
+<div align="center">
+  <img src="examples/multi_language_demo.gif" alt="Multi-Language Demo" width="700"/>
+  <p><i>Rust and Python nodes communicating in real-time</i></p>
+</div>
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    HORUS Multi-Language System                      │
+└─────────────────────────────────────────────────────────────────────┘
+
+    ┌──────────────────────┐         ┌──────────────────────┐
+    │   Python Node        │         │   Rust Node          │
+    │   sensor_node.py     │         │   controller_node    │
+    │                      │         │                      │
+    │  - Simulates robot   │         │  - PID controller    │
+    │    movement          │         │  - Real-time control │
+    │  - 10Hz publish      │         │  - 20Hz processing   │
+    └──────────┬───────────┘         └──────────┬───────────┘
+               │                                 │
+               │ pub: robot_pose                 │ pub: cmd_vel
+               │ (Python→Rust)                   │ (Rust→Python)
+               │                                 │
+               ▼                                 ▼
+    ┌─────────────────────────────────────────────────────┐
+    │         Shared Memory (Lock-Free IPC)               │
+    │  Topic: robot_pose  │  Topic: cmd_vel               │
+    └─────────────────────────────────────────────────────┘
+               │                                 │
+               │ sub: robot_pose                 │ sub: cmd_vel
+               │                                 │
+               ▼                                 ▼
+    ┌──────────────────────┐         ┌──────────────────────┐
+    │   Rust Node          │         │   Python Node        │
+    │   controller_node    │         │   logger_node.py     │
+    │   (reads Python data)│         │   (reads Rust data)  │
+    └──────────────────────┘         └──────────────────────┘
+
+Legend: Python ≡ High-level AI/ML/CV  |  Rust ≡ Low-level Real-time
+        MessagePack serialization for cross-language compatibility
+```
+
+**Run the example:**
+```bash
+cd tests/multi_language_example
+horus run
+```
+
+This demonstrates:
+- **Cross-language pub/sub**: Python publishes `robot_pose`, Rust subscribes
+- **Bidirectional communication**: Rust publishes `cmd_vel`, Python subscribes
+- **MessagePack serialization**: Automatic cross-language data encoding
+- **Real-time coordination**: 10Hz sensor + 20Hz control + 5Hz logging
 
 ### Python
 
@@ -443,6 +570,111 @@ horus.run(node, duration=5)
 ```
 
 See [horus_py/README.md](horus_py/README.md) for complete documentation.
+
+## Reproducible Development
+
+### Solving "Works on My Machine" with `horus freeze` & `horus restore`
+
+<div align="center">
+  <img src="examples/freeze_restore_demo.gif" alt="Freeze & Restore Demo" width="700"/>
+  <p><i>Share exact environments across machines - no dependency hell</i></p>
+</div>
+
+**The Problem:**
+```
+Developer A: "Here's my robot code, just run it!"
+Developer B: *installs dependencies* → Version mismatch
+Developer B: *fixes versions* → System library conflict
+Developer B: *hours later* → Still broken
+```
+
+**The Solution:**
+```bash
+# Developer A: Freeze the exact working environment
+horus freeze
+
+# Share the freeze ID (via GitHub, Slack, email, etc.)
+# Freeze ID: a3f9c2b7
+
+# Developer B: Restore the exact environment
+horus restore a3f9c2b7
+
+# Works immediately - same dependencies, same versions, same everything
+```
+
+### How It Works
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     HORUS Workspace System                          │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  ~/.horus/cache/                                                    │
+│  (Global cache - shared across all projects)                        │
+│                                                                     │
+│  ├── horus_core-0.1.4/         ← Compiled binaries                  │
+│  ├── horus_library-0.1.4/      ← Shared libraries                   │
+│  └── sensor_fusion-2.1.0/      ← Third-party packages               │
+└─────────────────────────────────────────────────────────────────────┘
+                            │
+                            │ symlink (when versions match)
+                            │
+┌───────────────────────────▼─────────────────────────────────────────┐
+│  my_robot/.horus/                                                   │
+│  (Local isolated environment)                                       │
+│                                                                     │
+│  Case 1: Version Match (symlink)                                    │
+│  ├── horus_core-0.1.4 → ~/.horus/cache/horus_core-0.1.4             │
+│  └── horus_library-0.1.4 → ~/.horus/cache/horus_library-0.1.4       │
+│      Fast, no duplication                                           │
+│                                                                     │
+│  Case 2: Version Mismatch (local copy on restore)                   │
+│  ├── horus_core-0.1.3/         ← Copied from freeze                 │
+│  └── sensor_fusion-2.0.5/      ← Exact version from freeze          │
+│      Isolated, reproducible                                         │
+└─────────────────────────────────────────────────────────────────────┘
+
+When you run 'horus restore <freeze_id>':
+  1. HORUS downloads the exact dependency snapshot
+  2. If versions match global cache → creates symlinks (fast)
+  3. If versions differ → creates local copies in .horus/ (isolated)
+  4. Result: Exact same environment, guaranteed to work
+```
+
+### Key Features
+
+- **Isolated Environments**: Each project has its own `.horus/` directory
+- **Smart Caching**: Symlinks to global cache when versions match (no duplication)
+- **Version Isolation**: Local copies when versions conflict (perfect reproducibility)
+- **Share Anywhere**: Freeze IDs work across GitHub, email, Slack, Discord
+- **No Docker Required**: Lightweight, native binary isolation
+
+### Usage
+
+```bash
+# Freeze current environment
+horus freeze
+# Output: Freeze ID: a3f9c2b7
+
+# Share the ID with your team via GitHub, Slack, etc.
+
+# Restore exact environment on any machine
+horus restore a3f9c2b7
+
+# List all frozen environments
+horus freeze --list
+
+# Clean old freeze snapshots
+horus freeze --clean
+```
+
+**Use cases:**
+- Share working environments with team members
+- Reproduce bugs reported by users
+- Maintain exact dependencies for production deployments
+- Switch between different project configurations
+- Create reproducible research environments
 
 ## Performance
 

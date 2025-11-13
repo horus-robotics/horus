@@ -879,10 +879,3 @@ fi
 echo -e "For help: ${CYAN}horus --help${NC}"
 echo ""
 
-# Anonymous install counter (opt-out: export HORUS_NO_TELEMETRY=1)
-if [ -z "$HORUS_NO_TELEMETRY" ]; then
-    (curl -X POST https://telemetry.horus-registry.dev/count \
-         -H "Content-Type: application/json" \
-         -d "{\"event\":\"install\",\"os\":\"$(uname -s)\",\"timestamp\":$(date +%s)}" \
-         --max-time 3 --silent 2>/dev/null || true) &
-fi
