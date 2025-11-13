@@ -591,13 +591,13 @@ Developer B: *hours later* → Still broken
 **The Solution:**
 ```bash
 # Developer A: Freeze the exact working environment
-horus freeze
+horus env freeze --publish
 
 # Share the freeze ID (via GitHub, Slack, email, etc.)
 # Freeze ID: a3f9c2b7
 
 # Developer B: Restore the exact environment
-horus restore a3f9c2b7
+horus env restore a3f9c2b7
 
 # Works immediately - same dependencies, same versions, same everything
 ```
@@ -654,19 +654,15 @@ When you run 'horus restore <freeze_id>':
 
 ```bash
 # Freeze current environment
-horus freeze
+horus env freeze -p
 # Output: Freeze ID: a3f9c2b7
 
 # Share the ID with your team via GitHub, Slack, etc.
 
 # Restore exact environment on any machine
-horus restore a3f9c2b7
+horus env restore a3f9c2b7
 
-# List all frozen environments
-horus freeze --list
 
-# Clean old freeze snapshots
-horus freeze --clean
 ```
 
 **Use cases:**
