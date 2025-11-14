@@ -166,9 +166,3 @@ def test_get_timestamp():
     print(" Get timestamp test passed!")
 
 
-if __name__ == "__main__":
-    test_automatic_timestamps()
-    test_message_age()
-    test_staleness_detection()
-    test_get_timestamp()
-    print("\n All Phase 2 tests passed!")

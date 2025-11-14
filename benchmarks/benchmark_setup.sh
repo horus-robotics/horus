@@ -27,16 +27,16 @@ chmod +x "$RESTORE_FILE"
 echo -e "${YELLOW}[1/8] Checking CPU features...${NC}"
 
 if grep -q "constant_tsc" /proc/cpuinfo; then
-    echo -e "  ${GREEN}✓${NC} CPU has constant TSC"
+    echo -e "  ${GREEN}[OK]${NC} CPU has constant TSC"
 else
-    echo -e "  ${RED}✗${NC} WARNING: CPU does not have constant TSC!"
+    echo -e "  ${RED}[FAIL]${NC} WARNING: CPU does not have constant TSC!"
     echo -e "      Results may be inaccurate."
 fi
 
 if grep -q "nonstop_tsc" /proc/cpuinfo; then
-    echo -e "  ${GREEN}✓${NC} CPU has nonstop TSC"
+    echo -e "  ${GREEN}[OK]${NC} CPU has nonstop TSC"
 else
-    echo -e "  ${YELLOW}⚠${NC} WARNING: CPU may not have nonstop TSC"
+    echo -e "  ${YELLOW}[WARNING]${NC} WARNING: CPU may not have nonstop TSC"
 fi
 
 CPU_MODEL=$(grep "model name" /proc/cpuinfo | head -1 | cut -d: -f2 | xargs)
@@ -55,7 +55,7 @@ if command -v cpupower &> /dev/null; then
 
     # Set to performance
     sudo cpupower frequency-set --governor performance > /dev/null 2>&1
-    echo -e "  ${GREEN}✓${NC} Set CPU governor to 'performance'"
+    echo -e "  ${GREEN}[OK]${NC} Set CPU governor to 'performance'"
     echo -e "      (was: ${CURRENT_GOV})"
 
     # Lock to base frequency (disable turbo scaling)
@@ -66,11 +66,11 @@ if command -v cpupower &> /dev/null; then
             echo "echo '$CURRENT_MAX' | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_max_freq > /dev/null" >> "$RESTORE_FILE"
 
             echo "$BASE_FREQ" | sudo tee /sys/devices/system/cpu/cpufreq/policy*/scaling_max_freq > /dev/null 2>&1 || true
-            echo -e "  ${GREEN}✓${NC} Locked CPU to base frequency"
+            echo -e "  ${GREEN}[OK]${NC} Locked CPU to base frequency"
         fi
     fi
 else
-    echo -e "  ${YELLOW}⚠${NC} cpupower not found (install linux-tools-common)"
+    echo -e "  ${YELLOW}[WARNING]${NC} cpupower not found (install linux-tools-common)"
     echo -e "      Frequency scaling may affect results"
 fi
 
@@ -86,16 +86,16 @@ if [ -f /sys/devices/system/cpu/intel_pstate/no_turbo ]; then
     echo "echo '$CURRENT_TURBO' | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null" >> "$RESTORE_FILE"
 
     echo 1 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo > /dev/null
-    echo -e "  ${GREEN}✓${NC} Intel Turbo Boost disabled"
+    echo -e "  ${GREEN}[OK]${NC} Intel Turbo Boost disabled"
 # AMD
 elif [ -f /sys/devices/system/cpu/cpufreq/boost ]; then
     CURRENT_BOOST=$(cat /sys/devices/system/cpu/cpufreq/boost)
     echo "echo '$CURRENT_BOOST' | sudo tee /sys/devices/system/cpu/cpufreq/boost > /dev/null" >> "$RESTORE_FILE"
 
     echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost > /dev/null
-    echo -e "  ${GREEN}✓${NC} AMD Boost disabled"
+    echo -e "  ${GREEN}[OK]${NC} AMD Boost disabled"
 else
-    echo -e "  ${YELLOW}⚠${NC} Turbo boost control not found"
+    echo -e "  ${YELLOW}[WARNING]${NC} Turbo boost control not found"
 fi
 
 # ============================================================================
@@ -106,9 +106,9 @@ echo -e "${YELLOW}[4/8] Checking core isolation...${NC}"
 
 if grep -q "isolcpus" /proc/cmdline; then
     ISOLATED=$(grep -o "isolcpus=[^ ]*" /proc/cmdline | cut -d= -f2)
-    echo -e "  ${GREEN}✓${NC} Cores isolated: ${ISOLATED}"
+    echo -e "  ${GREEN}[OK]${NC} Cores isolated: ${ISOLATED}"
 else
-    echo -e "  ${YELLOW}⚠${NC} No cores isolated"
+    echo -e "  ${YELLOW}[WARNING]${NC} No cores isolated"
     echo -e "      For best results, add 'isolcpus=0,1' to kernel command line"
     echo -e "      Edit /etc/default/grub and add to GRUB_CMDLINE_LINUX:"
     echo -e "      ${CYAN}isolcpus=0,1${NC}"
@@ -131,7 +131,7 @@ for irq in /proc/irq/*/smp_affinity; do
     fi
 done
 
-echo -e "  ${GREEN}✓${NC} Moved $IRQ_COUNT IRQs away from cores 0-1"
+echo -e "  ${GREEN}[OK]${NC} Moved $IRQ_COUNT IRQs away from cores 0-1"
 echo -e "      (IRQs now on cores 2+)"
 
 # ============================================================================
@@ -144,7 +144,7 @@ CURRENT_ASLR=$(cat /proc/sys/kernel/randomize_va_space)
 echo "echo '$CURRENT_ASLR' | sudo tee /proc/sys/kernel/randomize_va_space > /dev/null" >> "$RESTORE_FILE"
 
 echo 0 | sudo tee /proc/sys/kernel/randomize_va_space > /dev/null
-echo -e "  ${GREEN}✓${NC} ASLR disabled (was: $CURRENT_ASLR)"
+echo -e "  ${GREEN}[OK]${NC} ASLR disabled (was: $CURRENT_ASLR)"
 echo -e "      Reduces memory layout variance"
 
 # ============================================================================
@@ -155,7 +155,7 @@ echo -e "${YELLOW}[7/8] Dropping caches...${NC}"
 
 sync
 echo 3 | sudo tee /proc/sys/vm/drop_caches > /dev/null
-echo -e "  ${GREEN}✓${NC} Page cache, dentries, and inodes dropped"
+echo -e "  ${GREEN}[OK]${NC} Page cache, dentries, and inodes dropped"
 
 # ============================================================================
 # 8. Stop Background Services
@@ -174,7 +174,7 @@ for service in bluetooth cups whoopsie snapd packagekit; do
 done
 
 if [ ${#STOPPED_SERVICES[@]} -gt 0 ]; then
-    echo -e "  ${GREEN}✓${NC} Stopped services: ${STOPPED_SERVICES[*]}"
+    echo -e "  ${GREEN}[OK]${NC} Stopped services: ${STOPPED_SERVICES[*]}"
 else
     echo -e "  ${CYAN}•${NC} No interfering services found"
 fi
@@ -188,11 +188,11 @@ echo -e "${GREEN}   Setup Complete!${NC}"
 echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
 echo ""
 echo -e "System configured for benchmarking:"
-echo -e "  ${GREEN}✓${NC} CPU frequency locked to base"
-echo -e "  ${GREEN}✓${NC} Turbo boost disabled"
-echo -e "  ${GREEN}✓${NC} IRQs moved away from cores 0-1"
-echo -e "  ${GREEN}✓${NC} ASLR disabled"
-echo -e "  ${GREEN}✓${NC} Caches dropped"
+echo -e "  ${GREEN}[OK]${NC} CPU frequency locked to base"
+echo -e "  ${GREEN}[OK]${NC} Turbo boost disabled"
+echo -e "  ${GREEN}[OK]${NC} IRQs moved away from cores 0-1"
+echo -e "  ${GREEN}[OK]${NC} ASLR disabled"
+echo -e "  ${GREEN}[OK]${NC} Caches dropped"
 echo ""
 echo -e "${CYAN}Next steps:${NC}"
 echo -e "  1. Build benchmark:  ${CYAN}cargo build --release --bin ipc_benchmark${NC}"

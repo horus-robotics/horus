@@ -168,7 +168,7 @@ def analyze_deadline_performance(scheduler):
             miss_rate = (misses / total_ticks) * 100
 
             if miss_rate > 10:
-                print(f"⚠️  {node['name']}: {miss_rate:.1f}% miss rate")
+                print(f"[WARNING]️  {node['name']}: {miss_rate:.1f}% miss rate")
                 print(f"   Avg: {node.get('avg_tick_duration_ms', 0):.3f}ms")
                 print(f"   Max: {node.get('max_tick_duration_ms', 0):.3f}ms")
                 print(f"   Deadline: {node.get('deadline_ms')}ms")
@@ -196,7 +196,7 @@ def monitor_deadlines(scheduler, interval=1.0):
             misses = node.get('deadline_misses', 0)
             last_dur = node.get('last_tick_duration_ms', 0)
 
-            status = "✓" if last_dur < deadline else "✗"
+            status = "[OK]" if last_dur < deadline else "[FAIL]"
             print(f"{status} {name}: {last_dur:.3f}ms / {deadline}ms (misses: {misses})")
 ```
 

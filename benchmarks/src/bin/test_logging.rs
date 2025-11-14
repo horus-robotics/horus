@@ -35,7 +35,7 @@ fn main() {
         println!(" Test passed: {}", test_name);
         process::exit(0);
     } else {
-        eprintln!("✗ Test failed: {}", test_name);
+        eprintln!("[FAIL] Test failed: {}", test_name);
         process::exit(1);
     }
 }

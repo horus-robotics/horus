@@ -241,7 +241,7 @@ horus run sensor.rs
 horus run monitor.rs
 ```
 
-Both share the same session → communication works! ✅
+Both share the same session [ARROW] communication works! ✅
 
 ### Option 2: Use Glob Pattern
 
@@ -262,7 +262,7 @@ let hub: Hub<f32> = Hub::new_global("temperature")?;
 
 Global hubs work across ALL sessions automatically.
 
-> 💡 **See [Configuration](/configuration#session-management)** for details on session_id and [Shared Memory](/core-concepts-shared-memory#session-management) for how sessions work.
+> [TIP] **See [Configuration](/configuration#session-management)** for details on session_id and [Shared Memory](/core-concepts-shared-memory#session-management) for how sessions work.
 
 ## Next Steps
 

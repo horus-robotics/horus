@@ -357,7 +357,7 @@ impl UltrasonicNode {
     }
 
     /// Measure ultrasonic distance (tries hardware first, falls back to simulation)
-    fn simulate_measurement(&mut self, sensor_id: u8, current_time: u64) -> Option<f32> {
+    fn simulate_measurement(&mut self, sensor_id: u8, current_time: u64, mut ctx: Option<&mut NodeInfo>) -> Option<f32> {
         let idx = sensor_id as usize;
 
         // Check if it's time for a new measurement
@@ -534,7 +534,7 @@ impl Node for UltrasonicNode {
         // Process measurements for all sensors
         for sensor_id in 0..self.num_sensors {
             // Simulate/read measurement from hardware
-            if let Some(distance) = self.simulate_measurement(sensor_id, current_time) {
+            if let Some(distance) = self.simulate_measurement(sensor_id, current_time, ctx.as_deref_mut()) {
                 self.process_measurement(sensor_id, distance, ctx.as_deref_mut());
             }
         }

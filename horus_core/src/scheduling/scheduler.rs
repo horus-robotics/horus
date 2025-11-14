@@ -205,7 +205,7 @@ impl Scheduler {
             .with_safety_monitor(3)
             .with_name("RealtimeScheduler");
 
-        println!("⚡ Real-time scheduler initialized");
+        println!("[FAST] Real-time scheduler initialized");
         println!("   - Config: hard_realtime() preset");
         println!("   - Capacity: 128 nodes pre-allocated");
         println!("   - Determinism: ENABLED");
@@ -228,7 +228,7 @@ impl Scheduler {
         let sched = Self::new()
             .enable_determinism();
 
-        println!("✓ Deterministic scheduler initialized");
+        println!("[OK] Deterministic scheduler initialized");
         println!("   - Determinism: ENABLED");
         println!("   - Execution: Reproducible, bit-exact");
         println!("   - Use for: Simulation, testing, certification");
@@ -281,7 +281,7 @@ impl Scheduler {
                 )));
             }
 
-            println!("✓ Real-time priority set to {} (SCHED_FIFO)", priority);
+            println!("[OK] Real-time priority set to {} (SCHED_FIFO)", priority);
             Ok(())
         }
 
@@ -325,7 +325,7 @@ impl Scheduler {
                 )));
             }
 
-            println!("✓ Scheduler pinned to CPU core {}", cpu_id);
+            println!("[OK] Scheduler pinned to CPU core {}", cpu_id);
             Ok(())
         }
 
@@ -368,7 +368,7 @@ impl Scheduler {
                 )));
             }
 
-            println!("✓ Memory locked (no page faults)");
+            println!("[OK] Memory locked (no page faults)");
             Ok(())
         }
 
@@ -406,7 +406,7 @@ impl Scheduler {
             }
         }
 
-        println!("✓ Pre-faulted {} KB of stack", stack_size / 1024);
+        println!("[OK] Pre-faulted {} KB of stack", stack_size / 1024);
         Ok(())
     }
 

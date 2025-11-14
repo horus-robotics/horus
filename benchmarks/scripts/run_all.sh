@@ -72,7 +72,7 @@ cat > "$RESULTS_DIR/system_info_$TIMESTAMP.json" << EOF
 EOF
 
 # Build benchmarks
-echo -e "${YELLOW}🔨 Building benchmarks...${NC}"
+echo -e "${YELLOW}[BUILD] Building benchmarks...${NC}"
 cd "$BENCH_DIR"
 cargo build --release --benches
 

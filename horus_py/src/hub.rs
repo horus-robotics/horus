@@ -9,6 +9,7 @@ use horus_library::messages::GenericMessage;
 use horus_library::messages::cmd_vel::CmdVel;
 use horus_library::messages::geometry::Pose2D;
 use pyo3::prelude::*;
+use pyo3::types::PyDict;
 use std::sync::{Arc, Mutex};
 
 /// Internal enum tracking which Rust type the Hub wraps
@@ -168,10 +169,41 @@ impl PyHub {
 
                 success
             }
-            HubType::Generic(_) => {
-                return Err(pyo3::exceptions::PyNotImplementedError::new_err(
-                    "Generic hub send() not yet implemented. Use typed hubs: Hub(CmdVel) or Hub(Pose2D)"
-                ));
+            HubType::Generic(hub) => {
+                // Convert Python object to MessagePack via pythonize
+                let bound = message.bind(py);
+                let value: serde_json::Value = pythonize::depythonize_bound(bound.clone())
+                    .map_err(|e| pyo3::exceptions::PyTypeError::new_err(
+                        format!("Failed to convert Python object: {}", e)
+                    ))?;
+
+                // Serialize to MessagePack
+                let msgpack_bytes = rmp_serde::to_vec(&value)
+                    .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(
+                        format!("Failed to serialize to MessagePack: {}", e)
+                    ))?;
+
+                // Create GenericMessage (with size validation)
+                let msg = GenericMessage::new(msgpack_bytes)
+                    .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?;
+
+                // Send via Hub<GenericMessage>
+                let hub = hub.lock().unwrap();
+                let success = hub.send(msg, None).is_ok();
+
+                // Log if node provided
+                if let Some(node_obj) = node {
+                    let ipc_ns = start.elapsed().as_nanos() as u64;
+                    if let Ok(info) = node_obj.getattr(py, "info") {
+                        if !info.is_none(py) {
+                            use horus::core::LogSummary;
+                            let log_msg = msg.log_summary();
+                            let _ = info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
+                        }
+                    }
+                }
+
+                success
             }
         };
 
@@ -245,10 +277,39 @@ impl PyHub {
                     Ok(None)
                 }
             }
-            HubType::Generic(_) => {
-                Err(pyo3::exceptions::PyNotImplementedError::new_err(
-                    "Generic hub recv() not yet implemented. Use typed hubs: Hub(CmdVel) or Hub(Pose2D)"
-                ))
+            HubType::Generic(hub) => {
+                let hub = hub.lock().unwrap();
+                if let Some(msg) = hub.recv(None) {
+                    let ipc_ns = start.elapsed().as_nanos() as u64;
+
+                    // Log if node provided
+                    if let Some(node_obj) = &node {
+                        if let Ok(info) = node_obj.getattr(py, "info") {
+                            if !info.is_none(py) {
+                                use horus::core::LogSummary;
+                                let log_msg = msg.log_summary();
+                                let _ = info.call_method1(py, "log_sub", (&self.topic, log_msg, ipc_ns));
+                            }
+                        }
+                    }
+
+                    // Deserialize MessagePack to serde_json::Value
+                    let data = msg.data();
+                    let value: serde_json::Value = rmp_serde::from_slice(&data)
+                        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(
+                            format!("Failed to deserialize MessagePack: {}", e)
+                        ))?;
+
+                    // Convert serde Value to Python object
+                    let py_obj = pythonize::pythonize(py, &value)
+                        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(
+                            format!("Failed to convert to Python: {}", e)
+                        ))?;
+
+                    Ok(Some(py_obj.into()))
+                } else {
+                    Ok(None)
+                }
             }
         }
     }

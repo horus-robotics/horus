@@ -100,6 +100,10 @@ enum Commands {
         /// Use Terminal UI mode instead of web
         #[arg(short = 't', long = "tui")]
         tui: bool,
+
+        /// Enable HTTPS with mkcert certificates (requires setup)
+        #[arg(short = 's', long = "secure")]
+        secure: bool,
     },
 
     /// Package management
@@ -347,7 +351,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
             if !horus_yaml_path.exists() {
                 println!(
                     "{} File not found at: {}",
-                    "✗".red(),
+                    "[FAIL]".red(),
                     horus_yaml_path.display()
                 );
                 return Err(HorusError::Config("File not found".to_string()));
@@ -376,7 +380,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                         }
                         Err(e) => {
                             println!("{}", "".red());
-                            println!("\n{} Syntax error:", "✗".red().bold());
+                            println!("\n{} Syntax error:", "[FAIL]".red().bold());
                             println!("  {}", e);
                             return Err(HorusError::Config(format!("Rust syntax error: {}", e)));
                         }
@@ -385,7 +389,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     // Check hardware requirements
                     use horus_manager::commands::run::check_hardware_requirements;
                     if let Err(e) = check_hardware_requirements(&horus_yaml_path, "rust") {
-                        eprintln!("\n{} Hardware check error: {}", "⚠".yellow(), e);
+                        eprintln!("\n{} Hardware check error: {}", "[WARNING]".yellow(), e);
                     }
 
                     return Ok(());
@@ -415,7 +419,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                         Ok(result) => {
                             println!("{}", "".red());
                             let error = String::from_utf8_lossy(&result.stderr);
-                            println!("\n{} Syntax error:", "✗".red().bold());
+                            println!("\n{} Syntax error:", "[FAIL]".red().bold());
                             println!("  {}", error);
                             return Err(HorusError::Config(format!(
                                 "Python syntax error: {}",
@@ -423,10 +427,10 @@ fn run_command(command: Commands) -> HorusResult<()> {
                             )));
                         }
                         Err(e) => {
-                            println!("{}", "⚠".yellow());
+                            println!("{}", "[WARNING]".yellow());
                             println!(
                                 "\n{} Could not check Python syntax (python3 not found): {}",
-                                "⚠".yellow(),
+                                "[WARNING]".yellow(),
                                 e
                             );
                         }
@@ -466,7 +470,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                         Ok(result) => {
                             println!("{}", "".red());
                             let error = String::from_utf8_lossy(&result.stderr);
-                            println!("\n{} Syntax error:", "✗".red().bold());
+                            println!("\n{} Syntax error:", "[FAIL]".red().bold());
                             println!("  {}", error);
                             return Err(HorusError::Config(format!(
                                 "C/C++ syntax error: {}",
@@ -474,10 +478,10 @@ fn run_command(command: Commands) -> HorusResult<()> {
                             )));
                         }
                         Err(e) => {
-                            println!("{}", "⚠".yellow());
+                            println!("{}", "[WARNING]".yellow());
                             println!(
                                 "\n{} Could not check C/C++ syntax ({} not found): {}",
-                                "⚠".yellow(),
+                                "[WARNING]".yellow(),
                                 compiler,
                                 e
                             );
@@ -558,13 +562,13 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 let missing_license_warning = "No license specified. Consider adding a license field (e.g., Apache-2.0, BSD-3-Clause).";
                 if let Some(license) = yaml.get("license").and_then(|l| l.as_str()) {
                     if license.trim().is_empty() {
-                        println!("{}", "⚠".yellow());
+                        println!("{}", "[WARNING]".yellow());
                         warn_msgs.push(missing_license_warning.to_string());
                     } else {
                         println!("{} ({})", "".green(), license.dimmed());
                     }
                 } else {
-                    println!("{}", "⚠".yellow());
+                    println!("{}", "[WARNING]".yellow());
                     warn_msgs.push(missing_license_warning.to_string());
                 }
 
@@ -733,7 +737,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                         } else {
                             println!(
                                 "    {} {} ({}) - Not a directory",
-                                "✗".red(),
+                                "[FAIL]".red(),
                                 spec.name,
                                 path.display()
                             );
@@ -746,7 +750,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     } else {
                         println!(
                             "    {} {} ({}) - Path not found",
-                            "✗".red(),
+                            "[FAIL]".red(),
                             spec.name,
                             path.display()
                         );
@@ -798,8 +802,8 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                             our_name, spec.name, our_name
                                         ));
                                         println!(
-                                            "    {} Circular: {} ↔ {}",
-                                            "✗".red(),
+                                            "    {} Circular: {} <-> {}",
+                                            "[FAIL]".red(),
                                             our_name,
                                             spec.name
                                         );
@@ -1050,7 +1054,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                         }
                                     }
                                     Ok(output) => {
-                                        println!("{}", "✗".red());
+                                        println!("{}", "[FAIL]".red());
                                         let stderr = String::from_utf8_lossy(&output.stderr);
                                         errors.push(format!(
                                             "C++ code has compilation errors:\n{}",
@@ -1058,7 +1062,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                         ));
                                     }
                                     Err(_) => {
-                                        println!("{}", "⚠".yellow());
+                                        println!("{}", "[WARNING]".yellow());
                                         if !quiet {
                                             warn_msgs.push("Could not run g++ - skipping C++ syntax validation".to_string());
                                         }
@@ -1247,7 +1251,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 if warn_msgs.is_empty() {
                     println!("{} No warnings detected.", "".green());
                 } else {
-                    println!("{} {} warning(s):", "⚠".yellow(), warn_msgs.len());
+                    println!("{} {} warning(s):", "[WARNING]".yellow(), warn_msgs.len());
                     for warn in &warn_msgs {
                         println!("  - {}", warn);
                     }
@@ -1259,7 +1263,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 println!("{} All checks passed!", "".green().bold());
                 Ok(())
             } else {
-                println!("{} {} error(s) found:\n", "✗".red().bold(), errors.len());
+                println!("{} {} error(s) found:\n", "[FAIL]".red().bold(), errors.len());
                 for (i, err) in errors.iter().enumerate() {
                     println!("  {}. {}", i + 1, err);
                 }
@@ -1268,16 +1272,18 @@ fn run_command(command: Commands) -> HorusResult<()> {
             }
         }
 
-        Commands::Dashboard { port, tui } => {
+        Commands::Dashboard { port, tui, secure } => {
             if tui {
                 println!("{} Opening HORUS Terminal UI dashboard...", "".cyan());
                 // Launch TUI dashboard
                 dashboard_tui::TuiDashboard::run().map_err(|e| HorusError::Config(e.to_string()))
             } else {
                 // Default: Launch web dashboard and auto-open browser
+                let protocol = if secure { "https" } else { "http" };
                 println!(
-                    "{} Starting HORUS web dashboard on http://localhost:{}...",
+                    "{} Starting HORUS web dashboard on {}://localhost:{}...",
                     "".cyan(),
+                    protocol,
                     port
                 );
                 println!("  {} Opening browser...", "".dimmed());
@@ -1288,7 +1294,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
 
                 tokio::runtime::Runtime::new()
                     .unwrap()
-                    .block_on(dashboard::run(port))
+                    .block_on(dashboard::run(port, secure))
                     .map_err(|e| {
                         let err_str = e.to_string();
                         if err_str.contains("Address already in use") || err_str.contains("os error 98") {
@@ -2157,7 +2163,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                     } else {
                                         println!(
                                             "\n  {} {} v{} (system package NOT found)",
-                                            "⚠".yellow(),
+                                            "[WARNING]".yellow(),
                                             pkg.name,
                                             pkg.version
                                         );
@@ -2198,7 +2204,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                     }
                                 }
                                 registry::PackageSource::Path { path } => {
-                                    println!("  {} {} (path dependency)", "⚠".yellow(), pkg.name);
+                                    println!("  {} {} (path dependency)", "[WARNING]".yellow(), pkg.name);
                                     println!("    Path: {}", path);
                                     println!("    {} Path dependencies are not portable across machines.", "Note:".dimmed());
                                     println!("    {} Please update horus.yaml with the correct path if needed.", "Tip:".dimmed());
@@ -2286,7 +2292,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                     } else {
                                         println!(
                                             "\n  {} {} v{} (system package NOT found)",
-                                            "⚠".yellow(),
+                                            "[WARNING]".yellow(),
                                             pkg.name,
                                             pkg.version
                                         );
@@ -2327,7 +2333,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                     }
                                 }
                                 registry::PackageSource::Path { path } => {
-                                    println!("  {} {} (path dependency)", "⚠".yellow(), pkg.name);
+                                    println!("  {} {} (path dependency)", "[WARNING]".yellow(), pkg.name);
                                     println!("    Path: {}", path);
                                     println!("    {} Path dependencies are not portable across machines.", "Note:".dimmed());
                                     println!("    {} Please update horus.yaml with the correct path if needed.", "Tip:".dimmed());
@@ -2439,7 +2445,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     cmd.arg("--headless");
                 }
 
-                println!("{} Launching sim2d...", "▶".green());
+                println!("{} Launching sim2d...", "[RUN]".green());
                 println!();
 
                 // Try to run pre-built binary first (fast path)

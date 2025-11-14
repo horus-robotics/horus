@@ -165,7 +165,7 @@ impl RegistryClient {
         if in_pypi && in_crates {
             println!(
                 "\n{} Package '{}' found in BOTH PyPI and crates.io",
-                "⚠".yellow(),
+                "[WARNING]".yellow(),
                 package_name.green()
             );
             return self.prompt_package_source_choice(package_name);
@@ -207,9 +207,9 @@ impl RegistryClient {
         use std::io::{self, Write};
 
         println!("\nWhich package source do you want to use?");
-        println!("  [1] {} PyPI (Python package)", "🐍".cyan());
-        println!("  [2] {} crates.io (Rust binary)", "🦀".cyan());
-        println!("  [3] {} Cancel installation", "✗".red());
+        println!("  [1] {} PyPI (Python package)", "[PYTHON]".cyan());
+        println!("  [2] {} crates.io (Rust binary)", "[RUST]".cyan());
+        println!("  [3] {} Cancel installation", "[FAIL]".red());
 
         print!("\nChoice [1-3]: ");
         io::stdout().flush()?;
@@ -2409,7 +2409,7 @@ impl RegistryClient {
             "  [2] {} Install to HORUS (isolated environment)",
             "".blue()
         );
-        println!("  [3] {} Cancel installation", "✗".red());
+        println!("  [3] {} Cancel installation", "[FAIL]".red());
 
         print!("\nChoice [1-3]: ");
         io::stdout().flush()?;

@@ -313,7 +313,7 @@ horus::System system("node");
 horus::Publisher<Twist> pub("topic");
 // Automatic cleanup
 
-✗ Bad:
+[FAIL] Bad:
 init("node");
 auto pub = publisher("topic", MSG_TWIST);
 shutdown();  // Easy to forget!

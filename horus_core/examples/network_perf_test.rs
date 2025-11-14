@@ -56,7 +56,7 @@ fn bench_local_shm() {
     if avg_ns < 200 {
         println!("  PASS");
     } else {
-        println!("  ✗ FAIL (exceeded target)");
+        println!("  [FAIL] FAIL (exceeded target)");
     }
 }
 
@@ -116,7 +116,7 @@ fn bench_unix_socket() {
     if avg_us < 5.0 {
         println!("  PASS");
     } else {
-        println!("  ✗ FAIL (exceeded target)");
+        println!("  [FAIL] FAIL (exceeded target)");
     }
 
     pub_thread.join().unwrap();
@@ -167,7 +167,7 @@ fn bench_udp_direct() {
     if avg_us < 50.0 {
         println!("  PASS");
     } else {
-        println!("  ✗ FAIL (exceeded target)");
+        println!("  [FAIL] FAIL (exceeded target)");
     }
 }
 

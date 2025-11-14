@@ -1,264 +1,220 @@
 #!/usr/bin/env python3
 """
-HORUS Python Bindings - Optimized API Example
+HORUS Python Bindings - Typed Hub API Example
 
-Demonstrates all 4 performance optimizations:
-1. Zero-copy NumPy arrays (100-1000x faster for images)
-2. MessagePack serialization (2-5x faster than JSON)
-3. Pre-allocated buffer pool (automatic, 50% reduction in allocations)
-4. Batch operations (3x fewer boundary crossings)
+Demonstrates the new type-based Hub API where the message type
+determines the topic name automatically.
+
+NEW API (Type-based):
+    hub = Hub(Pose2D)         # Type determines topic ("robot_pose")
+    hub.send(pose, node)      # Type-safe send
+
+OLD API (Name-based):
+    hub = Hub("robot_pose")   # Manual topic naming
+    hub.send(data, node)      # Untyped data
+
+Benefits of Typed Hub:
+1. Type safety - compiler catches errors
+2. Auto topic naming - types have __topic_name__
+3. Zero-copy IPC - direct struct serialization
+4. Cross-language - works with Rust/C++/etc
+5. Better IDE support - autocomplete, type hints
 """
 
-import numpy as np
+from horus import Hub, Pose2D, CmdVel, Node, run
+import math
 import time
-from horus import Hub
 
 
-def example_1_numpy_zero_copy():
+def example_1_typed_pose():
     """
-    OPTIMIZATION 1: Zero-copy NumPy arrays
-    Perfect for: Camera images, LiDAR scans, sensor arrays
-    """
-    print("\n" + "=" * 70)
-    print("EXAMPLE 1: Zero-Copy NumPy Arrays (100-1000x faster)")
-    print("=" * 70)
+    Demonstrate typed Hub with Pose2D messages
 
-    hub = Hub("camera/image", capacity=10)
-
-    # Simulate camera image (1920x1080 RGB)
-    image = np.random.randint(0, 255, (1080, 1920, 3), dtype=np.uint8)
-    print(f"Image shape: {image.shape}, dtype: {image.dtype}, size: {image.nbytes / 1024 / 1024:.1f} MB")
-
-    # OLD WAY (SLOW): Using pickle
-    start = time.time()
-    hub.send(image.tobytes())  # Pickle overhead: ~100ms for 1080p
-    old_time = time.time() - start
-
-    # NEW WAY (FAST): Zero-copy NumPy
-    start = time.time()
-    hub.send_numpy(image)  # Zero-copy: ~0.1ms for 1080p
-    new_time = time.time() - start
-
-    print(f"Old way (pickle):     {old_time * 1000:.2f} ms")
-    print(f"New way (zero-copy):  {new_time * 1000:.2f} ms")
-    print(f"Speedup: {old_time / new_time:.0f}x FASTER!")
-
-    # Receiving
-    hub_recv = Hub("camera/image", capacity=10)
-    received = hub_recv.recv_numpy("uint8")
-    if received is not None:
-        print(f"Received array shape: {received.shape}")
-
-
-def example_2_messagepack():
-    """
-    OPTIMIZATION 2: MessagePack serialization
-    Perfect for: Sensor data, telemetry, state updates
+    Type determines topic: Pose2D → "robot_pose"
     """
     print("\n" + "=" * 70)
-    print("EXAMPLE 2: MessagePack Serialization (2-5x faster)")
+    print("EXAMPLE 1: Typed Hub with Pose2D")
     print("=" * 70)
 
-    hub = Hub("sensors/imu", capacity=1024)
+    # NEW API: Hub(MessageType) - type determines topic
+    pose_hub = Hub(Pose2D)
+    print(f"Created Hub for type: Pose2D")
+    print(f"Topic name (from __topic_name__): {pose_hub.topic()}")
 
-    sensor_data = {
-        "accel": {"x": 0.1, "y": -0.05, "z": 9.81},
-        "gyro": {"x": 0.001, "y": -0.002, "z": 0.0},
-        "timestamp": time.time()
-    }
+    # Create and send typed message
+    pose = Pose2D(x=1.5, y=2.3, theta=0.785)
+    success = pose_hub.send(pose)
+    print(f"Sent Pose2D: x={pose.x}, y={pose.y}, theta={pose.theta}")
+    print(f"Success: {success}")
 
-    # OLD WAY: JSON serialization (default in many frameworks)
-    start = time.time()
-    for _ in range(1000):
-        hub.send(sensor_data, use_msgpack=False)  # JSON
-    json_time = time.time() - start
-
-    # NEW WAY: MessagePack (default in HORUS)
-    start = time.time()
-    for _ in range(1000):
-        hub.send(sensor_data, use_msgpack=True)  # MessagePack (default)
-    msgpack_time = time.time() - start
-
-    print(f"JSON serialization:       {json_time * 1000:.2f} ms (1000 messages)")
-    print(f"MessagePack serialization: {msgpack_time * 1000:.2f} ms (1000 messages)")
-    print(f"Speedup: {json_time / msgpack_time:.1f}x FASTER!")
-    print("\nNote: MessagePack is the default, use_msgpack=True is automatic!")
+    # Receive typed message
+    received = pose_hub.recv()
+    if received:
+        print(f"Received Pose2D: x={received.x}, y={received.y}, theta={received.theta}")
+    else:
+        print("No message available (expected - same hub)")
 
 
-def example_3_buffer_pool():
+def example_2_typed_cmdvel():
     """
-    OPTIMIZATION 3: Pre-allocated buffer pool
-    Automatic! No user action required, 50% reduction in allocations
+    Demonstrate typed Hub with CmdVel messages
+
+    Type determines topic: CmdVel → "cmd_vel"
     """
     print("\n" + "=" * 70)
-    print("EXAMPLE 3: Pre-Allocated Buffer Pool (Automatic)")
+    print("EXAMPLE 2: Typed Hub with CmdVel")
     print("=" * 70)
 
-    # Buffer pool is automatic, but you can check statistics
-    hub = Hub("telemetry", capacity=1024, buffer_pool_size=64)
+    # NEW API: Hub(MessageType)
+    cmd_hub = Hub(CmdVel)
+    print(f"Created Hub for type: CmdVel")
+    print(f"Topic name (from __topic_name__): {cmd_hub.topic()}")
 
-    # Send many messages
-    for i in range(100):
-        hub.send({"id": i, "value": i * 1.5})
+    # Create and send velocity command
+    cmd = CmdVel(linear=1.5, angular=0.5)
+    success = cmd_hub.send(cmd)
+    print(f"Sent CmdVel: linear={cmd.linear}, angular={cmd.angular}")
+    print(f"Success: {success}")
 
-    # Check buffer pool statistics
-    available, max_buffers = hub.buffer_pool_stats()
-    print(f"Buffer pool: {available}/{max_buffers} buffers available")
-    print("Benefit: 50% reduction in memory allocations (automatic!)")
-    print("No code changes needed - HORUS handles it for you!")
+    # Receive typed message
+    received = cmd_hub.recv()
+    if received:
+        print(f"Received CmdVel: linear={received.linear}, angular={received.angular}")
+    else:
+        print("No message available (expected - same hub)")
 
 
-def example_4_batch_operations():
+def example_3_pub_sub_nodes():
     """
-    OPTIMIZATION 4: Batch operations
-    Perfect for: Sending multiple messages at once
+    Demonstrate publisher/subscriber pattern with typed hubs
+
+    Shows cross-node communication with typed messages
     """
     print("\n" + "=" * 70)
-    print("EXAMPLE 4: Batch Operations (3x fewer boundary crossings)")
+    print("EXAMPLE 3: Publisher/Subscriber Nodes")
     print("=" * 70)
 
-    hub = Hub("sensors/batch", capacity=2048)
+    # Global hubs for pub/sub
+    _pose_pub = Hub(Pose2D)
+    _pose_sub = Hub(Pose2D)
 
-    # Prepare batch of sensor readings
-    sensor_readings = [
-        {"sensor_id": i, "temperature": 20 + i * 0.1, "pressure": 1013 + i}
-        for i in range(50)
-    ]
+    # Publisher node
+    def publisher_tick(node):
+        t = time.time()
+        x = 2.0 * math.cos(t * 0.5)
+        y = 2.0 * math.sin(t * 0.5)
+        theta = t * 0.5
 
-    # OLD WAY: Loop
-    start = time.time()
-    for reading in sensor_readings:
-        hub.send(reading)
-    loop_time = time.time() - start
+        pose = Pose2D(x=x, y=y, theta=theta)
+        _pose_pub.send(pose, node)
+        node.log_info(f"Published: ({x:.2f}, {y:.2f}, {theta:.2f})")
 
-    # NEW WAY: Batch send
-    start = time.time()
-    count = hub.send_batch(sensor_readings)
-    batch_time = time.time() - start
+    # Subscriber node
+    def subscriber_tick(node):
+        pose = _pose_sub.recv(node)
+        if pose:
+            node.log_info(f"Received: ({pose.x:.2f}, {pose.y:.2f}, {pose.theta:.2f})")
 
-    print(f"Loop send (50 messages):  {loop_time * 1000:.2f} ms")
-    print(f"Batch send (50 messages): {batch_time * 1000:.2f} ms")
-    print(f"Speedup: {loop_time / batch_time:.1f}x FASTER!")
-    print(f"Successfully sent: {count} messages")
+    # Create nodes
+    publisher = Node(name="publisher", tick=publisher_tick, rate=10)
+    subscriber = Node(name="subscriber", tick=subscriber_tick, rate=10)
 
-    # Batch receive
-    hub_recv = Hub("sensors/batch", capacity=2048)
-    received = hub_recv.recv_batch(max_messages=50)
-    print(f"Received: {len(received)} messages in one call")
+    print("Running publisher/subscriber for 3 seconds...")
+    print("(Ctrl+C to stop early)")
+
+    # Run for 3 seconds
+    try:
+        run(publisher, subscriber, duration=3, logging=True)
+    except KeyboardInterrupt:
+        print("\nStopped by user")
+
+    print("Done!")
 
 
-def example_5_numpy_batch():
+def example_4_robot_control():
     """
-    OPTIMIZATION 1 + 4: Batch NumPy operations
-    Perfect for: Multiple camera streams, sensor arrays
+    Real-world example: Robot pose estimation and control
+
+    Demonstrates typical robotics pattern:
+    - Sensor node publishes pose
+    - Controller node reads pose, publishes commands
     """
     print("\n" + "=" * 70)
-    print("EXAMPLE 5: Batch NumPy Arrays (Zero-copy + Batch)")
+    print("EXAMPLE 4: Robot Control Loop")
     print("=" * 70)
 
-    hub = Hub("cameras/multi", capacity=100)
+    _pose_hub = Hub(Pose2D)
+    _cmd_hub = Hub(CmdVel)
 
-    # Simulate multiple camera frames
-    frames = [
-        np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
-        for _ in range(10)
-    ]
+    # Simulated sensor (odometry)
+    def sensor_tick(node):
+        t = time.time()
+        pose = Pose2D(
+            x=math.cos(t) * 2.0,
+            y=math.sin(t) * 2.0,
+            theta=t
+        )
+        _pose_hub.send(pose, node)
 
-    # OLD WAY: Loop
-    start = time.time()
-    for frame in frames:
-        hub.send_numpy(frame)
-    loop_time = time.time() - start
+    # Controller - simple proportional control
+    def controller_tick(node):
+        pose = _pose_hub.recv(node)
+        if pose:
+            # Simple controller: drive toward origin
+            distance = math.sqrt(pose.x**2 + pose.y**2)
+            angle_to_origin = math.atan2(-pose.y, -pose.x)
+            angle_error = angle_to_origin - pose.theta
 
-    # NEW WAY: Batch NumPy send
-    start = time.time()
-    count = hub.send_numpy_batch(frames)
-    batch_time = time.time() - start
+            # Generate velocity command
+            linear = min(distance * 0.5, 1.0)  # Proportional, capped at 1.0 m/s
+            angular = angle_error * 2.0  # Proportional turning
 
-    total_mb = sum(f.nbytes for f in frames) / 1024 / 1024
+            cmd = CmdVel(linear=linear, angular=angular)
+            _cmd_hub.send(cmd, node)
 
-    print(f"Loop send (10 frames, {total_mb:.1f} MB):  {loop_time * 1000:.2f} ms")
-    print(f"Batch send (10 frames, {total_mb:.1f} MB): {batch_time * 1000:.2f} ms")
-    print(f"Speedup: {loop_time / batch_time:.1f}x FASTER!")
-    print(f"Throughput: {total_mb / batch_time:.0f} MB/s")
-    print(f"Successfully sent: {count} frames")
+            node.log_info(f"Distance: {distance:.2f}m, Command: {linear:.2f}m/s, {angular:.2f}rad/s")
 
+    # Create nodes
+    sensor = Node(name="sensor", tick=sensor_tick, rate=30)
+    controller = Node(name="controller", tick=controller_tick, rate=30)
 
-def example_6_real_world_robot():
-    """
-    Real-world example: Combining all optimizations
-    """
-    print("\n" + "=" * 70)
-    print("EXAMPLE 6: Real-World Robot Application")
-    print("=" * 70)
+    print("Running robot control for 3 seconds...")
+    print("(Ctrl+C to stop early)")
 
-    # Camera feed (1080p at 30 FPS)
-    camera_hub = Hub("robot/camera", capacity=30)
+    try:
+        run(sensor, controller, duration=3, logging=True)
+    except KeyboardInterrupt:
+        print("\nStopped by user")
 
-    # Sensor telemetry (100 Hz)
-    sensor_hub = Hub("robot/sensors", capacity=1024)
-
-    # Commands (variable rate)
-    cmd_hub = Hub("robot/commands", capacity=100)
-
-    print("\nSimulating robot control loop...")
-    start = time.time()
-
-    for iteration in range(100):
-        # 1. Camera: Send 1080p frame (zero-copy NumPy)
-        if iteration % 3 == 0:  # 30 FPS
-            frame = np.random.randint(0, 255, (1080, 1920, 3), dtype=np.uint8)
-            camera_hub.send_numpy(frame)
-
-        # 2. Sensors: Batch telemetry (MessagePack)
-        sensor_batch = [
-            {
-                "imu": {"ax": 0.1, "ay": 0.0, "az": 9.8},
-                "gps": {"lat": 37.7749, "lon": -122.4194},
-                "battery": 85.5
-            }
-            for _ in range(10)
-        ]
-        sensor_hub.send_batch(sensor_batch)
-
-        # 3. Commands: Single message (MessagePack)
-        cmd_hub.send({"cmd": "move_forward", "speed": 1.5})
-
-    elapsed = time.time() - start
-
-    print(f"\n100 iterations in {elapsed * 1000:.1f} ms")
-    print(f"Average loop time: {elapsed / 100 * 1000:.2f} ms (well under 10ms for 100Hz)")
-    print(f"Camera throughput: ~{1920*1080*3 * 30 / 1024 / 1024:.0f} MB/s")
-    print(f"Sensor updates: 1000 messages/sec")
-    print("\nResult: All optimizations working together!")
+    print("Done!")
 
 
 def main():
     print("\n" + "=" * 70)
-    print(" HORUS Python Bindings - Optimized API Examples")
+    print(" HORUS Python Bindings - Typed Hub API Examples")
     print("=" * 70)
-    print("\nThis demonstrates 4 major performance optimizations:")
-    print("  1. Zero-copy NumPy arrays (100-1000x faster)")
-    print("  2. MessagePack serialization (2-5x faster)")
-    print("  3. Pre-allocated buffer pool (50% less allocations)")
-    print("  4. Batch operations (3x fewer boundary crossings)")
+    print("\nThis demonstrates the new type-based Hub API:")
+    print("  • Hub(MessageType) - type determines topic")
+    print("  • hub.send(message) - type-safe sending")
+    print("  • hub.recv() - type-safe receiving")
+    print("  • Zero-copy IPC with typed structs")
+    print("  • Cross-language compatibility (Rust/Python/C++)")
 
-    example_1_numpy_zero_copy()
-    example_2_messagepack()
-    example_3_buffer_pool()
-    example_4_batch_operations()
-    example_5_numpy_batch()
-    example_6_real_world_robot()
+    example_1_typed_pose()
+    example_2_typed_cmdvel()
+    example_3_pub_sub_nodes()
+    example_4_robot_control()
 
     print("\n" + "=" * 70)
-    print(" Summary: Best Practices")
+    print(" Summary: Typed Hub Benefits")
     print("=" * 70)
-    print("\nUse send_numpy() for NumPy arrays (images, sensor data)")
-    print("Use send_batch() when sending multiple messages")
-    print("Use send_numpy_batch() for multiple arrays")
-    print("MessagePack is automatic (use_msgpack=True by default)")
-    print("Buffer pool is automatic (no configuration needed)")
-    print("\nThese optimizations make HORUS 10-1000x faster than ROS2/ZeroMQ!")
+    print("\nType safety: Compiler catches mismatched types")
+    print("Auto topic naming: Types have __topic_name__ attribute")
+    print("Zero-copy: Direct struct serialization (no pickle overhead)")
+    print("Cross-language: Same API in Rust, Python, C++")
+    print("IDE support: Autocomplete and type hints")
+    print("\nCurrently supported types: Pose2D, CmdVel")
+    print("More types coming soon!")
     print("=" * 70 + "\n")
 
 

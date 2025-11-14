@@ -460,11 +460,11 @@ class SensorNode(horus.Node):
 ┌─────────────────────────────────────────┐
 │   Python Application (User Code)       │
 ├─────────────────────────────────────────┤
-│   Python API (horus/__init__.py)       │  ← High-level wrappers
+│   Python API (horus/__init__.py)       │  [ARROW] High-level wrappers
 ├─────────────────────────────────────────┤
-│   PyO3 Bindings (src/*.rs)             │  ← Rust-Python bridge
+│   PyO3 Bindings (src/*.rs)             │  [ARROW] Rust-Python bridge
 ├─────────────────────────────────────────┤
-│   HORUS Core (horus_core)              │  ← Core functionality
+│   HORUS Core (horus_core)              │  [ARROW] Core functionality
 └─────────────────────────────────────────┘
 ```
 

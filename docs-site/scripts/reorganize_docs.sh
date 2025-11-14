@@ -27,7 +27,7 @@ update_order() {
         sed -i "s/^order: .*/order: $new_order/" "$file"
         echo -e "${GREEN}${NC} Updated $file  order: $new_order"
     else
-        echo -e "${YELLOW}⚠${NC} File not found: $file"
+        echo -e "${YELLOW}[WARNING]${NC} File not found: $file"
     fi
 }
 

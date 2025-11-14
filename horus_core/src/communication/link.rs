@@ -882,7 +882,7 @@ where
     ///
     /// ```rust,ignore
     /// let producer: Link<f64> = Link::producer("sensor")?;
-    /// let producer_clone = producer.clone();  // ✓ Works for local Links
+    /// let producer_clone = producer.clone();  // [OK] Works for local Links
     ///
     /// // Both can send independently
     /// producer.send(1.0, None)?;

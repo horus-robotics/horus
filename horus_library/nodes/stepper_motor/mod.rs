@@ -612,7 +612,7 @@ impl StepperMotorNode {
     }
 
     /// Generate steps for a single motor
-    fn generate_steps(&mut self, motor_id: u8, current_time: u64) -> bool {
+    fn generate_steps(&mut self, motor_id: u8, current_time: u64, mut ctx: Option<&mut NodeInfo>) -> bool {
         if motor_id >= self.num_motors {
             return false;
         }
@@ -797,7 +797,7 @@ impl Node for StepperMotorNode {
         let dt = 0.001; // Assume 1ms tick rate (adjust based on actual tick rate)
         for motor_id in 0..self.num_motors {
             self.update_motion(motor_id, dt, ctx.as_deref_mut());
-            self.generate_steps(motor_id, current_time);
+            self.generate_steps(motor_id, current_time, ctx.as_deref_mut());
         }
 
         // Check for command timeouts

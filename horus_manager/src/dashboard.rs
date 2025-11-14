@@ -34,12 +34,11 @@ fn get_local_ip() -> Option<String> {
     socket.local_addr().ok().map(|addr| addr.ip().to_string())
 }
 
-/// Generate and display QR code for a URL with secure token
-fn display_qr_code(url: &str, token: &str) {
-    // Create URL with token embedded
-    let secure_url = format!("{}?token={}", url, token);
+/// Generate and display QR code for a URL
+fn display_qr_code(url: &str) {
+    use colored::Colorize;
 
-    match QrCode::new(&secure_url) {
+    match QrCode::new(url) {
         Ok(code) => {
             let qr_string = code
                 .render::<unicode::Dense1x2>()
@@ -47,7 +46,7 @@ fn display_qr_code(url: &str, token: &str) {
                 .light_color(unicode::Dense1x2::Dark)
                 .build();
 
-            println!("\n   Scan with your phone:");
+            println!("\n   {} Scan QR code with your phone:", "[QR CODE]".cyan().bold());
             for line in qr_string.lines() {
                 println!("   {}", line);
             }
@@ -58,49 +57,46 @@ fn display_qr_code(url: &str, token: &str) {
     }
 }
 
-/// Wrapper middleware for token validation using AppState
-async fn dashboard_token_middleware(
+/// Session validation middleware for dashboard using AppState
+async fn dashboard_session_middleware(
     State(state): State<Arc<AppState>>,
     req: axum::http::Request<axum::body::Body>,
     next: axum::middleware::Next,
 ) -> Result<axum::response::Response, StatusCode> {
-    // Extract token from query parameter
-    let query = req.uri().query().unwrap_or("");
-    let token = query
-        .split('&')
-        .find_map(|param| {
-            let mut parts = param.split('=');
-            if parts.next() == Some("token") {
-                parts.next()
-            } else {
-                None
-            }
-        })
-        .ok_or(StatusCode::UNAUTHORIZED)?;
-
-    // Validate token
-    if !state.auth_service.validate_token(token) {
-        return Err(StatusCode::UNAUTHORIZED);
-    }
-
-    Ok(next.run(req).await)
+    // Use the session middleware from security module
+    crate::security::middleware::session_middleware(
+        State(state.auth_service.clone()),
+        req,
+        next,
+    ).await
 }
 
 /// Run the web dashboard server
-pub async fn run(port: u16) -> anyhow::Result<()> {
+pub async fn run(port: u16, secure: bool) -> anyhow::Result<()> {
     eprintln!("Dashboard will read logs from shared memory ring buffer at /dev/shm/horus_logs");
 
-    // Initialize authentication service with random secret token
-    let auth_service = Arc::new(AuthService::new()?);
-    let secret_token = auth_service.get_token();
+    // Check if password is configured, if not prompt for setup
+    let password_hash = if !crate::security::auth::is_password_configured() {
+        crate::security::auth::prompt_for_password_setup()?
+    } else {
+        crate::security::auth::load_password_hash()?
+    };
 
-    // Initialize TLS configuration
-    let tls_config = crate::security::TlsConfig::default_paths()?;
-    let hostname = hostname::get()
-        .ok()
-        .and_then(|h| h.into_string().ok())
-        .unwrap_or_else(|| "localhost".to_string());
-    tls_config.ensure_certificates(&hostname)?;
+    // Initialize authentication service with password
+    let auth_service = Arc::new(AuthService::new(password_hash)?);
+
+    // Initialize TLS configuration only if secure mode is enabled
+    let tls_config = if secure {
+        let config = crate::security::TlsConfig::default_paths()?;
+        let hostname = hostname::get()
+            .ok()
+            .and_then(|h| h.into_string().ok())
+            .unwrap_or_else(|| "localhost".to_string());
+        config.ensure_certificates(&hostname)?;
+        Some(config)
+    } else {
+        None
+    };
 
     let params = Arc::new(
         horus_core::RuntimeParams::init().unwrap_or_else(|_| horus_core::RuntimeParams::default()),
@@ -112,9 +108,8 @@ pub async fn run(port: u16) -> anyhow::Result<()> {
         auth_service: auth_service.clone(),
     });
 
-    // All routes require token parameter in URL
-    let app = Router::new()
-        .route("/", get(index_handler))
+    // Protected routes (require authentication)
+    let protected_routes = Router::new()
         .route("/api/status", get(status_handler))
         .route("/api/nodes", get(nodes_handler))
         .route("/api/topics", get(topics_handler))
@@ -134,8 +129,19 @@ pub async fn run(port: u16) -> anyhow::Result<()> {
         .route("/api/params/export", post(params_export_handler))
         .route("/api/params/import", post(params_import_handler))
         .route("/api/ws", get(websocket_handler))
+        .route("/api/logout", post(logout_handler))
+        .layer(middleware::from_fn_with_state(state.clone(), dashboard_session_middleware));
+
+    // Public routes (no authentication required)
+    let public_routes = Router::new()
+        .route("/", get(index_handler))
+        .route("/api/login", post(login_handler));
+
+    // Combine all routes
+    let app = Router::new()
+        .merge(protected_routes)
+        .merge(public_routes)
         .with_state(state.clone())
-        .layer(middleware::from_fn_with_state(state.clone(), dashboard_token_middleware))
         .layer(middleware::from_fn(security_headers_middleware))
         .layer(
             CorsLayer::new()
@@ -166,60 +172,218 @@ pub async fn run(port: u16) -> anyhow::Result<()> {
 
     let addr = format!("0.0.0.0:{}", port);
 
+    use colored::Colorize;
+
     // Get local IP addresses
     let local_ip = get_local_ip();
 
-    println!("HORUS Secure Web Dashboard is running!");
-    println!("\nSecret URL (only people with this link can access):");
-    println!("   • Local:    https://localhost:{}?token={}", port, secret_token);
-    if let Some(ref ip) = local_ip {
-        let network_url = format!("https://{}:{}", ip, port);
-        println!("   • Network:  {}?token={}", network_url, secret_token);
+    // Display different messages based on secure mode
+    let protocol = if secure { "https" } else { "http" };
 
-        // Display QR code for network URL with embedded token
-        display_qr_code(&network_url, secret_token);
-    }
-
-    println!("\nSecurity:");
-    println!("   • TLS/SSL encryption enabled");
-    println!("   • Token-based authentication (secret URL)");
-    println!("   • Only people who see this terminal or scan the QR code can access");
-    println!("   • Anyone else on your network cannot guess the random token");
-
-    // Check certificate status and show appropriate message
-    if crate::security::TlsConfig::is_mkcert_installed() && crate::security::TlsConfig::is_mkcert_ca_installed() {
-        // Likely using trusted certificate
-        println!("\nTrusted certificate detected - No browser warnings!");
+    if secure {
+        println!("{}", "HORUS Secure Web Dashboard is running!".green().bold());
     } else {
-        // Using self-signed certificate
-        println!("\nWARNING: Your browser may show a security warning (self-signed certificate)");
-        println!("   This is normal - the connection is still encrypted.");
-        println!("   To remove warnings, install mkcert: horus init --setup-certs");
+        println!("{}", "HORUS Web Dashboard is running!".green().bold());
     }
 
-    println!("\nFeatures:");
+    println!("\n{}:", "Access URLs".cyan().bold());
+    println!("   • Local:    {}", format!("{}://localhost:{}", protocol, port).bright_blue());
+    if let Some(ref ip) = local_ip {
+        let network_url = format!("{}://{}:{}", protocol, ip, port);
+        println!("   • Network:  {}", network_url.bright_blue());
+
+        // Display QR code for network URL
+        display_qr_code(&network_url);
+    }
+
+    println!("\n{}:", "Security".cyan().bold());
+    if secure {
+        println!("   • TLS/SSL encryption enabled");
+    } else {
+        println!("   {}", "[WARNING] HTTP mode - traffic is NOT encrypted".yellow());
+        println!("   • Use only on trusted networks");
+        println!("   • For secure access, use: {}", "horus dashboard --secure".bright_blue());
+    }
+    println!("   • Password-based authentication with session management");
+    println!("   • Accessible from local network devices");
+    println!("   • Rate limiting enabled (5 login attempts per minute)");
+
+    // Check certificate status only in secure mode
+    if secure {
+        if crate::security::TlsConfig::is_mkcert_installed() && crate::security::TlsConfig::is_mkcert_ca_installed() {
+            // Likely using trusted certificate
+            println!("\n{} Trusted certificate detected - No browser warnings!", "[SUCCESS]".green().bold());
+        } else {
+            // Using self-signed certificate
+            println!("\n{} Your browser may show a security warning (self-signed certificate)", "[WARNING]".yellow().bold());
+            println!("   This is normal - the connection is still encrypted.");
+            println!("   To remove warnings, install mkcert: {}", "horus init --setup-certs".bright_blue());
+        }
+    }
+
+    println!("\n{}:", "Features".cyan().bold());
     println!("   • Real-time node monitoring");
     println!("   • Topic visualization");
     println!("   • Performance metrics");
-    println!("   • Accessible from any device on your network (with the secret link)");
-    println!("\n   Press Ctrl+C to stop");
+    println!("   • Package management");
+    println!("   • Accessible from any device on your local network");
+    println!("\n   Press {} to stop", "Ctrl+C".bright_red());
 
-    // Start HTTPS server with TLS
-    let tls_config = axum_server::tls_rustls::RustlsConfig::from_pem_file(
-        &tls_config.cert_path,
-        &tls_config.key_path,
-    )
-    .await?;
+    // Start server (HTTP or HTTPS based on secure flag)
+    if secure {
+        // HTTPS mode with TLS
+        if let Some(tls_cfg) = tls_config {
+            let rustls_config = axum_server::tls_rustls::RustlsConfig::from_pem_file(
+                &tls_cfg.cert_path,
+                &tls_cfg.key_path,
+            )
+            .await?;
 
-    axum_server::bind_rustls(addr.parse()?, tls_config)
-        .serve(app.into_make_service())
-        .await?;
+            axum_server::bind_rustls(addr.parse()?, rustls_config)
+                .serve(app.into_make_service())
+                .await?;
+        } else {
+            return Err(anyhow::anyhow!("Secure mode requested but TLS config not initialized"));
+        }
+    } else {
+        // HTTP mode - plain TCP
+        let listener = tokio::net::TcpListener::bind(&addr).await?;
+        axum::serve(listener, app).await?;
+    }
 
     Ok(())
 }
 
-async fn index_handler(State(state): State<Arc<AppState>>) -> Response {
-    Html(generate_html(state.port)).into_response()
+// ============================================================================
+// Authentication Handlers
+// ============================================================================
+
+#[derive(serde::Deserialize)]
+struct LoginRequest {
+    password: String,
+}
+
+#[derive(serde::Serialize)]
+struct LoginResponse {
+    success: bool,
+    session_token: Option<String>,
+    error: Option<String>,
+}
+
+/// Login handler - validates password and creates session
+async fn login_handler(
+    State(state): State<Arc<AppState>>,
+    Json(login_req): Json<LoginRequest>,
+) -> impl IntoResponse {
+    // Extract client IP from connection (for rate limiting)
+    // Note: In production, you'd extract this from X-Forwarded-For header
+    let ip_address = Some("127.0.0.1".to_string());
+
+    match state.auth_service.login(&login_req.password, ip_address) {
+        Ok(Some(token)) => {
+            // Set session cookie
+            let cookie = format!(
+                "session_token={}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=3600",
+                token
+            );
+
+            (
+                StatusCode::OK,
+                [(axum::http::header::SET_COOKIE, cookie)],
+                Json(LoginResponse {
+                    success: true,
+                    session_token: Some(token),
+                    error: None,
+                }),
+            )
+        }
+        Ok(None) => {
+            // Invalid password
+            (
+                StatusCode::UNAUTHORIZED,
+                [(axum::http::header::SET_COOKIE, String::new())],
+                Json(LoginResponse {
+                    success: false,
+                    session_token: None,
+                    error: Some("Invalid password".to_string()),
+                }),
+            )
+        }
+        Err(e) => {
+            // Rate limited or other error
+            (
+                StatusCode::TOO_MANY_REQUESTS,
+                [(axum::http::header::SET_COOKIE, String::new())],
+                Json(LoginResponse {
+                    success: false,
+                    session_token: None,
+                    error: Some(e.to_string()),
+                }),
+            )
+        }
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct LogoutRequest {
+    session_token: String,
+}
+
+/// Logout handler - invalidates session
+async fn logout_handler(
+    State(state): State<Arc<AppState>>,
+    Json(logout_req): Json<LogoutRequest>,
+) -> impl IntoResponse {
+    state.auth_service.logout(&logout_req.session_token);
+
+    // Clear session cookie
+    let cookie = "session_token=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0";
+
+    (
+        StatusCode::OK,
+        [(axum::http::header::SET_COOKIE, cookie.to_string())],
+        Json(serde_json::json!({ "success": true })),
+    )
+}
+
+// ============================================================================
+// Dashboard Handlers
+// ============================================================================
+
+async fn index_handler(
+    State(state): State<Arc<AppState>>,
+    req: axum::http::Request<axum::body::Body>,
+) -> Response {
+    // Check if user is authenticated by looking for session cookie
+    let is_authenticated = if let Some(cookie_header) = req.headers().get(axum::http::header::COOKIE) {
+        if let Ok(cookie_str) = cookie_header.to_str() {
+            // Extract session token from cookies
+            let token = cookie_str.split(';')
+                .find_map(|cookie| {
+                    let cookie = cookie.trim();
+                    cookie.strip_prefix("session_token=")
+                });
+
+            // Validate session if token exists
+            if let Some(token) = token {
+                state.auth_service.validate_session(token)
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    } else {
+        false
+    };
+
+    if is_authenticated {
+        // User is logged in - show dashboard
+        Html(generate_html(state.port)).into_response()
+    } else {
+        // User is not logged in - show login page
+        Html(generate_login_html()).into_response()
+    }
 }
 
 async fn status_handler() -> impl IntoResponse {
@@ -1396,6 +1560,339 @@ async fn handle_websocket(socket: WebSocket) {
     }
 }
 
+fn generate_login_html() -> String {
+    r#"<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HORUS Dashboard - Login</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Orbitron', monospace;
+            background: #0a0a0f;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image:
+                linear-gradient(rgba(0, 255, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMove 20s linear infinite;
+            z-index: 0;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        body::after {
+            content: '';
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(0, 255, 136, 0.2), transparent);
+            border-radius: 50%;
+            top: -250px;
+            right: -250px;
+            animation: pulse 4s ease-in-out infinite;
+            z-index: 0;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.1); }
+        }
+
+        .login-container {
+            background: rgba(15, 15, 25, 0.9);
+            padding: 40px;
+            border-radius: 20px;
+            border: 2px solid #00ffff;
+            box-shadow:
+                0 0 20px rgba(0, 255, 255, 0.5),
+                0 0 40px rgba(0, 255, 136, 0.3),
+                inset 0 0 60px rgba(0, 255, 255, 0.1);
+            max-width: 400px;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo h1 {
+            color: #00ffff;
+            font-size: 42px;
+            margin-bottom: 8px;
+            text-shadow:
+                0 0 10px #00ffff,
+                0 0 20px #00ffff,
+                0 0 30px #00ffff;
+            font-weight: 900;
+            letter-spacing: 4px;
+            animation: glitch 3s infinite;
+        }
+
+        @keyframes glitch {
+            0%, 90%, 100% { transform: translate(0); }
+            92% { transform: translate(-2px, 2px); }
+            94% { transform: translate(2px, -2px); }
+            96% { transform: translate(-2px, -2px); }
+            98% { transform: translate(2px, 2px); }
+        }
+
+        .logo p {
+            color: #00ff88;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 0 0 10px #00ff88;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #00ffff;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        input[type="password"] {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #00ffff;
+            border-radius: 8px;
+            font-size: 16px;
+            color: #fff;
+            font-family: 'Orbitron', monospace;
+            transition: all 0.3s;
+        }
+
+        input[type="password"]:focus {
+            outline: none;
+            border-color: #00ff88;
+            box-shadow:
+                0 0 10px #00ff88,
+                inset 0 0 10px rgba(0, 255, 136, 0.2);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #00ffff 0%, #00ff88 100%);
+            color: #0a0a0f;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-family: 'Orbitron', monospace;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow:
+                0 0 30px #00ffff,
+                0 0 40px #00ff88;
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .error {
+            background: rgba(255, 0, 100, 0.2);
+            color: #ff0066;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ff0066;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+            text-shadow: 0 0 5px #ff0066;
+        }
+
+        .error.show {
+            display: block;
+            animation: errorPulse 0.5s;
+        }
+
+        @keyframes errorPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .info {
+            text-align: center;
+            color: #00ff88;
+            font-size: 11px;
+            margin-top: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-shadow: 0 0 5px #00ff88;
+        }
+    
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            body::before {
+                background-size: 30px 30px;
+            }
+
+            body::after {
+                width: 300px;
+                height: 300px;
+                top: -150px;
+                right: -150px;
+            }
+
+            .login-container {
+                padding: 30px 20px;
+                max-width: 100%;
+                border-radius: 16px;
+            }
+
+            .logo h1 {
+                font-size: 36px;
+                letter-spacing: 3px;
+            }
+
+            .logo p {
+                font-size: 12px;
+                letter-spacing: 2px;
+            }
+
+            label {
+                font-size: 12px;
+                letter-spacing: 1.5px;
+            }
+
+            input[type="password"] {
+                padding: 14px 16px;
+                font-size: 16px;
+            }
+
+            .btn {
+                padding: 16px;
+                font-size: 15px;
+            }
+
+            .info {
+                font-size: 10px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 25px 15px;
+            }
+
+            .logo h1 {
+                font-size: 32px;
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <h1>HORUS</h1>
+            <p>Robotics Dashboard</p>
+        </div>
+
+        <div id="error" class="error"></div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required autofocus>
+            </div>
+
+            <button type="submit" class="btn">Login</button>
+        </form>
+
+        <div class="info">
+            Secure Connection Established
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('loginForm');
+        const errorDiv = document.getElementById('error');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorDiv.classList.remove('show');
+
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    errorDiv.textContent = data.error || 'Invalid password';
+                    errorDiv.classList.add('show');
+                    document.getElementById('password').value = '';
+                    document.getElementById('password').focus();
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Network error. Please try again.';
+                errorDiv.classList.add('show');
+            }
+        });
+    </script>
+</body>
+</html>"#.to_string()
+}
+
 fn generate_html(port: u16) -> String {
     format!(
         r#"<!DOCTYPE html>
@@ -1408,18 +1905,23 @@ fn generate_html(port: u16) -> String {
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
         :root {{
-            --primary: #0F172A;
-            --accent: #00D4FF;
-            --success: #00FF88;
+            --primary: #0a0a0f;
+            --accent: #00ffff;
+            --success: #00ff88;
+            --warning: #ffaa00;
+            --error: #ff0066;
             --gray: #64748B;
-            --dark-bg: #0A0B0D;
-            --card-bg: #16181C;
-            --surface: #16181C;
-            --surface-hover: #1F2229;
-            --border: rgba(0, 212, 255, 0.1);
-            --text-primary: #E2E8F0;
+            --dark-bg: #0a0a0f;
+            --card-bg: rgba(15, 15, 25, 0.8);
+            --surface: rgba(15, 15, 25, 0.8);
+            --surface-hover: rgba(30, 30, 45, 0.9);
+            --border: rgba(0, 255, 255, 0.3);
+            --text-primary: #00ffff;
             --text-secondary: #94A3B8;
-            --text-tertiary: #64748B;
+            --text-tertiary: #00ff88;
+            --neon-cyan: #00ffff;
+            --neon-green: #00ff88;
+            --neon-green: #00ff88;
         }}
 
         /* Light theme variables */
@@ -2667,7 +3169,7 @@ fn generate_html(port: u16) -> String {
 
                 <!-- Keyboard Shortcuts Section -->
                 <div class="help-section">
-                    <h3>⌨️ Keyboard Shortcuts</h3>
+                    <h3>Keyboard Shortcuts</h3>
 
                     <div class="help-item">
                         <ul>

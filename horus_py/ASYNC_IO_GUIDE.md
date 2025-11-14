@@ -403,7 +403,7 @@ class ThreadedNode(horus.Node):
     def _background_work(self):
         # Safe: send() is thread-safe
         result = do_io_work()
-        self.send("output", result)  # ✓ OK
+        self.send("output", result)  # [OK] OK
 
     def tick(self):
         self.executor.submit(self._background_work)
@@ -474,10 +474,10 @@ See the following files for complete examples:
 ## Summary
 
 **Use threaded I/O when:**
-- ✓ Node performs blocking I/O (network, file, camera, database)
-- ✓ I/O operation takes >10ms
-- ✓ System requires high tick rates (>50 Hz)
-- ✓ You want simple, stable solution
+- [OK] Node performs blocking I/O (network, file, camera, database)
+- [OK] I/O operation takes >10ms
+- [OK] System requires high tick rates (>50 Hz)
+- [OK] You want simple, stable solution
 
 **Pattern:**
 1. Create `ThreadPoolExecutor` in `__init__()`

@@ -375,7 +375,7 @@ Diff:                500000000 (500ms)
 
 ## Common Patterns and Anti-Patterns
 
-### ✓ DO: Check recv() for None
+### [OK] DO: Check recv() for None
 
 ```rust
 fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
@@ -386,7 +386,7 @@ fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
 }
 ```
 
-### ✗ DON'T: Unwrap recv()
+### [FAIL] DON'T: Unwrap recv()
 
 ```rust
 fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
@@ -394,7 +394,7 @@ fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
 }
 ```
 
-### ✓ DO: Use Result for errors
+### [OK] DO: Use Result for errors
 
 ```rust
 impl Node for MyNode {
@@ -407,7 +407,7 @@ impl Node for MyNode {
 }
 ```
 
-### ✗ DON'T: panic!() in nodes
+### [FAIL] DON'T: panic!() in nodes
 
 ```rust
 fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
@@ -418,7 +418,7 @@ fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
 }
 ```
 
-### ✓ DO: Keep tick() fast
+### [OK] DO: Keep tick() fast
 
 ```rust
 fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
@@ -428,7 +428,7 @@ fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
 }
 ```
 
-### ✗ DON'T: Block in tick()
+### [FAIL] DON'T: Block in tick()
 
 ```rust
 fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {

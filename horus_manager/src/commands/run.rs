@@ -220,7 +220,7 @@ pub fn execute_build_only(files: Vec<PathBuf>, release: bool, clean: bool) -> Re
         use crate::static_analysis;
         // Non-fatal: warnings only, don't fail the build
         if let Err(e) = static_analysis::check_link_usage(&target_file) {
-            eprintln!("⚠ Static analysis error: {}", e);
+            eprintln!("[WARNING] Static analysis error: {}", e);
         }
     }
 
@@ -568,13 +568,13 @@ fn execute_single_file(
         use crate::static_analysis;
         // Non-fatal: warnings only, don't fail the build
         if let Err(e) = static_analysis::check_link_usage(&file_path) {
-            eprintln!("⚠ Static analysis error: {}", e);
+            eprintln!("[WARNING] Static analysis error: {}", e);
         }
     }
 
     // Check hardware requirements
     if let Err(e) = check_hardware_requirements(&file_path, &language) {
-        eprintln!("⚠ Hardware check error: {}", e);
+        eprintln!("[WARNING] Hardware check error: {}", e);
     }
 
     if !dependencies.is_empty() {
@@ -2767,7 +2767,7 @@ fn install_pip_packages(packages: Vec<PipPackage>) -> Result<()> {
         return Ok(());
     }
 
-    println!("{} Resolving Python packages...", "🐍".cyan());
+    println!("{} Resolving Python packages...", "[PYTHON]".cyan());
 
     let global_cache = home_dir().join(".horus/cache");
     let local_packages = PathBuf::from(".horus/packages");
@@ -2881,7 +2881,7 @@ fn install_cargo_packages(packages: Vec<CargoPackage>) -> Result<()> {
         return Ok(());
     }
 
-    println!("{} Resolving Rust binaries...", "🦀".cyan());
+    println!("{} Resolving Rust binaries...", "[RUST]".cyan());
 
     let global_cache = home_dir().join(".horus/cache");
     let local_bin = PathBuf::from(".horus/bin");
@@ -2985,7 +2985,7 @@ fn install_cargo_packages(packages: Vec<CargoPackage>) -> Result<()> {
         } else {
             println!(
                 "  {} Warning: Binary {} not found in cache",
-                "⚠".yellow(),
+                "[WARNING]".yellow(),
                 pkg.name
             );
         }
@@ -4463,7 +4463,7 @@ fn prompt_system_cargo_choice_run(
 
     println!(
         "\n{} crates.io {} found in system (version: {})",
-        "⚠".yellow(),
+        "[WARNING]".yellow(),
         package_name.green(),
         system_version.cyan()
     );
@@ -4576,7 +4576,7 @@ fn prompt_system_package_choice_run(
 
     println!(
         "\n{} PyPI package {} found in system (version: {})",
-        "⚠".yellow(),
+        "[WARNING]".yellow(),
         package_name.green(),
         system_version.cyan()
     );
@@ -4912,7 +4912,7 @@ pub fn check_hardware_requirements(file_path: &Path, language: &str) -> Result<(
 
     // Print warnings if issues detected
     if !missing_features.is_empty() || !missing_devices.is_empty() {
-        eprintln!("\n{}", "⚠ Hardware Configuration Check".yellow().bold());
+        eprintln!("\n{}", "[WARNING] Hardware Configuration Check".yellow().bold());
 
         if !detected_nodes.is_empty() {
             eprintln!("\n{}", "Detected hardware nodes:".cyan());

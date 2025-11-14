@@ -153,8 +153,8 @@ Shows hardware configuration.
 ### 2. TSC Verification
 ```
 TSC Verification:
-  • Invariant TSC: ✓ YES
-  • Cross-core TSC drift: 245 cycles (✓ excellent)
+  • Invariant TSC: [OK] YES
+  • Cross-core TSC drift: 245 cycles ([OK] excellent)
 ```
 - **< 1,000 cycles**: Excellent
 - **1,000-10,000 cycles**: Acceptable
@@ -180,12 +180,12 @@ HORUS LINK (SPSC):
 ### 5. Quality Assessment
 ```
 MEASUREMENT QUALITY ASSESSMENT
-  ✓ HIGH QUALITY - All validation checks passed
+  [OK] HIGH QUALITY - All validation checks passed
   • TSC verification: PASSED
   • CPU frequency: Measured via RDTSC
   • TSC drift: 245 cycles (excellent)
 
-  ✓ These results are suitable for research publication.
+  [OK] These results are suitable for research publication.
 ```
 
 **Quality Levels**:
@@ -266,31 +266,31 @@ sudo ./benchmark_restore.sh
 
 ## Interpreting Quality Ratings
 
-### HIGH QUALITY ✓
+### HIGH QUALITY [OK]
 ```
-✓ HIGH QUALITY - All validation checks passed
-✓ These results are suitable for research publication.
+[OK] HIGH QUALITY - All validation checks passed
+[OK] These results are suitable for research publication.
 ```
 **Use for**: Academic papers, publications, hardware comparisons
 
-### MEDIUM QUALITY ⚠
+### MEDIUM QUALITY [WARNING]
 ```
-⚠ MEDIUM QUALITY - Moderate TSC drift detected
-⚠ Usable for performance trends, but note increased variance.
+[WARNING] MEDIUM QUALITY - Moderate TSC drift detected
+[WARNING] Usable for performance trends, but note increased variance.
 ```
 **Use for**: Internal monitoring, trend analysis
 
-### LOW QUALITY ⚠
+### LOW QUALITY [WARNING]
 ```
-⚠ LOW QUALITY - High TSC drift detected
-⚠ Not recommended for research publication.
+[WARNING] LOW QUALITY - High TSC drift detected
+[WARNING] Not recommended for research publication.
 ```
 **Use for**: Development only, re-run with system optimization
 
-### INVALID ✗
+### INVALID [FAIL]
 ```
-✗ INVALID - Critical validation failures
-✗ These results CANNOT be used for research.
+[FAIL] INVALID - Critical validation failures
+[FAIL] These results CANNOT be used for research.
 ```
 **Action**: Fix system issues (TSC sync, frequency detection) and re-run
 
@@ -369,22 +369,22 @@ const NUM_RUNS: usize = 10;         // Number of runs
 
 ## A+ Features Implemented
 
-### 1. Bootstrap Confidence Intervals ✓
+### 1. Bootstrap Confidence Intervals [OK]
 - Distribution-free (no normality assumption)
 - 2,000 bootstrap resamples
 - Reference: Efron & Tibshirani (1994)
 
-### 2. Comprehensive Testing ✓
+### 2. Comprehensive Testing [OK]
 - 41 unit tests (100% pass rate)
 - All statistical functions validated
 - Edge cases tested
 
-### 3. Formal Methodology ✓
+### 3. Formal Methodology [OK]
 - 463-line publication-ready document
 - 9 academic references
 - Complete formulas and assumptions
 
-### 4. Quality Gates ✓
+### 4. Quality Gates [OK]
 - TSC verification
 - Frequency validation
 - Quality ratings (high/medium/low/invalid)
@@ -482,7 +482,7 @@ HORUS/
 
 ---
 
-**The HORUS IPC Benchmark is A+ grade research-ready!** 🏆
+**The HORUS IPC Benchmark is A+ grade research-ready!** [TROPHY]
 
 Last updated: 2025-11-11
 Version: 2.0 (A+ Grade)

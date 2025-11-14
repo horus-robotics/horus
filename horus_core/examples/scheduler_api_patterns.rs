@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_safety_monitor(3)
         .with_name("CustomRTScheduler");
 
-    println!("✓ Created with builder pattern");
+    println!("[OK] Created with builder pattern");
     println!("  Config: hard_realtime preset");
     println!("  Capacity: 128 nodes pre-allocated");
     println!("  Learning: DISABLED");
@@ -29,18 +29,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // OS integration (requires root/capabilities)
     match scheduler.set_realtime_priority(50) {
-        Ok(_) => println!("✓ Real-time priority: 50 (SCHED_FIFO)"),
-        Err(e) => println!("⚠ RT priority failed (need root): {}", e),
+        Ok(_) => println!("[OK] Real-time priority: 50 (SCHED_FIFO)"),
+        Err(e) => println!("[WARNING] RT priority failed (need root): {}", e),
     }
 
     match scheduler.pin_to_cpu(0) {
-        Ok(_) => println!("✓ Pinned to CPU core 0"),
-        Err(e) => println!("⚠ CPU pinning failed: {}", e),
+        Ok(_) => println!("[OK] Pinned to CPU core 0"),
+        Err(e) => println!("[WARNING] CPU pinning failed: {}", e),
     }
 
     match scheduler.lock_memory() {
-        Ok(_) => println!("✓ Memory locked (no page faults)"),
-        Err(e) => println!("⚠ Memory locking failed (need CAP_IPC_LOCK): {}", e),
+        Ok(_) => println!("[OK] Memory locked (no page faults)"),
+        Err(e) => println!("[WARNING] Memory locking failed (need CAP_IPC_LOCK): {}", e),
     }
 
     println!();
@@ -53,7 +53,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut scheduler2 = Scheduler::new_realtime()?;
 
-    println!("✓ Created with new_realtime()");
+    println!("[OK] Created with new_realtime()");
     println!("  (Internally uses builder pattern)");
     println!("  Equivalent to Pattern 1\n");
 
@@ -78,7 +78,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_safety_monitor(5)  // More tolerant (5 misses)
         .with_name("MixedWorkload");
 
-    println!("✓ Custom composition:");
+    println!("[OK] Custom composition:");
     println!("  Base: hard_realtime preset");
     println!("  Override: 2kHz rate (was 1kHz)");
     println!("  Learning: ENABLED (default)");
@@ -94,7 +94,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .disable_learning()
         .with_name("SimScheduler");
 
-    println!("✓ Deterministic scheduler:");
+    println!("[OK] Deterministic scheduler:");
     println!("  Learning: DISABLED");
     println!("  No OS integration needed");
     println!("  Suitable for testing/simulation\n");
@@ -107,7 +107,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let _scheduler5 = Scheduler::new();
 
-    println!("✓ Standard scheduler:");
+    println!("[OK] Standard scheduler:");
     println!("  All defaults");
     println!("  Learning: ENABLED");
     println!("  Adapts to workload dynamically\n");

@@ -108,8 +108,3 @@ def test_node_statistics():
     print(" Node statistics test passed!")
 
 
-if __name__ == "__main__":
-    test_per_node_rate_control()
-    test_runtime_rate_change()
-    test_node_statistics()
-    print("\n All Phase 1 tests passed!")

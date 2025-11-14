@@ -137,7 +137,7 @@ fn main() -> Result<()> {
 
 **Run it**:
 
-> ⚠️ **IMPORTANT - Multi-Process Communication**
+> [WARNING]️ **IMPORTANT - Multi-Process Communication**
 >
 > To run publisher and subscriber in separate terminals, you **must** configure a shared `session_id` in `horus.yaml`:
 >
@@ -463,7 +463,7 @@ impl Node for ObstacleDetector {
                     self.cmd_pub.send(stop, ctx).ok();
 
                     ctx.log_warning(&format!(
-                            "⚠ Obstacle detected at {:.2}m - STOPPING!",
+                            "[WARNING] Obstacle detected at {:.2}m - STOPPING!",
                             min_dist
                         ));
                 } else {

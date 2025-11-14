@@ -38,9 +38,9 @@ run_test() {
     else
         local exit_code=$?
         if [ $exit_code -eq 124 ]; then
-            echo -e "${RED}✗ TIMEOUT${NC}: $test_name (exceeded ${timeout}s)\n"
+            echo -e "${RED}[TIMEOUT]${NC}: $test_name (exceeded ${timeout}s)\n"
         else
-            echo -e "${RED}✗ FAILED${NC}: $test_name (exit code: $exit_code)\n"
+            echo -e "${RED}[FAIL]${NC}: $test_name (exit code: $exit_code)\n"
         fi
         ((FAILED++))
         return 1
@@ -62,7 +62,7 @@ print_summary() {
         echo -e "${GREEN}Changes are qualified for production.${NC}\n"
         return 0
     else
-        echo -e "${RED}Some tests failed! ✗${NC}"
+        echo -e "${RED}Some tests failed! [FAIL]${NC}"
         echo -e "${RED}Review failures before merging changes.${NC}\n"
         return 1
     fi
