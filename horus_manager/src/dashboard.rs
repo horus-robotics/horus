@@ -23,6 +23,7 @@ struct AppState {
     port: u16,
     params: Arc<horus_core::RuntimeParams>,
     auth_service: Arc<AuthService>,
+    current_workspace: Option<std::path::PathBuf>,
 }
 
 /// Get local IP address for network access
@@ -102,10 +103,14 @@ pub async fn run(port: u16, secure: bool) -> anyhow::Result<()> {
         horus_core::RuntimeParams::init().unwrap_or_else(|_| horus_core::RuntimeParams::default()),
     );
 
+    // Detect current workspace (if running from within a workspace)
+    let current_workspace = crate::workspace::find_workspace_root();
+
     let state = Arc::new(AppState {
         port,
         params,
         auth_service: auth_service.clone(),
+        current_workspace: current_workspace.clone(),
     });
 
     // Protected routes (require authentication)
@@ -227,6 +232,21 @@ pub async fn run(port: u16, secure: bool) -> anyhow::Result<()> {
     println!("   • Performance metrics");
     println!("   • Package management");
     println!("   • Accessible from any device on your local network");
+
+    // Display workspace context if detected
+    if let Some(ref ws_path) = current_workspace {
+        let ws_name = ws_path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("unknown");
+        println!("\n{}:", "Workspace Context".cyan().bold());
+        println!("   • Running in workspace: {}", ws_name.yellow());
+        println!("   • Path: {}", ws_path.display().to_string().dimmed());
+    } else {
+        println!("\n{}:", "Workspace Context".cyan().bold());
+        println!("   • Not running in a workspace (monitoring all HORUS processes)");
+    }
+
     println!("\n   Press {} to stop", "Ctrl+C".bright_red());
 
     // Start server (HTTP or HTTPS based on secure flag)
@@ -386,7 +406,7 @@ async fn index_handler(
     }
 }
 
-async fn status_handler() -> impl IntoResponse {
+async fn status_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     use horus_core::core::HealthStatus;
 
     // Get all nodes and their health
@@ -458,6 +478,23 @@ async fn status_handler() -> impl IntoResponse {
         (status.to_string(), health_summary, color)
     };
 
+    // Build workspace info
+    let workspace_info = if let Some(ref ws_path) = state.current_workspace {
+        let ws_name = ws_path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("unknown");
+        serde_json::json!({
+            "name": ws_name,
+            "path": ws_path.display().to_string(),
+            "detected": true
+        })
+    } else {
+        serde_json::json!({
+            "detected": false
+        })
+    };
+
     (
         StatusCode::OK,
         Json(serde_json::json!({
@@ -466,7 +503,8 @@ async fn status_handler() -> impl IntoResponse {
             "health_color": health_color,
             "version": "0.1.0",
             "nodes": nodes_count,
-            "topics": topics_count
+            "topics": topics_count,
+            "workspace": workspace_info
         }))
     ).into_response()
 }

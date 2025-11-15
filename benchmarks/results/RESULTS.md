@@ -164,7 +164,7 @@ See [`../README.md`](../README.md) and [`../SUMMARY.md`](../SUMMARY.md) for:
 - **Hub (MPMC)**: 481ns median - Flexible pub/sub
 - **48% performance advantage** with Link in 1P1C scenarios
 
-**Production Validation:**
+**System Validation:**
 - 6.2M+ test messages with zero corruptions
 - Comprehensive validation test suite
 - Tested on modern x86_64 systems

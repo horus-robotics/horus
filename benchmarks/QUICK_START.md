@@ -2,11 +2,11 @@
 
 ## Overview
 
-The HORUS IPC Benchmark is an **A+ grade research-grade** benchmark for measuring inter-process communication latency with:
+The HORUS IPC Benchmark is a comprehensive benchmark for measuring inter-process communication latency with:
 - Bootstrap confidence intervals (distribution-free)
 - 41 comprehensive unit tests
 - Formal methodology documentation
-- Publication-ready results
+- Rigorous statistical methods
 
 ---
 
@@ -16,8 +16,8 @@ The HORUS IPC Benchmark is an **A+ grade research-grade** benchmark for measurin
 
 | File | Purpose |
 |------|---------|
-| **`src/bin/ipc_benchmark.rs`** | Main benchmark (A+ grade, 2,016 lines) |
-| **`METHODOLOGY.md`** | Formal statistical methodology (463 lines, publication-ready) |
+| **`src/bin/ipc_benchmark.rs`** | Main benchmark (2,016 lines) |
+| **`METHODOLOGY.md`** | Formal statistical methodology (463 lines) |
 | **`BENCHMARK_README.md`** | Detailed benchmark documentation |
 | **`Cargo.toml`** | Dependencies and build configuration |
 
@@ -65,7 +65,7 @@ cargo build --release --bin ipc_benchmark
 
 ### 3. Run with Optimal Settings (Recommended)
 
-For **research-grade results**:
+For **best results**:
 
 ```bash
 # Step 1: Optimize system
@@ -171,7 +171,7 @@ If this fails, benchmark **exits with error** (no arbitrary fallbacks).
 ```
 HORUS LINK (SPSC):
   Median Latency:    415 ns  (1075 cycles)
-  95% CI:           [410-420 ns]    ← Bootstrap CI (A+ feature!)
+  95% CI:           [410-420 ns]    ← Bootstrap CI
   P95:               450 ns
   P99:               480 ns
   Samples:           485,420 (outliers removed: 14,580)
@@ -185,13 +185,13 @@ MEASUREMENT QUALITY ASSESSMENT
   • CPU frequency: Measured via RDTSC
   • TSC drift: 245 cycles (excellent)
 
-  [OK] These results are suitable for research publication.
+  [OK] These results meet high quality standards.
 ```
 
 **Quality Levels**:
-- **HIGH**: All checks passed, publication-ready
+- **HIGH**: All checks passed, suitable for benchmarking
 - **MEDIUM**: Moderate TSC drift, usable for trends
-- **LOW**: High TSC drift, not recommended for publication
+- **LOW**: High TSC drift, not recommended for benchmarking
 - **INVALID**: Critical failures (TSC failed, missing data)
 
 ---
@@ -236,7 +236,7 @@ tail -f benchmark.log
 
 ---
 
-## System Optimization (For Research-Grade Results)
+## System Optimization (For Best Results)
 
 ### What `benchmark_setup.sh` Does:
 
@@ -269,9 +269,9 @@ sudo ./benchmark_restore.sh
 ### HIGH QUALITY [OK]
 ```
 [OK] HIGH QUALITY - All validation checks passed
-[OK] These results are suitable for research publication.
+[OK] These results meet high quality standards.
 ```
-**Use for**: Academic papers, publications, hardware comparisons
+**Use for**: Performance analysis, hardware comparisons
 
 ### MEDIUM QUALITY [WARNING]
 ```
@@ -283,14 +283,14 @@ sudo ./benchmark_restore.sh
 ### LOW QUALITY [WARNING]
 ```
 [WARNING] LOW QUALITY - High TSC drift detected
-[WARNING] Not recommended for research publication.
+[WARNING] Not recommended for benchmarking.
 ```
 **Use for**: Development only, re-run with system optimization
 
 ### INVALID [FAIL]
 ```
 [FAIL] INVALID - Critical validation failures
-[FAIL] These results CANNOT be used for research.
+[FAIL] These results CANNOT be used.
 ```
 **Action**: Fix system issues (TSC sync, frequency detection) and re-run
 
@@ -367,39 +367,39 @@ const NUM_RUNS: usize = 10;         // Number of runs
 
 ---
 
-## A+ Features Implemented
+## Features Implemented
 
-### 1. Bootstrap Confidence Intervals [OK]
+### 1. Bootstrap Confidence Intervals
 - Distribution-free (no normality assumption)
 - 2,000 bootstrap resamples
 - Reference: Efron & Tibshirani (1994)
 
-### 2. Comprehensive Testing [OK]
+### 2. Comprehensive Testing
 - 41 unit tests (100% pass rate)
 - All statistical functions validated
 - Edge cases tested
 
-### 3. Formal Methodology [OK]
-- 463-line publication-ready document
+### 3. Formal Methodology
+- 463-line technical document
 - 9 academic references
 - Complete formulas and assumptions
 
-### 4. Quality Gates [OK]
+### 4. Quality Gates
 - TSC verification
 - Frequency validation
 - Quality ratings (high/medium/low/invalid)
 
 ---
 
-## For Academic Publication
+## Technical Documentation
 
-### Required Files:
+### Key Files:
 
-1. **METHODOLOGY.md** - Cite in methodology section
-2. **benchmark_results.json** - Raw data for reviewers
-3. **BENCHMARK_README.md** - Experimental setup
+1. **METHODOLOGY.md** - Statistical methodology details
+2. **benchmark_results.json** - Raw benchmark data
+3. **BENCHMARK_README.md** - Benchmark specifications
 
-### Recommended Citation:
+### Citation:
 
 ```bibtex
 @software{horus_ipc_benchmark,
@@ -407,14 +407,14 @@ const NUM_RUNS: usize = 10;         // Number of runs
   author = {HORUS Team},
   year = {2025},
   version = {2.0},
-  note = {A+ grade research benchmark with bootstrap confidence intervals},
+  note = {Comprehensive benchmark with bootstrap confidence intervals},
   url = {https://github.com/softmata/horus}
 }
 ```
 
-### In Paper Methodology Section:
+### Methodology Details:
 
-Include:
+Includes:
 - Bootstrap CI methodology (cite Efron & Tibshirani, 1994)
 - NIST R-7 percentile method
 - Tukey's 1.5×IQR outlier filtering
@@ -436,7 +436,7 @@ cargo build --release --bin ipc_benchmark
 # Run (simple)
 ./target/release/ipc_benchmark
 
-# Run (optimized for research)
+# Run (optimized for best results)
 cd benchmarks && sudo ./benchmark_setup.sh && cd .. && ./target/release/ipc_benchmark
 
 # View results
@@ -470,7 +470,7 @@ HORUS/
 1. **Run benchmark**: `./target/release/ipc_benchmark`
 2. **Check results**: `jq '.[-1]' benchmarks/benchmark_results.json`
 3. **Verify quality**: Look for "HIGH QUALITY" in output
-4. **For publication**: Read `METHODOLOGY.md`
+4. **Technical details**: Read `METHODOLOGY.md`
 
 ---
 
@@ -482,7 +482,7 @@ HORUS/
 
 ---
 
-**The HORUS IPC Benchmark is A+ grade research-ready!** [TROPHY]
+**The HORUS IPC Benchmark - Comprehensive Statistical Testing**
 
 Last updated: 2025-11-11
-Version: 2.0 (A+ Grade)
+Version: 2.0

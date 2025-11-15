@@ -59,7 +59,13 @@ pub struct TuiDashboard {
 
     // Package navigation state
     package_view_mode: PackageViewMode,
+    package_panel_focus: PackagePanelFocus,
     selected_workspace: Option<WorkspaceData>,
+
+    // Workspace caching (to avoid repeated filesystem operations)
+    workspace_cache: Vec<WorkspaceData>,
+    workspace_cache_time: Instant,
+    current_workspace_path: Option<std::path::PathBuf>,
 
     // Graph view state
     graph_nodes: Vec<TuiGraphNode>,
@@ -90,11 +96,18 @@ enum PackageViewMode {
     WorkspaceDetails, // Viewing packages inside a workspace
 }
 
+#[derive(Debug, Clone, PartialEq)]
+enum PackagePanelFocus {
+    LocalWorkspaces, // Focused on local workspaces panel
+    GlobalPackages,  // Focused on global packages panel
+}
+
 #[derive(Debug, Clone)]
 struct WorkspaceData {
     name: String,
     path: String,
     packages: Vec<PackageData>,
+    is_current: bool, // True if this is the current workspace (detected via find_workspace_root)
 }
 
 #[derive(Debug, Clone)]
@@ -207,6 +220,9 @@ impl TuiDashboard {
                 .unwrap_or_else(|_| horus_core::RuntimeParams::default()),
         );
 
+        // Detect current workspace on startup
+        let current_workspace_path = crate::workspace::find_workspace_root();
+
         Self {
             active_tab: Tab::Overview,
             selected_index: 0,
@@ -230,7 +246,13 @@ impl TuiDashboard {
             param_input_focus: ParamInputFocus::Key,
 
             package_view_mode: PackageViewMode::List,
+            package_panel_focus: PackagePanelFocus::LocalWorkspaces,
             selected_workspace: None,
+
+            // Initialize workspace cache as empty (will load on first access)
+            workspace_cache: Vec::new(),
+            workspace_cache_time: Instant::now() - Duration::from_secs(10), // Force initial load
+            current_workspace_path,
 
             graph_nodes: Vec::new(),
             graph_edges: Vec::new(),
@@ -239,6 +261,22 @@ impl TuiDashboard {
             graph_offset_x: 0,
             graph_offset_y: 0,
         }
+    }
+
+    /// Refresh workspace cache if stale (5 second TTL)
+    fn refresh_workspace_cache_if_needed(&mut self) {
+        const CACHE_TTL: Duration = Duration::from_secs(5);
+
+        if self.workspace_cache_time.elapsed() > CACHE_TTL {
+            self.workspace_cache = get_local_workspaces(&self.current_workspace_path);
+            self.workspace_cache_time = Instant::now();
+        }
+    }
+
+    /// Force refresh of workspace cache (e.g., on manual refresh)
+    fn force_refresh_workspace_cache(&mut self) {
+        self.workspace_cache = get_local_workspaces(&self.current_workspace_path);
+        self.workspace_cache_time = Instant::now();
     }
 
     pub fn run() -> Result<()> {
@@ -302,6 +340,7 @@ impl TuiDashboard {
                             {
                                 // Navigate back to workspace list
                                 self.package_view_mode = PackageViewMode::List;
+                                self.package_panel_focus = PackagePanelFocus::LocalWorkspaces;
                                 self.selected_workspace = None;
                                 self.selected_index = 0;
                             } else if self.show_log_panel {
@@ -459,6 +498,24 @@ impl TuiDashboard {
                             self.graph_offset_x -= 5;
                         }
 
+                        // Switch between Local/Global panels in Packages tab
+                        KeyCode::Left
+                            if self.active_tab == Tab::Packages
+                                && self.package_view_mode == PackageViewMode::List
+                                && !self.show_log_panel =>
+                        {
+                            self.package_panel_focus = PackagePanelFocus::LocalWorkspaces;
+                            self.selected_index = 0;
+                        }
+                        KeyCode::Right
+                            if self.active_tab == Tab::Packages
+                                && self.package_view_mode == PackageViewMode::List
+                                && !self.show_log_panel =>
+                        {
+                            self.package_panel_focus = PackagePanelFocus::GlobalPackages;
+                            self.selected_index = 0;
+                        }
+
                         // Handle input when in parameter edit mode
                         KeyCode::Char(c) if self.param_edit_mode != ParamEditMode::None => {
                             match self.param_edit_mode {
@@ -529,7 +586,7 @@ impl TuiDashboard {
         }
     }
 
-    fn draw_ui(&self, f: &mut Frame) {
+    fn draw_ui(&mut self, f: &mut Frame) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -1093,15 +1150,18 @@ impl TuiDashboard {
         }
     }
 
-    fn draw_packages(&self, f: &mut Frame, area: Rect) {
+    fn draw_packages(&mut self, f: &mut Frame, area: Rect) {
         match self.package_view_mode {
             PackageViewMode::List => self.draw_workspace_list(f, area),
             PackageViewMode::WorkspaceDetails => self.draw_workspace_details(f, area),
         }
     }
 
-    fn draw_workspace_list(&self, f: &mut Frame, area: Rect) {
-        let workspaces = get_local_workspaces();
+    fn draw_workspace_list(&mut self, f: &mut Frame, area: Rect) {
+        // Refresh workspace cache if needed (5 second TTL instead of every frame)
+        self.refresh_workspace_cache_if_needed();
+
+        let workspaces = &self.workspace_cache;
         let (_, global_packages) = get_installed_packages();
 
         // Split the area into two sections: workspaces (top) and global (bottom)
@@ -1113,20 +1173,35 @@ impl TuiDashboard {
             ])
             .split(area);
 
+        // Determine which panel is focused
+        let local_focused = self.package_panel_focus == PackagePanelFocus::LocalWorkspaces;
+        let global_focused = self.package_panel_focus == PackagePanelFocus::GlobalPackages;
+
         // Draw workspaces table
         let workspace_rows: Vec<Row> = workspaces
             .iter()
             .enumerate()
             .map(|(idx, workspace)| {
-                let is_selected = idx == self.selected_index;
+                let is_selected = local_focused && idx == self.selected_index;
+
+                // Build workspace name with current marker
+                let workspace_display = if workspace.is_current {
+                    format!("➜ {} (current)", workspace.name)
+                } else {
+                    workspace.name.clone()
+                };
+
+                // Style: selected gets reversed, current workspace gets green color
                 let style = if is_selected {
                     Style::default().add_modifier(Modifier::REVERSED)
+                } else if workspace.is_current {
+                    Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)
                 } else {
                     Style::default()
                 };
 
                 Row::new(vec![
-                    Cell::from(workspace.name.clone()),
+                    Cell::from(workspace_display),
                     Cell::from(workspace.packages.len().to_string()),
                     Cell::from(workspace.path.clone()),
                 ])
@@ -1142,11 +1217,16 @@ impl TuiDashboard {
             .block(
                 Block::default()
                     .title(format!(
-                        "Local Workspaces ({}) - Press Enter to view packages, Esc to return",
-                        workspaces.len()
+                        "Local Workspaces ({}) {}",
+                        workspaces.len(),
+                        if local_focused { "[FOCUSED - Press ← →]" } else { "[Press → to focus]" }
                     ))
                     .borders(Borders::ALL)
-                    .border_style(Style::default().fg(Color::Yellow)),
+                    .border_style(if local_focused {
+                        Style::default().fg(Color::Yellow)
+                    } else {
+                        Style::default().fg(Color::DarkGray)
+                    }),
             )
             .widths(&[
                 Constraint::Length(25),
@@ -1156,14 +1236,26 @@ impl TuiDashboard {
 
         f.render_widget(workspace_table, chunks[0]);
 
-        // Draw global packages table (unchanged)
-        let global_rows = global_packages.iter().map(|(name, version, size)| {
-            Row::new(vec![
-                Cell::from(name.clone()),
-                Cell::from(version.clone()),
-                Cell::from(size.clone()),
-            ])
-        });
+        // Draw global packages table with selection support
+        let global_rows: Vec<Row> = global_packages
+            .iter()
+            .enumerate()
+            .map(|(idx, (name, version, size))| {
+                let is_selected = global_focused && idx == self.selected_index;
+                let style = if is_selected {
+                    Style::default().add_modifier(Modifier::REVERSED)
+                } else {
+                    Style::default()
+                };
+
+                Row::new(vec![
+                    Cell::from(name.clone()),
+                    Cell::from(version.clone()),
+                    Cell::from(size.clone()),
+                ])
+                .style(style)
+            })
+            .collect();
 
         let global_table = Table::new(global_rows)
             .header(
@@ -1172,9 +1264,17 @@ impl TuiDashboard {
             )
             .block(
                 Block::default()
-                    .title(format!("Global Packages ({})", global_packages.len()))
+                    .title(format!(
+                        "Global Packages ({}) {}",
+                        global_packages.len(),
+                        if global_focused { "[FOCUSED - Press ← →]" } else { "[Press ← to focus]" }
+                    ))
                     .borders(Borders::ALL)
-                    .border_style(Style::default().fg(Color::Cyan)),
+                    .border_style(if global_focused {
+                        Style::default().fg(Color::Cyan)
+                    } else {
+                        Style::default().fg(Color::DarkGray)
+                    }),
             )
             .widths(&[
                 Constraint::Min(30),
@@ -1499,6 +1599,7 @@ impl TuiDashboard {
                 "Packages Tab:",
                 Style::default().fg(Color::Cyan),
             )]),
+            Line::from("  ← →        - Switch between Local Workspaces and Global Packages"),
             Line::from("  Enter      - Drill into selected workspace to view packages"),
             Line::from("  ESC        - Navigate back to workspace list"),
             Line::from(""),
@@ -1751,6 +1852,21 @@ impl TuiDashboard {
                 let params_map = self.params.get_all();
                 params_map.len().saturating_sub(1)
             }
+            Tab::Packages => {
+                if self.package_view_mode == PackageViewMode::List {
+                    match self.package_panel_focus {
+                        PackagePanelFocus::LocalWorkspaces => {
+                            self.workspace_cache.len().saturating_sub(1)
+                        }
+                        PackagePanelFocus::GlobalPackages => {
+                            let (_, global_packages) = get_installed_packages();
+                            global_packages.len().saturating_sub(1)
+                        }
+                    }
+                } else {
+                    0
+                }
+            }
             _ => 0,
         };
 
@@ -1852,10 +1968,9 @@ impl TuiDashboard {
     fn handle_package_enter(&mut self) {
         match self.package_view_mode {
             PackageViewMode::List => {
-                // Drill down into selected workspace
-                let workspaces = get_local_workspaces();
-                if self.selected_index < workspaces.len() {
-                    self.selected_workspace = Some(workspaces[self.selected_index].clone());
+                // Drill down into selected workspace (use cached data)
+                if self.selected_index < self.workspace_cache.len() {
+                    self.selected_workspace = Some(self.workspace_cache[self.selected_index].clone());
                     self.package_view_mode = PackageViewMode::WorkspaceDetails;
                     self.selected_index = 0;
                     self.scroll_offset = 0;
@@ -2287,7 +2402,7 @@ fn get_active_nodes() -> Result<Vec<NodeStatus>> {
     }
 }
 
-fn get_local_workspaces() -> Vec<WorkspaceData> {
+fn get_local_workspaces(current_workspace_path: &Option<std::path::PathBuf>) -> Vec<WorkspaceData> {
     use std::fs;
 
     let mut workspaces = Vec::new();
@@ -2295,7 +2410,24 @@ fn get_local_workspaces() -> Vec<WorkspaceData> {
     // Use the WorkspaceRegistry to get only registered HORUS workspaces
     let registry = match crate::workspace::WorkspaceRegistry::load() {
         Ok(reg) => reg,
-        Err(_) => return workspaces, // Return empty if registry unavailable
+        Err(_) => {
+            // If registry is unavailable but we have a current workspace, include it
+            if let Some(current_path) = current_workspace_path {
+                let current_name = current_path
+                    .file_name()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("current")
+                    .to_string();
+
+                workspaces.push(WorkspaceData {
+                    name: current_name,
+                    path: current_path.to_string_lossy().to_string(),
+                    packages: Vec::new(), // Will be populated below if .horus/packages exists
+                    is_current: true,
+                });
+            }
+            return workspaces;
+        }
     };
 
     // Only process registered workspaces
@@ -2307,6 +2439,12 @@ fn get_local_workspaces() -> Vec<WorkspaceData> {
         if !horus_dir.exists() || !horus_dir.is_dir() {
             continue;
         }
+
+        // Check if this is the current workspace
+        let is_current = current_workspace_path
+            .as_ref()
+            .map(|p| p == env_path_buf)
+            .unwrap_or(false);
 
         let env_name = ws.name.clone();
         let env_path = env_path_buf.to_string_lossy().to_string();
@@ -2391,11 +2529,19 @@ fn get_local_workspaces() -> Vec<WorkspaceData> {
                 name: env_name,
                 path: env_path,
                 packages,
+                is_current,
             });
         }
     }
 
-    workspaces.sort_by(|a, b| a.name.cmp(&b.name));
+    // Sort by: current workspace first, then alphabetically
+    workspaces.sort_by(|a, b| {
+        match (a.is_current, b.is_current) {
+            (true, false) => std::cmp::Ordering::Less,    // Current workspace comes first
+            (false, true) => std::cmp::Ordering::Greater, // Current workspace comes first
+            _ => a.name.cmp(&b.name),                     // Otherwise sort alphabetically
+        }
+    });
     workspaces
 }
 

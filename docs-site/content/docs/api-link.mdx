@@ -422,7 +422,7 @@ struct NodeB {
 ### When Link Matters
 
 Link's performance advantage is critical for:
-- **Control loops >1kHz** (1ms cycle time or faster)
+- **Control loops &gt;1kHz** (1ms cycle time or faster)
 - **Sensor fusion** with high-frequency IMU (100Hz-1kHz)
 - **Motor control** with encoder feedback
 - **Vision processing** pipelines with frame handoff
@@ -620,7 +620,7 @@ let c: Link<f32> = Link::consumer("data")?;
 | 1-to-1 communication | 1-to-many broadcasting |
 | Latency &lt;1µs required | Latency &lt;10µs acceptable |
 | Fixed producer/consumer | Dynamic subscribers |
-| Control loops >100Hz | General pub/sub |
+| Control loops &gt;100Hz | General pub/sub |
 | Critical path | Non-critical path |
 
 **Example scenarios**:

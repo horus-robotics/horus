@@ -1,6 +1,6 @@
 # HORUS Benchmark Suite
 
-A+ grade research-ready performance benchmarks for the HORUS robotics framework.
+Comprehensive performance benchmarks for the HORUS robotics framework.
 
 ## Overview
 
@@ -9,12 +9,12 @@ This benchmark suite provides rigorous, statistically sound performance measurem
 - **RDTSC-based timing**: Cycle-accurate measurement (sub-nanosecond precision)
 - **Bootstrap confidence intervals**: Distribution-free statistical rigor
 - **Comprehensive testing**: 41 unit tests validate all statistical functions
-- **Formal methodology**: Publication-ready documentation with academic references
+- **Formal methodology**: Detailed documentation with academic references
 - **Quality gates**: Automatic validation of TSC sync, frequency detection, system state
 
 ## Benchmarks
 
-### IPC Latency Benchmark (A+ Research-Grade)
+### IPC Latency Benchmark
 
 **File**: `src/bin/ipc_benchmark.rs` (2,016 lines)
 
@@ -41,13 +41,13 @@ jq '.[-1]' benchmarks/benchmark_results.json
 
 **Documentation**:
 - **[QUICK_START.md](QUICK_START.md)** - How to run, where results are saved, troubleshooting
-- **[METHODOLOGY.md](METHODOLOGY.md)** - Formal statistical methodology for academic publication
+- **[METHODOLOGY.md](METHODOLOGY.md)** - Formal statistical methodology and technical details
 
-### Robotics Production Tests
+### Robotics System Tests
 
 **File**: `src/bin/test_robotics_production.rs`
 
-Comprehensive production qualification tests for HORUS Link implementation:
+Comprehensive system tests for HORUS Link implementation:
 
 - High-frequency sensor loops (200Hz IMU, 100Hz encoders)
 - Real-time control loops (50Hz PID controllers)
@@ -57,13 +57,13 @@ Comprehensive production qualification tests for HORUS Link implementation:
 
 **Documentation**: [ROBOTICS_PRODUCTION_TESTS.md](ROBOTICS_PRODUCTION_TESTS.md)
 
-## A+ Features
+## Features
 
-The IPC benchmark achieves **A+ grade (Maximum Statistical Rigor)** with:
+The IPC benchmark implements rigorous statistical methodology:
 
 1. **Bootstrap Confidence Intervals** - Distribution-free method (Efron & Tibshirani, 1994)
 2. **Comprehensive Unit Tests** - 41 tests covering all statistical functions (100% pass rate)
-3. **Formal Methodology** - 463-line publication-ready document with 9 academic references
+3. **Formal Methodology** - 463-line document with 9 academic references
 4. **Perfect Error Handling** - Zero unwraps in critical measurement paths
 5. **Quality Gates** - Automatic validation ensures measurement integrity
 
@@ -72,10 +72,10 @@ The IPC benchmark achieves **A+ grade (Maximum Statistical Rigor)** with:
 ```
 benchmarks/
 ├── src/bin/
-│   ├── ipc_benchmark.rs              # A+ grade IPC latency benchmark (2,016 lines)
-│   └── test_robotics_production.rs   # Production qualification tests
+│   ├── ipc_benchmark.rs              # IPC latency benchmark (2,016 lines)
+│   └── test_robotics_production.rs   # System qualification tests
 ├── QUICK_START.md                    # User guide: how to run, where results go
-├── METHODOLOGY.md                    # Formal statistical methodology (publication-ready)
+├── METHODOLOGY.md                    # Formal statistical methodology
 ├── ROBOTICS_PRODUCTION_TESTS.md      # Production test suite documentation
 ├── benchmark_setup.sh                # Optimize system for benchmarking
 ├── benchmark_restore.sh              # Restore normal system settings
@@ -102,24 +102,24 @@ jq '.[-1]' benchmarks/benchmark_results.json
 jq '.[] | select(.measurement_quality == "high")' benchmarks/benchmark_results.json
 ```
 
-## For Academic Publication
+## Technical Details
 
-The IPC benchmark is designed for research publication with:
+The IPC benchmark implements established statistical methods:
 
-- **Bootstrap CI**: Gold standard in modern statistics (no normality assumption)
+- **Bootstrap CI**: Standard method in modern statistics (no normality assumption)
 - **NIST standards**: R-7 percentile method, sample variance (n-1)
 - **Tukey's method**: Standard 1.5×IQR outlier filtering
 - **Complete audit trail**: All metadata recorded for post-hoc validation
-- **Formal documentation**: METHODOLOGY.md suitable for methodology sections
+- **Formal documentation**: METHODOLOGY.md with detailed technical specifications
 
-**Required citation**:
+**Citation**:
 ```bibtex
 @software{horus_ipc_benchmark,
   title = {HORUS IPC Latency Benchmark},
   author = {HORUS Team},
   year = {2025},
   version = {2.0},
-  note = {A+ grade research benchmark with bootstrap confidence intervals},
+  note = {Comprehensive benchmark with bootstrap confidence intervals},
   url = {https://github.com/softmata/horus}
 }
 ```
@@ -139,7 +139,7 @@ cargo build --release --bin ipc_benchmark
 # Run benchmark (simple)
 ./target/release/ipc_benchmark
 
-# Run with system optimization (recommended for research)
+# Run with system optimization (recommended for best results)
 cd benchmarks && sudo ./benchmark_setup.sh && cd .. && ./target/release/ipc_benchmark
 
 # View results
@@ -160,7 +160,7 @@ cd benchmarks && sudo ./benchmark_restore.sh
 
 ---
 
-**Status**: A+ Grade (Maximum Statistical Rigor) - Publication-Ready
+**Status**: Comprehensive Statistical Benchmark
 
 **Version**: 2.0
 

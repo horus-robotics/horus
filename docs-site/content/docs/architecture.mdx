@@ -440,7 +440,7 @@ scheduler.add(motor_driver, 10, Some(true));   // Actuates
 - For sensor fusion (10-30 Hz):  More than sufficient
 
 **Workaround for higher frequencies:**
-If you need >60 Hz for specific nodes, run them in separate processes with their own schedulers. Each process can achieve ~60 Hz independently.
+If you need &gt;60 Hz for specific nodes, run them in separate processes with their own schedulers. Each process can achieve ~60 Hz independently.
 
 **Future:** Per-node rate control and configurable tick rates are planned for post-beta releases.
 

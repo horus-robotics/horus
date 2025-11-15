@@ -67,7 +67,7 @@ struct BenchmarkResult {
     rdtsc_overhead_cycles: u64,
     tsc_drift_cycles: u64,
 
-    // Research-grade validation metadata
+    // Validation metadata
     tsc_verification_passed: bool,
     cpu_frequency_source: String,  // "measured", "cpuinfo", or "detection_failed"
     measurement_quality: String,   // "high", "medium", "low", or "invalid"
@@ -636,18 +636,18 @@ fn main() {
             eprintln!("\n{}", format!("WARNING: {}", e).bright_yellow());
             eprintln!("{}", "TSC synchronization check failed.".bright_yellow());
             eprintln!("{}", "Results will be marked as LOW QUALITY.".bright_red().bold());
-            eprintln!("{}", "For research-grade results, fix TSC issues and re-run.\n".bright_yellow());
+            eprintln!("{}", "For best results, fix TSC issues and re-run.\n".bright_yellow());
             (0, false)  // Mark as failed but continue with warning
         }
     };
 
-    // CPU frequency detection - NO FALLBACKS for research integrity
+    // CPU frequency detection - NO FALLBACKS for measurement integrity
     let (cpu_freq, freq_source) = match detect_cpu_frequency() {
         Ok(freq) => (freq, "rdtsc_measured"),
         Err(e) => {
             eprintln!("\n{}", format!("FATAL ERROR: {}", e).bright_red().bold());
             eprintln!("{}", "CPU frequency detection failed.".bright_red());
-            eprintln!("{}", "Research-grade benchmarks require accurate frequency measurement.".bright_yellow());
+            eprintln!("{}", "Accurate benchmarks require accurate frequency measurement.".bright_yellow());
             eprintln!("{}", "Cannot proceed with arbitrary fallback values.".bright_yellow());
             eprintln!("\n{}", "Possible solutions:".bright_cyan());
             eprintln!("  1. Check CPU supports invariant TSC");
@@ -723,13 +723,13 @@ fn main() {
         rdtsc_overhead_cycles: calibrate_rdtsc(),
         tsc_drift_cycles: tsc_drift,
 
-        // Research-grade validation metadata
+        // Validation metadata
         tsc_verification_passed: tsc_verified,
         cpu_frequency_source: freq_source.to_string(),
         measurement_quality,
     };
 
-    // Validate results before saving (research integrity check)
+    // Validate results before saving (measurement integrity check)
     println!("\n{}", "═".repeat(80).bright_cyan());
     println!("{}", "  MEASUREMENT QUALITY ASSESSMENT".bright_cyan().bold());
     println!("{}", "═".repeat(80).bright_cyan());
@@ -740,7 +740,7 @@ fn main() {
             println!("  • TSC verification: PASSED");
             println!("  • CPU frequency: Measured via RDTSC");
             println!("  • TSC drift: {} cycles (excellent)", result.tsc_drift_cycles);
-            println!("\n  {} These results are suitable for research publication.", "[OK]".bright_green());
+            println!("\n  {} These results meet high quality standards.", "[OK]".bright_green());
         }
         "medium" => {
             println!("  {}", "[WARNING] MEDIUM QUALITY - Moderate TSC drift detected".bright_yellow().bold());
@@ -754,7 +754,7 @@ fn main() {
             println!("  • TSC verification: PASSED");
             println!("  • CPU frequency: Measured via RDTSC");
             println!("  • TSC drift: {} cycles (high variance expected)", result.tsc_drift_cycles);
-            println!("\n  {} Not recommended for research publication.", "[WARNING]".bright_red());
+            println!("\n  {} Not recommended for benchmarking.", "[WARNING]".bright_red());
             println!("  {} Consider running benchmark_setup.sh for better quality.", "→".bright_cyan());
         }
         "invalid" => {
@@ -768,7 +768,7 @@ fn main() {
             if result.hub_stats.is_none() {
                 println!("  • Hub benchmark: NO DATA");
             }
-            println!("\n  {}", "[FAIL] These results CANNOT be used for research.".bright_red().bold());
+            println!("\n  {}", "[FAIL] These results CANNOT be used.".bright_red().bold());
             println!("  {} Fix validation issues and re-run.", "→".bright_red());
         }
         _ => {
