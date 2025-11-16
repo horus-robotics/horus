@@ -298,7 +298,7 @@ impl LidarNode {
 
         scan.timestamp = current_time;
 
-        let _ = self.publisher.send(scan, None);
+        let _ = self.publisher.send(scan, &mut None);
     }
 }
 

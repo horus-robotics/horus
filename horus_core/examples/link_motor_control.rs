@@ -128,7 +128,7 @@ impl Node for MotorDriverNode {
 
     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         // Check for new commands (non-blocking)
-        if let Some(cmd) = self.cmd_link.recv(None) {
+        if let Some(cmd) = self.cmd_link.recv(&mut None) {
             self.voltage = cmd.voltage;
             self.enabled = cmd.enable;
         }
@@ -143,7 +143,7 @@ impl Node for MotorDriverNode {
             (self.voltage * 0.5) as f32, // Simulated current
         );
 
-        if let Err(_) = self.encoder_link.send(reading, None) {
+        if let Err(_) = self.encoder_link.send(reading, &mut None) {
             eprintln!("[{}] Warning: Encoder buffer full!", self.name());
         }
 
@@ -198,7 +198,7 @@ impl Node for MotorControllerNode {
         self.update_target();
 
         // Wait for encoder reading (blocking in real system, non-blocking here)
-        if let Some(reading) = self.encoder_link.recv(None) {
+        if let Some(reading) = self.encoder_link.recv(&mut None) {
             // PD control law
             let error = self.target_position - reading.position;
             let derivative = error - self.last_error;
@@ -208,7 +208,7 @@ impl Node for MotorControllerNode {
 
             // Send motor command
             let cmd = MotorCommand::new(voltage, true);
-            if let Err(_) = self.cmd_link.send(cmd, None) {
+            if let Err(_) = self.cmd_link.send(cmd, &mut None) {
                 eprintln!("[{}] Warning: Command buffer full!", self.name());
             }
 

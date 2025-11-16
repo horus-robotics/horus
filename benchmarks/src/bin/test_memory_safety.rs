@@ -4,7 +4,6 @@ use horus::prelude::{Hub, Link};
 use horus_library::messages::cmd_vel::CmdVel;
 use std::env;
 use std::process;
-use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -74,7 +73,7 @@ fn test_shm_lifecycle() -> bool {
                 angular: 0.5,
                 stamp_nanos: j,
             };
-            if let Err(e) = publisher.send(msg, None) {
+            if let Err(e) = publisher.send(msg, &mut None) {
                 eprintln!("Failed to publish in iteration {}: {:?}", i, e);
                 return false;
             }
@@ -122,7 +121,7 @@ fn test_bounds_checking() -> bool {
             angular: 0.5,
             stamp_nanos: i,
         };
-        if let Err(e) = sender.send(msg, None) {
+        if let Err(e) = sender.send(msg, &mut None) {
             eprintln!("Failed to send message {} (filling buffer): {:?}", i, e);
             return false;
         }
@@ -137,7 +136,7 @@ fn test_bounds_checking() -> bool {
         stamp_nanos: 999,
     };
 
-    match sender.send(msg, None) {
+    match sender.send(msg, &mut None) {
         Ok(_) => {
             eprintln!("Send succeeded when buffer should be full");
             return false;
@@ -149,7 +148,7 @@ fn test_bounds_checking() -> bool {
 
     // Drain buffer
     for i in 0..16 {
-        if let Some(msg) = receiver.recv(None) {
+        if let Some(msg) = receiver.recv(&mut None) {
             if msg.stamp_nanos as usize != i {
                 eprintln!(
                     "Message order error during drain: expected {}, got {}",
@@ -166,7 +165,7 @@ fn test_bounds_checking() -> bool {
     println!("   Drained buffer successfully");
 
     // Try to read from empty buffer (should return None, not crash)
-    match receiver.recv(None) {
+    match receiver.recv(&mut None) {
         Some(_) => {
             eprintln!("Received message from empty buffer");
             return false;
@@ -230,7 +229,7 @@ fn test_concurrent_access() -> bool {
                 angular: 0.5,
                 stamp_nanos: i,
             };
-            if let Err(e) = publisher.send(msg, None) {
+            if let Err(e) = publisher.send(msg, &mut None) {
                 eprintln!("Publisher failed at message {}: {:?}", i, e);
                 return false;
             }
@@ -244,7 +243,7 @@ fn test_concurrent_access() -> bool {
         let mut received = 0;
         let start = Instant::now();
         while received < 1000 && start.elapsed() < Duration::from_secs(15) {
-            if subscriber1.recv(None).is_some() {
+            if subscriber1.recv(&mut None).is_some() {
                 received += 1;
             } else {
                 thread::sleep(Duration::from_micros(10));
@@ -257,7 +256,7 @@ fn test_concurrent_access() -> bool {
         let mut received = 0;
         let start = Instant::now();
         while received < 1000 && start.elapsed() < Duration::from_secs(15) {
-            if subscriber2.recv(None).is_some() {
+            if subscriber2.recv(&mut None).is_some() {
                 received += 1;
             } else {
                 thread::sleep(Duration::from_micros(10));
@@ -270,7 +269,7 @@ fn test_concurrent_access() -> bool {
         let mut received = 0;
         let start = Instant::now();
         while received < 1000 && start.elapsed() < Duration::from_secs(15) {
-            if subscriber3.recv(None).is_some() {
+            if subscriber3.recv(&mut None).is_some() {
                 received += 1;
             } else {
                 thread::sleep(Duration::from_micros(10));
@@ -332,12 +331,12 @@ fn test_leak_detection() -> bool {
                 angular: 0.5,
                 stamp_nanos: j,
             };
-            let _ = publisher.send(msg, None);
+            let _ = publisher.send(msg, &mut None);
         }
 
         // Receive some messages
         for _ in 0..5 {
-            let _ = subscriber.recv(None);
+            let _ = subscriber.recv(&mut None);
         }
 
         // Drop them (important for leak detection)
@@ -393,7 +392,7 @@ fn test_overflow_protection() -> bool {
                 stamp_nanos: i as u64,
             };
 
-            match sender.send(msg, None) {
+            match sender.send(msg, &mut None) {
                 Ok(_) => sent += 1,
                 Err(_) => break, // Buffer full, expected
             }
@@ -411,7 +410,7 @@ fn test_overflow_protection() -> bool {
         // Receive all sent messages
         let mut received = 0;
         for _ in 0..sent {
-            if receiver.recv(None).is_some() {
+            if receiver.recv(&mut None).is_some() {
                 received += 1;
             }
         }

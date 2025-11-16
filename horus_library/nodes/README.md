@@ -1,6 +1,6 @@
 # HORUS Built-in Nodes - Production-Ready Hardware Drivers
 
-This directory contains **33+ production-ready nodes** with real hardware integration. These are NOT prototypes - they're production-grade drivers ready for deployment in real robots.
+This directory contains **32 production-ready nodes** with real hardware integration. These are NOT prototypes - they're production-grade drivers ready for deployment in real robots.
 
 All nodes include:
 - Real hardware driver integration
@@ -13,7 +13,7 @@ All nodes include:
 
 ---
 
-## Complete Node Catalog (33+ Nodes)
+## Complete Node Catalog (32 Nodes)
 
 ### Safety & Monitoring (2 nodes)
 - **EmergencyStopNode** - Hardware e-stop with watchdog timeout

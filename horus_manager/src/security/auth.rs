@@ -219,15 +219,28 @@ pub fn prompt_for_password_setup() -> Result<String> {
 
     println!("\n{} HORUS Dashboard - First Time Setup", "[SECURITY]".cyan().bold());
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    println!("Please set a dashboard password (minimum 8 characters):");
+    println!("Set a dashboard password (or press Enter for no password):");
+    println!("{} Without a password, anyone on your network can access the dashboard", "[NOTE]".yellow());
 
     loop {
         print!("Password: ");
         io::stdout().flush()?;
         let password = rpassword::read_password()?;
 
+        // Allow empty password (no authentication)
+        if password.is_empty() {
+            println!("{} No password set - dashboard will be accessible without login", "[WARNING]".yellow().bold());
+            println!("{} You can add a password later with: {}", "[TIP]".cyan(), "horus dashboard -r".bright_blue());
+            println!();
+
+            // Save empty hash to indicate no password
+            save_password_hash("")?;
+            return Ok(String::new());
+        }
+
         if password.len() < 8 {
             println!("{} Password must be at least 8 characters. Please try again.", "[ERROR]".red().bold());
+            println!("{} Or press Enter for no password", "[TIP]".cyan());
             continue;
         }
 
@@ -258,6 +271,57 @@ pub fn prompt_for_password() -> Result<String> {
     print!("Dashboard password: ");
     io::stdout().flush()?;
     Ok(rpassword::read_password()?)
+}
+
+/// Prompt user to reset password
+pub fn reset_password() -> Result<String> {
+    use std::io::{self, Write};
+    use colored::Colorize;
+
+    println!("\n{} HORUS Dashboard - Password Reset", "[SECURITY]".cyan().bold());
+    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    println!("Enter a new dashboard password (or press Enter to disable password):");
+    println!("{} Without a password, anyone on your network can access the dashboard", "[NOTE]".yellow());
+
+    loop {
+        print!("New password: ");
+        io::stdout().flush()?;
+        let password = rpassword::read_password()?;
+
+        // Allow empty password (no authentication)
+        if password.is_empty() {
+            println!("{} Password removed - dashboard will be accessible without login", "[WARNING]".yellow().bold());
+            println!();
+
+            // Save empty hash to indicate no password
+            save_password_hash("")?;
+            return Ok(String::new());
+        }
+
+        if password.len() < 8 {
+            println!("{} Password must be at least 8 characters. Please try again.", "[ERROR]".red().bold());
+            println!("{} Or press Enter to disable password", "[TIP]".cyan());
+            continue;
+        }
+
+        print!("Confirm password: ");
+        io::stdout().flush()?;
+        let confirm = rpassword::read_password()?;
+
+        if password != confirm {
+            println!("{} Passwords don't match. Please try again.", "[ERROR]".red().bold());
+            continue;
+        }
+
+        // Hash and save password
+        let hash = hash_password(&password)?;
+        save_password_hash(&hash)?;
+
+        println!("{} Password reset successfully!", "[SUCCESS]".green().bold());
+        println!();
+
+        return Ok(hash);
+    }
 }
 
 #[cfg(test)]

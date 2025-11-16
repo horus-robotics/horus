@@ -306,7 +306,7 @@ class SensorNode(Node):
         self.pub = Hub("sensor_data")
 
     def tick(self, ctx):
-        self.pub.send({"value": 42.0}, ctx)
+        self.pub.send({"value": 42.0}, &mut ctx)
 ```
 
 **Location:** `/horus_py/`
@@ -790,7 +790,7 @@ Message Size    Latency (Hub)    Latency (Link)    Example
 - **[Installation Guide](/getting-started/installation)**: Set up HORUS on your system
 - **[Quick Start](/getting-started/quick-start)**: Build your first node in 5 minutes
 - **[Goals & Vision](/goals)**: Understand what HORUS is trying to achieve
-- **[API Reference](/api)**: Detailed API documentation
+- **[API Reference](/api/api)**: Detailed API documentation
 - **[Examples](/examples)**: Complete example applications
 
 ---

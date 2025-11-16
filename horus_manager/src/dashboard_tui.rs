@@ -62,6 +62,9 @@ pub struct TuiDashboard {
     package_panel_focus: PackagePanelFocus,
     selected_workspace: Option<WorkspaceData>,
 
+    // Overview panel focus
+    overview_panel_focus: OverviewPanelFocus,
+
     // Workspace caching (to avoid repeated filesystem operations)
     workspace_cache: Vec<WorkspaceData>,
     workspace_cache_time: Instant,
@@ -100,6 +103,12 @@ enum PackageViewMode {
 enum PackagePanelFocus {
     LocalWorkspaces, // Focused on local workspaces panel
     GlobalPackages,  // Focused on global packages panel
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum OverviewPanelFocus {
+    Nodes,  // Focused on nodes panel
+    Topics, // Focused on topics panel
 }
 
 #[derive(Debug, Clone)]
@@ -248,6 +257,8 @@ impl TuiDashboard {
             package_view_mode: PackageViewMode::List,
             package_panel_focus: PackagePanelFocus::LocalWorkspaces,
             selected_workspace: None,
+
+            overview_panel_focus: OverviewPanelFocus::Nodes,
 
             // Initialize workspace cache as empty (will load on first access)
             workspace_cache: Vec::new(),
@@ -498,6 +509,22 @@ impl TuiDashboard {
                             self.graph_offset_x -= 5;
                         }
 
+                        // Switch between Nodes/Topics panels in Overview tab
+                        KeyCode::Left
+                            if self.active_tab == Tab::Overview && !self.show_log_panel =>
+                        {
+                            self.overview_panel_focus = OverviewPanelFocus::Nodes;
+                            self.selected_index = 0;
+                            self.scroll_offset = 0;
+                        }
+                        KeyCode::Right
+                            if self.active_tab == Tab::Overview && !self.show_log_panel =>
+                        {
+                            self.overview_panel_focus = OverviewPanelFocus::Topics;
+                            self.selected_index = 0;
+                            self.scroll_offset = 0;
+                        }
+
                         // Switch between Local/Global panels in Packages tab
                         KeyCode::Left
                             if self.active_tab == Tab::Packages
@@ -738,18 +765,29 @@ impl TuiDashboard {
     }
 
     fn draw_node_summary(&self, f: &mut Frame, area: Rect) {
-        let rows = self.nodes.iter().take(10).map(|node| {
-            let is_running = node.status == "active";
-            let status_symbol = if is_running { "●" } else { "○" };
-            let status_color = if is_running { Color::Green } else { Color::Red };
+        // Calculate how many rows can fit in the panel
+        let available_height = area.height.saturating_sub(3); // Subtract borders and header
+        let page_size = available_height as usize;
 
-            Row::new(vec![
-                Cell::from(status_symbol).style(Style::default().fg(status_color)),
-                Cell::from(node.name.clone()),
-                Cell::from(node.process_id.to_string()),
-                Cell::from(format!("{} MB", node.memory_usage / 1024 / 1024)),
-            ])
-        });
+        let rows: Vec<Row> = self.nodes.iter()
+            .skip(self.scroll_offset)
+            .take(page_size)
+            .map(|node| {
+                let is_running = node.status == "active";
+                let status_symbol = if is_running { "●" } else { "○" };
+                let status_color = if is_running { Color::Green } else { Color::Red };
+
+                Row::new(vec![
+                    Cell::from(status_symbol).style(Style::default().fg(status_color)),
+                    Cell::from(node.name.clone()),
+                    Cell::from(node.process_id.to_string()),
+                    Cell::from(format!("{} MB", node.memory_usage / 1024 / 1024)),
+                ])
+            })
+            .collect();
+
+        let is_focused = self.overview_panel_focus == OverviewPanelFocus::Nodes;
+        let border_color = if is_focused { Color::Cyan } else { Color::White };
 
         let table = Table::new(rows)
             .header(
@@ -758,9 +796,16 @@ impl TuiDashboard {
             )
             .block(
                 Block::default()
-                    .title(format!("Active Nodes ({})", self.get_active_node_count()))
-                    .borders(Borders::ALL),
+                    .title(format!("Active Nodes ({}) - Use Left/Right to switch panels", self.get_active_node_count()))
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(border_color)),
             )
+            .highlight_style(
+                Style::default()
+                    .bg(Color::DarkGray)
+                    .add_modifier(Modifier::BOLD),
+            )
+            .highlight_symbol(" ")
             .widths(&[
                 Constraint::Length(2),
                 Constraint::Min(30),
@@ -768,41 +813,61 @@ impl TuiDashboard {
                 Constraint::Length(12),
             ]);
 
-        f.render_widget(table, area);
+        let mut table_state = TableState::default();
+        if is_focused && !self.nodes.is_empty() {
+            // Highlight the currently selected item within the visible page
+            let selected = self.selected_index.min(self.nodes.len() - 1);
+            if selected >= self.scroll_offset && selected < self.scroll_offset + page_size {
+                table_state.select(Some(selected - self.scroll_offset));
+            }
+        }
+
+        f.render_stateful_widget(table, area, &mut table_state);
     }
 
     fn draw_topic_summary(&self, f: &mut Frame, area: Rect) {
-        let rows = self.topics.iter().take(10).map(|topic| {
-            // Format node names compactly
-            let pub_count = topic.publishers;
-            let sub_count = topic.subscribers;
-            let pub_label = if pub_count > 0 {
-                format!(
-                    "{}:{}",
-                    pub_count,
-                    topic.publisher_nodes.first().unwrap_or(&"-".to_string())
-                )
-            } else {
-                "-".to_string()
-            };
-            let sub_label = if sub_count > 0 {
-                format!(
-                    "{}:{}",
-                    sub_count,
-                    topic.subscriber_nodes.first().unwrap_or(&"-".to_string())
-                )
-            } else {
-                "-".to_string()
-            };
+        // Calculate how many rows can fit in the panel
+        let available_height = area.height.saturating_sub(3); // Subtract borders and header
+        let page_size = available_height as usize;
 
-            Row::new(vec![
-                Cell::from(topic.name.clone()),
-                Cell::from(topic.msg_type.clone()),
-                Cell::from(pub_label).style(Style::default().fg(Color::Green)),
-                Cell::from(sub_label).style(Style::default().fg(Color::Blue)),
-                Cell::from(format!("{:.1} Hz", topic.rate)),
-            ])
-        });
+        let rows: Vec<Row> = self.topics.iter()
+            .skip(self.scroll_offset)
+            .take(page_size)
+            .map(|topic| {
+                // Format node names compactly
+                let pub_count = topic.publishers;
+                let sub_count = topic.subscribers;
+                let pub_label = if pub_count > 0 {
+                    format!(
+                        "{}:{}",
+                        pub_count,
+                        topic.publisher_nodes.first().unwrap_or(&"-".to_string())
+                    )
+                } else {
+                    "-".to_string()
+                };
+                let sub_label = if sub_count > 0 {
+                    format!(
+                        "{}:{}",
+                        sub_count,
+                        topic.subscriber_nodes.first().unwrap_or(&"-".to_string())
+                    )
+                } else {
+                    "-".to_string()
+                };
+
+                Row::new(vec![
+                    Cell::from(topic.name.clone()),
+                    Cell::from(topic.msg_type.clone()),
+                    Cell::from(pub_label).style(Style::default().fg(Color::Green)),
+                    Cell::from(sub_label).style(Style::default().fg(Color::Blue)),
+                    Cell::from(format!("{:.1} Hz", topic.rate)),
+                ])
+            })
+            .collect();
+
+        let is_focused = self.overview_panel_focus == OverviewPanelFocus::Topics;
+        let border_color = if is_focused { Color::Cyan } else { Color::White };
 
         let table = Table::new(rows)
             .header(
@@ -817,9 +882,16 @@ impl TuiDashboard {
             )
             .block(
                 Block::default()
-                    .title(format!("Active Topics ({})", self.get_active_topic_count()))
-                    .borders(Borders::ALL),
+                    .title(format!("Active Topics ({}) - Use Left/Right to switch panels", self.get_active_topic_count()))
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(border_color)),
             )
+            .highlight_style(
+                Style::default()
+                    .bg(Color::DarkGray)
+                    .add_modifier(Modifier::BOLD),
+            )
+            .highlight_symbol(" ")
             .widths(&[
                 Constraint::Percentage(30),
                 Constraint::Percentage(20),
@@ -828,7 +900,16 @@ impl TuiDashboard {
                 Constraint::Length(10),
             ]);
 
-        f.render_widget(table, area);
+        let mut table_state = TableState::default();
+        if is_focused && !self.topics.is_empty() {
+            // Highlight the currently selected item within the visible page
+            let selected = self.selected_index.min(self.topics.len() - 1);
+            if selected >= self.scroll_offset && selected < self.scroll_offset + page_size {
+                table_state.select(Some(selected - self.scroll_offset));
+            }
+        }
+
+        f.render_stateful_widget(table, area, &mut table_state);
     }
 
     fn draw_topics_simple(&self, f: &mut Frame, area: Rect) {
@@ -1186,7 +1267,7 @@ impl TuiDashboard {
 
                 // Build workspace name with current marker
                 let workspace_display = if workspace.is_current {
-                    format!("➜ {} (current)", workspace.name)
+                    format!("> {} (current)", workspace.name)
                 } else {
                     workspace.name.clone()
                 };
@@ -1232,9 +1313,17 @@ impl TuiDashboard {
                 Constraint::Length(25),
                 Constraint::Length(10),
                 Constraint::Min(30),
-            ]);
+            ])
+            .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
 
-        f.render_widget(workspace_table, chunks[0]);
+        // Add TableState for scrolling support
+        let mut workspace_state = TableState::default();
+        if local_focused && !workspaces.is_empty() {
+            let selected = self.selected_index.min(workspaces.len() - 1);
+            workspace_state.select(Some(selected));
+        }
+
+        f.render_stateful_widget(workspace_table, chunks[0], &mut workspace_state);
 
         // Draw global packages table with selection support
         let global_rows: Vec<Row> = global_packages
@@ -1280,9 +1369,15 @@ impl TuiDashboard {
                 Constraint::Min(30),
                 Constraint::Length(15),
                 Constraint::Length(12),
-            ]);
+            ])
+            .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
 
-        f.render_widget(global_table, chunks[1]);
+        let mut global_state = TableState::default();
+        if global_focused && !global_packages.is_empty() {
+            let selected = self.selected_index.min(global_packages.len() - 1);
+            global_state.select(Some(selected));
+        }
+        f.render_stateful_widget(global_table, chunks[1], &mut global_state);
     }
 
     fn draw_workspace_details(&self, f: &mut Frame, area: Rect) {
@@ -1568,7 +1663,7 @@ impl TuiDashboard {
             )]),
             Line::from("  Tab        - Next tab (Overview  Nodes  Topics  Graph  Packages  Params)"),
             Line::from("  Shift+Tab  - Previous tab"),
-            Line::from("  /        - Navigate lists"),
+            Line::from("  ↑/↓        - Navigate lists"),
             Line::from("  PgUp/PgDn  - Scroll quickly"),
             Line::from(""),
             Line::from(vec![Span::styled(
@@ -1585,7 +1680,7 @@ impl TuiDashboard {
             )]),
             Line::from("  Enter      - Open log panel for selected node/topic"),
             Line::from("  ESC        - Close log panel"),
-            Line::from("  Shift+   - Switch between nodes/topics while log panel is open"),
+            Line::from("  Shift+↑↓   - Switch between nodes/topics while log panel is open"),
             Line::from(""),
             Line::from(vec![Span::styled(
                 "Graph Tab:",
@@ -1846,6 +1941,12 @@ impl TuiDashboard {
     fn select_next(&mut self) {
         // Get max index based on current tab
         let max_index = match self.active_tab {
+            Tab::Overview => {
+                match self.overview_panel_focus {
+                    OverviewPanelFocus::Nodes => self.nodes.len().saturating_sub(1),
+                    OverviewPanelFocus::Topics => self.topics.len().saturating_sub(1),
+                }
+            }
             Tab::Nodes => self.nodes.len().saturating_sub(1),
             Tab::Topics => self.topics.len().saturating_sub(1),
             Tab::Parameters => {
@@ -2407,49 +2508,14 @@ fn get_local_workspaces(current_workspace_path: &Option<std::path::PathBuf>) -> 
 
     let mut workspaces = Vec::new();
 
-    // Use the WorkspaceRegistry to get only registered HORUS workspaces
-    let registry = match crate::workspace::WorkspaceRegistry::load() {
-        Ok(reg) => reg,
-        Err(_) => {
-            // If registry is unavailable but we have a current workspace, include it
-            if let Some(current_path) = current_workspace_path {
-                let current_name = current_path
-                    .file_name()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or("current")
-                    .to_string();
+    // Use unified workspace discovery
+    let discovered = crate::workspace::discover_all_workspaces(current_workspace_path);
 
-                workspaces.push(WorkspaceData {
-                    name: current_name,
-                    path: current_path.to_string_lossy().to_string(),
-                    packages: Vec::new(), // Will be populated below if .horus/packages exists
-                    is_current: true,
-                });
-            }
-            return workspaces;
-        }
-    };
-
-    // Only process registered workspaces
-    for ws in &registry.workspaces {
-        let env_path_buf = &ws.path;
+    for ws in discovered {
+        let env_path_buf = ws.path;
         let horus_dir = env_path_buf.join(".horus");
 
-        // Verify the workspace still exists and has .horus/ directory
-        if !horus_dir.exists() || !horus_dir.is_dir() {
-            continue;
-        }
-
-        // Check if this is the current workspace
-        let is_current = current_workspace_path
-            .as_ref()
-            .map(|p| p == env_path_buf)
-            .unwrap_or(false);
-
-        let env_name = ws.name.clone();
-        let env_path = env_path_buf.to_string_lossy().to_string();
-
-        // Get packages inside this environment
+        // Get packages inside this workspace
         let packages_dir = horus_dir.join("packages");
         let mut packages = Vec::new();
 
@@ -2524,14 +2590,15 @@ fn get_local_workspaces(current_workspace_path: &Option<std::path::PathBuf>) -> 
                     }
                 }
             }
-
-            workspaces.push(WorkspaceData {
-                name: env_name,
-                path: env_path,
-                packages,
-                is_current,
-            });
         }
+
+        // Always add the workspace, even if it has no packages
+        workspaces.push(WorkspaceData {
+            name: ws.name,
+            path: env_path_buf.to_string_lossy().to_string(),
+            packages,
+            is_current: ws.is_current,
+        });
     }
 
     // Sort by: current workspace first, then alphabetically

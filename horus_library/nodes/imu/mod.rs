@@ -326,7 +326,7 @@ impl Node for ImuNode {
                 .unwrap()
                 .as_millis() as u64;
 
-            let _ = self.publisher.send(imu_data, None);
+            let _ = self.publisher.send(imu_data, &mut None);
         }
     }
 }

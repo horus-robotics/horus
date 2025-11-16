@@ -815,7 +815,7 @@ let hub = Hub::new("temp@sensor")?;  // Special char
 **Symptom:**
 ```rust
 // Subscriber never receives messages
-if let Some(data) = self.data_sub.recv(ctx) {
+if let Some(data) = self.data_sub.recv(&mut ctx) {
     println!("Got data");  // Never prints
 }
 ```
@@ -844,7 +844,7 @@ let sub_hub = Hub::new("temperature")?;  // Now matches!
 // Add logging to publisher
 fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     let data = 42.0;
-    match self.pub_hub.send(data, ctx) {
+    match self.pub_hub.send(data, &mut ctx) {
         Ok(()) => {
         ctx.log_info("Published successfully");
         }
@@ -939,14 +939,14 @@ fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
 ```rust
 // BAD: Blocking wait
 fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
-    while self.data_sub.recv(ctx).is_none() {
+    while self.data_sub.recv(&mut ctx).is_none() {
         // Infinite loop if no messages!
     }
 }
 
 // GOOD: Non-blocking receive
 fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
-    if let Some(data) = self.data_sub.recv(ctx) {
+    if let Some(data) = self.data_sub.recv(&mut ctx) {
         // Process data
     }
     // Continue even if no message
@@ -1016,7 +1016,7 @@ for chunk in large_data.chunks(100) {
         data: chunk.to_vec(),
         index: i,
     };
-    self.pub_hub.send(msg, ctx).ok();
+    self.pub_hub.send(msg, &mut ctx).ok();
 }
 ```
 
@@ -1028,7 +1028,7 @@ use std::sync::Arc;
 type LargeData = Arc<Vec<f32>>;
 
 let data = Arc::new(vec![0.0; 100000]);
-self.pub_hub.send(Arc::clone(&data), ctx).ok();
+self.pub_hub.send(Arc::clone(&data), &mut ctx).ok();
 ```
 
 ---
@@ -1111,7 +1111,7 @@ horus dashboard
 ## Next Steps
 
 - **[Installation](/getting-started/installation)** - First-time installation guide
-- **[CLI Reference](/cli-reference)** - All horus commands
+- **[CLI Reference](/development/cli-reference)** - All horus commands
 - **[Examples](/examples)** - Working code examples
-- **[Performance](/performance)** - Optimization tips
-- **[Testing](/testing)** - Test your nodes to prevent runtime errors
+- **[Performance](/performance/performance)** - Optimization tips
+- **[Testing](/development/testing)** - Test your nodes to prevent runtime errors

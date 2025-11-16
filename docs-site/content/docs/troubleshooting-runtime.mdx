@@ -107,7 +107,7 @@ thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value'
    ```rust
    // Publisher
    let pub_hub: Hub<f32> = Hub::new("data")?;
-   pub_hub.send(3.14, ctx).ok();
+   pub_hub.send(3.14, &mut ctx).ok();
 
    // Subscriber (WRONG TYPE)
    let sub_hub: Hub<f64> = Hub::new("data")?;  // f64 != f32
@@ -124,7 +124,7 @@ thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value'
    ```rust
    impl Node for SubscriberNode {
        fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
-           if let Some(msg) = self.hub.recv(ctx) {
+           if let Some(msg) = self.hub.recv(&mut ctx) {
                // Process message
            } else {
                // No message yet - this is OK on first few ticks
@@ -184,7 +184,7 @@ thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value'
    // GOOD: Use frame_time to control timing
    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
        // Quick operations only
-       self.hub.send(data, ctx).ok();
+       self.hub.send(data, &mut ctx).ok();
    }
    ```
 
@@ -379,7 +379,7 @@ Diff:                500000000 (500ms)
 
 ```rust
 fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
-    if let Some(msg) = self.hub.recv(ctx) {
+    if let Some(msg) = self.hub.recv(&mut ctx) {
         // Process message
     }
     // No message? That's OK, just continue
@@ -390,7 +390,7 @@ fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
 
 ```rust
 fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
-    let msg = self.hub.recv(ctx).unwrap();  // PANIC if no message!
+    let msg = self.hub.recv(&mut ctx).unwrap();  // PANIC if no message!
 }
 ```
 
@@ -424,7 +424,7 @@ fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
 fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
     // Quick operations only
     let data = self.sensor.read_cached();
-    self.hub.send(data, ctx).ok();
+    self.hub.send(data, &mut ctx).ok();
 }
 ```
 
@@ -477,6 +477,6 @@ If you're still having issues:
 ## Next Steps
 
 - Review [Core Concepts - Nodes](/core-concepts-nodes) for node lifecycle details
-- Learn about [Testing](/testing) to catch errors early
+- Learn about [Testing](/development/testing) to catch errors early
 - Explore [Examples](/examples) for working code patterns
-- Read [Performance](/performance) to optimize your application
+- Read [Performance](/performance/performance) to optimize your application

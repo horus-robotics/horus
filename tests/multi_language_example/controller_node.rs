@@ -29,7 +29,7 @@ impl Node for ControllerNode {
     }
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Try to receive typed Pose2D from Python node (automatic logging via ctx)
-        if let Some(pose) = self.pose_hub.recv(ctx.as_deref_mut()) {
+        if let Some(pose) = self.pose_hub.recv(&mut ctx) {
             // Simple proportional controller based on distance from origin
             let distance_from_origin = (pose.x * pose.x + pose.y * pose.y).sqrt();
             let linear_vel = if distance_from_origin > 1.5 {
@@ -45,7 +45,7 @@ impl Node for ControllerNode {
             let cmd = CmdVel::new(linear_vel as f32, angular_vel as f32);
 
             // Send with automatic logging via ctx
-            let _ = self.cmd_hub.send(cmd, ctx.as_deref_mut());
+            let _ = self.cmd_hub.send(cmd, &mut ctx);
 
             self.last_pose = Some(pose);
         }

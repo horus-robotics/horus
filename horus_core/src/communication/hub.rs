@@ -361,14 +361,15 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug + serde::Serialize + ser
     ///
     /// Note: Network endpoints require T: serde::Serialize
     #[inline(always)]
-    pub fn send(&self, msg: T, ctx: Option<&mut NodeInfo>) -> Result<(), T>
+    pub fn send(&self, msg: T, ctx: &mut Option<&mut NodeInfo>) -> Result<(), T>
     where
         T: crate::core::LogSummary,
     {
         // Network path (if network backend is present)
         if self.is_network {
             if let Some(ref network_mutex) = self.network {
-                let network = network_mutex.lock().unwrap();
+                let network = network_mutex.lock()
+                    .expect("Network mutex lock poisoned - another thread panicked while holding the lock");
                 match network.send(&msg) {
                     Ok(_) => {
                         self.metrics
@@ -379,7 +380,7 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug + serde::Serialize + ser
                             std::sync::atomic::Ordering::Relaxed,
                         );
 
-                        if let Some(ctx) = ctx {
+                        if let Some(ref mut ctx) = ctx {
                             let summary = msg.log_summary();
                             ctx.log_pub_summary(&self.topic_name, &summary, 0);
                             self.record_pubsub_activity(ctx.name(), "pub");
@@ -406,7 +407,7 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug + serde::Serialize + ser
         match self.shm_topic.loan() {
             Ok(mut sample) => {
                 // Fast path: when ctx is None (benchmarks), bypass logging completely
-                if let Some(ctx) = ctx {
+                if let Some(ref mut ctx) = ctx {
                     // Logging enabled: get lightweight summary BEFORE moving msg
                     let summary = msg.log_summary();
 
@@ -465,20 +466,21 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug + serde::Serialize + ser
     ///
     /// Note: Network endpoints require T: serde::de::DeserializeOwned
     #[inline(always)]
-    pub fn recv(&self, ctx: Option<&mut NodeInfo>) -> Option<T>
+    pub fn recv(&self, ctx: &mut Option<&mut NodeInfo>) -> Option<T>
     where
         T: crate::core::LogSummary,
     {
         // Network path (if network backend is present)
         if self.is_network {
             if let Some(ref network_mutex) = self.network {
-                let mut network = network_mutex.lock().unwrap();
+                let mut network = network_mutex.lock()
+                    .expect("Network mutex lock poisoned - another thread panicked while holding the lock");
                 if let Some(msg) = network.recv() {
                     self.metrics
                         .messages_received
                         .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-                    if let Some(ctx) = ctx {
+                    if let Some(ref mut ctx) = ctx {
                         let summary = msg.log_summary();
                         ctx.log_sub_summary(&self.topic_name, &summary, 0);
                         self.record_pubsub_activity(ctx.name(), "sub");
@@ -502,7 +504,7 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug + serde::Serialize + ser
                 let ipc_ns = ipc_start.elapsed().as_nanos() as u64;
 
                 // Fast path: when ctx is None, bypass logging completely (benchmarks + production)
-                if let Some(ctx) = ctx {
+                if let Some(ref mut ctx) = ctx {
                     // Logging enabled: get summary and log with measured IPC timing
                     let summary = msg.log_summary();
                     ctx.log_sub_summary(&self.topic_name, &summary, ipc_ns);
@@ -550,7 +552,7 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug + serde::Serialize + ser
     fn record_pubsub_activity(&self, node_name: &str, direction: &str) {
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
+            .expect("System clock is set before UNIX_EPOCH - invalid system time")
             .as_secs();
 
         let record = MetadataRecord {

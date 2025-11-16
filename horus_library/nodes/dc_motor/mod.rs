@@ -444,7 +444,7 @@ impl DcMotorNode {
                         ));
                         // Publish feedback if enabled
                         if self.enable_feedback {
-                            let _ = self.publisher.send(cmd, None);
+                            let _ = self.publisher.send(cmd, &mut None);
                         }
                         return;
                     }
@@ -467,7 +467,7 @@ impl DcMotorNode {
 
         // Publish feedback if enabled
         if self.enable_feedback {
-            let _ = self.publisher.send(cmd, None);
+            let _ = self.publisher.send(cmd, &mut None);
         }
     }
 
@@ -499,7 +499,7 @@ impl DcMotorNode {
                     // Publish stop command
                     if self.enable_feedback {
                         let stop_cmd = PwmCommand::coast(channel);
-                        let _ = self.publisher.send(stop_cmd, None);
+                        let _ = self.publisher.send(stop_cmd, &mut None);
                     }
                 }
             }
@@ -516,7 +516,7 @@ impl DcMotorNode {
             // Publish stop command
             if self.enable_feedback {
                 let stop_cmd = PwmCommand::brake(channel);
-                let _ = self.publisher.send(stop_cmd, None);
+                let _ = self.publisher.send(stop_cmd, &mut None);
             }
         }
     }
@@ -529,7 +529,7 @@ impl Node for DcMotorNode {
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Process all pending commands
-        while let Some(cmd) = self.subscriber.recv(None) {
+        while let Some(cmd) = self.subscriber.recv(&mut None) {
             self.process_command(cmd, ctx.as_deref_mut());
         }
 

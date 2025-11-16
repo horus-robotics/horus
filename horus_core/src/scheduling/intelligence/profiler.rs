@@ -326,6 +326,7 @@ impl RuntimeProfiler {
 }
 
 /// Summary of profiler statistics
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct ProfilerSummary {
     pub total_nodes: usize,

@@ -90,6 +90,7 @@ pub use snake_state::{Direction, SnakeState};
 // Imports for GenericMessage definition
 use horus_core::core::LogSummary;
 use serde::{Deserialize, Serialize};
+use serde_json;
 
 /// Generic message type for cross-language communication
 ///
@@ -115,7 +116,7 @@ use serde::{Deserialize, Serialize};
 /// }))?;
 ///
 /// let msg = GenericMessage::new(data);
-/// hub.send(msg, None)?;
+/// hub.send(msg, &mut None)?;
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 ///
@@ -309,10 +310,54 @@ impl GenericMessage {
 impl LogSummary for GenericMessage {
     fn log_summary(&self) -> String {
         let total_len = self.inline_len as usize + self.overflow_len as usize;
-        if let Some(meta) = self.metadata() {
-            format!("<{} bytes, meta: {}>", total_len, meta)
+
+        // Try to deserialize and show content (with performance cost)
+        let data = self.data();
+
+        // Try JSON first (Python Node API uses JSON)
+        if let Ok(json_str) = std::str::from_utf8(&data) {
+            if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(json_str) {
+                let formatted = format!("{}", json_val);
+                // Truncate long messages to 200 chars
+                if formatted.len() > 200 {
+                    return format!("{}... ({} bytes total)", &formatted[..200], total_len);
+                }
+                return formatted;
+            }
+        }
+
+        // Try MessagePack next (Rust-to-Rust generic messages)
+        if let Ok(msgpack_val) = rmp_serde::from_slice::<serde_json::Value>(&data) {
+            let formatted = format!("{}", msgpack_val);
+            if formatted.len() > 200 {
+                return format!("{}... ({} bytes total)", &formatted[..200], total_len);
+            }
+            return formatted;
+        }
+
+        // Fallback: show hex for binary data (truncated)
+        if total_len > 32 {
+            let hex_sample = data[..32]
+                .iter()
+                .map(|b| format!("{:02x}", b))
+                .collect::<Vec<_>>()
+                .join(" ");
+            if let Some(meta) = self.metadata() {
+                format!("<{} bytes: {} ..., meta: {}>", total_len, hex_sample, meta)
+            } else {
+                format!("<{} bytes: {} ...>", total_len, hex_sample)
+            }
         } else {
-            format!("<{} bytes>", total_len)
+            let hex = data
+                .iter()
+                .map(|b| format!("{:02x}", b))
+                .collect::<Vec<_>>()
+                .join(" ");
+            if let Some(meta) = self.metadata() {
+                format!("<{} bytes: {}, meta: {}>", total_len, hex, meta)
+            } else {
+                format!("<{} bytes: {}>", total_len, hex)
+            }
         }
     }
 }

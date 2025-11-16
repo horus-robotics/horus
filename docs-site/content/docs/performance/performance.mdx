@@ -1,0 +1,613 @@
+---
+title: Performance Optimization
+description: Get maximum performance from HORUS
+order: 22
+category: "advanced"
+---
+
+# Performance Optimization
+
+
+## Why HORUS is Fast
+
+### Shared Memory Architecture
+
+**Zero network overhead**: Data written once to `/dev/shm`, read directly by subscribers
+
+**Zero serialization**: Fixed-size structs copied directly to shared memory
+
+**Zero-copy loan pattern**: Publishers write directly to shared memory slots
+
+### Cache-Optimized Structures
+
+**64-byte alignment**: Matches CPU cache line size
+
+```rust
+#[repr(align(64))]  // Cache-line aligned
+pub struct Hub<T> {
+    // Prevents false sharing between cores
+}
+```
+
+**Padding prevention**: False sharing eliminated with explicit padding
+
+**Atomic operations**: Lock-free operations with appropriate memory ordering
+
+### Lock-Free Operations
+
+**Compare-and-swap**: Atomic slot claiming without locks
+
+**Per-consumer tracking**: Each subscriber maintains independent position
+
+**Wait-free progress**: Publishers always make progress
+
+## Benchmark Results
+
+### Measured Latency
+
+| Message Type | Size | HORUS (Hub) | HORUS (Link) | ROS2 DDS | Speedup |
+|--------------|------|-------------|--------------|----------|---------|
+| CmdVel | 16B | ~437ns | 248ns | 50-100µs | **100-320x** |
+| IMU | 304B | ~940ns | ~400ns | 80-150µs | **85-375x** |
+| LaserScan | 1.5KB | ~2.2µs | ~900ns | 150-300µs | **68-333x** |
+| PointCloud | 120KB | ~360µs | ~120µs | 500µs-1ms | **1.4-8x** |
+
+**Key insight**: Latency scales linearly with message size.
+
+### Throughput
+
+HORUS can handle:
+- **10M+ messages/second** for small messages (16B)
+- **1M+ messages/second** for medium messages (1KB)
+- **100K+ messages/second** for large messages (100KB)
+
+## Build Optimization
+
+### Always Use Release Mode
+
+Debug builds are **10-100x slower**:
+
+```bash
+# SLOW: Debug build
+horus run
+
+# FAST: Release build
+horus run --release
+```
+
+**Why it matters**:
+- Debug: 50µs per tick
+- Release: 500ns per tick
+- **100x difference** for the same code
+
+### Profile-Guided Optimization (PGO)
+
+Enable PGO for additional 10-20% speedup:
+
+```toml
+# Cargo.toml
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+```
+
+**Warning**: Slower compilation, but faster execution.
+
+### Target CPU Features
+
+**CPU-Specific Optimizations:**
+
+HORUS compiles with Rust compiler optimizations enabled in release mode. For advanced CPU-specific tuning, the framework is optimized for modern x86-64 and ARM64 processors.
+
+**Gains**: 5-15% from CPU-specific SIMD instructions (automatically enabled in release builds).
+
+## Message Optimization
+
+### Use Fixed-Size Types
+
+```rust
+// FAST: Fixed-size array
+pub struct LaserScan {
+    pub ranges: [f32; 360],  // Stack-allocated
+}
+
+// SLOW: Dynamic vector
+pub struct BadLaserScan {
+    pub ranges: Vec<f32>,  // Heap-allocated
+}
+```
+
+**Impact**: Fixed-size avoids heap allocations in hot path.
+
+### Choose Typed Messages Over Generic
+
+```rust
+// FAST: Typed message (Rust)
+let hub: Hub<Pose2D> = Hub::new("pose")?;
+hub.send(Pose2D::new(1.0, 2.0, 0.5), &mut ctx)?;
+// IPC latency: ~500ns
+
+// SLOW: Generic message
+let hub: Hub<GenericMessage> = Hub::new("pose")?;
+let data = GenericMessage::from_value(&pose_dict)?;
+hub.send(data, &mut ctx)?;
+// IPC latency: ~10µs (20x slower!)
+```
+
+```python
+# FAST: Typed hub (Python)
+from horus import Node, Pose2D
+
+node = Node(pubs={"pose": {"type": Pose2D}})
+node.send("pose", Pose2D(x=1.0, y=2.0, theta=0.5))
+# IPC: ~500ns, Logging: ~100ns
+
+# SLOW: Generic hub
+node = Node(pubs=["pose"])
+node.send("pose", {"x": 1.0, "y": 2.0, "theta": 0.5})
+# IPC: ~10µs, Logging: ~5µs (100x slower logging!)
+```
+
+**Performance impact at 1kHz:**
+- Typed: 0.5ms/sec overhead → **99.95% CPU available**
+- Generic: 10ms/sec overhead → **99.0% CPU available**
+
+**When to use each:**
+- **Typed**: Production code, high-frequency data (&gt;10 Hz), real-time control
+- **Generic**: Prototyping only, low-frequency config (&lt;1 Hz), truly dynamic schemas
+
+See **[Message Types: Typed vs Generic](/core-concepts/message-types#typed-messages-vs-generic-messages)** for detailed comparison.
+
+### Choose Appropriate Precision
+
+```rust
+// f32 (single precision) - sufficient for most robotics
+pub struct FastPose {
+    pub x: f32,  // 4 bytes
+    pub y: f32,  // 4 bytes
+}
+
+// f64 (double precision) - scientific applications
+pub struct PrecisePose {
+    pub x: f64,  // 8 bytes
+    pub y: f64,  // 8 bytes
+}
+```
+
+**Rule**: Use `f32` unless you need scientific precision.
+
+### Minimize Message Size
+
+```rust
+// GOOD: 8 bytes
+struct CompactCmd {
+    linear: f32,   // 4 bytes
+    angular: f32,  // 4 bytes
+}
+
+// BAD: 1KB+ bytes
+struct BloatedCmd {
+    linear: f32,
+    angular: f32,
+    metadata: [u8; 256],    // Unused
+    debug_info: [u8; 768],  // Unused
+}
+```
+
+**Every byte matters**: Latency scales with message size.
+
+### Batch Small Messages
+
+Instead of sending 100 separate f32 values:
+
+```rust
+// SLOW: 100 separate messages
+for value in values {
+    hub.send(value, &mut ctx).ok();  // 100 IPC operations
+}
+
+// FAST: One batched message
+pub struct BatchedData {
+    values: [f32; 100],
+}
+hub.send(batched, &mut ctx).ok();  // 1 IPC operation
+```
+
+**Speedup**: 50-100x for batched operations.
+
+## Node Optimization
+
+### Keep tick() Fast
+
+Target: **&lt;1ms per tick** for real-time control.
+
+```rust
+// GOOD: Fast tick
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    let data = self.read_sensor();     // Quick read
+    self.process_pub.send(data, &mut ctx).ok();  // ~500ns
+}
+
+// BAD: Slow tick
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    let data = std::fs::read_to_string("config.yaml").unwrap();  // 1-10ms!
+    // ...
+}
+```
+
+**File I/O, network calls, sleeps = slow**. Do these in `init()` or separate threads.
+
+### Pre-Allocate in init()
+
+```rust
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+    // Pre-allocate buffers
+    self.buffer = vec![0.0; 10000];
+
+    // Open connections
+    self.device = Device::open()?;
+
+    // Load configuration
+    self.config = Config::from_file("config.yaml")?;
+
+    Ok(())
+}
+
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    // Use pre-allocated resources - no allocations here!
+    self.buffer[0] = self.device.read();
+}
+```
+
+**Allocations in tick() = slow**. Move to `init()`.
+
+### Avoid Unnecessary Cloning
+
+```rust
+// BAD: Unnecessary clone
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    if let Some(data) = self.sub.recv(&mut ctx) {
+        let copy = data.clone();  // Unnecessary!
+        self.process(copy);
+    }
+}
+
+// GOOD: Direct use
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    if let Some(data) = self.sub.recv(&mut ctx) {
+        self.process(data);  // Already cloned by recv()
+    }
+}
+```
+
+`Hub::recv()` already clones data. Don't clone again.
+
+### Minimize Logging
+
+```rust
+// BAD: Logging every tick
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    ctx.log_debug(&format!("Tick #{}", self.counter));  // Slow!
+    self.counter += 1;
+}
+
+// GOOD: Conditional logging
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    if self.counter % 1000 == 0 {  // Log every 1000 ticks
+        ctx.log_info(&format!("Reached tick #{}", self.counter));
+    }
+    self.counter += 1;
+}
+```
+
+**Logging is expensive**. Log sparingly in hot paths.
+
+## Scheduler Optimization
+
+### Understanding Tick Rate
+
+The scheduler runs at a fixed rate of approximately 60 FPS (16ms per tick):
+
+```rust
+let scheduler = Scheduler::new();
+// Runs at ~60 FPS (16ms per tick)
+```
+
+**Note**: The tick rate is currently hardcoded. If you need different timing for your application, ensure your nodes complete execution well within the 16ms window. Monitor node metrics to verify performance.
+
+**Key Point**: Keep individual node tick() methods fast (ideally &lt;1ms) to maintain the target frame rate.
+
+### Use Priority Levels
+
+```rust
+// Critical tasks run first (priority 0 = highest)
+scheduler.add(Box::new(safety), 0, None);
+
+// Logging runs last (priority 100 = lowest)
+scheduler.add(Box::new(logger), 100, None);
+```
+
+**Predictable execution order** = better performance. Use lower numbers for higher priority tasks.
+
+### Minimize Node Count
+
+```rust
+// BAD: 50 small nodes
+for i in 0..50 {
+    scheduler.add(TinyNode::new(i));
+}
+
+// GOOD: One aggregated node
+scheduler.add(AggregatedNode::new());
+```
+
+**Fewer nodes** = less scheduling overhead.
+
+## Shared Memory Optimization
+
+### Check Available Space
+
+```bash
+df -h /dev/shm
+```
+
+**Insufficient space** = message drops.
+
+### Increase /dev/shm Size
+
+```bash
+# Increase to 4GB
+sudo mount -o remount,size=4G /dev/shm
+```
+
+**More space** = larger buffer capacity.
+
+### Clean Up Stale Topics
+
+**Note**: HORUS automatically cleans up sessions after each run. Manual cleanup is rarely needed.
+
+```bash
+# Clean all HORUS shared memory (if needed after crashes)
+rm -rf /dev/shm/horus/
+```
+
+**Stale topics** from crashes can waste space, but auto-cleanup prevents this in normal operation.
+
+### Choose Appropriate Capacity
+
+```rust
+// Small messages, high frequency
+ShmTopic::new("cmd_vel", 100)?;  // 100 slots
+
+// Large messages, low frequency
+ShmTopic::new("point_cloud", 10)?;  // 10 slots
+```
+
+**Balance**: Memory usage vs message buffering.
+
+## Profiling and Measurement
+
+### Built-In Metrics
+
+Every node tracks performance automatically:
+
+```rust
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    if let Some(ctx) = ctx {
+        if ctx.metrics.avg_tick_duration_ms > 1.0 {
+            ctx.log_warning("Tick taking too long");
+        }
+    }
+}
+```
+
+**Available metrics**:
+- `total_ticks`: Total number of ticks
+- `avg_tick_duration_ms`: Average tick time in milliseconds
+- `max_tick_duration_ms`: Worst-case tick time in milliseconds
+- `messages_sent`: Messages published
+- `cpu_usage_percent`: CPU utilization (f64)
+
+### IPC Latency Logging
+
+HORUS automatically logs IPC timing:
+
+```
+[12:34:56.789] [IPC: 296ns | Tick: 12µs] PublisherNode --PUB--> 'cmd_vel' = 1.5
+```
+
+**IPC**: Time to write to shared memory
+**Tick**: Total node execution time
+
+### Manual Profiling
+
+```rust
+use std::time::Instant;
+
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    let start = Instant::now();
+
+    self.expensive_operation();
+
+    let duration = start.elapsed();
+    println!("Operation took: {:?}", duration);
+}
+```
+
+### CPU Profiling
+
+Use `perf` on Linux:
+
+```bash
+# Profile your application
+perf record --call-graph dwarf horus run --release
+
+# View results
+perf report
+```
+
+**Hotspots** show where CPU time is spent.
+
+## Common Performance Pitfalls
+
+### Pitfall: Using Debug Builds
+
+```bash
+# SLOW: 50µs/tick
+horus run
+
+# FAST: 500ns/tick
+horus run --release
+```
+
+**Fix**: Always use `--release` for benchmarks and production.
+
+### Pitfall: Allocations in tick()
+
+```rust
+// BAD
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    let buffer = vec![0.0; 1000];  // Heap allocation every tick!
+}
+
+// GOOD
+struct Node {
+    buffer: Vec<f32>,  // Pre-allocated
+}
+
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+    self.buffer = vec![0.0; 1000];  // Allocate once
+    Ok(())
+}
+```
+
+**Fix**: Pre-allocate in `init()`.
+
+### Pitfall: Excessive Logging
+
+```rust
+// BAD: 60 logs per second
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    ctx.log_debug("Tick");  // Every 16ms!
+}
+
+// GOOD: 1 log per second
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    self.tick_count += 1;
+    if self.tick_count % 60 == 0 {
+        ctx.log_info("60 ticks completed");
+    }
+}
+```
+
+**Fix**: Log sparingly.
+
+### Pitfall: Large Message Types
+
+```rust
+// BAD: 1MB per message
+pub struct HugeMessage {
+    image: [u8; 1_000_000],
+}
+
+// GOOD: Compressed or separate channel
+pub struct CompressedImage {
+    data: Vec<u8>,  // JPEG compressed, ~50KB
+}
+```
+
+**Fix**: Compress or split large data.
+
+### Pitfall: Synchronous I/O in tick()
+
+```rust
+// BAD: Blocking I/O
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    let data = std::fs::read("data.txt").unwrap();  // Blocks!
+}
+
+// GOOD: Async or pre-loaded
+fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+    self.data = std::fs::read("data.txt")?;  // Load once
+    Ok(())
+}
+```
+
+**Fix**: Move I/O to `init()` or use async.
+
+## Performance Checklist
+
+Before deployment, verify:
+
+- [ ] Build in release mode (`--release`)
+- [ ] Profile with `perf` or similar
+- [ ] tick() completes in &lt;1ms
+- [ ] No allocations in tick()
+- [ ] Messages use fixed-size types
+- [ ] Logging is rate-limited
+- [ ] `/dev/shm` has sufficient space
+- [ ] IPC latency is &lt;10µs
+- [ ] Priority levels set correctly
+
+## Measuring Your Performance
+
+### Latency Measurement
+
+```rust
+use std::time::Instant;
+
+struct BenchmarkNode {
+    pub_hub: Hub<f32>,
+    sub_hub: Hub<f32>,
+    start_time: Option<Instant>,
+}
+
+impl Node for BenchmarkNode {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+        // Publish
+        self.start_time = Some(Instant::now());
+        self.pub_hub.send(42.0, &mut ctx).ok();
+
+        // Receive
+        if let Some(data) = self.sub_hub.recv(&mut ctx) {
+            if let Some(start) = self.start_time {
+                let latency = start.elapsed();
+                println!("Round-trip latency: {:?}", latency);
+            }
+        }
+    }
+}
+```
+
+### Throughput Measurement
+
+```rust
+struct ThroughputTest {
+    pub_hub: Hub<f32>,
+    message_count: u64,
+    start_time: Instant,
+}
+
+impl Node for ThroughputTest {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+        for _ in 0..1000 {
+            self.pub_hub.send(42.0, &mut ctx).ok();
+            self.message_count += 1;
+        }
+
+        if self.message_count % 100_000 == 0 {
+            let elapsed = self.start_time.elapsed().as_secs_f64();
+            let throughput = self.message_count as f64 / elapsed;
+            println!("Throughput: {:.0} msg/s", throughput);
+        }
+    }
+}
+```
+
+## Next Steps
+
+- Apply these optimizations to your [Examples](/examples)
+- Learn about [Multi-Language Support](/multi-language/multi-language)
+- Read the [Core Concepts](/core-concepts-nodes) for deeper understanding
+- Check the [CLI Reference](/development/cli-reference) for build options

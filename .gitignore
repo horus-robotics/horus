@@ -52,8 +52,6 @@ yarn-error.log*
 /dev/shm/horus/
 *.horus
 
-# Unreleased features (OSS - keep private until ready)
-horus_library/tools/sim3d/
 
 # Environment Variables
 .env

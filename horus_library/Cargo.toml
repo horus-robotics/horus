@@ -7,6 +7,7 @@ authors = ["HORUS Team"]
 
 [dependencies]
 serde.workspace = true
+serde_json.workspace = true
 serde_arrays = "0.1"
 rmp-serde = "1.1"
 toml = "0.8"
@@ -29,6 +30,7 @@ rppal = { version = "0.18", optional = true }
 sysinfo = { version = "0.30", optional = true }
 opencv = { version = "0.91", optional = true, default-features = false }
 nokhwa = { version = "0.10", optional = true, features = ["input-v4l"] }
+realsense-rust = { version = "1.2", optional = true }
 serialport = { version = "4.2", optional = true }
 rplidar_drv = { version = "0.6", optional = true }
 tokio-modbus = { version = "0.7", optional = true }
@@ -69,6 +71,9 @@ basic-sensors = ["opencv", "nokhwa", "serialport"]
 control-nodes = []
 industrial-nodes = ["tokio-modbus"]
 input-nodes = ["crossterm", "gilrs"]
+
+# Depth camera support
+realsense = ["realsense-rust"]
 
 # Hardware support bundles
 imu-hardware = ["mpu6050", "bno055", "icm20948", "linux-embedded-hal", "embedded-hal"]

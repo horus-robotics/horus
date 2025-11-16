@@ -59,7 +59,7 @@ impl Node for StateMachineNode {
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Check for obstacles
-        let obstacle = self.obstacle_sub.recv(ctx).unwrap_or(false);
+        let obstacle = self.obstacle_sub.recv(&mut ctx).unwrap_or(false);
 
         // Store previous state for logging
         let prev_state = self.state;
@@ -76,7 +76,7 @@ impl Node for StateMachineNode {
 
             RobotState::Moving => {
                 if obstacle {
-                    self.cmd_pub.send(CmdVel::zero(), ctx).ok();  // Stop
+                    self.cmd_pub.send(CmdVel::zero(), &mut ctx).ok();  // Stop
                     RobotState::ObstacleDetected
                 } else {
                     self.cmd_pub.send(CmdVel::new(1.0, 0.0), ctx).ok();  // Forward
@@ -184,7 +184,7 @@ impl Node for EmergencyStopNode {
         let mut should_stop = false;
 
         // Check battery
-        if let Some(battery) = self.battery_sub.recv(ctx) {
+        if let Some(battery) = self.battery_sub.recv(&mut ctx) {
             if battery.is_critical() {  // Below 10%
                 should_stop = true;
                 ctx.log_error(&format!(
@@ -195,7 +195,7 @@ impl Node for EmergencyStopNode {
         }
 
         // Check obstacle distance
-        if let Some(min_dist) = self.lidar_sub.recv(ctx) {
+        if let Some(min_dist) = self.lidar_sub.recv(&mut ctx) {
             if min_dist < 0.2 {  // 20cm
                 should_stop = true;
                 ctx.log_error(&format!(
@@ -207,7 +207,7 @@ impl Node for EmergencyStopNode {
 
         // Publish estop state
         if should_stop != self.estop_active {
-            self.estop_pub.send(should_stop, ctx).ok();
+            self.estop_pub.send(should_stop, &mut ctx).ok();
             self.estop_active = should_stop;
         }
     }
@@ -243,13 +243,13 @@ impl Node for MotorController {
     fn name(&self) -> &'static str { "MotorController" }
 
     fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
-        ctx.log_info("⚙ Motor controller online - HIGH priority");
+        ctx.log_info("Motor controller online - HIGH priority");
         Ok(())
     }
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Check emergency stop FIRST
-        if let Some(estop) = self.estop_sub.recv(ctx) {
+        if let Some(estop) = self.estop_sub.recv(&mut ctx) {
             if estop != self.estop_active {
                 self.estop_active = estop;
                 if let Some(ctx) = ctx {
@@ -264,13 +264,13 @@ impl Node for MotorController {
 
         // Don't move if estop active
         if self.estop_active {
-            self.motor_pub.send(CmdVel::zero(), ctx).ok();
+            self.motor_pub.send(CmdVel::zero(), &mut ctx).ok();
             return;
         }
 
         // Process normal commands
-        if let Some(cmd) = self.cmd_sub.recv(ctx) {
-            self.motor_pub.send(cmd, ctx).ok();
+        if let Some(cmd) = self.cmd_sub.recv(&mut ctx) {
+            self.motor_pub.send(cmd, &mut ctx).ok();
 
             ctx.log_debug(&format!(
                     "Motors: linear={:.2}, angular={:.2}",
@@ -312,7 +312,7 @@ impl Node for LoggerNode {
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Log velocity commands
-        if let Some(cmd) = self.cmd_sub.recv(ctx) {
+        if let Some(cmd) = self.cmd_sub.recv(&mut ctx) {
             ctx.log_debug(&format!(
                     "LOG: cmd_vel({:.2}, {:.2})",
                     cmd.linear, cmd.angular
@@ -320,7 +320,7 @@ impl Node for LoggerNode {
         }
 
         // Log battery state
-        if let Some(battery) = self.battery_sub.recv(ctx) {
+        if let Some(battery) = self.battery_sub.recv(&mut ctx) {
             ctx.log_debug(&format!(
                     "LOG: battery({:.1}V, {:.0}%)",
                     battery.voltage, battery.percentage
@@ -548,7 +548,7 @@ impl Node for TempSensor {
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Fast sensor simulation
         let temp = 20.0 + (self.counter.sin() * 5.0);
-        self.temp_pub.send(temp, ctx).ok();
+        self.temp_pub.send(temp, &mut ctx).ok();
 
         ctx.log_debug(&format!("Rust: {:.2}°C", temp));
 
@@ -613,7 +613,7 @@ impl Node for Actuator {
     fn name(&self) -> &'static str { "RustActuator" }
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
-        if let Some(cmd) = self.cmd_sub.recv(ctx) {
+        if let Some(cmd) = self.cmd_sub.recv(&mut ctx) {
             if let Some(ctx) = ctx {
                 let action = if cmd > 0.5 { "COOLING" } else { "IDLE" };
                 ctx.log_info(&format!("Actuator: {}", action));
@@ -853,11 +853,11 @@ if __name__ == "__main__":
 ## Next Steps
 
 - [Design Patterns](/design-patterns) - Common robotics patterns (coming soon)
-- [Performance Optimization](/performance) - Tune for maximum throughput
-- [Python Bindings Reference](/python-bindings) - Complete Python API
+- [Performance Optimization](/performance/performance) - Tune for maximum throughput
+- [Python Bindings Reference](/multi-language/python-bindings) - Complete Python API
 - [Remote Deployment](/remote-deployment) - Deploy to robots
-- [Package Management](/package-management) - Share and reuse nodes
+- [Package Management](/package-management/package-management) - Share and reuse nodes
 
 Need help?
 - [Troubleshooting Runtime Errors](/troubleshooting-runtime) - Debug common issues
-- [Dashboard](/dashboard) - Monitor your system in real-time
+- [Dashboard](/development/dashboard) - Monitor your system in real-time

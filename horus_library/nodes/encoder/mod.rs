@@ -332,7 +332,7 @@ impl EncoderNode {
         // Set timestamp
         odom.timestamp = current_time;
 
-        let _ = self.publisher.send(odom, None);
+        let _ = self.publisher.send(odom, &mut None);
     }
 
     /// Set simulation velocities (for testing without hardware)

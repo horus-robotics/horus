@@ -1,0 +1,764 @@
+---
+title: Configuration Reference
+description: Complete reference for horus.yaml and .horus directory
+order: 32
+---
+
+# Configuration Reference
+
+Complete guide to configuring HORUS projects via `horus.yaml` and understanding the auto-managed `.horus/` directory.
+
+## Quick Reference
+
+**Minimal `horus.yaml`:**
+```yaml
+name: my_robot
+version: "0.1.0"
+
+dependencies:
+  - horus
+```
+
+**Full `horus.yaml`:**
+```yaml
+name: my_robot_controller
+version: "1.2.3"
+description: "Advanced mobile robot controller with navigation"
+author: "Robotics Team"
+license: "Apache-2.0"
+session_id: "robot-fleet-alpha"
+mode: release
+language: rust
+
+dependencies:
+  - horus
+  - name: serde
+    version: "1"
+    features:
+      - derive
+  - name: tokio
+    version: "1"
+    features:
+      - full
+
+ignore:
+  files:
+    - "debug_*.rs"
+    - "**/temp/**"
+  directories:
+    - "experiments/"
+    - "old/"
+  packages:
+    - "ipython"
+    - "jupyter"
+```
+
+## Project Metadata
+
+### `name` (Required)
+
+Project name used for identification and package management.
+
+**Type**: String
+**Required**: Yes
+**Constraints**:
+- Must be unique within your organization
+- Use lowercase with hyphens (kebab-case)
+- No spaces or special characters except hyphens and underscores
+
+**Examples:**
+```yaml
+name: temperature-monitor
+name: mobile_robot_controller
+name: warehouse-navigation
+```
+
+### `version` (Required)
+
+Project version following semantic versioning.
+
+**Type**: String
+**Required**: Yes
+**Format**: `MAJOR.MINOR.PATCH` (semantic versioning)
+
+**Examples:**
+```yaml
+version: "0.1.0"    # Initial development
+version: "1.0.0"    # First stable release
+version: "2.3.1"    # Mature project
+```
+
+**Best Practice**: Always quote version strings to prevent YAML parsing issues.
+
+### `description` (Optional)
+
+Human-readable description of your project.
+
+**Type**: String
+**Required**: No
+**Default**: None
+
+**Examples:**
+```yaml
+description: "Temperature monitoring system with alerts"
+description: "Autonomous mobile robot for warehouse operations"
+```
+
+### `author` (Optional)
+
+Project author or team name.
+
+**Type**: String
+**Required**: No
+**Default**: None
+
+**Examples:**
+```yaml
+author: "Robotics Team"
+author: "John Doe <john@example.com>"
+author: "ACME Robotics Inc."
+```
+
+### `license` (Optional)
+
+Project license identifier.
+
+**Type**: String
+**Required**: No
+**Default**: None
+**Common Values**: `Apache-2.0`, `MIT`, `GPL-3.0`, `BSD-3-Clause`
+
+**Examples:**
+```yaml
+license: "Apache-2.0"
+license: "MIT"
+license: "Proprietary"
+```
+
+## Session Management
+
+### `session_id` (Optional)
+
+Shared session identifier for cross-process communication.
+
+**Type**: String
+**Required**: No
+**Default**: Auto-generated UUID (unique per `horus run`)
+**Use Case**: Multi-process applications that need to share topics
+
+**When to Use:**
+- Building multi-process apps (backend + GUI)
+- Multiple related processes communicating via Hub
+- Want isolation from other apps
+
+**When NOT to Use:**
+- Single-process applications
+- Need system-wide topics (use `Hub::new_global()` instead)
+
+**Examples:**
+
+**Multi-process app (backend + GUI):**
+```yaml
+# backend/horus.yaml
+name: robot_controller
+version: "0.1.0"
+session_id: "robot-control-session"
+
+# gui/horus.yaml
+name: robot_dashboard
+version: "0.1.0"
+session_id: "robot-control-session"  # Same session ID!
+```
+
+Both processes can now communicate:
+```rust
+// backend.rs
+let publisher: Hub<SensorData> = Hub::new("sensors")?;
+publisher.send(data, Some(&mut ctx))?;
+
+// gui.rs
+let subscriber: Hub<SensorData> = Hub::new("sensors")?;
+if let Some(data) = subscriber.recv(Some(&mut ctx)) {
+    // Receives data from backend!
+}
+```
+
+**Shared memory location:**
+```
+/dev/shm/horus/sessions/robot-control-session/topics/sensors
+```
+
+**See Also**: [Cross-Session Communication](/core-concepts-shared-memory#cross-session-communication)
+
+## Build Configuration
+
+### `mode` (Optional)
+
+Build mode for compilation.
+
+**Type**: String
+**Required**: No
+**Default**: `debug`
+**Values**: `debug`, `release`
+
+**Examples:**
+```yaml
+mode: debug    # Fast compilation, slower runtime
+mode: release  # Slower compilation, optimized runtime
+```
+
+**Override via CLI:**
+```bash
+horus run --release  # Overrides mode in horus.yaml
+```
+
+### `language` (Optional)
+
+Programming language for the project.
+
+**Type**: String
+**Required**: No
+**Default**: Auto-detected from file extensions
+**Values**: `rust`, `python`, `cpp`, `c`
+
+**Examples:**
+```yaml
+language: rust
+language: python
+language: cpp
+```
+
+**Auto-detection:**
+- `main.rs`  Rust
+- `main.py`  Python
+- `main.cpp`  C++
+- `main.c`  C
+
+## Dependencies
+
+### Basic Dependencies
+
+**Type**: Array of strings or objects
+**Required**: At least `horus` is recommended
+
+**String format (simple):**
+```yaml
+dependencies:
+  - horus           # Latest from HORUS registry
+  - serde           # Latest from crates.io/PyPI
+  - numpy           # External package
+```
+
+**Object format (with version and features):**
+```yaml
+dependencies:
+  - horus
+  - name: serde
+    version: "1.0"
+    features:
+      - derive
+  - name: tokio
+    version: "1"
+    features:
+      - full
+      - rt-multi-thread
+```
+
+### Dependency Fields
+
+**`name`** (required in object format):
+- Package name
+
+**`version`** (optional):
+- Semantic version or version constraint
+- Examples: `"1.0"`, `"^1.2"`, `">=1.0,&lt;2.0"`
+
+**`features`** (optional):
+- Array of feature flags to enable
+- Rust-specific (Cargo features)
+
+**Resolution Order:**
+1. HORUS registry (`https://marketplace.horus-registry.dev`)
+2. Language-specific registry (crates.io for Rust, PyPI for Python)
+
+### Examples
+
+**Minimal:**
+```yaml
+dependencies:
+  - horus
+```
+
+**With external packages:**
+```yaml
+dependencies:
+  - horus
+  - serde
+  - tokio
+  - numpy  # Python
+```
+
+**With versions and features:**
+```yaml
+dependencies:
+  - horus
+  - name: serde
+    version: "1"
+    features:
+      - derive
+  - name: tokio
+    version: "1"
+    features:
+      - full
+  - name: eframe
+    version: "0.29"
+  - name: egui
+    version: "0.29"
+```
+
+## Ignore Patterns
+
+### `ignore` (Optional)
+
+Exclude files, directories, and packages from HORUS processing.
+
+**Type**: Object with optional `files`, `directories`, `packages` arrays
+**Required**: No
+**Default**: None
+
+### `ignore.files`
+
+Exclude specific files from detection and execution.
+
+**Type**: Array of glob patterns
+**Patterns**: `*` (wildcard), `**/` (recursive directories)
+
+**Examples:**
+```yaml
+ignore:
+  files:
+    - "debug_*.py"           # Ignore debug_test.py, debug_node.py
+    - "test_*.rs"            # Ignore all test files
+    - "**/experiments/**"    # Ignore files in any experiments/ directory
+    - "scratch.rs"           # Ignore specific file
+```
+
+### `ignore.directories`
+
+Exclude entire directories.
+
+**Type**: Array of directory names or paths
+
+**Examples:**
+```yaml
+ignore:
+  directories:
+    - "old/"
+    - "experiments/"
+    - "tests/"
+    - "benchmarks/"
+```
+
+### `ignore.packages`
+
+Prevent auto-installation of specific packages.
+
+**Type**: Array of package names
+
+**Examples:**
+```yaml
+ignore:
+  packages:
+    - "ipython"      # Development shell
+    - "jupyter"      # Notebook environment
+    - "pytest"       # Testing framework
+```
+
+**Use Case**: Development-only packages that shouldn't be auto-installed in production.
+
+### Complete Ignore Example
+
+```yaml
+name: robot_controller
+version: "0.1.0"
+
+dependencies:
+  - horus
+  - serde
+
+ignore:
+  # Don't run debug files
+  files:
+    - "debug_*.py"
+    - "test_*.rs"
+    - "**/temp/**"
+
+  # Don't process these directories
+  directories:
+    - "old_controllers/"
+    - "experiments/"
+    - "docs/"
+
+  # Don't auto-install these packages
+  packages:
+    - "ipython"
+    - "jupyter"
+    - "black"  # Code formatter
+```
+
+**See Also**: [Environment Management - Ignoring Files](/environment-management#ignoring-files-and-packages)
+
+## The `.horus/` Directory
+
+The `.horus/` directory is **automatically managed** by HORUS. You should never manually edit files inside it.
+
+### Structure
+
+```
+my_project/
+├── horus.yaml              # Your configuration (edit this)
+├── main.rs                 # Your code (edit this)
+└── .horus/                 # Auto-managed (don't touch)
+    ├── packages/           # Symlinks to global cache
+    │   ├── horus -> ~/.horus/cache/horus@0.1.0/
+    │   └── serde -> ~/.horus/cache/serde@1.0.228/
+    ├── Cargo.toml          # Generated for Rust projects
+    ├── Cargo.lock          # Cargo lock file
+    └── target/             # Rust build artifacts
+```
+
+### Global Cache vs Local Workspace
+
+**Global Cache** (`~/.horus/cache/`):
+- Shared across all projects
+- Downloaded once, used everywhere
+- Saves disk space
+
+**Local Workspace** (`.horus/`):
+- Project-specific symlinks
+- Isolated from other projects
+- Auto-generated on `horus run`
+
+### What's Inside `.horus/`
+
+**`packages/`**:
+- Symlinks to global cache packages
+- Some packages may be installed directly (no symlink)
+
+**`Cargo.toml`** (Rust projects):
+- Auto-generated from `horus.yaml` dependencies
+- Uses path-based dependencies (no source copying)
+- Never edit manually (regenerated on each run)
+
+**`Cargo.lock`** (Rust projects):
+- Cargo's dependency lock file
+- Auto-managed
+
+**`target/`** (Rust projects):
+- Cargo build artifacts
+- Can be large (ignore in git)
+
+**`bin/`, `lib/`, `include/`**:
+- Compiled binaries and libraries
+- Auto-created as needed
+
+### Git Configuration
+
+**Always add to `.gitignore`:**
+```gitignore
+# Auto-managed HORUS environment
+.horus/
+
+# Keep configuration
+!horus.yaml
+```
+
+The `horus new` command automatically creates this `.gitignore` for you.
+
+### When `.horus/` is Created
+
+`.horus/` is created automatically when you run:
+- `horus run`
+- `horus pkg install`
+- `horus env restore`
+
+You never need to create it manually.
+
+### Cleaning `.horus/`
+
+**Remove local environment:**
+```bash
+rm -rf .horus/
+```
+
+**Regenerate on next run:**
+```bash
+horus run  # Automatically recreates .horus/
+```
+
+**See Also**: [Environment Management](/environment-management#understanding-horus-s-hidden-environment)
+
+## Complete Examples
+
+### Single-Process Application
+
+```yaml
+name: temperature-monitor
+version: "0.1.0"
+description: "Simple temperature monitoring system"
+author: "Robotics Team"
+license: "Apache-2.0"
+mode: release
+
+dependencies:
+  - horus
+  - name: serde
+    version: "1"
+    features:
+      - derive
+
+ignore:
+  files:
+    - "debug_*.rs"
+  packages:
+    - "ipython"
+```
+
+### Multi-Process Application (Backend)
+
+```yaml
+name: robot-backend
+version: "1.0.0"
+description: "Robot control backend with sensor processing"
+author: "ACME Robotics"
+license: "Apache-2.0"
+session_id: "robot-system-v1"  # Shared with GUI
+mode: release
+language: rust
+
+dependencies:
+  - horus
+  - name: serde
+    version: "1"
+    features:
+      - derive
+  - name: tokio
+    version: "1"
+    features:
+      - full
+
+ignore:
+  directories:
+    - "tests/"
+  packages:
+    - "pytest"
+```
+
+### Multi-Process Application (GUI)
+
+```yaml
+name: robot-dashboard
+version: "1.0.0"
+description: "Real-time robot dashboard and visualization"
+author: "ACME Robotics"
+license: "Apache-2.0"
+session_id: "robot-system-v1"  # Shared with backend
+mode: release
+language: rust
+
+dependencies:
+  - horus
+  - name: eframe
+    version: "0.29"
+  - name: egui
+    version: "0.29"
+  - name: serde
+    version: "1"
+    features:
+      - derive
+
+ignore:
+  files:
+    - "debug_*.rs"
+```
+
+### Python Project
+
+```yaml
+name: vision-processor
+version: "0.2.0"
+description: "Computer vision processing node"
+author: "Vision Team"
+license: "MIT"
+language: python
+
+dependencies:
+  - horus_py
+  - numpy
+  - opencv-python
+  - pillow
+
+ignore:
+  directories:
+    - "notebooks/"
+    - "experiments/"
+  packages:
+    - "jupyter"
+    - "matplotlib"  # Visualization only
+```
+
+## Best Practices
+
+### Version Your Configuration
+
+Always commit `horus.yaml` to version control:
+```bash
+git add horus.yaml
+git commit -m "Update dependencies: add sensor-fusion package"
+```
+
+### Use Semantic Versioning
+
+Follow semver for your project version:
+- `0.x.y` - Initial development
+- `1.0.0` - First stable release
+- `x.y.z` - Major.Minor.Patch
+
+### Pin Critical Dependencies
+
+For production, consider pinning exact versions:
+```yaml
+dependencies:
+  - name: critical-package
+    version: "=1.2.3"  # Exact version
+```
+
+### Document Your Configuration
+
+Add comments to explain non-obvious choices:
+```yaml
+# Using session_id to enable backend-GUI communication
+session_id: "robot-fleet-alpha"
+
+dependencies:
+  # Version 2.0 required for new path planning algorithm
+  - name: motion-planner
+    version: "^2.0"
+```
+
+### Keep It Minimal
+
+Only specify what you need:
+```yaml
+# Good (minimal)
+name: my_robot
+version: "0.1.0"
+dependencies:
+  - horus
+
+# Overkill for simple projects
+name: my_robot
+version: "0.1.0"
+description: "A robot"
+author: "Me"
+license: "MIT"
+mode: debug
+language: rust
+```
+
+## Validation
+
+HORUS validates `horus.yaml` on every command. Common errors:
+
+### Missing Required Fields
+
+```
+Error: Missing required field 'name' in horus.yaml
+```
+
+**Fix**: Add `name` and `version` fields.
+
+### Invalid YAML Syntax
+
+```
+Error: Failed to parse horus.yaml: invalid YAML syntax at line 5
+```
+
+**Fix**: Check YAML syntax (indentation, colons, quotes).
+
+### Invalid Version Format
+
+```
+Error: Invalid version format: '1.0'. Expected semantic version (e.g., '1.0.0')
+```
+
+**Fix**: Use format `"MAJOR.MINOR.PATCH"`.
+
+## Migration Guide
+
+### From Cargo Projects
+
+**Before (Cargo.toml):**
+```toml
+[package]
+name = "my-robot"
+version = "0.1.4"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+```
+
+**After (horus.yaml):**
+```yaml
+name: my-robot
+version: "0.1.0"
+
+dependencies:
+  - horus
+  - name: serde
+    version: "1"
+    features:
+      - derive
+  - name: tokio
+    version: "1"
+    features:
+      - full
+```
+
+**Then run:**
+```bash
+horus run  # HORUS generates Cargo.toml automatically
+```
+
+### From Python Projects
+
+**Before (requirements.txt):**
+```
+numpy==1.24.0
+opencv-python>=4.5
+pillow
+```
+
+**After (horus.yaml):**
+```yaml
+name: vision-processor
+version: "0.1.0"
+language: python
+
+dependencies:
+  - horus_py
+  - name: numpy
+    version: "1.24.0"
+  - name: opencv-python
+    version: ">=4.5"
+  - pillow
+```
+
+## Next Steps
+
+- **[Environment Management](/package-management/environment-management)** - Freeze and restore environments
+- **[Package Management](/package-management/package-management)** - Install and manage packages
+- **[CLI Reference](/development/cli-reference)** - All HORUS commands
+- **[Cross-Session Communication](/core-concepts-shared-memory#cross-session-communication)** - Multi-process apps

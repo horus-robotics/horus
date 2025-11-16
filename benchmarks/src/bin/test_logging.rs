@@ -79,7 +79,7 @@ fn test_log_levels() -> bool {
             stamp_nanos: i,
         };
 
-        if let Err(e) = publisher.send(msg, None) {
+        if let Err(e) = publisher.send(msg, &mut None) {
             eprintln!("Failed to publish message {}: {:?}", i, e);
             return false;
         }
@@ -90,7 +90,7 @@ fn test_log_levels() -> bool {
     let mut received = 0;
     let start = Instant::now();
     while received < 10 && start.elapsed() < Duration::from_secs(2) {
-        if subscriber.recv(None).is_some() {
+        if subscriber.recv(&mut None).is_some() {
             received += 1;
         } else {
             thread::sleep(Duration::from_micros(100));
@@ -143,7 +143,7 @@ fn test_message_tracing() -> bool {
             };
 
             let publish_time = Instant::now();
-            if let Err(e) = publisher.send(msg, None) {
+            if let Err(e) = publisher.send(msg, &mut None) {
                 eprintln!("Failed to publish message {}: {:?}", i, e);
             }
             publish_time
@@ -160,7 +160,7 @@ fn test_message_tracing() -> bool {
     let start = Instant::now();
 
     while received < 100 && start.elapsed() < Duration::from_secs(5) {
-        if let Some(msg) = subscriber.recv(None) {
+        if let Some(msg) = subscriber.recv(&mut None) {
             let receive_time = Instant::now();
             let idx = msg.stamp_nanos as usize;
 
@@ -223,7 +223,7 @@ fn test_performance() -> bool {
         let mut received = 0;
         let start = Instant::now();
         while received < 10000 && start.elapsed() < Duration::from_secs(10) {
-            if receiver.recv(None).is_some() {
+            if receiver.recv(&mut None).is_some() {
                 received += 1;
             }
         }
@@ -239,7 +239,7 @@ fn test_performance() -> bool {
             stamp_nanos: i,
         };
 
-        if let Err(e) = sender.send(msg, None) {
+        if let Err(e) = sender.send(msg, &mut None) {
             eprintln!("Failed to send message {}: {:?}", i, e);
             return false;
         }
@@ -320,8 +320,8 @@ fn test_context() -> bool {
         let mut forwarded = 0;
         let start = Instant::now();
         while forwarded < 50 && start.elapsed() < Duration::from_secs(5) {
-            if let Some(msg) = sub1.recv(None) {
-                if pub2.send(msg, None).is_ok() {
+            if let Some(msg) = sub1.recv(&mut None) {
+                if pub2.send(msg, &mut None).is_ok() {
                     forwarded += 1;
                 }
             } else {
@@ -339,7 +339,7 @@ fn test_context() -> bool {
             stamp_nanos: i,
         };
 
-        if let Err(e) = pub1.send(msg, None) {
+        if let Err(e) = pub1.send(msg, &mut None) {
             eprintln!("Failed to publish message {}: {:?}", i, e);
             return false;
         }
@@ -350,7 +350,7 @@ fn test_context() -> bool {
     let mut received = 0;
     let start = Instant::now();
     while received < 50 && start.elapsed() < Duration::from_secs(5) {
-        if sub2.recv(None).is_some() {
+        if sub2.recv(&mut None).is_some() {
             received += 1;
         } else {
             thread::sleep(Duration::from_micros(100));

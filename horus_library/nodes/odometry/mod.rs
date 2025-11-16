@@ -360,7 +360,7 @@ impl OdometryNode {
         odom.set_frames(&self.frame_id, &self.child_frame_id);
 
         // Publish
-        if let Err(e) = self.odom_publisher.send(odom, None) {
+        if let Err(e) = self.odom_publisher.send(odom, &mut None) {
             ctx.log_error(&format!("Failed to publish odometry: {:?}", e));
         }
     }
@@ -379,8 +379,8 @@ impl Node for OdometryNode {
 
         // Process encoder inputs
         if self.use_encoder_input {
-            let left_ticks = self.encoder_left_sub.recv(None);
-            let right_ticks = self.encoder_right_sub.recv(None);
+            let left_ticks = self.encoder_left_sub.recv(&mut None);
+            let right_ticks = self.encoder_right_sub.recv(&mut None);
 
             if let (Some(left), Some(right)) = (left_ticks, right_ticks) {
                 self.update_from_encoders(left, right, current_time);
@@ -389,7 +389,7 @@ impl Node for OdometryNode {
 
         // Process velocity inputs (fallback or additional source)
         if self.use_velocity_input {
-            if let Some(twist) = self.velocity_sub.recv(None) {
+            if let Some(twist) = self.velocity_sub.recv(&mut None) {
                 self.update_from_velocity(twist, current_time);
             }
         }

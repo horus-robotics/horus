@@ -3,7 +3,6 @@ use horus_core::error::HorusResult;
 
 type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo, NodeInfoExt};
-use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 // SocketCAN hardware support
@@ -380,7 +379,7 @@ impl CanBusNode {
             self.error_count += 1;
             self.last_error_time = frame.timestamp;
             ctx.log_warning(&format!("CAN error frame received on {}", self.interface_name));
-            let _ = self.error_publisher.send(frame, None);
+            let _ = self.error_publisher.send(frame, &mut None);
             return;
         }
 
@@ -405,7 +404,7 @@ impl CanBusNode {
             frame.data_slice()
         ));
 
-        if let Err(e) = self.rx_publisher.send(frame, None) {
+        if let Err(e) = self.rx_publisher.send(frame, &mut None) {
             ctx.log_error(&format!("Failed to publish CAN frame: {:?}", e));
         }
     }
@@ -720,7 +719,7 @@ impl Node for CanBusNode {
         }
 
         // Process outgoing frames
-        while let Some(frame) = self.tx_subscriber.recv(None) {
+        while let Some(frame) = self.tx_subscriber.recv(&mut None) {
             self.send_frame(frame, ctx.as_deref_mut());
         }
 

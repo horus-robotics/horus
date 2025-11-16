@@ -182,7 +182,7 @@ fn interactive_workspace_selector(
     let current = std::env::current_dir()?;
     let new_workspace_idx = idx;
     println!(
-        "  [{}] ➕ Create new workspace here  ({})",
+        "  [{}] [+] Create new workspace here  ({})",
         idx.to_string().cyan(),
         current.display().to_string().dimmed()
     );
@@ -300,4 +300,132 @@ pub fn register_current_workspace(name: Option<String>) -> Result<()> {
     println!(" Initialized HORUS workspace: {}", workspace_name.yellow());
     println!("   Location: {}", current.display());
     Ok(())
+}
+
+/// Discovered workspace information for dashboards
+#[derive(Debug, Clone)]
+pub struct DiscoveredWorkspace {
+    pub name: String,
+    pub path: PathBuf,
+    pub is_current: bool,
+}
+
+/// Unified workspace discovery for both TUI and web dashboards
+/// Returns all workspaces that should be visible, combining:
+/// 1. Registered workspaces from ~/.horus/workspaces.json
+/// 2. Nested workspaces within the current workspace (if running from one)
+pub fn discover_all_workspaces(current_workspace: &Option<PathBuf>) -> Vec<DiscoveredWorkspace> {
+    use std::collections::HashSet;
+
+    let mut discovered = Vec::new();
+    let mut seen_canonical: HashSet<PathBuf> = HashSet::new();
+
+    // Helper to add workspace if not already seen
+    let mut add_workspace = |path: PathBuf, name: String, is_current: bool| {
+        // Canonicalize to handle symlinks
+        let canonical = path.canonicalize().unwrap_or_else(|_| path.clone());
+
+        if !seen_canonical.contains(&canonical) {
+            seen_canonical.insert(canonical);
+            discovered.push(DiscoveredWorkspace {
+                name,
+                path,
+                is_current,
+            });
+        }
+    };
+
+    // 1. Get registered workspaces from registry
+    if let Ok(registry) = WorkspaceRegistry::load() {
+        for ws in &registry.workspaces {
+            let horus_dir = ws.path.join(".horus");
+
+            // Verify workspace still exists
+            if horus_dir.exists() && horus_dir.is_dir() {
+                let is_current = current_workspace
+                    .as_ref()
+                    .map(|p| p == &ws.path)
+                    .unwrap_or(false);
+
+                add_workspace(ws.path.clone(), ws.name.clone(), is_current);
+            }
+        }
+    }
+
+    // 2. If we have a current workspace, scan for nested .horus/ directories
+    if let Some(current_path) = current_workspace {
+        scan_for_nested_workspaces(current_path, &mut add_workspace, current_path);
+    }
+
+    discovered
+}
+
+/// Recursively scan for nested .horus/ directories within a workspace
+/// Limited to depth 3 to avoid excessive scanning
+fn scan_for_nested_workspaces<F>(
+    base_path: &Path,
+    add_workspace: &mut F,
+    current_workspace: &Path,
+) where
+    F: FnMut(PathBuf, String, bool),
+{
+    fn scan_recursive<F>(
+        path: &Path,
+        depth: usize,
+        add_workspace: &mut F,
+        current_workspace: &Path,
+    ) where
+        F: FnMut(PathBuf, String, bool),
+    {
+        const MAX_DEPTH: usize = 3;
+
+        if depth > MAX_DEPTH {
+            return;
+        }
+
+        if let Ok(entries) = fs::read_dir(path) {
+            for entry in entries.flatten() {
+                let entry_path = entry.path();
+
+                // Skip hidden directories (except .horus), build dirs, etc.
+                if let Some(name) = entry_path.file_name() {
+                    let name_str = name.to_string_lossy();
+                    if name_str.starts_with('.') && name_str != ".horus" {
+                        continue;
+                    }
+                    if name_str == "target"
+                        || name_str == "node_modules"
+                        || name_str == ".git"
+                        || name_str == "build"
+                    {
+                        continue;
+                    }
+                }
+
+                if entry_path.is_dir() {
+                    let horus_dir = entry_path.join(".horus");
+
+                    if horus_dir.exists() && horus_dir.is_dir() {
+                        // Found a workspace - add it
+                        let workspace_name = entry_path
+                            .file_name()
+                            .and_then(|s| s.to_str())
+                            .unwrap_or("unknown")
+                            .to_string();
+
+                        let is_current = &entry_path == current_workspace;
+                        add_workspace(entry_path.clone(), workspace_name, is_current);
+
+                        // Don't recurse into workspaces - they're self-contained
+                        continue;
+                    }
+
+                    // Recurse into regular directories
+                    scan_recursive(&entry_path, depth + 1, add_workspace, current_workspace);
+                }
+            }
+        }
+    }
+
+    scan_recursive(base_path, 0, add_workspace, current_workspace);
 }

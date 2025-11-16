@@ -172,6 +172,7 @@ impl TierClassifier {
 }
 
 /// Statistics about tier distribution
+#[allow(dead_code)]
 #[derive(Debug, Clone, Default)]
 pub struct TierStats {
     pub total_nodes: usize,

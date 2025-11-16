@@ -263,7 +263,7 @@ impl SafetyMonitor {
 
     /// Enter safe mode
     pub fn enter_safe_mode(&self) {
-        eprintln!("🛡️ Entering safe mode");
+        eprintln!("Entering safe mode");
         *self.state.lock() = SafetyState::SafeMode;
     }
 

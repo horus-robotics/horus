@@ -45,7 +45,7 @@ impl SnakesimNode {
     }
     pub fn control(&mut self, mut ctx: Option<&mut NodeInfo>) {
 
-        while let Some(direction) = self.sub.recv(ctx.as_deref_mut()) {
+        while let Some(direction) = self.sub.recv(&mut ctx) {
             println!("{}",direction);
             ctx.log_debug(&format!(
                 "Received SnakeState: direction={}",

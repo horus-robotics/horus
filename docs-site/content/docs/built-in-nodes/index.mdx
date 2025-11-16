@@ -1,12 +1,16 @@
 ---
-title: Built-In Nodes/Drivers
+title: Built-in Nodes/Drivers
 description: Production-ready nodes and hardware drivers included in horus_library
 order: 18
 ---
 
-# Built-In Nodes/Drivers
+# Built-in Nodes/Drivers
 
-The `horus_library` includes a comprehensive collection of **production-ready nodes** and **hardware drivers** for building robotics applications. All hardware nodes support automatic **simulation fallback** when hardware is unavailable.
+The `horus_library` includes a comprehensive collection of **32 production-ready nodes** and **hardware drivers** for building robotics applications. All hardware nodes support automatic **simulation fallback** when hardware is unavailable.
+
+> **Don't see your hardware or driver?**
+>
+> If the current HORUS library doesn't include a node for your specific hardware, please consider publishing it to the HORUS Registry so the community can benefit from your work. See [Package Management](/package-management/package-management#publishing-packages) for details.
 
 ## Quick Start
 
@@ -24,6 +28,98 @@ fn main() -> Result<()> {
     Ok(())
 }
 ```
+
+---
+
+## Overview
+
+### Production-Ready Hardware Integration
+
+All built-in nodes are **production-grade drivers** with real hardware support, not prototypes:
+
+- **Real hardware drivers** - I2C, GPIO, Serial, CAN, USB integrated
+- **Simulation fallback** - Test without hardware (automatic)
+- **Error handling** - 17-42 error cases per node with recovery
+- **Safety features** - Battery alerts, emergency stop, watchdogs
+- **Documentation** - 27k+ lines with hardware setup guides
+- **Extensible** - Wrap nodes to add custom logic
+
+**Use built-in nodes as-is for 90% of robotics applications.** Wrap them only when you need custom algorithms on top.
+
+### API Design Philosophy
+
+HORUS built-in nodes follow a consistent API pattern:
+
+1. **Simple construction** - `NodeType::new()?` with intelligent defaults
+2. **Clear configuration** - `set_*()` methods with named parameters (no magic numbers)
+3. **Runtime access** - `get_state()` methods to read current values
+4. **Pub/sub communication** - Standard Hub/Link messaging
+5. **Lifecycle hooks** - `init()`, `tick()`, `shutdown()` automatically called
+
+Example:
+```rust
+// 1. Create with defaults
+let mut battery = BatteryMonitorNode::new()?;
+
+// 2. Configure clearly
+battery.set_cell_count(4);  // Not: battery.configure(0x04)
+battery.configure_4s_lipo(5000.0);  // Preset: clear intent
+
+// 3. Access state
+let state = battery.get_state();
+println!("Battery: {:.2}V, {:.0}%", state.voltage, state.percentage);
+
+// 4. Add to scheduler - tick() called automatically
+scheduler.add(Box::new(battery), 50, Some(true));
+```
+
+### Usage Patterns
+
+**Pattern 1: Use as-is (90% of cases)**
+```rust
+// Standard robotics application
+let mut battery = BatteryMonitorNode::new()?;
+battery.configure_4s_lipo(5000.0);  // Real battery monitoring
+
+let mut motors = BlDcMotorNode::new()?;
+motors.configure_gpio(12, EscProtocol::DShot600);  // Real ESCs
+
+scheduler.add(Box::new(battery), 50, Some(true));
+scheduler.add(Box::new(motors), 10, Some(true));
+```
+
+**Pattern 2: Wrap for custom logic (10% of cases)**
+```rust
+// Add custom algorithm on top of hardware driver
+struct AdaptiveBattery {
+    inner: BatteryMonitorNode,  // Handles real hardware
+    prediction_model: KalmanFilter,  // Your custom logic
+}
+
+impl Node for AdaptiveBattery {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+        self.inner.tick(&mut ctx);  // Real hardware monitoring
+
+        let state = self.inner.get_state();
+        let prediction = self.prediction_model.predict(state);  // Your algorithm
+        // ...
+    }
+}
+```
+
+### When to Use Built-in Nodes vs Custom Nodes
+
+**Use built-in nodes when:**
+- Hardware is supported (see node documentation)
+- Standard behavior is sufficient
+- You need rapid development
+- Production reliability is important
+
+**Create custom nodes when:**
+- Hardware is not yet supported (then publish to marketplace!)
+- You need specialized algorithms
+- You're integrating proprietary systems
+- You're building domain-specific abstractions
 
 ---
 
@@ -72,7 +168,7 @@ The built-in nodes cover common robotics hardware, but **HORUS supports any cust
 You have two options:
 
 1. **Create your own node** - Follow the [Creating Custom Nodes](/creating-custom-nodes) guide to wrap any hardware driver into a HORUS node with the same plug-and-play experience
-2. **Publish to the Marketplace** - Share your custom nodes with the community through the [HORUS Marketplace](/marketplace)
+2. **Publish to the Registry** - Share your custom nodes with the community through the HORUS Package Registry
 
 ```bash
 # Publish your custom node package
@@ -82,13 +178,13 @@ horus pkg publish my-custom-driver
 horus pkg install your-username/my-custom-driver
 ```
 
-The marketplace enables:
+The package registry enables:
 - Share custom hardware nodes (CAN devices, specialized sensors, custom motors, etc.)
 - Distribute pre-configured, customizable versions of existing drivers
 - Build a library of plug-and-play robotics components
 - Contribute to the HORUS ecosystem
 
-See **[Publishing Packages](/publishing-packages)** for the complete guide.
+See **[Package Management](/package-management#publishing-packages)** for the complete guide.
 
 ---
 
@@ -299,7 +395,7 @@ fn main() -> Result<()> {
 ## Next Steps
 
 - Browse individual node documentation for detailed configuration options
-- Check **[Using Pre-Built Nodes](/using-prebuilt-nodes)** for composition patterns
+- Check **[Using Pre-Built Nodes](/package-management/using-prebuilt-nodes)** for composition patterns
 - See **[Basic Examples](/basic-examples)** for complete working systems
 - Review **[Hardware Installation](/getting-started/installation#hardware-driver-support)** for setup
 

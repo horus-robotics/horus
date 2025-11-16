@@ -92,7 +92,7 @@ impl Node for SensorNode {
             let temperature = base_temp + noise;
 
             // Publish raw temperature
-            self.temp_pub.send(temperature, ctx).ok();
+            self.temp_pub.send(temperature, &mut ctx).ok();
 
             ctx.log_info(&format!("Published raw temp: {:.2}°C", temperature));
 
@@ -141,7 +141,7 @@ impl Node for FilterNode {
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Check for new temperature reading
-        if let Some(raw_temp) = self.raw_sub.recv(ctx) {
+        if let Some(raw_temp) = self.raw_sub.recv(&mut ctx) {
             // Apply exponential moving average filter
             let filtered = match self.filtered_value {
                 Some(prev) => self.alpha * raw_temp + (1.0 - self.alpha) * prev,
@@ -151,7 +151,7 @@ impl Node for FilterNode {
             self.filtered_value = Some(filtered);
 
             // Publish filtered temperature
-            self.filtered_pub.send(filtered, ctx).ok();
+            self.filtered_pub.send(filtered, &mut ctx).ok();
 
             ctx.log_info(&format!(
                     "Filtered: {:.2}°C -> {:.2}°C (removed {:.2}°C noise)",
@@ -198,7 +198,7 @@ impl Node for DisplayNode {
     }
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
-        if let Some(temp) = self.filtered_sub.recv(ctx) {
+        if let Some(temp) = self.filtered_sub.recv(&mut ctx) {
             self.display_counter += 1;
 
             // Display temperature with visual indicator
@@ -325,7 +325,7 @@ The dashboard will show:
 // Publish every 1 second
 if self.last_publish.elapsed() >= Duration::from_secs(1) {
     let temperature = 25.0 + noise;
-    self.temp_pub.send(temperature, ctx).ok();
+    self.temp_pub.send(temperature, &mut ctx).ok();
 }
 ```
 
@@ -339,7 +339,7 @@ if self.last_publish.elapsed() >= Duration::from_secs(1) {
 ```rust
 // Exponential moving average filter
 let filtered = self.alpha * raw_temp + (1.0 - self.alpha) * prev;
-self.filtered_pub.send(filtered, ctx).ok();
+self.filtered_pub.send(filtered, &mut ctx).ok();
 ```
 
 **Key Points:**
@@ -354,7 +354,7 @@ self.filtered_pub.send(filtered, ctx).ok();
 ### DisplayNode
 
 ```rust
-if let Some(temp) = self.filtered_sub.recv(ctx) {
+if let Some(temp) = self.filtered_sub.recv(&mut ctx) {
     println!("[Reading #{}] Temperature: {:.1}°C", count, temp);
 }
 ```
@@ -490,8 +490,8 @@ Both will publish to the same topic, and FilterNode will process both!
 
 Now that you've built a 3-node pipeline, try:
 
-1. **[Testing](/testing)** - Learn how to unit test your nodes
-2. **[Using Pre-Built Nodes](/using-prebuilt-nodes)** - Use library nodes instead of writing from scratch
+1. **[Testing](/development/testing)** - Learn how to unit test your nodes
+2. **[Using Pre-Built Nodes](/package-management/using-prebuilt-nodes)** - Use library nodes instead of writing from scratch
 3. **[node! Macro](/node-macro)** - Reduce boilerplate with macros
 4. **[Message Types](/message-types)** - Use complex message types instead of primitives
 

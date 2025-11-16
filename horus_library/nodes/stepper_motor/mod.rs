@@ -4,7 +4,7 @@ use horus_core::error::HorusResult;
 type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo, NodeInfoExt};
 use std::f64::consts::PI;
-use std::time::{SystemTime, UNIX_EPOCH, Duration};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 // GPIO hardware support
 #[cfg(feature = "gpio-hardware")]
@@ -514,7 +514,7 @@ impl StepperMotorNode {
 
         // Publish command echo
         if self.enable_feedback {
-            let _ = self.publisher.send(cmd, None);
+            let _ = self.publisher.send(cmd, &mut None);
         }
     }
 
@@ -612,7 +612,7 @@ impl StepperMotorNode {
     }
 
     /// Generate steps for a single motor
-    fn generate_steps(&mut self, motor_id: u8, current_time: u64, mut ctx: Option<&mut NodeInfo>) -> bool {
+    fn generate_steps(&mut self, motor_id: u8, current_time: u64, ctx: Option<&mut NodeInfo>) -> bool {
         if motor_id >= self.num_motors {
             return false;
         }
@@ -760,7 +760,7 @@ impl StepperMotorNode {
                         .unwrap()
                         .as_nanos() as u64,
                 };
-                let _ = self.feedback_publisher.send(feedback, None);
+                let _ = self.feedback_publisher.send(feedback, &mut None);
             }
         }
     }
@@ -789,7 +789,7 @@ impl Node for StepperMotorNode {
             .as_nanos() as u64;
 
         // Process all pending commands
-        while let Some(cmd) = self.subscriber.recv(None) {
+        while let Some(cmd) = self.subscriber.recv(&mut None) {
             self.process_command(cmd, ctx.as_deref_mut());
         }
 

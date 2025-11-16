@@ -470,7 +470,7 @@ impl BatteryMonitorNode {
 
     /// Publish battery state
     fn publish_state(&mut self, mut ctx: Option<&mut NodeInfo>) {
-        let mut state = BatteryState {
+        let state = BatteryState {
             voltage: self.voltage,
             current: self.current,
             charge: self.charge_mah / 1000.0, // Convert to Ah
@@ -490,7 +490,7 @@ impl BatteryMonitorNode {
                 .as_nanos() as u64,
         };
 
-        if let Err(e) = self.publisher.send(state, None) {
+        if let Err(e) = self.publisher.send(state, &mut None) {
             ctx.log_error(&format!("Failed to publish battery state: {:?}", e));
         }
     }
@@ -561,7 +561,7 @@ impl Node for BatteryMonitorNode {
         if (self.hardware_enabled || self.i2c_device.is_some()) && self.monitor_interface == MonitorInterface::I2C {
             // Initialize I2C if needed
             if self.i2c_device.is_none() && self.i2c_address != 0 {
-                if let Err(e) = self.init_i2c_hardware(ctx.as_deref_mut()) {
+                if let Err(e) = self.init_i2c_hardware(&mut ctx) {
                     // Provide detailed troubleshooting information (only log once)
                     if self.hardware_enabled || self.last_sample_time == 0 {
                         let device_path = format!("/dev/i2c-{}", self.i2c_bus);

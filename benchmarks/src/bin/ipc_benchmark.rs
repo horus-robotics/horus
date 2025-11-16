@@ -1071,7 +1071,7 @@ fn hub_producer(topic: &str, _barrier_file: &str) {
         let tsc = rdtsc();
         let mut msg = CmdVel::new(1.0, 0.5);
         msg.stamp_nanos = tsc;
-        if let Err(e) = sender.send(msg, None) {
+        if let Err(e) = sender.send(msg, &mut None) {
             eprintln!("Producer: FATAL - Failed to send warmup message {}: {:?}", i, e);
             eprintln!("Producer: Hub IPC is not functioning properly");
             return;
@@ -1087,7 +1087,7 @@ fn hub_producer(topic: &str, _barrier_file: &str) {
         let tsc = rdtsc();
         let mut msg = CmdVel::new(1.0, 0.5);
         msg.stamp_nanos = tsc; // Embed timestamp
-        if let Err(e) = sender.send(msg, None) {
+        if let Err(e) = sender.send(msg, &mut None) {
             eprintln!("Producer: FATAL - Failed to send message {}/{}: {:?}", i, ITERATIONS, e);
             eprintln!("Producer: Benchmark aborted due to IPC failure");
             return;
@@ -1100,7 +1100,7 @@ fn hub_producer(topic: &str, _barrier_file: &str) {
     let tsc = rdtsc();
     let mut end_msg = CmdVel::new(0.0, 0.0);
     end_msg.stamp_nanos = tsc | (0xFFFFFFFF_u64 << 32); // Mark as end
-    let _ = sender.send(end_msg, None);
+    let _ = sender.send(end_msg, &mut None);
 
     eprintln!("Producer: All messages sent");
 }
@@ -1131,7 +1131,7 @@ fn hub_consumer(topic: &str, barrier_file: &str) {
 
     // Spin for warmup duration
     while warmup_start.elapsed() < Duration::from_millis(100) {
-        if let Some(msg) = receiver.recv(None) {
+        if let Some(msg) = receiver.recv(&mut None) {
             if msg.stamp_nanos != last_tsc {
                 warmup_count += 1;
                 last_tsc = msg.stamp_nanos;
@@ -1147,7 +1147,7 @@ fn hub_consumer(topic: &str, barrier_file: &str) {
     let mut last_seq = 0u64;
 
     loop {
-        if let Some(msg) = receiver.recv(None) {
+        if let Some(msg) = receiver.recv(&mut None) {
             let recv_tsc = rdtsc();
             let send_tsc_raw = msg.stamp_nanos;
 
@@ -1235,11 +1235,11 @@ fn run_link_benchmark(cpu_freq: f64) -> Option<Statistics> {
                     let tsc = rdtsc();
                     let mut msg = CmdVel::new(1.0, 0.5);
                     msg.stamp_nanos = tsc;
-                    let _ = link_send.send(msg, None);
+                    let _ = link_send.send(msg, &mut None);
 
                     // Wait for ack
                     loop {
-                        if ack_recv.recv(None).is_some() {
+                        if ack_recv.recv(&mut None).is_some() {
                             break;
                         }
                     }
@@ -1250,11 +1250,11 @@ fn run_link_benchmark(cpu_freq: f64) -> Option<Statistics> {
                     let tsc = rdtsc();
                     let mut msg = CmdVel::new(1.0, 0.5);
                     msg.stamp_nanos = tsc;
-                    let _ = link_send.send(msg, None);
+                    let _ = link_send.send(msg, &mut None);
 
                     // Wait for ack
                     loop {
-                        if ack_recv.recv(None).is_some() {
+                        if ack_recv.recv(&mut None).is_some() {
                             break;
                         }
                     }
@@ -1272,8 +1272,8 @@ fn run_link_benchmark(cpu_freq: f64) -> Option<Statistics> {
                 // Warmup
                 for _ in 0..WARMUP {
                     loop {
-                        if link_recv.recv(None).is_some() {
-                            let _ = ack_send.send(CmdVel::new(0.0, 0.0), None);
+                        if link_recv.recv(&mut None).is_some() {
+                            let _ = ack_send.send(CmdVel::new(0.0, 0.0), &mut None);
                             break;
                         }
                     }
@@ -1282,14 +1282,14 @@ fn run_link_benchmark(cpu_freq: f64) -> Option<Statistics> {
                 // Measured iterations
                 for _ in 0..ITERATIONS {
                     loop {
-                        if let Some(msg) = link_recv.recv(None) {
+                        if let Some(msg) = link_recv.recv(&mut None) {
                             let recv_tsc = rdtsc();
                             let send_tsc = msg.stamp_nanos;
                             let cycles = recv_tsc.wrapping_sub(send_tsc);
                             latencies.push(cycles);
 
                             // Send ack
-                            let _ = ack_send.send(CmdVel::new(0.0, 0.0), None);
+                            let _ = ack_send.send(CmdVel::new(0.0, 0.0), &mut None);
                             break;
                         }
                     }

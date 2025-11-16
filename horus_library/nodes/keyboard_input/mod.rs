@@ -425,7 +425,7 @@ impl Node for KeyboardInputNode {
         "KeyboardInputNode"
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Try to capture real keyboard events if crossterm is enabled
         #[cfg(feature = "crossterm")]
         {
@@ -450,7 +450,7 @@ impl Node for KeyboardInputNode {
                     }
 
                     // Publish the keyboard event via horus Hub
-                    let _ = self.publisher.send(key_input, ctx);
+                    let _ = self.publisher.send(key_input, &mut ctx);
                 } // Skip demo mode when real input is available
             }
         }
@@ -471,7 +471,7 @@ impl Node for KeyboardInputNode {
 
                 if let Some(key_input) = self.process_input(test_keys[self.demo_key_index]) {
                     // Use horus Hub to publish the keyboard event
-                    let _ = self.publisher.send(key_input, ctx);
+                    let _ = self.publisher.send(key_input, &mut ctx);
                     self.last_key_time = current_time;
                 }
             }

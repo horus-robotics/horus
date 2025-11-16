@@ -1,0 +1,29 @@
+# Empty world scene for sim3d
+
+name: "empty_world"
+description: "Basic empty world with ground plane"
+
+# Ground plane
+ground:
+  enabled: true
+  size: [50.0, 50.0]
+  position: [0.0, 0.0, 0.0]
+  material:
+    color: [0.3, 0.5, 0.3, 1.0]
+    metallic: 0.0
+    roughness: 0.8
+
+# Lighting
+lighting:
+  ambient:
+    enabled: true
+    color: [0.4, 0.4, 0.4]
+
+  directional:
+    - direction: [-0.5, -1.0, -0.3]
+      color: [1.0, 1.0, 1.0]
+      intensity: 10000.0
+      shadows: true
+
+# No objects in empty world
+objects: []

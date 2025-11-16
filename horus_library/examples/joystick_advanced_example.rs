@@ -31,7 +31,7 @@ impl Node for RobotController {
     }
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
-        while let Some(input) = self.joystick_sub.recv(ctx.as_deref_mut()) {
+        while let Some(input) = self.joystick_sub.recv(&mut ctx) {
             if input.is_button() {
                 let button_name = input.get_element_name();
 

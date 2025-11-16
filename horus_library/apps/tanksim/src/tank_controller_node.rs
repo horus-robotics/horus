@@ -115,9 +115,9 @@ impl Node for TankControllerNode {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Process latest keyboard input (one per tick)
-        if let Some(key) = self.keyboard_sub.recv(None) {
+        if let Some(key) = self.keyboard_sub.recv(&mut None) {
             if key.pressed {
                 self.process_keyboard(&key);
             }
@@ -130,7 +130,7 @@ impl Node for TankControllerNode {
             angular: self.current_angular,
         };
 
-        let _ = self.cmd_vel_pub.send(cmd, ctx);
+        let _ = self.cmd_vel_pub.send(cmd, &mut ctx);
     }
 
     fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {

@@ -401,9 +401,9 @@ impl Node for ImageProcessorNode {
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Process all available images
-        while let Some(image) = self.subscriber.recv(None) {
+        while let Some(image) = self.subscriber.recv(&mut None) {
             if let Some(processed) = self.process_image(image, ctx.as_deref_mut()) {
-                let _ = self.publisher.send(processed, None);
+                let _ = self.publisher.send(processed, &mut None);
             }
         }
     }

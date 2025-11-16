@@ -179,7 +179,7 @@ impl CargoPackage {
 pub fn execute_build_only(files: Vec<PathBuf>, release: bool, clean: bool) -> Result<()> {
     // Handle clean build
     if clean {
-        println!("{} Cleaning build cache...", "🧹".cyan());
+        println!("{} Cleaning build cache...", "[CLEAN]".cyan());
         clean_build_cache()?;
     }
 
@@ -484,7 +484,7 @@ pub fn execute_run(
 ) -> Result<()> {
     // Handle clean build
     if clean {
-        eprintln!("{} Cleaning build cache...", "🧹".cyan());
+        eprintln!("{} Cleaning build cache...", "[CLEAN]".cyan());
         clean_build_cache()?;
     }
 
@@ -1924,13 +1924,50 @@ fn parse_c_include(line: &str) -> Option<String> {
 fn parse_yaml_cargo_dependency(value: &serde_yaml::Value) -> Option<String> {
     match value {
         serde_yaml::Value::String(dep_str) => {
-            // Simple string: - horus
+            // Simple string: - horus, - cargo:serde@1.0:features=derive, etc.
             let dep = dep_str.trim();
-            if dep == "horus" || dep.starts_with("horus_") {
-                None // Skip, already added
-            } else {
-                Some(format!("{} = \"*\"", dep))
+
+            // Skip horus packages - they're already added as path dependencies
+            if dep == "horus" || dep.starts_with("horus_") || dep.starts_with("horus@") {
+                return None;
             }
+
+            // Parse cargo: or pip: prefixed dependencies
+            let dep_clean = if dep.starts_with("cargo:") {
+                &dep[6..]  // Remove "cargo:" prefix
+            } else if dep.starts_with("pip:") {
+                // Skip pip dependencies in Cargo.toml
+                return None;
+            } else {
+                dep
+            };
+
+            // Parse package@version:features=feat1,feat2 format
+            if let Some(at_pos) = dep_clean.find('@') {
+                let pkg_name = dep_clean[..at_pos].trim();
+                let rest = &dep_clean[at_pos + 1..];
+
+                // Split version and features
+                if let Some(features_pos) = rest.find(":features=") {
+                    let version = rest[..features_pos].trim();
+                    let features_str = rest[features_pos + 10..].trim();  // Skip ":features="
+                    let features: Vec<&str> = features_str.split(',').map(|s| s.trim()).collect();
+
+                    return Some(format!(
+                        "{} = {{ version = \"{}\", features = [{}] }}",
+                        pkg_name,
+                        version,
+                        features.iter().map(|f| format!("\"{}\"", f)).collect::<Vec<_>>().join(", ")
+                    ));
+                } else {
+                    // Just version, no features
+                    let version = rest.trim();
+                    return Some(format!("{} = \"{}\"", pkg_name, version));
+                }
+            }
+
+            // No version specified, use "*"
+            Some(format!("{} = \"*\"", dep_clean))
         }
         serde_yaml::Value::Mapping(map) => {
             // Map format: - name: serde, version: "1", features: [derive]

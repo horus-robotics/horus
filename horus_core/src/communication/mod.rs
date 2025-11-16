@@ -55,7 +55,7 @@ where
 {
     fn send(&self, msg: T) -> crate::error::HorusResult<()> {
         // Call the Hub's actual send method
-        Hub::send(self, msg, None).map(|_| ()).map_err(|_| {
+        Hub::send(self, msg, &mut None).map(|_| ()).map_err(|_| {
             crate::error::HorusError::Communication("Failed to send message".to_string())
         })
     }
@@ -73,7 +73,7 @@ where
         + 'static,
 {
     fn recv(&self) -> Option<T> {
-        Hub::recv(self, None)
+        Hub::recv(self, &mut None)
     }
 }
 

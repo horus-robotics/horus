@@ -51,22 +51,24 @@ A production-grade robotics framework built in Rust for **real-time performance*
 - New projects wanting modern tooling
 - Teams valuing simplicity and performance
 
-## Built-in Hardware Nodes - Ready for Real Robots
+> **Deterministic Debugging:** All logs include both `timestamp` (human-readable) and `tick_number` (deterministic)—compare logs by tick for perfect reproducibility across runs.
 
-HORUS includes **33+ production-ready nodes** with real hardware drivers integrated. Unlike ROS2 which requires installing separate packages, HORUS is **batteries included** - start building robots immediately.
+## Built-in Hardware Nodes - Ready for Production
+
+HORUS includes **32 production-ready nodes** with hardware drivers integrated. Unlike ROS2 which requires installing separate packages, HORUS is **batteries included** - start building robots immediately.
 
 ### Comprehensive Node Library
 
 | Category | Nodes | Hardware Support |
 |----------|-------|------------------|
-| **Sensors** | Camera, Depth Camera (RealSense), LiDAR, IMU, GPS, Encoder, Ultrasonic, Force/Torque | Real hardware drivers |
+| **Sensors** | Camera, Depth Camera (RealSense), LiDAR, IMU, GPS, Encoder, Ultrasonic, Force/Torque | Hardware drivers |
 | **Actuators** | DC Motor, BLDC Motor (ESC), Stepper, Servo, Dynamixel, Roboclaw | GPIO, PWM, Serial protocols |
 | **Safety** | Battery Monitor (I2C), Safety Monitor, Emergency Stop | Production-grade safety features |
 | **Communication** | CAN Bus, Modbus, Serial/UART, I2C, SPI, Digital I/O | Industrial protocols |
 | **Navigation** | Odometry, Localization, Path Planner, Collision Detector | Differential drive, mecanum, ackermann |
 | **Control** | PID Controller, Differential Drive | Real-time control loops |
 
-### Example: Real Robot in 10 Lines
+### Example: Production Robot in 10 Lines
 
 ```rust
 use horus::prelude::*;
@@ -75,17 +77,17 @@ use horus_library::nodes::*;
 fn main() -> Result<()> {
     let mut scheduler = Scheduler::new();
 
-    // Real hardware - production-ready nodes
+    // Hardware - production-ready nodes
     let mut battery = BatteryMonitorNode::new()?;
-    battery.configure_4s_lipo(5000.0);  // Real I2C battery monitor
+    battery.configure_4s_lipo(5000.0);  // I2C battery monitor
 
     let mut motors = BlDcMotorNode::new()?;
-    motors.configure_gpio(12, EscProtocol::DShot600);  // Real ESCs
+    motors.configure_gpio(12, EscProtocol::DShot600);  // ESCs
 
     let mut camera = DepthCameraNode::new()?;
-    camera.set_resolution(640, 480);  // Real Intel RealSense
+    camera.set_resolution(640, 480);  // Intel RealSense
 
-    let safety = SafetyMonitorNode::new()?;  // Real safety monitoring
+    let safety = SafetyMonitorNode::new()?;  // Safety monitoring
 
     scheduler.add(Box::new(battery), 50, Some(true));
     scheduler.add(Box::new(motors), 10, Some(true));
@@ -97,10 +99,10 @@ fn main() -> Result<()> {
 ```
 
 **This robot has:**
-- Real battery monitoring (I2C INA219/INA226)
-- Real motor control (Raspberry Pi GPIO PWM)
-- Real 3D vision (Intel RealSense D435/D455)
-- Real safety monitoring (CPU, memory, battery alerts)
+- Battery monitoring (I2C INA219/INA226)
+- Motor control (Raspberry Pi GPIO PWM)
+- 3D vision (Intel RealSense D435/D455)
+- Safety monitoring (CPU, memory, battery alerts)
 
 ### vs ROS2: Batteries Included
 
@@ -118,7 +120,7 @@ fn main() -> Result<()> {
 ### Production Features
 
 All built-in nodes include:
-- **Real hardware drivers** - I2C, GPIO, Serial, CAN, USB
+- **Hardware drivers** - I2C, GPIO, Serial, CAN, USB
 - **Simulation fallback** - Test without hardware
 - **Error handling** - 17-42 error cases per node with recovery
 - **Safety features** - Battery alerts, emergency stop, watchdogs

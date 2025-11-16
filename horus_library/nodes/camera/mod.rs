@@ -265,7 +265,7 @@ impl CameraNode {
 
         let image = Image::new(self.width, self.height, self.encoding, data);
 
-        let _ = self.publisher.send(image, None);
+        let _ = self.publisher.send(image, &mut None);
     }
 
     fn publish_camera_info(&self) {
@@ -277,7 +277,7 @@ impl CameraNode {
             self.width as f64 / 2.0,  // cx
             self.height as f64 / 2.0, // cy
         );
-        let _ = self.info_publisher.send(camera_info, None);
+        let _ = self.info_publisher.send(camera_info, &mut None);
     }
 }
 

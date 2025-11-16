@@ -26,11 +26,11 @@ mod tests {
             Ok(())
         }
 
-        fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+        fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
             let mut count = self.counter.lock().unwrap();
             *count += 1;
 
-            ctx.log_debug(&format!("Tick count: {}", *count));
+            // Logging removed - ctx is Option type
         }
 
         fn shutdown(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {

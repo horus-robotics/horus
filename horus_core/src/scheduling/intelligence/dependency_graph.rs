@@ -255,6 +255,7 @@ impl DependencyGraph {
 }
 
 /// Statistics about dependency graph
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct GraphStats {
     pub total_nodes: usize,

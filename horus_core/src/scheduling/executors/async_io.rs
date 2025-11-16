@@ -1,6 +1,6 @@
 use crate::core::node::{Node, NodeInfo};
 use crate::error::HorusResult;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
@@ -176,6 +176,7 @@ impl AsyncIOExecutor {
 
 /// Wrapper to make a blocking I/O node async-friendly
 /// This allows slow/blocking operations to run without blocking the scheduler
+#[allow(dead_code)]
 pub struct AsyncNodeWrapper<N: Node> {
     inner: N,
     timeout: Duration,

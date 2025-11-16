@@ -24,8 +24,8 @@ fn bench_link_small_message(c: &mut Criterion) {
 
         b.iter(|| {
             let msg = CmdVel::new(1.5, 0.8);
-            producer.send(black_box(msg), None).unwrap();
-            let _ = black_box(consumer.recv(None));
+            producer.send(black_box(msg), &mut None).unwrap();
+            let _ = black_box(consumer.recv(&mut None));
         });
     });
 
@@ -37,8 +37,8 @@ fn bench_link_small_message(c: &mut Criterion) {
 
         b.iter(|| {
             let msg = CmdVel::new(1.5, 0.8);
-            sender.send(black_box(msg), None).unwrap();
-            let _ = black_box(receiver.recv(None));
+            sender.send(black_box(msg), &mut None).unwrap();
+            let _ = black_box(receiver.recv(&mut None));
         });
     });
 
@@ -51,7 +51,7 @@ fn bench_link_small_message(c: &mut Criterion) {
         b.iter(|| {
             let msg = CmdVel::new(1.5, 0.8);
             // Ignore error if buffer is full
-            let _ = producer.send(black_box(msg), None);
+            let _ = producer.send(black_box(msg), &mut None);
         });
     });
 
@@ -67,7 +67,7 @@ fn bench_link_small_message(c: &mut Criterion) {
         }
 
         b.iter(|| {
-            let _ = black_box(consumer.recv(None));
+            let _ = black_box(consumer.recv(&mut None));
         });
     });
 
@@ -88,8 +88,8 @@ fn bench_link_medium_message(c: &mut Criterion) {
         b.iter(|| {
             let mut imu = Imu::new();
             imu.set_orientation_from_euler(0.1, 0.2, 0.3);
-            producer.send(black_box(imu), None).unwrap();
-            let _ = black_box(consumer.recv(None));
+            producer.send(black_box(imu), &mut None).unwrap();
+            let _ = black_box(consumer.recv(&mut None));
         });
     });
 
@@ -102,8 +102,8 @@ fn bench_link_medium_message(c: &mut Criterion) {
         b.iter(|| {
             let mut imu = Imu::new();
             imu.set_orientation_from_euler(0.1, 0.2, 0.3);
-            sender.send(black_box(imu), None).unwrap();
-            let _ = black_box(receiver.recv(None));
+            sender.send(black_box(imu), &mut None).unwrap();
+            let _ = black_box(receiver.recv(&mut None));
         });
     });
 
@@ -126,8 +126,8 @@ fn bench_link_large_message(c: &mut Criterion) {
             for i in 0..360 {
                 scan.ranges[i] = 5.0 + (i as f32 * 0.01);
             }
-            producer.send(black_box(scan), None).unwrap();
-            let _ = black_box(consumer.recv(None));
+            producer.send(black_box(scan), &mut None).unwrap();
+            let _ = black_box(consumer.recv(&mut None));
         });
     });
 
@@ -142,8 +142,8 @@ fn bench_link_large_message(c: &mut Criterion) {
             for i in 0..360 {
                 scan.ranges[i] = 5.0 + (i as f32 * 0.01);
             }
-            sender.send(black_box(scan), None).unwrap();
-            let _ = black_box(receiver.recv(None));
+            sender.send(black_box(scan), &mut None).unwrap();
+            let _ = black_box(receiver.recv(&mut None));
         });
     });
 
@@ -163,7 +163,7 @@ fn bench_link_zero_copy(c: &mut Criterion) {
 
         b.iter(|| {
             let msg = CmdVel::new(1.5, 0.8);
-            let _ = producer.send(black_box(msg), None);
+            let _ = producer.send(black_box(msg), &mut None);
         });
     });
 
@@ -196,11 +196,11 @@ fn bench_link_throughput(c: &mut Criterion) {
         b.iter(|| {
             // Send 1000 messages
             for i in 0..1000 {
-                producer.send(black_box(i as f32), None).unwrap();
+                producer.send(black_box(i as f32), &mut None).unwrap();
             }
             // Receive 1000 messages
             for _ in 0..1000 {
-                let _ = black_box(consumer.recv(None));
+                let _ = black_box(consumer.recv(&mut None));
             }
         });
     });
@@ -214,11 +214,11 @@ fn bench_link_throughput(c: &mut Criterion) {
         b.iter(|| {
             // Send 1000 messages
             for i in 0..1000 {
-                sender.send(black_box(i as f32), None).unwrap();
+                sender.send(black_box(i as f32), &mut None).unwrap();
             }
             // Receive 1000 messages
             for _ in 0..1000 {
-                let _ = black_box(receiver.recv(None));
+                let _ = black_box(receiver.recv(&mut None));
             }
         });
     });
@@ -237,8 +237,8 @@ fn bench_link_primitives(c: &mut Criterion) {
         let consumer: Link<u8> = Link::consumer(&topic).unwrap();
 
         b.iter(|| {
-            producer.send(black_box(42u8), None).unwrap();
-            let _ = black_box(consumer.recv(None));
+            producer.send(black_box(42u8), &mut None).unwrap();
+            let _ = black_box(consumer.recv(&mut None));
         });
     });
 
@@ -249,8 +249,8 @@ fn bench_link_primitives(c: &mut Criterion) {
         let consumer: Link<f32> = Link::consumer(&topic).unwrap();
 
         b.iter(|| {
-            producer.send(black_box(3.14f32), None).unwrap();
-            let _ = black_box(consumer.recv(None));
+            producer.send(black_box(3.14f32), &mut None).unwrap();
+            let _ = black_box(consumer.recv(&mut None));
         });
     });
 
@@ -261,8 +261,8 @@ fn bench_link_primitives(c: &mut Criterion) {
         let consumer: Link<f64> = Link::consumer(&topic).unwrap();
 
         b.iter(|| {
-            producer.send(black_box(3.14159265359f64), None).unwrap();
-            let _ = black_box(consumer.recv(None));
+            producer.send(black_box(3.14159265359f64), &mut None).unwrap();
+            let _ = black_box(consumer.recv(&mut None));
         });
     });
 
@@ -274,7 +274,7 @@ fn bench_link_primitives(c: &mut Criterion) {
 
         b.iter(|| {
             producer.send(black_box([1.0, 2.0, 3.0]), None).unwrap();
-            let _ = black_box(consumer.recv(None));
+            let _ = black_box(consumer.recv(&mut None));
         });
     });
 
@@ -293,11 +293,11 @@ fn bench_link_buffer_full(c: &mut Criterion) {
         b.iter(|| {
             // Fill buffer to capacity-1 (1023 messages)
             for i in 0..1023 {
-                producer.send(black_box(i), None).unwrap();
+                producer.send(black_box(i), &mut None).unwrap();
             }
             // Drain buffer
             for _ in 0..1023 {
-                let _ = black_box(consumer.recv(None));
+                let _ = black_box(consumer.recv(&mut None));
             }
         });
     });

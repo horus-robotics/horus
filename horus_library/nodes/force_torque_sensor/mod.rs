@@ -729,7 +729,7 @@ impl ForceTorqueSensorNode {
             .unwrap()
             .as_nanos() as u64;
 
-        if let Err(e) = self.wrench_publisher.send(wrench, None) {
+        if let Err(e) = self.wrench_publisher.send(wrench, &mut None) {
             ctx.log_error(&format!("Failed to publish wrench: {:?}", e));
         }
 
@@ -754,7 +754,7 @@ impl ForceTorqueSensorNode {
                 .as_nanos() as u64,
         };
 
-        if let Err(e) = self.calibration_status_pub.send(status, None) {
+        if let Err(e) = self.calibration_status_pub.send(status, &mut None) {
             ctx.log_error(&format!("Failed to publish calibration status: {:?}", e));
         }
     }

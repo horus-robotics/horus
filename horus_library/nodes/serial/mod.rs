@@ -4,7 +4,6 @@ use horus_core::error::HorusResult;
 // Type alias for cleaner signatures
 type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo, NodeInfoExt};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 #[cfg(feature = "serial-hardware")]
 use serialport::SerialPort;
@@ -284,7 +283,7 @@ impl SerialNode {
                     self.receive_buffer.drain(..available);
 
                     // Publish received data
-                    let _ = self.rx_publisher.send(msg, None);
+                    let _ = self.rx_publisher.send(msg, &mut None);
 
                     ctx.log_debug(&format!("Received {} bytes from serial port (sim)", available));
                 }
@@ -307,7 +306,7 @@ impl SerialNode {
                                 self.bytes_received += n as u64;
 
                                 // Publish received data
-                                let _ = self.rx_publisher.send(msg, None);
+                                let _ = self.rx_publisher.send(msg, &mut None);
 
                                 ctx.log_debug(&format!("Received {} bytes from hardware serial port", n));
                             }
@@ -423,7 +422,7 @@ impl Node for SerialNode {
         self.read_serial(ctx.as_deref_mut());
 
         // Process outgoing data
-        while let Some(tx_data) = self.tx_subscriber.recv(None) {
+        while let Some(tx_data) = self.tx_subscriber.recv(&mut None) {
             self.write_serial(&tx_data, ctx.as_deref_mut());
         }
     }

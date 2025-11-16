@@ -12,18 +12,59 @@ use axum::{
 use futures::{sink::SinkExt, stream::StreamExt};
 use qrcode::{render::unicode, QrCode};
 use std::net::UdpSocket;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
+use std::time::{Duration, Instant};
 use tower_http::cors::{AllowOrigin, CorsLayer};
 
 // Security imports
 use crate::security::{security_headers_middleware, AuthService};
 
+/// Cache for workspace discovery to avoid repeated filesystem scanning
+struct WorkspaceCache {
+    workspaces: Vec<crate::workspace::DiscoveredWorkspace>,
+    last_scan: Instant,
+    base_path: Option<std::path::PathBuf>,
+}
+
+impl WorkspaceCache {
+    fn new() -> Self {
+        Self {
+            workspaces: Vec::new(),
+            last_scan: Instant::now() - Duration::from_secs(1000), // Force initial scan
+            base_path: None,
+        }
+    }
+
+    /// Get workspaces from cache or refresh if stale/different path
+    fn get_or_refresh(&mut self, current: &Option<std::path::PathBuf>) -> Vec<crate::workspace::DiscoveredWorkspace> {
+        const TTL: Duration = Duration::from_secs(300); // 5 minutes
+
+        // Refresh if cache is stale or path changed
+        let needs_refresh = self.last_scan.elapsed() > TTL || self.base_path != *current;
+
+        if needs_refresh {
+            self.workspaces = crate::workspace::discover_all_workspaces(current);
+            self.last_scan = Instant::now();
+            self.base_path = current.clone();
+        }
+
+        self.workspaces.clone()
+    }
+}
+
+/// Global workspace cache - shared across all requests (using std::sync::OnceLock)
+fn workspace_cache() -> &'static RwLock<WorkspaceCache> {
+    static CACHE: std::sync::OnceLock<RwLock<WorkspaceCache>> = std::sync::OnceLock::new();
+    CACHE.get_or_init(|| RwLock::new(WorkspaceCache::new()))
+}
+
 #[derive(Clone)]
-struct AppState {
-    port: u16,
-    params: Arc<horus_core::RuntimeParams>,
-    auth_service: Arc<AuthService>,
-    current_workspace: Option<std::path::PathBuf>,
+pub struct AppState {
+    pub port: u16,
+    pub params: Arc<horus_core::RuntimeParams>,
+    pub auth_service: Arc<AuthService>,
+    pub current_workspace: Option<std::path::PathBuf>,
+    pub auth_disabled: bool,
 }
 
 /// Get local IP address for network access
@@ -73,7 +114,7 @@ async fn dashboard_session_middleware(
 }
 
 /// Run the web dashboard server
-pub async fn run(port: u16, secure: bool) -> anyhow::Result<()> {
+pub async fn run(port: u16) -> anyhow::Result<()> {
     eprintln!("Dashboard will read logs from shared memory ring buffer at /dev/shm/horus_logs");
 
     // Check if password is configured, if not prompt for setup
@@ -83,21 +124,11 @@ pub async fn run(port: u16, secure: bool) -> anyhow::Result<()> {
         crate::security::auth::load_password_hash()?
     };
 
+    // Check if authentication is disabled (empty password)
+    let auth_disabled = password_hash.is_empty();
+
     // Initialize authentication service with password
     let auth_service = Arc::new(AuthService::new(password_hash)?);
-
-    // Initialize TLS configuration only if secure mode is enabled
-    let tls_config = if secure {
-        let config = crate::security::TlsConfig::default_paths()?;
-        let hostname = hostname::get()
-            .ok()
-            .and_then(|h| h.into_string().ok())
-            .unwrap_or_else(|| "localhost".to_string());
-        config.ensure_certificates(&hostname)?;
-        Some(config)
-    } else {
-        None
-    };
 
     let params = Arc::new(
         horus_core::RuntimeParams::init().unwrap_or_else(|_| horus_core::RuntimeParams::default()),
@@ -111,10 +142,11 @@ pub async fn run(port: u16, secure: bool) -> anyhow::Result<()> {
         params,
         auth_service: auth_service.clone(),
         current_workspace: current_workspace.clone(),
+        auth_disabled,
     });
 
-    // Protected routes (require authentication)
-    let protected_routes = Router::new()
+    // API routes
+    let mut api_routes = Router::new()
         .route("/api/status", get(status_handler))
         .route("/api/nodes", get(nodes_handler))
         .route("/api/topics", get(topics_handler))
@@ -134,8 +166,12 @@ pub async fn run(port: u16, secure: bool) -> anyhow::Result<()> {
         .route("/api/params/export", post(params_export_handler))
         .route("/api/params/import", post(params_import_handler))
         .route("/api/ws", get(websocket_handler))
-        .route("/api/logout", post(logout_handler))
-        .layer(middleware::from_fn_with_state(state.clone(), dashboard_session_middleware));
+        .route("/api/logout", post(logout_handler));
+
+    // Only add authentication middleware if password is set
+    if !auth_disabled {
+        api_routes = api_routes.layer(middleware::from_fn_with_state(state.clone(), dashboard_session_middleware));
+    }
 
     // Public routes (no authentication required)
     let public_routes = Router::new()
@@ -144,7 +180,7 @@ pub async fn run(port: u16, secure: bool) -> anyhow::Result<()> {
 
     // Combine all routes
     let app = Router::new()
-        .merge(protected_routes)
+        .merge(api_routes)
         .merge(public_routes)
         .with_state(state.clone())
         .layer(middleware::from_fn(security_headers_middleware))
@@ -182,19 +218,12 @@ pub async fn run(port: u16, secure: bool) -> anyhow::Result<()> {
     // Get local IP addresses
     let local_ip = get_local_ip();
 
-    // Display different messages based on secure mode
-    let protocol = if secure { "https" } else { "http" };
-
-    if secure {
-        println!("{}", "HORUS Secure Web Dashboard is running!".green().bold());
-    } else {
-        println!("{}", "HORUS Web Dashboard is running!".green().bold());
-    }
+    println!("{}", "HORUS Web Dashboard is running!".green().bold());
 
     println!("\n{}:", "Access URLs".cyan().bold());
-    println!("   • Local:    {}", format!("{}://localhost:{}", protocol, port).bright_blue());
+    println!("   • Local:    {}", format!("http://localhost:{}", port).bright_blue());
     if let Some(ref ip) = local_ip {
-        let network_url = format!("{}://{}:{}", protocol, ip, port);
+        let network_url = format!("http://{}:{}", ip, port);
         println!("   • Network:  {}", network_url.bright_blue());
 
         // Display QR code for network URL
@@ -202,28 +231,15 @@ pub async fn run(port: u16, secure: bool) -> anyhow::Result<()> {
     }
 
     println!("\n{}:", "Security".cyan().bold());
-    if secure {
-        println!("   • TLS/SSL encryption enabled");
+    if auth_disabled {
+        println!("   {} {}", "⚠".yellow(), "Authentication DISABLED - No password required".yellow().bold());
+        println!("   • Accessible to anyone on your network");
+        println!("   {} To enable password protection: {}", "[TIP]".cyan(), "horus dashboard -r".bright_blue());
     } else {
-        println!("   {}", "[WARNING] HTTP mode - traffic is NOT encrypted".yellow());
-        println!("   • Use only on trusted networks");
-        println!("   • For secure access, use: {}", "horus dashboard --secure".bright_blue());
-    }
-    println!("   • Password-based authentication with session management");
-    println!("   • Accessible from local network devices");
-    println!("   • Rate limiting enabled (5 login attempts per minute)");
-
-    // Check certificate status only in secure mode
-    if secure {
-        if crate::security::TlsConfig::is_mkcert_installed() && crate::security::TlsConfig::is_mkcert_ca_installed() {
-            // Likely using trusted certificate
-            println!("\n{} Trusted certificate detected - No browser warnings!", "[SUCCESS]".green().bold());
-        } else {
-            // Using self-signed certificate
-            println!("\n{} Your browser may show a security warning (self-signed certificate)", "[WARNING]".yellow().bold());
-            println!("   This is normal - the connection is still encrypted.");
-            println!("   To remove warnings, install mkcert: {}", "horus init --setup-certs".bright_blue());
-        }
+        println!("   • Password-based authentication with session management");
+        println!("   • Accessible from local network devices");
+        println!("   • Rate limiting enabled (5 login attempts per minute)");
+        println!("   {}", "[NOTE] For production use, consider SSH tunneling or reverse proxy with HTTPS".dimmed());
     }
 
     println!("\n{}:", "Features".cyan().bold());
@@ -249,27 +265,9 @@ pub async fn run(port: u16, secure: bool) -> anyhow::Result<()> {
 
     println!("\n   Press {} to stop", "Ctrl+C".bright_red());
 
-    // Start server (HTTP or HTTPS based on secure flag)
-    if secure {
-        // HTTPS mode with TLS
-        if let Some(tls_cfg) = tls_config {
-            let rustls_config = axum_server::tls_rustls::RustlsConfig::from_pem_file(
-                &tls_cfg.cert_path,
-                &tls_cfg.key_path,
-            )
-            .await?;
-
-            axum_server::bind_rustls(addr.parse()?, rustls_config)
-                .serve(app.into_make_service())
-                .await?;
-        } else {
-            return Err(anyhow::anyhow!("Secure mode requested but TLS config not initialized"));
-        }
-    } else {
-        // HTTP mode - plain TCP
-        let listener = tokio::net::TcpListener::bind(&addr).await?;
-        axum::serve(listener, app).await?;
-    }
+    // Start HTTP server
+    let listener = tokio::net::TcpListener::bind(&addr).await?;
+    axum::serve(listener, app).await?;
 
     Ok(())
 }
@@ -303,7 +301,7 @@ async fn login_handler(
         Ok(Some(token)) => {
             // Set session cookie
             let cookie = format!(
-                "session_token={}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=3600",
+                "session_token={}; Path=/; HttpOnly; SameSite=Strict; Max-Age=3600",
                 token
             );
 
@@ -357,7 +355,7 @@ async fn logout_handler(
     state.auth_service.logout(&logout_req.session_token);
 
     // Clear session cookie
-    let cookie = "session_token=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0";
+    let cookie = "session_token=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0";
 
     (
         StatusCode::OK,
@@ -374,27 +372,32 @@ async fn index_handler(
     State(state): State<Arc<AppState>>,
     req: axum::http::Request<axum::body::Body>,
 ) -> Response {
-    // Check if user is authenticated by looking for session cookie
-    let is_authenticated = if let Some(cookie_header) = req.headers().get(axum::http::header::COOKIE) {
-        if let Ok(cookie_str) = cookie_header.to_str() {
-            // Extract session token from cookies
-            let token = cookie_str.split(';')
-                .find_map(|cookie| {
-                    let cookie = cookie.trim();
-                    cookie.strip_prefix("session_token=")
-                });
+    // If authentication is disabled, go straight to dashboard
+    let is_authenticated = if state.auth_disabled {
+        true  // Skip authentication entirely
+    } else {
+        // Check if user is authenticated by looking for session cookie
+        if let Some(cookie_header) = req.headers().get(axum::http::header::COOKIE) {
+            if let Ok(cookie_str) = cookie_header.to_str() {
+                // Extract session token from cookies
+                let token = cookie_str.split(';')
+                    .find_map(|cookie| {
+                        let cookie = cookie.trim();
+                        cookie.strip_prefix("session_token=")
+                    });
 
-            // Validate session if token exists
-            if let Some(token) = token {
-                state.auth_service.validate_session(token)
+                // Validate session if token exists
+                if let Some(token) = token {
+                    state.auth_service.validate_session(token)
+                } else {
+                    false
+                }
             } else {
                 false
             }
         } else {
             false
         }
-    } else {
-        false
     };
 
     if is_authenticated {
@@ -721,7 +724,7 @@ async fn packages_registry_handler(Query(query): Query<SearchQuery>) -> impl Int
 async fn packages_environments_handler() -> impl IntoResponse {
     use std::collections::HashSet;
     use std::fs;
-    use std::path::PathBuf;
+    
 
     let result = tokio::task::spawn_blocking(move || {
         let mut global_packages_set: HashSet<String> = HashSet::new();
@@ -771,230 +774,149 @@ async fn packages_environments_handler() -> impl IntoResponse {
             }
         }
 
-        // 2. Local Environments: Find all directories with .horus/ subdirectory
-        // Search in current dir, home dir, and common project locations
-        let mut search_paths = vec![PathBuf::from("."), dirs::home_dir().unwrap_or_default()];
+        // 2. Local Environments: Use cached workspace discovery (5min TTL)
+        let current_workspace = crate::workspace::find_workspace_root();
 
-        // Add ~/horus if it exists (common HORUS development location)
-        if let Some(home) = dirs::home_dir() {
-            let horus_dev = home.join("horus");
-            if horus_dev.exists() {
-                search_paths.push(horus_dev);
-            }
-        }
+        // Use cache to avoid repeated scanning (16ms → <1ms after first load)
+        let discovered_workspaces = workspace_cache()
+            .write()
+            .unwrap()
+            .get_or_refresh(&current_workspace);
 
-        // Recursively search for .horus/ directories
-        fn find_horus_projects(
-            base_path: &PathBuf,
-            depth: usize,
-            max_depth: usize,
-        ) -> Vec<PathBuf> {
-            let mut projects = Vec::new();
+        for ws in discovered_workspaces {
+            let env_path = ws.path;
+            let env_name = ws.name;
+            let horus_dir = env_path.join(".horus");
 
-            if depth > max_depth {
-                return projects;
-            }
-
-            if let Ok(entries) = fs::read_dir(base_path) {
-                for entry in entries.flatten() {
-                    let path = entry.path();
-
-                    // Skip hidden directories (except .horus itself)
-                    if let Some(name) = path.file_name() {
-                        let name_str = name.to_string_lossy();
-                        if name_str.starts_with('.') && name_str != ".horus" {
-                            continue;
-                        }
-                    }
-
-                    // Skip target, node_modules, and other build directories
-                    if let Some(name) = path.file_name() {
-                        let name_str = name.to_string_lossy();
-                        if name_str == "target" || name_str == "node_modules" || name_str == ".git"
-                        {
-                            continue;
-                        }
-                    }
-
-                    if path.is_dir() {
-                        // Check if this directory has .horus/
-                        let horus_dir = path.join(".horus");
-                        if horus_dir.exists() && horus_dir.is_dir() {
-                            projects.push(path);
-                        } else {
-                            // Recursively search subdirectories
-                            projects.extend(find_horus_projects(&path, depth + 1, max_depth));
-                        }
-                    }
-                }
-            }
-
-            projects
-        }
-
-        // Track canonical paths to avoid duplicates from symlinks
-        let mut seen_canonical_paths: HashSet<PathBuf> = HashSet::new();
-
-        for base_path in search_paths {
-            if !base_path.exists() {
-                continue;
-            }
-
-            // Find all HORUS projects recursively (max depth 5 to avoid excessive scanning)
-            let horus_projects = find_horus_projects(&base_path, 0, 5);
-
-            for env_path in horus_projects {
-                let horus_dir = env_path.join(".horus");
-                if horus_dir.exists() && horus_dir.is_dir() {
-                    // Canonicalize path to resolve symlinks
-                    let canonical_path = match env_path.canonicalize() {
-                        Ok(p) => p,
-                        Err(_) => env_path.clone(), // Fall back to original if canonicalize fails
-                    };
-
-                    // Skip if we've already seen this canonical path
-                    if seen_canonical_paths.contains(&canonical_path) {
-                        continue;
-                    }
-                    seen_canonical_paths.insert(canonical_path);
-
-                    let env_name = env_path
-                        .file_name()
-                        .unwrap_or_default()
-                        .to_string_lossy()
-                        .to_string();
-
-                    // Try to read dependencies from horus.yaml
-                    let horus_yaml_path = env_path.join("horus.yaml");
-                    let yaml_dependencies = if horus_yaml_path.exists() {
-                        fs::read_to_string(&horus_yaml_path)
-                            .ok()
-                            .and_then(|content| {
-                                serde_yaml::from_str::<serde_yaml::Value>(&content).ok()
+            // Try to read dependencies from horus.yaml
+            let horus_yaml_path = env_path.join("horus.yaml");
+            let yaml_dependencies = if horus_yaml_path.exists() {
+                fs::read_to_string(&horus_yaml_path)
+                    .ok()
+                    .and_then(|content| {
+                        serde_yaml::from_str::<serde_yaml::Value>(&content).ok()
+                    })
+                    .and_then(|yaml| {
+                        yaml.get("dependencies")
+                            .and_then(|deps| deps.as_sequence())
+                            .map(|seq| {
+                                seq.iter()
+                                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                    .collect::<Vec<String>>()
                             })
-                            .and_then(|yaml| {
-                                yaml.get("dependencies")
-                                    .and_then(|deps| deps.as_sequence())
-                                    .map(|seq| {
-                                        seq.iter()
-                                            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-                                            .collect::<Vec<String>>()
+                    })
+                    .unwrap_or_default()
+            } else {
+                Vec::new()
+            };
+
+            // Get packages inside this environment (deduplicated)
+            let packages_dir = horus_dir.join("packages");
+            let mut packages = Vec::new();
+            let mut local_packages_set: HashSet<String> = HashSet::new();
+
+            if packages_dir.exists() {
+                if let Ok(pkg_entries) = fs::read_dir(&packages_dir) {
+                    for pkg_entry in pkg_entries.flatten() {
+                        if pkg_entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                            let pkg_name =
+                                pkg_entry.file_name().to_string_lossy().to_string();
+
+                            // Skip if already added
+                            if local_packages_set.contains(&pkg_name) {
+                                continue;
+                            }
+
+                            // Try to get version from metadata.json
+                            let metadata_path = pkg_entry.path().join("metadata.json");
+                            let version = if metadata_path.exists() {
+                                fs::read_to_string(&metadata_path)
+                                    .ok()
+                                    .and_then(|s| {
+                                        serde_json::from_str::<serde_json::Value>(&s).ok()
                                     })
-                            })
-                            .unwrap_or_default()
-                    } else {
-                        Vec::new()
-                    };
+                                    .and_then(|j| {
+                                        j.get("version")
+                                            .and_then(|v| v.as_str())
+                                            .map(|s| s.to_string())
+                                    })
+                                    .unwrap_or_else(|| "unknown".to_string())
+                            } else {
+                                "unknown".to_string()
+                            };
 
-                    // Get packages inside this environment (deduplicated)
-                    let packages_dir = horus_dir.join("packages");
-                    let mut packages = Vec::new();
-                    let mut local_packages_set: HashSet<String> = HashSet::new();
-
-                    if packages_dir.exists() {
-                        if let Ok(pkg_entries) = fs::read_dir(&packages_dir) {
-                            for pkg_entry in pkg_entries.flatten() {
-                                if pkg_entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                                    let pkg_name =
-                                        pkg_entry.file_name().to_string_lossy().to_string();
-
-                                    // Skip if already added
-                                    if local_packages_set.contains(&pkg_name) {
-                                        continue;
-                                    }
-
-                                    // Try to get version from metadata.json
-                                    let metadata_path = pkg_entry.path().join("metadata.json");
-                                    let version = if metadata_path.exists() {
-                                        fs::read_to_string(&metadata_path)
-                                            .ok()
-                                            .and_then(|s| {
-                                                serde_json::from_str::<serde_json::Value>(&s).ok()
-                                            })
-                                            .and_then(|j| {
-                                                j.get("version")
-                                                    .and_then(|v| v.as_str())
-                                                    .map(|s| s.to_string())
-                                            })
-                                            .unwrap_or_else(|| "unknown".to_string())
-                                    } else {
-                                        "unknown".to_string()
-                                    };
-
-                                    local_packages_set.insert(pkg_name.clone());
-                                    packages.push(serde_json::json!({
-                                        "name": pkg_name,
-                                        "version": version,
-                                    }));
-                                }
-                            }
+                            local_packages_set.insert(pkg_name.clone());
+                            packages.push(serde_json::json!({
+                                "name": pkg_name,
+                                "version": version,
+                            }));
                         }
                     }
-
-                    // workspace_dependencies: Only list dependencies declared in horus.yaml
-                    // that are not already in the packages list (to avoid duplication)
-                    let workspace_dependencies: Vec<serde_json::Value> = yaml_dependencies
-                        .iter()
-                        .filter_map(|dep_str| {
-                            let dep_name = dep_str.split('@').next().unwrap_or(dep_str);
-
-                            // Skip if already in packages list
-                            if local_packages_set.contains(dep_name) {
-                                return None;
-                            }
-
-                            // dependency format: "package_name@version" or just "package_name"
-                            let dep_path = packages_dir.join(dep_str);
-                            if dep_path.exists() || dep_path.read_link().is_ok() {
-                                // Try to read metadata.json (follow symlinks)
-                                let mut metadata_path = dep_path.join("metadata.json");
-
-                                // Follow symlink if necessary
-                                if let Ok(real_path) = std::fs::canonicalize(&dep_path) {
-                                    metadata_path = real_path.join("metadata.json");
-                                }
-
-                                let version = if metadata_path.exists() {
-                                    fs::read_to_string(&metadata_path)
-                                        .ok()
-                                        .and_then(|s| {
-                                            serde_json::from_str::<serde_json::Value>(&s).ok()
-                                        })
-                                        .and_then(|j| {
-                                            j.get("version")
-                                                .and_then(|v| v.as_str())
-                                                .map(|s| s.to_string())
-                                        })
-                                        .unwrap_or_else(|| {
-                                            dep_str
-                                                .split('@')
-                                                .nth(1)
-                                                .unwrap_or("unknown")
-                                                .to_string()
-                                        })
-                                } else {
-                                    dep_str.split('@').nth(1).unwrap_or("unknown").to_string()
-                                };
-
-                                Some(serde_json::json!({
-                                    "name": dep_name,
-                                    "version": version,
-                                }))
-                            } else {
-                                None
-                            }
-                        })
-                        .collect();
-
-                    local_envs.push(serde_json::json!({
-                        "name": env_name,
-                        "path": env_path.to_string_lossy(),
-                        "packages": packages,
-                        "package_count": packages.len(),
-                        "dependencies": workspace_dependencies,
-                    }));
                 }
             }
+
+            // workspace_dependencies: Only list dependencies declared in horus.yaml
+            // that are not already in the packages list (to avoid duplication)
+            let workspace_dependencies: Vec<serde_json::Value> = yaml_dependencies
+                .iter()
+                .filter_map(|dep_str| {
+                    let dep_name = dep_str.split('@').next().unwrap_or(dep_str);
+
+                    // Skip if already in packages list
+                    if local_packages_set.contains(dep_name) {
+                        return None;
+                    }
+
+                    // dependency format: "package_name@version" or just "package_name"
+                    let dep_path = packages_dir.join(dep_str);
+                    if dep_path.exists() || dep_path.read_link().is_ok() {
+                        // Try to read metadata.json (follow symlinks)
+                        let mut metadata_path = dep_path.join("metadata.json");
+
+                        // Follow symlink if necessary
+                        if let Ok(real_path) = std::fs::canonicalize(&dep_path) {
+                            metadata_path = real_path.join("metadata.json");
+                        }
+
+                        let version = if metadata_path.exists() {
+                            fs::read_to_string(&metadata_path)
+                                .ok()
+                                .and_then(|s| {
+                                    serde_json::from_str::<serde_json::Value>(&s).ok()
+                                })
+                                .and_then(|j| {
+                                    j.get("version")
+                                        .and_then(|v| v.as_str())
+                                        .map(|s| s.to_string())
+                                })
+                                .unwrap_or_else(|| {
+                                    dep_str
+                                        .split('@')
+                                        .nth(1)
+                                        .unwrap_or("unknown")
+                                        .to_string()
+                                })
+                        } else {
+                            dep_str.split('@').nth(1).unwrap_or("unknown").to_string()
+                        };
+
+                        Some(serde_json::json!({
+                            "name": dep_name,
+                            "version": version,
+                        }))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            local_envs.push(serde_json::json!({
+                "name": env_name,
+                "path": env_path.to_string_lossy(),
+                "packages": packages,
+                "package_count": packages.len(),
+                "dependencies": workspace_dependencies,
+            }));
         }
 
         serde_json::json!({
@@ -1256,7 +1178,7 @@ async fn packages_publish_handler() -> impl IntoResponse {
 // === Parameter Management Handlers ===
 
 /// List all parameters
-async fn params_list_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+pub async fn params_list_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let params_map = state.params.get_all();
 
     let params_list: Vec<_> = params_map
@@ -1280,7 +1202,8 @@ async fn params_list_handler(State(state): State<Arc<AppState>>) -> impl IntoRes
             serde_json::json!({
                 "key": key,
                 "value": value,
-                "type": type_str
+                "type": type_str,
+                "version": state.params.get_version(key)
             })
         })
         .collect();
@@ -1297,7 +1220,7 @@ async fn params_list_handler(State(state): State<Arc<AppState>>) -> impl IntoRes
 }
 
 /// Get a specific parameter
-async fn params_get_handler(
+pub async fn params_get_handler(
     State(state): State<Arc<AppState>>,
     Path(key): Path<String>,
 ) -> impl IntoResponse {
@@ -1307,7 +1230,8 @@ async fn params_get_handler(
             serde_json::json!({
                 "success": true,
                 "key": key,
-                "value": value
+                "value": value,
+                "version": state.params.get_version(&key)
             })
             .to_string(),
         ),
@@ -1323,20 +1247,30 @@ async fn params_get_handler(
 }
 
 #[derive(serde::Deserialize)]
-struct SetParamRequest {
-    value: serde_json::Value,
+pub struct SetParamRequest {
+    pub value: serde_json::Value,
+    pub version: Option<u64>,  // Optional version for optimistic locking
 }
 
 /// Set a parameter
-async fn params_set_handler(
+pub async fn params_set_handler(
     State(state): State<Arc<AppState>>,
     Path(key): Path<String>,
     Json(req): Json<SetParamRequest>,
 ) -> impl IntoResponse {
-    match state.params.set(&key, req.value.clone()) {
+    // Use version-aware set if version is provided (optimistic locking)
+    let result = if let Some(expected_version) = req.version {
+        state.params.set_with_version(&key, req.value.clone(), expected_version)
+    } else {
+        state.params.set(&key, req.value.clone())
+    };
+
+    match result {
         Ok(_) => {
             // Save to disk
             let _ = state.params.save_to_disk();
+
+            let new_version = state.params.get_version(&key);
 
             (
                 StatusCode::OK,
@@ -1344,24 +1278,34 @@ async fn params_set_handler(
                     "success": true,
                     "message": format!("Parameter '{}' updated", key),
                     "key": key,
-                    "value": req.value
+                    "value": req.value,
+                    "version": new_version
                 })
                 .to_string(),
             )
         }
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            serde_json::json!({
-                "success": false,
-                "error": e.to_string()
-            })
-            .to_string(),
-        ),
+        Err(e) => {
+            // Check if it's a version mismatch error
+            let status_code = if e.to_string().contains("Version mismatch") {
+                StatusCode::CONFLICT  // 409 Conflict for version mismatch
+            } else {
+                StatusCode::INTERNAL_SERVER_ERROR
+            };
+
+            (
+                status_code,
+                serde_json::json!({
+                    "success": false,
+                    "error": e.to_string()
+                })
+                .to_string(),
+            )
+        }
     }
 }
 
 /// Delete a parameter
-async fn params_delete_handler(
+pub async fn params_delete_handler(
     State(state): State<Arc<AppState>>,
     Path(key): Path<String>,
 ) -> impl IntoResponse {
@@ -1393,7 +1337,7 @@ async fn params_delete_handler(
 }
 
 /// Export all parameters
-async fn params_export_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+pub async fn params_export_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     let params = state.params.get_all();
 
     match serde_yaml::to_string(&params) {
@@ -1418,13 +1362,13 @@ async fn params_export_handler(State(state): State<Arc<AppState>>) -> impl IntoR
 }
 
 #[derive(serde::Deserialize)]
-struct ImportParamsRequest {
-    data: String,
-    format: String, // "yaml" or "json"
+pub struct ImportParamsRequest {
+    pub data: String,
+    pub format: String, // "yaml" or "json"
 }
 
 /// Import parameters
-async fn params_import_handler(
+pub async fn params_import_handler(
     State(state): State<Arc<AppState>>,
     Json(req): Json<ImportParamsRequest>,
 ) -> impl IntoResponse {
@@ -2256,6 +2200,31 @@ fn generate_html(port: u16) -> String {
             padding-bottom: 0.5rem;
         }}
 
+        /* Scrollable lists for nodes and topics */
+        #nodes-list, #topics-list {{
+            max-height: 600px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }}
+
+        #nodes-list::-webkit-scrollbar, #topics-list::-webkit-scrollbar {{
+            width: 8px;
+        }}
+
+        #nodes-list::-webkit-scrollbar-track, #topics-list::-webkit-scrollbar-track {{
+            background: var(--dark-bg);
+            border-radius: 4px;
+        }}
+
+        #nodes-list::-webkit-scrollbar-thumb, #topics-list::-webkit-scrollbar-thumb {{
+            background: var(--accent);
+            border-radius: 4px;
+        }}
+
+        #nodes-list::-webkit-scrollbar-thumb:hover, #topics-list::-webkit-scrollbar-thumb:hover {{
+            background: #00B8E6;
+        }}
+
         .placeholder {{
             color: var(--text-secondary);
             font-style: italic;
@@ -3048,8 +3017,11 @@ fn generate_html(port: u16) -> String {
     </style>
 </head>
 <body>
-    <button class="theme-toggle" onclick="toggleTheme()" id="theme-toggle">
-        🌙
+    <button class="theme-toggle" onclick="toggleTheme()" id="theme-toggle" title="Toggle theme">
+        <svg id="theme-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <!-- Moon icon (default for dark theme) -->
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
     </button>
 
     <button class="help-button" onclick="toggleHelp()" id="help-button" title="Help (Press ?)">
@@ -3381,6 +3353,8 @@ fn generate_html(port: u16) -> String {
                             <option value="number">Number</option>
                             <option value="string">String</option>
                             <option value="boolean">Boolean</option>
+                            <option value="array">Array (JSON)</option>
+                            <option value="object">Object (JSON)</option>
                         </select>
                     </div>
                     <div style="margin-bottom: 1.5rem;">
@@ -4418,7 +4392,7 @@ fn generate_html(port: u16) -> String {
             }};
 
             ws.onclose = () => {{
-                console.log('🔌 WebSocket disconnected, falling back to polling');
+                console.log('[WS] WebSocket disconnected, falling back to polling');
                 wsConnected = false;
 
                 // Fallback to polling (1 second interval to reduce load)
@@ -4487,10 +4461,18 @@ fn generate_html(port: u16) -> String {
             const html = document.documentElement;
             const currentTheme = html.getAttribute('data-theme');
             const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-            const themeButton = document.getElementById('theme-toggle');
+            const themeIcon = document.getElementById('theme-icon');
 
             html.setAttribute('data-theme', newTheme);
-            themeButton.textContent = newTheme === 'light' ? '☀️' : '🌙';
+
+            // Update icon: Moon for dark theme, Sun for light theme
+            if (newTheme === 'light') {{
+                // Sun icon
+                themeIcon.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
+            }} else {{
+                // Moon icon
+                themeIcon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
+            }}
 
             // Save preference to localStorage
             localStorage.setItem('horus-theme', newTheme);
@@ -4500,10 +4482,18 @@ fn generate_html(port: u16) -> String {
         function loadTheme() {{
             const savedTheme = localStorage.getItem('horus-theme') || 'dark';
             const html = document.documentElement;
-            const themeButton = document.getElementById('theme-toggle');
+            const themeIcon = document.getElementById('theme-icon');
 
             html.setAttribute('data-theme', savedTheme);
-            themeButton.textContent = savedTheme === 'light' ? '☀️' : '🌙';
+
+            // Set correct icon based on saved theme
+            if (savedTheme === 'light') {{
+                // Sun icon
+                themeIcon.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
+            }} else {{
+                // Moon icon
+                themeIcon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
+            }}
         }}
 
         // Load theme on page load
@@ -5128,6 +5118,12 @@ fn generate_html(port: u16) -> String {
             }} else if (type === 'number') {{
                 valueInput.value = '0';
                 valueInput.placeholder = 'Enter number';
+            }} else if (type === 'array') {{
+                valueInput.value = '[]';
+                valueInput.placeholder = '[1, 2, 3] or ["a", "b"]';
+            }} else if (type === 'object') {{
+                valueInput.value = '{{}}';
+                valueInput.placeholder = '{{"key": "value", "num": 42}}';
             }} else {{
                 valueInput.value = '';
                 valueInput.placeholder = 'Enter text';
@@ -5151,11 +5147,21 @@ fn generate_html(port: u16) -> String {
                     if (isNaN(value)) throw new Error('Invalid number');
                 }} else if (type === 'boolean') {{
                     value = valueStr.toLowerCase() === 'true';
+                }} else if (type === 'array' || type === 'object') {{
+                    // Parse JSON for arrays and objects
+                    value = JSON.parse(valueStr);
+                    // Validate type matches
+                    if (type === 'array' && !Array.isArray(value)) {{
+                        throw new Error('Value must be a valid JSON array');
+                    }}
+                    if (type === 'object' && (Array.isArray(value) || typeof value !== 'object')) {{
+                        throw new Error('Value must be a valid JSON object');
+                    }}
                 }} else {{
                     value = valueStr;
                 }}
             }} catch (e) {{
-                alert('Invalid value for type ' + type);
+                alert('Invalid value for type ' + type + ': ' + e.message);
                 return;
             }}
 
@@ -5346,7 +5352,7 @@ fn generate_html(port: u16) -> String {
     <div id="log-panel" class="log-panel">
         <div class="log-panel-header">
             <div id="log-panel-title" class="log-panel-title">Logs</div>
-            <button class="log-panel-close" onclick="closeLogPanel()">✕ Close</button>
+            <button class="log-panel-close" onclick="closeLogPanel()">[X] Close</button>
         </div>
         <div id="log-panel-content" class="log-panel-content">
             <!-- Logs will be loaded here -->

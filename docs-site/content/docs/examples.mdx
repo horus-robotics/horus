@@ -179,19 +179,19 @@ Each example includes:
 
 ### Reference Documentation
 - [Node Macro](/node-macro) - Simplify node creation
-- [Using Prebuilt Nodes](/using-prebuilt-nodes) - Leverage standard library
-- [Testing](/testing) - Test your nodes
-- [API Reference](/api) - Complete API documentation
+- [Using Prebuilt Nodes](/package-management/using-prebuilt-nodes) - Leverage standard library
+- [Testing](/development/testing) - Test your nodes
+- [API Reference](/api/api) - Complete API documentation
 
 ### Debugging & Optimization
 - [Troubleshooting Runtime Errors](/troubleshooting-runtime) - Fix common issues
-- [Dashboard](/dashboard) - Monitor your application
-- [Performance](/performance) - Optimize for speed
+- [Dashboard](/development/dashboard) - Monitor your application
+- [Performance](/performance/performance) - Optimize for speed
 
 ### Multi-Language Support
-- [Python Bindings](/python-bindings) - Complete Python API
+- [Python Bindings](/multi-language/python-bindings) - Complete Python API
 - [C Bindings](/c-bindings) - C language integration
-- [Multi-Language Guide](/multi-language) - Using multiple languages
+- [Multi-Language Guide](/multi-language/multi-language) - Using multiple languages
 
 ---
 
@@ -213,7 +213,7 @@ Pipeline: `Sensor  Filter  Controller  Actuator`
 
 Aggregator: `Sensor1, Sensor2, Sensor3  Fusion  Output`
 - Multiple inputs, single output
-- Use `if let Some(msg) = hub.recv(ctx)` for bounded execution (one message per tick)
+- Use `if let Some(msg) = hub.recv(&mut ctx)` for bounded execution (one message per tick)
 
 Safety Override: `Critical Safety (priority 0)  Control (priority 1)`
 - Safety checks always run first

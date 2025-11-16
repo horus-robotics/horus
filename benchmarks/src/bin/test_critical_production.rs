@@ -1,6 +1,6 @@
-/// Critical Production Test Suite for Single-Slot Link Implementation
+/// Critical Test Suite for Single-Slot Link Implementation
 ///
-/// This comprehensive test suite validates production readiness with three critical areas:
+/// This comprehensive test suite validates three critical areas:
 /// 1. Big Data Types - Large messages (64B to 16KB) for camera/LiDAR data
 /// 2. Fast Storing - High-throughput scenarios (1000Hz sustained, burst tests)
 /// 3. Fast Tracking - Real-time telemetry and monitoring with low overhead
@@ -427,7 +427,7 @@ fn main() {
 }
 
 fn print_usage() {
-    eprintln!("Critical Production Test Suite for Single-Slot Link");
+    eprintln!("Critical Test Suite for Single-Slot Link");
     eprintln!("\nUsage: test_critical_production <test_name>");
     eprintln!("\n=== BIG DATA TYPES Tests ===");
     eprintln!("  large_messages_64b    - Test 64-byte messages");
@@ -477,7 +477,7 @@ fn test_large_messages_64b() -> TestResult {
     let consumer_thread = thread::spawn(move || {
         let mut last_seq = 0u64;
         while consumer_running.load(Ordering::Relaxed) {
-            if let Some(msg) = consumer.recv(None) {
+            if let Some(msg) = consumer.recv(&mut None) {
                 let latency = Instant::now().elapsed().as_nanos() as u64;
                 let mut telem = consumer_telemetry.lock().unwrap();
                 telem.record_latency(latency);
@@ -498,7 +498,7 @@ fn test_large_messages_64b() -> TestResult {
     let start = Instant::now();
     for i in 0..10000 {
         let msg = SmallMessage::new(i);
-        if producer.send(msg, None).is_err() {
+        if producer.send(msg, &mut None).is_err() {
             return TestResult::failure("Send failed");
         }
         thread::sleep(Duration::from_micros(100));
@@ -571,7 +571,7 @@ fn test_large_messages_256b() -> TestResult {
     let consumer_thread = thread::spawn(move || {
         let mut last_seq = 0u64;
         while consumer_running.load(Ordering::Relaxed) {
-            if let Some(msg) = consumer.recv(None) {
+            if let Some(msg) = consumer.recv(&mut None) {
                 let latency = Instant::now().elapsed().as_nanos() as u64;
                 let mut telem = consumer_telemetry.lock().unwrap();
                 telem.record_latency(latency);
@@ -592,7 +592,7 @@ fn test_large_messages_256b() -> TestResult {
     let start = Instant::now();
     for i in 0..5000 {
         let msg = CameraMetadata::new(i);
-        if producer.send(msg, None).is_err() {
+        if producer.send(msg, &mut None).is_err() {
             return TestResult::failure("Send failed");
         }
         thread::sleep(Duration::from_micros(167)); // ~60Hz
@@ -662,7 +662,7 @@ fn test_large_messages_1kb() -> TestResult {
     let consumer_thread = thread::spawn(move || {
         let mut last_seq = 0u64;
         while consumer_running.load(Ordering::Relaxed) {
-            if let Some(msg) = consumer.recv(None) {
+            if let Some(msg) = consumer.recv(&mut None) {
                 let latency = Instant::now().elapsed().as_nanos() as u64;
                 let mut telem = consumer_telemetry.lock().unwrap();
                 telem.record_latency(latency);
@@ -683,7 +683,7 @@ fn test_large_messages_1kb() -> TestResult {
     let start = Instant::now();
     for i in 0..3000 {
         let msg = LargeState::new(i);
-        if producer.send(msg, None).is_err() {
+        if producer.send(msg, &mut None).is_err() {
             return TestResult::failure("Send failed");
         }
         thread::sleep(Duration::from_micros(333)); // ~100Hz
@@ -753,7 +753,7 @@ fn test_large_messages_4kb() -> TestResult {
     let consumer_thread = thread::spawn(move || {
         let mut last_seq = 0u64;
         while consumer_running.load(Ordering::Relaxed) {
-            if let Some(msg) = consumer.recv(None) {
+            if let Some(msg) = consumer.recv(&mut None) {
                 let latency = Instant::now().elapsed().as_nanos() as u64;
                 let mut telem = consumer_telemetry.lock().unwrap();
                 telem.record_latency(latency);
@@ -774,7 +774,7 @@ fn test_large_messages_4kb() -> TestResult {
     let start = Instant::now();
     for i in 0..1000 {
         let msg = ImagePatch::new(i);
-        if producer.send(msg, None).is_err() {
+        if producer.send(msg, &mut None).is_err() {
             return TestResult::failure("Send failed");
         }
         thread::sleep(Duration::from_micros(1000)); // 50Hz
@@ -844,7 +844,7 @@ fn test_large_messages_16kb() -> TestResult {
     let consumer_thread = thread::spawn(move || {
         let mut last_seq = 0u64;
         while consumer_running.load(Ordering::Relaxed) {
-            if let Some(msg) = consumer.recv(None) {
+            if let Some(msg) = consumer.recv(&mut None) {
                 let latency = Instant::now().elapsed().as_nanos() as u64;
                 let mut telem = consumer_telemetry.lock().unwrap();
                 telem.record_latency(latency);
@@ -865,7 +865,7 @@ fn test_large_messages_16kb() -> TestResult {
     let start = Instant::now();
     for i in 0..500 {
         let msg = PointCloud::new(i);
-        if producer.send(msg, None).is_err() {
+        if producer.send(msg, &mut None).is_err() {
             return TestResult::failure("Send failed");
         }
         thread::sleep(Duration::from_micros(2000)); // 10Hz
@@ -959,7 +959,7 @@ fn test_mixed_size_workload() -> TestResult {
     let small_cnt = small_count.clone();
     let small_thread = thread::spawn(move || {
         while small_running.load(Ordering::Relaxed) {
-            if consumer_small.recv(None).is_some() {
+            if consumer_small.recv(&mut None).is_some() {
                 small_cnt.fetch_add(1, Ordering::Relaxed);
             }
             thread::sleep(Duration::from_micros(10));
@@ -970,7 +970,7 @@ fn test_mixed_size_workload() -> TestResult {
     let medium_cnt = medium_count.clone();
     let medium_thread = thread::spawn(move || {
         while medium_running.load(Ordering::Relaxed) {
-            if consumer_medium.recv(None).is_some() {
+            if consumer_medium.recv(&mut None).is_some() {
                 medium_cnt.fetch_add(1, Ordering::Relaxed);
             }
             thread::sleep(Duration::from_micros(20));
@@ -981,7 +981,7 @@ fn test_mixed_size_workload() -> TestResult {
     let large_cnt = large_count.clone();
     let large_thread = thread::spawn(move || {
         while large_running.load(Ordering::Relaxed) {
-            if consumer_large.recv(None).is_some() {
+            if consumer_large.recv(&mut None).is_some() {
                 large_cnt.fetch_add(1, Ordering::Relaxed);
             }
             thread::sleep(Duration::from_micros(50));
@@ -999,19 +999,19 @@ fn test_mixed_size_workload() -> TestResult {
 
         // Small: 200Hz
         if elapsed_us % 5000 < 100 {
-            let _ = producer_small.send(SmallMessage::new(small_sent), None);
+            let _ = producer_small.send(SmallMessage::new(small_sent), &mut None);
             small_sent += 1;
         }
 
         // Medium: 60Hz
         if elapsed_us % 16667 < 100 {
-            let _ = producer_medium.send(CameraMetadata::new(medium_sent), None);
+            let _ = producer_medium.send(CameraMetadata::new(medium_sent), &mut None);
             medium_sent += 1;
         }
 
         // Large: 20Hz
         if elapsed_us % 50000 < 100 {
-            let _ = producer_large.send(ImagePatch::new(large_sent), None);
+            let _ = producer_large.send(ImagePatch::new(large_sent), &mut None);
             large_sent += 1;
         }
 
@@ -1101,7 +1101,7 @@ fn test_sustained_1khz() -> TestResult {
     let consumer_thread = thread::spawn(move || {
         while consumer_running.load(Ordering::Relaxed) {
             let read_start = Instant::now();
-            if let Some(msg) = consumer.recv(None) {
+            if let Some(msg) = consumer.recv(&mut None) {
                 let latency = read_start.elapsed().as_nanos() as u64;
                 consumer_received.fetch_add(1, Ordering::Relaxed);
 
@@ -1127,7 +1127,7 @@ fn test_sustained_1khz() -> TestResult {
         let cycle_start = Instant::now();
 
         let msg = SmallMessage::new(sent);
-        if producer.send(msg, None).is_err() {
+        if producer.send(msg, &mut None).is_err() {
             return TestResult::failure("Send failed");
         }
         sent += 1;
@@ -1220,7 +1220,7 @@ fn test_burst_throughput() -> TestResult {
     let consumer_received = received.clone();
     let consumer_thread = thread::spawn(move || {
         while consumer_running.load(Ordering::Relaxed) {
-            if consumer.recv(None).is_some() {
+            if consumer.recv(&mut None).is_some() {
                 consumer_received.fetch_add(1, Ordering::Relaxed);
             }
             // Minimal sleep for maximum throughput
@@ -1233,7 +1233,7 @@ fn test_burst_throughput() -> TestResult {
 
     while start.elapsed() < Duration::from_secs(1) {
         let msg = SmallMessage::new(sent);
-        if producer.send(msg, None).is_ok() {
+        if producer.send(msg, &mut None).is_ok() {
             sent += 1;
         }
     }
@@ -1333,7 +1333,7 @@ fn test_multi_producer_stress() -> TestResult {
     let consumer_thread = thread::spawn(move || {
         while consumer_running.load(Ordering::Relaxed) {
             for (i, consumer) in consumers.iter().enumerate() {
-                if let Some(msg) = consumer.recv(None) {
+                if let Some(msg) = consumer.recv(&mut None) {
                     let mut counts = consumer_received.lock().unwrap();
                     counts[i] += 1;
 
@@ -1362,7 +1362,7 @@ fn test_multi_producer_stress() -> TestResult {
             {
                 let seq = (producer_id as u64) * 1000000 + sent;
                 let msg = SmallMessage::new(seq);
-                if producer.send(msg, None).is_ok() {
+                if producer.send(msg, &mut None).is_ok() {
                     sent += 1;
                 }
                 thread::sleep(Duration::from_micros(100)); // 10kHz per producer
@@ -1447,7 +1447,7 @@ fn test_telemetry_overhead() -> TestResult {
     let start = Instant::now();
     for i in 0..10000 {
         let msg = SmallMessage::new(i);
-        let _ = producer.send(msg, None);
+        let _ = producer.send(msg, &mut None);
     }
     let baseline_duration = start.elapsed();
     let baseline_ns_per_msg = baseline_duration.as_nanos() / 10000;
@@ -1467,7 +1467,7 @@ fn test_telemetry_overhead() -> TestResult {
     let consumer_thread = thread::spawn(move || {
         while consumer_running.load(Ordering::Relaxed) {
             let read_start = Instant::now();
-            if let Some(msg) = consumer.recv(None) {
+            if let Some(msg) = consumer.recv(&mut None) {
                 let latency = read_start.elapsed().as_nanos() as u64;
                 let mut telem = consumer_telemetry.lock().unwrap();
                 telem.record_latency(latency);
@@ -1483,7 +1483,7 @@ fn test_telemetry_overhead() -> TestResult {
     for i in 0..10000 {
         let send_start = Instant::now();
         let msg = SmallMessage::new(i);
-        let _ = producer.send(msg, None);
+        let _ = producer.send(msg, &mut None);
         let send_latency = send_start.elapsed().as_nanos() as u64;
 
         // Track send latency
@@ -1571,7 +1571,7 @@ fn test_multi_link_monitoring() -> TestResult {
         let thread = thread::spawn(move || {
             while running_clone.load(Ordering::Relaxed) {
                 let read_start = Instant::now();
-                if let Some(msg) = consumer.recv(None) {
+                if let Some(msg) = consumer.recv(&mut None) {
                     let latency = read_start.elapsed().as_nanos() as u64;
                     let mut telem = telemetry.lock().unwrap();
                     telem.record_latency(latency);
@@ -1593,7 +1593,7 @@ fn test_multi_link_monitoring() -> TestResult {
     while start.elapsed() < duration {
         for (i, producer) in producers.iter().enumerate() {
             let msg = SmallMessage::new(sent_counts[i]);
-            if producer.send(msg, None).is_ok() {
+            if producer.send(msg, &mut None).is_ok() {
                 sent_counts[i] += 1;
             }
         }
@@ -1692,7 +1692,7 @@ fn run_fast_tracking_suite() -> TestResult {
 }
 
 fn run_all_tests() -> TestResult {
-    println!("Running COMPLETE CRITICAL PRODUCTION TEST SUITE...\n");
+    println!("Running COMPLETE CRITICAL TEST SUITE...\n");
 
     let suites: Vec<(&str, fn() -> TestResult)> = vec![
         ("BIG DATA TYPES", run_big_data_suite),
@@ -1729,7 +1729,7 @@ fn run_all_tests() -> TestResult {
     if failed == 0 {
         TestResult::success(format!(
             "ALL {} TEST SUITES PASSED!\n\
-             System is production-ready for:\n\
+             System validated for:\n\
              - Large data transfers (up to 16KB)\n\
              - High-frequency operation (1kHz+)\n\
              - Real-time telemetry and monitoring",
@@ -1738,7 +1738,7 @@ fn run_all_tests() -> TestResult {
     } else {
         TestResult::failure(format!(
             "{} out of {} test suites failed.\n\
-             System needs fixes before production deployment.",
+             System needs fixes before deployment.",
             failed,
             passed + failed
         ))

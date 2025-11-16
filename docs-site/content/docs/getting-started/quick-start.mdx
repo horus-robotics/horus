@@ -72,7 +72,7 @@ impl Node for TemperatureSensor {
         self.temperature += 0.1;
 
         // Send the reading
-        self.publisher.send(self.temperature, ctx).ok();
+        self.publisher.send(self.temperature, &mut ctx).ok();
 
         // Wait 1 second before next reading
         std::thread::sleep(Duration::from_secs(1));
@@ -102,8 +102,10 @@ impl Node for TemperatureMonitor {
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Check for new temperature readings
-        if let Some(temp) = self.subscriber.recv(ctx) {
-            ctx.log_info(&format!("Temperature: {:.1}°C", temp));
+        if let Some(temp) = self.subscriber.recv(&mut ctx) {
+            if let Some(ref mut c) = ctx {
+                c.log_info(&format!("Temperature: {:.1}°C", temp));
+            }
         }
     }
 }
@@ -274,12 +276,14 @@ Try modifying the code:
 ```rust
 impl Node for TemperatureMonitor {
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
-        if let Some(temp) = self.subscriber.recv(ctx) {
-            ctx.log_info(&format!("Temperature: {:.1}°C", temp));
+        if let Some(temp) = self.subscriber.recv(&mut ctx) {
+            if let Some(ref mut c) = ctx {
+                c.log_info(&format!("Temperature: {:.1}°C", temp));
 
-            // Alert if too hot!
-            if temp > 25.0 {
-                ctx.log_warning("Temperature too high!");
+                // Alert if too hot!
+                if temp > 25.0 {
+                    c.log_warning("Temperature too high!");
+                }
             }
         }
     }
@@ -300,9 +304,11 @@ use std::io::Write;
 
 impl Node for TemperatureMonitor {
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
-        if let Some(temp) = self.subscriber.recv(ctx) {
+        if let Some(temp) = self.subscriber.recv(&mut ctx) {
             // Display
-            ctx.log_info(&format!("Temperature: {:.1}°C", temp));
+            if let Some(ref mut c) = ctx {
+                c.log_info(&format!("Temperature: {:.1}°C", temp));
+            }
 
             // Save to file
             let mut file = OpenOptions::new()
@@ -327,12 +333,12 @@ Now that you've built your first app, learn the details:
 
 **Make Development Easier:**
 - **[node! Macro](/node-macro)** - Eliminate boilerplate code
-- **[CLI Reference](/cli-reference)** - All the `horus` commands
-- **[Dashboard](/dashboard)** - Monitor your application visually
+- **[CLI Reference](/development/cli-reference)** - All the `horus` commands
+- **[Dashboard](/development/dashboard)** - Monitor your application visually
 
 **See More Examples:**
 - **[Examples](/examples)** - Real applications you can run
-- **[Multi-Language](/multi-language)** - Use Python or C instead
+- **[Multi-Language](/multi-language/multi-language)** - Use Python or C instead
 
 ## Common Questions
 
@@ -408,7 +414,7 @@ Your next steps:
 
 1. **[Use the node! macro](/node-macro)** to eliminate boilerplate
 2. **[Run the examples](/examples)** to see real applications
-3. **[Open the dashboard](/dashboard)** to monitor your system
+3. **[Open the dashboard](/development/dashboard)** to monitor your system
 
 **Having issues?** See the **[Troubleshooting Guide](/troubleshooting)** for help with common problems.
 

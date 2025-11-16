@@ -7,6 +7,6 @@ pub mod profiler;
 /// Execution tier classifier for optimal backend selection
 pub mod classifier;
 
-pub use classifier::{ExecutionTier, TierClassifier, TierStats};
-pub use dependency_graph::{DependencyGraph, GraphStats};
-pub use profiler::{NodeStats, ProfilerSummary, RuntimeProfiler};
+pub use classifier::{ExecutionTier, TierClassifier};
+pub use dependency_graph::DependencyGraph;
+pub use profiler::RuntimeProfiler;

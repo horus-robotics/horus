@@ -84,7 +84,7 @@ fn test_hub_multiprocess() -> bool {
         let mut received = 0;
         let start = Instant::now();
         while received < 100 && start.elapsed() < Duration::from_secs(5) {
-            if let Some(msg) = subscriber.recv(None) {
+            if let Some(msg) = subscriber.recv(&mut None) {
                 if msg.stamp_nanos as usize != received {
                     eprintln!(
                         "Message order error: expected {}, got {}",
@@ -129,7 +129,7 @@ fn test_hub_multiprocess() -> bool {
                 angular: 0.5,
                 stamp_nanos: i,
             };
-            if let Err(e) = publisher.send(msg, None) {
+            if let Err(e) = publisher.send(msg, &mut None) {
                 eprintln!("Child: Failed to publish message {}: {:?}", i, e);
                 return false;
             }
@@ -173,7 +173,7 @@ fn test_link_singleprocess() -> bool {
                 angular: 1.0,
                 stamp_nanos: i,
             };
-            if let Err(e) = sender.send(msg, None) {
+            if let Err(e) = sender.send(msg, &mut None) {
                 eprintln!("Failed to send message {}: {:?}", i, e);
                 return false;
             }
@@ -185,7 +185,7 @@ fn test_link_singleprocess() -> bool {
     let mut received = 0;
     let start = Instant::now();
     while received < 1000 && start.elapsed() < Duration::from_secs(5) {
-        if let Some(msg) = receiver.recv(None) {
+        if let Some(msg) = receiver.recv(&mut None) {
             if msg.stamp_nanos as usize != received {
                 eprintln!(
                     "Message order error: expected {}, got {}",
@@ -247,7 +247,7 @@ fn test_cross_process() -> bool {
         let mut received = 0;
         let start = Instant::now();
         while received < 500 && start.elapsed() < Duration::from_secs(5) {
-            if let Some(msg) = receiver.recv(None) {
+            if let Some(msg) = receiver.recv(&mut None) {
                 if msg.stamp_nanos as usize != received {
                     eprintln!(
                         "Message order error: expected {}, got {}",
@@ -289,7 +289,7 @@ fn test_cross_process() -> bool {
                 angular: 0.75,
                 stamp_nanos: i,
             };
-            if let Err(e) = sender.send(msg, None) {
+            if let Err(e) = sender.send(msg, &mut None) {
                 eprintln!("Child: Failed to send message {}: {:?}", i, e);
                 return false;
             }
@@ -343,7 +343,7 @@ fn test_large_messages() -> bool {
             stamp_nanos: i,
         };
 
-        if let Err(e) = publisher.send(msg, None) {
+        if let Err(e) = publisher.send(msg, &mut None) {
             eprintln!("Failed to publish message {}: {:?}", i, e);
             return false;
         }
@@ -357,7 +357,7 @@ fn test_large_messages() -> bool {
     let mut received = 0;
     let start = Instant::now();
     while received < 1000 && start.elapsed() < Duration::from_secs(5) {
-        if let Some(msg) = subscriber.recv(None) {
+        if let Some(msg) = subscriber.recv(&mut None) {
             // Verify message ordering
             if msg.stamp_nanos != received {
                 eprintln!(
@@ -425,7 +425,7 @@ fn test_high_frequency() -> bool {
 
             // Send with retries if buffer full
             let mut retries = 0;
-            while let Err(_) = sender.send(msg, None) {
+            while let Err(_) = sender.send(msg, &mut None) {
                 retries += 1;
                 if retries > 100 {
                     eprintln!("Too many send retries at message {}", i);
@@ -448,7 +448,7 @@ fn test_high_frequency() -> bool {
     let target_messages = 10000;
 
     while received < target_messages && start.elapsed() < Duration::from_secs(3) {
-        if let Some(_msg) = receiver.recv(None) {
+        if let Some(_msg) = receiver.recv(&mut None) {
             received += 1;
         }
     }

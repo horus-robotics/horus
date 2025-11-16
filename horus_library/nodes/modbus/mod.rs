@@ -434,7 +434,7 @@ impl ModbusNode {
         status.tx_errors = 0; // Would track actual errors
         status.rx_errors = 0;
 
-        let _ = self.status_publisher.send(status, None);
+        let _ = self.status_publisher.send(status, &mut None);
     }
 }
 
@@ -470,10 +470,10 @@ impl Node for ModbusNode {
         }
 
         // Handle incoming requests
-        if let Some(request) = self.request_subscriber.recv(None) {
+        if let Some(request) = self.request_subscriber.recv(&mut None) {
             if self.is_connected {
                 if let Some(response) = self.handle_modbus_request(request) {
-                    let _ = self.publisher.send(response, None);
+                    let _ = self.publisher.send(response, &mut None);
                 }
             }
         }

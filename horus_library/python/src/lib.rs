@@ -3,6 +3,16 @@ use numpy::PyArray1;
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyTuple};
 
+mod control_messages;
+mod diagnostics_messages;
+mod input_messages;
+mod io_messages;
+
+use control_messages::*;
+use diagnostics_messages::*;
+use input_messages::*;
+use io_messages::*;
+
 /// Python wrapper for Pose2D
 #[pyclass(module = "horus.library._library", name = "Pose2D")]
 #[derive(Clone)]
@@ -774,6 +784,536 @@ impl PyLaserScan {
     }
 }
 
+/// Python wrapper for IMU sensor data
+#[pyclass(module = "horus.library._library", name = "Imu")]
+#[derive(Clone)]
+pub struct PyImu {
+    inner: sensor::Imu,
+}
+
+#[pymethods]
+impl PyImu {
+    #[new]
+    fn new() -> Self {
+        Self {
+            inner: sensor::Imu::new(),
+        }
+    }
+
+    #[getter]
+    fn orientation(&self) -> [f64; 4] {
+        self.inner.orientation
+    }
+
+    #[setter]
+    fn set_orientation(&mut self, value: [f64; 4]) {
+        self.inner.orientation = value;
+    }
+
+    #[getter]
+    fn angular_velocity(&self) -> [f64; 3] {
+        self.inner.angular_velocity
+    }
+
+    #[setter]
+    fn set_angular_velocity(&mut self, value: [f64; 3]) {
+        self.inner.angular_velocity = value;
+    }
+
+    #[getter]
+    fn linear_acceleration(&self) -> [f64; 3] {
+        self.inner.linear_acceleration
+    }
+
+    #[setter]
+    fn set_linear_acceleration(&mut self, value: [f64; 3]) {
+        self.inner.linear_acceleration = value;
+    }
+
+    #[getter]
+    fn orientation_covariance(&self) -> [f64; 9] {
+        self.inner.orientation_covariance
+    }
+
+    #[setter]
+    fn set_orientation_covariance(&mut self, value: [f64; 9]) {
+        self.inner.orientation_covariance = value;
+    }
+
+    #[getter]
+    fn angular_velocity_covariance(&self) -> [f64; 9] {
+        self.inner.angular_velocity_covariance
+    }
+
+    #[setter]
+    fn set_angular_velocity_covariance(&mut self, value: [f64; 9]) {
+        self.inner.angular_velocity_covariance = value;
+    }
+
+    #[getter]
+    fn linear_acceleration_covariance(&self) -> [f64; 9] {
+        self.inner.linear_acceleration_covariance
+    }
+
+    #[setter]
+    fn set_linear_acceleration_covariance(&mut self, value: [f64; 9]) {
+        self.inner.linear_acceleration_covariance = value;
+    }
+
+    #[getter]
+    fn timestamp(&self) -> u64 {
+        self.inner.timestamp
+    }
+
+    fn set_orientation_from_euler(&mut self, roll: f64, pitch: f64, yaw: f64) {
+        self.inner.set_orientation_from_euler(roll, pitch, yaw);
+    }
+
+    fn has_orientation(&self) -> bool {
+        self.inner.has_orientation()
+    }
+
+    fn is_valid(&self) -> bool {
+        self.inner.is_valid()
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "Imu(angular_vel=[{:.2}, {:.2}, {:.2}], linear_accel=[{:.2}, {:.2}, {:.2}])",
+            self.inner.angular_velocity[0],
+            self.inner.angular_velocity[1],
+            self.inner.angular_velocity[2],
+            self.inner.linear_acceleration[0],
+            self.inner.linear_acceleration[1],
+            self.inner.linear_acceleration[2]
+        )
+    }
+
+    fn __str__(&self) -> String {
+        self.__repr__()
+    }
+}
+
+/// Python wrapper for Battery State
+#[pyclass(module = "horus.library._library", name = "BatteryState")]
+#[derive(Clone)]
+pub struct PyBatteryState {
+    inner: sensor::BatteryState,
+}
+
+#[pymethods]
+impl PyBatteryState {
+    #[new]
+    #[pyo3(signature = (voltage=0.0, percentage=0.0))]
+    fn new(voltage: f32, percentage: f32) -> Self {
+        Self {
+            inner: sensor::BatteryState::new(voltage, percentage),
+        }
+    }
+
+    #[getter]
+    fn voltage(&self) -> f32 {
+        self.inner.voltage
+    }
+
+    #[setter]
+    fn set_voltage(&mut self, value: f32) {
+        self.inner.voltage = value;
+    }
+
+    #[getter]
+    fn current(&self) -> f32 {
+        self.inner.current
+    }
+
+    #[setter]
+    fn set_current(&mut self, value: f32) {
+        self.inner.current = value;
+    }
+
+    #[getter]
+    fn charge(&self) -> f32 {
+        self.inner.charge
+    }
+
+    #[setter]
+    fn set_charge(&mut self, value: f32) {
+        self.inner.charge = value;
+    }
+
+    #[getter]
+    fn capacity(&self) -> f32 {
+        self.inner.capacity
+    }
+
+    #[setter]
+    fn set_capacity(&mut self, value: f32) {
+        self.inner.capacity = value;
+    }
+
+    #[getter]
+    fn percentage(&self) -> f32 {
+        self.inner.percentage
+    }
+
+    #[setter]
+    fn set_percentage(&mut self, value: f32) {
+        self.inner.percentage = value;
+    }
+
+    #[getter]
+    fn power_supply_status(&self) -> u8 {
+        self.inner.power_supply_status
+    }
+
+    #[setter]
+    fn set_power_supply_status(&mut self, value: u8) {
+        self.inner.power_supply_status = value;
+    }
+
+    #[getter]
+    fn temperature(&self) -> f32 {
+        self.inner.temperature
+    }
+
+    #[setter]
+    fn set_temperature(&mut self, value: f32) {
+        self.inner.temperature = value;
+    }
+
+    #[getter]
+    fn timestamp(&self) -> u64 {
+        self.inner.timestamp
+    }
+
+    fn is_low(&self, threshold: f32) -> bool {
+        self.inner.is_low(threshold)
+    }
+
+    fn is_critical(&self) -> bool {
+        self.inner.is_critical()
+    }
+
+    fn time_remaining(&self) -> Option<f32> {
+        self.inner.time_remaining()
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "BatteryState(voltage={:.2}V, {}%, status={})",
+            self.inner.voltage, self.inner.percentage, self.inner.power_supply_status
+        )
+    }
+
+    fn __str__(&self) -> String {
+        self.__repr__()
+    }
+}
+
+/// Python wrapper for NavSatFix (GPS data)
+#[pyclass(module = "horus.library._library", name = "NavSatFix")]
+#[derive(Clone)]
+pub struct PyNavSatFix {
+    inner: sensor::NavSatFix,
+}
+
+#[pymethods]
+impl PyNavSatFix {
+    #[new]
+    #[pyo3(signature = (latitude=0.0, longitude=0.0, altitude=0.0))]
+    fn new(latitude: f64, longitude: f64, altitude: f64) -> Self {
+        Self {
+            inner: if latitude == 0.0 && longitude == 0.0 && altitude == 0.0 {
+                sensor::NavSatFix::new()
+            } else {
+                sensor::NavSatFix::from_coordinates(latitude, longitude, altitude)
+            },
+        }
+    }
+
+    #[getter]
+    fn latitude(&self) -> f64 {
+        self.inner.latitude
+    }
+
+    #[setter]
+    fn set_latitude(&mut self, value: f64) {
+        self.inner.latitude = value;
+    }
+
+    #[getter]
+    fn longitude(&self) -> f64 {
+        self.inner.longitude
+    }
+
+    #[setter]
+    fn set_longitude(&mut self, value: f64) {
+        self.inner.longitude = value;
+    }
+
+    #[getter]
+    fn altitude(&self) -> f64 {
+        self.inner.altitude
+    }
+
+    #[setter]
+    fn set_altitude(&mut self, value: f64) {
+        self.inner.altitude = value;
+    }
+
+    #[getter]
+    fn status(&self) -> u8 {
+        self.inner.status
+    }
+
+    #[setter]
+    fn set_status(&mut self, value: u8) {
+        self.inner.status = value;
+    }
+
+    #[getter]
+    fn satellites_visible(&self) -> u16 {
+        self.inner.satellites_visible
+    }
+
+    #[setter]
+    fn set_satellites_visible(&mut self, value: u16) {
+        self.inner.satellites_visible = value;
+    }
+
+    #[getter]
+    fn hdop(&self) -> f32 {
+        self.inner.hdop
+    }
+
+    #[setter]
+    fn set_hdop(&mut self, value: f32) {
+        self.inner.hdop = value;
+    }
+
+    #[getter]
+    fn vdop(&self) -> f32 {
+        self.inner.vdop
+    }
+
+    #[setter]
+    fn set_vdop(&mut self, value: f32) {
+        self.inner.vdop = value;
+    }
+
+    #[getter]
+    fn speed(&self) -> f32 {
+        self.inner.speed
+    }
+
+    #[setter]
+    fn set_speed(&mut self, value: f32) {
+        self.inner.speed = value;
+    }
+
+    #[getter]
+    fn heading(&self) -> f32 {
+        self.inner.heading
+    }
+
+    #[setter]
+    fn set_heading(&mut self, value: f32) {
+        self.inner.heading = value;
+    }
+
+    #[getter]
+    fn timestamp(&self) -> u64 {
+        self.inner.timestamp
+    }
+
+    fn has_fix(&self) -> bool {
+        self.inner.has_fix()
+    }
+
+    fn is_valid(&self) -> bool {
+        self.inner.is_valid()
+    }
+
+    fn horizontal_accuracy(&self) -> f32 {
+        self.inner.horizontal_accuracy()
+    }
+
+    fn distance_to(&self, other: &PyNavSatFix) -> f64 {
+        self.inner.distance_to(&other.inner)
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "NavSatFix(lat={:.6}, lon={:.6}, alt={:.1}m, sats={})",
+            self.inner.latitude, self.inner.longitude, self.inner.altitude, self.inner.satellites_visible
+        )
+    }
+
+    fn __str__(&self) -> String {
+        self.__repr__()
+    }
+}
+
+/// Python wrapper for Odometry
+#[pyclass(module = "horus.library._library", name = "Odometry")]
+#[derive(Clone)]
+pub struct PyOdometry {
+    inner: sensor::Odometry,
+}
+
+#[pymethods]
+impl PyOdometry {
+    #[new]
+    fn new() -> Self {
+        Self {
+            inner: sensor::Odometry::new(),
+        }
+    }
+
+    #[getter]
+    fn pose(&self) -> PyPose2D {
+        PyPose2D {
+            inner: self.inner.pose,
+        }
+    }
+
+    #[setter]
+    fn set_pose(&mut self, value: &PyPose2D) {
+        self.inner.pose = value.inner;
+    }
+
+    #[getter]
+    fn twist(&self) -> PyTwist {
+        PyTwist {
+            inner: self.inner.twist,
+        }
+    }
+
+    #[setter]
+    fn set_twist(&mut self, value: &PyTwist) {
+        self.inner.twist = value.inner;
+    }
+
+    #[getter]
+    fn timestamp(&self) -> u64 {
+        self.inner.timestamp
+    }
+
+    fn update(&mut self, pose: &PyPose2D, twist: &PyTwist) {
+        self.inner.update(pose.inner, twist.inner);
+    }
+
+    fn is_valid(&self) -> bool {
+        self.inner.is_valid()
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "Odometry(pose=Pose2D({:.2}, {:.2}, {:.2}), twist=[{:.2}, {:.2}])",
+            self.inner.pose.x,
+            self.inner.pose.y,
+            self.inner.pose.theta,
+            self.inner.twist.linear[0],
+            self.inner.twist.angular[2]
+        )
+    }
+
+    fn __str__(&self) -> String {
+        self.__repr__()
+    }
+}
+
+/// Python wrapper for Range sensor
+#[pyclass(module = "horus.library._library", name = "Range")]
+#[derive(Clone)]
+pub struct PyRange {
+    inner: sensor::Range,
+}
+
+#[pymethods]
+impl PyRange {
+    #[new]
+    #[pyo3(signature = (sensor_type=0, range=0.0))]
+    fn new(sensor_type: u8, range: f32) -> Self {
+        Self {
+            inner: sensor::Range::new(sensor_type, range),
+        }
+    }
+
+    #[classattr]
+    const ULTRASONIC: u8 = sensor::Range::ULTRASONIC;
+
+    #[classattr]
+    const INFRARED: u8 = sensor::Range::INFRARED;
+
+    #[getter]
+    fn sensor_type(&self) -> u8 {
+        self.inner.sensor_type
+    }
+
+    #[setter]
+    fn set_sensor_type(&mut self, value: u8) {
+        self.inner.sensor_type = value;
+    }
+
+    #[getter]
+    fn field_of_view(&self) -> f32 {
+        self.inner.field_of_view
+    }
+
+    #[setter]
+    fn set_field_of_view(&mut self, value: f32) {
+        self.inner.field_of_view = value;
+    }
+
+    #[getter]
+    fn min_range(&self) -> f32 {
+        self.inner.min_range
+    }
+
+    #[setter]
+    fn set_min_range(&mut self, value: f32) {
+        self.inner.min_range = value;
+    }
+
+    #[getter]
+    fn max_range(&self) -> f32 {
+        self.inner.max_range
+    }
+
+    #[setter]
+    fn set_max_range(&mut self, value: f32) {
+        self.inner.max_range = value;
+    }
+
+    #[getter]
+    fn range(&self) -> f32 {
+        self.inner.range
+    }
+
+    #[setter]
+    fn set_range(&mut self, value: f32) {
+        self.inner.range = value;
+    }
+
+    #[getter]
+    fn timestamp(&self) -> u64 {
+        self.inner.timestamp
+    }
+
+    fn is_valid(&self) -> bool {
+        self.inner.is_valid()
+    }
+
+    fn __repr__(&self) -> String {
+        format!("Range(type={}, range={:.2}m)", self.inner.sensor_type, self.inner.range)
+    }
+
+    fn __str__(&self) -> String {
+        self.__repr__()
+    }
+}
+
 /// HORUS Library Python Module
 #[pymodule]
 fn _library(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -787,9 +1327,34 @@ fn _library(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // Control messages
     m.add_class::<PyCmdVel>()?;
+    m.add_class::<PyMotorCommand>()?;
+    m.add_class::<PyDifferentialDriveCommand>()?;
+    m.add_class::<PyServoCommand>()?;
+    m.add_class::<PyPwmCommand>()?;
+    m.add_class::<PyStepperCommand>()?;
+    m.add_class::<PyPidConfig>()?;
 
     // Sensor messages
     m.add_class::<PyLaserScan>()?;
+    m.add_class::<PyImu>()?;
+    m.add_class::<PyBatteryState>()?;
+    m.add_class::<PyNavSatFix>()?;
+    m.add_class::<PyOdometry>()?;
+    m.add_class::<PyRange>()?;
+
+    // Diagnostics messages
+    m.add_class::<PyStatus>()?;
+    m.add_class::<PyEmergencyStop>()?;
+    m.add_class::<PyHeartbeat>()?;
+    m.add_class::<PyResourceUsage>()?;
+
+    // Input messages
+    m.add_class::<PyJoystickInput>()?;
+    m.add_class::<PyKeyboardInput>()?;
+
+    // I/O messages
+    m.add_class::<PyDigitalIO>()?;
+    m.add_class::<PyAnalogIO>()?;
 
     Ok(())
 }

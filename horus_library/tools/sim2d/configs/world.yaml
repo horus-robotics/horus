@@ -2,16 +2,31 @@
 width: 20.0    # World width in meters
 height: 15.0   # World height in meters
 
-# Rectangular obstacles
+# Obstacles can be rectangular or circular with custom colors
 obstacles:
-  - pos: [5.0, 5.0]     # Center position [x, y]
-    size: [2.0, 1.0]    # Dimensions [width, height]
+  # Rectangular obstacles (default shape)
+  - pos: [5.0, 5.0]      # Center position [x, y]
+    size: [2.0, 1.0]     # Dimensions [width, height]
+    shape: rectangle     # Optional: 'rectangle' (default) or 'circle'
+    # color: [0.6, 0.4, 0.2]  # Optional: RGB color (0.0-1.0), brown is default
 
   - pos: [-3.0, -2.0]
     size: [1.5, 1.5]
+    color: [0.8, 0.2, 0.2]  # Custom red color
 
   - pos: [0.0, 7.0]
     size: [3.0, 0.5]
 
   - pos: [8.0, -5.0]
     size: [1.0, 2.0]
+    color: [0.2, 0.6, 0.8]  # Custom blue color
+
+  # Circular obstacles
+  - pos: [-6.0, 4.0]
+    shape: circle
+    size: [1.5, 1.5]     # For circles: [radius, radius] (only first value is used)
+    color: [0.9, 0.7, 0.1]  # Custom yellow color
+
+  - pos: [6.0, -4.0]
+    shape: circle
+    size: [0.8, 0.8]     # Smaller circle

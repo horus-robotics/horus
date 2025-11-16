@@ -545,6 +545,7 @@ impl NodeInfo {
         use crate::core::log_buffer::{publish_log, LogEntry, LogType};
         publish_log(LogEntry {
             timestamp: now.format("%H:%M:%S%.3f").to_string(),
+            tick_number: self.metrics.total_ticks,
             node_name: self.name.clone(),
             log_type: LogType::Publish,
             topic: Some(topic.to_string()),
@@ -583,6 +584,7 @@ impl NodeInfo {
         use crate::core::log_buffer::{publish_log, LogEntry, LogType};
         publish_log(LogEntry {
             timestamp: now.format("%H:%M:%S%.3f").to_string(),
+            tick_number: self.metrics.total_ticks,
             node_name: self.name.clone(),
             log_type: LogType::Subscribe,
             topic: Some(topic.to_string()),
@@ -616,6 +618,7 @@ impl NodeInfo {
         use crate::core::log_buffer::{publish_log, LogEntry, LogType};
         publish_log(LogEntry {
             timestamp: now.format("%H:%M:%S%.3f").to_string(),
+            tick_number: self.metrics.total_ticks,
             node_name: self.name.clone(),
             log_type: LogType::Info,
             topic: None,
@@ -648,6 +651,7 @@ impl NodeInfo {
         use crate::core::log_buffer::{publish_log, LogEntry, LogType};
         publish_log(LogEntry {
             timestamp: now.format("%H:%M:%S%.3f").to_string(),
+            tick_number: self.metrics.total_ticks,
             node_name: self.name.clone(),
             log_type: LogType::Warning,
             topic: None,
@@ -687,6 +691,7 @@ impl NodeInfo {
         use crate::core::log_buffer::{publish_log, LogEntry, LogType};
         publish_log(LogEntry {
             timestamp: now.format("%H:%M:%S%.3f").to_string(),
+            tick_number: self.metrics.total_ticks,
             node_name: self.name.clone(),
             log_type: LogType::Error,
             topic: None,
@@ -726,6 +731,7 @@ impl NodeInfo {
         use crate::core::log_buffer::{publish_log, LogEntry, LogType};
         publish_log(LogEntry {
             timestamp: now.format("%H:%M:%S%.3f").to_string(),
+            tick_number: self.metrics.total_ticks,
             node_name: self.name.clone(),
             log_type: LogType::Debug,
             topic: None,
@@ -921,5 +927,11 @@ impl LogSummary for bool {
 impl LogSummary for String {
     fn log_summary(&self) -> String {
         self.clone()
+    }
+}
+
+impl<T: fmt::Debug> LogSummary for Vec<T> {
+    fn log_summary(&self) -> String {
+        format!("Vec[{} items]", self.len())
     }
 }

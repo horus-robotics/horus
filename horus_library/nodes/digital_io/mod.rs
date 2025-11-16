@@ -240,7 +240,7 @@ impl DigitalIONode {
             ..Default::default()
         };
 
-        let _ = self.input_publisher.send(digital_input, None);
+        let _ = self.input_publisher.send(digital_input, &mut None);
     }
 
     fn publish_status(&self) {
@@ -289,7 +289,7 @@ impl DigitalIONode {
             ..Default::default()
         };
 
-        let _ = self.status_publisher.send(status, None);
+        let _ = self.status_publisher.send(status, &mut None);
     }
 
     fn detect_input_changes(&mut self) -> bool {
@@ -321,7 +321,7 @@ impl Node for DigitalIONode {
             .as_millis() as u64;
 
         // Handle incoming output commands
-        if let Some(output_cmd) = self.output_subscriber.recv(None) {
+        if let Some(output_cmd) = self.output_subscriber.recv(&mut None) {
             self.handle_output_command(output_cmd);
         }
 

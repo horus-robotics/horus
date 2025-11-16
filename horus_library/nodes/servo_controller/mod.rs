@@ -230,7 +230,7 @@ impl ServoControllerNode {
             timestamp: current_time,
         };
 
-        let _ = self.status_publisher.send(joint_state, None);
+        let _ = self.status_publisher.send(joint_state, &mut None);
     }
 
     /// Move all servos to home position (0.0)
@@ -270,12 +270,12 @@ impl Node for ServoControllerNode {
         self.last_update_time = current_time;
 
         // Handle incoming servo commands
-        if let Some(servo_cmd) = self.servo_subscriber.recv(None) {
+        if let Some(servo_cmd) = self.servo_subscriber.recv(&mut None) {
             self.handle_servo_command(servo_cmd);
         }
 
         // Handle incoming joint commands
-        if let Some(joint_cmd) = self.joint_subscriber.recv(None) {
+        if let Some(joint_cmd) = self.joint_subscriber.recv(&mut None) {
             self.handle_joint_command(joint_cmd);
         }
 

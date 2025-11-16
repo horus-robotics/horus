@@ -3,5 +3,4 @@
 mod compiler;
 mod dataflow;
 
-pub use compiler::JITCompiler;
-pub use dataflow::{BinaryOp, CompiledDataflow, DataflowExpr, DataflowNode, UnaryOp};
+pub use dataflow::{BinaryOp, CompiledDataflow, DataflowExpr};

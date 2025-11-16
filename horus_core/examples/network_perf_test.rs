@@ -32,16 +32,16 @@ fn bench_local_shm() {
     // Warmup
     for i in 0..100 {
         let msg = TestMessage { id: i, data: vec![0u8; 1024] };
-        hub.send(msg, None).unwrap();
-        let _ = hub.recv(None);
+        hub.send(msg, &mut None).unwrap();
+        let _ = hub.recv(&mut None);
     }
 
     // Measure send + recv latency
     let start = Instant::now();
     for i in 0..iterations {
         let msg = TestMessage { id: i, data: vec![0u8; 1024] };
-        hub.send(msg, None).unwrap();
-        let _ = hub.recv(None).unwrap();
+        hub.send(msg, &mut None).unwrap();
+        let _ = hub.recv(&mut None).unwrap();
     }
     let elapsed = start.elapsed();
 

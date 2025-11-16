@@ -11,7 +11,7 @@ This demonstrates a full robotics application with:
 import time
 import random
 import math
-from horus import Scheduler, Node
+from horus import Scheduler, Node, Pose2D, CmdVel
 
 # ============================================================================
 # VISION PROCESSING NODES
@@ -79,7 +79,13 @@ class SlamNode(Node):
     """Simulates SLAM (Simultaneous Localization and Mapping)"""
 
     def __init__(self):
-        super().__init__(name="SlamNode", pubs=["localization/map", "localization/pose"])
+        super().__init__(
+            name="SlamNode",
+            pubs={
+                "localization/map": {},  # Generic hub for map data
+                "localization/pose": {"type": Pose2D}  # Typed hub for pose
+            }
+        )
         self.position = [0.0, 0.0, 0.0]  # x, y, theta
         self.map_size = 0
 
@@ -89,16 +95,15 @@ class SlamNode(Node):
         self.position[1] += random.uniform(-0.1, 0.1)
         self.position[2] += random.uniform(-0.05, 0.05)
 
-        # Publish pose frequently
-        pose_data = {
-            "x": self.position[0],
-            "y": self.position[1],
-            "theta": self.position[2],
-            "covariance": [random.uniform(0.01, 0.05) for _ in range(9)]
-        }
-        self.send("localization/pose", pose_data)
+        # Publish pose frequently (using typed Pose2D - proper logging!)
+        pose = Pose2D(
+            x=self.position[0],
+            y=self.position[1],
+            theta=self.position[2]
+        )
+        self.send("localization/pose", pose)
 
-        # Publish map updates less frequently
+        # Publish map updates less frequently (generic hub)
         self.map_size += random.randint(0, 5)
         if random.random() < 0.1:  # 10% chance
             map_data = {
@@ -116,14 +121,17 @@ class PositionEstimatorNode(Node):
     def __init__(self):
         super().__init__(
             name="PositionEstimatorNode",
-            subs=["localization/pose", "vision/qr_codes"],
+            subs={
+                "localization/pose": {"type": Pose2D},  # Typed sub
+                "vision/qr_codes": {}  # Generic sub
+            },
             pubs=["localization/position_estimate"]
         )
         self.last_slam_pose = None
         self.last_qr_correction = None
 
     def tick(self):
-        # Get SLAM pose
+        # Get SLAM pose (now receives typed Pose2D object)
         if self.has_msg("localization/pose"):
             self.last_slam_pose = self.get("localization/pose")
 
@@ -135,9 +143,9 @@ class PositionEstimatorNode(Node):
         # Fuse data and publish estimate
         if self.last_slam_pose:
             estimate = {
-                "x": self.last_slam_pose["x"],
-                "y": self.last_slam_pose["y"],
-                "theta": self.last_slam_pose["theta"],
+                "x": self.last_slam_pose.x,  # Accessing Pose2D attributes
+                "y": self.last_slam_pose.y,
+                "theta": self.last_slam_pose.theta,
                 "confidence": 0.9 if self.last_qr_correction else 0.7
             }
             self.send("localization/position_estimate", estimate)
@@ -179,7 +187,7 @@ class PathExecutorNode(Node):
         super().__init__(
             name="PathExecutorNode",
             subs=["tasks/current_task", "localization/position_estimate"],
-            pubs=["control/cmd_vel"]
+            pubs={"control/cmd_vel": {"type": CmdVel}}  # Typed pub
         )
         self.current_task = None
         self.current_position = None
@@ -193,13 +201,13 @@ class PathExecutorNode(Node):
         if self.has_msg("localization/position_estimate"):
             self.current_position = self.get("localization/position_estimate")
 
-        # Execute task (simplified)
+        # Execute task (simplified) - using typed CmdVel
         if self.current_task and self.current_position:
-            cmd_vel = {
-                "linear": random.uniform(0.0, 0.5),
-                "angular": random.uniform(-0.3, 0.3)
-            }
-            self.send("control/cmd_vel", cmd_vel)
+            cmd = CmdVel(
+                linear=random.uniform(0.0, 0.5),
+                angular=random.uniform(-0.3, 0.3)
+            )
+            self.send("control/cmd_vel", cmd)
 
 
 # ============================================================================
@@ -239,8 +247,14 @@ class EmergencyHandlerNode(Node):
     def __init__(self):
         super().__init__(
             name="EmergencyHandlerNode",
-            subs=["safety/collision_alert", "control/cmd_vel"],
-            pubs=["control/cmd_vel_safe", "safety/status"]
+            subs={
+                "safety/collision_alert": {},  # Generic sub
+                "control/cmd_vel": {"type": CmdVel}  # Typed sub
+            },
+            pubs={
+                "control/cmd_vel_safe": {"type": CmdVel},  # Typed pub
+                "safety/status": {}  # Generic pub
+            }
         )
         self.emergency_stop = False
 
@@ -252,16 +266,17 @@ class EmergencyHandlerNode(Node):
                 self.emergency_stop = True
                 self.send("safety/status", {"emergency_stop": True})
 
-        # Monitor velocity commands
+        # Monitor velocity commands (now receives typed CmdVel)
         if self.has_msg("control/cmd_vel"):
             cmd = self.get("control/cmd_vel")
-            
+
             if self.emergency_stop:
-                # Override with stop command
-                safe_cmd = {"linear": 0.0, "angular": 0.0}
+                # Override with stop command (typed CmdVel)
+                safe_cmd = CmdVel(linear=0.0, angular=0.0)
             else:
+                # Pass through the typed CmdVel
                 safe_cmd = cmd
-            
+
             self.send("control/cmd_vel_safe", safe_cmd)
 
         # Clear emergency stop after some time

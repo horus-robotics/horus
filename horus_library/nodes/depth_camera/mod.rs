@@ -1,5 +1,4 @@
 use crate::{CameraInfo, DepthImage, Image, PointCloud};
-use horus_core::core::LogSummary;
 use horus_core::error::HorusResult;
 
 type Result<T> = HorusResult<T>;
@@ -767,7 +766,7 @@ impl DepthCameraNode {
         image.frame_id[..len].copy_from_slice(&frame_bytes[..len]);
         image.frame_id[len] = 0;
 
-        if let Err(e) = self.rgb_publisher.send(image, None) {
+        if let Err(e) = self.rgb_publisher.send(image, &mut None) {
             ctx.log_error(&format!("Failed to publish RGB image: {:?}", e));
         }
     }
@@ -815,7 +814,7 @@ impl DepthCameraNode {
         depth_image.frame_id[..len].copy_from_slice(&frame_bytes[..len]);
         depth_image.frame_id[len] = 0;
 
-        if let Err(e) = self.depth_publisher.send(depth_image, None) {
+        if let Err(e) = self.depth_publisher.send(depth_image, &mut None) {
             ctx.log_error(&format!("Failed to publish depth image: {:?}", e));
         }
 
@@ -830,7 +829,7 @@ impl DepthCameraNode {
 
         let cloud = self.generate_pointcloud(depth_data);
 
-        if let Err(e) = self.pointcloud_publisher.send(cloud, None) {
+        if let Err(e) = self.pointcloud_publisher.send(cloud, &mut None) {
             ctx.log_error(&format!("Failed to publish point cloud: {:?}", e));
         }
     }
@@ -871,7 +870,7 @@ impl DepthCameraNode {
             .unwrap()
             .as_nanos() as u64;
 
-        if let Err(e) = self.camera_info_publisher.send(info, None) {
+        if let Err(e) = self.camera_info_publisher.send(info, &mut None) {
             ctx.log_error(&format!("Failed to publish camera info: {:?}", e));
         }
     }

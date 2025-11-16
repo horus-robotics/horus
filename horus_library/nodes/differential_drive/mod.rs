@@ -138,7 +138,7 @@ impl DifferentialDriveNode {
 
     fn publish_drive_command(&self, left_speed: f32, right_speed: f32) {
         let cmd = DifferentialDriveCommand::new(left_speed as f64, right_speed as f64);
-        let _ = self.drive_publisher.send(cmd, None);
+        let _ = self.drive_publisher.send(cmd, &mut None);
     }
 
     fn publish_odometry(&self) {
@@ -167,7 +167,7 @@ impl DifferentialDriveNode {
 
         odom.timestamp = current_time;
 
-        let _ = self.odom_publisher.send(odom, None);
+        let _ = self.odom_publisher.send(odom, &mut None);
     }
 }
 
@@ -191,7 +191,7 @@ impl Node for DifferentialDriveNode {
         self.last_update_time = current_time;
 
         // Check for new velocity commands
-        if let Some(twist_cmd) = self.cmd_subscriber.recv(None) {
+        if let Some(twist_cmd) = self.cmd_subscriber.recv(&mut None) {
             self.current_twist = self.clamp_twist(twist_cmd);
         }
 

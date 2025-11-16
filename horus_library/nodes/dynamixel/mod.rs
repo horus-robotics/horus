@@ -162,7 +162,7 @@ impl DynamixelModel {
 
     /// Get maximum velocity in rad/s
     fn max_velocity_rad_s(&self) -> f32 {
-        use std::f32::consts::PI;
+        
         match self {
             Self::AX12A => 10.47,     // 100 RPM
             Self::AX18A => 20.94,     // 200 RPM
@@ -501,7 +501,7 @@ impl DynamixelNode {
                 timestamp: servo.last_update,
             };
 
-            let _ = self.feedback_publisher.send(feedback, None);
+            let _ = self.feedback_publisher.send(feedback, &mut None);
         }
     }
 
@@ -686,12 +686,12 @@ impl Node for DynamixelNode {
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Process servo commands
-        while let Some(cmd) = self.command_subscriber.recv(None) {
+        while let Some(cmd) = self.command_subscriber.recv(&mut None) {
             self.send_position_command(cmd.servo_id, cmd.position, ctx.as_deref_mut());
         }
 
         // Process joint commands
-        while let Some(cmd) = self.joint_subscriber.recv(None) {
+        while let Some(cmd) = self.joint_subscriber.recv(&mut None) {
             for i in 0..cmd.joint_count {
                 let idx = i as usize;
                 let servo_id = i + 1; // Assume joint index maps to servo ID

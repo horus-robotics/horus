@@ -87,7 +87,10 @@ where
     /// Create a producer (connects to consumer's listening address)
     pub fn new_producer(consumer_addr: SocketAddr) -> HorusResult<Self> {
         let runtime_handle = Handle::try_current().unwrap_or_else(|_| {
-            tokio::runtime::Runtime::new().unwrap().handle().clone()
+            tokio::runtime::Runtime::new()
+                .expect("Failed to create Tokio runtime - insufficient system resources")
+                .handle()
+                .clone()
         });
 
         let (send_tx, send_rx) = bounded(SEND_QUEUE_SIZE);
@@ -115,7 +118,10 @@ where
     /// Create a consumer (listens on address for producer to connect)
     pub fn new_consumer(listen_addr: SocketAddr) -> HorusResult<Self> {
         let runtime_handle = Handle::try_current().unwrap_or_else(|_| {
-            tokio::runtime::Runtime::new().unwrap().handle().clone()
+            tokio::runtime::Runtime::new()
+                .expect("Failed to create Tokio runtime - insufficient system resources")
+                .handle()
+                .clone()
         });
 
         let (recv_tx, recv_rx) = bounded(RECV_QUEUE_SIZE);

@@ -88,7 +88,7 @@ impl GraphVisualization {
             highlighted_nodes: HashSet::new(),
             dark_mode: true,
             graph_theme: GraphTheme::FullBlack, // Start with new fully black theme
-            layout_algorithm: LayoutAlgorithm::ForceDirected,
+            layout_algorithm: LayoutAlgorithm::Hierarchical, // Hierarchical layout for clearer bipartite graph
             force_strength: 0.3,     // Almost no attraction
             repulsion_strength: 1.0, // Minimal repulsion - very subtle
         }
@@ -358,19 +358,26 @@ impl GraphVisualization {
             }
         }
 
-        // Layout processes on top
-        let process_spacing = 150.0;
+        // Calculate center positions
+        let process_spacing = 180.0;
+        let topic_spacing = 160.0;
+
+        let process_total_width = (processes.len().saturating_sub(1)) as f32 * process_spacing;
+        let topic_total_width = (topics.len().saturating_sub(1)) as f32 * topic_spacing;
+
+        // Center processes at top
+        let process_start_x = -process_total_width / 2.0;
         for (i, id) in processes.iter().enumerate() {
             if let Some(node) = self.nodes.get_mut(id) {
-                node.position = Pos2::new(200.0 + i as f32 * process_spacing, 200.0);
+                node.position = Pos2::new(process_start_x + i as f32 * process_spacing, -200.0);
             }
         }
 
-        // Layout topics on bottom
-        let topic_spacing = 120.0;
+        // Center topics at bottom
+        let topic_start_x = -topic_total_width / 2.0;
         for (i, id) in topics.iter().enumerate() {
             if let Some(node) = self.nodes.get_mut(id) {
-                node.position = Pos2::new(200.0 + i as f32 * topic_spacing, 400.0);
+                node.position = Pos2::new(topic_start_x + i as f32 * topic_spacing, 200.0);
             }
         }
     }
@@ -1223,6 +1230,7 @@ impl eframe::App for GraphVisualization {
 fn discover_runtime_pubsub(topic_name: &str) -> Result<(Vec<String>, Vec<String>), std::io::Error> {
     use std::fs;
     use std::path::Path;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     let metadata_dir = Path::new("/dev/shm/horus/pubsub_metadata");
     if !metadata_dir.exists() {
@@ -1231,6 +1239,13 @@ fn discover_runtime_pubsub(topic_name: &str) -> Result<(Vec<String>, Vec<String>
 
     let mut publishers = Vec::new();
     let mut subscribers = Vec::new();
+
+    // Staleness threshold: 30 seconds
+    let staleness_threshold_secs = 30;
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
 
     // Normalize topic name for file matching
     let safe_topic: String = topic_name
@@ -1267,24 +1282,39 @@ fn discover_runtime_pubsub(topic_name: &str) -> Result<(Vec<String>, Vec<String>
         // Check if this file matches our topic by checking if it ends with the topic name
         // Format should be: {node_name}_{safe_topic}
         if without_direction.ends_with(&format!("_{}", safe_topic)) {
-            // Extract node name by removing the topic suffix
-            let node_name = without_direction
-                .strip_suffix(&format!("_{}", safe_topic))
-                .unwrap()
-                .to_string();
+            // Check staleness: read timestamp from file
+            let is_active = if let Ok(contents) = fs::read_to_string(entry.path()) {
+                if let Ok(timestamp) = contents.trim().parse::<u64>() {
+                    let age_secs = now.saturating_sub(timestamp);
+                    age_secs < staleness_threshold_secs
+                } else {
+                    false // Invalid timestamp format
+                }
+            } else {
+                false // Couldn't read file
+            };
 
-            match direction {
-                "pub" => {
-                    if !publishers.contains(&node_name) {
-                        publishers.push(node_name);
+            // Only include active nodes (updated within threshold)
+            if is_active {
+                // Extract node name by removing the topic suffix
+                let node_name = without_direction
+                    .strip_suffix(&format!("_{}", safe_topic))
+                    .unwrap()
+                    .to_string();
+
+                match direction {
+                    "pub" => {
+                        if !publishers.contains(&node_name) {
+                            publishers.push(node_name);
+                        }
                     }
-                }
-                "sub" => {
-                    if !subscribers.contains(&node_name) {
-                        subscribers.push(node_name);
+                    "sub" => {
+                        if !subscribers.contains(&node_name) {
+                            subscribers.push(node_name);
+                        }
                     }
+                    _ => {}
                 }
-                _ => {}
             }
         }
     }
@@ -1296,19 +1326,49 @@ fn discover_runtime_pubsub(topic_name: &str) -> Result<(Vec<String>, Vec<String>
 pub fn discover_graph_data() -> (Vec<GraphNode>, Vec<GraphEdge>) {
     let mut graph_nodes = Vec::new();
     let mut graph_edges = Vec::new();
+    let mut process_index = 0;
+    let mut topic_index = 0;
+
+    // Helper to generate initial position for nodes
+    let get_position = |node_type: &NodeType, index: usize, node_id: &str| -> Pos2 {
+        // Hash the node ID for deterministic variation
+        let mut hash: u64 = 0;
+        for byte in node_id.bytes() {
+            hash = hash.wrapping_mul(31).wrapping_add(byte as u64);
+        }
+
+        match node_type {
+            NodeType::Process => {
+                let x_base = -300.0;
+                let x_variation = (hash % 80) as f32 - 40.0;
+                let vertical_spacing = 120.0;
+                let y_variation = ((hash / 100) % 40) as f32 - 20.0;
+                Pos2::new(x_base + x_variation, index as f32 * vertical_spacing + y_variation)
+            }
+            NodeType::Topic => {
+                let x_base = 300.0;
+                let x_variation = (hash % 100) as f32 - 50.0;
+                let vertical_spacing = 140.0;
+                let y_variation = ((hash / 100) % 50) as f32 - 25.0;
+                Pos2::new(x_base + x_variation, index as f32 * vertical_spacing + y_variation)
+            }
+        }
+    };
 
     // Discover processes
     if let Ok(nodes) = super::commands::monitor::discover_nodes() {
         for node in nodes {
+            let node_id = format!("process_{}_{}", node.process_id, node.name);
             graph_nodes.push(GraphNode {
-                id: format!("process_{}_{}", node.process_id, node.name),
+                id: node_id.clone(),
                 label: node.name.clone(),
                 node_type: NodeType::Process,
-                position: Pos2::new(0.0, 0.0), // Will be set by layout
+                position: get_position(&NodeType::Process, process_index, &node_id),
                 velocity: Vec2::ZERO,
                 pid: Some(node.process_id),
                 active: node.status == "Running",
             });
+            process_index += 1;
         }
     }
 
@@ -1321,45 +1381,78 @@ pub fn discover_graph_data() -> (Vec<GraphNode>, Vec<GraphEdge>) {
                 id: topic_id.clone(),
                 label: topic.topic_name.clone(),
                 node_type: NodeType::Topic,
-                position: Pos2::new(0.0, 0.0), // Will be set by layout
+                position: get_position(&NodeType::Topic, topic_index, &topic_id),
                 velocity: Vec2::ZERO,
                 pid: None,
                 active: topic.active,
             });
+            topic_index += 1;
 
             // Create edges based on runtime pub/sub activity
             // Read from /dev/shm/horus/pubsub_metadata/ files created by Hub
             if let Ok((publishers, subscribers)) = discover_runtime_pubsub(&topic.topic_name) {
                 // Publisher edges: Process -> Topic (processes that WRITE to this topic)
                 for publisher_name in publishers {
-                    // Find the process node by name
-                    if let Some(process_node) = graph_nodes
+                    // Find or create the process node by name
+                    let process_node_id = if let Some(process_node) = graph_nodes
                         .iter()
                         .find(|n| n.node_type == NodeType::Process && n.label == publisher_name)
                     {
-                        graph_edges.push(GraphEdge {
-                            from: process_node.id.clone(),
-                            to: topic_id.clone(),
-                            edge_type: EdgeType::Publish,
-                            active: topic.active,
+                        process_node.id.clone()
+                    } else {
+                        // Create virtual node for Python/interpreted language nodes
+                        let node_id = format!("node_{}", publisher_name);
+                        graph_nodes.push(GraphNode {
+                            id: node_id.clone(),
+                            label: publisher_name.clone(),
+                            node_type: NodeType::Process,
+                            position: get_position(&NodeType::Process, process_index, &node_id),
+                            velocity: Vec2::ZERO,
+                            pid: None, // No PID for virtual nodes
+                            active: true,
                         });
-                    }
+                        process_index += 1;
+                        node_id
+                    };
+
+                    graph_edges.push(GraphEdge {
+                        from: process_node_id,
+                        to: topic_id.clone(),
+                        edge_type: EdgeType::Publish,
+                        active: topic.active,
+                    });
                 }
 
                 // Subscriber edges: Topic -> Process (processes that READ from this topic)
                 for subscriber_name in subscribers {
-                    // Find the process node by name
-                    if let Some(process_node) = graph_nodes
+                    // Find or create the process node by name
+                    let process_node_id = if let Some(process_node) = graph_nodes
                         .iter()
                         .find(|n| n.node_type == NodeType::Process && n.label == subscriber_name)
                     {
-                        graph_edges.push(GraphEdge {
-                            from: topic_id.clone(),
-                            to: process_node.id.clone(),
-                            edge_type: EdgeType::Subscribe,
-                            active: topic.active,
+                        process_node.id.clone()
+                    } else {
+                        // Create virtual node for Python/interpreted language nodes
+                        let node_id = format!("node_{}", subscriber_name);
+                        graph_nodes.push(GraphNode {
+                            id: node_id.clone(),
+                            label: subscriber_name.clone(),
+                            node_type: NodeType::Process,
+                            position: get_position(&NodeType::Process, process_index, &node_id),
+                            velocity: Vec2::ZERO,
+                            pid: None, // No PID for virtual nodes
+                            active: true,
                         });
-                    }
+                        process_index += 1;
+                        node_id
+                    };
+
+                    graph_edges.push(GraphEdge {
+                        from: topic_id.clone(),
+                        to: process_node_id,
+                        edge_type: EdgeType::Subscribe,
+                        active: topic.active,
+                    });
                 }
             }
         }

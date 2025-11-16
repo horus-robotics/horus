@@ -45,6 +45,157 @@ fn main() -> Result<()> {
 }
 ```
 
+---
+
+## Hardware Drivers Covered
+
+This node provides production-ready drivers for:
+
+**Primary Support (Full Hardware Integration):**
+- **INA219** - Voltage/current monitor (0-26V, ±3.2A)
+- **INA226** - High-precision voltage/current monitor (0-36V, ±20A)
+
+**Supported Battery Chemistries:**
+- LiPo/LiFePO4 (1S-6S+ configurations)
+- Li-ion (18650, 21700, custom packs)
+- NiMH (6-12 cell packs)
+- Lead-acid (6V, 12V, 24V systems)
+- Custom battery packs
+
+**Additional I2C Sensors (Planned):**
+- BQ27441 - Single-cell fuel gauge
+- MAX17043 - LiPo fuel gauge
+- LC709203F - Battery state estimation
+- ACS712 - Current sensing modules
+
+---
+
+## Applications
+
+### Best Suited For
+
+**Mobile Robots:**
+- Autonomous delivery robots
+- Service robots (indoor navigation)
+- Agricultural robots
+- Inspection drones (ground-based)
+- Educational robot platforms
+
+**Aerial Systems:**
+- Small drones (≤3.2A with INA219)
+- Fixed-wing UAVs (with INA226)
+- Multicopter platforms
+- Tethered systems
+
+**Industrial Applications:**
+- AGVs (Automated Guided Vehicles)
+- Battery-powered tools
+- Portable measurement equipment
+- Solar power monitoring
+- UPS systems
+
+**Research Platforms:**
+- Power consumption analysis
+- Battery discharge testing
+- Energy efficiency optimization
+- Runtime prediction research
+
+### Why Use This Node?
+
+**For Small Robots (INA219):**
+- Real-time power monitoring without microcontrollers
+- State of charge estimation for mission planning
+- Low battery warnings for safe return-to-base
+- Power consumption profiling
+
+**For High-Power Systems (INA226):**
+- Precision current measurement up to 20A+
+- 16-bit resolution for accuracy
+- Hardware averaging for stable readings
+- Alert pin for critical conditions
+
+**For Production Systems:**
+- Proven I2C hardware integration
+- Automatic simulation fallback for testing
+- Comprehensive error handling (24 error cases)
+- Battery chemistry-specific voltage curves
+- Runtime estimation for mission planning
+
+---
+
+## Customization Options
+
+### What Can Be Configured
+
+**Sensor Hardware:**
+```rust
+battery.set_sensor_type(SensorType::INA219);  // INA219 or INA226
+battery.set_i2c_bus(1);                       // I2C bus number
+battery.set_i2c_address(0x40);                // I2C address (0x40-0x4F)
+battery.set_shunt_resistance(0.1);            // Shunt resistor value (Ω)
+```
+
+**Battery Parameters:**
+```rust
+battery.set_battery_capacity(5000);           // Capacity in mAh
+battery.set_battery_chemistry(Chemistry::LiPo); // Chemistry type
+battery.set_cell_count(4);                    // Number of cells (S)
+battery.set_nominal_voltage(3.7);             // Per-cell nominal voltage
+```
+
+**Measurement Settings:**
+```rust
+battery.set_sample_rate(10);                  // Samples per second
+battery.set_averaging(16);                    // INA226: averaging samples
+battery.set_voltage_range(VoltageRange::V32); // INA226: range selection
+```
+
+**Alert Thresholds:**
+```rust
+battery.set_low_voltage_threshold(10.5);      // Low battery warning (V)
+battery.set_critical_voltage_threshold(9.9);  // Critical shutdown (V)
+battery.set_high_current_threshold(5.0);      // Overcurrent alert (A)
+battery.set_low_soc_threshold(20);            // Low SOC warning (%)
+```
+
+**Preset Configurations:**
+```rust
+// Quick presets for common batteries
+battery.configure_3s_lipo(5000.0);   // 3S LiPo, 5000mAh
+battery.configure_4s_lipo(5000.0);   // 4S LiPo, 5000mAh
+battery.configure_6s_lipo(5000.0);   // 6S LiPo, 5000mAh
+battery.configure_12v_lead_acid(7000.0); // 12V Lead-acid
+battery.configure_lifepo4(4, 3000.0);     // 4S LiFePO4
+```
+
+### Extensibility Patterns
+
+**Wrap for Custom Logic:**
+```rust
+struct PredictiveBatteryMonitor {
+    inner: BatteryMonitorNode,
+    kalman_filter: KalmanFilter,
+    degradation_model: DegradationModel,
+}
+
+impl Node for PredictiveBatteryMonitor {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+        // Hardware monitoring
+        self.inner.tick(&mut ctx);
+
+        // Custom prediction
+        let state = self.inner.get_state();
+        let prediction = self.kalman_filter.predict(state);
+        let remaining_life = self.degradation_model.estimate(state);
+
+        // Publish custom metrics
+        // ...
+    }
+}
+```
+
+---
+
 ## Hardware Setup
 
 ### System Requirements

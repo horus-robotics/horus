@@ -57,10 +57,10 @@ let publisher: Hub<f32> = Hub::new("temperature")?;
 let subscriber: Hub<f32> = Hub::new("temperature")?;
 
 // Send data (that simple!)
-publisher.send(25.0, ctx).ok();
+publisher.send(25.0, &mut ctx).ok();
 
 // Receive data
-if let Some(temp) = subscriber.recv(ctx) {
+if let Some(temp) = subscriber.recv(&mut ctx) {
     println!("Temperature: {:.1}°C", temp);
 }
 ```
@@ -72,7 +72,7 @@ node! {
     SensorNode {
         pub { temperature: f32 -> "temperature" }
         tick(ctx) {
-            self.temperature.send(25.0, ctx).ok();
+            self.temperature.send(25.0, &mut ctx).ok();
         }
     }
 }
@@ -190,15 +190,15 @@ A **Topic** is a named channel for sending messages. Think of it like a radio fr
 ```rust
 // Node A publishes temperature
 let pub_a: Hub<f32> = Hub::new("temperature")?;
-pub_a.send(25.0, ctx);
+pub_a.send(25.0, &mut ctx);
 
 // Node B also publishes temperature
 let pub_b: Hub<f32> = Hub::new("temperature")?;
-pub_b.send(30.0, ctx);
+pub_b.send(30.0, &mut ctx);
 
 // Node C receives from both
 let sub: Hub<f32> = Hub::new("temperature")?;
-if let Some(temp) = sub.recv(ctx) {
+if let Some(temp) = sub.recv(&mut ctx) {
     println!("Got: {}", temp); // Receives from both publishers
 }
 ```
@@ -218,6 +218,8 @@ let subscriber: Hub<f32> = Hub::new("temperature")?;
 **Type safety:** The type parameter (`<f32>`) ensures publishers and subscribers agree on the message type. Rust's compiler prevents type mismatches at compile time.
 
 **Zero-copy:** Data is shared directly in memory - no serialization, no copying.
+
+**Important:** HORUS supports both **typed messages** (Pose2D, CmdVel, etc.) and **generic messages** (dicts/JSON). Typed messages are 10-20x faster and provide better logging/type safety. Generic messages offer flexibility for prototyping. See **[Message Types](/core-concepts/message-types#typed-messages-vs-generic-messages)** for the detailed comparison.
 
 ### Scheduler
 
@@ -279,9 +281,12 @@ scheduler.run()?;
 - Use plain Rust, Python, or your favorite language
 - HORUS adds unnecessary complexity
 
-**Over-the-internet communication** - HORUS uses shared memory:
-- For network communication, use gRPC, HTTP, WebSockets
-- For distributed systems across machines, use message queues (RabbitMQ, Kafka)
+**Internet-scale distributed systems** - HORUS supports LAN/WiFi networks:
+- Multi-robot systems on same LAN (5-50µs latency)
+- Edge computing clusters on WiFi/Ethernet
+- Distributed sensing networks on local network
+- For WAN/internet communication, use gRPC, HTTP, or message queues (RabbitMQ, Kafka)
+- HORUS network communication requires reliable LAN connectivity (not internet-scale)
 
 **CRUD web applications** - Standard database-backed web apps:
 - Use web frameworks (Axum, Actix, Django, Flask)
@@ -469,11 +474,11 @@ HORUS leverages Rust for:
 **Practical features:**
 7. [node! Macro](/node-macro) - Reduce boilerplate
 8. [message! Macro](/message-macro) - Custom message types
-9. [Dashboard](/dashboard) - Monitor and debug
+9. [Dashboard](/development/dashboard) - Monitor and debug
 
 **Advanced:**
-10. [Multi-Language](/multi-language) - Python and C integration
-11. [Performance](/performance) - Optimize for speed
+10. [Multi-Language](/multi-language/multi-language) - Python and C integration
+11. [Performance](/performance/performance) - Optimize for speed
 12. [Examples](/examples) - Real projects
 
 ## Next Steps
@@ -489,6 +494,6 @@ Ready to start building with HORUS?
 3. **[See Examples](/examples)**
    Learn from real projects
 
-**Questions?** Check out [CLI Reference](/cli-reference) or [Architecture](/architecture).
+**Questions?** Check out [CLI Reference](/development/cli-reference) or [Architecture](/architecture).
 
 Let's build something fast!

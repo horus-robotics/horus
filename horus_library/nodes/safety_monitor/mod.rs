@@ -252,7 +252,7 @@ impl SafetyMonitorNode {
             }
         }
 
-        let _ = self.publisher.send(status, None);
+        let _ = self.publisher.send(status, &mut None);
     }
 }
 
@@ -268,7 +268,7 @@ impl Node for SafetyMonitorNode {
             .as_millis() as u64;
 
         // Check for incoming emergency stop messages
-        if let Some(emergency_msg) = self.emergency_subscriber.recv(None) {
+        if let Some(emergency_msg) = self.emergency_subscriber.recv(&mut None) {
             self.last_emergency_time = current_time;
             if emergency_msg.engaged {
                 self.current_safety_level = StatusLevel::Fatal;
@@ -276,7 +276,7 @@ impl Node for SafetyMonitorNode {
         }
 
         // Check for incoming battery messages
-        if let Some(battery_msg) = self.battery_subscriber.recv(None) {
+        if let Some(battery_msg) = self.battery_subscriber.recv(&mut None) {
             self.last_battery_time = current_time;
             if battery_msg.percentage < self.battery_threshold {
                 self.current_safety_level = self.current_safety_level.max(StatusLevel::Error);
@@ -284,7 +284,7 @@ impl Node for SafetyMonitorNode {
         }
 
         // Check for incoming resource usage messages
-        if let Some(_resource_msg) = self.resource_subscriber.recv(None) {
+        if let Some(_resource_msg) = self.resource_subscriber.recv(&mut None) {
             self.last_resource_time = current_time;
         }
 

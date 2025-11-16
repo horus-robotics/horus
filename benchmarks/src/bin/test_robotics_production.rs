@@ -1,6 +1,6 @@
-/// Comprehensive Robotics Production Test Suite
+/// Comprehensive Robotics Test Suite
 ///
-/// This test suite validates the single-slot Link implementation for production readiness
+/// This test suite validates the single-slot Link implementation
 /// by simulating realistic robotics workloads with high-frequency sensor loops, control loops,
 /// multi-rate systems, and stress scenarios.
 ///
@@ -77,7 +77,7 @@ fn main() {
 }
 
 fn print_usage() {
-    eprintln!("Robotics Production Test Suite");
+    eprintln!("Robotics Test Suite");
     eprintln!("\nUsage: test_robotics_production <test_name>");
     eprintln!("\nAvailable tests:");
     eprintln!("  high_freq_sensor  - High-frequency sensor loop (100-1000Hz)");
@@ -90,7 +90,7 @@ fn print_usage() {
 }
 
 fn run_all_tests() -> TestResult {
-    println!("Running complete production test suite...\n");
+    println!("Running complete test suite...\n");
 
     let tests: Vec<(&str, fn() -> TestResult)> = vec![
         ("high_freq_sensor", test_high_frequency_sensor_loop),
@@ -126,7 +126,7 @@ fn run_all_tests() -> TestResult {
 
     if failed == 0 {
         TestResult::success(format!(
-            "All {} tests passed! System is production-ready.",
+            "All {} tests passed!",
             passed
         ))
     } else {
@@ -187,7 +187,7 @@ fn test_high_frequency_sensor_loop() -> TestResult {
         let mut out_of_order = 0;
 
         while imu_thread_running.load(Ordering::Relaxed) {
-            if let Some(imu) = imu_consumer.recv(None) {
+            if let Some(imu) = imu_consumer.recv(&mut None) {
                 // Verify latest-value semantics: timestamps should be monotonic
                 if imu.timestamp < last_timestamp {
                     out_of_order += 1;
@@ -208,7 +208,7 @@ fn test_high_frequency_sensor_loop() -> TestResult {
         let mut out_of_order = 0;
 
         while encoder_thread_running.load(Ordering::Relaxed) {
-            if let Some(encoder) = encoder_consumer.recv(None) {
+            if let Some(encoder) = encoder_consumer.recv(&mut None) {
                 if encoder.timestamp < last_timestamp {
                     out_of_order += 1;
                 }
@@ -229,7 +229,7 @@ fn test_high_frequency_sensor_loop() -> TestResult {
         imu.angular_velocity = [0.1, 0.2, 0.3];
         imu.linear_acceleration = [0.0, 0.0, 9.81];
 
-        if imu_producer.send(imu, None).is_ok() {
+        if imu_producer.send(imu, &mut None).is_ok() {
             imu_sent += 1;
         }
         thread::sleep(Duration::from_micros(5000)); // 200Hz = 5ms
@@ -241,7 +241,7 @@ fn test_high_frequency_sensor_loop() -> TestResult {
     while start.elapsed() < Duration::from_secs(1) {
         let encoder = MotorCommand::velocity(0, encoder_sent as f64);
 
-        if encoder_producer.send(encoder, None).is_ok() {
+        if encoder_producer.send(encoder, &mut None).is_ok() {
             encoder_sent += 1;
         }
         thread::sleep(Duration::from_micros(10000)); // 100Hz = 10ms
@@ -356,14 +356,14 @@ fn test_control_loop() -> TestResult {
         {
             let loop_start = Instant::now();
 
-            if let Some(imu) = sensor_consumer.recv(None) {
+            if let Some(imu) = sensor_consumer.recv(&mut None) {
                 // PID control on angular velocity Z
                 let error = target - imu.angular_velocity[2];
                 integral += error * 0.02; // 50Hz = 20ms = 0.02s
                 let output = pid_config.kp * error + pid_config.ki * integral;
 
                 let cmd = DifferentialDriveCommand::new(-output, output);
-                let _ = command_producer.send(cmd, None);
+                let _ = command_producer.send(cmd, &mut None);
 
                 loop_count += 1;
             }
@@ -386,7 +386,7 @@ fn test_control_loop() -> TestResult {
     let receiver_received = commands_received.clone();
     let receiver_thread = thread::spawn(move || {
         while receiver_running.load(Ordering::Relaxed) {
-            if command_consumer.recv(None).is_some() {
+            if command_consumer.recv(&mut None).is_some() {
                 receiver_received.fetch_add(1, Ordering::Relaxed);
             }
             thread::sleep(Duration::from_micros(500));
@@ -401,7 +401,7 @@ fn test_control_loop() -> TestResult {
         imu.angular_velocity = [0.0, 0.0, 0.1]; // Some angular velocity to control
         imu.timestamp = sensor_sent;
 
-        if sensor_producer.send(imu, None).is_ok() {
+        if sensor_producer.send(imu, &mut None).is_ok() {
             sensor_sent += 1;
         }
         thread::sleep(Duration::from_millis(10)); // 100Hz
@@ -513,7 +513,7 @@ fn test_multi_rate_system() -> TestResult {
     let fast_thread_count = fast_count.clone();
     let fast_thread = thread::spawn(move || {
         while fast_running.load(Ordering::Relaxed) {
-            if fast_consumer.recv(None).is_some() {
+            if fast_consumer.recv(&mut None).is_some() {
                 fast_thread_count.fetch_add(1, Ordering::Relaxed);
             }
             thread::sleep(Duration::from_micros(100));
@@ -525,7 +525,7 @@ fn test_multi_rate_system() -> TestResult {
     let medium_thread_count = medium_count.clone();
     let medium_thread = thread::spawn(move || {
         while medium_running.load(Ordering::Relaxed) {
-            if medium_consumer.recv(None).is_some() {
+            if medium_consumer.recv(&mut None).is_some() {
                 medium_thread_count.fetch_add(1, Ordering::Relaxed);
             }
             thread::sleep(Duration::from_micros(500));
@@ -537,7 +537,7 @@ fn test_multi_rate_system() -> TestResult {
     let slow_thread_count = slow_count.clone();
     let slow_thread = thread::spawn(move || {
         while slow_running.load(Ordering::Relaxed) {
-            if slow_consumer.recv(None).is_some() {
+            if slow_consumer.recv(&mut None).is_some() {
                 slow_thread_count.fetch_add(1, Ordering::Relaxed);
             }
             thread::sleep(Duration::from_millis(5));
@@ -558,7 +558,7 @@ fn test_multi_rate_system() -> TestResult {
         // Fast: 200Hz = 5ms
         if elapsed.as_micros() % 5000 < 1000 {
             let imu = Imu::new();
-            if fast_producer.send(imu, None).is_ok() {
+            if fast_producer.send(imu, &mut None).is_ok() {
                 fast_sent += 1;
             }
         }
@@ -566,7 +566,7 @@ fn test_multi_rate_system() -> TestResult {
         // Medium: 50Hz = 20ms
         if elapsed.as_millis() % 20 == 0 {
             let cmd = DifferentialDriveCommand::new(1.0, 1.0);
-            if medium_producer.send(cmd, None).is_ok() {
+            if medium_producer.send(cmd, &mut None).is_ok() {
                 medium_sent += 1;
             }
         }
@@ -574,7 +574,7 @@ fn test_multi_rate_system() -> TestResult {
         // Slow: 10Hz = 100ms
         if elapsed.as_millis() % 100 == 0 {
             let transform = Transform::identity();
-            if slow_producer.send(transform, None).is_ok() {
+            if slow_producer.send(transform, &mut None).is_ok() {
                 slow_sent += 1;
             }
         }
@@ -691,12 +691,12 @@ fn test_realistic_robot_pipeline() -> TestResult {
             let mut got_encoder = false;
 
             // Read latest sensor data
-            if let Some(imu) = imu_consumer.recv(None) {
+            if let Some(imu) = imu_consumer.recv(&mut None) {
                 last_imu_timestamp = imu.timestamp;
                 got_imu = true;
             }
 
-            if let Some(encoder) = encoder_consumer.recv(None) {
+            if let Some(encoder) = encoder_consumer.recv(&mut None) {
                 last_encoder_timestamp = encoder.timestamp;
                 got_encoder = true;
             }
@@ -708,7 +708,7 @@ fn test_realistic_robot_pipeline() -> TestResult {
                     (last_imu_timestamp as f64 * 0.001) + (last_encoder_timestamp as f64 * 0.001);
                 let cmd = DifferentialDriveCommand::new(cmd_value, cmd_value * 0.5);
 
-                if control_producer.send(cmd, None).is_ok() {
+                if control_producer.send(cmd, &mut None).is_ok() {
                     commands_sent += 1;
                 }
             }
@@ -727,7 +727,7 @@ fn test_realistic_robot_pipeline() -> TestResult {
         let mut out_of_order = 0;
 
         while actuator_running.load(Ordering::Relaxed) {
-            if let Some(cmd) = control_consumer.recv(None) {
+            if let Some(cmd) = control_consumer.recv(&mut None) {
                 if cmd.timestamp < last_timestamp {
                     out_of_order += 1;
                 }
@@ -752,7 +752,7 @@ fn test_realistic_robot_pipeline() -> TestResult {
             imu.timestamp = count;
             imu.angular_velocity = [0.1, 0.2, 0.3];
 
-            if imu_producer.send(imu, None).is_ok() {
+            if imu_producer.send(imu, &mut None).is_ok() {
                 count += 1;
             }
             thread::sleep(Duration::from_micros(5000)); // 200Hz
@@ -767,7 +767,7 @@ fn test_realistic_robot_pipeline() -> TestResult {
         while encoder_running.load(Ordering::Relaxed) && start.elapsed() < Duration::from_secs(1) {
             let encoder = MotorCommand::velocity(0, count as f64);
 
-            if encoder_producer.send(encoder, None).is_ok() {
+            if encoder_producer.send(encoder, &mut None).is_ok() {
                 count += 1;
             }
             thread::sleep(Duration::from_micros(10000)); // 100Hz
@@ -866,7 +866,7 @@ fn test_stress_burst() -> TestResult {
         let mut valid_sequences = 0;
 
         while consumer_running.load(Ordering::Relaxed) {
-            if let Some(imu) = consumer.recv(None) {
+            if let Some(imu) = consumer.recv(&mut None) {
                 // Verify sequence monotonicity (latest-value semantics)
                 if imu.timestamp >= last_seq {
                     valid_sequences += 1;
@@ -890,7 +890,7 @@ fn test_stress_burst() -> TestResult {
             imu.timestamp = total_sent + i;
             imu.angular_velocity = [i as f64, i as f64 * 2.0, i as f64 * 3.0];
 
-            if producer.send(imu, None).is_ok() {
+            if producer.send(imu, &mut None).is_ok() {
                 // All sends should succeed (single-slot never fails)
             } else {
                 return TestResult::failure("Send failed during burst".to_string());
@@ -974,7 +974,7 @@ fn test_multi_process_ipc() -> TestResult {
 
         let start = Instant::now();
         while start.elapsed() < Duration::from_secs(2) {
-            if let Some(cmd) = consumer.recv(None) {
+            if let Some(cmd) = consumer.recv(&mut None) {
                 // Verify data integrity
                 if cmd.mode == MotorCommand::MODE_VELOCITY {
                     received_count_clone.fetch_add(1, Ordering::Relaxed);
@@ -996,7 +996,7 @@ fn test_multi_process_ipc() -> TestResult {
     while start.elapsed() < Duration::from_millis(1500) {
         let cmd = MotorCommand::velocity(0, sent as f64);
 
-        if producer.send(cmd, None).is_ok() {
+        if producer.send(cmd, &mut None).is_ok() {
             sent += 1;
         }
         thread::sleep(Duration::from_millis(5)); // 200Hz

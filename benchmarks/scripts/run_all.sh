@@ -77,11 +77,11 @@ cd "$BENCH_DIR"
 cargo build --release --benches
 
 # Clear any existing shared memory
-echo -e "${YELLOW}🧹 Cleaning shared memory...${NC}"
+echo -e "${YELLOW}[CLEAN] Cleaning shared memory...${NC}"
 rm -rf /dev/shm/horus_* 2>/dev/null || true
 
 # Run benchmarks
-echo -e "${BLUE}📏 Running benchmark suite...${NC}"
+echo -e "${BLUE}[RUN] Running benchmark suite...${NC}"
 echo ""
 
 # Function to run a single benchmark

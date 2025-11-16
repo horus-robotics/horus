@@ -1,0 +1,22 @@
+# Example robot configuration for sim3d
+
+name: "turtlebot3"
+urdf_path: "assets/models/turtlebot3.urdf"
+
+# Initial pose
+initial_pose:
+  position: [0.0, 0.5, 0.0]
+  rotation: [0.0, 0.0, 0.0]  # Roll, Pitch, Yaw (radians)
+
+# Physics properties
+physics:
+  mass: 1.0  # kg
+  friction: 0.8
+  restitution: 0.1
+
+# Control parameters
+control:
+  max_linear_velocity: 0.22  # m/s
+  max_angular_velocity: 2.84  # rad/s
+  wheel_separation: 0.160  # m
+  wheel_radius: 0.033  # m

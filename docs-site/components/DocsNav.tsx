@@ -87,7 +87,7 @@ export function DocsNav({ onMenuClick }: DocsNavProps) {
               Marketplace
             </a>
             <Link
-              href="/benchmarks"
+              href="/performance/benchmarks"
               className="hidden md:block text-sm px-3 py-1.5 bg-[var(--surface)] border border-[var(--border)] rounded-md text-[var(--text-secondary)] hover:text-[var(--accent)] hover:border-[var(--accent)] transition-colors touch-manipulation"
             >
               Benchmarks

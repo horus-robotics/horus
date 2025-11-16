@@ -77,7 +77,7 @@ impl Node for SensorNode {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         self.tick_count += 1;
 
         let msg = CmdVel {
@@ -86,7 +86,7 @@ impl Node for SensorNode {
             stamp_nanos: self.tick_count as u64,
         };
 
-        if let Err(e) = self.publisher.send(msg, ctx) {
+        if let Err(e) = self.publisher.send(msg, &mut ctx) {
             eprintln!("  SensorNode: Failed to publish: {:?}", e);
         }
 
@@ -131,7 +131,7 @@ impl Node for ControllerNode {
 
     fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
         // Receive and process messages without using ctx
-        if let Some(msg) = self.subscriber.recv(None) {
+        if let Some(msg) = self.subscriber.recv(&mut None) {
             // Process message
             let output = CmdVel {
                 linear: msg.linear * 0.8,
@@ -139,7 +139,7 @@ impl Node for ControllerNode {
                 stamp_nanos: msg.stamp_nanos,
             };
 
-            let _ = self.publisher.send(output, None);
+            let _ = self.publisher.send(output, &mut None);
             *self.counter.lock().unwrap() += 1;
         }
     }
@@ -175,8 +175,8 @@ impl Node for ActuatorNode {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        if let Some(_msg) = self.receiver.recv(ctx) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+        if let Some(_msg) = self.receiver.recv(&mut ctx) {
             *self.counter.lock().unwrap() += 1;
         }
     }
@@ -243,7 +243,7 @@ fn test_scheduler_api() -> bool {
     println!("Testing Scheduler API...");
 
     // Test Scheduler::new() - locks down constructor
-    let mut scheduler = Scheduler::new();
+    let scheduler = Scheduler::new();
     println!("   Scheduler::new()");
 
     // Test Scheduler::name() - locks down builder pattern
@@ -339,7 +339,7 @@ fn test_per_node_rate() -> bool {
     println!("   Added slow_node at 10Hz");
 
     // Run for 1 second
-    println!("  ⏱️  Running for 1 second...");
+    println!("  Running for 1 second...");
     if let Err(e) = scheduler.run_for(Duration::from_secs(1)) {
         eprintln!("Scheduler run failed: {}", e);
         return false;

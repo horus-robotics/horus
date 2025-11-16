@@ -76,7 +76,17 @@ pub fn create_new_project(
         _ => unreachable!(),
     }
 
-    println!("\n{}", " Project created successfully!".green().bold());
+    // Register workspace in ~/.horus/workspaces.json
+    // This makes it visible in dashboards (horus dashboard / horus dashboard -t)
+    if let Ok(mut registry) = crate::workspace::WorkspaceRegistry::load() {
+        if let Ok(canonical_path) = project_path.canonicalize() {
+            if registry.add(name.clone(), canonical_path).is_ok() {
+                println!("  {} Registered workspace in registry", "✓".green());
+            }
+        }
+    }
+
+    println!("\n{}", "✓ Project created successfully!".green().bold());
     println!("\nTo get started:");
     println!("  {} {}", "cd".cyan(), name);
     println!("  {} (auto-installs dependencies)", "horus run".cyan());
@@ -383,11 +393,11 @@ impl Node for Controller {
         "controller"
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Your control logic here
         // ctx provides node state, timing info, and monitoring data
         let msg = CmdVel::new(1.0, 0.0);
-        self.cmd_vel.send(msg, ctx).ok();
+        self.cmd_vel.send(msg, &mut ctx).ok();
     }
 }
 

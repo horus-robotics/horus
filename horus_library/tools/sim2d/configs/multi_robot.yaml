@@ -1,0 +1,42 @@
+# Multi-robot configuration for sim2d
+# This demonstrates how to spawn multiple robots with independent control topics
+
+robots:
+  # First robot - Green
+  - name: robot0
+    topic_prefix: /robot0
+    position: [-3.0, 0.0]  # Start position [x, y] in meters
+    width: 0.5
+    length: 0.8
+    max_speed: 2.0
+    color: [0.2, 0.8, 0.2]  # RGB [0.0-1.0] - Green
+
+  # Second robot - Red
+  - name: robot1
+    topic_prefix: /robot1
+    position: [0.0, 0.0]
+    width: 0.5
+    length: 0.8
+    max_speed: 2.0
+    color: [0.8, 0.2, 0.2]  # RGB [0.0-1.0] - Red
+
+  # Third robot - Blue
+  - name: robot2
+    topic_prefix: /robot2
+    position: [3.0, 0.0]
+    width: 0.5
+    length: 0.8
+    max_speed: 2.0
+    color: [0.2, 0.2, 0.8]  # RGB [0.0-1.0] - Blue
+
+# Each robot will have independent topics:
+# - Command input: {topic_prefix}/cmd_vel
+# - Odometry output: {topic_prefix}/odom
+# - LiDAR output: {topic_prefix}/scan
+# - IMU output: {topic_prefix}/imu
+#
+# Shared topic:
+# - Obstacle commands: /sim2d/obstacle_cmd (shared by all robots)
+#
+# Example usage:
+#   horus sim2d --robot configs/multi_robot.yaml

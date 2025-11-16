@@ -71,7 +71,7 @@ fn main() {
 
     // Test 7: Send without logging (ctx = None)
     hub_pos
-        .send(Position(3.0, 4.0), None)
+        .send(Position(3.0, 4.0), &mut None)
         .expect("Failed to send Position");
     println!(" Sent Position message (no logging)");
 
@@ -83,20 +83,21 @@ fn main() {
                 battery: 90,
                 is_moving: false,
             },
-            None,
+            &mut None,
         )
         .expect("Failed to send RobotStatus");
     println!(" Sent RobotStatus message (no logging)");
 
     // Test 8: Send with logging (ctx = Some)
-    let mut ctx = NodeInfo::new("test_node".to_string(), true);
+    let mut ctx_info = NodeInfo::new("test_node".to_string(), true);
+    let mut ctx = Some(&mut ctx_info);
     hub_pos
-        .send(Position(7.0, 8.0), Some(&mut ctx))
+        .send(Position(7.0, 8.0), &mut ctx)
         .expect("Failed to send with logging");
     println!(" Sent Position message WITH logging");
 
     // Test 9: Receive messages
-    if let Some(received) = hub_pos.recv(None) {
+    if let Some(received) = hub_pos.recv(&mut None) {
         println!(" Received Position: ({}, {})", received.0, received.1);
     }
 

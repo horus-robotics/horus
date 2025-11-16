@@ -372,7 +372,7 @@ impl Node for JoystickInputNode {
                             true,
                         );
 
-                        self.publisher.send(joystick_input, ctx.as_deref_mut()).ok();
+                        self.publisher.send(joystick_input, &mut ctx).ok();
                         ctx.log_debug(&format!(
                             "Button pressed: {} (gamepad {})",
                             button_name, gamepad_id
@@ -385,7 +385,7 @@ impl Node for JoystickInputNode {
                         let joystick_input =
                             JoystickInput::new_button(gamepad_id, button_id, button_name, false);
 
-                        self.publisher.send(joystick_input, ctx.as_deref_mut()).ok();
+                        self.publisher.send(joystick_input, &mut ctx).ok();
                     }
                     EventType::AxisChanged(axis, value, _) => {
                         let axis_id = axis_to_id(axis);
@@ -397,7 +397,7 @@ impl Node for JoystickInputNode {
                         let joystick_input =
                             JoystickInput::new_axis(gamepad_id, axis_id, axis_name.clone(), processed_value);
 
-                        self.publisher.send(joystick_input, ctx.as_deref_mut()).ok();
+                        self.publisher.send(joystick_input, &mut ctx).ok();
 
                         // Only log significant axis movements to avoid spam
                         if processed_value.abs() > 0.5 {
@@ -412,14 +412,14 @@ impl Node for JoystickInputNode {
 
                         // Publish connection event
                         let connection_event = JoystickInput::new_connection(gamepad_id, true);
-                        self.publisher.send(connection_event, ctx.as_deref_mut()).ok();
+                        self.publisher.send(connection_event, &mut ctx).ok();
                     }
                     EventType::Disconnected => {
                         ctx.log_info(&format!("Gamepad {} disconnected", gamepad_id));
 
                         // Publish disconnection event
                         let disconnection_event = JoystickInput::new_connection(gamepad_id, false);
-                        self.publisher.send(disconnection_event, ctx.as_deref_mut()).ok();
+                        self.publisher.send(disconnection_event, &mut ctx).ok();
                     }
                     _ => {}
                 }
@@ -437,7 +437,7 @@ impl Node for JoystickInputNode {
             if current_time - self.last_input_time > 3000 {
                 let joystick_input =
                     JoystickInput::new_button(1, 0, "ButtonA (placeholder)".to_string(), true);
-                self.publisher.send(joystick_input, ctx.as_deref_mut()).ok();
+                self.publisher.send(joystick_input, &mut ctx).ok();
                 ctx.log_debug("Published placeholder joystick input");
                 self.last_input_time = current_time;
             }

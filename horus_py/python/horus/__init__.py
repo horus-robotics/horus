@@ -98,7 +98,7 @@ class Node:
     """
     Simple node for HORUS - no inheritance required!
 
-    Example:
+    Example (basic):
         def process(node: Node) -> None:
             if node.has_msg("input"):
                 data = node.get("input")
@@ -109,6 +109,25 @@ class Node:
             subs=["input"],
             pubs=["output"],
             tick=process,
+            rate=30
+        )
+
+        run(node)
+
+    Example (typed hubs for proper logging):
+        from horus import Node, Pose2D, CmdVel
+
+        def controller(node: Node) -> None:
+            if node.has_msg("localization/pose"):
+                pose = node.get("localization/pose")
+                # Logs will show: Pose2D { x: 2.31, y: 1.31, ... }
+                node.send("control/cmd", {"linear": 1.0, "angular": 0.5})
+
+        node = Node(
+            name="controller",
+            subs={"localization/pose": {"type": Pose2D}},
+            pubs={"control/cmd": {"type": CmdVel}},
+            tick=controller,
             rate=30
         )
 
@@ -131,9 +150,10 @@ class Node:
         Args:
             name: Node name (auto-generated if None)
             pubs: Topics to publish to. Can be:
-                  - str: single topic
-                  - list: ["topic1", "topic2"]
-                  - dict: {"topic1": {"capacity": 2048}, "topic2": {}}
+                  - str: single topic (generic hub)
+                  - list: ["topic1", "topic2"] (generic hubs)
+                  - dict: {"topic1": {"type": CmdVel, "capacity": 2048}, "topic2": {}}
+                    Use 'type' to create typed hubs for proper message logging
             subs: Topics to subscribe to (same format as pubs)
             tick: Function to call on each tick - signature: tick(node)
             rate: Tick rate in Hz (default 30)
@@ -141,6 +161,24 @@ class Node:
             shutdown: Optional shutdown function - signature: shutdown(node)
             on_error: Optional error handler - signature: on_error(node, exception)
             default_capacity: Default hub capacity (default: 1024)
+
+        Example with typed hubs (recommended for proper logging):
+            from horus import Node, Pose2D, CmdVel
+
+            node = Node(
+                name="controller",
+                subs={"localization/pose": {"type": Pose2D}},
+                pubs={"control/cmd": {"type": CmdVel, "capacity": 2048}},
+                tick=lambda n: None
+            )
+
+        Example with generic hubs (shows <bytes> in logs):
+            node = Node(
+                name="controller",
+                subs=["localization/pose"],  # Generic hub
+                pubs=["control/cmd"],
+                tick=lambda n: None
+            )
         """
         # Auto-generate name if not provided
         if name is None:
@@ -204,18 +242,52 @@ class Node:
             self._hubs = {}
 
     def _setup_hubs(self):
-        """Setup publish/subscribe hubs with configured capacities."""
+        """Setup publish/subscribe hubs with configured capacities and types."""
         self._hubs = {}
 
         # Create publisher hubs
         for topic in self.pub_topics:
-            capacity = self._topic_configs.get(topic, {}).get('capacity', self.default_capacity)
-            self._hubs[topic] = _PyHub(topic, capacity)
+            config = self._topic_configs.get(topic, {})
+            capacity = config.get('capacity', self.default_capacity)
+            msg_type = config.get('type', None)
+
+            # If type specified, create typed hub; otherwise generic hub
+            if msg_type is not None:
+                # Temporarily set __topic_name__ so Rust Hub uses correct topic
+                original_topic = getattr(msg_type, '__topic_name__', None)
+                msg_type.__topic_name__ = topic
+                try:
+                    self._hubs[topic] = Hub(msg_type, capacity)
+                finally:
+                    # Restore original or delete
+                    if original_topic is not None:
+                        msg_type.__topic_name__ = original_topic
+                    elif hasattr(msg_type, '__topic_name__'):
+                        delattr(msg_type, '__topic_name__')
+            else:
+                self._hubs[topic] = Hub(topic, capacity)
 
         # Create subscriber hubs
         for topic in self.sub_topics:
-            capacity = self._topic_configs.get(topic, {}).get('capacity', self.default_capacity)
-            self._hubs[topic] = _PyHub(topic, capacity)
+            config = self._topic_configs.get(topic, {})
+            capacity = config.get('capacity', self.default_capacity)
+            msg_type = config.get('type', None)
+
+            # If type specified, create typed hub; otherwise generic hub
+            if msg_type is not None:
+                # Temporarily set __topic_name__ so Rust Hub uses correct topic
+                original_topic = getattr(msg_type, '__topic_name__', None)
+                msg_type.__topic_name__ = topic
+                try:
+                    self._hubs[topic] = Hub(msg_type, capacity)
+                finally:
+                    # Restore original or delete
+                    if original_topic is not None:
+                        msg_type.__topic_name__ = original_topic
+                    elif hasattr(msg_type, '__topic_name__'):
+                        delattr(msg_type, '__topic_name__')
+            else:
+                self._hubs[topic] = Hub(topic, capacity)
 
     def has_msg(self, topic: str) -> bool:
         """
@@ -349,8 +421,25 @@ class Node:
         if topic not in self.pub_topics:
             self.pub_topics.append(topic)
             if self._node:
-                capacity = self._topic_configs.get(topic, {}).get('capacity', self.default_capacity)
-                self._hubs[topic] = _PyHub(topic, capacity)
+                config = self._topic_configs.get(topic, {})
+                capacity = config.get('capacity', self.default_capacity)
+                msg_type = config.get('type', None)
+
+                # If type specified, create typed hub; otherwise generic hub
+                if msg_type is not None:
+                    # Temporarily set __topic_name__ so Rust Hub uses correct topic
+                    original_topic = getattr(msg_type, '__topic_name__', None)
+                    msg_type.__topic_name__ = topic
+                    try:
+                        self._hubs[topic] = Hub(msg_type, capacity)
+                    finally:
+                        # Restore original or delete
+                        if original_topic is not None:
+                            msg_type.__topic_name__ = original_topic
+                        elif hasattr(msg_type, '__topic_name__'):
+                            delattr(msg_type, '__topic_name__')
+                else:
+                    self._hubs[topic] = Hub(topic, capacity)
 
         if self._node and topic in self._hubs:
             hub = self._hubs[topic]
@@ -361,18 +450,18 @@ class Node:
 
             # Serialize based on type
             if isinstance(data, bytes):
-                result = hub.send_bytes(data)
+                result = hub.send_bytes(data, self)
             elif isinstance(data, str):
-                result = hub.send_bytes(data.encode('utf-8'))
+                result = hub.send_bytes(data.encode('utf-8'), self)
             elif isinstance(data, (dict, list, tuple, int, float, bool, type(None))):
                 json_bytes = json.dumps(data).encode('utf-8')
-                result = hub.send_with_metadata(json_bytes, "json")
+                result = hub.send_with_metadata(json_bytes, "json", self)
             elif hasattr(data, '__array_interface__') or type(data).__name__ == 'ndarray':
                 # Zero-copy path for numpy arrays
-                result = hub.send_numpy(data)
+                result = hub.send_numpy(data, self)
             else:
                 pickled = pickle.dumps(data)
-                result = hub.send_with_metadata(pickled, "pickle")
+                result = hub.send_with_metadata(pickled, "pickle", self)
 
             end_ns = time.perf_counter_ns()
             ipc_ns = end_ns - start_ns
@@ -393,8 +482,25 @@ class Node:
         if topic not in self.sub_topics:
             self.sub_topics.append(topic)
             if self._node:
-                capacity = self._topic_configs.get(topic, {}).get('capacity', self.default_capacity)
-                self._hubs[topic] = _PyHub(topic, capacity)
+                config = self._topic_configs.get(topic, {})
+                capacity = config.get('capacity', self.default_capacity)
+                msg_type = config.get('type', None)
+
+                # If type specified, create typed hub; otherwise generic hub
+                if msg_type is not None:
+                    # Temporarily set __topic_name__ so Rust Hub uses correct topic
+                    original_topic = getattr(msg_type, '__topic_name__', None)
+                    msg_type.__topic_name__ = topic
+                    try:
+                        self._hubs[topic] = Hub(msg_type, capacity)
+                    finally:
+                        # Restore original or delete
+                        if original_topic is not None:
+                            msg_type.__topic_name__ = original_topic
+                        elif hasattr(msg_type, '__topic_name__'):
+                            delattr(msg_type, '__topic_name__')
+                else:
+                    self._hubs[topic] = Hub(topic, capacity)
 
         if self._node and topic in self._hubs:
             hub = self._hubs[topic]
@@ -404,7 +510,7 @@ class Node:
             while True:
                 # Measure IPC timing
                 start_ns = time.perf_counter_ns()
-                result = hub.recv_with_metadata()
+                result = hub.recv_with_metadata(self)
                 end_ns = time.perf_counter_ns()
 
                 if result is None:

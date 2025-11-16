@@ -16,7 +16,7 @@ use std::time::{Duration, Instant};
 
 // ============ Message Types ============
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 struct Twist {
     linear_x: f64,  // m/s
     angular_z: f64, // rad/s
@@ -28,7 +28,7 @@ impl horus_core::core::LogSummary for Twist {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 struct Odometry {
     x: f64,      // meters
     y: f64,      // meters
@@ -46,7 +46,7 @@ impl horus_core::core::LogSummary for Odometry {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 struct LaserScan {
     ranges: Vec<f32>,     // distances in meters
     angle_min: f32,       // rad
@@ -60,7 +60,7 @@ impl horus_core::core::LogSummary for LaserScan {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 struct CompressedImage {
     format: String,
     data: Vec<u8>,
@@ -72,7 +72,7 @@ impl horus_core::core::LogSummary for CompressedImage {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 struct Path {
     waypoints: Vec<(f64, f64)>, // (x, y) coordinates
 }
@@ -83,7 +83,7 @@ impl horus_core::core::LogSummary for Path {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 struct BatteryStatus {
     voltage: f32,     // volts
     current: f32,     // amps
@@ -100,7 +100,7 @@ impl horus_core::core::LogSummary for BatteryStatus {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 struct IMUData {
     linear_acceleration: [f64; 3],
     angular_velocity: [f64; 3],
@@ -218,13 +218,13 @@ impl Node for MotorControllerNode {
 
     fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
         // Get velocity command
-        if let Some(cmd) = self.cmd_vel_sub.recv(None) {
+        if let Some(cmd) = self.cmd_vel_sub.recv(&mut None) {
             self.target_linear = cmd.linear_x;
             self.target_angular = cmd.angular_z;
         }
 
         // Get current odometry
-        if let Some(odom) = self.odometry_sub.recv(None) {
+        if let Some(odom) = self.odometry_sub.recv(&mut None) {
             self.current_linear = odom.vx;
             self.current_angular = odom.vtheta;
         }
@@ -317,7 +317,7 @@ impl Node for CameraPerceptionNode {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Simulate camera capture (blocking I/O - will be moved to async tier)
         std::thread::sleep(Duration::from_millis(1000 / self.fps as u64));
 
@@ -338,7 +338,7 @@ impl Node for CameraPerceptionNode {
             data: image_data[..100].to_vec(), // Fake compression
         };
 
-        let _ = self.image_pub.send(compressed, ctx);
+        let _ = self.image_pub.send(compressed, &mut ctx);
     }
 
     fn shutdown(&mut self, _ctx: &mut NodeInfo) -> HorusResult<()> {
@@ -399,7 +399,7 @@ impl Node for LidarProcessingNode {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Simulate lidar scan (blocking I/O - will be moved to async tier)
         std::thread::sleep(Duration::from_millis(100)); // 10Hz lidar
 
@@ -425,7 +425,7 @@ impl Node for LidarProcessingNode {
             *map = obstacles;
         }
 
-        let _ = self.scan_pub.send(scan, ctx);
+        let _ = self.scan_pub.send(scan, &mut ctx);
     }
 
     fn shutdown(&mut self, _ctx: &mut NodeInfo) -> HorusResult<()> {
@@ -514,14 +514,14 @@ impl Node for SensorFusionNode {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let dt = 0.01; // 100Hz fusion rate
 
         // Prediction step
         self.kalman_predict(dt);
 
         // Update with IMU
-        if let Some(imu) = self.imu_sub.recv(None) {
+        if let Some(imu) = self.imu_sub.recv(&mut None) {
             self.kalman_update(&[imu.angular_velocity[2]], "imu");
         }
 
@@ -538,7 +538,7 @@ impl Node for SensorFusionNode {
             vtheta: self.state[5],
         };
 
-        let _ = self.odometry_pub.send(odom, ctx);
+        let _ = self.odometry_pub.send(odom, &mut ctx);
     }
 
     fn shutdown(&mut self, _ctx: &mut NodeInfo) -> HorusResult<()> {
@@ -635,14 +635,14 @@ impl Node for PathPlannerNode {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Update current position
-        if let Some(odom) = self.odometry_sub.recv(None) {
+        if let Some(odom) = self.odometry_sub.recv(&mut None) {
             self.current_position = (odom.x, odom.y);
         }
 
         // Update obstacles from lidar
-        if let Some(scan) = self.scan_sub.recv(None) {
+        if let Some(scan) = self.scan_sub.recv(&mut None) {
             self.obstacles.clear();
             for (i, &range) in scan.ranges.iter().enumerate() {
                 if range < 5.0 && range > 0.1 {
@@ -658,7 +658,7 @@ impl Node for PathPlannerNode {
         self.plan_path();
 
         // Publish path
-        let _ = self.path_pub.send(self.path.clone(), ctx);
+        let _ = self.path_pub.send(self.path.clone(), &mut ctx);
     }
 
     fn shutdown(&mut self, _ctx: &mut NodeInfo) -> HorusResult<()> {
@@ -772,16 +772,16 @@ impl Node for NavigationControllerNode {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Update position
-        if let Some(odom) = self.odometry_sub.recv(None) {
+        if let Some(odom) = self.odometry_sub.recv(&mut None) {
             self.current_position = (odom.x, odom.y, odom.theta);
         }
 
         // Get path and compute velocity command
-        if let Some(path) = self.path_sub.recv(None) {
+        if let Some(path) = self.path_sub.recv(&mut None) {
             let cmd_vel = self.compute_cmd_vel(&path);
-            let _ = self.cmd_vel_pub.send(cmd_vel, ctx);
+            let _ = self.cmd_vel_pub.send(cmd_vel, &mut ctx);
         }
     }
 
@@ -791,7 +791,7 @@ impl Node for NavigationControllerNode {
             linear_x: 0.0,
             angular_z: 0.0,
         };
-        let _ = self.cmd_vel_pub.send(stop, None);
+        let _ = self.cmd_vel_pub.send(stop, &mut None);
         println!("Navigation controller shutdown");
         Ok(())
     }
@@ -872,7 +872,7 @@ impl Node for BatteryMonitorNode {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         match self.read_battery() {
             Ok(status) => {
                 // Check for critical conditions
@@ -883,7 +883,7 @@ impl Node for BatteryMonitorNode {
                     eprintln!("WARNING: Battery overheating! {}°C", status.temperature);
                 }
 
-                let _ = self.battery_pub.send(status, ctx);
+                let _ = self.battery_pub.send(status, &mut ctx);
             }
             Err(e) => {
                 // This will trigger circuit breaker after 5 failures
@@ -935,7 +935,7 @@ impl Node for IMUSensorNode {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         self.tick_count += 1;
 
         // Simulate IMU data with some noise
@@ -949,7 +949,7 @@ impl Node for IMUSensorNode {
             ],
         };
 
-        let _ = self.imu_pub.send(imu_data, ctx);
+        let _ = self.imu_pub.send(imu_data, &mut ctx);
     }
 
     fn shutdown(&mut self, _ctx: &mut NodeInfo) -> HorusResult<()> {

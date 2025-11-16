@@ -59,7 +59,7 @@ impl Node for SensorNode {
         let reading = self.counter.sin() * 10.0;
 
         // Publish data
-        self.data_pub.send(reading, ctx).ok();
+        self.data_pub.send(reading, &mut ctx).ok();
         ctx.log_debug(&format!("Published: {:.2}", reading));
 
         self.counter += 0.1;
@@ -114,7 +114,7 @@ impl Node for ProcessorNode {
     }
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
-        if let Some(data) = self.data_sub.recv(ctx) {
+        if let Some(data) = self.data_sub.recv(&mut ctx) {
             // Process received data
             let processed = data * 2.0;
             ctx.log_debug(&format!("Processed: {:.2}", processed));
@@ -188,7 +188,7 @@ impl Node for SensorNode {
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let reading = self.counter.sin() * 10.0;
-        self.data_pub.send(reading, ctx).ok();
+        self.data_pub.send(reading, &mut ctx).ok();
         self.counter += 0.1;
     }
 
@@ -212,7 +212,7 @@ impl Node for ProcessorNode {
     }
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
-        if let Some(data) = self.data_sub.recv(ctx) {
+        if let Some(data) = self.data_sub.recv(&mut ctx) {
             let processed = data * 2.0;
             ctx.log_info(&format!("Received: {:.2} -> {:.2}", data, processed));
         }
@@ -291,7 +291,7 @@ impl Node for TeleopNode {
         // Simulate keyboard input (w/a/s/d)
         // In real code, read from device::Input
         let cmd = CmdVel::new(1.0, 0.5);  // Forward + turn right
-        self.cmd_pub.send(cmd, ctx).ok();
+        self.cmd_pub.send(cmd, &mut ctx).ok();
     }
 
     fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
@@ -325,7 +325,7 @@ impl Node for MotorDriverNode {
     }
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
-        if let Some(cmd) = self.cmd_sub.recv(ctx) {
+        if let Some(cmd) = self.cmd_sub.recv(&mut ctx) {
             // Convert to differential drive (left/right wheel speeds)
             let left_speed = cmd.linear - cmd.angular;
             let right_speed = cmd.linear + cmd.angular;
@@ -415,7 +415,7 @@ impl Node for LidarNode {
         // Add one close obstacle in front
         scan.ranges[0] = 0.3;  // 30cm directly ahead!
 
-        self.scan_pub.send(scan, ctx).ok();
+        self.scan_pub.send(scan, &mut ctx).ok();
         self.angle += 0.1;
     }
 
@@ -454,13 +454,13 @@ impl Node for ObstacleDetector {
     }
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
-        if let Some(scan) = self.scan_sub.recv(ctx) {
+        if let Some(scan) = self.scan_sub.recv(&mut ctx) {
             // Find minimum distance
             if let Some(min_dist) = scan.min_range() {
                 if min_dist < self.safety_distance {
                     // Emergency stop!
                     let stop = CmdVel::zero();
-                    self.cmd_pub.send(stop, ctx).ok();
+                    self.cmd_pub.send(stop, &mut ctx).ok();
 
                     ctx.log_warning(&format!(
                             "[WARNING] Obstacle detected at {:.2}m - STOPPING!",
@@ -554,8 +554,8 @@ impl Node for PIDController {
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Get setpoint and current position
-        let setpoint = self.setpoint_sub.recv(ctx).unwrap_or(0.0);
-        let feedback = self.feedback_sub.recv(ctx).unwrap_or(0.0);
+        let setpoint = self.setpoint_sub.recv(&mut ctx).unwrap_or(0.0);
+        let feedback = self.feedback_sub.recv(&mut ctx).unwrap_or(0.0);
 
         // Calculate error
         let error = setpoint - feedback;
@@ -572,7 +572,7 @@ impl Node for PIDController {
                    + self.kd * derivative;
 
         // Publish control output
-        self.output_pub.send(output, ctx).ok();
+        self.output_pub.send(output, &mut ctx).ok();
 
         ctx.log_debug(&format!(
                 "PID: setpoint={:.2}, feedback={:.2}, error={:.2}, output={:.2}",
@@ -611,12 +611,12 @@ impl Node for TestSystem {
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Apply control output to position
-        if let Some(output) = self.output_sub.recv(ctx) {
+        if let Some(output) = self.output_sub.recv(&mut ctx) {
             self.position += output * 0.01;  // Simple integration
         }
 
         // Publish current position
-        self.feedback_pub.send(self.position, ctx).ok();
+        self.feedback_pub.send(self.position, &mut ctx).ok();
     }
 
     fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
@@ -636,7 +636,7 @@ impl Node for SetpointNode {
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Target position
         let setpoint = 10.0;
-        self.setpoint_pub.send(setpoint, ctx).ok();
+        self.setpoint_pub.send(setpoint, &mut ctx).ok();
     }
 
     fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
@@ -713,7 +713,7 @@ impl Node for SensorNode {
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Simulate noisy sensor
         let raw_data = 50.0 + (self.counter * 0.5).sin() * 20.0;
-        self.raw_pub.send(raw_data, ctx).ok();
+        self.raw_pub.send(raw_data, &mut ctx).ok();
 
         ctx.log_debug(&format!("Raw: {:.2}", raw_data));
 
@@ -754,12 +754,12 @@ impl Node for FilterNode {
     }
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
-        if let Some(raw) = self.raw_sub.recv(ctx) {
+        if let Some(raw) = self.raw_sub.recv(&mut ctx) {
             // Exponential moving average
             self.filtered_value = self.alpha * raw
                                 + (1.0 - self.alpha) * self.filtered_value;
 
-            self.filtered_pub.send(self.filtered_value, ctx).ok();
+            self.filtered_pub.send(self.filtered_value, &mut ctx).ok();
 
             ctx.log_debug(&format!("Filtered: {:.2}", self.filtered_value));
         }
@@ -797,9 +797,9 @@ impl Node for ControllerNode {
     }
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
-        if let Some(value) = self.filtered_sub.recv(ctx) {
+        if let Some(value) = self.filtered_sub.recv(&mut ctx) {
             let command = if value > self.threshold { 1.0 } else { 0.0 };
-            self.cmd_pub.send(command, ctx).ok();
+            self.cmd_pub.send(command, &mut ctx).ok();
 
             ctx.log_info(&format!(
                     "Value: {:.2}, Threshold: {:.2}, Command: {:.0}",
@@ -846,10 +846,10 @@ Now that you understand basic patterns, explore:
 
 - [Second Application Tutorial](/second-application) - Build a 3-node sensor pipeline
 - [Advanced Examples](/advanced-examples) - State machines, multi-process systems, Python integration
-- [Testing](/testing) - Write tests for your nodes
-- [Using Prebuilt Nodes](/using-prebuilt-nodes) - Leverage the standard library
+- [Testing](/development/testing) - Write tests for your nodes
+- [Using Prebuilt Nodes](/package-management/using-prebuilt-nodes) - Leverage the standard library
 - [Message Types](/message-types) - Complete message reference
 
 Stuck? Check:
 - [Troubleshooting Runtime Errors](/troubleshooting-runtime) - Fix common issues
-- [Dashboard](/dashboard) - Debug with the web UI
+- [Dashboard](/development/dashboard) - Debug with the web UI

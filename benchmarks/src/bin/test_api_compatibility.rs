@@ -123,7 +123,7 @@ fn test_hub_pubsub() -> bool {
     for i in 0..10 {
         let mut msg = test_msg.clone();
         msg.stamp_nanos = i;
-        if let Err(e) = publisher.send(msg, None) {
+        if let Err(e) = publisher.send(msg, &mut None) {
             eprintln!("Failed to publish message {}: {:?}", i, e);
             return false;
         }
@@ -137,7 +137,7 @@ fn test_hub_pubsub() -> bool {
     let mut received = 0;
     let start = Instant::now();
     while received < 10 && start.elapsed() < Duration::from_secs(2) {
-        if let Some(_msg) = subscriber.recv(None) {
+        if let Some(_msg) = subscriber.recv(&mut None) {
             received += 1;
         } else {
             thread::sleep(Duration::from_micros(100));
@@ -185,7 +185,7 @@ fn test_link_sendrecv() -> bool {
         stamp_nanos: 54321,
     };
 
-    if let Err(e) = sender.send(test_msg.clone(), None) {
+    if let Err(e) = sender.send(test_msg.clone(), &mut None) {
         eprintln!("Failed to send message: {:?}", e);
         return false;
     }
@@ -193,7 +193,7 @@ fn test_link_sendrecv() -> bool {
     // Give time for message to propagate
     thread::sleep(Duration::from_micros(100));
 
-    let received = receiver.recv(None);
+    let received = receiver.recv(&mut None);
     if received.is_none() {
         eprintln!("Failed to receive message");
         return false;
@@ -205,7 +205,7 @@ fn test_link_sendrecv() -> bool {
     for i in 0..100 {
         let mut msg = test_msg.clone();
         msg.stamp_nanos = i;
-        if let Err(e) = sender.send(msg, None) {
+        if let Err(e) = sender.send(msg, &mut None) {
             eprintln!("Failed to send message {}: {:?}", i, e);
             return false;
         }
@@ -216,7 +216,7 @@ fn test_link_sendrecv() -> bool {
     thread::sleep(Duration::from_micros(100));
 
     // Consumer should get the LATEST value (stamp_nanos = 99)
-    if let Some(msg) = receiver.recv(None) {
+    if let Some(msg) = receiver.recv(&mut None) {
         if msg.stamp_nanos != 99 {
             eprintln!("Expected latest value (99), got {}", msg.stamp_nanos);
             return false;
@@ -284,14 +284,14 @@ fn test_message_types() -> bool {
     thread::sleep(Duration::from_millis(50));
 
     // Publish and receive
-    if let Err(e) = pub_cmdvel.send(cmd_vel, None) {
+    if let Err(e) = pub_cmdvel.send(cmd_vel, &mut None) {
         eprintln!("Failed to publish CmdVel: {:?}", e);
         return false;
     }
 
     thread::sleep(Duration::from_millis(20));
 
-    match sub_cmdvel.recv(None) {
+    match sub_cmdvel.recv(&mut None) {
         Some(msg) => {
             if msg.linear == cmd_vel.linear
                 && msg.angular == cmd_vel.angular

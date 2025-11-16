@@ -3,7 +3,7 @@ use horus_core::error::HorusResult;
 
 type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo, NodeInfoExt};
-use std::time::{SystemTime, UNIX_EPOCH, Duration};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 // GPIO/PWM hardware support (Raspberry Pi)
 #[cfg(feature = "gpio-hardware")]
@@ -638,7 +638,7 @@ impl Node for BldcMotorNode {
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Process all pending commands
-        while let Some(cmd) = self.subscriber.recv(None) {
+        while let Some(cmd) = self.subscriber.recv(&mut None) {
             self.process_command(cmd, ctx.as_deref_mut());
         }
 

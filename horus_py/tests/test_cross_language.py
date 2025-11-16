@@ -227,8 +227,8 @@ def test_message_types_pose2d():
         if len(received_data) >= 4:
             node.request_stop()
 
-    pub = horus.Node(name="pub", pubs="pose_test", tick=pub_node)
-    sub = horus.Node(name="sub", subs="pose_test", tick=sub_node)
+    pub = horus.Node(name="pub", pubs={"pose_test": {"type": Pose2D}}, tick=pub_node)
+    sub = horus.Node(name="sub", subs={"pose_test": {"type": Pose2D}}, tick=sub_node)
 
     horus.run(pub, sub, duration=1.0)
 
@@ -274,8 +274,8 @@ def test_message_types_cmdvel():
         if len(received_data) >= 4:
             node.request_stop()
 
-    pub = horus.Node(name="pub", pubs="pose_test", tick=pub_node)
-    sub = horus.Node(name="sub", subs="pose_test", tick=sub_node)
+    pub = horus.Node(name="pub", pubs={"cmd_test": {"type": CmdVel}}, tick=pub_node)
+    sub = horus.Node(name="sub", subs={"cmd_test": {"type": CmdVel}}, tick=sub_node)
 
     horus.run(pub, sub, duration=1.0)
 
@@ -314,8 +314,8 @@ def test_message_types_laserscan():
             received_scan = msg.ranges.copy()
             node.request_stop()
 
-    pub = horus.Node(name="pub", pubs="pose_test", tick=pub_node)
-    sub = horus.Node(name="sub", subs="pose_test", tick=sub_node)
+    pub = horus.Node(name="pub", pubs={"scan_test": {"type": LaserScan}}, tick=pub_node)
+    sub = horus.Node(name="sub", subs={"scan_test": {"type": LaserScan}}, tick=sub_node)
 
     horus.run(pub, sub, duration=1.0)
 

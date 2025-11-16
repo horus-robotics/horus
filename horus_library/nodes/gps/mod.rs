@@ -362,7 +362,7 @@ impl Node for GpsNode {
                 self.fix_count += 1;
 
                 // Publish GPS fix
-                let _ = self.publisher.send(fix, None);
+                let _ = self.publisher.send(fix, &mut None);
             }
         }
     }

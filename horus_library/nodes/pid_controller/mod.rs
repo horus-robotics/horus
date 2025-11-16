@@ -167,7 +167,7 @@ impl PidControllerNode {
 
         let motor_cmd = MotorCommand::velocity(self.motor_id, output as f64);
 
-        let _ = self.output_publisher.send(motor_cmd, None);
+        let _ = self.output_publisher.send(motor_cmd, &mut None);
     }
 }
 
@@ -191,17 +191,17 @@ impl Node for PidControllerNode {
         self.last_time = current_time;
 
         // Check for new setpoint
-        if let Some(new_setpoint) = self.setpoint_subscriber.recv(None) {
+        if let Some(new_setpoint) = self.setpoint_subscriber.recv(&mut None) {
             self.setpoint = new_setpoint;
         }
 
         // Check for new feedback
-        if let Some(new_feedback) = self.feedback_subscriber.recv(None) {
+        if let Some(new_feedback) = self.feedback_subscriber.recv(&mut None) {
             self.feedback = new_feedback;
         }
 
         // Check for new PID configuration
-        if let Some(config) = self.config_subscriber.recv(None) {
+        if let Some(config) = self.config_subscriber.recv(&mut None) {
             self.kp = config.kp as f32;
             self.ki = config.ki as f32;
             self.kd = config.kd as f32;

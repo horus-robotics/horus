@@ -4,7 +4,6 @@ use horus_core::error::HorusResult;
 
 type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo, NodeInfoExt};
-use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 // Serial hardware support
@@ -623,7 +622,7 @@ impl RoboclawMotorNode {
             &mut self.motor2_feedback_pub
         };
 
-        if let Err(e) = publisher.send(feedback, None) {
+        if let Err(e) = publisher.send(feedback, &mut None) {
             ctx.log_error(&format!("Failed to publish motor {} feedback: {:?}", motor_id, e));
         }
 
@@ -647,7 +646,7 @@ impl RoboclawMotorNode {
                 .as_nanos() as u64,
         };
 
-        if let Err(e) = self.diagnostic_pub.send(diag, None) {
+        if let Err(e) = self.diagnostic_pub.send(diag, &mut None) {
             ctx.log_error(&format!("Failed to publish diagnostics: {:?}", e));
         }
     }
@@ -795,12 +794,12 @@ impl Node for RoboclawMotorNode {
         let dt = 0.02; // Assume 50Hz tick rate
 
         // Process motor 1 commands
-        if let Some(cmd) = self.motor1_cmd_sub.recv(None) {
+        if let Some(cmd) = self.motor1_cmd_sub.recv(&mut None) {
             self.process_motor_command(1, cmd, ctx.as_deref_mut());
         }
 
         // Process motor 2 commands
-        if let Some(cmd) = self.motor2_cmd_sub.recv(None) {
+        if let Some(cmd) = self.motor2_cmd_sub.recv(&mut None) {
             self.process_motor_command(2, cmd, ctx.as_deref_mut());
         }
 

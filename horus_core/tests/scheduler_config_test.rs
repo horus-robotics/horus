@@ -28,11 +28,9 @@ impl Node for TestNode {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
         self.tick_count += 1;
-        if self.tick_count % 10 == 0 {
-            ctx.log_info(&format!("{} tick #{}", self.name, self.tick_count));
-        }
+        // Logging removed - ctx is Option type
     }
 
     fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
@@ -46,10 +44,9 @@ impl Node for TestNode {
 
 #[test]
 fn test_standard_config() {
-    let mut scheduler = Scheduler::new();
-
     // Apply standard robot configuration
-    scheduler.set_config(SchedulerConfig::standard());
+    let mut scheduler = Scheduler::new()
+        .with_config(SchedulerConfig::standard());
 
     scheduler
         .add(Box::new(TestNode::new("sensor1")), 0, Some(true))
@@ -62,10 +59,9 @@ fn test_standard_config() {
 
 #[test]
 fn test_safety_critical_config() {
-    let mut scheduler = Scheduler::new();
-
     // Apply safety-critical robot configuration
-    scheduler.set_config(SchedulerConfig::safety_critical());
+    let mut scheduler = Scheduler::new()
+        .with_config(SchedulerConfig::safety_critical());
 
     scheduler
         .add(Box::new(TestNode::new("safety_monitor")), 0, Some(true))
@@ -77,10 +73,9 @@ fn test_safety_critical_config() {
 
 #[test]
 fn test_high_performance_config() {
-    let mut scheduler = Scheduler::new();
-
     // Apply high-performance robot configuration
-    scheduler.set_config(SchedulerConfig::high_performance());
+    let mut scheduler = Scheduler::new()
+        .with_config(SchedulerConfig::high_performance());
 
     scheduler
         .add(Box::new(TestNode::new("fast_sensor")), 0, Some(false))
@@ -92,11 +87,9 @@ fn test_high_performance_config() {
 
 #[test]
 fn test_space_robot_config() {
-    let mut scheduler = Scheduler::new();
-
     // Apply space robot configuration
-    let config = SchedulerConfig::space();
-    scheduler.set_config(config);
+    let mut scheduler = Scheduler::new()
+        .with_config(SchedulerConfig::space());
 
     scheduler
         .add(Box::new(TestNode::new("navigation")), 0, Some(true))
@@ -108,8 +101,6 @@ fn test_space_robot_config() {
 
 #[test]
 fn test_custom_exotic_robot_config() {
-    let mut scheduler = Scheduler::new();
-
     // Create fully custom configuration for an exotic robot type
     let mut config = SchedulerConfig::standard();
     config
@@ -127,7 +118,8 @@ fn test_custom_exotic_robot_config() {
         ConfigValue::Float(0.85),
     );
 
-    scheduler.set_config(config);
+    let mut scheduler = Scheduler::new()
+        .with_config(config);
 
     scheduler
         .add(Box::new(TestNode::new("bio_sensor")), 0, Some(true))
@@ -141,10 +133,10 @@ fn test_custom_exotic_robot_config() {
 fn test_execution_modes() {
     // Test JIT optimized mode
     {
-        let mut scheduler = Scheduler::new();
         let mut config = SchedulerConfig::standard();
         config.execution = ExecutionMode::JITOptimized;
-        scheduler.set_config(config);
+        let mut scheduler = Scheduler::new()
+            .with_config(config);
 
         scheduler.add(Box::new(TestNode::new("jit_node")), 0, Some(false));
         let result = scheduler.run_for(std::time::Duration::from_millis(50));
@@ -153,10 +145,10 @@ fn test_execution_modes() {
 
     // Test Sequential mode
     {
-        let mut scheduler = Scheduler::new();
         let mut config = SchedulerConfig::standard();
         config.execution = ExecutionMode::Sequential;
-        scheduler.set_config(config);
+        let mut scheduler = Scheduler::new()
+            .with_config(config);
 
         scheduler.add(Box::new(TestNode::new("seq_node")), 0, Some(false));
         let result = scheduler.run_for(std::time::Duration::from_millis(50));
@@ -165,10 +157,10 @@ fn test_execution_modes() {
 
     // Test Parallel mode
     {
-        let mut scheduler = Scheduler::new();
         let mut config = SchedulerConfig::standard();
         config.execution = ExecutionMode::Parallel;
-        scheduler.set_config(config);
+        let mut scheduler = Scheduler::new()
+            .with_config(config);
 
         scheduler.add(Box::new(TestNode::new("par_node1")), 0, Some(false));
         scheduler.add(Box::new(TestNode::new("par_node2")), 0, Some(false));
@@ -179,11 +171,9 @@ fn test_execution_modes() {
 
 #[test]
 fn test_swarm_config() {
-    let mut scheduler = Scheduler::new();
-
     // Apply swarm robotics configuration
-    let config = SchedulerConfig::swarm();
-    scheduler.set_config(config);
+    let mut scheduler = Scheduler::new()
+        .with_config(SchedulerConfig::swarm());
 
     scheduler
         .add(Box::new(TestNode::new("swarm_comm")), 0, Some(true))
@@ -195,11 +185,9 @@ fn test_swarm_config() {
 
 #[test]
 fn test_soft_robotics_config() {
-    let mut scheduler = Scheduler::new();
-
     // Apply soft robotics configuration
-    let config = SchedulerConfig::soft_robotics();
-    scheduler.set_config(config);
+    let mut scheduler = Scheduler::new()
+        .with_config(SchedulerConfig::soft_robotics());
 
     scheduler
         .add(Box::new(TestNode::new("pressure_sensor")), 0, Some(true))
@@ -211,11 +199,9 @@ fn test_soft_robotics_config() {
 
 #[test]
 fn test_quantum_config() {
-    let mut scheduler = Scheduler::new();
-
     // Apply quantum-assisted robotics configuration
-    let config = SchedulerConfig::quantum();
-    scheduler.set_config(config);
+    let mut scheduler = Scheduler::new()
+        .with_config(SchedulerConfig::quantum());
 
     scheduler
         .add(Box::new(TestNode::new("quantum_sensor")), 0, Some(true))

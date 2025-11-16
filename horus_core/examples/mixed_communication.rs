@@ -27,9 +27,9 @@ impl Node for TelemetryNode {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         self.counter += 1.0;
-        self.telemetry_hub.send(self.counter, ctx).ok();
+        self.telemetry_hub.send(self.counter, &mut ctx).ok();
         if self.counter as u32 % 100 == 0 {
             ctx.log_info(&format!("Published: {}", self.counter));
         }
@@ -61,13 +61,13 @@ impl Node for ControlNode {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Send control command through Link (ultra-low latency)
         let command = 42.0;
-        self.command_link.send(command, ctx).ok();
+        self.command_link.send(command, &mut ctx).ok();
 
         // Check for response
-        if let Some(response) = self.response_link.recv(ctx) {
+        if let Some(response) = self.response_link.recv(&mut ctx) {
             if response as u32 % 100 == 0 {
                 ctx.log_info(&format!("Got response: {}", response));
             }
@@ -102,12 +102,12 @@ impl Node for ActuatorNode {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        if let Some(command) = self.command_link.recv(ctx) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+        if let Some(command) = self.command_link.recv(&mut ctx) {
             self.processed += 1;
             // Process command and send response
             let response = command + self.processed as f32;
-            self.response_link.send(response, ctx).ok();
+            self.response_link.send(response, &mut ctx).ok();
         }
     }
 }
@@ -137,8 +137,8 @@ impl Node for LoggerNode {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        if let Some(telemetry) = self.telemetry_hub.recv(ctx) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+        if let Some(telemetry) = self.telemetry_hub.recv(&mut ctx) {
             self.logs_received += 1;
             if self.logs_received % 100 == 0 {
                 ctx.log_info(&format!(
@@ -173,8 +173,8 @@ impl Node for AnalyticsNode {
         Ok(())
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        if let Some(telemetry) = self.telemetry_hub.recv(ctx) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+        if let Some(telemetry) = self.telemetry_hub.recv(&mut ctx) {
             self.sum += telemetry;
             self.count += 1;
             if self.count % 1000 == 0 {

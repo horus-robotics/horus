@@ -273,7 +273,7 @@ scheduler.add(Box::new(CartographerNode::new()?), 2, Some(true));
 
 While HORUS excels in many scenarios, it may not be the best choice for:
 
-- **Distributed systems across networks**: HORUS is optimized for shared memory on a single machine
+- **Internet-scale distributed systems**: HORUS supports LAN/WiFi (5-50µs), but not WAN/internet communication
 - **Legacy framework integration**: If you need tight integration with existing ecosystems
 - **Non-real-time applications**: If you don't need sub-millisecond latency, simpler solutions may suffice
 - **Pure simulation**: Use standalone simulators for pure simulation needs

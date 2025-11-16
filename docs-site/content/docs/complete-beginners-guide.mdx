@@ -293,7 +293,7 @@ class RealMotorNode(Node):
         GPIO.setup(18, GPIO.OUT)  # Right motor
 
     def tick(self, ctx):
-        velocity = self.cmd_sub.recv(ctx)
+        velocity = self.cmd_sub.recv(&mut ctx)
         if velocity:
             linear, angular = velocity
             # Convert to motor speeds and drive!

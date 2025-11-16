@@ -461,7 +461,7 @@ impl PathPlannerNode {
             timestamp: current_time,
         };
 
-        let _ = self.plan_publisher.send(path_plan, None);
+        let _ = self.plan_publisher.send(path_plan, &mut None);
     }
 }
 
@@ -472,12 +472,12 @@ impl Node for PathPlannerNode {
 
     fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
         // Update current pose from odometry
-        if let Some(odom) = self.odometry_subscriber.recv(None) {
+        if let Some(odom) = self.odometry_subscriber.recv(&mut None) {
             self.current_pose = (odom.pose.x, odom.pose.y, odom.pose.theta);
         }
 
         // Handle new goal commands
-        if let Some(goal) = self.goal_subscriber.recv(None) {
+        if let Some(goal) = self.goal_subscriber.recv(&mut None) {
             if !goal.waypoints.is_empty() {
                 let goal_point = goal.waypoints.last().unwrap();
                 self.set_goal(
@@ -489,7 +489,7 @@ impl Node for PathPlannerNode {
         }
 
         // Update occupancy grid from lidar
-        if let Some(lidar) = self.lidar_subscriber.recv(None) {
+        if let Some(lidar) = self.lidar_subscriber.recv(&mut None) {
             self.update_occupancy_grid(&lidar);
         }
 

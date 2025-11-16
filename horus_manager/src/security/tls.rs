@@ -254,7 +254,7 @@ impl TlsConfig {
 
 /// Print instructions for installing mkcert
 pub fn print_mkcert_installation() {
-    println!("\n📖 Install mkcert for trusted certificates:\n");
+    println!("\n[INFO] Install mkcert for trusted certificates:\n");
 
     #[cfg(target_os = "linux")]
     {
@@ -317,7 +317,7 @@ pub fn print_mkcert_instructions() {
 
 /// Instructions for using Let's Encrypt in production
 pub fn print_letsencrypt_instructions() {
-    println!("\n📖 Production TLS with Let's Encrypt:");
+    println!("\n[INFO] Production TLS with Let's Encrypt:");
     println!("   1. Install certbot: sudo apt install certbot");
     println!("   2. Get certificate: sudo certbot certonly --standalone -d your-domain.com");
     println!("   3. Certificates will be in /etc/letsencrypt/live/your-domain.com/");

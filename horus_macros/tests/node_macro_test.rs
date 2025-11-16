@@ -8,34 +8,51 @@ mod tests {
     mod mock {
         pub mod horus_core {
             pub mod communication {
-                pub mod horus {
-                    pub struct Hub<T> {
-                        _phantom: std::marker::PhantomData<T>,
+                pub struct Hub<T> {
+                    _phantom: std::marker::PhantomData<T>,
+                }
+
+                impl<T> Hub<T> {
+                    pub fn new(_topic: &str) -> Result<Self, Box<dyn std::error::Error>> {
+                        Ok(Self {
+                            _phantom: std::marker::PhantomData,
+                        })
                     }
 
-                    impl<T> Hub<T> {
-                        pub fn new(_topic: &str) -> Result<Self, Box<dyn std::error::Error>> {
-                            Ok(Self {
-                                _phantom: std::marker::PhantomData,
-                            })
-                        }
+                    pub fn recv(
+                        &self,
+                        _ctx: Option<&mut crate::tests::mock::horus_core::core::NodeInfo>,
+                    ) -> Option<T> {
+                        None
+                    }
 
-                        pub fn recv(
-                            &self,
-                            _ctx: Option<&mut crate::tests::mock::horus_core::core::NodeInfo>,
-                        ) -> Option<T> {
-                            None
-                        }
+                    pub fn send(
+                        &self,
+                        _data: T,
+                        _ctx: Option<&mut crate::tests::mock::horus_core::core::NodeInfo>,
+                    ) -> Result<(), Box<dyn std::error::Error>> {
+                        Ok(())
+                    }
+                }
+            }
 
-                        pub fn send(
-                            &self,
-                            _data: T,
-                            _ctx: Option<&mut crate::tests::mock::horus_core::core::NodeInfo>,
-                        ) -> Result<(), Box<dyn std::error::Error>> {
-                            Ok(())
+            pub mod error {
+                pub type HorusResult<T> = Result<T, HorusError>;
+
+                #[derive(Debug)]
+                pub enum HorusError {
+                    Communication(String),
+                }
+
+                impl std::fmt::Display for HorusError {
+                    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                        match self {
+                            HorusError::Communication(msg) => write!(f, "Communication error: {}", msg),
                         }
                     }
                 }
+
+                impl std::error::Error for HorusError {}
             }
 
             pub mod core {
@@ -56,10 +73,10 @@ mod tests {
                     pub trait Node {
                         fn name(&self) -> &'static str;
                         fn tick(&mut self, ctx: Option<&mut super::NodeInfo>);
-                        fn init(&mut self, _ctx: &mut super::NodeInfo) -> Result<(), String> {
+                        fn init(&mut self, _ctx: &mut super::NodeInfo) -> crate::tests::mock::horus_core::error::HorusResult<()> {
                             Ok(())
                         }
-                        fn shutdown(&mut self, _ctx: &mut super::NodeInfo) -> Result<(), String> {
+                        fn shutdown(&mut self, _ctx: &mut super::NodeInfo) -> crate::tests::mock::horus_core::error::HorusResult<()> {
                             Ok(())
                         }
                         fn get_publishers(&self) -> Vec<TopicMetadata> {
@@ -99,11 +116,11 @@ mod tests {
                     buffer: Vec<u8> = Vec::new(),
                 }
 
-                tick(ctx) {
+                tick(_ctx) {
                     // Process one message per tick for bounded execution
-                    if let Some(data) = self.input.recv(ctx) {
+                    if let Some(data) = self.input.recv(None) {
                         self.counter += 1;
-                        self.output.send(data, ctx).ok();
+                        self.output.send(data, None).ok();
                     }
                 }
 

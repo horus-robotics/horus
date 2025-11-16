@@ -33,14 +33,14 @@ impl Node for SensorNode {
         "SensorNode"
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         self.counter += 0.1;
 
         // Simulate sensor reading
         let sensor_value = (self.counter.sin() * 100.0) + 100.0;
 
         // Send via Link (ultra-low latency)
-        match self.data_link.send(sensor_value, ctx) {
+        match self.data_link.send(sensor_value, &mut ctx) {
             Ok(()) => {
                 println!("[{}] Sent: {:.2}", self.name(), sensor_value);
             }
@@ -75,9 +75,9 @@ impl Node for ControllerNode {
         "ControllerNode"
     }
 
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Non-blocking receive
-        if let Some(value) = self.data_link.recv(ctx) {
+        if let Some(value) = self.data_link.recv(&mut ctx) {
             self.last_value = Some(value);
             println!("[{}] Received: {:.2}", self.name(), value);
 

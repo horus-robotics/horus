@@ -1,0 +1,421 @@
+---
+title: "RTOS Integration"
+description: "Running HORUS on Real-Time Operating Systems"
+weight: 45
+---
+
+# RTOS Integration
+
+HORUS provides comprehensive support for running on Real-Time Operating Systems (RTOS), enabling deterministic execution for safety-critical robotics applications.
+
+## Supported Platforms
+
+HORUS abstracts the underlying RTOS through a common interface, supporting:
+
+- **RT-Linux (PREEMPT_RT)** - Linux with real-time patches
+- **FreeRTOS** - Popular embedded RTOS
+- **Zephyr** - Modern scalable RTOS
+- **QNX Neutrino** - Commercial hard real-time OS
+- **VxWorks** - Aerospace/defense RTOS
+- **NuttX** - POSIX-compliant RTOS
+- **ThreadX** - Azure RTOS
+- **Bare Metal** - No OS, direct hardware
+
+## Architecture
+
+The RTOS abstraction layer provides:
+
+- **Task Management** - Create, schedule, and manage real-time tasks
+- **Synchronization** - Mutexes, semaphores, condition variables
+- **Memory Management** - Static allocation, memory pools
+- **Interrupt Handling** - Hardware interrupt management
+- **Hardware Abstraction** - GPIO, UART, SPI, I2C, CAN, PWM interfaces
+
+## Quick Start
+
+### Enable RTOS Support
+
+Add the RTOS feature to your `Cargo.toml`:
+
+```toml
+[dependencies]
+horus_core = { version = "0.1.4", features = ["rtos", "rt-linux"] }
+```
+
+Available features:
+- `rtos` - Core RTOS abstraction
+- `rt-linux` - RT-Linux backend
+- `freertos` - FreeRTOS backend
+- `zephyr` - Zephyr backend
+- `qnx` - QNX backend
+- `bare-metal` - Bare metal support
+
+### Basic Usage
+
+```rust
+use horus_core::{Node, NodeInfo};
+use horus_core::rtos::{init_rtos, RTOSScheduler, RTOSPlatform, TaskPriority};
+use horus_core::rtos::backends::RTLinuxBackend;
+
+// Initialize RTOS backend
+let backend = Box::new(RTLinuxBackend::new());
+init_rtos(backend)?;
+
+// Create scheduler
+let mut scheduler = RTOSScheduler::new(RTOSPlatform::RTLinux)?;
+
+// Add node as RTOS task
+scheduler.add_node_task(
+    control_node,
+    TaskPriority::Critical,     // Priority
+    Duration::from_millis(1),    // Period
+    8192                         // Stack size
+)?;
+
+// Start scheduler (never returns)
+scheduler.run()
+```
+
+## Task Priorities
+
+HORUS defines standard priority levels mapped to each RTOS:
+
+| Priority | Value | Use Case |
+|----------|-------|----------|
+| `Critical` | 99 | Safety-critical control loops |
+| `RealTime` | 90 | Hard real-time tasks |
+| `High` | 70 | Sensor processing |
+| `Normal` | 50 | Planning, navigation |
+| `Low` | 10 | Logging, diagnostics |
+| `Idle` | 0 | Background tasks |
+
+## RT-Linux Configuration
+
+For optimal RT-Linux performance:
+
+### 1. Install RT Kernel
+
+```bash
+# Check if RT kernel is installed
+uname -a | grep -i preempt
+
+# Install RT kernel (Ubuntu/Debian)
+sudo apt-get install linux-rt
+```
+
+### 2. Configure System
+
+Disable RT throttling:
+```bash
+echo -1 > /proc/sys/kernel/sched_rt_runtime_us
+```
+
+Set CPU frequency governor:
+```bash
+echo performance > /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+```
+
+### 3. Isolate CPUs
+
+Reserve CPUs for real-time tasks:
+```bash
+# Add to kernel boot parameters
+isolcpus=2,3 nohz_full=2,3 rcu_nocbs=2,3
+```
+
+### 4. Run with Privileges
+
+HORUS requires CAP_SYS_NICE for RT scheduling:
+```bash
+sudo setcap cap_sys_nice=eip ./your_program
+# Or run as root
+sudo ./your_program
+```
+
+## Hardware Abstraction Layer (HAL)
+
+Access hardware peripherals through the HAL:
+
+```rust
+use horus_core::rtos::hal::{GPIO, GPIODirection, GPIOLevel};
+
+// Configure GPIO pin
+let mut gpio = GPIO::new(17)?;  // Pin 17
+gpio.set_direction(GPIODirection::Output)?;
+gpio.write(GPIOLevel::High)?;
+
+// Read sensor
+gpio.set_direction(GPIODirection::Input)?;
+let level = gpio.read()?;
+```
+
+### Supported Interfaces
+
+- **GPIO** - Digital I/O
+- **UART** - Serial communication
+- **SPI** - High-speed serial
+- **I2C** - Two-wire interface
+- **CAN** - Controller Area Network
+- **PWM** - Pulse Width Modulation
+- **ADC** - Analog to Digital
+- **DMA** - Direct Memory Access
+
+## Memory Management
+
+RTOS memory features:
+
+### Static Allocation
+
+```rust
+use horus_core::rtos::memory::StaticAllocator;
+
+// Pre-allocate memory at compile time
+static ALLOCATOR: StaticAllocator&lt;4096> = StaticAllocator::new();
+
+// Use for deterministic allocation
+let buffer = ALLOCATOR.alloc(256)?;
+```
+
+### Memory Pools
+
+```rust
+use horus_core::rtos::memory::RTOSMemoryPool;
+
+// Create fixed-size memory pool
+let pool = RTOSMemoryPool::new("sensors", 32, 100)?;
+let block = pool.alloc()?;
+// ... use block
+pool.free(block);
+```
+
+## Synchronization Primitives
+
+### Mutex
+
+```rust
+use horus_core::rtos::sync::RTOSMutex;
+
+let mutex = RTOSMutex::new("data")?;
+{
+    let _guard = mutex.lock()?;
+    // Critical section
+}
+```
+
+### Semaphore
+
+```rust
+use horus_core::rtos::sync::RTOSSemaphore;
+
+let sem = RTOSSemaphore::new("resource", 3)?;  // Max 3
+sem.wait(Some(Duration::from_millis(100)))?;
+// ... use resource
+sem.signal()?;
+```
+
+## Interrupt Handling
+
+Register interrupt handlers:
+
+```rust
+use horus_core::rtos::interrupt::{InterruptController, InterruptPriority};
+
+let mut controller = InterruptController::new();
+
+// Register handler
+controller.register(
+    17,  // IRQ number
+    || {
+        // Interrupt handler code
+        println!("GPIO interrupt!");
+    },
+    InterruptPriority::High
+)?;
+
+// Enable interrupt
+controller.enable(17)?;
+```
+
+## Timing and Delays
+
+High-precision timing:
+
+```rust
+use horus_core::rtos::rtos;
+
+if let Some(rtos) = rtos() {
+    // High-precision delay
+    rtos.task_delay(Duration::from_micros(100));
+
+    // Get system ticks
+    let ticks = rtos.get_tick_count();
+    let freq = rtos.get_tick_frequency();  // Hz
+}
+```
+
+## WCET Analysis
+
+Measure Worst-Case Execution Time:
+
+```rust
+use horus_core::rtos::wcet::WCETAnalyzer;
+
+let analyzer = WCETAnalyzer::new();
+let wcet = analyzer.measure(|| {
+    // Code to analyze
+    control_loop();
+})?;
+
+println!("WCET: {:?}", wcet);
+```
+
+## Best Practices
+
+### 1. Memory Locking
+
+Prevent page faults in RT tasks:
+
+```rust
+// Automatically done by RTLinuxBackend
+mlockall(MCL_CURRENT | MCL_FUTURE);
+```
+
+### 2. Priority Inheritance
+
+Enable priority inheritance for mutexes to prevent priority inversion.
+
+### 3. Avoid Dynamic Allocation
+
+Use static allocation or memory pools in RT tasks.
+
+### 4. CPU Affinity
+
+Pin tasks to specific CPUs:
+
+```rust
+let attrs = TaskAttributes {
+    affinity: Some(2),  // CPU 2
+    ..Default::default()
+};
+```
+
+### 5. Disable Preemption
+
+For critical sections:
+
+```rust
+if let Some(rtos) = rtos() {
+    rtos.enter_critical();
+    // Critical code
+    rtos.exit_critical();
+}
+```
+
+## Example: Robot Control System
+
+```rust
+use horus_core::rtos::*;
+
+struct RobotController {
+    motor_control: Box<dyn Node>,
+    sensor_fusion: Box<dyn Node>,
+    path_planner: Box<dyn Node>,
+}
+
+impl RobotController {
+    fn run_on_rtos(self) -> Result<(), Box<dyn Error>> {
+        // Initialize RT-Linux
+        init_rtos(Box::new(RTLinuxBackend::new()))?;
+
+        let mut scheduler = RTOSScheduler::new(RTOSPlatform::RTLinux)?;
+
+        // Motor control - 1kHz, critical priority
+        scheduler.add_node_task(
+            self.motor_control,
+            TaskPriority::Critical,
+            Duration::from_millis(1),
+            16384
+        )?;
+
+        // Sensor fusion - 100Hz, high priority
+        scheduler.add_node_task(
+            self.sensor_fusion,
+            TaskPriority::High,
+            Duration::from_millis(10),
+            16384
+        )?;
+
+        // Path planning - 10Hz, normal priority
+        scheduler.add_node_task(
+            self.path_planner,
+            TaskPriority::Normal,
+            Duration::from_millis(100),
+            32768
+        )?;
+
+        // Start RTOS scheduler
+        scheduler.run()
+    }
+}
+```
+
+## Troubleshooting
+
+### RT Privileges Error
+
+If you see "Failed to set RT priority":
+```bash
+# Add user to realtime group
+sudo usermod -a -G realtime $USER
+# Or use capabilities
+sudo setcap cap_sys_nice=eip ./program
+```
+
+### Memory Lock Failed
+
+Warning about mlockall:
+```bash
+# Increase memory lock limit
+ulimit -l unlimited
+# Or edit /etc/security/limits.conf
+```
+
+### RT Throttling
+
+If tasks are being throttled:
+```bash
+# Disable RT throttling
+echo -1 | sudo tee /proc/sys/kernel/sched_rt_runtime_us
+```
+
+### Check RT Capabilities
+
+Verify system RT support:
+```bash
+# Check kernel
+uname -a | grep PREEMPT
+
+# Check max RT priority
+cat /proc/sys/kernel/sched_rt_priority_max
+
+# Check isolated CPUs
+cat /sys/devices/system/cpu/isolated
+```
+
+## Performance Metrics
+
+Typical latencies on RT-Linux:
+
+| Metric | RT-Linux | Standard Linux |
+|--------|----------|----------------|
+| Task Switch | &lt;5μs | 10-100μs |
+| Interrupt Latency | &lt;10μs | 50-500μs |
+| Tick Jitter | &lt;2μs | 10-50μs |
+| Memory Allocation | Deterministic | Variable |
+
+## Further Reading
+
+- [RT-Linux Documentation](https://wiki.linuxfoundation.org/realtime/start)
+- [FreeRTOS Reference](https://www.freertos.org/Documentation)
+- [Zephyr Project](https://zephyrproject.org/)
+- [QNX Documentation](https://www.qnx.com/developers/docs/)

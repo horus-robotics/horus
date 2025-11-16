@@ -363,11 +363,11 @@ impl Node for I2cBusNode {
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Process all pending I2C requests
-        while let Some(request) = self.request_subscriber.recv(None) {
+        while let Some(request) = self.request_subscriber.recv(&mut None) {
             let response = self.execute_transaction(request, ctx.as_deref_mut());
 
             // Publish response
-            let _ = self.response_publisher.send(response, None);
+            let _ = self.response_publisher.send(response, &mut None);
         }
     }
 }

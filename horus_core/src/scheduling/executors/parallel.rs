@@ -1,6 +1,5 @@
 use crate::core::node::{Node, NodeInfo};
 use crate::error::HorusResult;
-use std::sync::{Arc, Mutex};
 use std::thread;
 
 /// Parallel executor for running independent nodes concurrently

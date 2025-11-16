@@ -276,6 +276,7 @@ impl<T> ShmTopic<T> {
         use chrono::Local;
         publish_log(LogEntry {
             timestamp: Local::now().format("%H:%M:%S%.3f").to_string(),
+            tick_number: 0,  // Topic creation happens outside of tick loop
             node_name: "shm_topic".to_string(),
             log_type: LogType::TopicMap,
             topic: Some(name.to_string()),
@@ -405,6 +406,7 @@ impl<T> ShmTopic<T> {
         use chrono::Local;
         publish_log(LogEntry {
             timestamp: Local::now().format("%H:%M:%S%.3f").to_string(),
+            tick_number: 0,  // Topic open happens outside of tick loop
             node_name: "shm_topic".to_string(),
             log_type: LogType::TopicMap,
             topic: Some(name.to_string()),

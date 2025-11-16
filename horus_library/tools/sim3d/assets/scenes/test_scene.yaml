@@ -1,0 +1,80 @@
+name: "test_scene"
+description: "Test scene with various objects"
+gravity: -9.81
+
+# Objects in the scene
+objects:
+  # Ground plane
+  - name: "ground"
+    shape:
+      type: "ground"
+      size_x: 20.0
+      size_z: 20.0
+    position: [0.0, 0.0, 0.0]
+    rotation: [1.0, 0.0, 0.0, 0.0]
+    is_static: true
+    friction: 0.7
+    restitution: 0.0
+    color: [0.3, 0.5, 0.3]
+
+  # Floating box
+  - name: "box1"
+    shape:
+      type: "box"
+      size: [1.0, 1.0, 1.0]
+    position: [0.0, 3.0, 0.0]
+    rotation: [1.0, 0.0, 0.0, 0.0]
+    is_static: false
+    mass: 1.0
+    friction: 0.5
+    restitution: 0.3
+    color: [0.8, 0.3, 0.3]
+
+  # Sphere
+  - name: "sphere1"
+    shape:
+      type: "sphere"
+      radius: 0.5
+    position: [2.0, 5.0, 0.0]
+    rotation: [1.0, 0.0, 0.0, 0.0]
+    is_static: false
+    mass: 1.0
+    friction: 0.5
+    restitution: 0.6
+    color: [0.3, 0.3, 0.8]
+
+  # Cylinder
+  - name: "cylinder1"
+    shape:
+      type: "cylinder"
+      radius: 0.5
+      height: 1.5
+    position: [-2.0, 4.0, 0.0]
+    rotation: [1.0, 0.0, 0.0, 0.0]
+    is_static: false
+    mass: 1.5
+    friction: 0.5
+    restitution: 0.2
+    color: [0.3, 0.8, 0.3]
+
+  # Static wall
+  - name: "wall"
+    shape:
+      type: "box"
+      size: [10.0, 2.0, 0.5]
+    position: [0.0, 1.0, -5.0]
+    rotation: [1.0, 0.0, 0.0, 0.0]
+    is_static: true
+    friction: 0.8
+    restitution: 0.1
+    color: [0.6, 0.6, 0.6]
+
+robots: []
+
+# Lighting configuration
+lighting:
+  ambient: [0.3, 0.3, 0.3]
+  directional:
+    direction: [-0.5, -1.0, -0.5]
+    color: [1.0, 1.0, 1.0]
+    illuminance: 10000.0

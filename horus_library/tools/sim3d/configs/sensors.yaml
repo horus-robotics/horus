@@ -1,0 +1,39 @@
+# Sensor configurations for sim3d
+
+sensors:
+  - type: lidar3d
+    name: "lidar"
+    frame: "base_scan"
+    update_rate: 10.0  # Hz
+
+    # Scan parameters
+    horizontal_rays: 720
+    vertical_rays: 16
+    horizontal_fov: 6.28318  # 360 degrees in radians
+    vertical_fov: 0.52360    # 30 degrees in radians
+
+    # Range
+    min_range: 0.12  # m
+    max_range: 20.0  # m
+
+    # Noise
+    noise_std: 0.01  # m
+
+  - type: imu
+    name: "imu"
+    frame: "imu_link"
+    update_rate: 100.0  # Hz
+
+    # Noise parameters
+    angular_velocity_noise: 0.01
+    linear_acceleration_noise: 0.01
+
+  - type: camera
+    name: "camera"
+    frame: "camera_link"
+    update_rate: 30.0  # Hz
+
+    # Image parameters
+    width: 640
+    height: 480
+    fov: 1.0472  # 60 degrees in radians

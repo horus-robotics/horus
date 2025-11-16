@@ -1101,7 +1101,7 @@ fn check_node_heartbeat(node_name: &str) -> (String, HealthStatus, u64, u32, u32
 /// Discover active nodes from pub/sub metadata (primary discovery method)
 /// This works regardless of whether scheduler writes heartbeats or not
 fn discover_nodes_from_pubsub_activity() -> anyhow::Result<Vec<NodeStatus>> {
-    use std::collections::{HashMap, HashSet};
+    use std::collections::HashMap;
 
     let mut node_map: HashMap<String, NodeStatus> = HashMap::new();
     let metadata_dir = std::path::Path::new("/dev/shm/horus/pubsub_metadata");

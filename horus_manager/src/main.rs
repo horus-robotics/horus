@@ -7,7 +7,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 // Use modules from the library instead of redeclaring them
-use horus_manager::{commands, dashboard, dashboard_tui, registry, workspace};
+use horus_manager::{commands, dashboard, dashboard_tui, registry, security, workspace};
 
 #[derive(Parser)]
 #[command(name = "horus")]
@@ -21,16 +21,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Initialize HORUS in current directory or setup certificates
+    /// Initialize HORUS workspace in current directory
     Init {
-        /// Setup trusted TLS certificates using mkcert
-        #[arg(long = "setup-certs")]
-        setup_certs: bool,
-
-        /// Regenerate existing certificates
-        #[arg(long = "regenerate-certs")]
-        regenerate_certs: bool,
-
         /// Workspace name (optional, defaults to directory name)
         #[arg(short = 'n', long = "name")]
         name: Option<String>,
@@ -101,9 +93,9 @@ enum Commands {
         #[arg(short = 't', long = "tui")]
         tui: bool,
 
-        /// Enable HTTPS with mkcert certificates (requires setup)
-        #[arg(short = 's', long = "secure")]
-        secure: bool,
+        /// Reset dashboard password before starting
+        #[arg(short = 'r', long = "reset-password")]
+        reset_password: bool,
     },
 
     /// Package management
@@ -124,49 +116,62 @@ enum Commands {
         command: AuthCommands,
     },
 
-    /// Simulation tools (sim3d by default, use --2d for sim2d)
-    Sim {
-        /// Run 2D simulator instead of 3D
-        #[arg(long = "2d")]
-        sim_2d: bool,
-
+    /// Run 2D simulator
+    Sim2d {
         /// Headless mode (no rendering/GUI)
         #[arg(long)]
         headless: bool,
 
-        // Sim3d specific arguments
-        /// Random seed for deterministic simulation (3D only)
-        #[arg(long)]
-        seed: Option<u64>,
-
-        // Sim2d specific arguments
-        /// World configuration file (2D only)
+        /// World configuration file
         #[arg(long)]
         world: Option<PathBuf>,
 
-        /// World image file (PNG, JPG, PGM) - occupancy grid (2D only)
+        /// World image file (PNG, JPG, PGM) - occupancy grid
         #[arg(long)]
         world_image: Option<PathBuf>,
 
-        /// Resolution in meters per pixel for world image (2D only)
+        /// Resolution in meters per pixel for world image
         #[arg(long)]
         resolution: Option<f32>,
 
-        /// Obstacle threshold 0-255, darker = obstacle (2D only)
+        /// Obstacle threshold 0-255, darker = obstacle
         #[arg(long)]
         threshold: Option<u8>,
 
-        /// Robot configuration file (2D only)
+        /// Robot configuration file
         #[arg(long)]
         robot: Option<PathBuf>,
 
-        /// HORUS topic for velocity commands (2D only)
+        /// HORUS topic for velocity commands
         #[arg(long, default_value = "cmd_vel")]
         topic: String,
 
-        /// Robot name for logging (2D only)
+        /// Robot name for logging
         #[arg(long, default_value = "robot")]
         name: String,
+    },
+
+    /// Run 3D simulator
+    Sim3d {
+        /// Headless mode (no rendering/GUI)
+        #[arg(long)]
+        headless: bool,
+
+        /// Random seed for deterministic simulation
+        #[arg(long)]
+        seed: Option<u64>,
+
+        /// Visual mode (default)
+        #[arg(long)]
+        visual: bool,
+
+        /// Robot URDF file
+        #[arg(long)]
+        robot: Option<PathBuf>,
+
+        /// World/scene file
+        #[arg(long)]
+        world: Option<PathBuf>,
     },
 
     /// Generate shell completion scripts
@@ -290,12 +295,8 @@ fn main() {
 
 fn run_command(command: Commands) -> HorusResult<()> {
     match command {
-        Commands::Init {
-            setup_certs,
-            regenerate_certs,
-            name,
-        } => {
-            commands::init::run_init(setup_certs, regenerate_certs, name)
+        Commands::Init { name } => {
+            commands::init::run_init(name)
                 .map_err(|e| HorusError::Config(e.to_string()))
         }
 
@@ -950,7 +951,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
 
                             if has_cargo || has_main {
                                 let check_result = std::process::Command::new("cargo")
-                                    .arg("check")
+                                    .arg("build")
                                     .arg("--quiet")
                                     .current_dir(base_dir)
                                     .output();
@@ -961,12 +962,12 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                     }
                                     Ok(_) => {
                                         println!("{}", "".red());
-                                        errors.push("Rust code has compilation errors (run 'cargo check' for details)".to_string());
+                                        errors.push("Rust code has compilation errors (run 'cargo build' for details)".to_string());
                                     }
                                     Err(_) => {
                                         println!("{}", "".yellow());
                                         if !quiet {
-                                            warn_msgs.push("Could not run 'cargo check' - skipping code validation".to_string());
+                                            warn_msgs.push("Could not run 'cargo build' - skipping code validation".to_string());
                                         }
                                     }
                                 }
@@ -1141,6 +1142,68 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 }
             }
 
+            // Disk Space Check
+            print!("  {} Checking available disk space... ", "".cyan());
+            #[cfg(target_os = "linux")]
+            {
+                use std::process::Command;
+
+                // Check available space in current directory (where .horus will be created)
+                if let Ok(output) = Command::new("df")
+                    .arg("-BM")
+                    .arg(base_dir)
+                    .output()
+                {
+                    if output.status.success() {
+                        let output_str = String::from_utf8_lossy(&output.stdout);
+                        // Parse df output: Filesystem  1M-blocks  Used Available Use% Mounted
+                        if let Some(line) = output_str.lines().nth(1) {
+                            let parts: Vec<&str> = line.split_whitespace().collect();
+                            if parts.len() >= 4 {
+                                if let Some(available) = parts[3].strip_suffix('M') {
+                                    if let Ok(available_mb) = available.parse::<u64>() {
+                                        // Warn if less than 500MB available
+                                        if available_mb < 500 {
+                                            println!("{} ({}MB free)", "".yellow(), available_mb);
+                                            if !quiet {
+                                                warn_msgs.push(format!(
+                                                    "Low disk space: only {}MB available (recommended: 500MB+)",
+                                                    available_mb
+                                                ));
+                                            }
+                                        } else if available_mb < 100 {
+                                            println!("{} ({}MB free)", "".red(), available_mb);
+                                            errors.push(format!(
+                                                "Critically low disk space: only {}MB available",
+                                                available_mb
+                                            ));
+                                        } else {
+                                            println!("{} ({}MB free)", "".green(), available_mb);
+                                        }
+                                    } else {
+                                        println!("{}", "⊘".dimmed());
+                                    }
+                                } else {
+                                    println!("{}", "⊘".dimmed());
+                                }
+                            } else {
+                                println!("{}", "⊘".dimmed());
+                            }
+                        } else {
+                            println!("{}", "⊘".dimmed());
+                        }
+                    } else {
+                        println!("{}", "⊘".dimmed());
+                    }
+                } else {
+                    println!("{}", "⊘".dimmed());
+                }
+            }
+            #[cfg(not(target_os = "linux"))]
+            {
+                println!("{}", "⊘".dimmed());
+            }
+
             // 15. API Usage Check (basic pattern matching)
             print!("  {} Checking API usage... ", "".cyan());
             if let Some(ref yaml) = yaml_value {
@@ -1204,6 +1267,44 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                     }
                                 } else {
                                     println!("{}", "⊘".dimmed());
+                                }
+                            } else {
+                                println!("{}", "⊘".dimmed());
+                            }
+
+                            // Check external Python dependencies
+                            print!("  {} Checking Python external dependencies... ", "".cyan());
+                            let main_py = base_dir.join("main.py");
+                            if main_py.exists() {
+                                match parse_python_imports(&main_py) {
+                                    Ok(imports) if !imports.is_empty() => {
+                                        let mut missing_packages = Vec::new();
+                                        for package in &imports {
+                                            if !check_system_package_exists(package) {
+                                                missing_packages.push(package.clone());
+                                            }
+                                        }
+
+                                        if missing_packages.is_empty() {
+                                            println!("{} ({})", "".green(), imports.len());
+                                        } else {
+                                            println!("{}", "".red());
+                                            errors.push(format!(
+                                                "Missing Python packages: {} (install with: pip install {})",
+                                                missing_packages.join(", "),
+                                                missing_packages.join(" ")
+                                            ));
+                                        }
+                                    }
+                                    Ok(_) => {
+                                        println!("{}", "⊘".dimmed());
+                                    }
+                                    Err(e) => {
+                                        println!("{}", "".yellow());
+                                        if !quiet {
+                                            warn_msgs.push(format!("Could not parse Python imports: {}", e));
+                                        }
+                                    }
                                 }
                             } else {
                                 println!("{}", "⊘".dimmed());
@@ -1272,20 +1373,25 @@ fn run_command(command: Commands) -> HorusResult<()> {
             }
         }
 
-        Commands::Dashboard { port, tui, secure } => {
+        Commands::Dashboard { port, tui, reset_password } => {
+            // Reset password if requested
+            if reset_password {
+                security::auth::reset_password()
+                    .map_err(|e| HorusError::Config(e.to_string()))?;
+            }
+
             if tui {
                 println!("{} Opening HORUS Terminal UI dashboard...", "".cyan());
                 // Launch TUI dashboard
                 dashboard_tui::TuiDashboard::run().map_err(|e| HorusError::Config(e.to_string()))
             } else {
                 // Default: Launch web dashboard and auto-open browser
-                let protocol = if secure { "https" } else { "http" };
                 println!(
-                    "{} Starting HORUS web dashboard on {}://localhost:{}...",
+                    "{} Starting HORUS web dashboard on http://localhost:{}...",
                     "".cyan(),
-                    protocol,
                     port
                 );
+                println!("  {} Password-protected access", "".dimmed());
                 println!("  {} Opening browser...", "".dimmed());
                 println!(
                     "  {} Use 'horus dashboard -t' for Terminal UI",
@@ -1294,7 +1400,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
 
                 tokio::runtime::Runtime::new()
                     .unwrap()
-                    .block_on(dashboard::run(port, secure))
+                    .block_on(dashboard::run(port))
                     .map_err(|e| {
                         let err_str = e.to_string();
                         if err_str.contains("Address already in use") || err_str.contains("os error 98") {
@@ -2387,10 +2493,8 @@ fn run_command(command: Commands) -> HorusResult<()> {
             AuthCommands::Whoami => commands::github_auth::whoami(),
         },
 
-        Commands::Sim {
-            sim_2d,
+        Commands::Sim2d {
             headless,
-            seed,
             world,
             world_image,
             resolution,
@@ -2399,45 +2503,92 @@ fn run_command(command: Commands) -> HorusResult<()> {
             topic,
             name,
         } => {
-            if sim_2d {
-                // Run sim2d
-                use std::env;
-                use std::process::Command;
+            use std::env;
+            use std::process::Command;
 
-                println!("{} Starting sim2d...", "".cyan());
+            println!("{} Starting sim2d...", "".cyan());
+            if headless {
+                println!("  Mode: Headless (no GUI)");
+            }
+            println!("  Topic: {}", topic);
+            println!("  Robot name: {}", name);
+            if let Some(ref world_path) = world {
+                println!("  World: {}", world_path.display());
+            }
+            if let Some(ref robot_path) = robot {
+                println!("  Robot config: {}", robot_path.display());
+            }
+            println!();
+
+            // Find sim2d path relative to HORUS repo
+            let horus_source = env::var("HORUS_SOURCE")
+                .or_else(|_| env::var("HOME").map(|h| format!("{}/.horus/cache/HORUS", h)))
+                .unwrap_or_else(|_| ".".to_string());
+
+            let sim2d_path = format!("{}/horus_library/tools/sim2d", horus_source);
+
+            // Try to run pre-built binary first (fast path)
+            let sim2d_binary = env::var("HOME")
+                .map(|h| format!("{}/.cargo/bin/sim2d", h))
+                .unwrap_or_else(|_| "sim2d".to_string());
+
+            let status = if std::path::Path::new(&sim2d_binary).exists() {
+                // Run pre-built binary directly (instant launch!)
+                println!("{} Launching sim2d...", "[RUN]".green());
+                let mut binary_cmd = Command::new(&sim2d_binary);
+
+                // Add arguments
+                if let Some(ref w) = world {
+                    binary_cmd.arg("--world").arg(w);
+                }
+                if let Some(ref w) = world_image {
+                    binary_cmd.arg("--world_image").arg(w);
+                    if let Some(res) = resolution {
+                        binary_cmd.arg("--resolution").arg(res.to_string());
+                    }
+                    if let Some(thresh) = threshold {
+                        binary_cmd.arg("--threshold").arg(thresh.to_string());
+                    }
+                }
+                if let Some(ref r) = robot {
+                    binary_cmd.arg("--robot").arg(r);
+                }
+                binary_cmd.arg("--topic").arg(&topic);
+                binary_cmd.arg("--name").arg(&name);
                 if headless {
-                    println!("  Mode: Headless (no GUI)");
+                    binary_cmd.arg("--headless");
                 }
-                println!("  Topic: {}", topic);
-                println!("  Robot name: {}", name);
-                if let Some(ref world_path) = world {
-                    println!("  World: {}", world_path.display());
-                }
-                if let Some(ref robot_path) = robot {
-                    println!("  Robot config: {}", robot_path.display());
-                }
-                println!();
 
-                // Find sim2d path relative to HORUS repo
-                let horus_source = env::var("HORUS_SOURCE")
-                    .or_else(|_| env::var("HOME").map(|h| format!("{}/.horus/cache/HORUS", h)))
-                    .unwrap_or_else(|_| ".".to_string());
-
-                let sim2d_path = format!("{}/horus_library/tools/sim2d", horus_source);
-
-                // Build cargo run command with arguments
+                binary_cmd
+                    .status()
+                    .map_err(|e| HorusError::Config(format!("Failed to run sim2d: {}", e)))?
+            } else {
+                // Fallback: compile and run from source
+                println!(
+                    "{} Pre-built binary not found, compiling from source...",
+                    "".yellow()
+                );
                 let mut cmd = Command::new("cargo");
                 cmd.current_dir(&sim2d_path)
                     .arg("run")
                     .arg("--release")
                     .arg("--");
 
-                // Add optional arguments
-                if let Some(ref world_path) = world {
-                    cmd.arg("--world").arg(world_path);
+                // Add arguments
+                if let Some(ref w) = world {
+                    cmd.arg("--world").arg(w);
                 }
-                if let Some(ref robot_path) = robot {
-                    cmd.arg("--robot").arg(robot_path);
+                if let Some(ref w) = world_image {
+                    cmd.arg("--world_image").arg(w);
+                    if let Some(res) = resolution {
+                        cmd.arg("--resolution").arg(res.to_string());
+                    }
+                    if let Some(thresh) = threshold {
+                        cmd.arg("--threshold").arg(thresh.to_string());
+                    }
+                }
+                if let Some(ref r) = robot {
+                    cmd.arg("--robot").arg(r);
                 }
                 cmd.arg("--topic").arg(&topic);
                 cmd.arg("--name").arg(&name);
@@ -2445,76 +2596,123 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     cmd.arg("--headless");
                 }
 
-                println!("{} Launching sim2d...", "[RUN]".green());
-                println!();
+                cmd.status()
+                    .map_err(|e| HorusError::Config(format!("Failed to run sim2d: {}. Try running manually: cd {} && cargo run --release", e, sim2d_path)))?
+            };
 
-                // Try to run pre-built binary first (fast path)
-                let sim2d_binary = env::var("HOME")
-                    .map(|h| format!("{}/.cargo/bin/sim2d", h))
-                    .unwrap_or_else(|_| "sim2d".to_string());
+            if !status.success() {
+                return Err(HorusError::Config(format!(
+                    "sim2d exited with error code: {:?}",
+                    status.code()
+                )));
+            }
 
-                let status = if std::path::Path::new(&sim2d_binary).exists() {
-                    // Run pre-built binary directly (instant launch!)
-                    let mut binary_cmd = Command::new(&sim2d_binary);
+            Ok(())
+        },
 
-                    // Add arguments
-                    if let Some(ref w) = world {
-                        binary_cmd.arg("--world").arg(w);
-                    }
-                    if let Some(ref w) = world_image {
-                        binary_cmd.arg("--world_image").arg(w);
-                        if let Some(res) = resolution {
-                            binary_cmd.arg("--resolution").arg(res.to_string());
-                        }
-                        if let Some(thresh) = threshold {
-                            binary_cmd.arg("--threshold").arg(thresh.to_string());
-                        }
-                    }
-                    if let Some(ref r) = robot {
-                        binary_cmd.arg("--robot").arg(r);
-                    }
-                    binary_cmd.arg("--topic").arg(&topic);
-                    binary_cmd.arg("--name").arg(&name);
-                    if headless {
-                        binary_cmd.arg("--headless");
-                    }
+        Commands::Sim3d {
+            headless,
+            seed,
+            visual,
+            robot,
+            world,
+        } => {
+            use std::env;
+            use std::process::Command;
 
-                    binary_cmd
-                        .status()
-                        .map_err(|e| HorusError::Config(format!("Failed to run sim2d: {}", e)))?
-                } else {
-                    // Fallback: compile and run from source
-                    println!(
-                        "{} Pre-built binary not found, compiling from source...",
-                        "".yellow()
-                    );
-                    cmd.status()
-                        .map_err(|e| HorusError::Config(format!("Failed to run sim2d: {}. Try running manually: cd {} && cargo run --release", e, sim2d_path)))?
-                };
+            println!("{} Starting sim3d...", "".cyan());
+            if headless {
+                println!("  Mode: Headless");
+            } else if visual {
+                println!("  Mode: Visual");
+            }
+            if let Some(s) = seed {
+                println!("  Seed: {}", s);
+            }
+            if let Some(ref robot_path) = robot {
+                println!("  Robot: {}", robot_path.display());
+            }
+            if let Some(ref world_path) = world {
+                println!("  World: {}", world_path.display());
+            }
+            println!();
 
-                // Execute and wait (reuse status variable from above)
+            // Find sim3d path relative to HORUS repo
+            let horus_source = env::var("HORUS_SOURCE")
+                .or_else(|_| env::var("HOME").map(|h| format!("{}/.horus/cache/HORUS", h)))
+                .unwrap_or_else(|_| ".".to_string());
 
-                if !status.success() {
-                    return Err(HorusError::Config(format!(
-                        "sim2d exited with error code: {:?}",
-                        status.code()
-                    )));
-                }
+            let sim3d_path = format!("{}/horus_library/tools/sim3d", horus_source);
 
-                Ok(())
-            } else {
-                // Run sim3d (default)
-                println!("{} Starting sim3d...", "".cyan());
+            // Try to run pre-built binary first
+            let sim3d_binary = env::var("HOME")
+                .map(|h| format!("{}/.cargo/bin/sim3d", h))
+                .unwrap_or_else(|_| "sim3d".to_string());
+
+            let status = if std::path::Path::new(&sim3d_binary).exists() {
+                println!("{} Launching sim3d...", "[RUN]".green());
+                let mut binary_cmd = Command::new(&sim3d_binary);
+
                 if headless {
-                    println!("  Mode: Headless");
+                    binary_cmd.arg("--mode").arg("headless");
+                } else {
+                    binary_cmd.arg("--mode").arg("visual");
                 }
                 if let Some(s) = seed {
-                    println!("  Seed: {}", s);
+                    binary_cmd.arg("--seed").arg(s.to_string());
                 }
-                println!("\n{}", "  sim3d is planned for future release!".yellow());
-                println!("See roadmap: https://docs.horus-registry.dev/roadmap");
-                Ok(())
+                if let Some(ref r) = robot {
+                    binary_cmd.arg("--robot").arg(r);
+                }
+                if let Some(ref w) = world {
+                    binary_cmd.arg("--world").arg(w);
+                }
+
+                binary_cmd
+                    .status()
+                    .map_err(|e| HorusError::Config(format!("Failed to run sim3d: {}", e)))?
+            } else {
+                println!(
+                    "{} Pre-built binary not found, compiling from source...",
+                    "".yellow()
+                );
+                let mut cmd = Command::new("cargo");
+                cmd.current_dir(&sim3d_path).arg("run").arg("--release");
+
+                // Use features based on mode
+                if headless {
+                    cmd.arg("--no-default-features").arg("--features").arg("headless");
+                }
+
+                cmd.arg("--");
+
+                if headless {
+                    cmd.arg("--mode").arg("headless");
+                } else {
+                    cmd.arg("--mode").arg("visual");
+                }
+                if let Some(s) = seed {
+                    cmd.arg("--seed").arg(s.to_string());
+                }
+                if let Some(ref r) = robot {
+                    cmd.arg("--robot").arg(r);
+                }
+                if let Some(ref w) = world {
+                    cmd.arg("--world").arg(w);
+                }
+
+                cmd.status()
+                    .map_err(|e| HorusError::Config(format!("Failed to run sim3d: {}. Try running manually: cd {} && cargo run --release", e, sim3d_path)))?
+            };
+
+            if !status.success() {
+                return Err(HorusError::Config(format!(
+                    "sim3d exited with error code: {:?}",
+                    status.code()
+                )));
             }
+
+            Ok(())
         },
 
         Commands::Completion { shell } => {
@@ -2559,6 +2757,63 @@ fn check_system_package_exists(package_name: &str) -> bool {
     }
 
     false
+}
+
+/// Parse Python imports from a file
+fn parse_python_imports(python_file: &Path) -> Result<Vec<String>, std::io::Error> {
+    let content = std::fs::read_to_string(python_file)?;
+    let mut imports = Vec::new();
+
+    for line in content.lines() {
+        let trimmed = line.trim();
+
+        // Skip comments and empty lines
+        if trimmed.starts_with('#') || trimmed.is_empty() {
+            continue;
+        }
+
+        // Parse "import X" or "import X as Y"
+        if let Some(rest) = trimmed.strip_prefix("import ") {
+            let module = rest.split_whitespace()
+                .next()
+                .unwrap_or("")
+                .split('.')
+                .next()
+                .unwrap_or("")
+                .split(',')
+                .next()
+                .unwrap_or("")
+                .trim();
+
+            if !module.is_empty() && !imports.contains(&module.to_string()) {
+                imports.push(module.to_string());
+            }
+        }
+
+        // Parse "from X import Y"
+        if let Some(rest) = trimmed.strip_prefix("from ") {
+            if let Some(module) = rest.split_whitespace().next() {
+                let base_module = module.split('.').next().unwrap_or("");
+                if !base_module.is_empty() && !imports.contains(&base_module.to_string()) {
+                    imports.push(base_module.to_string());
+                }
+            }
+        }
+    }
+
+    // Filter out standard library and relative imports
+    let stdlib_modules = vec![
+        "os", "sys", "re", "json", "math", "time", "datetime", "collections",
+        "itertools", "functools", "pathlib", "typing", "abc", "io", "logging",
+        "argparse", "subprocess", "threading", "multiprocessing", "queue",
+        "socket", "http", "urllib", "email", "xml", "html", "random", "string",
+        "unittest", "pytest", "asyncio", "concurrent", "pickle", "copy", "enum",
+        "dataclasses", "contextlib", "warnings", "traceback", "pdb", "timeit",
+    ];
+
+    imports.retain(|module| !stdlib_modules.contains(&module.as_str()) && module != "horus");
+
+    Ok(imports)
 }
 
 fn prompt_missing_system_package(package_name: &str) -> Result<MissingSystemChoice, HorusError> {

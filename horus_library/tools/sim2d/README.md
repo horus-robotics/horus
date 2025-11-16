@@ -17,8 +17,9 @@ sim2d is a **2D top-down simulator** for testing robot control algorithms:
 **Use it for:**
 - Navigation algorithm testing
 - Path planning development
-- Sensor simulation (LiDAR, odometry, IMU)
-- CI/CD automated testing
+- Sensor simulation (LiDAR, odometry, IMU) ✅ INTEGRATED
+- CI/CD automated testing (headless mode) ✅ IMPLEMENTED
+- Dynamic environment testing (runtime obstacle spawning) ✅ NEW
 
 **NOT for:**
 - Realistic 3D visualization (use Gazebo/Webots instead)
@@ -135,10 +136,15 @@ horus run circle_driver.rs
 - Window resolution: 1200×900
 
 **HORUS Integration:**
-- Subscribes to `cmd_vel` topic (or custom)
-- Publishes odometry (ground truth from physics)
-- Direct shared memory communication
+- Subscribes to: `cmd_vel` (velocity commands), `/sim2d/obstacle_cmd` (dynamic obstacles)
+- Publishes: `/robot/odom` (odometry), `/robot/imu` (IMU), `/robot/scan` (LiDAR)
+- Direct shared memory communication (85-167ns latency)
 - No ROS dependency
+
+**Sensors:**
+- **LiDAR**: 720-beam laser scanner with configurable FOV and range
+- **IMU**: Linear and angular acceleration with noise simulation
+- **Odometry**: Ground-truth pose from physics engine
 
 ---
 
@@ -174,17 +180,135 @@ world:
   width: 20.0         # World width (meters)
   height: 15.0        # World height (meters)
 
-# Rectangular obstacles
+# Obstacles (rectangles and circles)
 obstacles:
+  # Rectangular obstacle (default shape)
   - pos: [5.0, 5.0]     # Center position [x, y]
     size: [2.0, 1.0]    # Dimensions [width, height]
 
+  # Rectangular obstacle with custom color
   - pos: [-3.0, -2.0]
     size: [1.5, 1.5]
+    color: [0.8, 0.2, 0.2]  # RGB (0.0-1.0), red obstacle
+
+  # Circular obstacle
+  - pos: [-6.0, 4.0]
+    shape: circle       # "rectangle" (default) or "circle"
+    size: [1.5, 1.5]    # For circles, first value is radius
+    color: [0.9, 0.7, 0.1]  # Optional custom color (yellow)
 
   - pos: [0.0, 7.0]
     size: [3.0, 0.5]
 ```
+
+---
+
+## 🆕 Dynamic Obstacle Spawning
+
+Add and remove obstacles at runtime - perfect for dynamic environment testing!
+
+### Quick Start
+
+```bash
+# Terminal 1: Run sim2d
+cargo run --release
+
+# Terminal 2: Run example script
+cd examples
+python3 dynamic_obstacles.py simple      # Add 3 colored obstacles
+python3 dynamic_obstacles.py grid        # Create 3x3 grid
+python3 dynamic_obstacles.py animation   # Animated wave
+python3 dynamic_obstacles.py interactive # Manual control
+```
+
+### API Usage
+
+```python
+from horus import Hub
+
+# Connect to obstacle command topic
+hub = Hub("/sim2d/obstacle_cmd")
+
+# Add rectangular obstacle
+hub.send({
+    "action": "add",
+    "obstacle": {
+        "pos": [3.0, 2.0],        # Position [x, y] in meters
+        "shape": "rectangle",     # "rectangle" or "circle"
+        "size": [1.5, 1.0],       # [width, height] for rectangles
+        "color": [0.8, 0.2, 0.2]  # Optional RGB (0.0-1.0)
+    }
+})
+
+# Add circular obstacle
+hub.send({
+    "action": "add",
+    "obstacle": {
+        "pos": [-2.0, 4.0],
+        "shape": "circle",
+        "size": [0.8, 0.8],       # [radius, _] for circles
+        "color": [0.2, 0.8, 0.2]  # Green
+    }
+})
+
+# Remove obstacle (10cm position tolerance)
+hub.send({
+    "action": "remove",
+    "obstacle": {
+        "pos": [3.0, 2.0],        # Position of obstacle to remove
+        "shape": "rectangle",
+        "size": [0.0, 0.0]
+    }
+})
+```
+
+See `examples/README.md` for complete documentation and troubleshooting.
+
+---
+
+## 📡 Sensor Integration
+
+sim2d publishes sensor data on HORUS topics - ready for your navigation algorithms!
+
+### Available Sensors
+
+**LiDAR (`/robot/scan`)**
+```rust
+// Subscribe to laser scan data
+use horus_library::messages::laser_scan::LaserScan;
+
+let mut scan_sub: Hub<LaserScan> = Hub::new("/robot/scan")?;
+if let Some(scan) = scan_sub.recv(None)? {
+    println!("Got {} ranges, min angle: {}, max angle: {}",
+        scan.ranges.len(), scan.angle_min, scan.angle_max);
+}
+```
+
+**IMU (`/robot/imu`)**
+```rust
+// Subscribe to IMU data
+use horus_library::messages::imu::Imu;
+
+let mut imu_sub: Hub<Imu> = Hub::new("/robot/imu")?;
+if let Some(imu) = imu_sub.recv(None)? {
+    println!("Linear accel: {:?}", imu.linear_acceleration);
+    println!("Angular vel: {:?}", imu.angular_velocity);
+}
+```
+
+**Odometry (`/robot/odom`)**
+```rust
+// Subscribe to odometry (ground truth)
+use horus_library::messages::odometry::Odometry;
+
+let mut odom_sub: Hub<Odometry> = Hub::new("/robot/odom")?;
+if let Some(odom) = odom_sub.recv(None)? {
+    println!("Position: ({}, {})", odom.pose.position.x, odom.pose.position.y);
+    println!("Orientation: {}", odom.pose.orientation.z);
+}
+```
+
+All sensors work in both GUI and headless modes!
 
 ---
 
@@ -370,8 +494,8 @@ kill $SIM_PID
 ```
 
 **Performance:**
-- GUI Mode: 60 Hz physics, ~150 MB memory
-- Headless Mode: 1000+ Hz physics, ~30 MB memory
+- GUI Mode: 60 Hz physics, ~150 MB memory, full sensor publishing
+- Headless Mode: 1000+ Hz physics, ~30 MB memory, full sensor publishing ✅ IMPLEMENTED
 
 ---
 
@@ -379,12 +503,12 @@ kill $SIM_PID
 
 **Typical performance on modern desktop:**
 
-| Mode | Physics Rate | Memory | Latency |
-|------|--------------|--------|---------|
-| Visual | 60 Hz (limited by render) | ~150 MB | < 1ms |
-| Headless* | 1000+ Hz | ~50 MB | < 200ns |
+| Mode | Physics Rate | Memory | Latency | Sensors |
+|------|--------------|--------|---------|---------|
+| Visual | 60 Hz (limited by render) | ~150 MB | < 1ms | LiDAR, IMU, Odom |
+| Headless | 1000+ Hz | ~30 MB | < 200ns | LiDAR, IMU, Odom |
 
-*Headless mode not yet implemented - future feature
+Note: Headless mode provides full sensor publishing for CI/CD testing
 
 ---
 
@@ -442,25 +566,30 @@ sim2d renders **simple 2D shapes**, not detailed 3D models:
 
 ---
 
-## 🚧 Current Limitations
+## ✨ Features & Capabilities
 
-**What works:**
-- Single robot simulation
-- Differential drive kinematics
-- Physics simulation with collisions
-- Basic rectangular obstacles
-- HORUS topic integration
-- Real-time visualization
+**Fully Implemented:**
+- ✅ Single robot simulation with differential drive kinematics
+- ✅ Physics simulation with collisions (Rapier2D)
+- ✅ Rectangular and circular obstacles
+- ✅ Custom RGB colors per obstacle
+- ✅ HORUS topic integration (cmd_vel, odom, imu, scan)
+- ✅ Real-time visualization with Bevy
+- ✅ **LiDAR sensor** - 720-beam laser scanner with configurable FOV
+- ✅ **IMU sensor** - Linear/angular acceleration with noise
+- ✅ **Odometry publishing** - Ground-truth pose on `/robot/odom`
+- ✅ **Headless mode** - For CI/CD and server deployments (1000+ Hz)
+- ✅ **Dynamic obstacle spawning** - Add/remove obstacles at runtime via `/sim2d/obstacle_cmd`
+- ✅ Image-based world loading (PNG/JPG/PGM, perfect for ROS maps)
 
-**What's missing/planned:**
-- ⏳ LiDAR sensor simulation (code exists, needs integration)
-- ⏳ IMU sensor simulation (code exists, needs integration)
-- ⏳ Odometry publishing to HORUS topics
-- ⏳ Headless mode for CI/testing
-- ⏳ Multi-robot support
-- ⏳ Dynamic obstacle spawning
-- ⏳ Circular obstacles
-- ⏳ Custom colors for obstacles
+**In Progress:**
+- ⏳ Multi-robot support (planned)
+- ⏳ More sensor types (camera, GPS, etc.)
+
+**Not Planned:**
+- ❌ 3D visualization (use Gazebo/Webots instead)
+- ❌ Detailed robot mesh rendering
+- ❌ Realistic lighting/shadows
 
 ---
 
@@ -578,7 +707,15 @@ Licensed under Apache License 2.0, same as HORUS framework.
 ## Summary
 
 **sim2d in one sentence:**
-A simple, fast 2D robot simulator with physics and visualization, perfect for testing HORUS control algorithms before deploying to real robots.
+A simple, fast 2D robot simulator with full sensor integration (LiDAR, IMU, odometry), dynamic obstacle spawning, and headless CI/CD support - perfect for testing HORUS control algorithms before deploying to real robots.
+
+**Key Features:**
+- ✅ Complete sensor suite (LiDAR, IMU, Odometry)
+- ✅ Dynamic obstacle spawning via HORUS topics
+- ✅ Headless mode for CI/CD (1000+ Hz)
+- ✅ Circular and rectangular obstacles with custom colors
+- ✅ Image-based world loading (PNG/JPG/PGM)
+- ✅ Zero-copy HORUS communication (85-167ns latency)
 
 **Quick commands:**
 ```bash

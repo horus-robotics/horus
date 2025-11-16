@@ -23,8 +23,8 @@
 //! impl Node for ExampleNode {
 //!     fn name(&self) -> &'static str { "example" }
 //!
-//!     fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-//!         let _ = self.output.send("Hello HORUS!".into(), ctx);
+//!     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+//!         let _ = self.output.send("Hello HORUS!".into(), &mut ctx);
 //!     }
 //! }
 //! ```

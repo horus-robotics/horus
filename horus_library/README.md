@@ -46,7 +46,7 @@ horus_library/
 
 ## Production-Ready Built-in Nodes
 
-HORUS Library includes **33+ production-ready nodes** with real hardware integration. These nodes are **NOT prototypes** - they're production-grade drivers ready for deployment in real robots.
+HORUS Library includes **32 production-ready nodes** with real hardware integration. These nodes are **NOT prototypes** - they're production-grade drivers ready for deployment in real robots.
 
 ### Complete Node Catalog
 
@@ -377,9 +377,9 @@ Registered node 'KeyboardInputNode' with priority 0 (logging: true)
 Registered node 'JoystickInputNode' with priority 1 (logging: true)
 Registered node 'SnakeControlNode' with priority 2 (logging: true)
 
-[2025-08-10 11:30:00.123] [0ms] 📤 KeyboardInputNode  'keyboard_input' = ArrowUp
-[2025-08-10 11:30:00.124] [1ms] 📥 SnakeControlNode  'keyboard_input' = ArrowUp
-[2025-08-10 11:30:00.125] [2ms] 📤 SnakeControlNode  'direction_command' = 1
+[2025-08-10 11:30:00.123] [0ms] [TX] KeyboardInputNode  'keyboard_input' = ArrowUp
+[2025-08-10 11:30:00.124] [1ms] [RX] SnakeControlNode  'keyboard_input' = ArrowUp
+[2025-08-10 11:30:00.125] [2ms] [TX] SnakeControlNode  'direction_command' = 1
 ```
 
 ## Message Safety

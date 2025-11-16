@@ -31,7 +31,7 @@ impl Node for SnakeControlNode {
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Process keyboard input
-        if let Some(input) = self.keyboard_subscriber.recv(None) {
+        if let Some(input) = self.keyboard_subscriber.recv(&mut None) {
             ctx.log_debug(&format!(
                 "Received key code: {}, pressed: {}",
                 input.code, input.pressed
@@ -49,12 +49,12 @@ impl Node for SnakeControlNode {
                 };
 
                 ctx.log_debug(&format!("Publishing direction: {}", direction));
-                let _ = self.snake_publisher.send(direction, ctx.as_deref_mut());
+                let _ = self.snake_publisher.send(direction, &mut ctx);
             }
         }
 
         // Process joystick input
-        if let Some(input) = self.joystick_subscriber.recv(None) {
+        if let Some(input) = self.joystick_subscriber.recv(&mut None) {
             if input.is_button() && input.pressed {
                 // Map D-pad buttons to snake directions
                 let button_name = input.get_element_name();
@@ -70,7 +70,7 @@ impl Node for SnakeControlNode {
 
                 if let Some(dir) = direction {
                     ctx.log_debug(&format!("Publishing joystick direction: {}", dir));
-                    let _ = self.snake_publisher.send(dir, ctx.as_deref_mut());
+                    let _ = self.snake_publisher.send(dir, &mut ctx);
                 }
             } else if input.is_axis() {
                 // Map left stick to snake directions (with threshold)
@@ -103,7 +103,7 @@ impl Node for SnakeControlNode {
 
                     if let Some(dir) = direction {
                         ctx.log_debug(&format!("Publishing joystick axis direction: {}", dir));
-                        let _ = self.snake_publisher.send(dir, ctx.as_deref_mut());
+                        let _ = self.snake_publisher.send(dir, &mut ctx);
                     }
                 }
             }

@@ -604,7 +604,7 @@ where
     /// - Lock-free queues for network
     /// - Relaxed atomics for metrics
     #[inline(always)]
-    pub fn send(&self, msg: T, ctx: Option<&mut NodeInfo>) -> Result<(), T>
+    pub fn send(&self, msg: T, ctx: &mut Option<&mut NodeInfo>) -> Result<(), T>
     where
         T: std::fmt::Debug + Clone + serde::Serialize,
     {
@@ -620,7 +620,7 @@ where
                         );
 
                         if unlikely(ctx.is_some()) {
-                            if let Some(ctx) = ctx {
+                            if let Some(ref mut ctx) = ctx {
                                 ctx.log_pub(&self.topic_name, &msg, 0);
                             }
                         }
@@ -695,7 +695,7 @@ where
         );
 
         // Log with accurate IPC timing
-        if let Some(ctx) = ctx {
+        if let Some(ref mut ctx) = ctx {
             let slot = unsafe { &*(data_ptr.as_ptr() as *const T) };
             ctx.log_pub(&self.topic_name, slot, ipc_ns);
         }
@@ -715,7 +715,7 @@ where
     /// - Local sequence tracking (no atomic stores to shared memory)
     /// - Relaxed atomics for metrics
     #[inline(always)]
-    pub fn recv(&self, ctx: Option<&mut NodeInfo>) -> Option<T>
+    pub fn recv(&self, ctx: &mut Option<&mut NodeInfo>) -> Option<T>
     where
         T: std::fmt::Debug + Clone + serde::de::DeserializeOwned,
     {
@@ -730,7 +730,7 @@ where
                     );
 
                     if unlikely(ctx.is_some()) {
-                        if let Some(ctx) = ctx {
+                        if let Some(ref mut ctx) = ctx {
                             ctx.log_sub(&self.topic_name, &msg, 0);
                         }
                     }
@@ -785,7 +785,7 @@ where
 
         // Log with accurate IPC timing
         if unlikely(ctx.is_some()) {
-            if let Some(ctx) = ctx {
+            if let Some(ref mut ctx) = ctx {
                 ctx.log_sub(&self.topic_name, &msg, ipc_ns);
             }
         }

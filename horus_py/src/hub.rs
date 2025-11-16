@@ -9,8 +9,35 @@ use horus_library::messages::GenericMessage;
 use horus_library::messages::cmd_vel::CmdVel;
 use horus_library::messages::geometry::Pose2D;
 use pyo3::prelude::*;
-use pyo3::types::PyDict;
 use std::sync::{Arc, Mutex};
+use std::fs;
+use std::path::PathBuf;
+
+/// Helper function to record pub/sub metadata for dashboard discovery
+/// Writes metadata files to /dev/shm/horus/pubsub_metadata/
+fn record_pubsub_metadata(node_name: &str, topic_name: &str, direction: &str) {
+    let metadata_dir = PathBuf::from("/dev/shm/horus/pubsub_metadata");
+
+    // Create directory if it doesn't exist (best-effort, ignore errors)
+    let _ = fs::create_dir_all(&metadata_dir);
+
+    // Create metadata filename: {node_name}_{topic_name}_{direction}
+    let filename = format!("{}_{}_{}",
+        node_name.replace('/', "_"),
+        topic_name.replace('/', "_"),
+        direction
+    );
+
+    let file_path = metadata_dir.join(&filename);
+
+    // Write current timestamp (best-effort, ignore errors)
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+
+    let _ = fs::write(&file_path, timestamp.to_string());
+}
 
 /// Internal enum tracking which Rust type the Hub wraps
 enum HubType {
@@ -125,16 +152,23 @@ impl PyHub {
 
                 // Send via typed Hub<CmdVel>
                 let hub = hub.lock().unwrap();
-                let success = hub.send(cmd.clone(), None).is_ok();
+                let success = hub.send(cmd.clone(), &mut None).is_ok();
 
                 // Log if node provided (use LogSummary trait!)
-                if let Some(node_obj) = node {
+                if let Some(node_obj) = &node {
                     let ipc_ns = start.elapsed().as_nanos() as u64;
                     if let Ok(info) = node_obj.getattr(py, "info") {
                         if !info.is_none(py) {
                             use horus::core::LogSummary;
                             let log_msg = cmd.log_summary();
                             let _ = info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
+
+                            // Record metadata for dashboard discovery
+                            if let Ok(node_name) = info.getattr(py, "name") {
+                                if let Ok(name) = node_name.extract::<String>(py) {
+                                    record_pubsub_metadata(&name, &self.topic, "pub");
+                                }
+                            }
                         }
                     }
                 }
@@ -153,16 +187,23 @@ impl PyHub {
 
                 // Send via typed Hub<Pose2D>
                 let hub = hub.lock().unwrap();
-                let success = hub.send(pose.clone(), None).is_ok();
+                let success = hub.send(pose.clone(), &mut None).is_ok();
 
                 // Log if node provided (use LogSummary trait!)
-                if let Some(node_obj) = node {
+                if let Some(node_obj) = &node {
                     let ipc_ns = start.elapsed().as_nanos() as u64;
                     if let Ok(info) = node_obj.getattr(py, "info") {
                         if !info.is_none(py) {
                             use horus::core::LogSummary;
                             let log_msg = pose.log_summary();
                             let _ = info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
+
+                            // Record metadata for dashboard discovery
+                            if let Ok(node_name) = info.getattr(py, "name") {
+                                if let Ok(name) = node_name.extract::<String>(py) {
+                                    record_pubsub_metadata(&name, &self.topic, "pub");
+                                }
+                            }
                         }
                     }
                 }
@@ -189,16 +230,23 @@ impl PyHub {
 
                 // Send via Hub<GenericMessage>
                 let hub = hub.lock().unwrap();
-                let success = hub.send(msg, None).is_ok();
+                let success = hub.send(msg, &mut None).is_ok();
 
                 // Log if node provided
-                if let Some(node_obj) = node {
+                if let Some(node_obj) = &node {
                     let ipc_ns = start.elapsed().as_nanos() as u64;
                     if let Ok(info) = node_obj.getattr(py, "info") {
                         if !info.is_none(py) {
                             use horus::core::LogSummary;
                             let log_msg = msg.log_summary();
                             let _ = info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
+
+                            // Record metadata for dashboard discovery
+                            if let Ok(node_name) = info.getattr(py, "name") {
+                                if let Ok(name) = node_name.extract::<String>(py) {
+                                    record_pubsub_metadata(&name, &self.topic, "pub");
+                                }
+                            }
                         }
                     }
                 }
@@ -229,7 +277,7 @@ impl PyHub {
         match &self.hub_type {
             HubType::CmdVel(hub) => {
                 let hub = hub.lock().unwrap();
-                if let Some(cmd) = hub.recv(None) {
+                if let Some(cmd) = hub.recv(&mut None) {
                     let ipc_ns = start.elapsed().as_nanos() as u64;
 
                     // Log if node provided (use LogSummary trait!)
@@ -239,6 +287,13 @@ impl PyHub {
                                 use horus::core::LogSummary;
                                 let log_msg = cmd.log_summary();
                                 let _ = info.call_method1(py, "log_sub", (&self.topic, log_msg, ipc_ns));
+
+                                // Record metadata for dashboard discovery
+                                if let Ok(node_name) = info.getattr(py, "name") {
+                                    if let Ok(name) = node_name.extract::<String>(py) {
+                                        record_pubsub_metadata(&name, &self.topic, "sub");
+                                    }
+                                }
                             }
                         }
                     }
@@ -254,7 +309,7 @@ impl PyHub {
             }
             HubType::Pose2D(hub) => {
                 let hub = hub.lock().unwrap();
-                if let Some(pose) = hub.recv(None) {
+                if let Some(pose) = hub.recv(&mut None) {
                     let ipc_ns = start.elapsed().as_nanos() as u64;
 
                     // Log if node provided (use LogSummary trait!)
@@ -264,6 +319,13 @@ impl PyHub {
                                 use horus::core::LogSummary;
                                 let log_msg = pose.log_summary();
                                 let _ = info.call_method1(py, "log_sub", (&self.topic, log_msg, ipc_ns));
+
+                                // Record metadata for dashboard discovery
+                                if let Ok(node_name) = info.getattr(py, "name") {
+                                    if let Ok(name) = node_name.extract::<String>(py) {
+                                        record_pubsub_metadata(&name, &self.topic, "sub");
+                                    }
+                                }
                             }
                         }
                     }
@@ -279,7 +341,7 @@ impl PyHub {
             }
             HubType::Generic(hub) => {
                 let hub = hub.lock().unwrap();
-                if let Some(msg) = hub.recv(None) {
+                if let Some(msg) = hub.recv(&mut None) {
                     let ipc_ns = start.elapsed().as_nanos() as u64;
 
                     // Log if node provided
@@ -289,6 +351,13 @@ impl PyHub {
                                 use horus::core::LogSummary;
                                 let log_msg = msg.log_summary();
                                 let _ = info.call_method1(py, "log_sub", (&self.topic, log_msg, ipc_ns));
+
+                                // Record metadata for dashboard discovery
+                                if let Ok(node_name) = info.getattr(py, "name") {
+                                    if let Ok(name) = node_name.extract::<String>(py) {
+                                        record_pubsub_metadata(&name, &self.topic, "sub");
+                                    }
+                                }
                             }
                         }
                     }
@@ -317,5 +386,217 @@ impl PyHub {
     /// Get the topic name
     fn topic(&self) -> String {
         self.topic.clone()
+    }
+
+    /// Send raw bytes (for generic Python hubs)
+    ///
+    /// Args:
+    ///     data: Raw bytes to send
+    ///     node: Optional Node for automatic logging with IPC timing
+    ///
+    /// Returns:
+    ///     True if sent successfully
+    fn send_bytes(&self, py: Python, data: Vec<u8>, node: Option<PyObject>) -> PyResult<bool> {
+        use std::time::Instant;
+        let start = Instant::now();
+
+        // Generic hubs only - wrap bytes in GenericMessage
+        match &self.hub_type {
+            HubType::Generic(hub) => {
+                let msg = GenericMessage::new(data)
+                    .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?;
+                let hub = hub.lock().unwrap();
+                let success = hub.send(msg.clone(), &mut None).is_ok();
+
+                // Log if node provided
+                if let Some(node_obj) = &node {
+                    let ipc_ns = start.elapsed().as_nanos() as u64;
+                    if let Ok(info) = node_obj.getattr(py, "info") {
+                        if !info.is_none(py) {
+                            use horus::core::LogSummary;
+                            let log_msg = msg.log_summary();
+                            let _ = info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
+
+                            // Record metadata for dashboard discovery
+                            if let Ok(node_name) = info.getattr(py, "name") {
+                                if let Ok(name) = node_name.extract::<String>(py) {
+                                    record_pubsub_metadata(&name, &self.topic, "pub");
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Ok(success)
+            }
+            _ => Err(pyo3::exceptions::PyTypeError::new_err(
+                "send_bytes() only supported for generic hubs"
+            ))
+        }
+    }
+
+    /// Send data with metadata (for generic Python hubs)
+    ///
+    /// Args:
+    ///     data: Raw bytes to send
+    ///     metadata: Metadata string (e.g., "json", "pickle", "numpy")
+    ///     node: Optional Node for automatic logging with IPC timing
+    ///
+    /// Returns:
+    ///     True if sent successfully
+    #[pyo3(signature = (data, _metadata, node=None))]
+    fn send_with_metadata(&self, py: Python, data: Vec<u8>, _metadata: String, node: Option<PyObject>) -> PyResult<bool> {
+        use std::time::Instant;
+        let start = Instant::now();
+
+        // For now, metadata is ignored - just send the bytes
+        // TODO: Store metadata in GenericMessage if needed
+        match &self.hub_type {
+            HubType::Generic(hub) => {
+                let msg = GenericMessage::new(data)
+                    .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?;
+                let hub = hub.lock().unwrap();
+                let success = hub.send(msg.clone(), &mut None).is_ok();
+
+                // Log if node provided
+                if let Some(node_obj) = &node {
+                    let ipc_ns = start.elapsed().as_nanos() as u64;
+                    if let Ok(info) = node_obj.getattr(py, "info") {
+                        if !info.is_none(py) {
+                            use horus::core::LogSummary;
+                            let log_msg = msg.log_summary();
+                            let _ = info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
+
+                            // Record metadata for dashboard discovery
+                            if let Ok(node_name) = info.getattr(py, "name") {
+                                if let Ok(name) = node_name.extract::<String>(py) {
+                                    record_pubsub_metadata(&name, &self.topic, "pub");
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Ok(success)
+            }
+            _ => Err(pyo3::exceptions::PyTypeError::new_err(
+                "send_with_metadata() only supported for generic hubs"
+            ))
+        }
+    }
+
+    /// Send numpy array (for generic Python hubs)
+    ///
+    /// Args:
+    ///     data: Numpy array (as bytes from Python)
+    ///     node: Optional Node for automatic logging with IPC timing
+    ///
+    /// Returns:
+    ///     True if sent successfully
+    fn send_numpy(&self, py: Python, data: PyObject, node: Option<PyObject>) -> PyResult<bool> {
+        use std::time::Instant;
+        let start = Instant::now();
+
+        // Extract numpy array bytes using buffer protocol
+        match &self.hub_type {
+            HubType::Generic(hub) => {
+                // Try to get bytes from the numpy array
+                let bytes: Vec<u8> = if let Ok(bytes_obj) = data.call_method0(py, "tobytes") {
+                    bytes_obj.extract(py)?
+                } else {
+                    // Fallback: try to extract as bytes directly
+                    data.extract(py)?
+                };
+
+                let msg = GenericMessage::new(bytes)
+                    .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?;
+                let hub = hub.lock().unwrap();
+                let success = hub.send(msg.clone(), &mut None).is_ok();
+
+                // Log if node provided
+                if let Some(node_obj) = &node {
+                    let ipc_ns = start.elapsed().as_nanos() as u64;
+                    if let Ok(info) = node_obj.getattr(py, "info") {
+                        if !info.is_none(py) {
+                            use horus::core::LogSummary;
+                            let log_msg = msg.log_summary();
+                            let _ = info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
+
+                            // Record metadata for dashboard discovery
+                            if let Ok(node_name) = info.getattr(py, "name") {
+                                if let Ok(name) = node_name.extract::<String>(py) {
+                                    record_pubsub_metadata(&name, &self.topic, "pub");
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Ok(success)
+            }
+            _ => Err(pyo3::exceptions::PyTypeError::new_err(
+                "send_numpy() only supported for generic hubs"
+            ))
+        }
+    }
+
+    /// Receive data with metadata (for generic Python hubs)
+    ///
+    /// Args:
+    ///     node: Optional Node for automatic logging with IPC timing
+    ///
+    /// Returns:
+    ///     Tuple of (bytes, metadata_str, timestamp) or None
+    fn recv_with_metadata(&self, py: Python, node: Option<PyObject>) -> PyResult<Option<(PyObject, String, f64)>> {
+        use std::time::Instant;
+        let start = Instant::now();
+
+        match &self.hub_type {
+            HubType::Generic(hub) => {
+                let hub = hub.lock().unwrap();
+                if let Some(msg) = hub.recv(&mut None) {
+                    let ipc_ns = start.elapsed().as_nanos() as u64;
+
+                    // Log if node provided
+                    if let Some(node_obj) = &node {
+                        if let Ok(info) = node_obj.getattr(py, "info") {
+                            if !info.is_none(py) {
+                                use horus::core::LogSummary;
+                                let log_msg = msg.log_summary();
+                                let _ = info.call_method1(py, "log_sub", (&self.topic, log_msg, ipc_ns));
+
+                                // Record metadata for dashboard discovery
+                                if let Ok(node_name) = info.getattr(py, "name") {
+                                    if let Ok(name) = node_name.extract::<String>(py) {
+                                        record_pubsub_metadata(&name, &self.topic, "sub");
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Use current time as timestamp (GenericMessage doesn't have timestamp field)
+                    use std::time::{SystemTime, UNIX_EPOCH};
+                    let timestamp = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs_f64();
+
+                    // Check if message has metadata, otherwise default to "json"
+                    let metadata = msg.metadata().unwrap_or_else(|| "json".to_string());
+
+                    // Convert Vec<u8> to Python bytes object
+                    let data = msg.data();
+                    let py_bytes = pyo3::types::PyBytes::new_bound(py, &data).into();
+
+                    Ok(Some((py_bytes, metadata, timestamp)))
+                } else {
+                    Ok(None)
+                }
+            }
+            _ => Err(pyo3::exceptions::PyTypeError::new_err(
+                "recv_with_metadata() only supported for generic hubs"
+            ))
+        }
     }
 }

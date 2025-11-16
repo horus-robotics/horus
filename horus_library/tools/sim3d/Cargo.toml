@@ -1,0 +1,144 @@
+[package]
+name = "sim3d"
+version = "0.1.4"
+edition = "2021"
+description = "3D robotics simulator with RL support"
+license = "MIT OR Apache-2.0"
+authors = ["HORUS Team"]
+
+[[bin]]
+name = "sim3d"
+path = "src/main.rs"
+
+[lib]
+name = "sim3d"
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["visual"]
+
+# Visual mode - full 3D rendering
+visual = [
+    "bevy/default",
+    "bevy_egui",
+]
+
+# Headless mode - no rendering
+headless = []
+
+# Editor tools
+editor = [
+    "visual",
+    "bevy_editor_pls",
+]
+
+# Python bindings for RL
+python = [
+    "pyo3",
+    "numpy",
+]
+
+# All features
+full = [
+    "visual",
+    "editor",
+    "python",
+]
+
+[dependencies]
+# HORUS Core
+horus_core = { path = "../../../horus_core" }
+horus_library = { path = "../.." }
+
+# 3D Physics (CRITICAL: Use exact version to avoid breaking changes)
+rapier3d = { version = "0.22", features = ["serde-serialize", "simd-stable"] }
+nalgebra = { version = "0.33", features = ["serde-serialize"] }
+parry3d = "0.17"  # Collision detection (comes with rapier3d)
+
+# 3D Rendering
+bevy = { version = "0.15", default-features = false, features = [
+    "bevy_asset",
+    "bevy_scene",
+    "bevy_winit",
+    "bevy_core_pipeline",
+    "bevy_pbr",
+    "bevy_gltf",
+    "bevy_render",
+    "bevy_sprite",
+    "bevy_text",
+    "bevy_ui",
+    "multi_threaded",
+    "png",
+    "hdr",
+    "ktx2",
+    "zstd",
+    "x11",  # Linux
+    "wayland",  # Linux alternative
+    "tonemapping_luts",
+    "default_font",
+] }
+
+# GUI & Editor (only with "visual" feature)
+bevy_egui = { version = "0.31", optional = true }
+bevy_editor_pls = { version = "0.9", optional = true }
+
+# URDF Support
+urdf-rs = "0.8"
+roxmltree = "0.20"  # XML parsing
+
+# Asset Loading
+gltf = "1.4"
+image = "0.25"
+
+# Utilities
+anyhow = "1.0"
+thiserror = "2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+serde_json = "1.0"
+rmp-serde = "1.1"
+chrono = "0.4"
+bytemuck = { version = "1.18", features = ["derive"] }
+
+# CLI
+clap = { version = "4.5", features = ["derive"] }
+
+# Parallel Processing (for RL)
+rayon = "1.10"
+
+# Python Bindings (for RL)
+pyo3 = { version = "0.22", features = ["extension-module"], optional = true }
+numpy = { version = "0.22", optional = true }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Math utilities
+glam = "0.29"  # Bevy uses glam internally
+
+# Random number generation
+rand = "0.8"
+rand_distr = "0.4"
+
+# Path utilities
+pathdiff = "0.2"
+
+[dev-dependencies]
+criterion = "0.5"
+approx = "0.5"
+
+[build-dependencies]
+# None required unless adding shader compilation
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+
+[profile.dev]
+opt-level = 1  # Faster debug builds
+
+[profile.dev.package."*"]
+opt-level = 3  # Keep dependencies optimized

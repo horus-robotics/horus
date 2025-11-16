@@ -1,0 +1,50 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "sim3d-rl"
+version = "0.1.4"
+description = "3D robotics simulator with RL support - Python bindings"
+authors = [{name = "HORUS Team", email = "noreply@softmata.com"}]
+license = {text = "MIT OR Apache-2.0"}
+readme = "python/README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "numpy>=1.20.0",
+    "gymnasium>=0.28.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=22.0.0",
+    "isort>=5.10.0",
+    "mypy>=0.950",
+]
+rl = [
+    "stable-baselines3>=2.0.0",
+    "sb3-contrib>=2.0.0",
+    "tensorboard>=2.12.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/softmata/horus"
+
+[tool.maturin]
+features = ["python"]
+module-name = "sim3d_rl.sim3d_rl"
+python-source = "python"

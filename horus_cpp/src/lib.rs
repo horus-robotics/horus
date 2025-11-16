@@ -22,23 +22,23 @@ trait SubHandle: Send {
 
 // Implement for Twist
 impl PubHandle for Hub<Twist> {
-    fn send(&self, data: *const c_void, node_info: Option<&mut NodeInfo>) -> bool {
+    fn send(&self, data: *const c_void, mut node_info: Option<&mut NodeInfo>) -> bool {
         if data.is_null() {
             return false;
         }
         unsafe {
             let twist = *(data as *const Twist);
-            Hub::send(self, twist, node_info).is_ok()
+            Hub::send(self, twist, &mut node_info).is_ok()
         }
     }
 }
 
 impl SubHandle for Hub<Twist> {
-    fn recv(&self, data: *mut c_void, node_info: Option<&mut NodeInfo>) -> bool {
+    fn recv(&self, data: *mut c_void, mut node_info: Option<&mut NodeInfo>) -> bool {
         if data.is_null() {
             return false;
         }
-        if let Some(twist) = Hub::recv(self, node_info) {
+        if let Some(twist) = Hub::recv(self, &mut node_info) {
             unsafe {
                 *(data as *mut Twist) = twist;
             }
@@ -51,23 +51,23 @@ impl SubHandle for Hub<Twist> {
 
 // Implement for Pose
 impl PubHandle for Hub<Pose> {
-    fn send(&self, data: *const c_void, node_info: Option<&mut NodeInfo>) -> bool {
+    fn send(&self, data: *const c_void, mut node_info: Option<&mut NodeInfo>) -> bool {
         if data.is_null() {
             return false;
         }
         unsafe {
             let pose = *(data as *const Pose);
-            Hub::send(self, pose, node_info).is_ok()
+            Hub::send(self, pose, &mut node_info).is_ok()
         }
     }
 }
 
 impl SubHandle for Hub<Pose> {
-    fn recv(&self, data: *mut c_void, node_info: Option<&mut NodeInfo>) -> bool {
+    fn recv(&self, data: *mut c_void, mut node_info: Option<&mut NodeInfo>) -> bool {
         if data.is_null() {
             return false;
         }
-        if let Some(pose) = Hub::recv(self, node_info) {
+        if let Some(pose) = Hub::recv(self, &mut node_info) {
             unsafe {
                 *(data as *mut Pose) = pose;
             }

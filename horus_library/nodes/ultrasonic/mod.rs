@@ -3,7 +3,7 @@ use horus_core::error::HorusResult;
 
 type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo, NodeInfoExt};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 // GPIO hardware support
 #[cfg(feature = "gpio-hardware")]
@@ -357,7 +357,7 @@ impl UltrasonicNode {
     }
 
     /// Measure ultrasonic distance (tries hardware first, falls back to simulation)
-    fn simulate_measurement(&mut self, sensor_id: u8, current_time: u64, mut ctx: Option<&mut NodeInfo>) -> Option<f32> {
+    fn simulate_measurement(&mut self, sensor_id: u8, current_time: u64, ctx: Option<&mut NodeInfo>) -> Option<f32> {
         let idx = sensor_id as usize;
 
         // Check if it's time for a new measurement
@@ -491,7 +491,7 @@ impl UltrasonicNode {
         };
 
         // Publish the measurement
-        if let Err(e) = self.publisher.send(range_msg, None) {
+        if let Err(e) = self.publisher.send(range_msg, &mut None) {
             ctx.log_error(&format!("Failed to publish range: {:?}", e));
         } else {
             ctx.log_debug(&format!(

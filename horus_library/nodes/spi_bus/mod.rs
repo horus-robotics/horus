@@ -445,11 +445,11 @@ impl Node for SpiBusNode {
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Process all pending SPI requests
-        while let Some(mut msg) = self.request_subscriber.recv(None) {
+        while let Some(mut msg) = self.request_subscriber.recv(&mut None) {
             self.transfer(&mut msg, ctx.as_deref_mut());
 
             // Publish response
-            if let Err(e) = self.response_publisher.send(msg, None) {
+            if let Err(e) = self.response_publisher.send(msg, &mut None) {
                 ctx.log_error(&format!("Failed to publish SPI response: {:?}", e));
             }
         }

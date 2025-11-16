@@ -341,7 +341,7 @@ impl LocalizationNode {
 
         localized_pose.timestamp = current_time;
 
-        let _ = self.pose_publisher.send(localized_pose, None);
+        let _ = self.pose_publisher.send(localized_pose, &mut None);
     }
 
     /// Reset localization (useful for relocalization)
@@ -387,7 +387,7 @@ impl Node for LocalizationNode {
         }
 
         // Update with odometry data
-        if let Some(odom) = self.odometry_subscriber.recv(None) {
+        if let Some(odom) = self.odometry_subscriber.recv(&mut None) {
             if odom.timestamp > self.last_odometry_time {
                 self.update_with_odometry(&odom);
                 self.last_odometry_time = odom.timestamp;
@@ -395,7 +395,7 @@ impl Node for LocalizationNode {
         }
 
         // Update with IMU data
-        if let Some(imu) = self.imu_subscriber.recv(None) {
+        if let Some(imu) = self.imu_subscriber.recv(&mut None) {
             if imu.timestamp > self.last_imu_time {
                 self.update_with_imu(&imu);
                 self.last_imu_time = imu.timestamp;
@@ -403,7 +403,7 @@ impl Node for LocalizationNode {
         }
 
         // Update with lidar landmarks
-        if let Some(lidar) = self.lidar_subscriber.recv(None) {
+        if let Some(lidar) = self.lidar_subscriber.recv(&mut None) {
             self.update_with_landmarks(&lidar);
         }
 

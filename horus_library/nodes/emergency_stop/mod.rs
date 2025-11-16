@@ -144,7 +144,7 @@ impl EmergencyStopNode {
         } else {
             EmergencyStop::release()
         };
-        let _ = self.publisher.send(emergency_stop, None);
+        let _ = self.publisher.send(emergency_stop, &mut None);
     }
 
     fn publish_safety_status(&self) {
@@ -159,7 +159,7 @@ impl EmergencyStopNode {
         } else {
             SafetyStatus::new()
         };
-        let _ = self.safety_publisher.send(status, None);
+        let _ = self.safety_publisher.send(status, &mut None);
     }
 }
 

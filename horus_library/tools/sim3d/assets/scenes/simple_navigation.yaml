@@ -1,0 +1,127 @@
+# Simple Navigation Scene
+# A basic robot in an environment with obstacles
+
+world:
+  name: "Simple Navigation"
+  gravity: [0.0, -9.81, 0.0]
+
+robots:
+  - name: "robot1"
+    urdf: "models/simple_robot/simple_robot.urdf"
+    position: [0.0, 0.1, 0.0]
+    orientation: [0.0, 0.0, 0.0]  # RPY in radians
+    sensors:
+      - type: lidar2d
+        name: "main_lidar"
+        link: "lidar_link"
+        config:
+          num_rays: 360
+          fov: 6.2832  # 2*PI
+          max_range: 10.0
+          min_range: 0.1
+          rate_hz: 10.0
+          noise_std: 0.01
+
+objects:
+  # Ground plane
+  - type: box
+    name: "ground"
+    position: [0.0, -0.05, 0.0]
+    size: [20.0, 0.1, 20.0]
+    static: true
+    material:
+      color: [0.5, 0.5, 0.5, 1.0]
+      friction: 0.7
+      restitution: 0.0
+
+  # Walls
+  - type: box
+    name: "wall_north"
+    position: [0.0, 1.0, 10.0]
+    size: [20.0, 2.0, 0.2]
+    static: true
+    material:
+      color: [0.7, 0.3, 0.3, 1.0]
+      friction: 0.5
+
+  - type: box
+    name: "wall_south"
+    position: [0.0, 1.0, -10.0]
+    size: [20.0, 2.0, 0.2]
+    static: true
+    material:
+      color: [0.7, 0.3, 0.3, 1.0]
+      friction: 0.5
+
+  - type: box
+    name: "wall_east"
+    position: [10.0, 1.0, 0.0]
+    size: [0.2, 2.0, 20.0]
+    static: true
+    material:
+      color: [0.7, 0.3, 0.3, 1.0]
+      friction: 0.5
+
+  - type: box
+    name: "wall_west"
+    position: [-10.0, 1.0, 0.0]
+    size: [0.2, 2.0, 20.0]
+    static: true
+    material:
+      color: [0.7, 0.3, 0.3, 1.0]
+      friction: 0.5
+
+  # Obstacles
+  - type: box
+    name: "obstacle_1"
+    position: [3.0, 0.5, 3.0]
+    size: [1.0, 1.0, 1.0]
+    static: true
+    material:
+      color: [0.3, 0.7, 0.3, 1.0]
+
+  - type: box
+    name: "obstacle_2"
+    position: [-3.0, 0.5, -3.0]
+    size: [1.0, 1.0, 1.0]
+    static: true
+    material:
+      color: [0.3, 0.7, 0.3, 1.0]
+
+  - type: cylinder
+    name: "obstacle_3"
+    position: [5.0, 0.75, -2.0]
+    radius: 0.5
+    height: 1.5
+    static: true
+    material:
+      color: [0.3, 0.3, 0.7, 1.0]
+
+  - type: cylinder
+    name: "obstacle_4"
+    position: [-4.0, 0.75, 4.0]
+    radius: 0.5
+    height: 1.5
+    static: true
+    material:
+      color: [0.3, 0.3, 0.7, 1.0]
+
+  # Goal marker
+  - type: cylinder
+    name: "goal"
+    position: [8.0, 0.1, 8.0]
+    radius: 0.3
+    height: 0.2
+    static: true
+    material:
+      color: [0.0, 1.0, 0.0, 0.5]
+
+lighting:
+  - type: directional
+    direction: [-0.5, -1.0, -0.5]
+    color: [1.0, 1.0, 1.0]
+    intensity: 0.8
+
+  - type: ambient
+    color: [1.0, 1.0, 1.0]
+    intensity: 0.3

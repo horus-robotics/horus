@@ -53,10 +53,17 @@ export async function getDocSlugs(dir: string): Promise<string[]> {
  */
 export async function getDoc(slug: string[]): Promise<DocContent | null> {
   try {
-    const filePath = path.join(contentDirectory, ...slug) + '.mdx';
+    // Try the direct file path first
+    let filePath = path.join(contentDirectory, ...slug) + '.mdx';
 
+    // If that doesn't exist, try looking for an index.mdx file in a directory
     if (!fs.existsSync(filePath)) {
-      return null;
+      const indexPath = path.join(contentDirectory, ...slug, 'index.mdx');
+      if (fs.existsSync(indexPath)) {
+        filePath = indexPath;
+      } else {
+        return null;
+      }
     }
 
     const source = fs.readFileSync(filePath, 'utf-8');

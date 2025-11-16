@@ -46,18 +46,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             // Access specific fields
             if let Some(source) = value.get("source").and_then(|v| v.as_str()) {
-                println!("\n📡 Source: {}", source);
+                println!("\nSource: {}", source);
             }
 
             if let Some(readings) = value.get("readings") {
                 if let Some(temp) = readings.get("temperature") {
-                    println!("🌡️  Temperature: {:.1}°C", temp.as_f64().unwrap_or(0.0));
+                    println!("Temperature: {:.1}°C", temp.as_f64().unwrap_or(0.0));
                 }
                 if let Some(humidity) = readings.get("humidity") {
-                    println!("💧 Humidity: {:.1}%", humidity.as_f64().unwrap_or(0.0));
+                    println!("Humidity: {:.1}%", humidity.as_f64().unwrap_or(0.0));
                 }
                 if let Some(pressure) = readings.get("pressure") {
-                    println!("🌡️  Pressure: {:.1} hPa", pressure.as_f64().unwrap_or(0.0));
+                    println!("Pressure: {:.1} hPa", pressure.as_f64().unwrap_or(0.0));
                 }
             }
 

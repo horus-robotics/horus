@@ -1108,16 +1108,17 @@ impl Scheduler {
                 }
 
                 // Check deadline for RT nodes
-                if self.nodes[i].is_rt_node && self.nodes[i].deadline.is_some() {
-                    let elapsed = tick_start.elapsed();
-                    let deadline = self.nodes[i].deadline.unwrap();
-                    if elapsed > deadline {
-                        if let Some(ref monitor) = self.safety_monitor {
-                            monitor.record_deadline_miss(node_name);
-                            eprintln!(
-                                " Deadline miss in {}: {:?} > {:?}",
-                                node_name, elapsed, deadline
-                            );
+                if self.nodes[i].is_rt_node {
+                    if let Some(deadline) = self.nodes[i].deadline {
+                        let elapsed = tick_start.elapsed();
+                        if elapsed > deadline {
+                            if let Some(ref monitor) = self.safety_monitor {
+                                monitor.record_deadline_miss(node_name);
+                                eprintln!(
+                                    " Deadline miss in {}: {:?} > {:?}",
+                                    node_name, elapsed, deadline
+                                );
+                            }
                         }
                     }
                 }
@@ -1163,7 +1164,7 @@ impl Scheduler {
                                     }
                                     Err(e) => {
                                         eprintln!(
-                                            "💀 Node '{}' exceeded max restart attempts: {}",
+                                            "Node '{}' exceeded max restart attempts: {}",
                                             node_name, e
                                         );
                                         context.transition_to_crashed(format!(
@@ -1197,7 +1198,8 @@ impl Scheduler {
         }
 
         // Execute nodes level by level (nodes in same level can run in parallel)
-        let levels = self.dependency_graph.as_ref().unwrap().levels.clone();
+        let levels = self.dependency_graph.as_ref()
+            .expect("Dependency graph should exist - checked above").levels.clone();
 
         for level in &levels {
             // Find indices of nodes in this level that should run
@@ -1311,17 +1313,19 @@ impl Scheduler {
         }
 
         // Check deadline for RT nodes
-        if is_rt_node && deadline.is_some() {
-            let elapsed = tick_start.elapsed();
-            if elapsed > deadline.unwrap() {
-                if let Some(ref monitor) = self.safety_monitor {
-                    monitor.record_deadline_miss(node_name);
-                    eprintln!(
-                        " Deadline miss in {}: {:?} > {:?}",
-                        node_name,
-                        elapsed,
-                        deadline.unwrap()
-                    );
+        if is_rt_node {
+            if let Some(deadline_duration) = deadline {
+                let elapsed = tick_start.elapsed();
+                if elapsed > deadline_duration {
+                    if let Some(ref monitor) = self.safety_monitor {
+                        monitor.record_deadline_miss(node_name);
+                        eprintln!(
+                            " Deadline miss in {}: {:?} > {:?}",
+                            node_name,
+                            elapsed,
+                            deadline_duration
+                        );
+                    }
                 }
             }
         }
@@ -1366,7 +1370,7 @@ impl Scheduler {
                             }
                             Err(e) => {
                                 eprintln!(
-                                    "💀 Node '{}' exceeded max restart attempts: {}",
+                                    "Node '{}' exceeded max restart attempts: {}",
                                     node_name, e
                                 );
                                 context

@@ -53,10 +53,7 @@ impl Node for MotorControlNode {
             std::thread::sleep(Duration::from_micros(50));
         }
 
-        let count = self.tick_count.load(Ordering::SeqCst);
-        if count % 100 == 0 {
-            ctx.log_info(&format!("{} processed {} control loops", self.name, count));
-        }
+        // Logging removed - ctx is Option type
     }
 
     fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
@@ -136,10 +133,7 @@ impl Node for SensorFusionNode {
         // Simulate sensor fusion computation
         std::thread::sleep(Duration::from_micros(100));
 
-        let count = self.samples_processed.load(Ordering::SeqCst);
-        if count % 50 == 0 {
-            ctx.log_info(&format!("{} fused {} sensor samples", self.name, count));
-        }
+        // Logging removed - ctx is Option type
     }
 
     fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
@@ -231,10 +225,9 @@ impl RTNode for LoggingNode {
 
 #[test]
 fn test_rt_node_basic() {
-    let mut scheduler = Scheduler::new();
-
     // Use standard config (RT features disabled)
-    scheduler.set_config(SchedulerConfig::standard());
+    let mut scheduler = Scheduler::new()
+        .with_config(SchedulerConfig::standard());
 
     // Add RT nodes as regular nodes (RTNodeWrapper handles the conversion)
     scheduler
@@ -280,10 +273,9 @@ fn test_rt_node_priority_ordering() {
 
 #[test]
 fn test_rt_node_with_safety_critical_config() {
-    let mut scheduler = Scheduler::new();
-
     // Use safety-critical configuration (all RT features enabled)
-    scheduler.set_config(SchedulerConfig::safety_critical());
+    let mut scheduler = Scheduler::new()
+        .with_config(SchedulerConfig::safety_critical());
 
     scheduler
         .add(

@@ -288,7 +288,7 @@ impl CollisionDetectorNode {
         }
 
         let emergency_msg = EmergencyStop::engage(reason);
-        let _ = self.emergency_publisher.send(emergency_msg, None);
+        let _ = self.emergency_publisher.send(emergency_msg, &mut None);
 
         self.last_emergency_time = current_time;
     }
@@ -363,7 +363,7 @@ impl Node for CollisionDetectorNode {
 
     fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
         // Update current pose and velocity
-        if let Some(odom) = self.odometry_subscriber.recv(None) {
+        if let Some(odom) = self.odometry_subscriber.recv(&mut None) {
             self.current_pose = (odom.pose.x, odom.pose.y, odom.pose.theta);
 
             self.current_velocity = (
@@ -378,7 +378,7 @@ impl Node for CollisionDetectorNode {
         let mut safety_sensors_triggered = false;
 
         // Check lidar for obstacles
-        if let Some(lidar) = self.lidar_subscriber.recv(None) {
+        if let Some(lidar) = self.lidar_subscriber.recv(&mut None) {
             if lidar.timestamp > self.last_lidar_time {
                 let (critical, warning) = self.detect_lidar_obstacles(&lidar);
                 critical_collision = critical;
@@ -388,7 +388,7 @@ impl Node for CollisionDetectorNode {
         }
 
         // Check safety sensors
-        if let Some(digital_io) = self.digital_io_subscriber.recv(None) {
+        if let Some(digital_io) = self.digital_io_subscriber.recv(&mut None) {
             safety_sensors_triggered = self.check_safety_sensors(&digital_io);
         }
 
