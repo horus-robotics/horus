@@ -1,5 +1,5 @@
 name: robot_fleet_rust
-version: 0.1.0
+version: 0.1.5
 description: Complete robot fleet management system for dashboard testing
 author: neos-builder
 license: MIT

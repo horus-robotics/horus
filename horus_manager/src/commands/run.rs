@@ -286,7 +286,7 @@ pub fn execute_build_only(files: Vec<PathBuf>, release: bool, clean: bool) -> Re
             let mut cargo_toml = format!(
                 r#"[package]
 name = "horus-project"
-version = "0.1.0"
+version = "0.1.5"
 edition = "2021"
 
 # Empty workspace to prevent inheriting parent workspace
@@ -1271,7 +1271,7 @@ fn build_rust_files_batch(
     let mut cargo_toml = String::from(
         r#"[package]
 name = "horus-multi-node"
-version = "0.1.0"
+version = "0.1.5"
 edition = "2021"
 
 # Opt out of parent workspace
@@ -1423,7 +1423,7 @@ fn build_file_for_concurrent_execution(
             let mut cargo_toml = format!(
                 r#"[package]
 name = "horus-project-{}"
-version = "0.1.0"
+version = "0.1.5"
 edition = "2021"
 
 [[bin]]
@@ -3305,7 +3305,7 @@ fn find_cached_versions(cache_dir: &Path, package: &str) -> Result<Vec<PathBuf>>
         return Ok(versions);
     }
 
-    // Parse package name and version if specified (e.g., "horus_py@0.1.0" -> ("horus_py", Some("0.1.0")))
+    // Parse package name and version if specified (e.g., "horus_py@0.1.0" -> ("horus_py", Some("0.1.5")))
     let (base_package, requested_version) = if let Some(at_pos) = package.find('@') {
         (&package[..at_pos], Some(&package[at_pos + 1..]))
     } else {
@@ -3726,7 +3726,7 @@ fn execute_with_scheduler(
             let mut cargo_toml = format!(
                 r#"[package]
 name = "horus-project"
-version = "0.1.0"
+version = "0.1.5"
 edition = "2021"
 
 # Empty workspace to prevent inheriting parent workspace
@@ -3976,7 +3976,7 @@ fn create_minimal_cargo_toml(file: &Path) -> Result<()> {
     let content = format!(
         r#"[package]
 name = "{}"
-version = "0.1.0"
+version = "0.1.5"
 edition = "2021"
 
 [[bin]]
@@ -3985,7 +3985,7 @@ path = "{}"
 
 [dependencies]
 # HORUS dependencies will be auto-detected and added
-horus = "0.1.0"
+horus = "0.1.5"
 "#,
         project_name.replace("-", "_"),
         project_name.replace("-", "_"),
@@ -4732,7 +4732,7 @@ fn create_horus_yaml(
     // Build YAML content
     let mut content = String::new();
     content.push_str(&format!("name: {}\n", project_name));
-    content.push_str("version: 0.1.0\n");
+    content.push_str("version: 0.1.5\n");
     content.push_str(&format!("language: {}\n", language));
     content.push_str("\ndependencies:\n");
 
