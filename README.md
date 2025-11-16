@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.1.4-blue.svg)](https://github.com/softmata/horus/releases)
+[![Version](https://img.shields.io/badge/version-0.1.5-blue.svg)](https://github.com/softmata/horus/releases)
 [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-alpha-yellow.svg)](https://github.com/softmata/horus/releases)
 [![Discord](https://img.shields.io/badge/Discord-Join%20Us-7289da?logo=discord&logoColor=white)](https://discord.gg/hEZC3ev2Nf)
@@ -693,8 +693,8 @@ horus env restore a3f9c2b7
 │  ~/.horus/cache/                                                    │
 │  (Global cache - shared across all projects)                        │
 │                                                                     │
-│  ├── horus_core-0.1.4/         ← Compiled binaries                  │
-│  ├── horus_library-0.1.4/      ← Shared libraries                   │
+│  ├── horus_core-0.1.5/         ← Compiled binaries                  │
+│  ├── horus_library-0.1.5/      ← Shared libraries                   │
 │  └── sensor_fusion-2.1.0/      ← Third-party packages               │
 └─────────────────────────────────────────────────────────────────────┘
                             │
@@ -705,8 +705,8 @@ horus env restore a3f9c2b7
 │  (Local isolated environment)                                       │
 │                                                                     │
 │  Case 1: Version Match (symlink)                                    │
-│  ├── horus_core-0.1.4 → ~/.horus/cache/horus_core-0.1.4             │
-│  └── horus_library-0.1.4 → ~/.horus/cache/horus_library-0.1.4       │
+│  ├── horus_core-0.1.5 → ~/.horus/cache/horus_core-0.1.5             │
+│  └── horus_library-0.1.5 → ~/.horus/cache/horus_library-0.1.5       │
 │      Fast, no duplication                                           │
 │                                                                     │
 │  Case 2: Version Mismatch (local copy on restore)                   │

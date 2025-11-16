@@ -68,7 +68,7 @@ except ImportError:
 
     def get_version(): return "0.1.0-mock"
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 
 
 def _truncate_for_logging(data: Any, max_size: int = MAX_LOG_DATA_SIZE) -> str:

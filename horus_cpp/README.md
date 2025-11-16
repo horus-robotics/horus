@@ -382,7 +382,7 @@ try {
 ### Version mismatch
 ```
 Version mismatch detected!
-  CLI version:       0.1.4
+  CLI version:       0.1.5
   Installed libraries: 0.1.3
 ```
 **Solution**: Run `./install.sh`

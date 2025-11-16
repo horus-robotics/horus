@@ -1,6 +1,6 @@
 [package]
 name = "horus_cpp"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 description = "C++ API for HORUS - Hardware driver integration"
 authors = ["HORUS Team"]
