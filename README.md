@@ -50,8 +50,7 @@ A production-grade robotics framework built in Rust for **real-time performance*
 - Edge/embedded robotics
 - New projects wanting modern tooling
 - Teams valuing simplicity and performance
-
-> **Deterministic Debugging:** All logs include both `timestamp` (human-readable) and `tick_number` (deterministic)—compare logs by tick for perfect reproducibility across runs.
+- Deterministic debugging: Logs include `tick_number` (same every run) to identify execution points across runs
 
 ## Built-in Hardware Nodes - Ready for Production
 

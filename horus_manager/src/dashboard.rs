@@ -504,7 +504,7 @@ async fn status_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse
             "status": system_status,
             "health": system_health,
             "health_color": health_color,
-            "version": "0.1.0",
+            "version": "0.1.5",
             "nodes": nodes_count,
             "topics": topics_count,
             "workspace": workspace_info

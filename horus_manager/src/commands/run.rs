@@ -3305,7 +3305,7 @@ fn find_cached_versions(cache_dir: &Path, package: &str) -> Result<Vec<PathBuf>>
         return Ok(versions);
     }
 
-    // Parse package name and version if specified (e.g., "horus_py@0.1.0" -> ("horus_py", Some("0.1.0")))
+    // Parse package name and version if specified (e.g., "horus_py@0.1.0" -> ("horus_py", Some("0.1.5")))
     let (base_package, requested_version) = if let Some(at_pos) = package.find('@') {
         (&package[..at_pos], Some(&package[at_pos + 1..]))
     } else {
@@ -3985,7 +3985,7 @@ path = "{}"
 
 [dependencies]
 # HORUS dependencies will be auto-detected and added
-horus = "0.1.0"
+horus = "0.1.5"
 "#,
         project_name.replace("-", "_"),
         project_name.replace("-", "_"),
