@@ -2081,6 +2081,12 @@ fn parse_dependency_value(
                 return Ok(None);
             }
 
+            // Skip normalization for strings that already have package manager prefixes
+            // (cargo: or pip:) to avoid corrupting feature syntax like ":features=derive"
+            if dep_str.starts_with("cargo:") || dep_str.starts_with("pip:") {
+                return Ok(Some(dep_str.to_string()));
+            }
+
             // Normalize "pkg = version" syntax
             if let Some(equals_pos) = dep_str.find('=') {
                 let pkg_name = dep_str[..equals_pos].trim();

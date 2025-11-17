@@ -108,6 +108,7 @@ impl Scheduler {
     ///     .with_config(SchedulerConfig::hard_realtime())
     ///     .disable_learning();
     /// ```
+    #[allow(deprecated)]  // set_config is intentionally used here for builder pattern
     pub fn with_config(mut self, config: super::config::SchedulerConfig) -> Self {
         self.set_config(config);
         self

@@ -278,6 +278,27 @@ fn main() -> Result<()> {
 horus run --release
 ```
 
+### Performance: Debug vs Release Mode
+
+**IMPORTANT:** Always use `--release` for performance testing, benchmarking, or real robot deployment!
+
+**Debug mode is 20-100x slower:**
+```bash
+horus run              # Debug: Tick ~60-200μs (too slow!)
+horus run --release    # Release: Tick ~1-3μs (production-ready!)
+```
+
+**Why the difference?**
+- Debug builds include overflow checks, bounds checking, assertions, and no optimizations
+- Release builds are fully optimized by the compiler
+- This is normal Rust behavior, not specific to HORUS
+
+**When to use each mode:**
+- **Debug mode** (`horus run`): Quick iteration during development
+- **Release mode** (`horus run --release`): Performance testing, benchmarks, production
+
+If you see slow performance, check if you're running in debug mode first!
+
 ## Concurrent Multi-Process Execution
 
 HORUS supports running multiple nodes concurrently as separate processes using glob patterns:

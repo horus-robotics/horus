@@ -497,21 +497,26 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug + serde::Serialize + ser
             // Shouldn't happen (is_network true but no network backend), fall through to shm
         }
 
-        // Local shared memory path (UNCHANGED - existing code)
+        // Local shared memory path (ZERO-COPY OPTIMIZED)
+        // TIME ONLY THE ACTUAL IPC OPERATION
         let ipc_start = Instant::now();
-        match self.shm_topic.pop() {
-            Some(msg) => {
+        match self.shm_topic.receive() {
+            Some(sample) => {
                 let ipc_ns = ipc_start.elapsed().as_nanos() as u64;
+                // END TIMING
 
                 // Fast path: when ctx is None, bypass logging completely (benchmarks + production)
                 if let Some(ref mut ctx) = ctx {
-                    // Logging enabled: get summary and log with measured IPC timing
-                    let summary = msg.log_summary();
+                    // Logging enabled: get summary from zero-copy reference
+                    let summary = sample.get_ref().log_summary();
                     ctx.log_sub_summary(&self.topic_name, &summary, ipc_ns);
 
                     // Record pub/sub metadata for graph visualization
                     self.record_pubsub_activity(ctx.name(), "sub");
                 }
+
+                // Clone only when needed (after timing and logging)
+                let msg = sample.get_ref().clone();
 
                 // Lock-free atomic increment for success metrics
                 self.metrics

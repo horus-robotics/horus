@@ -116,15 +116,37 @@ Options:
 
 ### Why --release Matters
 
+**IMPORTANT: Debug builds are 20-100x slower than release builds!**
+
 **Debug mode** (default): Fast to compile, slow to run
-- Good for: Trying things quickly
-- Speed: Messages take ~5-50μs
+- Good for: Quick iteration during development
+- Tick time: 60-200μs (way too slow for production!)
+- Adds overflow checks, bounds checking, assertions, no optimizations
 
 **Release mode** (`--release`): Slow to compile, fast to run
-- Good for: Real testing, benchmarks, production
-- Speed: Messages take ~248ns-1.31μs (100x faster!)
+- Good for: Performance testing, benchmarks, production, real robot testing
+- Tick time: 1-3μs (20-100x faster!)
+- Full compiler optimizations enabled
 
-**Always use `--release` when measuring performance!**
+**Common Mistake:**
+```bash
+horus run  # Debug mode
+# You see: [IPC: 1862ns | Tick: 87μs] - Looks slow!
+
+horus run --release  # Release mode
+# You see: [IPC: 947ns | Tick: 2μs] - Actually fast!
+```
+
+**The tick time difference is dramatic:**
+- Debug: 60-200μs per tick (too slow for real-time control)
+- Release: 1-3μs per tick (production-ready performance)
+
+**Rule of thumb:** Always use `--release` when:
+- Measuring performance
+- Running benchmarks
+- Testing real-time control loops
+- Deploying to production
+- Wondering "why is HORUS slow?"
 
 ### Examples
 

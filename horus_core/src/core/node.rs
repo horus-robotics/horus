@@ -531,11 +531,12 @@ impl NodeInfo {
 
         if self.config.enable_logging {
             // Color-coded logging for readability
-            // Cyan timestamp | Green metrics | Yellow node | Bold Green PUB arrow | Magenta topic | White data
-            print!("\r\n\x1b[36m[{}]\x1b[0m \x1b[32m[IPC: {}ns | Tick: {}μs]\x1b[0m \x1b[33m{}\x1b[0m \x1b[1;32m--PUB-->\x1b[0m \x1b[35m'{}'\x1b[0m = {}\r\n",
+            // Cyan timestamp | Green metrics | Blue tick# | Yellow node | Bold Green PUB arrow | Magenta topic | White data
+            print!("\r\n\x1b[36m[{}]\x1b[0m \x1b[32m[IPC: {}ns | Tick: {}μs]\x1b[0m \x1b[34m[#{}]\x1b[0m \x1b[33m{}\x1b[0m \x1b[1;32m--PUB-->\x1b[0m \x1b[35m'{}'\x1b[0m = {}\r\n",
                    now.format("%H:%M:%S%.3f"),
                    ipc_ns,
                    current_tick_us,
+                   self.metrics.total_ticks,
                    self.name, topic, summary);
             use std::io::{self, Write};
             let _ = io::stdout().flush();
@@ -570,11 +571,12 @@ impl NodeInfo {
 
         if self.config.enable_logging {
             // Color-coded logging for readability
-            // Cyan timestamp | Green metrics | Yellow node | Bold Blue SUB arrow | Magenta topic | White data
-            println!("\x1b[36m[{}]\x1b[0m \x1b[32m[IPC: {}ns | Tick: {}μs]\x1b[0m \x1b[33m{}\x1b[0m \x1b[1;34m<--SUB--\x1b[0m \x1b[35m'{}'\x1b[0m = {}",
+            // Cyan timestamp | Green metrics | Blue tick# | Yellow node | Bold Blue SUB arrow | Magenta topic | White data
+            println!("\x1b[36m[{}]\x1b[0m \x1b[32m[IPC: {}ns | Tick: {}μs]\x1b[0m \x1b[34m[#{}]\x1b[0m \x1b[33m{}\x1b[0m \x1b[1;34m<--SUB--\x1b[0m \x1b[35m'{}'\x1b[0m = {}",
                    now.format("%H:%M:%S%.3f"),
                    ipc_ns,
                    current_tick_us,
+                   self.metrics.total_ticks,
                    self.name, topic, summary);
             use std::io::{self, Write};
             let _ = io::stdout().flush();

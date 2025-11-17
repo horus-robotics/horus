@@ -454,14 +454,24 @@ class Node:
             elif isinstance(data, str):
                 result = hub.send_bytes(data.encode('utf-8'), self)
             elif isinstance(data, (dict, list, tuple, int, float, bool, type(None))):
-                json_bytes = json.dumps(data).encode('utf-8')
-                result = hub.send_with_metadata(json_bytes, "json", self)
+                # Only use metadata for generic hubs
+                if hub.is_generic():
+                    json_bytes = json.dumps(data).encode('utf-8')
+                    result = hub.send_with_metadata(json_bytes, "json", self)
+                else:
+                    # Typed hubs - use send() directly with the Python object
+                    result = hub.send(data, self)
             elif hasattr(data, '__array_interface__') or type(data).__name__ == 'ndarray':
                 # Zero-copy path for numpy arrays
                 result = hub.send_numpy(data, self)
             else:
-                pickled = pickle.dumps(data)
-                result = hub.send_with_metadata(pickled, "pickle", self)
+                # Only use metadata for generic hubs
+                if hub.is_generic():
+                    pickled = pickle.dumps(data)
+                    result = hub.send_with_metadata(pickled, "pickle", self)
+                else:
+                    # Typed hubs - use send() directly with the Python object
+                    result = hub.send(data, self)
 
             end_ns = time.perf_counter_ns()
             ipc_ns = end_ns - start_ns
@@ -510,28 +520,42 @@ class Node:
             while True:
                 # Measure IPC timing
                 start_ns = time.perf_counter_ns()
-                result = hub.recv_with_metadata(self)
-                end_ns = time.perf_counter_ns()
 
-                if result is None:
-                    break
+                # Use metadata method only for generic hubs
+                if hub.is_generic():
+                    result = hub.recv_with_metadata(self)
+                    end_ns = time.perf_counter_ns()
 
-                ipc_ns = end_ns - start_ns
-                data_bytes, msg_type, timestamp = result  # Phase 2: Now includes timestamp
+                    if result is None:
+                        break
 
-                # Deserialize
-                if msg_type == "json":
-                    msg = json.loads(data_bytes.decode('utf-8'))
-                elif msg_type == "pickle":
-                    msg = pickle.loads(data_bytes)
-                elif msg_type == "numpy":
-                    # Keep as raw bytes for numpy arrays
-                    msg = data_bytes
-                else:
-                    try:
-                        msg = data_bytes.decode('utf-8')
-                    except:
+                    ipc_ns = end_ns - start_ns
+                    data_bytes, msg_type, timestamp = result  # Phase 2: Now includes timestamp
+
+                    # Deserialize
+                    if msg_type == "json":
+                        msg = json.loads(data_bytes.decode('utf-8'))
+                    elif msg_type == "pickle":
+                        msg = pickle.loads(data_bytes)
+                    elif msg_type == "numpy":
+                        # Keep as raw bytes for numpy arrays
                         msg = data_bytes
+                    else:
+                        try:
+                            msg = data_bytes.decode('utf-8')
+                        except:
+                            msg = data_bytes
+                else:
+                    # Typed hub - use regular recv()
+                    msg = hub.recv(self)
+                    end_ns = time.perf_counter_ns()
+
+                    if msg is None:
+                        break
+
+                    ipc_ns = end_ns - start_ns
+                    # Typed hubs don't have metadata timestamps, use current time
+                    timestamp = time.time()
 
                 # Log the subscribe operation if NodeInfo available
                 if self.info:

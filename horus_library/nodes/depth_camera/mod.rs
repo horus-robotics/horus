@@ -130,6 +130,7 @@ pub enum DepthBackend {
 }
 
 /// Depth camera models with predefined specifications
+#[allow(non_camel_case_types)]  // Product names like OAK_D are intentional
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum CameraModel {
     // Intel RealSense

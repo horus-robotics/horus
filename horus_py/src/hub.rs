@@ -599,4 +599,12 @@ impl PyHub {
             ))
         }
     }
+
+    /// Check if this hub is a generic hub (supports metadata methods)
+    ///
+    /// Returns:
+    ///     True if this is a generic hub, False if it's a typed hub
+    fn is_generic(&self) -> PyResult<bool> {
+        Ok(matches!(self.hub_type, HubType::Generic(_)))
+    }
 }

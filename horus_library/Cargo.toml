@@ -102,6 +102,12 @@ icm20948-imu = ["icm20948", "linux-embedded-hal", "embedded-hal"]
 # GPS sensor support
 nmea-gps = ["nmea", "serialport"]
 
+# Additional hardware features
+serial-hardware = ["serialport"]
+modbus-hardware = ["tokio-modbus"]
+netft = []  # Force/Torque sensor support (placeholder)
+zed = []    # ZED depth camera support (placeholder)
+
 [lib]
 name = "horus_library"
 path = "lib.rs"

@@ -129,6 +129,20 @@ impl<'a, T> Drop for ConsumerSample<'a, T> {
 }
 
 impl<T> ShmTopic<T> {
+    /// Round up to next power of 2 for optimal modulo performance
+    /// Uses bitwise AND instead of expensive division
+    #[inline]
+    fn next_power_of_2(n: usize) -> usize {
+        if n == 0 {
+            return 1;
+        }
+        let mut power = 1;
+        while power < n {
+            power <<= 1;
+        }
+        power
+    }
+
     /// Create a new ring buffer in shared memory
     pub fn new(name: &str, capacity: usize) -> HorusResult<Self> {
         Self::new_internal(name, capacity, false)
@@ -156,6 +170,10 @@ impl<T> ShmTopic<T> {
             )
             .into());
         }
+
+        // PERFORMANCE: Round up to power of 2 for bitwise AND optimization
+        // This replaces expensive modulo (%) with fast bitwise AND (&)
+        let capacity = Self::next_power_of_2(capacity);
 
         let element_size = mem::size_of::<T>();
         let element_align = mem::align_of::<T>();
@@ -252,10 +270,21 @@ impl<T> ShmTopic<T> {
             // Not owner - read capacity from existing header
             let existing_capacity = unsafe { (*header.as_ptr()).capacity.load(Ordering::Relaxed) };
 
+            // CRITICAL: Validate existing capacity is power of 2 for bitwise AND optimization
+            if !existing_capacity.is_power_of_two() {
+                return Err(format!(
+                    "Topic '{}' has non-power-of-2 capacity {} (created with old version). \
+                     Please delete /dev/shm/horus/* and recreate topics.",
+                    name, existing_capacity
+                )
+                .into());
+            }
+
             // Validate that the existing capacity matches what we calculated
             if existing_capacity != capacity {
                 return Err(format!(
-                    "Topic '{}' capacity mismatch: existing={}, requested={}",
+                    "Topic '{}' capacity mismatch: existing={}, requested={} (rounded from original request). \
+                     Existing shared memory may be from different session or incompatible version.",
                     name, existing_capacity, capacity
                 )
                 .into());
@@ -498,7 +527,8 @@ impl<T> ShmTopic<T> {
 
         loop {
             let head = header.head.load(Ordering::Relaxed);
-            let next = (head + 1) % self.capacity;
+            // PERFORMANCE: Use bitwise AND instead of modulo (capacity is power of 2)
+            let next = (head + 1) & (self.capacity - 1);
 
             // For multi-consumer, we need to check if buffer would wrap around
             // and potentially overwrite unread messages. For now, use a simple
@@ -598,7 +628,8 @@ impl<T> ShmTopic<T> {
         }
 
         // Calculate next position for this consumer
-        let next_tail = (my_tail + 1) % self.capacity;
+        // PERFORMANCE: Use bitwise AND instead of modulo (capacity is power of 2)
+        let next_tail = (my_tail + 1) & (self.capacity - 1);
 
         // MPMC OPTIMIZED: Update this consumer's tail position in LOCAL MEMORY
         self.consumer_tail.store(next_tail, Ordering::Relaxed);
@@ -632,7 +663,8 @@ impl<T> ShmTopic<T> {
 
         loop {
             let head = header.head.load(Ordering::Relaxed);
-            let next = (head + 1) % self.capacity;
+            // PERFORMANCE: Use bitwise AND instead of modulo (capacity is power of 2)
+            let next = (head + 1) & (self.capacity - 1);
 
             // Try to claim this slot atomically
             // Note: Buffer full checking removed (was buggy - sequence_number increments forever)

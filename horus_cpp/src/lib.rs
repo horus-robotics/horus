@@ -324,6 +324,7 @@ pub extern "C" fn log_info(msg: *const c_char) {
 
     publish_log(LogEntry {
         timestamp: Local::now().format("%H:%M:%S%.3f").to_string(),
+        tick_number: 0,
         node_name: "cpp_global".to_string(),
         log_type: LogType::Info,
         topic: None,
@@ -349,6 +350,7 @@ pub extern "C" fn log_warn(msg: *const c_char) {
 
     publish_log(LogEntry {
         timestamp: Local::now().format("%H:%M:%S%.3f").to_string(),
+        tick_number: 0,
         node_name: "cpp_global".to_string(),
         log_type: LogType::Warning,
         topic: None,
@@ -374,6 +376,7 @@ pub extern "C" fn log_error(msg: *const c_char) {
 
     publish_log(LogEntry {
         timestamp: Local::now().format("%H:%M:%S%.3f").to_string(),
+        tick_number: 0,
         node_name: "cpp_global".to_string(),
         log_type: LogType::Error,
         topic: None,
@@ -399,6 +402,7 @@ pub extern "C" fn log_debug(msg: *const c_char) {
 
     publish_log(LogEntry {
         timestamp: Local::now().format("%H:%M:%S%.3f").to_string(),
+        tick_number: 0,
         node_name: "cpp_global".to_string(),
         log_type: LogType::Debug,
         topic: None,
@@ -786,6 +790,7 @@ pub extern "C" fn node_log_info(ctx: *mut NodeContext, msg: *const c_char) {
 
     publish_log(LogEntry {
         timestamp: Local::now().format("%H:%M:%S%.3f").to_string(),
+        tick_number: 0,
         node_name,
         log_type: LogType::Info,
         topic: None,
@@ -822,6 +827,7 @@ pub extern "C" fn node_log_warn(ctx: *mut NodeContext, msg: *const c_char) {
 
     publish_log(LogEntry {
         timestamp: Local::now().format("%H:%M:%S%.3f").to_string(),
+        tick_number: 0,
         node_name,
         log_type: LogType::Warning,
         topic: None,
@@ -858,6 +864,7 @@ pub extern "C" fn node_log_error(ctx: *mut NodeContext, msg: *const c_char) {
 
     publish_log(LogEntry {
         timestamp: Local::now().format("%H:%M:%S%.3f").to_string(),
+        tick_number: 0,
         node_name,
         log_type: LogType::Error,
         topic: None,

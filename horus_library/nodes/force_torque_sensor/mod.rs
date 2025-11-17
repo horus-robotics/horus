@@ -124,6 +124,7 @@ pub struct ForceTorqueSensorNode {
 }
 
 /// Force/torque sensor models with predefined specifications
+#[allow(non_camel_case_types)]  // Product names like ATI_Nano17 are intentional
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SensorModel {
     ATI_Nano17,      // ±12 N, ±120 Nmm
