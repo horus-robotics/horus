@@ -7,7 +7,7 @@ Rust backend, ensuring data integrity across the Python-Rust boundary.
 
 import pytest
 import horus
-from horus.library import Pose2D, Twist, Transform, Point3, Vector3, Quaternion, CmdVel, LaserScan
+from horus import Pose2D, Twist, Transform, Point3, Vector3, Quaternion, CmdVel, LaserScan
 import numpy as np
 
 

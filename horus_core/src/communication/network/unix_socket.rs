@@ -2,7 +2,6 @@
 ///
 /// Provides <5μs latency for same-machine communication using Unix sockets.
 /// More efficient than TCP loopback as it avoids the IP stack.
-
 use crate::error::HorusResult;
 use std::os::unix::net::{UnixStream, UnixListener};
 use std::sync::{Arc, Mutex};

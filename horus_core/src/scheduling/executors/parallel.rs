@@ -70,7 +70,7 @@ impl ParallelExecutor {
         }
 
         // Multiple nodes - use thread pool
-        let chunk_size = (nodes.len() + self.num_threads - 1) / self.num_threads;
+        let chunk_size = nodes.len().div_ceil(self.num_threads);
 
         // We need to safely share mutable state across threads
         // Use scoped threads to avoid lifetime issues

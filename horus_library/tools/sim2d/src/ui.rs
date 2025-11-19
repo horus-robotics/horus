@@ -22,6 +22,8 @@ pub struct UiState {
     pub show_camera_section: bool,
     pub show_visual_section: bool,
     pub show_telemetry_section: bool,
+    pub reset_simulation: bool,
+    pub show_help: bool,
 }
 
 /// Visual preferences for the simulator
@@ -143,6 +145,8 @@ impl Default for UiState {
             show_camera_section: false,
             show_visual_section: false,
             show_telemetry_section: true,
+            reset_simulation: false,
+            show_help: false,
         }
     }
 }
@@ -161,31 +165,60 @@ pub fn ui_system(
     metrics.update();
 
     egui::SidePanel::left("control_panel")
-        .min_width(320.0)
-        .max_width(380.0)
+        .min_width(340.0)
+        .max_width(400.0)
+        .resizable(true)
         .show(contexts.ctx_mut(), |ui| {
-            // Header with better styling
+            // Header with improved styling
             ui.vertical_centered(|ui| {
-                ui.heading(egui::RichText::new("🤖 sim2d").size(24.0));
-                ui.label(egui::RichText::new("2D Robotics Simulator").size(12.0).color(egui::Color32::GRAY));
+                ui.add_space(5.0);
+                ui.heading(egui::RichText::new("sim2d").size(28.0).strong());
+                ui.label(egui::RichText::new("2D Robotics Simulator").size(11.0).color(egui::Color32::from_rgb(150, 150, 150)));
+                ui.add_space(3.0);
             });
             ui.separator();
+            ui.add_space(5.0);
 
-            // Simulation Controls - Always visible at top
-            ui.horizontal(|ui| {
-                let play_pause_text = if ui_state.paused { "▶ Play" } else { "⏸ Pause" };
-                if ui.button(play_pause_text).clicked() {
-                    ui_state.paused = !ui_state.paused;
-                    ui_state.status_message = if ui_state.paused {
-                        "Simulation paused".to_string()
-                    } else {
-                        "Simulation running".to_string()
-                    };
-                }
+            // Simulation Controls - Improved layout
+            ui.group(|ui| {
+                ui.set_min_width(ui.available_width());
+                ui.vertical(|ui| {
+                    ui.label(egui::RichText::new("Simulation Control").strong().size(13.0));
+                    ui.add_space(5.0);
 
-                if ui.button("⟲ Reset").clicked() {
-                    ui_state.status_message = "Reset not yet implemented".to_string();
-                }
+                    ui.horizontal(|ui| {
+                        let play_pause_text = if ui_state.paused { "Play" } else { "Pause" };
+                        let play_pause_color = if ui_state.paused {
+                            egui::Color32::GREEN
+                        } else {
+                            egui::Color32::YELLOW
+                        };
+
+                        let button = egui::Button::new(egui::RichText::new(play_pause_text).size(14.0).color(play_pause_color))
+                            .min_size(egui::vec2(80.0, 30.0));
+                        if ui.add(button).clicked() {
+                            ui_state.paused = !ui_state.paused;
+                            ui_state.status_message = if ui_state.paused {
+                                "Simulation paused".to_string()
+                            } else {
+                                "Simulation resumed".to_string()
+                            };
+                        }
+
+                        let reset_button = egui::Button::new(egui::RichText::new("Reset").size(14.0))
+                            .min_size(egui::vec2(80.0, 30.0));
+                        if ui.add(reset_button).clicked() {
+                            ui_state.reset_simulation = true;
+                            ui_state.status_message = "Resetting simulation...".to_string();
+                        }
+
+                        let help_button = egui::Button::new(egui::RichText::new("?").size(14.0))
+                            .min_size(egui::vec2(30.0, 30.0));
+                        if ui.add(help_button).clicked() {
+                            ui_state.show_help = !ui_state.show_help;
+                        }
+                    });
+                });
             });
 
             ui.horizontal(|ui| {
@@ -200,7 +233,7 @@ pub fn ui_system(
             // Scrollable area for sections
             egui::ScrollArea::vertical().show(ui, |ui| {
                 // Telemetry Section
-                egui::CollapsingHeader::new(egui::RichText::new("📊 Telemetry").size(14.0))
+                egui::CollapsingHeader::new(egui::RichText::new("Telemetry").size(14.0))
                     .default_open(ui_state.show_telemetry_section)
                     .show(ui, |ui| {
                         ui_state.show_telemetry_section = true;
@@ -221,12 +254,12 @@ pub fn ui_system(
                     });
 
                 // World Configuration Section
-                egui::CollapsingHeader::new(egui::RichText::new("🌍 World").size(14.0))
+                egui::CollapsingHeader::new(egui::RichText::new("World").size(14.0))
                     .default_open(ui_state.show_world_section)
                     .show(ui, |ui| {
                         ui_state.show_world_section = true;
 
-                        if ui.button("📁 Load World File").clicked() {
+                        if ui.button("Load World File").clicked() {
                             ui_state.show_file_dialog = FileDialogType::WorldConfig;
                         }
 
@@ -245,12 +278,12 @@ pub fn ui_system(
                     });
 
                 // Robot Configuration Section
-                egui::CollapsingHeader::new(egui::RichText::new("🤖 Robot").size(14.0))
+                egui::CollapsingHeader::new(egui::RichText::new("Robot").size(14.0))
                     .default_open(ui_state.show_robot_section)
                     .show(ui, |ui| {
                         ui_state.show_robot_section = true;
 
-                        if ui.button("📁 Load Robot File").clicked() {
+                        if ui.button("Load Robot File").clicked() {
                             ui_state.show_file_dialog = FileDialogType::RobotConfig;
                         }
 
@@ -310,7 +343,7 @@ pub fn ui_system(
                     });
 
                 // Topics Section
-                egui::CollapsingHeader::new(egui::RichText::new("📡 Topics").size(14.0))
+                egui::CollapsingHeader::new(egui::RichText::new("Topics").size(14.0))
                     .default_open(ui_state.show_topics_section)
                     .show(ui, |ui| {
                         ui_state.show_topics_section = true;
@@ -322,7 +355,7 @@ pub fn ui_system(
                             }
                             ui.text_edit_singleline(&mut ui_state.topic_input);
                         });
-                        ui.label(egui::RichText::new("⚠ Changing topic requires restart").color(egui::Color32::YELLOW).size(10.0));
+                        ui.label(egui::RichText::new("Note: Changing topic requires restart").color(egui::Color32::YELLOW).size(10.0));
 
                         ui.add_space(5.0);
                         ui.label(egui::RichText::new("Active Topics:").strong());
@@ -330,12 +363,12 @@ pub fn ui_system(
                             ui_state.active_topics.push(app_config.args.topic.clone());
                         }
                         for topic in &ui_state.active_topics {
-                            ui.label(format!("  • {}", topic));
+                            ui.label(format!("  - {}", topic));
                         }
                     });
 
                 // Camera Controls Section
-                egui::CollapsingHeader::new(egui::RichText::new("📷 Camera").size(14.0))
+                egui::CollapsingHeader::new(egui::RichText::new("Camera").size(14.0))
                     .default_open(ui_state.show_camera_section)
                     .show(ui, |ui| {
                         ui_state.show_camera_section = true;
@@ -357,7 +390,7 @@ pub fn ui_system(
                             ui.add(egui::Slider::new(&mut camera_controller.pan_y, -1000.0..=1000.0).text("px"));
                         });
 
-                        if ui.button("🔄 Reset Camera").clicked() {
+                        if ui.button("Reset Camera").clicked() {
                             camera_controller.zoom = 1.0;
                             camera_controller.pan_x = 0.0;
                             camera_controller.pan_y = 0.0;
@@ -366,7 +399,7 @@ pub fn ui_system(
                     });
 
                 // Visual Customization Section
-                egui::CollapsingHeader::new(egui::RichText::new("🎨 Visuals").size(14.0))
+                egui::CollapsingHeader::new(egui::RichText::new("Visuals").size(14.0))
                     .default_open(ui_state.show_visual_section)
                     .show(ui, |ui| {
                         ui_state.show_visual_section = true;
@@ -447,10 +480,50 @@ pub fn ui_system(
             ui.add_space(5.0);
             ui.separator();
             ui.horizontal(|ui| {
-                ui.label(egui::RichText::new("●").color(egui::Color32::GREEN));
+                ui.label(egui::RichText::new("Status:").strong());
                 ui.label(&ui_state.status_message);
             });
         });
+
+    // Help Dialog Window
+    if ui_state.show_help {
+        egui::Window::new("Help & Controls")
+            .collapsible(false)
+            .resizable(false)
+            .default_width(400.0)
+            .show(contexts.ctx_mut(), |ui| {
+                ui.heading("Keyboard Shortcuts");
+                ui.add_space(10.0);
+
+                ui.label(egui::RichText::new("Camera Controls").strong());
+                ui.label("  Middle Mouse + Drag - Pan camera");
+                ui.label("  Scroll Wheel - Zoom in/out");
+                ui.add_space(5.0);
+
+                ui.label(egui::RichText::new("Simulation").strong());
+                ui.label("  Space - Toggle pause/play");
+                ui.label("  R - Reset simulation");
+                ui.add_space(5.0);
+
+                ui.label(egui::RichText::new("Topics & Commands").strong());
+                ui.label(format!("  Listening on: {}", app_config.args.topic));
+                ui.label("  Send CmdVel messages to control robot");
+                ui.add_space(5.0);
+
+                ui.label(egui::RichText::new("Tips").strong());
+                ui.label("  - Adjust simulation speed with slider");
+                ui.label("  - Load custom robot/world configs");
+                ui.label("  - Toggle visual elements in Visuals panel");
+                ui.add_space(10.0);
+
+                ui.separator();
+                ui.horizontal(|ui| {
+                    if ui.button("Close").clicked() {
+                        ui_state.show_help = false;
+                    }
+                });
+            });
+    }
 }
 
 /// System to handle file dialog actions

@@ -565,7 +565,7 @@ fn print_comparison(current: &BenchmarkResult) {
 
     for result in &all_results {
         let key = format!("{} {}", result.platform.cpu_vendor, result.platform.cpu_model);
-        platform_groups.entry(key).or_insert_with(Vec::new).push(result);
+        platform_groups.entry(key).or_default().push(result);
     }
 
     // Print comparison table

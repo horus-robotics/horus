@@ -6,6 +6,28 @@ Safety system for obstacle avoidance and collision prevention using lidar and sa
 
 The Collision Detector Node monitors lidar scans and safety sensors to detect potential collisions and trigger emergency stops or warnings. It implements multiple safety zones with velocity-dependent thresholds, obstacle tracking, and integration with digital safety sensors for comprehensive collision avoidance.
 
+## Architecture
+
+**This node is a thin wrapper** around the pure algorithm in `horus_library/algorithms/`:
+
+- **`algorithms::aabb::AABB`** - Axis-aligned bounding box collision detection
+
+The node handles:
+- Topic subscription/publishing (Hub I/O)
+- Lidar data reception and processing
+- Obstacle position tracking
+- Emergency stop triggering
+- Safety sensor monitoring
+- Collision history filtering
+
+The algorithm handles:
+- AABB intersection tests (robot vs obstacles)
+- Box creation and expansion
+- Point containment checks
+- Pure collision detection logic
+
+This separation enables AABB algorithm reuse in different collision detection contexts.
+
 ## Topics
 
 ### Subscribers

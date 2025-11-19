@@ -6,6 +6,27 @@ Mobile robot base controller that converts Twist velocity commands to differenti
 
 The Differential Drive Node is designed for mobile robots with differential drive kinematics (two independently driven wheels). It converts high-level Twist velocity commands (linear and angular) into left/right wheel speeds and maintains odometry by integrating wheel movements.
 
+## Architecture
+
+**This node is a thin wrapper** around the pure algorithm in `horus_library/algorithms/`:
+
+- **`algorithms::differential_drive::DifferentialDrive`** - Differential drive kinematics (forward/inverse) and odometry
+
+The node handles:
+- Topic subscription/publishing (Hub I/O)
+- Twist command reception
+- Velocity clamping and validation
+- Drive command and odometry publishing
+- Frame ID management
+
+The algorithm handles:
+- Inverse kinematics (twist → wheel speeds)
+- Forward kinematics (wheel speeds → twist)
+- Odometry updates (pose integration)
+- Pure kinematic computations
+
+This separation enables kinematics algorithm reuse across different robot platforms.
+
 ## Topics
 
 ### Subscribers

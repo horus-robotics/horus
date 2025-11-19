@@ -7,7 +7,6 @@ members = [
     "horus_manager",
     "horus_library",
     "horus_library/python",  # Python bindings for horus_library
-    "horus_cpp",  # C++ API bindings
     # Example apps (multi-node applications)
     "horus_library/apps/tanksim",
    # Tools
@@ -22,6 +21,8 @@ exclude = [
     "*/.horus",
     "**/.horus",
     "tests/*/.horus",
+    "horus_marketplace",  # Marketplace packages are standalone
+    "horus_marketplace/*",
 ]
 
 [workspace.dependencies]
@@ -71,6 +72,3 @@ bytemuck = { version = "1.0", features = ["derive"] }
 # Testing
 approx = "0.5"
 
-[patch.crates-io]
-# Patch rplidar_drv to fix packed field alignment error
-rplidar_drv = { path = ".cargo-patches/rplidar_drv" }

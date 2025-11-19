@@ -1,6 +1,9 @@
 use crate::{BatteryState, EmergencyStop, ResourceUsage, SafetyStatus, StatusLevel};
 use horus_core::error::HorusResult;
 
+// Import algorithms from horus_library/algorithms
+use crate::algorithms::safety_layer::SafetyLayer;
+
 // Type alias for cleaner signatures
 type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo};
@@ -14,11 +17,16 @@ use sysinfo::{ProcessorExt, System, SystemExt};
 ///
 /// Watches system resources, emergency stops, battery levels, communication health,
 /// and other safety-critical parameters. Triggers safety responses when limits exceeded.
+///
+/// This node is a thin wrapper around the pure algorithms in horus_library/algorithms.
 pub struct SafetyMonitorNode {
     publisher: Hub<SafetyStatus>,
     emergency_subscriber: Hub<EmergencyStop>,
     battery_subscriber: Hub<BatteryState>,
     resource_subscriber: Hub<ResourceUsage>,
+
+    // Algorithm instance
+    safety_layer: SafetyLayer,
 
     #[cfg(feature = "sysinfo")]
     system: System,
@@ -28,11 +36,13 @@ pub struct SafetyMonitorNode {
     cpu_threshold: f32,
     memory_threshold: f32,
     disk_threshold: f32,
-    temperature_threshold: f32,
-    battery_threshold: f32,
     communication_timeout_ms: u64,
 
     // State
+    current_velocity: f64,
+    obstacle_distance: f64,
+    battery_percent: f64,
+    temperature: f64,
     last_emergency_time: u64,
     last_battery_time: u64,
     last_resource_time: u64,
@@ -57,11 +67,20 @@ impl SafetyMonitorNode {
 
     /// Create a new safety monitor node with custom topic
     pub fn new_with_topic(topic: &str) -> Result<Self> {
+        // Create safety layer with default limits
+        let mut safety_layer = SafetyLayer::new();
+        safety_layer.set_max_velocity(2.0);           // 2 m/s max
+        safety_layer.set_min_obstacle_distance(0.3);  // 30cm min distance
+        safety_layer.set_min_battery(15.0);           // 15% battery
+        safety_layer.set_max_temperature(80.0);       // 80°C max
+
         Ok(Self {
             publisher: Hub::new(topic)?,
             emergency_subscriber: Hub::new("emergency_stop")?,
             battery_subscriber: Hub::new("battery_state")?,
             resource_subscriber: Hub::new("resource_usage")?,
+
+            safety_layer,
 
             #[cfg(feature = "sysinfo")]
             system: System::new_all(),
@@ -71,11 +90,13 @@ impl SafetyMonitorNode {
             cpu_threshold: 90.0,            // 90% CPU usage
             memory_threshold: 85.0,         // 85% memory usage
             disk_threshold: 95.0,           // 95% disk usage
-            temperature_threshold: 80.0,    // 80°C
-            battery_threshold: 15.0,        // 15% battery
             communication_timeout_ms: 5000, // 5 second timeout
 
             // State
+            current_velocity: 0.0,
+            obstacle_distance: 100.0, // Start with large distance (no obstacle)
+            battery_percent: 100.0,
+            temperature: 25.0, // Room temperature default
             last_emergency_time: 0,
             last_battery_time: 0,
             last_resource_time: 0,
@@ -100,12 +121,13 @@ impl SafetyMonitorNode {
 
     /// Set temperature threshold (°C)
     pub fn set_temperature_threshold(&mut self, threshold: f32) {
-        self.temperature_threshold = threshold;
+        self.safety_layer.set_max_temperature(threshold as f64);
     }
 
     /// Set battery threshold (0-100%)
     pub fn set_battery_threshold(&mut self, threshold: f32) {
-        self.battery_threshold = threshold.clamp(0.0, 100.0);
+        let threshold = threshold.clamp(0.0, 100.0);
+        self.safety_layer.set_min_battery(threshold as f64);
     }
 
     /// Set communication timeout in milliseconds
@@ -226,8 +248,24 @@ impl SafetyMonitorNode {
         let comm_status = self.check_communication_health();
         let custom_status = self.check_custom_safety_checks();
 
+        // Use safety layer for comprehensive safety check
+        use crate::algorithms::safety_layer::SafetyStatus as AlgoSafetyStatus;
+        let safety_check = self.safety_layer.check_all(
+            self.current_velocity,
+            self.obstacle_distance,
+            self.battery_percent,
+            self.temperature
+        );
+
+        // Map algorithm safety status to node status level
+        let safety_status = match safety_check {
+            AlgoSafetyStatus::Safe => StatusLevel::Ok,
+            AlgoSafetyStatus::Warning => StatusLevel::Warn,
+            AlgoSafetyStatus::Critical => StatusLevel::Fatal,
+        };
+
         // Return the worst (highest priority) status
-        resource_status.max(comm_status).max(custom_status)
+        resource_status.max(comm_status).max(custom_status).max(safety_status)
     }
 
     fn publish_safety_status(&self) {
@@ -278,8 +316,11 @@ impl Node for SafetyMonitorNode {
         // Check for incoming battery messages
         if let Some(battery_msg) = self.battery_subscriber.recv(&mut None) {
             self.last_battery_time = current_time;
-            if battery_msg.percentage < self.battery_threshold {
-                self.current_safety_level = self.current_safety_level.max(StatusLevel::Error);
+            self.battery_percent = battery_msg.percentage as f64;
+
+            // Temperature from battery if available
+            if battery_msg.temperature > 0.0 {
+                self.temperature = battery_msg.temperature as f64;
             }
         }
 

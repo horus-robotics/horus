@@ -116,6 +116,7 @@ struct WorkspaceData {
     name: String,
     path: String,
     packages: Vec<PackageData>,
+    dependencies: Vec<DependencyData>, // Declared in horus.yaml but not installed
     is_current: bool, // True if this is the current workspace (detected via find_workspace_root)
 }
 
@@ -124,6 +125,19 @@ struct PackageData {
     name: String,
     version: String,
     installed_packages: Vec<(String, String)>, // (name, version) pairs
+}
+
+#[derive(Debug, Clone)]
+struct DependencyData {
+    name: String,
+    declared_version: String, // Version string from horus.yaml (e.g., "package@1.0.0" or just "package")
+    status: DependencyStatus,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum DependencyStatus {
+    Missing,     // Declared but not installed
+    Installed,   // Both declared and installed (shown in packages list)
 }
 
 #[derive(Debug, Clone)]
@@ -173,6 +187,7 @@ enum TuiEdgeType {
 enum GraphLayout {
     Hierarchical,  // Processes on left, topics on right
     Vertical,      // Processes on top, topics on bottom
+    ForceDirected, // Automatic physics-based layout
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -477,10 +492,11 @@ impl TuiDashboard {
                         KeyCode::Char('l') | KeyCode::Char('L')
                             if self.active_tab == Tab::Graph =>
                         {
-                            // Toggle layout
+                            // Toggle layout (cycles through all options)
                             self.graph_layout = match self.graph_layout {
                                 GraphLayout::Hierarchical => GraphLayout::Vertical,
-                                GraphLayout::Vertical => GraphLayout::Hierarchical,
+                                GraphLayout::Vertical => GraphLayout::ForceDirected,
+                                GraphLayout::ForceDirected => GraphLayout::Hierarchical,
                             };
                             self.apply_graph_layout();
                         }
@@ -1045,10 +1061,26 @@ impl TuiDashboard {
             return;
         }
 
-        // Create a buffer to draw on
+        // Create a buffer to draw on with color support
         let width = inner.width as usize;
         let height = inner.height as usize;
-        let mut canvas: Vec<Vec<String>> = vec![vec![" ".to_string(); width]; height];
+
+        #[derive(Clone)]
+        struct ColoredCell {
+            text: String,
+            color: Option<Color>,
+        }
+
+        impl From<(String, Option<Color>)> for ColoredCell {
+            fn from((text, color): (String, Option<Color>)) -> Self {
+                ColoredCell { text, color }
+            }
+        }
+
+        let mut canvas: Vec<Vec<ColoredCell>> = vec![vec![ColoredCell {
+            text: " ".to_string(),
+            color: None
+        }; width]; height];
 
         // Create a map of node ID to node for quick lookup
         let node_map: HashMap<String, &TuiGraphNode> =
@@ -1065,8 +1097,7 @@ impl TuiDashboard {
                     to_node,
                     &edge.edge_type,
                     edge.active,
-                    width,
-                    height,
+                    (width, height),
                 );
             }
         }
@@ -1076,13 +1107,19 @@ impl TuiDashboard {
             self.draw_node(&mut canvas, node, width, height);
         }
 
-        // Convert canvas to ratatui Lines
+        // Convert canvas to ratatui Lines with color support
         let lines: Vec<Line> = canvas
             .iter()
             .map(|row| {
                 let spans: Vec<Span> = row
                     .iter()
-                    .map(|cell| Span::raw(cell.clone()))
+                    .map(|cell| {
+                        if let Some(color) = cell.color {
+                            Span::styled(cell.text.clone(), Style::default().fg(color))
+                        } else {
+                            Span::raw(cell.text.clone())
+                        }
+                    })
                     .collect();
                 Line::from(spans)
             })
@@ -1092,7 +1129,11 @@ impl TuiDashboard {
         f.render_widget(paragraph, inner);
     }
 
-    fn draw_node(&self, canvas: &mut [Vec<String>], node: &TuiGraphNode, width: usize, height: usize) {
+    fn draw_node<T>(&self, canvas: &mut [Vec<T>], node: &TuiGraphNode, width: usize, height: usize)
+    where
+        T: Clone,
+        T: From<(String, Option<Color>)>,
+    {
         // Apply zoom and offset
         let x = ((node.x as f32 * self.graph_zoom) as i32 + self.graph_offset_x) as usize;
         let y = ((node.y as f32 * self.graph_zoom) as i32 + self.graph_offset_y) as usize;
@@ -1104,130 +1145,252 @@ impl TuiDashboard {
 
         match node.node_type {
             TuiNodeType::Process => {
-                // Draw process as a circle using ● or ◉
-                let symbol = if node.active { "●" } else { "○" };
+                // Draw process as a circle with color coding
+                let (symbol, color) = if node.active {
+                    ("●", Color::Green)  // Active processes are green
+                } else {
+                    ("○", Color::DarkGray)  // Inactive processes are gray
+                };
+
                 if x < width {
-                    canvas[y][x] = symbol.to_string();
+                    canvas[y][x] = T::from((symbol.to_string(), Some(color)));
                 }
 
-                // Draw label next to the node
+                // Draw label next to the node with appropriate color
                 let label = format!(" {}", node.label);
+                let label_color = if node.active { Color::Cyan } else { Color::DarkGray };
+
                 for (i, ch) in label.chars().enumerate() {
                     let label_x = x + i + 1;
                     if label_x < width && y < height {
-                        canvas[y][label_x] = ch.to_string();
+                        canvas[y][label_x] = T::from((ch.to_string(), Some(label_color)));
                     }
                 }
             }
             TuiNodeType::Topic => {
-                // Draw topic as a box [topic_name]
+                // Draw topic as a box with yellow/gold color
                 let label = format!("[{}]", node.label);
+                let topic_color = Color::Yellow;
+
                 for (i, ch) in label.chars().enumerate() {
                     let label_x = x + i;
                     if label_x < width && y < height {
-                        canvas[y][label_x] = ch.to_string();
+                        canvas[y][label_x] = T::from((ch.to_string(), Some(topic_color)));
                     }
                 }
             }
         }
     }
 
-    fn draw_edge(
+    fn draw_edge<T>(
         &self,
-        canvas: &mut [Vec<String>],
+        canvas: &mut [Vec<T>],
         from: &TuiGraphNode,
         to: &TuiGraphNode,
         edge_type: &TuiEdgeType,
-        _active: bool,
+        active: bool,
+        dimensions: (usize, usize),
+    )
+    where
+        T: Clone,
+        T: From<(String, Option<Color>)>,
+    {
+        let (width, height) = dimensions;
+        // Apply zoom and offset - use f32 for smoother curves
+        let x1 = ((from.x as f32 * self.graph_zoom) as i32 + self.graph_offset_x) as f32;
+        let y1 = ((from.y as f32 * self.graph_zoom) as i32 + self.graph_offset_y) as f32;
+        let x2 = ((to.x as f32 * self.graph_zoom) as i32 + self.graph_offset_x) as f32;
+        let y2 = ((to.y as f32 * self.graph_zoom) as i32 + self.graph_offset_y) as f32;
+
+        // Color code based on edge type and activity
+        let edge_color = match edge_type {
+            TuiEdgeType::Publish => {
+                if active { Color::Blue } else { Color::DarkGray }
+            }
+            TuiEdgeType::Subscribe => {
+                if active { Color::Magenta } else { Color::DarkGray }
+            }
+        };
+
+        // Draw smooth Bézier curve (like rqt_graph)
+        self.draw_bezier_curve(canvas, x1, y1, x2, y2, edge_color, width, height);
+    }
+
+    // Draw a smooth Bézier curve between two points (like rqt_graph)
+    fn draw_bezier_curve<T>(
+        &self,
+        canvas: &mut [Vec<T>],
+        x1: f32,
+        y1: f32,
+        x2: f32,
+        y2: f32,
+        color: Color,
         width: usize,
         height: usize,
-    ) {
-        // Apply zoom and offset
-        let x1 = ((from.x as f32 * self.graph_zoom) as i32 + self.graph_offset_x) as usize;
-        let y1 = ((from.y as f32 * self.graph_zoom) as i32 + self.graph_offset_y) as usize;
-        let x2 = ((to.x as f32 * self.graph_zoom) as i32 + self.graph_offset_x) as usize;
-        let y2 = ((to.y as f32 * self.graph_zoom) as i32 + self.graph_offset_y) as usize;
+    )
+    where
+        T: Clone,
+        T: From<(String, Option<Color>)>,
+    {
+        let dx = x2 - x1;
+        let dy = y2 - y1;
 
-        // Draw a simple line using box-drawing characters
-        if y1 == y2 {
-            // Horizontal line
-            let (start_x, end_x) = if x1 < x2 { (x1, x2) } else { (x2, x1) };
-            for x in start_x..=end_x {
-                if x < width && y1 < height {
-                    canvas[y1][x] = "─".to_string();
-                }
-            }
+        // Calculate control points for cubic Bézier curve
+        // This creates smooth S-curves like in rqt_graph
+        let control_distance = dx.abs() * 0.5;
 
-            // Add arrowhead pointing toward destination (to)
-            // Arrow direction is based on actual data flow: from -> to
-            // Place arrow one position before destination so it doesn't get overwritten by the node
-            let (arrow, arrow_x) = if x1 < x2 {
-                ("→", x2.saturating_sub(1))  // Left to right: arrow points right
-            } else {
-                ("←", x2 + 1)  // Right to left: arrow points left
-            };
-            if arrow_x < width && y2 < height && arrow_x != x2 {
-                canvas[y2][arrow_x] = arrow.to_string();
-            }
-        } else if x1 == x2 {
-            // Vertical line
-            let (start_y, end_y) = if y1 < y2 { (y1, y2) } else { (y2, y1) };
-            for y in start_y..=end_y {
-                if x1 < width && y < height {
-                    canvas[y][x1] = "│".to_string();
-                }
-            }
+        let cp1_x = x1 + control_distance;
+        let cp1_y = y1;
+        let cp2_x = x2 - control_distance;
+        let cp2_y = y2;
 
-            // Add arrowhead pointing toward destination (to)
-            // Place arrow one position before destination so it doesn't get overwritten by the node
-            let (arrow, arrow_y) = if y1 < y2 {
-                ("↓", y2.saturating_sub(1))  // Top to bottom: arrow points down
-            } else {
-                ("↑", y2 + 1)  // Bottom to top: arrow points up
-            };
-            if x2 < width && arrow_y < height && arrow_y != y2 {
-                canvas[arrow_y][x2] = arrow.to_string();
-            }
-        } else {
-            // Diagonal or complex line - draw L-shaped connector
-            // First horizontal, then vertical
-            for x in x1.min(x2)..=x1.max(x2) {
-                if x < width && y1 < height {
-                    canvas[y1][x] = "─".to_string();
-                }
-            }
+        // Sample the curve at regular intervals for smoothness
+        let distance = (dx * dx + dy * dy).sqrt();
+        let num_samples = (distance * 1.5) as usize;
+        let num_samples = num_samples.max(10).min(200);
 
-            for y in y1.min(y2)..=y1.max(y2) {
-                if x2 < width && y < height {
-                    canvas[y][x2] = "│".to_string();
-                }
-            }
+        let mut prev_x = x1 as i32;
+        let mut prev_y = y1 as i32;
 
-            // Corner piece
-            if x2 < width && y1 < height {
-                let corner = if x1 < x2 && y1 < y2 {
-                    "┐"
-                } else if x1 < x2 && y1 > y2 {
-                    "┘"
-                } else if x1 > x2 && y1 < y2 {
-                    "┌"
+        for i in 0..=num_samples {
+            let t = i as f32 / num_samples as f32;
+
+            // Cubic Bézier formula: B(t) = (1-t)³P₀ + 3(1-t)²tP₁ + 3(1-t)t²P₂ + t³P₃
+            let t2 = t * t;
+            let t3 = t2 * t;
+            let mt = 1.0 - t;
+            let mt2 = mt * mt;
+            let mt3 = mt2 * mt;
+
+            let x = mt3 * x1 + 3.0 * mt2 * t * cp1_x + 3.0 * mt * t2 * cp2_x + t3 * x2;
+            let y = mt3 * y1 + 3.0 * mt2 * t * cp1_y + 3.0 * mt * t2 * cp2_y + t3 * y2;
+
+            let curr_x = x as i32;
+            let curr_y = y as i32;
+
+            // Draw line segment
+            self.draw_line_segment(canvas, prev_x, prev_y, curr_x, curr_y, color, width, height);
+
+            prev_x = curr_x;
+            prev_y = curr_y;
+        }
+
+        // Draw arrowhead at the end
+        self.draw_arrowhead(canvas, x1, y1, x2, y2, color, width, height);
+    }
+
+    // Draw a line segment using Bresenham's algorithm with smooth characters
+    fn draw_line_segment<T>(
+        &self,
+        canvas: &mut [Vec<T>],
+        x1: i32,
+        y1: i32,
+        x2: i32,
+        y2: i32,
+        color: Color,
+        width: usize,
+        height: usize,
+    )
+    where
+        T: Clone,
+        T: From<(String, Option<Color>)>,
+    {
+        let dx = (x2 - x1).abs();
+        let dy = (y2 - y1).abs();
+        let sx = if x1 < x2 { 1 } else { -1 };
+        let sy = if y1 < y2 { 1 } else { -1 };
+        let mut err = dx - dy;
+        let mut x = x1;
+        let mut y = y1;
+
+        loop {
+            if x >= 0 && (x as usize) < width && y >= 0 && (y as usize) < height {
+                // Choose character based on line direction for smooth appearance
+                let ch = if dx > dy * 2 {
+                    "─"  // Mostly horizontal
+                } else if dy > dx * 2 {
+                    "│"  // Mostly vertical
+                } else if (x2 > x1 && y2 > y1) || (x2 < x1 && y2 < y1) {
+                    "╱"  // Diagonal /
                 } else {
-                    "└"
+                    "╲"  // Diagonal \
                 };
-                canvas[y1][x2] = corner.to_string();
+
+                canvas[y as usize][x as usize] = T::from((ch.to_string(), Some(color)));
             }
 
-            // Add arrowhead at destination pointing toward final position
-            // For L-shaped connectors, the final segment is vertical
-            // Place arrow one position before destination so it doesn't get overwritten by the node
-            let (arrow, arrow_y) = if y1 < y2 {
-                ("↓", y2.saturating_sub(1))  // Arrow points down to destination
-            } else {
-                ("↑", y2 + 1)  // Arrow points up to destination
-            };
-            if x2 < width && arrow_y < height && arrow_y != y2 {
-                canvas[arrow_y][x2] = arrow.to_string();
+            if x == x2 && y == y2 {
+                break;
             }
+
+            let e2 = 2 * err;
+            if e2 > -dy {
+                err -= dy;
+                x += sx;
+            }
+            if e2 < dx {
+                err += dx;
+                y += sy;
+            }
+        }
+    }
+
+    // Draw an arrowhead at the destination with proper direction
+    fn draw_arrowhead<T>(
+        &self,
+        canvas: &mut [Vec<T>],
+        x1: f32,
+        y1: f32,
+        x2: f32,
+        y2: f32,
+        color: Color,
+        width: usize,
+        height: usize,
+    )
+    where
+        T: Clone,
+        T: From<(String, Option<Color>)>,
+    {
+        let end_x = x2 as i32;
+        let end_y = y2 as i32;
+
+        if end_x < 0 || end_x >= width as i32 || end_y < 0 || end_y >= height as i32 {
+            return;
+        }
+
+        // Calculate approach angle
+        let dx = x2 - x1;
+        let dy = y2 - y1;
+        let angle = dy.atan2(dx);
+
+        // Choose arrow based on angle (8 directions)
+        let arrow = if angle >= -std::f32::consts::PI / 8.0 && angle < std::f32::consts::PI / 8.0 {
+            "→"  // Right
+        } else if angle >= std::f32::consts::PI / 8.0 && angle < 3.0 * std::f32::consts::PI / 8.0 {
+            "↘"  // Down-right
+        } else if angle >= 3.0 * std::f32::consts::PI / 8.0 && angle < 5.0 * std::f32::consts::PI / 8.0 {
+            "↓"  // Down
+        } else if angle >= 5.0 * std::f32::consts::PI / 8.0 && angle < 7.0 * std::f32::consts::PI / 8.0 {
+            "↙"  // Down-left
+        } else if angle < -7.0 * std::f32::consts::PI / 8.0 || angle >= 7.0 * std::f32::consts::PI / 8.0 {
+            "←"  // Left
+        } else if angle >= -7.0 * std::f32::consts::PI / 8.0 && angle < -5.0 * std::f32::consts::PI / 8.0 {
+            "↖"  // Up-left
+        } else if angle >= -5.0 * std::f32::consts::PI / 8.0 && angle < -3.0 * std::f32::consts::PI / 8.0 {
+            "↑"  // Up
+        } else {
+            "↗"  // Up-right
+        };
+
+        // Place arrow slightly before destination to avoid node overlap
+        let offset_x = if dx.abs() > 2.0 { -(dx.signum() as i32) } else { 0 };
+        let offset_y = if dy.abs() > 2.0 { -(dy.signum() as i32) } else { 0 };
+
+        let arrow_x = end_x + offset_x;
+        let arrow_y = end_y + offset_y;
+
+        if arrow_x >= 0 && (arrow_x as usize) < width && arrow_y >= 0 && (arrow_y as usize) < height {
+            canvas[arrow_y as usize][arrow_x as usize] = T::from((arrow.to_string(), Some(color)));
         }
     }
 
@@ -1281,9 +1444,18 @@ impl TuiDashboard {
                     Style::default()
                 };
 
+                // Format package/dependency counts
+                let pkg_count = workspace.packages.len();
+                let missing_count = workspace.dependencies.len();
+                let count_display = if missing_count > 0 {
+                    format!("{} ({} missing)", pkg_count, missing_count)
+                } else {
+                    pkg_count.to_string()
+                };
+
                 Row::new(vec![
                     Cell::from(workspace_display),
-                    Cell::from(workspace.packages.len().to_string()),
+                    Cell::from(count_display),
                     Cell::from(workspace.path.clone()),
                 ])
                 .style(style)
@@ -1292,7 +1464,7 @@ impl TuiDashboard {
 
         let workspace_table = Table::new(workspace_rows)
             .header(
-                Row::new(vec!["Workspace", "Packages", "Path"])
+                Row::new(vec!["Workspace", "Pkgs (Missing)", "Path"])
                     .style(Style::default().add_modifier(Modifier::BOLD)),
             )
             .block(
@@ -1382,8 +1554,25 @@ impl TuiDashboard {
 
     fn draw_workspace_details(&self, f: &mut Frame, area: Rect) {
         if let Some(ref workspace) = self.selected_workspace {
-            // Display packages inside the selected workspace
-            let rows: Vec<Row> = workspace
+            // Split area into two sections: Installed Packages and Missing Dependencies
+            let has_missing = !workspace.dependencies.is_empty();
+
+            let chunks = if has_missing {
+                Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([
+                        Constraint::Percentage(60), // Installed packages
+                        Constraint::Percentage(40), // Missing dependencies
+                    ])
+                    .split(area)
+            } else {
+                // Create a single-element slice for consistency
+                use std::rc::Rc;
+                Rc::from(vec![area])
+            };
+
+            // Display installed packages
+            let package_rows: Vec<Row> = workspace
                 .packages
                 .iter()
                 .enumerate()
@@ -1407,7 +1596,7 @@ impl TuiDashboard {
                     };
 
                     Row::new(vec![
-                        Cell::from(pkg.name.clone()).style(Style::default().fg(Color::Cyan)),
+                        Cell::from(pkg.name.clone()).style(Style::default().fg(Color::Green)),
                         Cell::from(pkg.version.clone()),
                         Cell::from(pkg.installed_packages.len().to_string()),
                         Cell::from(installed),
@@ -1416,7 +1605,7 @@ impl TuiDashboard {
                 })
                 .collect();
 
-            let table = Table::new(rows)
+            let package_table = Table::new(package_rows)
                 .header(
                     Row::new(vec!["Package", "Version", "Deps", "Installed Packages"])
                         .style(Style::default().add_modifier(Modifier::BOLD)),
@@ -1424,7 +1613,7 @@ impl TuiDashboard {
                 .block(
                     Block::default()
                         .title(format!(
-                            "Workspace: {} ({} packages) - Press Esc to return",
+                            "Workspace: {} - Installed Packages ({}) - Press Esc to return",
                             workspace.name,
                             workspace.packages.len()
                         ))
@@ -1438,7 +1627,44 @@ impl TuiDashboard {
                     Constraint::Min(30),
                 ]);
 
-            f.render_widget(table, area);
+            f.render_widget(package_table, chunks[0]);
+
+            // Display missing dependencies if any
+            if has_missing {
+                let dep_rows: Vec<Row> = workspace
+                    .dependencies
+                    .iter()
+                    .map(|dep| {
+                        Row::new(vec![
+                            Cell::from(dep.name.clone()).style(Style::default().fg(Color::Yellow)),
+                            Cell::from(dep.declared_version.clone()),
+                            Cell::from("MISSING").style(Style::default().fg(Color::Red)),
+                        ])
+                    })
+                    .collect();
+
+                let dep_table = Table::new(dep_rows)
+                    .header(
+                        Row::new(vec!["Package", "Declared (horus.yaml)", "Status"])
+                            .style(Style::default().add_modifier(Modifier::BOLD)),
+                    )
+                    .block(
+                        Block::default()
+                            .title(format!(
+                                "Missing Dependencies ({}) - Run 'horus run' to install",
+                                workspace.dependencies.len()
+                            ))
+                            .borders(Borders::ALL)
+                            .border_style(Style::default().fg(Color::Red)),
+                    )
+                    .widths(&[
+                        Constraint::Length(25),
+                        Constraint::Length(30),
+                        Constraint::Min(15),
+                    ]);
+
+                f.render_widget(dep_table, chunks[1]);
+            }
         } else {
             // Fallback: No workspace selected
             let block = Block::default()
@@ -1695,8 +1921,9 @@ impl TuiDashboard {
                 Style::default().fg(Color::Cyan),
             )]),
             Line::from("  ← →        - Switch between Local Workspaces and Global Packages"),
-            Line::from("  Enter      - Drill into selected workspace to view packages"),
+            Line::from("  Enter      - Drill into selected workspace to view packages & dependencies"),
             Line::from("  ESC        - Navigate back to workspace list"),
+            Line::from("  Note       - Missing dependencies (from horus.yaml) shown in red"),
             Line::from(""),
             Line::from(vec![Span::styled(
                 "Parameters Tab:",
@@ -2390,76 +2617,406 @@ impl TuiDashboard {
         match self.graph_layout {
             GraphLayout::Hierarchical => self.apply_hierarchical_layout(),
             GraphLayout::Vertical => self.apply_vertical_layout(),
+            GraphLayout::ForceDirected => self.apply_force_directed_layout(),
         }
     }
 
     fn apply_hierarchical_layout(&mut self) {
-        // Separate processes and topics
-        let mut processes: Vec<&mut TuiGraphNode> = Vec::new();
-        let mut topics: Vec<&mut TuiGraphNode> = Vec::new();
+        use std::collections::HashMap;
 
-        for node in &mut self.graph_nodes {
+        // Barycenter Heuristic Layout: Minimizes edge crossings in bipartite graph
+        // This is the same algorithm used in the web dashboard
+
+        // Separate processes and topics
+        let mut processes: Vec<String> = Vec::new();
+        let mut topics: Vec<String> = Vec::new();
+
+        for node in &self.graph_nodes {
             match node.node_type {
-                TuiNodeType::Process => processes.push(node),
-                TuiNodeType::Topic => topics.push(node),
+                TuiNodeType::Process => processes.push(node.id.clone()),
+                TuiNodeType::Topic => topics.push(node.id.clone()),
             }
         }
 
-        // Layout processes on the left
-        let process_x = 5;
-        let mut process_y = 3;
-        let process_spacing = 3;
-
-        for process in processes {
-            process.x = process_x;
-            process.y = process_y;
-            process_y += process_spacing;
+        if processes.is_empty() && topics.is_empty() {
+            return;
         }
 
-        // Layout topics on the right
-        let topic_x = 40;
-        let mut topic_y = 3;
-        let topic_spacing = 3;
+        // Build adjacency maps
+        let mut process_to_topics: HashMap<String, Vec<String>> = HashMap::new();
+        let mut topic_to_processes: HashMap<String, Vec<String>> = HashMap::new();
 
-        for topic in topics {
-            topic.x = topic_x;
-            topic.y = topic_y;
-            topic_y += topic_spacing;
+        for edge in &self.graph_edges {
+            if let (Some(from_node), Some(to_node)) = (
+                self.graph_nodes.iter().find(|n| n.id == edge.from),
+                self.graph_nodes.iter().find(|n| n.id == edge.to),
+            ) {
+                match (&from_node.node_type, &to_node.node_type) {
+                    (TuiNodeType::Process, TuiNodeType::Topic) => {
+                        process_to_topics.entry(edge.from.clone())
+                            .or_default()
+                            .push(edge.to.clone());
+                        topic_to_processes.entry(edge.to.clone())
+                            .or_default()
+                            .push(edge.from.clone());
+                    }
+                    (TuiNodeType::Topic, TuiNodeType::Process) => {
+                        topic_to_processes.entry(edge.from.clone())
+                            .or_default()
+                            .push(edge.to.clone());
+                        process_to_topics.entry(edge.to.clone())
+                            .or_default()
+                            .push(edge.from.clone());
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        // Initial ordering (by ID for deterministic results)
+        let mut process_order = processes.clone();
+        process_order.sort();
+        let mut topic_order = topics.clone();
+        topic_order.sort();
+
+        // Barycenter iterations (5 iterations for convergence)
+        for _ in 0..5 {
+            // Reorder topics based on average position of connected processes
+            let mut topic_barycenters: Vec<(String, f32)> = topic_order
+                .iter()
+                .map(|topic_id| {
+                    let connected_processes = topic_to_processes.get(topic_id);
+                    let barycenter = if let Some(procs) = connected_processes {
+                        if procs.is_empty() {
+                            0.0
+                        } else {
+                            let sum: f32 = procs
+                                .iter()
+                                .filter_map(|proc_id| {
+                                    process_order.iter().position(|p| p == proc_id).map(|i| i as f32)
+                                })
+                                .sum();
+                            sum / procs.len() as f32
+                        }
+                    } else {
+                        0.0
+                    };
+                    (topic_id.clone(), barycenter)
+                })
+                .collect();
+
+            topic_barycenters.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+            topic_order = topic_barycenters.into_iter().map(|(id, _)| id).collect();
+
+            // Reorder processes based on average position of connected topics
+            let mut process_barycenters: Vec<(String, f32)> = process_order
+                .iter()
+                .map(|process_id| {
+                    let connected_topics = process_to_topics.get(process_id);
+                    let barycenter = if let Some(tops) = connected_topics {
+                        if tops.is_empty() {
+                            0.0
+                        } else {
+                            let sum: f32 = tops
+                                .iter()
+                                .filter_map(|topic_id| {
+                                    topic_order.iter().position(|t| t == topic_id).map(|i| i as f32)
+                                })
+                                .sum();
+                            sum / tops.len() as f32
+                        }
+                    } else {
+                        0.0
+                    };
+                    (process_id.clone(), barycenter)
+                })
+                .collect();
+
+            process_barycenters.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+            process_order = process_barycenters.into_iter().map(|(id, _)| id).collect();
+        }
+
+        // Calculate optimal spacing
+        let process_spacing = 4;
+        let topic_spacing = 4;
+
+        // Calculate label width for dynamic positioning
+        let max_label_len = process_order.iter()
+            .filter_map(|p| self.graph_nodes.iter().find(|n| &n.id == p))
+            .map(|n| n.label.len())
+            .max()
+            .unwrap_or(20);
+
+        // Position processes on left, vertically distributed
+        let process_x = 3;
+        let process_start_y = 2;
+
+        for (i, process_id) in process_order.iter().enumerate() {
+            if let Some(node) = self.graph_nodes.iter_mut().find(|n| &n.id == process_id) {
+                node.x = process_x;
+                node.y = process_start_y + (i as i32 * process_spacing);
+            }
+        }
+
+        // Position topics on right, vertically distributed
+        let topic_x = process_x + max_label_len as i32 + 15;
+        let topic_start_y = 2;
+
+        for (i, topic_id) in topic_order.iter().enumerate() {
+            if let Some(node) = self.graph_nodes.iter_mut().find(|n| &n.id == topic_id) {
+                node.x = topic_x;
+                node.y = topic_start_y + (i as i32 * topic_spacing);
+            }
         }
     }
 
     fn apply_vertical_layout(&mut self) {
-        // Separate processes and topics
-        let mut processes: Vec<&mut TuiGraphNode> = Vec::new();
-        let mut topics: Vec<&mut TuiGraphNode> = Vec::new();
+        use std::collections::HashMap;
 
-        for node in &mut self.graph_nodes {
+        // Separate processes and topics
+        let mut processes: Vec<String> = Vec::new();
+        let mut topics: Vec<String> = Vec::new();
+
+        for node in &self.graph_nodes {
             match node.node_type {
-                TuiNodeType::Process => processes.push(node),
-                TuiNodeType::Topic => topics.push(node),
+                TuiNodeType::Process => processes.push(node.id.clone()),
+                TuiNodeType::Topic => topics.push(node.id.clone()),
             }
         }
 
-        // Layout processes on top
-        let process_y = 3;
-        let mut process_x = 5;
-        let process_spacing = 15;
+        // Build adjacency map
+        let mut process_to_topics: HashMap<String, Vec<String>> = HashMap::new();
+        let mut topic_to_processes: HashMap<String, Vec<String>> = HashMap::new();
 
-        for process in processes {
-            process.x = process_x;
-            process.y = process_y;
-            process_x += process_spacing;
+        for edge in &self.graph_edges {
+            if let (Some(from_node), Some(to_node)) = (
+                self.graph_nodes.iter().find(|n| n.id == edge.from),
+                self.graph_nodes.iter().find(|n| n.id == edge.to),
+            ) {
+                match (&from_node.node_type, &to_node.node_type) {
+                    (TuiNodeType::Process, TuiNodeType::Topic) => {
+                        process_to_topics.entry(edge.from.clone())
+                            .or_default()
+                            .push(edge.to.clone());
+                    }
+                    (TuiNodeType::Topic, TuiNodeType::Process) => {
+                        topic_to_processes.entry(edge.from.clone())
+                            .or_default()
+                            .push(edge.to.clone());
+                    }
+                    _ => {}
+                }
+            }
         }
 
-        // Layout topics on bottom
-        let topic_y = 12;
-        let mut topic_x = 5;
-        let topic_spacing = 15;
+        // Calculate dynamic spacing based on label lengths
+        let max_process_len = processes.iter()
+            .filter_map(|p| self.graph_nodes.iter().find(|n| &n.id == p))
+            .map(|n| n.label.len())
+            .max()
+            .unwrap_or(15);
 
-        for topic in topics {
-            topic.x = topic_x;
-            topic.y = topic_y;
+        let max_topic_len = topics.iter()
+            .filter_map(|t| self.graph_nodes.iter().find(|n| &n.id == t))
+            .map(|n| n.label.len() + 2) // +2 for brackets
+            .max()
+            .unwrap_or(15);
+
+        // Layout processes on top
+        let process_y = 2;
+        let mut process_x = 3;
+        let process_spacing = (max_process_len + 8) as i32; // Dynamic spacing
+
+        for process_id in &processes {
+            if let Some(node) = self.graph_nodes.iter_mut().find(|n| &n.id == process_id) {
+                node.x = process_x;
+                node.y = process_y;
+                process_x += process_spacing;
+            }
+        }
+
+        // Layout topics on bottom, aligned with their connected processes when possible
+        let topic_y = 10;
+        let mut topic_x = 3;
+        let topic_spacing = (max_topic_len + 5) as i32; // Dynamic spacing
+        let mut topic_positions: HashMap<String, i32> = HashMap::new();
+
+        for topic_id in &topics {
+            // Try to align with connected processes
+            if let Some(connected_procs) = topic_to_processes.get(topic_id) {
+                if !connected_procs.is_empty() {
+                    // Calculate average X position of connected processes
+                    let avg_x: f32 = connected_procs.iter()
+                        .filter_map(|p| self.graph_nodes.iter().find(|n| &n.id == p))
+                        .map(|n| n.x as f32)
+                        .sum::<f32>() / connected_procs.len() as f32;
+
+                    topic_x = avg_x as i32;
+                }
+            }
+
+            // Ensure minimum spacing from previous topics
+            if let Some(&last_x) = topic_positions.values().max() {
+                if topic_x < (last_x + topic_spacing) {
+                    topic_x = last_x + topic_spacing;
+                }
+            }
+
+            if let Some(node) = self.graph_nodes.iter_mut().find(|n| &n.id == topic_id) {
+                node.x = topic_x;
+                node.y = topic_y;
+                topic_positions.insert(topic_id.clone(), topic_x);
+            }
+
             topic_x += topic_spacing;
+        }
+    }
+
+    fn apply_force_directed_layout(&mut self) {
+        use std::collections::HashMap;
+
+        // Simple force-directed layout using spring physics
+        // This creates a visually pleasing automatic layout
+        const ITERATIONS: usize = 50;
+        const REPULSION_STRENGTH: f32 = 100.0;
+        const ATTRACTION_STRENGTH: f32 = 0.05;
+        const DAMPING: f32 = 0.85;
+
+        // Initialize positions if nodes have default (0,0) positions
+        let node_count = self.graph_nodes.len();
+        for (i, node) in self.graph_nodes.iter_mut().enumerate() {
+            if node.x == 0 && node.y == 0 {
+                // Spread nodes in a circle initially
+                let angle = (i as f32 * 2.0 * std::f32::consts::PI) / node_count as f32;
+                node.x = (50.0 + 20.0 * angle.cos()) as i32;
+                node.y = (15.0 + 10.0 * angle.sin()) as i32;
+            }
+        }
+
+        // Build edge map for attraction forces
+        let mut edge_map: HashMap<String, Vec<String>> = HashMap::new();
+        for edge in &self.graph_edges {
+            edge_map.entry(edge.from.clone())
+                .or_default()
+                .push(edge.to.clone());
+            edge_map.entry(edge.to.clone())
+                .or_default()
+                .push(edge.from.clone());
+        }
+
+        // Simulate physics
+        for _ in 0..ITERATIONS {
+            let mut forces: HashMap<String, (f32, f32)> = HashMap::new();
+
+            // Initialize forces
+            for node in &self.graph_nodes {
+                forces.insert(node.id.clone(), (0.0, 0.0));
+            }
+
+            // Repulsion between all nodes
+            for i in 0..self.graph_nodes.len() {
+                for j in (i + 1)..self.graph_nodes.len() {
+                    let node1 = &self.graph_nodes[i];
+                    let node2 = &self.graph_nodes[j];
+
+                    let dx = node2.x as f32 - node1.x as f32;
+                    let dy = node2.y as f32 - node1.y as f32;
+                    let dist = (dx * dx + dy * dy).sqrt().max(1.0);
+
+                    let force = REPULSION_STRENGTH / (dist * dist);
+                    let fx = (dx / dist) * force;
+                    let fy = (dy / dist) * force;
+
+                    if let Some(f) = forces.get_mut(&node1.id) {
+                        f.0 -= fx;
+                        f.1 -= fy;
+                    }
+                    if let Some(f) = forces.get_mut(&node2.id) {
+                        f.0 += fx;
+                        f.1 += fy;
+                    }
+                }
+            }
+
+            // Attraction along edges
+            for (from_id, to_ids) in &edge_map {
+                if let Some(from_node) = self.graph_nodes.iter().find(|n| &n.id == from_id) {
+                    for to_id in to_ids {
+                        if let Some(to_node) = self.graph_nodes.iter().find(|n| &n.id == to_id) {
+                            let dx = to_node.x as f32 - from_node.x as f32;
+                            let dy = to_node.y as f32 - from_node.y as f32;
+
+                            let force_x = dx * ATTRACTION_STRENGTH;
+                            let force_y = dy * ATTRACTION_STRENGTH;
+
+                            if let Some(f) = forces.get_mut(from_id) {
+                                f.0 += force_x;
+                                f.1 += force_y;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Apply forces with damping
+            for node in &mut self.graph_nodes {
+                if let Some((fx, fy)) = forces.get(&node.id) {
+                    node.x = ((node.x as f32 + fx * DAMPING) as i32).clamp(3, 120);
+                    node.y = ((node.y as f32 + fy * DAMPING) as i32).clamp(2, 40);
+                }
+            }
+        }
+
+        // Apply type-based clustering to keep processes and topics somewhat separated
+        let mut process_center_x = 0;
+        let mut process_center_y = 0;
+        let mut process_count = 0;
+        let mut topic_center_x = 0;
+        let mut topic_center_y = 0;
+        let mut topic_count = 0;
+
+        for node in &self.graph_nodes {
+            match node.node_type {
+                TuiNodeType::Process => {
+                    process_center_x += node.x;
+                    process_center_y += node.y;
+                    process_count += 1;
+                }
+                TuiNodeType::Topic => {
+                    topic_center_x += node.x;
+                    topic_center_y += node.y;
+                    topic_count += 1;
+                }
+            }
+        }
+
+        if process_count > 0 {
+            process_center_x /= process_count;
+            process_center_y /= process_count;
+        }
+
+        if topic_count > 0 {
+            topic_center_x /= topic_count;
+            topic_center_y /= topic_count;
+        }
+
+        // Gently push types toward their clusters for better organization
+        for node in &mut self.graph_nodes {
+            match node.node_type {
+                TuiNodeType::Process if process_count > 0 => {
+                    let dx = process_center_x - node.x;
+                    let dy = process_center_y - node.y;
+                    node.x += dx / 10;
+                    node.y += dy / 10;
+                }
+                TuiNodeType::Topic if topic_count > 0 => {
+                    let dx = topic_center_x - node.x;
+                    let dy = topic_center_y - node.y;
+                    node.x += dx / 10;
+                    node.y += dy / 10;
+                }
+                _ => {}
+            }
         }
     }
 }
@@ -2505,6 +3062,7 @@ fn get_active_nodes() -> Result<Vec<NodeStatus>> {
 
 fn get_local_workspaces(current_workspace_path: &Option<std::path::PathBuf>) -> Vec<WorkspaceData> {
     use std::fs;
+    use std::collections::HashSet;
 
     let mut workspaces = Vec::new();
 
@@ -2515,14 +3073,42 @@ fn get_local_workspaces(current_workspace_path: &Option<std::path::PathBuf>) -> 
         let env_path_buf = ws.path;
         let horus_dir = env_path_buf.join(".horus");
 
+        // Read dependencies from horus.yaml
+        let horus_yaml_path = env_path_buf.join("horus.yaml");
+        let yaml_dependencies = if horus_yaml_path.exists() {
+            fs::read_to_string(&horus_yaml_path)
+                .ok()
+                .and_then(|content| {
+                    serde_yaml::from_str::<serde_yaml::Value>(&content).ok()
+                })
+                .and_then(|yaml| {
+                    yaml.get("dependencies")
+                        .and_then(|deps| deps.as_sequence())
+                        .map(|seq| {
+                            seq.iter()
+                                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                .collect::<Vec<String>>()
+                        })
+                })
+                .unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+
         // Get packages inside this workspace
         let packages_dir = horus_dir.join("packages");
         let mut packages = Vec::new();
+        let mut installed_packages_set: HashSet<String> = HashSet::new();
 
         if packages_dir.exists() {
             if let Ok(pkg_entries) = fs::read_dir(&packages_dir) {
                 for pkg_entry in pkg_entries.flatten() {
-                    if pkg_entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                    // Check if it's a directory OR a symlink pointing to a directory
+                    let is_pkg_dir = pkg_entry.file_type().map(|t| t.is_dir()).unwrap_or(false)
+                        || (pkg_entry.file_type().map(|t| t.is_symlink()).unwrap_or(false)
+                            && pkg_entry.path().is_dir());
+
+                    if is_pkg_dir {
                         let pkg_name = pkg_entry.file_name().to_string_lossy().to_string();
 
                         // Try to get version from metadata.json
@@ -2582,6 +3168,7 @@ fn get_local_workspaces(current_workspace_path: &Option<std::path::PathBuf>) -> 
                             }
                         }
 
+                        installed_packages_set.insert(pkg_name.clone());
                         packages.push(PackageData {
                             name: pkg_name,
                             version,
@@ -2592,11 +3179,32 @@ fn get_local_workspaces(current_workspace_path: &Option<std::path::PathBuf>) -> 
             }
         }
 
+        // Process dependencies from horus.yaml - only include those NOT already installed
+        let dependencies: Vec<DependencyData> = yaml_dependencies
+            .iter()
+            .filter_map(|dep_str| {
+                let dep_name = dep_str.split('@').next().unwrap_or(dep_str);
+
+                // Skip if already in installed packages
+                if installed_packages_set.contains(dep_name) {
+                    return None;
+                }
+
+                // This dependency is declared but not installed
+                Some(DependencyData {
+                    name: dep_name.to_string(),
+                    declared_version: dep_str.clone(),
+                    status: DependencyStatus::Missing,
+                })
+            })
+            .collect();
+
         // Always add the workspace, even if it has no packages
         workspaces.push(WorkspaceData {
             name: ws.name,
             path: env_path_buf.to_string_lossy().to_string(),
             packages,
+            dependencies,
             is_current: ws.is_current,
         });
     }
@@ -2612,7 +3220,44 @@ fn get_local_workspaces(current_workspace_path: &Option<std::path::PathBuf>) -> 
     workspaces
 }
 
-fn get_installed_packages() -> (Vec<(String, String, String)>, Vec<(String, String, String)>) {
+type PackageInfo = (String, String, String);
+type InstalledPackages = (Vec<PackageInfo>, Vec<PackageInfo>);
+
+/// Recursively calculate total size of a directory
+fn calculate_dir_size(path: &std::path::Path) -> u64 {
+    let mut total = 0;
+
+    if let Ok(entries) = std::fs::read_dir(path) {
+        for entry in entries.flatten() {
+            if let Ok(metadata) = entry.metadata() {
+                if metadata.is_file() {
+                    total += metadata.len();
+                } else if metadata.is_dir() {
+                    total += calculate_dir_size(&entry.path());
+                }
+            }
+        }
+    }
+
+    total
+}
+
+/// Read version from package metadata.json
+fn get_package_version(pkg_path: &std::path::Path) -> String {
+    let metadata_path = pkg_path.join("metadata.json");
+
+    if let Ok(content) = std::fs::read_to_string(&metadata_path) {
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+            if let Some(version) = json.get("version").and_then(|v| v.as_str()) {
+                return version.to_string();
+            }
+        }
+    }
+
+    "unknown".to_string()
+}
+
+fn get_installed_packages() -> InstalledPackages {
     let mut local_packages = Vec::new();
     let mut global_packages = Vec::new();
     let mut seen = std::collections::HashSet::new();
@@ -2626,19 +3271,25 @@ fn get_installed_packages() -> (Vec<(String, String, String)>, Vec<(String, Stri
                 for entry in entries.flatten() {
                     if let Some(name) = entry.file_name().to_str() {
                         if seen.insert(name.to_string()) {
-                            let size = entry
-                                .metadata()
-                                .map(|m| {
-                                    let kb = m.len() / 1024;
-                                    if kb < 1024 {
-                                        format!("{} KB", kb)
-                                    } else {
-                                        format!("{:.1} MB", kb as f64 / 1024.0)
-                                    }
-                                })
-                                .unwrap_or_else(|_| "Unknown".to_string());
+                            let pkg_path = entry.path();
 
-                            local_packages.push((name.to_string(), "latest".to_string(), size));
+                            // Calculate real directory size
+                            let total_bytes = calculate_dir_size(&pkg_path);
+                            let size = if total_bytes == 0 {
+                                "Unknown".to_string()
+                            } else {
+                                let kb = total_bytes / 1024;
+                                if kb < 1024 {
+                                    format!("{} KB", kb)
+                                } else {
+                                    format!("{:.1} MB", kb as f64 / 1024.0)
+                                }
+                            };
+
+                            // Read real version from metadata.json
+                            let version = get_package_version(&pkg_path);
+
+                            local_packages.push((name.to_string(), version, size));
                         }
                     }
                 }
@@ -2655,19 +3306,25 @@ fn get_installed_packages() -> (Vec<(String, String, String)>, Vec<(String, Stri
                 for entry in entries.flatten() {
                     if let Some(name) = entry.file_name().to_str() {
                         if seen.insert(name.to_string()) {
-                            let size = entry
-                                .metadata()
-                                .map(|m| {
-                                    let kb = m.len() / 1024;
-                                    if kb < 1024 {
-                                        format!("{} KB", kb)
-                                    } else {
-                                        format!("{:.1} MB", kb as f64 / 1024.0)
-                                    }
-                                })
-                                .unwrap_or_else(|_| "Unknown".to_string());
+                            let pkg_path = entry.path();
 
-                            global_packages.push((name.to_string(), "latest".to_string(), size));
+                            // Calculate real directory size
+                            let total_bytes = calculate_dir_size(&pkg_path);
+                            let size = if total_bytes == 0 {
+                                "Unknown".to_string()
+                            } else {
+                                let kb = total_bytes / 1024;
+                                if kb < 1024 {
+                                    format!("{} KB", kb)
+                                } else {
+                                    format!("{:.1} MB", kb as f64 / 1024.0)
+                                }
+                            };
+
+                            // Read real version from metadata.json
+                            let version = get_package_version(&pkg_path);
+
+                            global_packages.push((name.to_string(), version, size));
                         }
                     }
                 }

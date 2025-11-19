@@ -529,6 +529,7 @@ async fn nodes_handler() -> impl IntoResponse {
                 "tick_count": n.tick_count,
                 "error_count": n.error_count,
                 "tick_rate": n.actual_rate_hz,
+                "scheduler_name": n.scheduler_name,
             })
         })
         .collect::<Vec<_>>();
@@ -818,7 +819,12 @@ async fn packages_environments_handler() -> impl IntoResponse {
             if packages_dir.exists() {
                 if let Ok(pkg_entries) = fs::read_dir(&packages_dir) {
                     for pkg_entry in pkg_entries.flatten() {
-                        if pkg_entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                        // Check if it's a directory OR a symlink pointing to a directory
+                        let is_pkg_dir = pkg_entry.file_type().map(|t| t.is_dir()).unwrap_or(false)
+                            || (pkg_entry.file_type().map(|t| t.is_symlink()).unwrap_or(false)
+                                && pkg_entry.path().is_dir());
+
+                        if is_pkg_dir {
                             let pkg_name =
                                 pkg_entry.file_name().to_string_lossy().to_string();
 
@@ -955,15 +961,15 @@ async fn packages_install_handler(Json(req): Json<InstallRequest>) -> impl IntoR
         let client = RegistryClient::new();
 
         // Determine target based on input and horus.yaml path
-        let (_install_result, horus_yaml_path) = if let Some(target_str) = &target {
+        let horus_yaml_path = if let Some(target_str) = &target {
             if target_str == "global" {
                 // Install globally - no horus.yaml to update
-                let result = client.install_to_target(
+                client.install_to_target(
                     &req.package,
                     None,
                     crate::workspace::InstallTarget::Global,
                 )?;
-                (result, None)
+                None
             } else {
                 // Use specified path - find horus.yaml in parent package
                 let target_path = PathBuf::from(target_str);
@@ -988,7 +994,7 @@ async fn packages_install_handler(Json(req): Json<InstallRequest>) -> impl IntoR
                     None,
                     crate::workspace::InstallTarget::Local(target_path),
                 )?;
-                ((), yaml_path)
+                yaml_path
             }
         } else {
             // Default: auto-detect - look for horus.yaml in current dir
@@ -999,7 +1005,7 @@ async fn packages_install_handler(Json(req): Json<InstallRequest>) -> impl IntoR
                 None
             };
             client.install(&req.package, None)?;
-            ((), yaml_path)
+            yaml_path
         };
 
         // Get installed version (try to read from metadata.json)
@@ -1456,6 +1462,7 @@ async fn handle_websocket(socket: WebSocket) {
                             "health_color": n.health.color(),
                             "cpu": format!("{:.1}%", n.cpu_usage),
                             "memory": format!("{} MB", n.memory_usage / 1024 / 1024),
+                            "scheduler_name": n.scheduler_name,
                         })
                     })
                     .collect::<Vec<_>>()
@@ -3900,7 +3907,7 @@ fn generate_html(port: u16) -> String {
                 console.log(` Layout complete: ${{processOrder.length}} processes, ${{topicOrder.length}} topics`);
             }}
 
-            // Draw edges with RQT-style arrows
+            // Draw edges with smooth Bézier curves (like rqt_graph)
             edges.forEach(edge => {{
                 const from = graphState.nodePositions[edge.from];
                 const to = graphState.nodePositions[edge.to];
@@ -3909,27 +3916,45 @@ fn generate_html(port: u16) -> String {
                     return;
                 }}
 
-                // Calculate arrow angle and shorten line to account for arrow head
-                const angle = Math.atan2(to.y - from.y, to.x - from.x);
-                const arrowHeadLen = 12;
-                const nodeRadius = 20; // Account for node size
+                // Calculate control points for smooth S-curve (Bézier curve)
+                const dx = to.x - from.x;
+                const dy = to.y - from.y;
+                const controlDistance = Math.abs(dx) * 0.5; // Horizontal control distance
 
-                // Shorten the line to stop at node boundary
-                const lineEndX = to.x - (nodeRadius + arrowHeadLen) * Math.cos(angle);
-                const lineEndY = to.y - (nodeRadius + arrowHeadLen) * Math.sin(angle);
+                // Control points create the smooth curve
+                const cp1x = from.x + controlDistance;
+                const cp1y = from.y;
+                const cp2x = to.x - controlDistance;
+                const cp2y = to.y;
 
-                // Draw line (Process -> Topic for publish, Topic -> Process for subscribe)
+                // Edge styling based on type
+                const edgeColor = edge.type === 'publish' ? 'rgba(0, 212, 255, 0.8)' : 'rgba(0, 255, 136, 0.8)';
+                const arrowColor = edge.type === 'publish' ? 'rgba(0, 212, 255, 1.0)' : 'rgba(0, 255, 136, 1.0)';
+
+                // Draw smooth Bézier curve
                 ctx.beginPath();
                 ctx.moveTo(from.x, from.y);
-                ctx.lineTo(lineEndX, lineEndY);
-                ctx.strokeStyle = edge.type === 'publish' ? 'rgba(0, 212, 255, 0.8)' : 'rgba(0, 255, 136, 0.8)';
+                ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, to.x, to.y);
+                ctx.strokeStyle = edgeColor;
                 ctx.lineWidth = 2;
                 ctx.stroke();
 
-                // Draw arrow head at the end of the line
+                // Calculate arrow position and angle at the end of the curve
+                // We need to find the tangent angle at t=1 (end of curve)
+                // For cubic Bézier: tangent = 3*(1-t)²*(P1-P0) + 6*(1-t)*t*(P2-P1) + 3*t²*(P3-P2)
+                // At t=1: tangent = 3*(P3-P2) = direction from last control point to end
+                const tangentX = to.x - cp2x;
+                const tangentY = to.y - cp2y;
+                const angle = Math.atan2(tangentY, tangentX);
+
+                const arrowHeadLen = 12;
+                const nodeRadius = 20;
+
+                // Position arrowhead at node boundary
                 const arrowTipX = to.x - nodeRadius * Math.cos(angle);
                 const arrowTipY = to.y - nodeRadius * Math.sin(angle);
 
+                // Draw filled arrowhead
                 ctx.beginPath();
                 ctx.moveTo(arrowTipX, arrowTipY);
                 ctx.lineTo(
@@ -3941,7 +3966,7 @@ fn generate_html(port: u16) -> String {
                     arrowTipY - arrowHeadLen * Math.sin(angle + Math.PI / 7)
                 );
                 ctx.closePath();
-                ctx.fillStyle = edge.type === 'publish' ? 'rgba(0, 212, 255, 1.0)' : 'rgba(0, 255, 136, 1.0)';
+                ctx.fillStyle = arrowColor;
                 ctx.fill();
             }});
 

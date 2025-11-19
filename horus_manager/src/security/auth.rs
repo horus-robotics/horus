@@ -134,7 +134,7 @@ impl RateLimiter {
         let now = Instant::now();
 
         // Clean old attempts
-        let entry = self.attempts.entry(ip.to_string()).or_insert_with(Vec::new);
+        let entry = self.attempts.entry(ip.to_string()).or_default();
         entry.retain(|&timestamp| now.duration_since(timestamp) < self.window);
 
         // Check if under limit

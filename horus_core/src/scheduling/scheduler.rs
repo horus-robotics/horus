@@ -161,7 +161,7 @@ impl Scheduler {
 
     /// Enable safety monitor with maximum allowed deadline misses
     pub fn with_safety_monitor(mut self, max_deadline_misses: u64) -> Self {
-        self.safety_monitor = Some(SafetyMonitor::new(max_deadline_misses as u64));
+        self.safety_monitor = Some(SafetyMonitor::new(max_deadline_misses));
         self
     }
 
@@ -259,7 +259,7 @@ impl Scheduler {
     /// scheduler.set_realtime_priority(99)?;  // Highest priority
     /// ```
     pub fn set_realtime_priority(&self, priority: i32) -> crate::error::HorusResult<()> {
-        if priority < 1 || priority > 99 {
+        if !(1..=99).contains(&priority) {
             return Err(crate::error::HorusError::config(
                 "Priority must be between 1 and 99"
             ));
@@ -1681,7 +1681,7 @@ impl Scheduler {
                 println!("Using custom configuration");
 
                 // Process all custom settings
-                for (key, _value) in &config.custom {
+                for key in config.custom.keys() {
                     println!("- Custom setting: {}", key);
                 }
             }

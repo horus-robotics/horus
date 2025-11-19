@@ -41,7 +41,7 @@ pub struct LockedPackage {
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum PackageSource {
-    Registry, // HORUS registry (Rust, Python, C++ curated packages)
+    Registry, // HORUS registry (Rust, Python curated packages)
     PyPI,     // Python Package Index (external Python packages)
     CratesIO, // Rust crates.io (future)
     System,   // System packages (apt, brew, etc.)

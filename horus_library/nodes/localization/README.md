@@ -8,6 +8,28 @@ The Localization Node implements an Extended Kalman Filter (EKF) for accurate ro
 
 The node uses a 6-dimensional state vector [x, y, theta, vx, vy, omega] and maintains uncertainty estimates through a state covariance matrix, providing both pose estimates and confidence metrics.
 
+## Architecture
+
+**This node is a thin wrapper** around the pure algorithms in `horus_library/algorithms/`:
+
+- **`algorithms::ekf::EKF`** - Extended Kalman Filter for 2D robot localization
+- **`algorithms::sensor_fusion::SensorFusion`** - Multi-sensor fusion with variance weighting
+
+The node handles:
+- Topic subscription/publishing (Hub I/O)
+- Sensor data reception (odometry, IMU, lidar)
+- Landmark detection and association
+- Pose publishing with covariances
+- Frame ID management
+
+The algorithms handle:
+- EKF prediction and update steps
+- State covariance propagation
+- Variance-weighted sensor fusion (odometry + IMU angular velocity)
+- Pure state estimation logic
+
+This separation enables algorithm reuse and independent testing of estimation logic.
+
 ## Topics
 
 ### Subscribers

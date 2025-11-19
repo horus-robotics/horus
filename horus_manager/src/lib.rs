@@ -8,6 +8,7 @@ pub mod dashboard;
 pub mod dashboard_tui;
 pub mod dependency_resolver;
 pub mod graph;
+pub mod node_detector;
 pub mod registry;
 pub mod security;
 pub mod static_analysis;

@@ -4,6 +4,7 @@ use crate::physics::PhysicsWorld;
 use crate::rendering::camera_controller::OrbitCamera;
 use crate::scene::loader::SceneLoader;
 use crate::scene::spawner::SpawnedObjects;
+use crate::tf::TFTree;
 
 pub fn setup_scene(
     mut commands: Commands,
@@ -11,6 +12,7 @@ pub fn setup_scene(
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut physics_world: ResMut<PhysicsWorld>,
     mut spawned_objects: ResMut<SpawnedObjects>,
+    mut tf_tree: ResMut<TFTree>,
     cli: Res<Cli>,
 ) {
     // Always spawn camera with orbit controller
@@ -40,6 +42,7 @@ pub fn setup_scene(
             &mut meshes,
             &mut materials,
             &mut spawned_objects,
+            &mut tf_tree,
         ) {
             Ok(loaded_scene) => {
                 info!("Successfully loaded scene: {}", loaded_scene.definition.name);

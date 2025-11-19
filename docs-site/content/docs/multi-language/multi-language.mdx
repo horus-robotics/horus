@@ -86,7 +86,7 @@ if let Some(temp) = hub.recv(None) {
 ```python
 # Python publisher (pose_publisher.py)
 from horus._horus import PyPose2DHub  # Typed hub from Rust bindings
-from horus.library import Pose2D       # Message class
+from horus import Pose2D       # Message class
 
 # Create typed hub
 hub = PyPose2DHub("robot_pose")
@@ -126,7 +126,7 @@ HORUS provides three typed hubs for cross-language communication:
 from horus._horus import PyPose2DHub, PyCmdVelHub, PyLaserScanHub
 
 # Import message classes from horus.library
-from horus.library import Pose2D, CmdVel, LaserScan
+from horus import Pose2D, CmdVel, LaserScan
 
 # Create hub and send messages
 pose_hub = PyPose2DHub("robot_pose")
@@ -210,7 +210,7 @@ horus run lidar_driver.cpp planner.py motor_control.rs
 # sensor.py - Python sensor node
 import horus
 from horus._horus import PyLaserScanHub
-from horus.library import LaserScan
+from horus import LaserScan
 
 # Create Hub once outside tick function
 hub = PyLaserScanHub("lidar")

@@ -2,16 +2,74 @@
 
 This directory contains **32 production-ready nodes** with real hardware integration. These are NOT prototypes - they're production-grade drivers ready for deployment in real robots.
 
-All nodes include:
-- Real hardware driver integration
-- Simulation fallback for testing
-- Comprehensive error handling (17-42 error cases per node)
-- Safety features where applicable
-- Extensive documentation (27k+ lines total)
+## Hardware-Only Design Philosophy
+
+**Important**: Hardware nodes in HORUS are **real drivers only** - no simulation fallback.
+
+- **Clear intent**: Using `CameraNode` means you're controlling actual hardware
+- **Compile-time safety**: Missing hardware features = compile error, not runtime surprise
+- **No silent failures**: Can't accidentally test with mock data and deploy to production
+- **No simulation mode**: For testing without hardware, use `sim2d` or `sim3d` tools
+
+### Feature-Gated Compilation
+
+Hardware nodes only compile when their required Cargo feature is enabled:
+
+```yaml
+# horus.yaml
+dependencies:
+  - horus_library@0.1.5:features=opencv-backend,serial-hardware
+```
+
+Without the feature? **Compile error** - not a runtime failure. This is intentional.
 
 **Use built-in nodes as-is for 90% of robotics applications. Wrap them only when adding custom algorithms on top.**
 
 ---
+
+## Node Feature Requirements
+
+| Node | Required Feature | Always Available |
+|------|-----------------|------------------|
+| **Safety & Monitoring** |||
+| EmergencyStopNode | - | Yes |
+| SafetyMonitorNode | - | Yes |
+| **Vision** |||
+| CameraNode | `opencv-backend` or `v4l2-backend` or `realsense` or `zed` | No |
+| DepthCameraNode | `realsense` | No |
+| ImageProcessorNode | `opencv-backend` | No |
+| **Input Devices** |||
+| JoystickNode | `gilrs` | No |
+| KeyboardInputNode | `crossterm` | No |
+| **Sensors** |||
+| BatteryMonitorNode | `i2c-hardware` | No |
+| ImuNode | `bno055-imu` or `mpu6050-imu` | No |
+| GpsNode | `nmea-gps` | No |
+| LidarNode | `rplidar` | No |
+| ForceTorqueSensorNode | `netft` | No |
+| EncoderNode | `gpio-hardware` | No |
+| UltrasonicNode | `gpio-hardware` | No |
+| **Motors/Actuators** |||
+| BldcMotorNode | `gpio-hardware` | No |
+| DcMotorNode | `gpio-hardware` | No |
+| StepperMotorNode | `gpio-hardware` | No |
+| ServoControllerNode | `gpio-hardware` | No |
+| DynamixelNode | `serial-hardware` | No |
+| RoboclawMotorNode | `serial-hardware` | No |
+| **Industrial** |||
+| CanBusNode | `can-hardware` | No |
+| DigitalIONode | `gpio-hardware` | No |
+| I2cBusNode | `i2c-hardware` | No |
+| ModbusNode | `modbus-hardware` | No |
+| SerialNode | `serial-hardware` | No |
+| SpiBusNode | `spi-hardware` | No |
+| **Navigation** |||
+| PathPlannerNode | - | Yes |
+| LocalizationNode | - | Yes |
+| OdometryNode | - | Yes |
+| CollisionDetectorNode | - | Yes |
+| DifferentialDriveNode | - | Yes |
+| PidControllerNode | - | Yes |
 
 ## Complete Node Catalog (32 Nodes)
 

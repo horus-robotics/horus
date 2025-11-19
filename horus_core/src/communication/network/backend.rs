@@ -4,7 +4,6 @@
 /// - UDP direct connections
 /// - Unix domain sockets (localhost)
 /// - Multicast discovery (future)
-
 use crate::error::HorusResult;
 use super::endpoint::Endpoint;
 use super::router::RouterBackend;

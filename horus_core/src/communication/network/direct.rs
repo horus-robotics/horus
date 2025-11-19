@@ -9,7 +9,6 @@
 /// - TCP_NODELAY for low latency
 /// - Zero-allocation buffer pooling
 /// - No router middleman = lower latency (~5-15µs)
-
 use crate::error::HorusResult;
 use crossbeam::channel::{bounded, Receiver, Sender};
 use crossbeam::queue::SegQueue;
@@ -158,21 +157,16 @@ where
             .map_err(|e| format!("Failed to set TCP_NODELAY: {}", e))?;
 
         // Send loop
-        loop {
-            match send_rx.recv() {
-                Ok(data) => {
-                    let len_bytes = (data.len() as u32).to_le_bytes();
-                    if stream.write_all(&len_bytes).await.is_err() {
-                        break;
-                    }
-                    if stream.write_all(&data).await.is_err() {
-                        break;
-                    }
-                    // Return buffer to pool
-                    buffer_pool.put(data);
-                }
-                Err(_) => break,
+        while let Ok(data) = send_rx.recv() {
+            let len_bytes = (data.len() as u32).to_le_bytes();
+            if stream.write_all(&len_bytes).await.is_err() {
+                break;
             }
+            if stream.write_all(&data).await.is_err() {
+                break;
+            }
+            // Return buffer to pool
+            buffer_pool.put(data);
         }
 
         Ok(())

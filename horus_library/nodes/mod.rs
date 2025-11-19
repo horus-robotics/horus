@@ -78,85 +78,188 @@
 //! ```
 
 // Declare node modules (each in its own folder with README.md)
-pub mod battery_monitor;
-pub mod bldc_motor;
-pub mod camera;
-pub mod can_bus;
+//
+// Hardware nodes are feature-gated - they only compile when the corresponding
+// hardware feature is enabled. This ensures clear compile-time errors if users
+// try to use hardware without proper drivers installed.
+//
+// For simulation/testing, use the sim2d or sim3d tools instead.
+
+// Hardware-independent nodes (always available)
 pub mod collision_detector;
-pub mod dc_motor;
-pub mod depth_camera;
 pub mod differential_drive;
-pub mod digital_io;
-pub mod dynamixel;
 pub mod emergency_stop;
-pub mod encoder;
-pub mod force_torque_sensor;
-pub mod gps;
-pub mod i2c_bus;
-pub mod image_processor;
-pub mod imu;
-pub mod joystick;
-pub mod keyboard_input;
-pub mod lidar;
 pub mod localization;
-pub mod modbus;
 pub mod odometry;
 pub mod path_planner;
 pub mod pid_controller;
-pub mod roboclaw_motor;
 pub mod safety_monitor;
-pub mod serial;
-pub mod servo_controller;
-pub mod spi_bus;
-pub mod stepper_motor;
+
+// Vision nodes (require camera backends)
+#[cfg(any(feature = "opencv-backend", feature = "v4l2-backend", feature = "realsense", feature = "zed"))]
+pub mod camera;
+
+#[cfg(feature = "realsense")]
+pub mod depth_camera;
+
+#[cfg(feature = "opencv-backend")]
+pub mod image_processor;
+
+// Input device nodes
+#[cfg(feature = "gilrs")]
+pub mod joystick;
+
+#[cfg(feature = "crossterm")]
+pub mod keyboard_input;
+
+// Sensor nodes
+#[cfg(feature = "i2c-hardware")]
+pub mod battery_monitor;
+
+#[cfg(any(feature = "bno055-imu", feature = "mpu6050-imu"))]
+pub mod imu;
+
+#[cfg(feature = "nmea-gps")]
+pub mod gps;
+
+#[cfg(feature = "rplidar")]
+pub mod lidar;
+
+#[cfg(feature = "netft")]
+pub mod force_torque_sensor;
+
+#[cfg(feature = "gpio-hardware")]
+pub mod encoder;
+
+#[cfg(feature = "gpio-hardware")]
 pub mod ultrasonic;
 
+// Motor/Actuator nodes
+#[cfg(feature = "gpio-hardware")]
+pub mod bldc_motor;
+
+#[cfg(feature = "gpio-hardware")]
+pub mod dc_motor;
+
+#[cfg(feature = "gpio-hardware")]
+pub mod stepper_motor;
+
+#[cfg(feature = "gpio-hardware")]
+pub mod servo_controller;
+
+#[cfg(feature = "serial-hardware")]
+pub mod dynamixel;
+
+#[cfg(feature = "serial-hardware")]
+pub mod roboclaw_motor;
+
+// Industrial interface nodes
+#[cfg(feature = "can-hardware")]
+pub mod can_bus;
+
+#[cfg(feature = "gpio-hardware")]
+pub mod digital_io;
+
+#[cfg(feature = "i2c-hardware")]
+pub mod i2c_bus;
+
+#[cfg(feature = "modbus-hardware")]
+pub mod modbus;
+
+#[cfg(feature = "serial-hardware")]
+pub mod serial;
+
+#[cfg(feature = "spi-hardware")]
+pub mod spi_bus;
+
 // Re-export node types for convenience
-// Safety & Monitoring Nodes
+//
+// Hardware-independent nodes (always available)
 pub use emergency_stop::EmergencyStopNode;
 pub use safety_monitor::SafetyMonitorNode;
-
-// Sensor Interface Nodes
-pub use battery_monitor::BatteryMonitorNode;
-pub use camera::CameraNode;
-pub use depth_camera::DepthCameraNode;
-pub use encoder::EncoderNode;
-pub use force_torque_sensor::ForceTorqueSensorNode;
-pub use gps::{GpsBackend, GpsNode};
-pub use imu::{ImuBackend, ImuNode};
-pub use lidar::{LidarBackend, LidarNode};
-pub use ultrasonic::UltrasonicNode;
-
-// Control & Actuation Nodes
-pub use bldc_motor::BldcMotorNode;
-pub use dc_motor::DcMotorNode;
-pub use differential_drive::DifferentialDriveNode;
-pub use dynamixel::DynamixelNode;
-pub use pid_controller::PidControllerNode;
-pub use roboclaw_motor::RoboclawMotorNode;
-pub use servo_controller::ServoControllerNode;
-pub use stepper_motor::StepperMotorNode;
-
-// Navigation Nodes
 pub use collision_detector::CollisionDetectorNode;
+pub use differential_drive::DifferentialDriveNode;
 pub use localization::LocalizationNode;
 pub use odometry::OdometryNode;
 pub use path_planner::PathPlannerNode;
+pub use pid_controller::PidControllerNode;
 
-// Industrial Integration Nodes
-pub use can_bus::CanBusNode;
-pub use digital_io::DigitalIONode;
-pub use i2c_bus::I2cBusNode;
-pub use modbus::ModbusNode;
-pub use serial::SerialNode;
-pub use spi_bus::SpiBusNode;
+// Vision nodes
+#[cfg(any(feature = "opencv-backend", feature = "v4l2-backend", feature = "realsense", feature = "zed"))]
+pub use camera::CameraNode;
 
-// Vision & Image Processing Nodes
+#[cfg(feature = "realsense")]
+pub use depth_camera::DepthCameraNode;
+
+#[cfg(feature = "opencv-backend")]
 pub use image_processor::ImageProcessorNode;
 
-// Input Device Nodes
+// Input device nodes
+#[cfg(feature = "gilrs")]
 pub use joystick::JoystickInputNode;
+
+#[cfg(feature = "crossterm")]
 pub use keyboard_input::KeyboardInputNode;
+
+// Sensor nodes
+#[cfg(feature = "i2c-hardware")]
+pub use battery_monitor::BatteryMonitorNode;
+
+#[cfg(any(feature = "bno055-imu", feature = "mpu6050-imu"))]
+pub use imu::{ImuBackend, ImuNode};
+
+#[cfg(feature = "nmea-gps")]
+pub use gps::{GpsBackend, GpsNode};
+
+#[cfg(feature = "rplidar")]
+pub use lidar::{LidarBackend, LidarNode};
+
+#[cfg(feature = "netft")]
+pub use force_torque_sensor::ForceTorqueSensorNode;
+
+#[cfg(feature = "gpio-hardware")]
+pub use encoder::EncoderNode;
+
+#[cfg(feature = "gpio-hardware")]
+pub use ultrasonic::UltrasonicNode;
+
+// Motor/Actuator nodes
+#[cfg(feature = "gpio-hardware")]
+pub use bldc_motor::BldcMotorNode;
+
+#[cfg(feature = "gpio-hardware")]
+pub use dc_motor::DcMotorNode;
+
+#[cfg(feature = "gpio-hardware")]
+pub use stepper_motor::StepperMotorNode;
+
+#[cfg(feature = "gpio-hardware")]
+pub use servo_controller::ServoControllerNode;
+
+#[cfg(feature = "serial-hardware")]
+pub use dynamixel::DynamixelNode;
+
+#[cfg(feature = "serial-hardware")]
+pub use roboclaw_motor::RoboclawMotorNode;
+
+// Industrial interface nodes
+#[cfg(feature = "can-hardware")]
+pub use can_bus::CanBusNode;
+
+#[cfg(feature = "gpio-hardware")]
+pub use digital_io::DigitalIONode;
+
+#[cfg(feature = "i2c-hardware")]
+pub use i2c_bus::I2cBusNode;
+
+#[cfg(feature = "modbus-hardware")]
+pub use modbus::ModbusNode;
+
+#[cfg(feature = "serial-hardware")]
+pub use serial::SerialNode;
+
+#[cfg(feature = "spi-hardware")]
+pub use spi_bus::SpiBusNode;
 
 // Re-export core HORUS types for convenience
 pub use horus_core::{Hub, Node, NodeInfo};

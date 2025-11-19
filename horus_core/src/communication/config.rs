@@ -2,7 +2,6 @@
 ///
 /// Allows Hub creation from TOML/YAML config files instead of hardcoded strings.
 /// Supports auto-detection of file format and multiple search paths.
-
 use crate::error::{HorusError, HorusResult};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -102,7 +101,7 @@ impl HubConfig {
                         format!("{}@{}", self.name, host)
                     }
                 } else {
-                    return format!("{}@router", self.name); // Fallback
+                    format!("{}@router", self.name) // Fallback
                 }
             }
             Some(unknown) => {

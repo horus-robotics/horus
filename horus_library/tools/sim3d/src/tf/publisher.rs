@@ -326,7 +326,7 @@ impl TFBuffer {
 
     /// Add transform to buffer
     pub fn add_transform(&mut self, frame_id: String, time: f32, transform: Transform) {
-        let history = self.frame_history.entry(frame_id).or_insert_with(Vec::new);
+        let history = self.frame_history.entry(frame_id).or_default();
 
         history.push((time, transform));
 

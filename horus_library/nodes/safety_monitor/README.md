@@ -8,6 +8,30 @@ The Safety Monitor Node implements a multi-layered safety monitoring system that
 
 The node operates on a continuous monitoring cycle, evaluating all safety checks on each tick and escalating the safety level when thresholds are exceeded. It supports both built-in system monitoring (via the `sysinfo` feature) and custom application-specific safety checks.
 
+## Architecture
+
+**This node is a thin wrapper** around the pure algorithm in `horus_library/algorithms/`:
+
+- **`algorithms::safety_layer::SafetyLayer`** - Multi-layered safety checking (velocity, obstacle distance, battery, temperature)
+
+The node handles:
+- Topic subscription/publishing (Hub I/O)
+- System resource monitoring (CPU, memory, disk)
+- Communication health checking
+- Custom safety check management
+- Safety status publishing
+- Battery and temperature tracking
+
+The algorithm handles:
+- Velocity safety checks
+- Obstacle distance validation
+- Battery level monitoring
+- Temperature threshold checking
+- Comprehensive safety status (Safe/Warning/Critical)
+- Pure safety logic computations
+
+This separation enables safety layer algorithm reuse across different monitoring contexts.
+
 ## Topics
 
 ### Subscribers

@@ -106,22 +106,15 @@ pub fn discover_nodes() -> HorusResult<Vec<NodeStatus>> {
         }
     }
 
-    // Cache is stale, update in background thread
-    let cache_clone = DISCOVERY_CACHE.clone();
-    thread::spawn(move || {
-        if let Ok(nodes) = discover_nodes_uncached() {
-            if let Ok(mut cache) = cache_clone.write() {
-                cache.update_nodes(nodes);
-            }
-        }
-    });
+    // Cache is stale - do synchronous update for immediate detection
+    let nodes = discover_nodes_uncached()?;
 
-    // Return cached data even if stale (better than blocking)
-    if let Ok(cache) = DISCOVERY_CACHE.read() {
-        Ok(cache.nodes.clone())
-    } else {
-        discover_nodes_uncached() // Fallback
+    // Update cache with fresh data
+    if let Ok(mut cache) = DISCOVERY_CACHE.write() {
+        cache.update_nodes(nodes.clone());
     }
+
+    Ok(nodes)
 }
 
 fn discover_nodes_uncached() -> HorusResult<Vec<NodeStatus>> {
@@ -282,88 +275,113 @@ fn read_registry_file() -> anyhow::Result<Vec<NodeStatus>> {
     Ok(nodes)
 }
 
-/// Load registry metadata for enriching heartbeat-discovered nodes
-fn load_registry_metadata() -> std::collections::HashMap<String, NodeMetadata> {
-    let mut metadata = std::collections::HashMap::new();
+/// Discover all scheduler registry files in home directory
+fn discover_registry_files() -> Vec<std::path::PathBuf> {
+    let mut registry_files = Vec::new();
 
     let home_dir = match std::env::var("HOME") {
         Ok(dir) => dir,
-        Err(_) => return metadata,
+        Err(_) => return registry_files,
     };
-    let registry_path = format!("{}/.horus_registry.json", home_dir);
 
-    if !std::path::Path::new(&registry_path).exists() {
-        return metadata;
+    let home_path = std::path::Path::new(&home_dir);
+
+    // Look for all .horus_registry*.json files
+    if let Ok(entries) = std::fs::read_dir(home_path) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
+                if filename.starts_with(".horus_registry") && filename.ends_with(".json") {
+                    registry_files.push(path);
+                }
+            }
+        }
     }
 
-    let registry_content = match std::fs::read_to_string(&registry_path) {
-        Ok(content) => content,
-        Err(_) => return metadata,
-    };
+    registry_files
+}
 
-    let registry: serde_json::Value = match serde_json::from_str(&registry_content) {
-        Ok(reg) => reg,
-        Err(_) => return metadata,
-    };
+/// Load registry metadata for enriching heartbeat-discovered nodes
+/// Now supports multiple schedulers by reading all registry files
+fn load_registry_metadata() -> std::collections::HashMap<String, NodeMetadata> {
+    let mut metadata = std::collections::HashMap::new();
 
-    // Only use registry if scheduler is still running
-    let scheduler_pid = registry["pid"].as_u64().unwrap_or(0) as u32;
-    if !process_exists(scheduler_pid) {
-        return metadata; // Stale registry, ignore it
-    }
+    // Discover all registry files from all schedulers
+    let registry_files = discover_registry_files();
 
-    if let Some(scheduler_nodes) = registry["nodes"].as_array() {
-        let scheduler_name = registry["scheduler_name"]
-            .as_str()
-            .unwrap_or("Unknown")
-            .to_string();
-        let working_dir = registry["working_dir"].as_str().unwrap_or("/").to_string();
+    // Process each registry file (supports multiple schedulers)
+    for registry_path in registry_files {
+        let registry_content = match std::fs::read_to_string(&registry_path) {
+            Ok(content) => content,
+            Err(_) => continue, // Skip invalid files
+        };
 
-        if let Ok(proc_info) = get_process_info(scheduler_pid) {
-            for node in scheduler_nodes {
-                let name = node["name"].as_str().unwrap_or("Unknown").to_string();
-                let priority = node["priority"].as_u64().unwrap_or(0) as u32;
+        let registry: serde_json::Value = match serde_json::from_str(&registry_content) {
+            Ok(reg) => reg,
+            Err(_) => continue, // Skip invalid JSON
+        };
 
-                // Parse publishers and subscribers
-                let mut publishers = Vec::new();
-                if let Some(pubs) = node["publishers"].as_array() {
-                    for pub_info in pubs {
-                        if let (Some(topic), Some(type_name)) =
-                            (pub_info["topic"].as_str(), pub_info["type"].as_str())
-                        {
-                            publishers.push(TopicInfo {
-                                topic: topic.to_string(),
-                                type_name: type_name.to_string(),
-                            });
+        // Only use registry if scheduler is still running
+        let scheduler_pid = registry["pid"].as_u64().unwrap_or(0) as u32;
+        if !process_exists(scheduler_pid) {
+            // Clean up stale registry file
+            let _ = std::fs::remove_file(&registry_path);
+            continue;
+        }
+
+        if let Some(scheduler_nodes) = registry["nodes"].as_array() {
+            let scheduler_name = registry["scheduler_name"]
+                .as_str()
+                .unwrap_or("Unknown")
+                .to_string();
+            let working_dir = registry["working_dir"].as_str().unwrap_or("/").to_string();
+
+            if let Ok(proc_info) = get_process_info(scheduler_pid) {
+                for node in scheduler_nodes {
+                    let name = node["name"].as_str().unwrap_or("Unknown").to_string();
+                    let priority = node["priority"].as_u64().unwrap_or(0) as u32;
+
+                    // Parse publishers and subscribers
+                    let mut publishers = Vec::new();
+                    if let Some(pubs) = node["publishers"].as_array() {
+                        for pub_info in pubs {
+                            if let (Some(topic), Some(type_name)) =
+                                (pub_info["topic"].as_str(), pub_info["type"].as_str())
+                            {
+                                publishers.push(TopicInfo {
+                                    topic: topic.to_string(),
+                                    type_name: type_name.to_string(),
+                                });
+                            }
                         }
                     }
-                }
 
-                let mut subscribers = Vec::new();
-                if let Some(subs) = node["subscribers"].as_array() {
-                    for sub_info in subs {
-                        if let (Some(topic), Some(type_name)) =
-                            (sub_info["topic"].as_str(), sub_info["type"].as_str())
-                        {
-                            subscribers.push(TopicInfo {
-                                topic: topic.to_string(),
-                                type_name: type_name.to_string(),
-                            });
+                    let mut subscribers = Vec::new();
+                    if let Some(subs) = node["subscribers"].as_array() {
+                        for sub_info in subs {
+                            if let (Some(topic), Some(type_name)) =
+                                (sub_info["topic"].as_str(), sub_info["type"].as_str())
+                            {
+                                subscribers.push(TopicInfo {
+                                    topic: topic.to_string(),
+                                    type_name: type_name.to_string(),
+                                });
+                            }
                         }
                     }
-                }
 
-                metadata.insert(
-                    name.clone(),
-                    NodeMetadata {
-                        command_line: proc_info.cmdline.clone(),
-                        working_dir: working_dir.clone(),
-                        priority,
-                        scheduler_name: scheduler_name.clone(),
-                        publishers,
-                        subscribers,
-                    },
-                );
+                    metadata.insert(
+                        name.clone(),
+                        NodeMetadata {
+                            command_line: proc_info.cmdline.clone(),
+                            working_dir: working_dir.clone(),
+                            priority,
+                            scheduler_name: scheduler_name.clone(),
+                            publishers,
+                            subscribers,
+                        },
+                    );
+                }
             }
         }
     }
@@ -716,22 +734,15 @@ pub fn discover_shared_memory() -> HorusResult<Vec<SharedMemoryInfo>> {
         }
     }
 
-    // Cache is stale, update in background thread
-    let cache_clone = DISCOVERY_CACHE.clone();
-    thread::spawn(move || {
-        if let Ok(shm) = discover_shared_memory_uncached() {
-            if let Ok(mut cache) = cache_clone.write() {
-                cache.update_shared_memory(shm);
-            }
-        }
-    });
+    // Cache is stale - do synchronous update for immediate detection
+    let shared_memory = discover_shared_memory_uncached()?;
 
-    // Return cached data even if stale (better than blocking)
-    if let Ok(cache) = DISCOVERY_CACHE.read() {
-        Ok(cache.shared_memory.clone())
-    } else {
-        discover_shared_memory_uncached() // Fallback
+    // Update cache with fresh data
+    if let Ok(mut cache) = DISCOVERY_CACHE.write() {
+        cache.update_shared_memory(shared_memory.clone());
     }
+
+    Ok(shared_memory)
 }
 
 // Topic rate tracking cache
@@ -886,44 +897,52 @@ fn calculate_topic_rate(topic_name: &str, modified: Option<std::time::SystemTime
 
 fn load_topic_metadata_from_registry() -> StdHashMap<String, (String, Vec<String>, Vec<String>)> {
     let mut topic_map = StdHashMap::new();
-    let registry_path = std::env::var("HOME")
-        .map(|home| format!("{}/.horus_registry.json", home))
-        .unwrap_or_else(|_| ".horus_registry.json".to_string());
 
-    if let Ok(content) = std::fs::read_to_string(&registry_path) {
-        if let Ok(registry) = serde_json::from_str::<serde_json::Value>(&content) {
-            if let Some(nodes) = registry["nodes"].as_array() {
-                for node in nodes {
-                    let node_name = node["name"].as_str().unwrap_or("Unknown");
+    // Load from all registry files (supports multiple schedulers)
+    let registry_files = discover_registry_files();
 
-                    // Process publishers
-                    if let Some(pubs) = node["publishers"].as_array() {
-                        for pub_info in pubs {
-                            if let (Some(topic), Some(type_name)) =
-                                (pub_info["topic"].as_str(), pub_info["type"].as_str())
-                            {
-                                let entry = topic_map.entry(topic.to_string()).or_insert((
-                                    type_name.to_string(),
-                                    Vec::new(),
-                                    Vec::new(),
-                                ));
-                                entry.1.push(node_name.to_string());
+    for registry_path in registry_files {
+        if let Ok(content) = std::fs::read_to_string(&registry_path) {
+            if let Ok(registry) = serde_json::from_str::<serde_json::Value>(&content) {
+                // Skip if scheduler is dead
+                let scheduler_pid = registry["pid"].as_u64().unwrap_or(0) as u32;
+                if !process_exists(scheduler_pid) {
+                    continue;
+                }
+
+                if let Some(nodes) = registry["nodes"].as_array() {
+                    for node in nodes {
+                        let node_name = node["name"].as_str().unwrap_or("Unknown");
+
+                        // Process publishers
+                        if let Some(pubs) = node["publishers"].as_array() {
+                            for pub_info in pubs {
+                                if let (Some(topic), Some(type_name)) =
+                                    (pub_info["topic"].as_str(), pub_info["type"].as_str())
+                                {
+                                    let entry = topic_map.entry(topic.to_string()).or_insert((
+                                        type_name.to_string(),
+                                        Vec::new(),
+                                        Vec::new(),
+                                    ));
+                                    entry.1.push(node_name.to_string());
+                                }
                             }
                         }
-                    }
 
-                    // Process subscribers
-                    if let Some(subs) = node["subscribers"].as_array() {
-                        for sub_info in subs {
-                            if let (Some(topic), Some(type_name)) =
-                                (sub_info["topic"].as_str(), sub_info["type"].as_str())
-                            {
-                                let entry = topic_map.entry(topic.to_string()).or_insert((
-                                    type_name.to_string(),
-                                    Vec::new(),
-                                    Vec::new(),
-                                ));
-                                entry.2.push(node_name.to_string());
+                        // Process subscribers
+                        if let Some(subs) = node["subscribers"].as_array() {
+                            for sub_info in subs {
+                                if let (Some(topic), Some(type_name)) =
+                                    (sub_info["topic"].as_str(), sub_info["type"].as_str())
+                                {
+                                    let entry = topic_map.entry(topic.to_string()).or_insert((
+                                        type_name.to_string(),
+                                        Vec::new(),
+                                        Vec::new(),
+                                    ));
+                                    entry.2.push(node_name.to_string());
+                                }
                             }
                         }
                     }
@@ -1013,11 +1032,8 @@ fn find_accessing_processes_fast(shm_path: &Path, shm_name: &str) -> Vec<u32> {
 
     // Fallback: Abbreviated scan - only check first 20 processes to avoid blocking
     if let Ok(proc_entries) = std::fs::read_dir("/proc") {
-        let mut checked = 0;
-        for entry in proc_entries.flatten() {
-            if checked >= 20 {
-                break;
-            } // Limit to avoid UI blocking
+        for (_checked, entry) in proc_entries.flatten().enumerate().take(20) {
+            // Limit to avoid UI blocking
 
             if let Some(pid) = entry
                 .file_name()
@@ -1036,7 +1052,6 @@ fn find_accessing_processes_fast(shm_path: &Path, shm_name: &str) -> Vec<u32> {
                     }
                 }
             }
-            checked += 1;
         }
     }
 
@@ -1101,13 +1116,31 @@ fn check_node_heartbeat(node_name: &str) -> (String, HealthStatus, u64, u32, u32
 /// Discover active nodes from pub/sub metadata (primary discovery method)
 /// This works regardless of whether scheduler writes heartbeats or not
 fn discover_nodes_from_pubsub_activity() -> anyhow::Result<Vec<NodeStatus>> {
-    use std::collections::HashMap;
+    use std::collections::{HashMap, HashSet};
 
     let mut node_map: HashMap<String, NodeStatus> = HashMap::new();
     let metadata_dir = std::path::Path::new("/dev/shm/horus/pubsub_metadata");
 
     if !metadata_dir.exists() {
         return Ok(Vec::new());
+    }
+
+    // First, discover all known topics to properly extract node names
+    let mut known_topics = HashSet::new();
+    let topics_dir = std::path::Path::new("/dev/shm/horus/topics");
+    if topics_dir.exists() {
+        if let Ok(entries) = std::fs::read_dir(topics_dir) {
+            for entry in entries.flatten() {
+                if let Some(topic_name) = entry.file_name().to_str() {
+                    // Normalize topic name (same as metadata files)
+                    let safe_topic: String = topic_name
+                        .chars()
+                        .map(|c| if c == '/' || c == ' ' { '_' } else { c })
+                        .collect();
+                    known_topics.insert(safe_topic);
+                }
+            }
+        }
     }
 
     // Scan all pub/sub metadata files
@@ -1125,19 +1158,42 @@ fn discover_nodes_from_pubsub_activity() -> anyhow::Result<Vec<NodeStatus>> {
         };
 
         // File format: {node_name}_{topic_name}_{pub|sub}
-        // Extract node name (everything before the last two underscores)
-        let parts: Vec<&str> = filename.split('_').collect();
-        if parts.len() < 3 {
+        // Extract direction (last part after final underscore)
+        let direction = if filename.ends_with("_pub") {
+            "pub"
+        } else if filename.ends_with("_sub") {
+            "sub"
+        } else {
             continue;
-        }
+        };
 
-        let direction = parts.last().unwrap();
-        if *direction != "pub" && *direction != "sub" {
-            continue;
-        }
+        // Remove the direction suffix to get: {node_name}_{topic_name}
+        let without_direction = if direction == "pub" {
+            filename.strip_suffix("_pub").unwrap()
+        } else {
+            filename.strip_suffix("_sub").unwrap()
+        };
 
-        // Node name is everything except last 2 parts (topic_direction)
-        let node_name = parts[..parts.len() - 2].join("_");
+        // Try to match against known topics to extract node name and topic name correctly
+        let (node_name, topic_name) = if let Some(topic) = known_topics.iter().find(|t| without_direction.ends_with(&format!("_{}", t))) {
+            // Found matching topic - strip it to get the node name
+            let node = without_direction
+                .strip_suffix(&format!("_{}", topic))
+                .unwrap_or(without_direction)
+                .to_string();
+            (node, topic.clone())
+        } else {
+            // Fallback: assume topic is the last underscore-separated segment
+            // This handles cases where topic discovery failed
+            let parts: Vec<&str> = without_direction.split('_').collect();
+            if parts.len() >= 2 {
+                let node = parts[..parts.len() - 1].join("_");
+                let topic = parts[parts.len() - 1].to_string();
+                (node, topic)
+            } else {
+                (without_direction.to_string(), "unknown".to_string())
+            }
+        };
 
         // Check if file was modified recently (node is active)
         let metadata = match path.metadata() {
@@ -1152,6 +1208,10 @@ fn discover_nodes_from_pubsub_activity() -> anyhow::Result<Vec<NodeStatus>> {
 
         let age = modified.elapsed().unwrap_or(Duration::from_secs(9999));
         if age > Duration::from_secs(30) {
+            // Auto-cleanup: Remove very stale metadata files (>60 seconds old)
+            if age > Duration::from_secs(60) {
+                let _ = std::fs::remove_file(&path);
+            }
             continue; // Stale metadata, skip
         }
 
@@ -1177,6 +1237,24 @@ fn discover_nodes_from_pubsub_activity() -> anyhow::Result<Vec<NodeStatus>> {
                 subscribers: Vec::new(),
             }
         });
+
+        // Add topic to publishers or subscribers based on direction
+        let topic_info = TopicInfo {
+            topic: topic_name.clone(),
+            type_name: "unknown".to_string(), // Type name not available from metadata filename
+        };
+
+        if direction == "pub" {
+            // Add to publishers if not already present
+            if !node.publishers.iter().any(|t| t.topic == topic_name) {
+                node.publishers.push(topic_info);
+            }
+        } else {
+            // Add to subscribers if not already present
+            if !node.subscribers.iter().any(|t| t.topic == topic_name) {
+                node.subscribers.push(topic_info);
+            }
+        }
 
         // Try to find PID for this node
         if node.process_id == 0 {

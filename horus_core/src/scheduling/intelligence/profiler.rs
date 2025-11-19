@@ -152,7 +152,7 @@ impl RuntimeProfiler {
 
         self.node_stats
             .entry(node_name.to_string())
-            .or_insert_with(NodeStats::default)
+            .or_default()
             .update(duration_us);
     }
 

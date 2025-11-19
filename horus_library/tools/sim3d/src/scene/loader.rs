@@ -4,6 +4,8 @@ use std::path::Path;
 
 use crate::physics::world::PhysicsWorld;
 use crate::scene::spawner::{ObjectSpawnConfig, ObjectSpawner, SpawnShape, SpawnedObjects};
+use crate::robot::urdf_loader::URDFLoader;
+use crate::tf::TFTree;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SceneDefinition {
@@ -270,6 +272,7 @@ impl SceneLoader {
         meshes: &mut Assets<Mesh>,
         materials: &mut Assets<StandardMaterial>,
         spawned_objects: &mut SpawnedObjects,
+        tf_tree: &mut TFTree,
     ) -> Result<LoadedScene, String> {
         // Determine file format from extension
         let path_ref = path.as_ref();
@@ -284,17 +287,22 @@ impl SceneLoader {
             _ => return Err(format!("Unsupported file format: {}", extension)),
         };
 
-        Self::spawn_scene(definition, commands, physics_world, meshes, materials, spawned_objects)
+        // Get the directory of the world file for resolving relative URDF paths
+        let world_dir = path_ref.parent().unwrap_or(Path::new("."));
+
+        Self::spawn_scene(definition, world_dir, commands, physics_world, meshes, materials, spawned_objects, tf_tree)
     }
 
     /// Spawn a scene from a definition
     pub fn spawn_scene(
         definition: SceneDefinition,
+        world_dir: &Path,
         commands: &mut Commands,
         physics_world: &mut PhysicsWorld,
         meshes: &mut Assets<Mesh>,
         materials: &mut Assets<StandardMaterial>,
         spawned_objects: &mut SpawnedObjects,
+        tf_tree: &mut TFTree,
     ) -> Result<LoadedScene, String> {
         let mut loaded_scene = LoadedScene::new(definition.clone());
 
@@ -312,10 +320,48 @@ impl SceneLoader {
             spawned_objects.add(entity);
         }
 
+        // Spawn robots
+        for robot_def in &definition.robots {
+            // Resolve URDF path relative to world file directory
+            let urdf_path = if Path::new(&robot_def.urdf_path).is_absolute() {
+                robot_def.urdf_path.clone().into()
+            } else {
+                world_dir.join(&robot_def.urdf_path)
+            };
+
+            info!("Loading robot '{}' from URDF: {}", robot_def.name, urdf_path.display());
+
+            let urdf_loader = URDFLoader::new().with_base_path(world_dir);
+            match urdf_loader.load(&urdf_path, commands, physics_world, tf_tree, meshes, materials) {
+                Ok(robot_entity) => {
+                    // Apply position and rotation from scene definition
+                    let position = Vec3::from(robot_def.position);
+                    let rotation = if let Some(euler) = robot_def.rotation_euler {
+                        Quat::from_euler(EulerRot::XYZ,
+                            euler[0].to_radians(),
+                            euler[1].to_radians(),
+                            euler[2].to_radians())
+                    } else {
+                        Quat::from_array(robot_def.rotation)
+                    };
+
+                    commands.entity(robot_entity).insert(Transform::from_translation(position).with_rotation(rotation));
+
+                    loaded_scene.entities.push(robot_entity);
+                    spawned_objects.add(robot_entity);
+                    info!("Successfully spawned robot '{}'", robot_def.name);
+                }
+                Err(e) => {
+                    warn!("Failed to load robot '{}': {}", robot_def.name, e);
+                }
+            }
+        }
+
         info!(
-            "Loaded scene '{}' with {} objects",
+            "Loaded scene '{}' with {} objects and {} robots",
             definition.name,
-            loaded_scene.entities.len()
+            loaded_scene.entities.len() - definition.robots.len(),
+            definition.robots.len()
         );
 
         Ok(loaded_scene)
@@ -340,15 +386,18 @@ impl SceneLoader {
         meshes: &mut Assets<Mesh>,
         materials: &mut Assets<StandardMaterial>,
         spawned_objects: &mut SpawnedObjects,
+        tf_tree: &mut TFTree,
     ) -> Result<LoadedScene, String> {
         Self::clear_scene(commands, spawned_objects);
         Self::spawn_scene(
             loaded_scene.definition.clone(),
+            Path::new("."), // Use current directory for reset
             commands,
             physics_world,
             meshes,
             materials,
             spawned_objects,
+            tf_tree,
         )
     }
 }

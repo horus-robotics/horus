@@ -37,6 +37,7 @@
 //! use horus_library::nodes::{PidControllerNode, SafetyMonitorNode};
 //! ```
 
+pub mod algorithms;
 pub mod messages;
 pub mod nodes;
 
@@ -47,20 +48,29 @@ pub use horus_core::core::LogSummary;
 pub use messages::*;
 
 // Re-export commonly used nodes for convenience
-pub use nodes::{
-    // Sensors
-    CameraNode,
-    // Control
-    DifferentialDriveNode,
-    // Safety & Monitoring
-    EmergencyStopNode,
-    ImuNode,
-    JoystickInputNode,
-    // Input (existing)
-    KeyboardInputNode,
-    LidarNode,
-    // Industrial
-    ModbusNode,
-    PidControllerNode,
-    SafetyMonitorNode,
-};
+// Always available (hardware-independent)
+pub use nodes::{DifferentialDriveNode, EmergencyStopNode, PidControllerNode, SafetyMonitorNode};
+
+// Feature-gated hardware nodes
+#[cfg(any(
+    feature = "opencv-backend",
+    feature = "v4l2-backend",
+    feature = "realsense",
+    feature = "zed"
+))]
+pub use nodes::CameraNode;
+
+#[cfg(any(feature = "bno055-imu", feature = "mpu6050-imu"))]
+pub use nodes::ImuNode;
+
+#[cfg(feature = "gilrs")]
+pub use nodes::JoystickInputNode;
+
+#[cfg(feature = "crossterm")]
+pub use nodes::KeyboardInputNode;
+
+#[cfg(feature = "rplidar")]
+pub use nodes::LidarNode;
+
+#[cfg(feature = "modbus-hardware")]
+pub use nodes::ModbusNode;

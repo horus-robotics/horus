@@ -36,7 +36,8 @@ impl URDFLoader {
         commands: &mut Commands,
         physics_world: &mut PhysicsWorld,
         tf_tree: &mut TFTree,
-        asset_server: &AssetServer,
+        meshes: &mut Assets<Mesh>,
+        materials: &mut Assets<StandardMaterial>,
     ) -> Result<Entity> {
         let urdf_path = urdf_path.as_ref();
         let urdf_str = std::fs::read_to_string(urdf_path)
@@ -45,7 +46,7 @@ impl URDFLoader {
         let urdf = urdf_rs::read_from_string(&urdf_str)
             .with_context(|| format!("Failed to parse URDF file: {}", urdf_path.display()))?;
 
-        self.spawn_robot(urdf, commands, physics_world, tf_tree, asset_server)
+        self.spawn_robot(urdf, commands, physics_world, tf_tree, meshes, materials)
     }
 
     pub fn spawn_robot(
@@ -54,7 +55,8 @@ impl URDFLoader {
         commands: &mut Commands,
         physics_world: &mut PhysicsWorld,
         tf_tree: &mut TFTree,
-        asset_server: &AssetServer,
+        meshes: &mut Assets<Mesh>,
+        materials: &mut Assets<StandardMaterial>,
     ) -> Result<Entity> {
         let robot_name = urdf.name.clone();
 
@@ -76,7 +78,8 @@ impl URDFLoader {
                 &robot_name,
                 commands,
                 physics_world,
-                asset_server,
+                meshes,
+                materials,
             )?;
 
             link_entities.insert(link.name.clone(), link_entity);
@@ -101,9 +104,42 @@ impl URDFLoader {
         // Build TF tree from URDF
         *tf_tree = TFTree::from_urdf(&urdf);
 
-        // Parent all link entities to root
-        for entity in link_entities.values() {
-            commands.entity(root_entity).add_child(*entity);
+        // Parent links according to joint hierarchy
+        for joint in &urdf.joints {
+            if let (Some(&parent_entity), Some(&child_entity)) = (
+                link_entities.get(&joint.parent.link),
+                link_entities.get(&joint.child.link),
+            ) {
+                // Apply joint transform to child
+                let origin = &joint.origin;
+                let translation = Vec3::new(
+                    origin.xyz[0] as f32,
+                    origin.xyz[1] as f32,
+                    origin.xyz[2] as f32,
+                );
+                let rotation = Quat::from_euler(
+                    EulerRot::XYZ,
+                    origin.rpy[0] as f32,
+                    origin.rpy[1] as f32,
+                    origin.rpy[2] as f32,
+                );
+
+                commands.entity(child_entity).insert(
+                    Transform::from_translation(translation).with_rotation(rotation)
+                );
+
+                // Parent child to parent
+                commands.entity(parent_entity).add_child(child_entity);
+            }
+        }
+
+        // Parent the base link (or any unparented links) to root
+        for (link_name, &link_entity) in &link_entities {
+            // Check if this link is a child in any joint
+            let is_child = urdf.joints.iter().any(|j| j.child.link == *link_name);
+            if !is_child {
+                commands.entity(root_entity).add_child(link_entity);
+            }
         }
 
         Ok(root_entity)
@@ -115,7 +151,8 @@ impl URDFLoader {
         robot_name: &str,
         commands: &mut Commands,
         physics_world: &mut PhysicsWorld,
-        asset_server: &AssetServer,
+        meshes: &mut Assets<Mesh>,
+        materials: &mut Assets<StandardMaterial>,
     ) -> Result<Entity> {
         // Create rigid body based on inertial properties
         let rigid_body = if !link.inertial.mass.value.is_nan() && link.inertial.mass.value > 0.0 {
@@ -164,7 +201,7 @@ impl URDFLoader {
 
         // Add visual meshes
         for visual in &link.visual {
-            self.spawn_visual_mesh(visual, entity, commands, asset_server)?;
+            self.spawn_visual_mesh(visual, entity, commands, meshes, materials)?;
         }
 
         Ok(entity)
@@ -314,7 +351,8 @@ impl URDFLoader {
         visual: &Visual,
         parent_entity: Entity,
         commands: &mut Commands,
-        asset_server: &AssetServer,
+        meshes: &mut Assets<Mesh>,
+        materials: &mut Assets<StandardMaterial>,
     ) -> Result<()> {
         // Create transform from visual origin
         let origin = &visual.origin;
@@ -358,8 +396,8 @@ impl URDFLoader {
                 );
                 commands.entity(parent_entity).with_children(|parent| {
                     parent.spawn((
-                        Mesh3d(asset_server.add(Mesh::from(cuboid))),
-                        MeshMaterial3d(asset_server.add(StandardMaterial {
+                        Mesh3d(meshes.add(Mesh::from(cuboid))),
+                        MeshMaterial3d(materials.add(StandardMaterial {
                             base_color: material,
                             ..default()
                         })),
@@ -374,8 +412,8 @@ impl URDFLoader {
                 };
                 commands.entity(parent_entity).with_children(|parent| {
                     parent.spawn((
-                        Mesh3d(asset_server.add(Mesh::from(cylinder))),
-                        MeshMaterial3d(asset_server.add(StandardMaterial {
+                        Mesh3d(meshes.add(Mesh::from(cylinder))),
+                        MeshMaterial3d(materials.add(StandardMaterial {
                             base_color: material,
                             ..default()
                         })),
@@ -387,8 +425,8 @@ impl URDFLoader {
                 let sphere = bevy::prelude::Sphere { radius: *radius as f32 };
                 commands.entity(parent_entity).with_children(|parent| {
                     parent.spawn((
-                        Mesh3d(asset_server.add(Mesh::from(sphere))),
-                        MeshMaterial3d(asset_server.add(StandardMaterial {
+                        Mesh3d(meshes.add(Mesh::from(sphere))),
+                        MeshMaterial3d(materials.add(StandardMaterial {
                             base_color: material,
                             ..default()
                         })),
@@ -403,8 +441,8 @@ impl URDFLoader {
                 };
                 commands.entity(parent_entity).with_children(|parent| {
                     parent.spawn((
-                        Mesh3d(asset_server.add(Mesh::from(capsule))),
-                        MeshMaterial3d(asset_server.add(StandardMaterial {
+                        Mesh3d(meshes.add(Mesh::from(capsule))),
+                        MeshMaterial3d(materials.add(StandardMaterial {
                             base_color: material,
                             ..default()
                         })),
@@ -412,27 +450,19 @@ impl URDFLoader {
                     ));
                 });
             }
-            Geometry::Mesh { filename, scale } => {
-                let mesh_path = self.resolve_mesh_path(filename);
-                let scale_vec = scale.as_ref()
-                    .map(|s| Vec3::new(s[0] as f32, s[1] as f32, s[2] as f32))
-                    .unwrap_or(Vec3::ONE);
-
-                let final_transform = transform.with_scale(scale_vec);
-
-                // Load mesh file based on extension
-                let mesh_handle = if mesh_path.extension().and_then(|e| e.to_str()) == Some("gltf")
-                    || mesh_path.extension().and_then(|e| e.to_str()) == Some("glb") {
-                    asset_server.load(format!("{}#Scene0", mesh_path.display()))
-                } else {
-                    // For STL, OBJ, etc., load directly
-                    asset_server.load(mesh_path.to_string_lossy().to_string())
-                };
-
+            Geometry::Mesh { filename, scale: _ } => {
+                // TODO: External mesh file loading not yet implemented
+                warn!("Mesh file loading not yet supported in URDF loader: {}", filename);
+                // For now, spawn a placeholder cube
+                let cuboid = bevy::prelude::Cuboid::new(0.1, 0.1, 0.1);
                 commands.entity(parent_entity).with_children(|parent| {
                     parent.spawn((
-                        SceneRoot(mesh_handle),
-                        final_transform,
+                        Mesh3d(meshes.add(Mesh::from(cuboid))),
+                        MeshMaterial3d(materials.add(StandardMaterial {
+                            base_color: Color::srgb(1.0, 0.0, 1.0), // Magenta for "missing mesh"
+                            ..default()
+                        })),
+                        transform,
                     ));
                 });
             }

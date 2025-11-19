@@ -3,7 +3,6 @@
 /// Central message broker for many-to-many pub/sub communication.
 /// Clients connect via TCP, subscribe to topics, and publish messages.
 /// The router forwards messages to all subscribers of each topic.
-
 use clap::Parser;
 use horus_core::communication::network::protocol::{HorusPacket, MessageType};
 use std::collections::HashMap;
@@ -78,7 +77,7 @@ impl RouterState {
     /// Subscribe a client to a topic
     async fn subscribe(&self, topic: String, client: Arc<Client>) {
         let mut subs = self.subscriptions.write().await;
-        subs.entry(topic.clone()).or_insert_with(Vec::new).push(client.clone());
+        subs.entry(topic.clone()).or_default().push(client.clone());
         info!("Client {} subscribed to topic '{}'", client.addr, topic);
     }
 

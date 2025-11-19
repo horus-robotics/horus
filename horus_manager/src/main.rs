@@ -358,7 +358,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 return Err(HorusError::Config("File not found".to_string()));
             }
 
-            // Check if it's a source file (.rs, .py, .c, .cpp) or horus.yaml
+            // Check if it's a source file (.rs, .py, .c) or horus.yaml
             let extension = horus_yaml_path.extension().and_then(|s| s.to_str());
 
             match extension {
@@ -438,27 +438,18 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     }
                     return Ok(());
                 }
-                Some("c") | Some("cpp") | Some("cc") | Some("cxx") => {
-                    // Check C/C++ file
+                Some("c") => {
+                    // Check C file (for hardware drivers)
                     println!(
-                        "{} Checking C/C++ file: {}\n",
+                        "{} Checking C file: {}\n",
                         "".cyan(),
                         horus_yaml_path.display()
                     );
 
-                    print!("  {} Parsing C/C++ syntax... ", "".cyan());
+                    print!("  {} Parsing C syntax... ", "".cyan());
 
-                    let compiler = if extension == Some("cpp")
-                        || extension == Some("cc")
-                        || extension == Some("cxx")
-                    {
-                        "g++"
-                    } else {
-                        "gcc"
-                    };
-
-                    // Use gcc/g++ to check syntax only
-                    let output = std::process::Command::new(compiler)
+                    // Use gcc to check syntax only
+                    let output = std::process::Command::new("gcc")
                         .arg("-fsyntax-only")
                         .arg(&horus_yaml_path)
                         .output();
@@ -474,16 +465,15 @@ fn run_command(command: Commands) -> HorusResult<()> {
                             println!("\n{} Syntax error:", "[FAIL]".red().bold());
                             println!("  {}", error);
                             return Err(HorusError::Config(format!(
-                                "C/C++ syntax error: {}",
+                                "C syntax error: {}",
                                 error
                             )));
                         }
                         Err(e) => {
                             println!("{}", "[WARNING]".yellow());
                             println!(
-                                "\n{} Could not check C/C++ syntax ({} not found): {}",
+                                "\n{} Could not check C syntax (gcc not found): {}",
                                 "[WARNING]".yellow(),
-                                compiler,
                                 e
                             );
                         }
@@ -576,19 +566,19 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 // Language validation
                 print!("  {} Validating language field... ", "".cyan());
                 if let Some(language) = yaml.get("language").and_then(|l| l.as_str()) {
-                    if language == "rust" || language == "python" || language == "cpp" {
+                    if language == "rust" || language == "python" {
                         println!("{}", "".green());
                     } else {
                         println!("{}", "".red());
                         errors.push(format!(
-                            "Invalid language '{}' - must be: rust, python, or cpp",
+                            "Invalid language '{}' - must be: rust or python",
                             language
                         ));
                     }
                 } else {
                     println!("{}", "".red());
                     errors.push(
-                        "Missing or invalid 'language' field - must be: rust, python, or cpp"
+                        "Missing or invalid 'language' field - must be: rust or python"
                             .to_string(),
                     );
                 }
@@ -655,7 +645,6 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     let main_files = match language {
                         "rust" => vec!["main.rs", "src/main.rs"],
                         "python" => vec!["main.py"],
-                        "cpp" => vec!["main.cpp"],
                         _ => vec![],
                     };
 
@@ -827,10 +816,8 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 // Version requirement is already parsed in DependencySpec
                 // If it parsed successfully, it's valid
                 // But we can check for common mistakes
-                if spec.requirement.to_string() == "*" {
-                    if !quiet {
-                        warn_msgs.push(format!("Dependency '{}' uses wildcard version (*) - consider pinning to a specific version", spec.name));
-                    }
+                if spec.requirement.to_string() == "*" && !quiet {
+                    warn_msgs.push(format!("Dependency '{}' uses wildcard version (*) - consider pinning to a specific version", spec.name));
                 }
             }
 
@@ -878,13 +865,11 @@ fn run_command(command: Commands) -> HorusResult<()> {
                         println!("{}", "".green());
                     } else {
                         println!("{}", "".yellow());
-                        if !missing_deps.is_empty() {
-                            if !quiet {
-                                warn_msgs.push(format!(
-                                    "Missing dependencies: {} (run 'horus run' to install)",
-                                    missing_deps.join(", ")
-                                ));
-                            }
+                        if !missing_deps.is_empty() && !quiet {
+                            warn_msgs.push(format!(
+                                "Missing dependencies: {} (run 'horus run' to install)",
+                                missing_deps.join(", ")
+                            ));
                         }
                     }
                 } else {
@@ -910,11 +895,6 @@ fn run_command(command: Commands) -> HorusResult<()> {
                             .map(|o| o.status.success())
                             .unwrap_or(false),
                         "python" => std::process::Command::new("python3")
-                            .arg("--version")
-                            .output()
-                            .map(|o| o.status.success())
-                            .unwrap_or(false),
-                        "cpp" => std::process::Command::new("g++")
                             .arg("--version")
                             .output()
                             .map(|o| o.status.success())
@@ -999,73 +979,6 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                             warn_msgs.push(
                                                 "Could not validate Python syntax".to_string(),
                                             );
-                                        }
-                                    }
-                                }
-                            } else {
-                                println!("{}", "⊘".dimmed());
-                            }
-                        }
-                        "cpp" => {
-                            // Check main.cpp syntax
-                            let main_cpp = base_dir.join("main.cpp");
-                            if main_cpp.exists() {
-                                // Get horus_cpp include path from cache
-                                let home_dir =
-                                    std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-                                let horus_cpp_include =
-                                    format!("{}/.horus/cache/horus_cpp@0.1.0/include", home_dir);
-
-                                // Run g++ syntax check
-                                let check_result = std::process::Command::new("g++")
-                                    .arg("-fsyntax-only")
-                                    .arg("-std=c++17")
-                                    .arg(&format!("-I{}", horus_cpp_include))
-                                    .arg(&main_cpp)
-                                    .output();
-
-                                match check_result {
-                                    Ok(output) if output.status.success() => {
-                                        println!("{}", "".green());
-
-                                        // Additional API validation
-                                        if let Ok(content) = fs::read_to_string(&main_cpp) {
-                                            // Check for common API mistakes
-                                            if content.contains("try_recv(") {
-                                                if !quiet {
-                                                    warn_msgs.push("Found try_recv() - this method was removed, use recv() instead".to_string());
-                                                }
-                                            }
-                                            if content.contains("Publisher<")
-                                                && !content.contains("Publisher<Twist>")
-                                                && !content.contains("Publisher<Pose>")
-                                            {
-                                                if !quiet {
-                                                    warn_msgs.push("Custom message types in Publisher<T> are not supported - only Twist and Pose".to_string());
-                                                }
-                                            }
-                                            if content.contains("Subscriber<")
-                                                && !content.contains("Subscriber<Twist>")
-                                                && !content.contains("Subscriber<Pose>")
-                                            {
-                                                if !quiet {
-                                                    warn_msgs.push("Custom message types in Subscriber<T> are not supported - only Twist and Pose".to_string());
-                                                }
-                                            }
-                                        }
-                                    }
-                                    Ok(output) => {
-                                        println!("{}", "[FAIL]".red());
-                                        let stderr = String::from_utf8_lossy(&output.stderr);
-                                        errors.push(format!(
-                                            "C++ code has compilation errors:\n{}",
-                                            stderr
-                                        ));
-                                    }
-                                    Err(_) => {
-                                        println!("{}", "[WARNING]".yellow());
-                                        if !quiet {
-                                            warn_msgs.push("Could not run g++ - skipping C++ syntax validation".to_string());
                                         }
                                     }
                                 }
@@ -1305,31 +1218,6 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                             warn_msgs.push(format!("Could not parse Python imports: {}", e));
                                         }
                                     }
-                                }
-                            } else {
-                                println!("{}", "⊘".dimmed());
-                            }
-                        }
-                        "cpp" => {
-                            let uses_horus = dep_specs.iter().any(|spec| spec.name == "horus_cpp");
-
-                            if uses_horus {
-                                let main_cpp = base_dir.join("main.cpp");
-                                if main_cpp.exists() {
-                                    if let Ok(content) = std::fs::read_to_string(&main_cpp) {
-                                        if content.contains("#include <horus.hpp>") {
-                                            println!("{}", "".green());
-                                        } else {
-                                            println!("{}", "".yellow());
-                                            if !quiet {
-                                                warn_msgs.push("horus_cpp dependency but no '#include <horus.hpp>' found".to_string());
-                                            }
-                                        }
-                                    } else {
-                                        println!("{}", "⊘".dimmed());
-                                    }
-                                } else {
-                                    println!("{}", "⊘".dimmed());
                                 }
                             } else {
                                 println!("{}", "⊘".dimmed());
@@ -1645,12 +1533,10 @@ fn run_command(command: Commands) -> HorusResult<()> {
                             HorusError::Config(format!("Workspace '{}' not found", target_name))
                         })?;
                         ws.path.join(".horus/packages")
+                    } else if let Some(root) = workspace::find_workspace_root() {
+                        root.join(".horus/packages")
                     } else {
-                        if let Some(root) = workspace::find_workspace_root() {
-                            root.join(".horus/packages")
-                        } else {
-                            PathBuf::from(".horus/packages")
-                        }
+                        PathBuf::from(".horus/packages")
                     };
 
                     let system_ref = packages_dir.join(format!("{}.system.json", package));
@@ -2637,6 +2523,17 @@ fn run_command(command: Commands) -> HorusResult<()> {
             }
             println!();
 
+            // Convert relative paths to absolute paths before changing directory
+            // This is critical for cargo run mode which changes CWD
+            let robot = robot.map(|p| {
+                std::fs::canonicalize(&p)
+                    .unwrap_or_else(|_| std::env::current_dir().unwrap().join(p))
+            });
+            let world = world.map(|p| {
+                std::fs::canonicalize(&p)
+                    .unwrap_or_else(|_| std::env::current_dir().unwrap().join(p))
+            });
+
             // Find sim3d path relative to HORUS repo
             let horus_source = env::var("HORUS_SOURCE")
                 .or_else(|_| env::var("HOME").map(|h| format!("{}/.horus/cache/HORUS", h)))
@@ -2739,7 +2636,7 @@ fn check_system_package_exists(package_name: &str) -> bool {
 
     // Try Python package detection
     let py_check = Command::new("python3")
-        .args(&["-m", "pip", "show", package_name])
+        .args(["-m", "pip", "show", package_name])
         .output();
 
     if let Ok(output) = py_check {

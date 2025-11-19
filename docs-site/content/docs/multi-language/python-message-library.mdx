@@ -11,14 +11,11 @@ The `horus.library` module provides typed message classes for robotics applicati
 ## Overview
 
 ```python
-from horus.library import (
-    # Geometry messages
-    Pose2D, Twist, Transform, Point3, Vector3, Quaternion,
-    # Control messages
-    CmdVel,
-    # Sensor messages
-    LaserScan
-)
+# Option 1: Import everything (recommended)
+import horus
+
+# Option 2: Import specific types
+from horus import Pose2D, Twist, CmdVel, LaserScan, Transform, Point3, Vector3, Quaternion
 ```
 
 **Key Features:**
@@ -37,7 +34,7 @@ from horus.library import (
 2D robot pose (position + orientation).
 
 ```python
-from horus.library import Pose2D
+from horus import Pose2D
 
 # Create pose
 pose = Pose2D(x=1.0, y=2.0, theta=0.5)
@@ -68,7 +65,7 @@ print(pose)  # Pose2D(x=1.500, y=2.500, theta=0.785)
 **Use with Typed Hub:**
 ```python
 from horus._horus import PyPose2DHub
-from horus.library import Pose2D
+from horus import Pose2D
 
 hub = PyPose2DHub("robot_pose")
 hub.send(Pose2D(x=1.0, y=2.0, theta=0.5))
@@ -82,7 +79,7 @@ pose = hub.recv()  # Returns Pose2D or None
 3D velocity (linear + angular).
 
 ```python
-from horus.library import Twist
+from horus import Twist
 
 # Create 3D twist
 twist = Twist(
@@ -119,7 +116,7 @@ print(twist)  # Twist(linear=[1.50, 0.00, 0.00], angular=[0.00, 0.00, 0.30])
 3D transformation (translation + rotation quaternion).
 
 ```python
-from horus.library import Transform, Pose2D
+from horus import Transform, Pose2D
 
 # Create transform
 tf = Transform(
@@ -155,7 +152,7 @@ print(tf)  # Transform(translation=[1.50, 2.50, 0.00], rotation=[...])
 Basic 3D geometric types.
 
 ```python
-from horus.library import Point3, Vector3, Quaternion
+from horus import Point3, Vector3, Quaternion
 
 # Point3 - 3D position
 point = Point3(x=1.0, y=2.0, z=3.0)
@@ -187,7 +184,7 @@ is_valid = quat.is_valid()
 2D velocity command (linear + angular).
 
 ```python
-from horus.library import CmdVel
+from horus import CmdVel
 
 # Create velocity command
 cmd = CmdVel(linear=1.0, angular=0.5)
@@ -211,7 +208,7 @@ print(cmd)  # CmdVel(linear=1.50, angular=0.30)
 **Use with Typed Hub:**
 ```python
 from horus._horus import PyCmdVelHub
-from horus.library import CmdVel
+from horus import CmdVel
 
 hub = PyCmdVelHub("cmd_vel")
 hub.send(CmdVel(linear=1.0, angular=0.5))
@@ -227,7 +224,7 @@ cmd = hub.recv()  # Returns CmdVel or None
 2D LIDAR scan data (360-point array).
 
 ```python
-from horus.library import LaserScan
+from horus import LaserScan
 import numpy as np
 
 # Create laser scan
@@ -272,7 +269,7 @@ print(scan)  # LaserScan(ranges=360, valid=342, min=0.15m)
 **Use with Typed Hub:**
 ```python
 from horus._horus import PyLaserScanHub
-from horus.library import LaserScan
+from horus import LaserScan
 
 hub = PyLaserScanHub("lidar")
 
@@ -309,7 +306,7 @@ All `horus.library` messages are **binary-compatible with Rust**:
 ```python
 # Python sender
 from horus._horus import PyCmdVelHub
-from horus.library import CmdVel
+from horus import CmdVel
 
 hub = PyCmdVelHub("cmd_vel")
 hub.send(CmdVel(linear=1.0, angular=0.5))
@@ -335,7 +332,7 @@ if let Some(cmd) = hub.recv(None) {
 ```python
 from horus import Node, run
 from horus._horus import PyLaserScanHub, PyCmdVelHub
-from horus.library import LaserScan, CmdVel
+from horus import LaserScan, CmdVel
 
 def controller_tick(node):
     scan_hub = PyLaserScanHub("lidar")
@@ -360,7 +357,7 @@ run(node)
 
 ```python
 from horus._horus import PyPose2DHub
-from horus.library import Pose2D
+from horus import Pose2D
 
 # Track robot pose
 pose_hub = PyPose2DHub("robot_pose")

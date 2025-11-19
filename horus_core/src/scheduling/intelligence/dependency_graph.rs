@@ -228,7 +228,7 @@ impl DependencyGraph {
     ) -> bool {
         reachability
             .get(from)
-            .map_or(false, |reachable| reachable.contains(to))
+            .is_some_and(|reachable| reachable.contains(to))
     }
 
     /// Get statistics about the graph

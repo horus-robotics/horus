@@ -1,6 +1,9 @@
 use crate::{DigitalIO, EmergencyStop, LaserScan, Odometry};
 use horus_core::error::HorusResult;
 
+// Import algorithms from horus_library/algorithms
+use crate::algorithms::aabb::AABB;
+
 // Type alias for cleaner signatures
 type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo};
@@ -210,28 +213,38 @@ impl CollisionDetectorNode {
         range: f64,
         beam_angle: f64,
     ) -> bool {
-        // Simple rectangular collision envelope around robot
-        let robot_half_width = (self.robot_width + self.safety_margin) / 2.0;
-        let robot_half_length = (self.robot_length + self.safety_margin) / 2.0;
-
-        // Transform obstacle to robot coordinate frame
+        // Use AABB for collision detection
         let robot_x = self.current_pose.0;
         let robot_y = self.current_pose.1;
-        let robot_theta = self.current_pose.2;
 
+        // Create robot AABB (centered at current pose, expanded by safety margin)
+        let robot_bbox = AABB::from_center(
+            robot_x,
+            robot_y,
+            self.robot_width + self.safety_margin,
+            self.robot_length + self.safety_margin,
+        );
+
+        // Create small AABB for obstacle point (treat as small circle)
+        let obstacle_radius = 0.05; // 5cm obstacle radius
+        let obstacle_bbox = AABB::from_center(obstacle_x, obstacle_y, obstacle_radius * 2.0, obstacle_radius * 2.0);
+
+        // Check AABB intersection
+        let intersects = robot_bbox.intersects(&obstacle_bbox);
+
+        // Additional check for forward direction and angular cone
+        let robot_theta = self.current_pose.2;
         let dx = obstacle_x - robot_x;
         let dy = obstacle_y - robot_y;
-
-        // Rotate to robot frame
         let local_x = dx * robot_theta.cos() + dy * robot_theta.sin();
-        let local_y = -dx * robot_theta.sin() + dy * robot_theta.cos();
 
-        // Check if obstacle is within robot's bounding box
-        local_x.abs() <= robot_half_length && local_y.abs() <= robot_half_width &&
-        local_x > -robot_half_length // Only check forward direction
+        // Only consider obstacles in front of robot
+        let in_front = local_x > -self.robot_length / 2.0;
 
-        // Additional check for angular obstacles
-        || (range < 1.0 && beam_angle.abs() < std::f64::consts::PI / 3.0) // 60° forward cone
+        // Additional check for angular obstacles in forward cone
+        let in_forward_cone = range < 1.0 && beam_angle.abs() < std::f64::consts::PI / 3.0;
+
+        intersects && in_front || in_forward_cone
     }
 
     fn check_safety_sensors(&mut self, digital_io: &DigitalIO) -> bool {

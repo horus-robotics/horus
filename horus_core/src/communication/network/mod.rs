@@ -7,7 +7,6 @@
 /// - UDP direct connections (no discovery)
 /// - Unix domain sockets (localhost optimization)
 /// - Multicast discovery (future)
-
 pub mod backend;
 pub mod direct;
 pub mod discovery;

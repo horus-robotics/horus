@@ -204,57 +204,24 @@ impl CameraNode {
     }
 
     fn capture_frame(&mut self) -> Option<Vec<u8>> {
+        // Hardware-only: no test pattern fallback
+        // If backend initialization failed, this returns None
         #[cfg(feature = "opencv-backend")]
-        if let Some(data) = self.capture_opencv_frame() {
-            return Some(data);
+        {
+            return self.capture_opencv_frame();
         }
 
-        // Fallback: Generate test pattern
-        self.generate_test_pattern()
-    }
-
-    fn generate_test_pattern(&self) -> Option<Vec<u8>> {
-        // Generate a simple test pattern (alternating colors)
-        let bytes_per_pixel = match self.encoding {
-            ImageEncoding::Mono8 => 1,
-            ImageEncoding::Rgb8 | ImageEncoding::Bgr8 => 3,
-            ImageEncoding::Rgba8 | ImageEncoding::Bgra8 => 4,
-            _ => 3,
-        };
-
-        let total_bytes = (self.width * self.height * bytes_per_pixel as u32) as usize;
-        let mut data = vec![0u8; total_bytes];
-
-        // Create a simple gradient pattern
-        for y in 0..self.height {
-            for x in 0..self.width {
-                let idx = ((y * self.width + x) * bytes_per_pixel as u32) as usize;
-                let intensity = ((x + y + self.frame_count as u32) % 256) as u8;
-
-                match self.encoding {
-                    ImageEncoding::Mono8 => {
-                        data[idx] = intensity;
-                    }
-                    ImageEncoding::Rgb8 => {
-                        data[idx] = intensity; // R
-                        data[idx + 1] = 255 - intensity; // G
-                        data[idx + 2] = intensity / 2; // B
-                    }
-                    ImageEncoding::Bgr8 => {
-                        data[idx] = intensity / 2; // B
-                        data[idx + 1] = 255 - intensity; // G
-                        data[idx + 2] = intensity; // R
-                    }
-                    _ => {
-                        data[idx] = intensity;
-                        data[idx + 1] = 255 - intensity;
-                        data[idx + 2] = 128;
-                    }
-                }
-            }
+        #[cfg(feature = "v4l2-backend")]
+        {
+            // V4L2 capture would go here
+            return None;
         }
 
-        Some(data)
+        #[cfg(not(any(feature = "opencv-backend", feature = "v4l2-backend")))]
+        {
+            // No backend enabled - this should never compile due to module-level feature gate
+            compile_error!("CameraNode requires at least one camera backend feature: opencv-backend, v4l2-backend, realsense, or zed");
+        }
     }
 
     fn publish_image(&self, data: Vec<u8>) {

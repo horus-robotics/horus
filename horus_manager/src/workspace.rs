@@ -413,7 +413,7 @@ fn scan_for_nested_workspaces<F>(
                             .unwrap_or("unknown")
                             .to_string();
 
-                        let is_current = &entry_path == current_workspace;
+                        let is_current = entry_path == current_workspace;
                         add_workspace(entry_path.clone(), workspace_name, is_current);
 
                         // Don't recurse into workspaces - they're self-contained

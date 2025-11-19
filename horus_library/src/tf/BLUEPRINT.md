@@ -125,7 +125,7 @@ if obstacle_in_base.x < 2.0 {
 │  └────────────────────────────────────────────────────┘ │
 │                                                          │
 │  ┌────────────────────────────────────────────────────┐ │
-│  │  TF API (Rust/Python/C++)                         │ │
+│  │  TF API (Rust/Python)                             │ │
 │  │  - transform_point()                              │ │
 │  │  - transform_pose()                               │ │
 │  │  - lookup_transform()                             │ │
@@ -549,13 +549,7 @@ impl Node for TFListenerNode {
 - [ ] Python TFBroadcaster wrapper
 - [ ] Python example scripts
 
-### Phase 7: C++ Bindings (Week 4)
-- [ ] FFI interface for Transform
-- [ ] C++ TFTree wrapper
-- [ ] C++ TFBroadcaster wrapper
-- [ ] C++ example programs
-
-### Phase 8: Testing & Documentation (Week 4)
+### Phase 7: Testing & Documentation (Week 4)
 - [ ] End-to-end integration tests
 - [ ] Performance benchmarks (< 1μs for cached lookups)
 - [ ] API documentation
@@ -717,71 +711,6 @@ node = horus.Node(
 horus.run(node)
 ```
 
-### 5.3 C++ API
-
-```cpp
-#include <horus.hpp>
-#include <horus/tf.hpp>
-
-int main() {
-    using namespace horus;
-    using namespace horus::tf;
-
-    // Create TF tree
-    auto tree = std::make_shared<TFTree>();
-
-    // Add static transform
-    Transform camera_tf;
-    camera_tf.translation = {0.5, 0.0, 0.2};
-    camera_tf.rotation = {0.0, 0.0, 0.0, 1.0};  // Identity quaternion
-
-    tree->add_static_transform("base_link", "camera_frame", camera_tf);
-
-    // Application node
-    class MyNode : public Node {
-        std::shared_ptr<TFTree> tree_;
-        Subscriber<Detection> camera_sub_;
-
-    public:
-        MyNode(std::shared_ptr<TFTree> tree)
-            : tree_(tree), camera_sub_("camera/detections") {}
-
-        const char* name() const override { return "MyNode"; }
-
-        void tick(NodeContext& ctx) override {
-            if (auto detection = camera_sub_.try_recv()) {
-                // Point in camera frame
-                std::array<double, 3> point_camera = {
-                    detection->bbox.center_x,
-                    detection->bbox.center_y,
-                    detection->distance
-                };
-
-                // Transform to base frame
-                auto transform = tree_->lookup_transform(
-                    "camera_frame",
-                    "base_link",
-                    timestamp_now()
-                );
-
-                auto point_base = transform.transform_point(point_camera);
-
-                ctx.log_info("Object at (" +
-                    std::to_string(point_base[0]) + ", " +
-                    std::to_string(point_base[1]) + ", " +
-                    std::to_string(point_base[2]) + ") in base frame");
-            }
-        }
-    };
-
-    Scheduler scheduler;
-    scheduler.add(std::make_unique<MyNode>(tree), 0, true);
-    scheduler.run();
-
-    return 0;
-}
-```
-
 ---
 
 ## 6. Memory & Performance
@@ -876,47 +805,6 @@ fn tf(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyTFBroadcaster>()?;
     Ok(())
 }
-```
-
-### 7.3 C++ (FFI)
-
-**Location:** `horus_cpp/include/horus/tf.hpp`
-```cpp
-namespace horus {
-namespace tf {
-
-class Transform {
-    double translation[3];
-    double rotation[4];  // quaternion
-
-public:
-    Transform(const double trans[3], const double rot[4]);
-    std::array<double, 3> transform_point(const double point[3]) const;
-    Transform compose(const Transform& other) const;
-    Transform inverse() const;
-};
-
-class TFTree {
-    void* handle_;  // Opaque Rust pointer
-
-public:
-    TFTree();
-    ~TFTree();
-
-    void add_static_transform(
-        const std::string& parent,
-        const std::string& child,
-        const Transform& tf
-    );
-
-    Transform lookup_transform(
-        const std::string& source,
-        const std::string& target,
-        uint64_t time
-    );
-};
-
-}}  // namespace horus::tf
 ```
 
 ---
@@ -1204,7 +1092,6 @@ tf-visualizer = ["egui", "plotters"]  # Optional TF tree visualization
 
 - Rustdoc for all public types
 - Python docstrings for PyO3 bindings
-- Doxygen comments for C++ headers
 
 ### 12.2 Tutorials
 
@@ -1239,7 +1126,6 @@ tf-visualizer = ["egui", "plotters"]  # Optional TF tree visualization
 ### 13.2 Should Have (v1.0)
 
 -  Python bindings
--  C++ bindings
 -  Time-based interpolation
 -  Transform caching
 -  Performance benchmarks
@@ -1263,7 +1149,7 @@ tf-visualizer = ["egui", "plotters"]  # Optional TF tree visualization
 | **Week 1** | Core transform math, TF messages |
 | **Week 2** | TF tree structure, broadcaster/listener nodes |
 | **Week 3** | High-level API, Python bindings |
-| **Week 4** | C++ bindings, testing, documentation |
+| **Week 4** | Testing, documentation |
 | **Week 5** | Integration with dashboard, examples |
 | **Week 6** | Buffer optimization, polish, release |
 

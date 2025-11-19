@@ -51,10 +51,6 @@ impl Default for CmdVel {
 unsafe impl bytemuck::Pod for CmdVel {}
 unsafe impl bytemuck::Zeroable for CmdVel {}
 
-// Enable iceoryx2 zero-copy IPC
-#[cfg(feature = "iceoryx2")]
-unsafe impl iceoryx2_bb_elementary_traits::zero_copy_send::ZeroCopySend for CmdVel {}
-
 // LogSummary implementation for zero-copy logging
 impl LogSummary for CmdVel {
     fn log_summary(&self) -> String {

@@ -110,7 +110,8 @@ horus run [FILE] [OPTIONS] [-- ARGS]
 Options:
   -r, --release            Optimize for speed (use for real testing!)
   -b, --build-only         Just compile, don't run
-  -c, --clean              Remove old build files first
+  -c, --clean              Remove cached build artifacts and dependencies
+                           (Use after updating HORUS or when compilation fails)
   -- <ARGS>                Arguments for your program
 ```
 
@@ -148,6 +149,47 @@ horus run --release  # Release mode
 - Deploying to production
 - Wondering "why is HORUS slow?"
 
+### Why --clean Matters
+
+The `--clean` flag removes the `.horus/target/` directory, which contains cached build artifacts and dependencies.
+
+**When to use `--clean`:**
+
+1. **After updating HORUS** - Most common use case
+   ```bash
+   # You updated horus CLI to a new version
+   horus run --clean
+   ```
+   This fixes version mismatch errors like:
+   ```
+   error: the package `horus` depends on `horus_core 0.1.0`,
+   but `horus_core 0.1.3` is installed
+   ```
+
+2. **Compilation fails mysteriously**
+   ```bash
+   horus run --clean
+   # Sometimes cached state gets corrupted
+   ```
+
+3. **Dependencies changed**
+   ```bash
+   # You modified horus.yaml dependencies
+   horus run --clean
+   ```
+
+**What it does:**
+- Removes `.horus/target/` (build artifacts)
+- Removes `.horus/Cargo.lock` (dependency lock file)
+- Forces fresh dependency resolution
+- Next build rebuilds everything from scratch
+
+**Trade-off:**
+- First build after `--clean` is slower (5-30 seconds)
+- Subsequent builds are fast again (incremental compilation)
+
+**Note:** The `--clean` flag only affects the current project's `.horus/` directory, not the global `~/.horus/` cache.
+
 ### Examples
 
 **Daily development**:
@@ -167,9 +209,15 @@ horus run --release
 horus run --build-only --release
 ```
 
-**Fresh build** (when things act weird):
+**Fresh build** (when things act weird or after updating HORUS):
 ```bash
 horus run --clean --release
+```
+
+**After updating HORUS CLI** (fixes version mismatch errors):
+```bash
+# Clean removes cached dependencies from .horus/target/
+horus run --clean
 ```
 
 **Pass arguments to your program**:

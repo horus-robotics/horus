@@ -67,7 +67,7 @@ def test_rust_to_python_basic():
     Uses typed hubs (PyPose2DHub) for cross-language communication.
     """
     from horus._horus import PyPose2DHub
-    from horus.library import Pose2D
+    from horus import Pose2D
 
     # Create a simple Rust publisher
     rust_code = """
@@ -135,7 +135,7 @@ def test_python_to_rust_basic():
     Uses typed hubs (PyPose2DHub) for cross-language communication.
     """
     from horus._horus import PyPose2DHub
-    from horus.library import Pose2D
+    from horus import Pose2D
 
     # Create Rust subscriber
     rust_code = """
@@ -198,7 +198,7 @@ fn main() -> Result<()> {
 def test_message_types_pose2d():
     """Test Pose2D message integrity across Python-Rust boundary"""
     import horus
-    from horus.library import Pose2D
+    from horus import Pose2D
 
     test_data = []
 
@@ -245,7 +245,7 @@ def test_message_types_pose2d():
 def test_message_types_cmdvel():
     """Test CmdVel message integrity"""
     import horus
-    from horus.library import CmdVel
+    from horus import CmdVel
 
     test_data = []
 
@@ -288,7 +288,7 @@ def test_message_types_cmdvel():
 def test_message_types_laserscan():
     """Test LaserScan with NumPy arrays"""
     import horus
-    from horus.library import LaserScan
+    from horus import LaserScan
     import numpy as np
 
     sent_scan = None
@@ -327,7 +327,7 @@ def test_message_types_laserscan():
 def test_error_handling_across_languages():
     """Test that errors in one language don't crash the other"""
     import horus
-    from horus.library import Pose2D
+    from horus import Pose2D
 
     error_count = [0]
 
@@ -365,7 +365,7 @@ def test_error_handling_across_languages():
 def test_high_frequency_communication():
     """Test sustained high-frequency communication between Python nodes"""
     import horus
-    from horus.library import Pose2D
+    from horus import Pose2D
 
     sent_count = [0]
     received_count = [0]

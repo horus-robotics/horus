@@ -44,7 +44,7 @@ pub fn create_new_project(
         use_macro
     };
 
-    let description = prompt_description()?;
+    let description = "A HORUS robotics project".to_string();
     let author = get_author()?;
 
     // Create project directory
@@ -72,7 +72,6 @@ pub fn create_new_project(
             create_main_rs(&project_path, use_macro)?;
         }
         "python" => create_main_py(&project_path)?,
-        "cpp" => create_main_cpp(&project_path)?,
         _ => unreachable!(),
     }
 
@@ -98,9 +97,8 @@ fn prompt_language() -> Result<String> {
     println!("\n{} Select language:", "?".yellow().bold());
     println!("  {} Python", "1.".cyan());
     println!("  {} Rust", "2.".cyan());
-    println!("  {} C++", "3.".cyan());
 
-    print!("{} [1-3] (default: 2): ", ">".cyan().bold());
+    print!("{} [1-2] (default: 2): ", ">".cyan().bold());
     io::stdout().flush()?;
 
     let mut input = String::new();
@@ -112,7 +110,6 @@ fn prompt_language() -> Result<String> {
     let language = match choice {
         "1" => "python",
         "2" => "rust",
-        "3" => "cpp",
         _ => {
             println!("Invalid choice, defaulting to Rust");
             "rust"
@@ -134,21 +131,6 @@ fn prompt_use_macro() -> Result<bool> {
     let input = input.trim().to_lowercase();
 
     Ok(input == "y" || input == "yes")
-}
-
-fn prompt_description() -> Result<String> {
-    print!("\n{} Project description: ", "?".yellow().bold());
-    io::stdout().flush()?;
-
-    let mut input = String::new();
-    io::stdin().read_line(&mut input)?;
-    let description = input.trim();
-
-    Ok(if description.is_empty() {
-        "A HORUS robotics project".to_string()
-    } else {
-        description.to_string()
-    })
 }
 
 fn get_author() -> Result<String> {
@@ -225,15 +207,6 @@ build/
             );
         }
         "cpp" => {
-            gitignore_content.push_str(
-                r#"
-# C++
-*.o
-*.so
-*.a
-*.out
-"#,
-            );
         }
         _ => {}
     }
@@ -285,16 +258,6 @@ fn create_horus_yaml(
   #   path: "./my_module"
 "#
         }
-        "cpp" => {
-            r#"dependencies:
-  - horus_cpp
-  # Add C++ libraries as needed
-
-  # For path dependencies (local development):
-  # my_library:
-  #   path: "./libs/my_library"
-"#
-        }
         _ => "",
     };
 
@@ -335,7 +298,7 @@ session_id: "{}"  # Shared session for multi-process communication
 
 fn create_main_rs(project_path: &Path, use_macro: bool) -> Result<()> {
     let content = if use_macro {
-        // Macro version - clean and concise
+        // Macro version - clean and concise (RECOMMENDED - auto-generates monitoring metadata)
         r#"// Mobile robot controller
 
 use horus::prelude::*;
@@ -452,118 +415,5 @@ if __name__ == "__main__":
     horus.run(node)
 "#;
     fs::write(project_path.join("main.py"), content)?;
-    Ok(())
-}
-
-fn create_main_cpp(project_path: &Path) -> Result<()> {
-    // C++ framework template with Node/Scheduler pattern and rich logging
-    let content = r#"// Mobile robot controller using HORUS C++ Framework
-// Demonstrates Node/Scheduler pattern with rich logging
-
-#include <horus.hpp>
-#include <iostream>
-
-// Example sensor node that publishes velocity data
-struct SensorNode : horus::Node {
-    SensorNode() : horus::Node("sensor_node") {}
-
-    bool init(horus::NodeContext& ctx) override {
-        ctx.log_info("Initializing sensor node");
-
-        // Create publisher - clean syntax!
-        velocity_pub = ctx.pub<Twist>("robot/velocity");
-
-        return true;
-    }
-
-    void tick(horus::NodeContext& ctx) override {
-        // Simulate sensor reading
-        Twist velocity = {
-            .linear = {0.5f, 0.0f, 0.0f},
-            .angular = {0.0f, 0.0f, 0.1f}
-        };
-
-        // Publish with automatic rich logging
-        velocity_pub.send(velocity);
-    }
-
-    void shutdown(horus::NodeContext& ctx) override {
-        ctx.log_info("Shutting down sensor node");
-    }
-
-private:
-    horus::Publisher<Twist> velocity_pub;
-};
-
-// Example controller node that receives and processes data
-struct ControllerNode : horus::Node {
-    ControllerNode() : horus::Node("controller_node") {}
-
-    bool init(horus::NodeContext& ctx) override {
-        ctx.log_info("Initializing controller node");
-
-        // Create subscriber and publisher - clean syntax!
-        velocity_sub = ctx.sub<Twist>("robot/velocity");
-        cmd_pub = ctx.pub<Twist>("robot/cmd_vel");
-
-        return true;
-    }
-
-    void tick(horus::NodeContext& ctx) override {
-        Twist velocity;
-
-        // Receive velocity data (non-blocking)
-        if (velocity_sub.recv(velocity)) {
-            // Process the data and generate control command
-            Twist cmd = {
-                .linear = {velocity.linear.x * 1.5f, 0.0f, 0.0f},
-                .angular = {0.0f, 0.0f, velocity.angular.z * 2.0f}
-            };
-
-            // Publish command with automatic rich logging
-            cmd_pub.send(cmd);
-        }
-    }
-
-    void shutdown(horus::NodeContext& ctx) override {
-        ctx.log_info("Shutting down controller node");
-    }
-
-private:
-    horus::Subscriber<Twist> velocity_sub;
-    horus::Publisher<Twist> cmd_pub;
-};
-
-int main() {
-    try {
-        // Create scheduler (runs at 60 FPS by default)
-        horus::Scheduler scheduler("main_scheduler");
-
-        // Create nodes
-        SensorNode sensor;
-        ControllerNode controller;
-
-        // Add nodes to scheduler
-        // Priority: 0=Critical, 1=High, 2=Normal, 3=Low, 4=Background
-        // Lower numbers = higher priority (executed first)
-        // Third param: enable_logging (true=rich logging with timestamps, false=no logging)
-        scheduler.add(sensor, 1, true);       // High priority, logging ON
-        scheduler.add(controller, 2, true);   // Normal priority, logging ON
-
-        std::cout << "Starting HORUS scheduler...\n";
-        std::cout << "Press Ctrl+C to stop\n\n";
-
-        // Run the scheduler (blocks until shutdown signal)
-        scheduler.run();
-
-    } catch (const horus::HorusException& e) {
-        std::cerr << "HORUS Error: " << e.what() << std::endl;
-        return 1;
-    }
-
-    return 0;
-}
-"#;
-    fs::write(project_path.join("main.cpp"), content)?;
     Ok(())
 }

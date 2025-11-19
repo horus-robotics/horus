@@ -66,7 +66,7 @@ This security policy covers:
 
 - HORUS core framework (horus_core)
 - HORUS CLI tool (horus_manager)
-- Official language bindings (horus_py, horus_cpp)
+- Official language bindings (horus_py)
 - HORUS package registry and marketplace
 
 Third-party packages in the HORUS ecosystem are the responsibility of their respective maintainers.

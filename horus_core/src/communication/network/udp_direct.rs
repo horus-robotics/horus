@@ -2,7 +2,6 @@
 ///
 /// Provides <50μs latency for LAN communication using direct UDP sockets.
 /// No discovery overhead - you specify the target host directly.
-
 use crate::communication::network::protocol::{HorusPacket, MessageType};
 use crate::communication::network::fragmentation::{Fragment, FragmentManager};
 use crate::error::HorusResult;

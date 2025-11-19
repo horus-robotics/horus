@@ -80,6 +80,11 @@ impl AsyncIOExecutor {
                         };
                         let mut context = context_opt.take();
 
+                        // Start tick timer before execution
+                        if let Some(ref mut ctx) = context {
+                            ctx.start_tick();
+                        }
+
                         let start = Instant::now();
 
                         // Execute node tick
@@ -96,13 +101,18 @@ impl AsyncIOExecutor {
                         let duration = start.elapsed();
 
                         match tick_result {
-                            Ok((returned_node, returned_ctx, panic_result)) => {
-                                // Restore node and context for next tick
+                            Ok((returned_node, mut returned_ctx, panic_result)) => {
+                                // Restore node for next tick
                                 node_opt = Some(returned_node);
-                                context_opt = returned_ctx;
 
                                 let (success, error) = match panic_result {
-                                    Ok(_) => (true, None),
+                                    Ok(_) => {
+                                        // Record successful tick (updates metrics and writes heartbeat)
+                                        if let Some(ref mut ctx) = returned_ctx {
+                                            ctx.record_tick();
+                                        }
+                                        (true, None)
+                                    },
                                     Err(e) => {
                                         let msg = if let Some(s) = e.downcast_ref::<&str>() {
                                             format!("Node panicked: {}", s)
@@ -111,9 +121,16 @@ impl AsyncIOExecutor {
                                         } else {
                                             "Node panicked with unknown error".to_string()
                                         };
+                                        // Record failed tick
+                                        if let Some(ref mut ctx) = returned_ctx {
+                                            ctx.record_tick_failure(msg.clone());
+                                        }
                                         (false, Some(msg))
                                     }
                                 };
+
+                                // Restore context after recording tick
+                                context_opt = returned_ctx;
 
                                 // Send result back
                                 let _ = result_tx.send(AsyncResult {

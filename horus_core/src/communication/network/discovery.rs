@@ -2,7 +2,6 @@
 ///
 /// Implements automatic peer discovery using UDP multicast on 239.255.72.85:9871
 /// Target: <1ms discovery for 10 peers
-
 use crate::communication::network::protocol::{HorusPacket, MessageType};
 use crate::error::HorusResult;
 use std::collections::HashMap;

@@ -38,6 +38,7 @@ pub enum LogType {
 
 const MAX_LOG_ENTRIES: usize = 5000;
 const LOG_ENTRY_SIZE: usize = 512; // Fixed size per entry (serialized)
+const MAX_MESSAGE_LEN: usize = 300; // Max message string length before truncation
 const HEADER_SIZE: usize = 64; // Space for metadata (write_idx, etc.)
 
 /// Shared memory ring buffer for logs - lock-free, cross-process
@@ -98,12 +99,19 @@ impl SharedLogBuffer {
             }
         };
 
+        // Truncate message if too long (BEFORE serialization to keep metadata intact)
+        let mut entry = entry;
+        if entry.message.len() > MAX_MESSAGE_LEN {
+            entry.message.truncate(MAX_MESSAGE_LEN - 3);
+            entry.message.push_str("...");
+        }
+
         // Serialize log entry
         let serialized = match bincode::serialize(&entry) {
             Ok(data) if data.len() <= LOG_ENTRY_SIZE => data,
             Ok(data) => {
-                // Truncate if too large
-                eprintln!(" Log entry too large ({}), truncating", data.len());
+                // This should rarely happen now, but keep as safety net
+                eprintln!(" Log entry still too large ({} bytes) after message truncation - metadata too big?", data.len());
                 data[..LOG_ENTRY_SIZE].to_vec()
             }
             Err(e) => {

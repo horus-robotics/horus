@@ -474,6 +474,32 @@ impl NodeInfo {
     pub fn record_shutdown(&mut self) {
         self.transition_to_stopped();
         self.write_heartbeat();
+
+        // Clean up pubsub metadata files for this node
+        self.cleanup_pubsub_metadata();
+    }
+
+    /// Remove pubsub metadata files for this node
+    fn cleanup_pubsub_metadata(&self) {
+        use std::fs;
+        use std::path::Path;
+
+        let metadata_dir = Path::new("/dev/shm/horus/pubsub_metadata");
+        if !metadata_dir.exists() {
+            return;
+        }
+
+        // Remove all metadata files that start with this node's name
+        if let Ok(entries) = fs::read_dir(metadata_dir) {
+            for entry in entries.flatten() {
+                if let Some(filename) = entry.file_name().to_str() {
+                    // Check if filename starts with node name followed by underscore
+                    if filename.starts_with(&format!("{}_", self.name)) {
+                        let _ = fs::remove_file(entry.path());
+                    }
+                }
+            }
+        }
     }
 
     pub fn record_tick_failure(&mut self, error_msg: String) {
@@ -815,6 +841,15 @@ impl NodeInfo {
 
     pub fn remove_custom_data(&mut self, key: &str) -> Option<String> {
         self.custom_data.remove(key)
+    }
+}
+
+/// Automatic cleanup on Drop to handle abnormal termination
+impl Drop for NodeInfo {
+    fn drop(&mut self) {
+        // Clean up pubsub metadata files when NodeInfo is dropped
+        // This ensures cleanup even if the process is killed or panics
+        self.cleanup_pubsub_metadata();
     }
 }
 

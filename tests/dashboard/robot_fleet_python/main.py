@@ -11,7 +11,8 @@ This demonstrates a full robotics application with:
 import time
 import random
 import math
-from horus import Scheduler, Node, Pose2D, CmdVel
+from horus import Scheduler, Node
+from horus.library import Pose2D, CmdVel
 
 # ============================================================================
 # VISION PROCESSING NODES

@@ -1,7 +1,6 @@
 /// UDP multicast backend with automatic peer discovery
 ///
 /// Uses the DiscoveryService to find peers and broadcasts messages to all of them
-
 use crate::communication::network::discovery::DiscoveryService;
 use crate::communication::network::protocol::{HorusPacket, MessageType};
 use crate::communication::network::fragmentation::{Fragment, FragmentManager};

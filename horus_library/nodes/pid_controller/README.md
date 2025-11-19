@@ -6,6 +6,28 @@ Generic PID controller for position, velocity, or any feedback control applicati
 
 The PID Controller Node implements a standard PID (Proportional-Integral-Derivative) control algorithm. It subscribes to setpoint and feedback values, calculates the control output, and publishes motor commands.
 
+## Architecture
+
+**This node is a thin wrapper** around the pure algorithm in `horus_library/algorithms/`:
+
+- **`algorithms::pid::PID`** - PID feedback control algorithm with anti-windup and deadband
+
+The node handles:
+- Topic subscription/publishing (Hub I/O)
+- Setpoint and feedback reception
+- Motor command publishing
+- Configuration updates
+- Motor ID management
+
+The algorithm handles:
+- PID computation (P, I, D terms)
+- Anti-windup (integral limiting)
+- Output limiting
+- Deadband application
+- Error tracking
+
+This separation enables PID algorithm reuse in different control contexts.
+
 ## Topics
 
 ### Subscribers

@@ -49,8 +49,8 @@ fn get_metadata_channel() -> &'static Sender<MetadataRecord> {
                     let metadata_dir = PathBuf::from("/dev/shm/horus/pubsub_metadata");
                     let _ = fs::create_dir_all(&metadata_dir);
 
-                    let safe_node_name = record.node_name.replace('/', "_").replace(' ', "_");
-                    let safe_topic_name = record.topic_name.replace('/', "_").replace(' ', "_");
+                    let safe_node_name = record.node_name.replace(['/', ' '], "_");
+                    let safe_topic_name = record.topic_name.replace(['/', ' '], "_");
                     let filename = format!("{}_{}_{}", safe_node_name, safe_topic_name, record.direction);
                     let filepath = metadata_dir.join(filename);
 

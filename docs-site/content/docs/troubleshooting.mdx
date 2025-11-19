@@ -576,10 +576,43 @@ error: the package `horus` depends on `horus_core 0.1.0`,
 but `horus_core 0.1.3` is installed
 ```
 
-**Solution:**
+**Why this happens:**
+- You updated the `horus` CLI to a new version
+- Your project's `.horus/` directory still has cached dependencies from the old version
+- The cached `Cargo.lock` references incompatible library versions
+
+**Solution (Recommended - Fast & Easy):**
 ```bash
-# Recovery will clean mismatched versions
+# Clean cached build artifacts and dependencies
+horus run --clean
+
+# This removes .horus/target/ and forces a fresh build
+# with the new version
+```
+
+**Alternative Solutions:**
+
+**Option 2: Manual cleanup**
+```bash
+# Remove the entire .horus directory
+rm -rf .horus/
+
+# Next run will rebuild from scratch
+horus run
+```
+
+**Option 3: Recovery installation (for persistent issues)**
+```bash
+# Only needed if --clean doesn't work
+# This reinstalls HORUS libraries globally
+cd /path/to/HORUS
 ./recovery_install.sh
+```
+
+**For multiple projects:**
+```bash
+# Clean all projects in your workspace
+find ~/your-projects -type d -name ".horus" -exec rm -rf {}/target/ \;
 ```
 
 ---

@@ -47,5 +47,4 @@ Issues = "https://github.com/softmata/horus/issues"
 
 [tool.maturin]
 features = ["pyo3/extension-module"]
-python-source = "python"
 module-name = "horus.library._library"

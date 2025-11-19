@@ -1,6 +1,9 @@
 use crate::{MotorCommand, PidConfig};
 use horus_core::error::HorusResult;
 
+// Import algorithms from horus_library/algorithms
+use crate::algorithms::pid::PID;
+
 // Type alias for cleaner signatures
 type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo};
@@ -10,6 +13,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 ///
 /// Implements a PID controller that can be used for various control applications.
 /// Subscribes to setpoint and feedback values, publishes control output.
+///
+/// This node is a thin wrapper around the pure algorithms in horus_library/algorithms.
 pub struct PidControllerNode {
     // Publishers and Subscribers
     output_publisher: Hub<MotorCommand>,
@@ -17,26 +22,13 @@ pub struct PidControllerNode {
     feedback_subscriber: Hub<f32>,
     config_subscriber: Hub<PidConfig>,
 
-    // PID Parameters
-    kp: f32, // Proportional gain
-    ki: f32, // Integral gain
-    kd: f32, // Derivative gain
+    // Algorithm instance
+    pid: PID,
 
-    // PID State
+    // Node state
     setpoint: f32,
     feedback: f32,
-    last_error: f32,
-    integral: f32,
     last_time: u64,
-
-    // Configuration
-    output_min: f32,
-    output_max: f32,
-    integral_min: f32,
-    integral_max: f32,
-    deadband: f32,
-
-    // State
     is_initialized: bool,
     motor_id: u8,
 }
@@ -54,31 +46,25 @@ impl PidControllerNode {
         output_topic: &str,
         config_topic: &str,
     ) -> Result<Self> {
+        // Create PID instance with default gains
+        let mut pid = PID::new(1.0, 0.1, 0.05);
+
+        // Set default limits
+        pid.set_output_limits(-100.0, 100.0);
+        pid.set_integral_limits(-50.0, 50.0);
+        pid.set_deadband(0.01);
+
         Ok(Self {
             output_publisher: Hub::new(output_topic)?,
             setpoint_subscriber: Hub::new(setpoint_topic)?,
             feedback_subscriber: Hub::new(feedback_topic)?,
             config_subscriber: Hub::new(config_topic)?,
 
-            // Default PID gains
-            kp: 1.0,
-            ki: 0.1,
-            kd: 0.05,
+            pid,
 
-            // PID state
             setpoint: 0.0,
             feedback: 0.0,
-            last_error: 0.0,
-            integral: 0.0,
             last_time: 0,
-
-            // Default limits
-            output_min: -100.0,
-            output_max: 100.0,
-            integral_min: -50.0,
-            integral_max: 50.0,
-            deadband: 0.01,
-
             is_initialized: false,
             motor_id: 0,
         })
@@ -86,26 +72,22 @@ impl PidControllerNode {
 
     /// Set PID gains
     pub fn set_gains(&mut self, kp: f32, ki: f32, kd: f32) {
-        self.kp = kp;
-        self.ki = ki;
-        self.kd = kd;
+        self.pid.set_gains(kp as f64, ki as f64, kd as f64);
     }
 
     /// Set output limits
     pub fn set_output_limits(&mut self, min: f32, max: f32) {
-        self.output_min = min;
-        self.output_max = max;
+        self.pid.set_output_limits(min as f64, max as f64);
     }
 
     /// Set integral limits (anti-windup)
     pub fn set_integral_limits(&mut self, min: f32, max: f32) {
-        self.integral_min = min;
-        self.integral_max = max;
+        self.pid.set_integral_limits(min as f64, max as f64);
     }
 
     /// Set deadband (minimum error threshold)
     pub fn set_deadband(&mut self, deadband: f32) {
-        self.deadband = deadband.abs();
+        self.pid.set_deadband(deadband.abs() as f64);
     }
 
     /// Set motor ID for output commands
@@ -115,48 +97,24 @@ impl PidControllerNode {
 
     /// Reset PID controller state
     pub fn reset(&mut self) {
-        self.last_error = 0.0;
-        self.integral = 0.0;
+        self.pid.reset();
         self.last_time = 0;
     }
 
     /// Get current PID state
     pub fn get_state(&self) -> (f32, f32, f32, f32) {
-        (self.setpoint, self.feedback, self.last_error, self.integral)
+        let (last_error, integral) = self.pid.get_state();
+        (self.setpoint, self.feedback, last_error as f32, integral as f32)
     }
 
     fn calculate_pid_output(&mut self, dt: f32) -> f32 {
-        let error = self.setpoint - self.feedback;
-
-        // Apply deadband
-        let effective_error = if error.abs() < self.deadband {
-            0.0
-        } else {
-            error
-        };
-
-        // Proportional term
-        let proportional = self.kp * effective_error;
-
-        // Integral term with anti-windup
-        if dt > 0.0 {
-            self.integral += effective_error * dt;
-            self.integral = self.integral.clamp(self.integral_min, self.integral_max);
-        }
-        let integral = self.ki * self.integral;
-
-        // Derivative term
-        let derivative = if dt > 0.0 {
-            self.kd * (effective_error - self.last_error) / dt
-        } else {
-            0.0
-        };
-
-        self.last_error = effective_error;
-
-        // Combine terms and apply output limits
-        let output = proportional + integral + derivative;
-        output.clamp(self.output_min, self.output_max)
+        // Use PID algorithm to compute output
+        let output = self.pid.compute(
+            self.setpoint as f64,
+            self.feedback as f64,
+            dt as f64
+        );
+        output as f32
     }
 
     fn publish_output(&self, output: f32) {
@@ -202,9 +160,7 @@ impl Node for PidControllerNode {
 
         // Check for new PID configuration
         if let Some(config) = self.config_subscriber.recv(&mut None) {
-            self.kp = config.kp as f32;
-            self.ki = config.ki as f32;
-            self.kd = config.kd as f32;
+            self.pid.set_gains(config.kp, config.ki, config.kd);
         }
 
         // Calculate and publish PID output

@@ -1,9 +1,0 @@
-
-# Compiled binaries
-examples/*/
-!examples/*.cpp
-!examples/*.h
-*.o
-*.a
-*.so
-*.dylib

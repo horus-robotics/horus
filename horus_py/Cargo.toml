@@ -29,7 +29,3 @@ parking_lot = "0.12"  # Faster mutexes for buffer pool
 
 [build-dependencies]
 pyo3-build-config = "0.22"
-
-[profile.release]
-lto = true
-opt-level = 3

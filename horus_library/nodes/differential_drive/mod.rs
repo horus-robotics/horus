@@ -1,6 +1,9 @@
 use crate::{DifferentialDriveCommand, Odometry, Twist};
 use horus_core::error::HorusResult;
 
+// Import algorithms from horus_library/algorithms
+use crate::algorithms::differential_drive::DifferentialDrive;
+
 // Type alias for cleaner signatures
 type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo};
@@ -10,6 +13,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 ///
 /// Subscribes to Twist velocity commands and converts them to differential drive
 /// motor commands. Also publishes odometry based on wheel encoder feedback.
+///
+/// This node is a thin wrapper around the pure algorithms in horus_library/algorithms.
 pub struct DifferentialDriveNode {
     // Publishers
     drive_publisher: Hub<DifferentialDriveCommand>,
@@ -18,9 +23,10 @@ pub struct DifferentialDriveNode {
     // Subscribers
     cmd_subscriber: Hub<Twist>,
 
+    // Algorithm instance
+    diff_drive: DifferentialDrive,
+
     // Configuration
-    wheel_base: f32,      // Distance between wheels (m)
-    wheel_radius: f32,    // Wheel radius (m)
     max_linear_vel: f32,  // Max linear velocity (m/s)
     max_angular_vel: f32, // Max angular velocity (rad/s)
 
@@ -40,13 +46,16 @@ impl DifferentialDriveNode {
 
     /// Create a new differential drive node with custom topics
     pub fn new_with_topics(cmd_topic: &str, drive_topic: &str, odom_topic: &str) -> Result<Self> {
+        // Create differential drive algorithm instance with default parameters
+        let diff_drive = DifferentialDrive::new(0.5, 0.1); // 50cm wheel base, 10cm wheel radius
+
         Ok(Self {
             drive_publisher: Hub::new(drive_topic)?,
             odom_publisher: Hub::new(odom_topic)?,
             cmd_subscriber: Hub::new(cmd_topic)?,
 
-            wheel_base: 0.5,                       // 50cm wheel base
-            wheel_radius: 0.1,                     // 10cm wheel radius
+            diff_drive,
+
             max_linear_vel: 2.0,                   // 2 m/s max
             max_angular_vel: std::f32::consts::PI, // π rad/s max
 
@@ -60,12 +69,14 @@ impl DifferentialDriveNode {
 
     /// Set wheel base (distance between wheels in meters)
     pub fn set_wheel_base(&mut self, wheel_base: f32) {
-        self.wheel_base = wheel_base.max(0.1);
+        let wheel_base = wheel_base.max(0.1);
+        self.diff_drive = DifferentialDrive::new(wheel_base as f64, self.diff_drive.get_wheel_radius());
     }
 
     /// Set wheel radius (in meters)
     pub fn set_wheel_radius(&mut self, radius: f32) {
-        self.wheel_radius = radius.max(0.01);
+        let radius = radius.max(0.01);
+        self.diff_drive = DifferentialDrive::new(self.diff_drive.get_wheel_base(), radius as f64);
     }
 
     /// Set maximum velocities
@@ -103,37 +114,30 @@ impl DifferentialDriveNode {
     }
 
     fn twist_to_wheel_speeds(&self, twist: &Twist) -> (f32, f32) {
-        // Convert twist to wheel speeds using differential drive kinematics
+        // Use differential drive algorithm for inverse kinematics
         let linear_vel = twist.linear[0];
         let angular_vel = twist.angular[2];
 
-        // Calculate wheel speeds
-        let left_wheel_speed = linear_vel - (angular_vel * self.wheel_base as f64 / 2.0);
-        let right_wheel_speed = linear_vel + (angular_vel * self.wheel_base as f64 / 2.0);
+        let (left_speed, right_speed) = self.diff_drive.inverse_kinematics(linear_vel, angular_vel);
 
-        (left_wheel_speed as f32, right_wheel_speed as f32)
+        (left_speed as f32, right_speed as f32)
     }
 
     fn update_odometry(&mut self, dt: f32) {
         let linear_vel = self.current_twist.linear[0];
         let angular_vel = self.current_twist.angular[2];
 
-        // Update position using simple integration
-        let dx = linear_vel * (self.orientation.cos()) * dt as f64;
-        let dy = linear_vel * (self.orientation.sin()) * dt as f64;
-        let dtheta = angular_vel * dt as f64;
+        // Use differential drive algorithm for odometry update
+        let (new_x, new_y, new_theta) = self.diff_drive.update_odometry(
+            (self.position_x, self.position_y, self.orientation),
+            linear_vel,
+            angular_vel,
+            dt as f64
+        );
 
-        self.position_x += dx;
-        self.position_y += dy;
-        self.orientation += dtheta;
-
-        // Normalize orientation to [-π, π]
-        while self.orientation > std::f64::consts::PI {
-            self.orientation -= 2.0 * std::f64::consts::PI;
-        }
-        while self.orientation < -std::f64::consts::PI {
-            self.orientation += 2.0 * std::f64::consts::PI;
-        }
+        self.position_x = new_x;
+        self.position_y = new_y;
+        self.orientation = new_theta;
     }
 
     fn publish_drive_command(&self, left_speed: f32, right_speed: f32) {

@@ -6,6 +6,8 @@ Generic camera interface for vision input with support for multiple backends.
 
 The Camera Node provides a unified interface for capturing images from various camera sources. It supports multiple backends (OpenCV, V4L2) and publishes both raw image data and camera calibration information. The node handles camera initialization, frame capture, and configurable image parameters including resolution, framerate, and encoding format.
 
+**Hardware-Only**: This node requires actual camera hardware. It will not compile without a camera backend feature (`opencv-backend`, `v4l2-backend`, `realsense`, or `zed`). For testing without hardware, use the `sim2d` or `sim3d` simulation tools instead.
+
 ## Topics
 
 ### Publishers

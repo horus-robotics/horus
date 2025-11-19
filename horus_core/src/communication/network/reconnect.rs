@@ -1,7 +1,6 @@
 /// Reconnection logic with exponential backoff for network failures
 ///
 /// Production-grade reconnection handling for robust distributed systems
-
 use std::time::Duration;
 
 const INITIAL_BACKOFF: Duration = Duration::from_millis(100);
@@ -75,11 +74,10 @@ impl ReconnectStrategy {
         // Add jitter (±20%) to avoid thundering herd
         if self.jitter {
             use std::collections::hash_map::RandomState;
-            use std::hash::{BuildHasher, Hash, Hasher};
+            use std::hash::BuildHasher;
 
-            let mut hasher = RandomState::new().build_hasher();
-            std::thread::current().id().hash(&mut hasher);
-            let jitter_factor = 0.8 + (hasher.finish() % 40) as f64 / 100.0; // 0.8 to 1.2
+            let hash_value = RandomState::new().hash_one(std::thread::current().id());
+            let jitter_factor = 0.8 + (hash_value % 40) as f64 / 100.0; // 0.8 to 1.2
 
             Duration::from_millis((capped_delay.as_millis() as f64 * jitter_factor) as u64)
         } else {

@@ -1953,6 +1953,67 @@ fn dynamic_obstacle_system(
     }
 }
 
+/// Keyboard input system - handles keyboard shortcuts
+fn keyboard_input_system(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut ui_state: ResMut<ui::UiState>,
+) {
+    // Space - toggle pause/play
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        ui_state.paused = !ui_state.paused;
+        ui_state.status_message = if ui_state.paused {
+            "Simulation paused (Space)".to_string()
+        } else {
+            "Simulation resumed (Space)".to_string()
+        };
+    }
+
+    // R - reset simulation
+    if keyboard_input.just_pressed(KeyCode::KeyR) {
+        ui_state.reset_simulation = true;
+        ui_state.status_message = "Resetting simulation (R)...".to_string();
+    }
+}
+
+/// Reset simulation system - resets robot position and clears trajectory
+fn reset_system(
+    mut ui_state: ResMut<ui::UiState>,
+    mut physics_world: ResMut<PhysicsWorld>,
+    robot_query: Query<(&Robot, &Transform)>,
+    mut trajectory: ResMut<TrajectoryHistory>,
+    app_config: Res<AppConfig>,
+) {
+    if !ui_state.reset_simulation {
+        return;
+    }
+
+    // Clear the reset flag
+    ui_state.reset_simulation = false;
+
+    // Reset robot position
+    for (robot, _) in robot_query.iter() {
+        if let Some(rigid_body) = physics_world.rigid_body_set.get_mut(robot.rigid_body_handle) {
+            // Get initial position from config
+            let initial_pos = robot.config.position;
+
+            // Reset position and rotation
+            rigid_body.set_translation(vector![initial_pos[0], initial_pos[1]], true);
+            rigid_body.set_rotation(Rotation::new(0.0), true);
+
+            // Reset velocity
+            rigid_body.set_linvel(vector![0.0, 0.0], true);
+            rigid_body.set_angvel(0.0, true);
+
+            info!("Reset robot to initial position: ({}, {})", initial_pos[0], initial_pos[1]);
+        }
+    }
+
+    // Clear trajectory
+    trajectory.points.clear();
+
+    ui_state.status_message = "Simulation reset successfully".to_string();
+}
+
 /// World reload system - detects config changes and reloads world
 fn world_reload_system(
     mut commands: Commands,
@@ -2252,6 +2313,7 @@ fn main() -> Result<()> {
                 collision_detection_system,
                 collision_indicator_system,
                 mouse_camera_system,
+                keyboard_input_system,
                 camera_control_system,
             ),
         )
@@ -2261,6 +2323,7 @@ fn main() -> Result<()> {
             (
                 ui::ui_system,
                 ui::file_dialog_system,
+                reset_system,
                 world_reload_system,
                 robot_visual_reload_system,
                 dynamic_obstacle_system,  // Dynamic obstacle spawning/removal

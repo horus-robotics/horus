@@ -1,6 +1,10 @@
 use crate::{Imu, LaserScan, Odometry};
 use horus_core::error::HorusResult;
 
+// Import algorithms from horus_library/algorithms
+use crate::algorithms::ekf::EKF;
+use crate::algorithms::sensor_fusion::SensorFusion;
+
 // Type alias for cleaner signatures
 type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo};
@@ -10,20 +14,17 @@ use std::time::{SystemTime, UNIX_EPOCH};
 ///
 /// Fuses odometry, IMU, and lidar data to estimate robot pose using
 /// Extended Kalman Filter (EKF) for accurate localization.
+///
+/// This node is a thin wrapper around the pure algorithms in horus_library/algorithms.
 pub struct LocalizationNode {
     pose_publisher: Hub<Odometry>,
     odometry_subscriber: Hub<Odometry>,
     imu_subscriber: Hub<Imu>,
     lidar_subscriber: Hub<LaserScan>,
 
-    // State vector: [x, y, theta, vx, vy, omega]
-    state: [f64; 6],
-    covariance: [[f64; 6]; 6], // State covariance matrix
-
-    // Sensor configurations
-    process_noise: [[f64; 6]; 6],
-    odometry_noise: [[f64; 3]; 3],
-    imu_noise: [[f64; 3]; 3],
+    // Algorithm instances
+    ekf: EKF,
+    angular_velocity_fusion: SensorFusion,
 
     // Localization parameters
     frame_id: String,
@@ -53,18 +54,37 @@ impl LocalizationNode {
         imu_topic: &str,
         lidar_topic: &str,
     ) -> Result<Self> {
-        let mut node = Self {
+        // Create EKF instance with default noise parameters
+        let mut ekf = EKF::new();
+
+        // Configure process noise (motion model uncertainty)
+        let mut process_noise = [[0.0; 6]; 6];
+        process_noise[0][0] = 0.1; // x position
+        process_noise[1][1] = 0.1; // y position
+        process_noise[2][2] = 0.05; // theta
+        process_noise[3][3] = 0.2; // vx
+        process_noise[4][4] = 0.2; // vy
+        process_noise[5][5] = 0.1; // omega
+        ekf.set_process_noise(process_noise);
+
+        // Configure odometry measurement noise
+        let mut odometry_noise = [[0.0; 3]; 3];
+        odometry_noise[0][0] = 0.05; // x measurement noise
+        odometry_noise[1][1] = 0.05; // y measurement noise
+        odometry_noise[2][2] = 0.02; // theta measurement noise
+        ekf.set_odometry_noise(odometry_noise);
+
+        // Create sensor fusion for angular velocity (odometry + IMU)
+        let angular_velocity_fusion = SensorFusion::new();
+
+        Ok(Self {
             pose_publisher: Hub::new(pose_topic)?,
             odometry_subscriber: Hub::new(odom_topic)?,
             imu_subscriber: Hub::new(imu_topic)?,
             lidar_subscriber: Hub::new(lidar_topic)?,
 
-            state: [0.0; 6], // Initial state: all zeros
-            covariance: [[0.0; 6]; 6],
-
-            process_noise: [[0.0; 6]; 6],
-            odometry_noise: [[0.0; 3]; 3],
-            imu_noise: [[0.0; 3]; 3],
+            ekf,
+            angular_velocity_fusion,
 
             frame_id: "map".to_string(),
             child_frame_id: "base_link".to_string(),
@@ -76,49 +96,20 @@ impl LocalizationNode {
 
             landmarks: Vec::new(),
             landmark_detection_range: 10.0, // 10m detection range
-        };
-
-        // Initialize covariance matrix (high initial uncertainty)
-        for i in 0..6 {
-            node.covariance[i][i] = 1.0;
-        }
-
-        // Initialize process noise (motion model uncertainty)
-        node.process_noise[0][0] = 0.1; // x position
-        node.process_noise[1][1] = 0.1; // y position
-        node.process_noise[2][2] = 0.05; // theta
-        node.process_noise[3][3] = 0.2; // vx
-        node.process_noise[4][4] = 0.2; // vy
-        node.process_noise[5][5] = 0.1; // omega
-
-        // Initialize odometry measurement noise
-        node.odometry_noise[0][0] = 0.05; // x measurement noise
-        node.odometry_noise[1][1] = 0.05; // y measurement noise
-        node.odometry_noise[2][2] = 0.02; // theta measurement noise
-
-        // Initialize IMU measurement noise
-        node.imu_noise[0][0] = 0.1; // acceleration x
-        node.imu_noise[1][1] = 0.1; // acceleration y
-        node.imu_noise[2][2] = 0.05; // angular velocity z
-
-        Ok(node)
+        })
     }
 
     /// Set initial pose estimate
     pub fn set_initial_pose(&mut self, x: f64, y: f64, theta: f64) {
-        self.state[0] = x; // x position
-        self.state[1] = y; // y position
-        self.state[2] = theta; // orientation
-        self.state[3] = 0.0; // vx
-        self.state[4] = 0.0; // vy
-        self.state[5] = 0.0; // omega
+        let initial_state = [x, y, theta, 0.0, 0.0, 0.0];
+        self.ekf.set_state(initial_state);
 
         // Reset covariance to moderate uncertainty
+        let mut initial_cov = [[0.0; 6]; 6];
         for i in 0..6 {
-            for j in 0..6 {
-                self.covariance[i][j] = if i == j { 0.5 } else { 0.0 };
-            }
+            initial_cov[i][i] = 0.5;
         }
+        self.ekf.set_covariance(initial_cov);
 
         self.initial_pose_set = true;
     }
@@ -136,90 +127,53 @@ impl LocalizationNode {
 
     /// Get current pose estimate
     pub fn get_pose(&self) -> (f64, f64, f64) {
-        (self.state[0], self.state[1], self.state[2])
+        let state = self.ekf.get_state();
+        (state[0], state[1], state[2])
     }
 
     /// Get current velocity estimate
     pub fn get_velocity(&self) -> (f64, f64, f64) {
-        (self.state[3], self.state[4], self.state[5])
+        let state = self.ekf.get_state();
+        (state[3], state[4], state[5])
     }
 
     /// Get pose uncertainty (position covariance)
     pub fn get_position_uncertainty(&self) -> f64 {
-        (self.covariance[0][0] + self.covariance[1][1]).sqrt()
+        let cov = self.ekf.get_covariance();
+        (cov[0][0] + cov[1][1]).sqrt()
     }
 
     fn predict_step(&mut self, dt: f64) {
-        // Predict next state using motion model
-        // Simple kinematic model: x_{k+1} = x_k + vx*dt, y_{k+1} = y_k + vy*dt, etc.
-
-        let old_state = self.state;
-
-        // Position prediction
-        self.state[0] += old_state[3] * dt; // x += vx * dt
-        self.state[1] += old_state[4] * dt; // y += vy * dt
-        self.state[2] += old_state[5] * dt; // theta += omega * dt
-
-        // Normalize angle
-        self.state[2] = self.normalize_angle(self.state[2]);
-
-        // Velocities remain constant (no acceleration model)
-        // state[3], state[4], state[5] unchanged
-
-        // Predict covariance: P = F*P*F' + Q
-        let mut predicted_cov = [[0.0; 6]; 6];
-
-        // Simplified covariance prediction (identity motion model)
-        for (i, row) in predicted_cov.iter_mut().enumerate() {
-            for (j, val) in row.iter_mut().enumerate() {
-                *val = self.covariance[i][j] + self.process_noise[i][j] * dt;
-            }
-        }
-
-        self.covariance = predicted_cov;
+        // Use EKF prediction step
+        self.ekf.predict(dt);
     }
 
     fn update_with_odometry(&mut self, odom: &Odometry) {
         if !self.initial_pose_set {
             // Initialize pose from first odometry reading
             self.set_initial_pose(odom.pose.x, odom.pose.y, odom.pose.theta);
+
+            // Also initialize velocities
+            let mut state = self.ekf.get_state();
+            state[3] = odom.twist.linear[0]; // vx
+            state[4] = odom.twist.linear[1]; // vy
+            state[5] = odom.twist.angular[2]; // omega
+            self.ekf.set_state(state);
+            return;
         }
 
         // Measurement vector: [x, y, theta]
         let measurement = [odom.pose.x, odom.pose.y, odom.pose.theta];
 
-        // Expected measurement (predicted state)
-        let predicted = [self.state[0], self.state[1], self.state[2]];
+        // Use EKF odometry update
+        self.ekf.update_odometry(measurement);
 
-        // Innovation (measurement residual)
-        let mut innovation = [0.0; 3];
-        for i in 0..3 {
-            innovation[i] = measurement[i] - predicted[i];
-        }
-
-        // Normalize angle innovation
-        innovation[2] = self.normalize_angle(innovation[2]);
-
-        // Simplified Kalman update (assuming direct observation of position/orientation)
-        let kalman_gain = 0.3; // Simplified - should compute proper Kalman gain
-
-        // Update state
-        for (i, innov_val) in innovation.iter().enumerate().take(3) {
-            self.state[i] += kalman_gain * innov_val;
-        }
-
-        // Update velocities from odometry twist
-        self.state[3] = odom.twist.linear[0]; // vx
-        self.state[4] = odom.twist.linear[1]; // vy
-        self.state[5] = odom.twist.angular[2]; // omega
-
-        // Normalize orientation
-        self.state[2] = self.normalize_angle(self.state[2]);
-
-        // Update covariance (simplified)
-        for i in 0..3 {
-            self.covariance[i][i] *= 1.0 - kalman_gain;
-        }
+        // Update velocities from odometry twist (direct copy)
+        let mut state = self.ekf.get_state();
+        state[3] = odom.twist.linear[0]; // vx
+        state[4] = odom.twist.linear[1]; // vy
+        state[5] = odom.twist.angular[2]; // omega
+        self.ekf.set_state(state);
     }
 
     fn update_with_imu(&mut self, imu: &Imu) {
@@ -227,21 +181,42 @@ impl LocalizationNode {
             return; // Need initial pose before using IMU
         }
 
-        // Use IMU angular velocity to refine orientation prediction
-        let imu_omega = imu.angular_velocity[2];
+        let current_time = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs_f64();
 
-        // Weighted fusion of odometry and IMU angular velocity
-        let imu_weight = 0.3;
-        self.state[5] = (1.0 - imu_weight) * self.state[5] + imu_weight * imu_omega;
+        // Use sensor fusion for angular velocity (odometry + IMU)
+        let state = self.ekf.get_state();
+        let odom_omega = state[5];
+        let imu_omega = imu.angular_velocity[2] as f64;
+
+        // Clear old measurements and add new ones
+        self.angular_velocity_fusion.clear();
+
+        // Odometry has higher variance for angular velocity
+        self.angular_velocity_fusion.add_measurement_with_time("odom", odom_omega, 0.1, current_time);
+
+        // IMU has lower variance for angular velocity (more accurate)
+        self.angular_velocity_fusion.add_measurement_with_time("imu", imu_omega, 0.05, current_time);
+
+        // Fuse angular velocities
+        if let Some(fused_omega) = self.angular_velocity_fusion.fuse() {
+            let mut updated_state = state;
+            updated_state[5] = fused_omega;
+            self.ekf.set_state(updated_state);
+        }
 
         // Use IMU accelerations to validate velocity changes (simplified)
-        let accel_x = imu.linear_acceleration[0];
-        let accel_y = imu.linear_acceleration[1];
+        let accel_x = imu.linear_acceleration[0] as f64;
+        let accel_y = imu.linear_acceleration[1] as f64;
 
         // Simple acceleration-based velocity correction
         let dt = 0.01; // Assume ~100Hz IMU rate
-        self.state[3] += accel_x * dt * 0.1; // Small correction factor
-        self.state[4] += accel_y * dt * 0.1;
+        let mut updated_state = self.ekf.get_state();
+        updated_state[3] += accel_x * dt * 0.1; // Small correction factor
+        updated_state[4] += accel_y * dt * 0.1;
+        self.ekf.set_state(updated_state);
     }
 
     fn update_with_landmarks(&mut self, lidar: &LaserScan) {
@@ -250,9 +225,10 @@ impl LocalizationNode {
         }
 
         // Simplified landmark-based correction
-        let robot_x = self.state[0];
-        let robot_y = self.state[1];
-        let robot_theta = self.state[2];
+        let state = self.ekf.get_state();
+        let robot_x = state[0];
+        let robot_y = state[1];
+        let robot_theta = state[2];
 
         // Extract potential landmark observations from lidar
         for (i, &range) in lidar.ranges.iter().enumerate() {
@@ -284,8 +260,10 @@ impl LocalizationNode {
                     let position_error_y = observed_y - lm_y;
 
                     // Correct robot position estimate
-                    self.state[0] -= correction_weight * position_error_x;
-                    self.state[1] -= correction_weight * position_error_y;
+                    let mut updated_state = state;
+                    updated_state[0] -= correction_weight * position_error_x;
+                    updated_state[1] -= correction_weight * position_error_y;
+                    self.ekf.set_state(updated_state);
                 }
             }
         }
@@ -324,19 +302,23 @@ impl LocalizationNode {
             .try_into()
             .unwrap_or([0; 32]);
 
+        // Get state from EKF
+        let state = self.ekf.get_state();
+        let covariance = self.ekf.get_covariance();
+
         // Set pose
-        localized_pose.pose.x = self.state[0];
-        localized_pose.pose.y = self.state[1];
-        localized_pose.pose.theta = self.state[2];
+        localized_pose.pose.x = state[0];
+        localized_pose.pose.y = state[1];
+        localized_pose.pose.theta = state[2];
 
         // Set twist
-        localized_pose.twist.linear[0] = self.state[3];
-        localized_pose.twist.linear[1] = self.state[4];
-        localized_pose.twist.angular[2] = self.state[5];
+        localized_pose.twist.linear[0] = state[3];
+        localized_pose.twist.linear[1] = state[4];
+        localized_pose.twist.angular[2] = state[5];
 
         // Set covariances (simplified - only diagonal elements)
         for i in 0..6 {
-            localized_pose.pose_covariance[i * 6 + i] = self.covariance[i][i];
+            localized_pose.pose_covariance[i * 6 + i] = covariance[i][i];
         }
 
         localized_pose.timestamp = current_time;
@@ -346,12 +328,16 @@ impl LocalizationNode {
 
     /// Reset localization (useful for relocalization)
     pub fn reset(&mut self) {
-        self.state = [0.0; 6];
+        // Reset EKF state
+        self.ekf.set_state([0.0; 6]);
+
+        // Reset covariance to high uncertainty
+        let mut reset_cov = [[0.0; 6]; 6];
         for i in 0..6 {
-            for j in 0..6 {
-                self.covariance[i][j] = if i == j { 1.0 } else { 0.0 };
-            }
+            reset_cov[i][i] = 1.0;
         }
+        self.ekf.set_covariance(reset_cov);
+
         self.initial_pose_set = false;
     }
 

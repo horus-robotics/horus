@@ -1,7 +1,6 @@
 /// Message fragmentation for large payloads
 ///
 /// Automatically splits messages larger than MTU into fragments and reassembles them
-
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -154,10 +153,8 @@ impl FragmentedMessage {
 
     fn assemble(self) -> Vec<u8> {
         let mut result = Vec::new();
-        for frag in self.fragments {
-            if let Some(data) = frag {
-                result.extend_from_slice(&data);
-            }
+        for data in self.fragments.into_iter().flatten() {
+            result.extend_from_slice(&data);
         }
         result
     }

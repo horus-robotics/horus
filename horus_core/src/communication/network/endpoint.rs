@@ -72,8 +72,7 @@ pub fn parse_endpoint(input: &str) -> Result<Endpoint, String> {
     }
 
     // Check for router with port: "router:7777"
-    if location.starts_with("router:") {
-        let port_str = &location[7..];
+    if let Some(port_str) = location.strip_prefix("router:") {
         let port = port_str
             .parse::<u16>()
             .map_err(|e| format!("Invalid router port '{}': {}", port_str, e))?;

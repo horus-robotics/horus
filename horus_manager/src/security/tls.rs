@@ -135,7 +135,7 @@ impl TlsConfig {
 
         // Use openssl to generate self-signed certificate
         let output = Command::new("openssl")
-            .args(&[
+            .args([
                 "req",
                 "-x509",
                 "-newkey",

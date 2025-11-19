@@ -34,10 +34,6 @@ cargo build --release
 cd horus_py
 maturin develop --release
 
-# Build C bindings (optional)
-cd horus_cpp
-make
-
 # Build documentation site (optional)
 cd docs-site
 npm install
@@ -232,7 +228,6 @@ HORUS/
 ├── horus_core/         # Core IPC implementation
 ├── horus_macros/       # Procedural macros
 ├── horus_py/           # Python bindings
-├── horus_cpp/          # C++ bindings
 ├── horus_library/      # Standard messages/nodes
 ├── horus/              # CLI tool (horus command)
 ├── docs-site/          # Documentation website

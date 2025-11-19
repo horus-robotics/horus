@@ -76,11 +76,30 @@ pub mod prelude {
     pub use horus_library::messages::*;
 
     // Re-export commonly used node types from horus_library
+    // Hardware-independent nodes (always available)
     pub use horus_library::nodes::{
-        DifferentialDriveNode, DigitalIONode, EmergencyStopNode, EncoderNode, ImuNode,
-        JoystickInputNode, KeyboardInputNode, LidarNode, LocalizationNode, ModbusNode,
-        PathPlannerNode, PidControllerNode, ServoControllerNode,
+        DifferentialDriveNode, EmergencyStopNode, LocalizationNode, PathPlannerNode,
+        PidControllerNode,
     };
+
+    // Feature-gated hardware nodes
+    #[cfg(feature = "gpio-hardware")]
+    pub use horus_library::nodes::{DigitalIONode, EncoderNode, ServoControllerNode};
+
+    #[cfg(any(feature = "bno055-imu", feature = "mpu6050-imu"))]
+    pub use horus_library::nodes::ImuNode;
+
+    #[cfg(feature = "gilrs")]
+    pub use horus_library::nodes::JoystickInputNode;
+
+    #[cfg(feature = "crossterm")]
+    pub use horus_library::nodes::KeyboardInputNode;
+
+    #[cfg(feature = "rplidar")]
+    pub use horus_library::nodes::LidarNode;
+
+    #[cfg(feature = "modbus-hardware")]
+    pub use horus_library::nodes::ModbusNode;
 }
 
 /// Version information

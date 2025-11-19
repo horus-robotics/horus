@@ -703,6 +703,30 @@ else
     echo -e "${YELLOW}${NC}  Snake Game example not found in source"
 fi
 
+# Copy wallesim example (WALL-E 3D simulation)
+if [ -d "horus_library/apps/wallesim" ]; then
+    echo -e "${CYAN}  ${NC} Installing WALL-E 3D Simulation example..."
+
+    # Copy entire wallesim directory to preserve structure
+    cp -r horus_library/apps/wallesim "$EXAMPLES_DIR/" 2>/dev/null || true
+
+    # Clean up unnecessary files from the copied example
+    rm -rf "$EXAMPLES_DIR/wallesim/.horus" 2>/dev/null || true
+    rm -rf "$EXAMPLES_DIR/wallesim/.gitignore" 2>/dev/null || true
+    rm -rf "$EXAMPLES_DIR/wallesim/.claude" 2>/dev/null || true
+
+    # Verify the copy
+    if [ -f "$EXAMPLES_DIR/wallesim/world.yaml" ] && [ -f "$EXAMPLES_DIR/wallesim/models/walle/walle.urdf" ]; then
+        echo -e "${GREEN}${NC} Installed WALL-E 3D Simulation example"
+        echo -e "${CYAN}     ${NC} World: world.yaml (Axiom cargo bay)"
+        echo -e "${CYAN}     ${NC} Robot: models/walle/walle.urdf"
+    else
+        echo -e "${YELLOW}${NC}  Warning: WALL-E simulation example may be incomplete"
+    fi
+else
+    echo -e "${YELLOW}${NC}  WALL-E simulation example not found in source"
+fi
+
 echo ""
 
 # Save installed version for future updates

@@ -840,7 +840,7 @@ print(f"Message age: {age*1000:.1f}ms")
 ```python
 # Python node with typed hub
 from horus._horus import PyCmdVelHub
-from horus.library import CmdVel
+from horus import CmdVel
 
 cmd_hub = PyCmdVelHub("cmd_vel")
 cmd_hub.send(CmdVel(linear=1.0, angular=0.5))

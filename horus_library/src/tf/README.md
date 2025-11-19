@@ -55,7 +55,7 @@ Robot with camera mounted on top:
 
 ###  Completed
 - [x] Technical blueprint and specification
-- [x] API design (Rust, Python, C++)
+- [x] API design (Rust, Python)
 - [x] Architecture decisions
 
 ### 🚧 In Progress
@@ -75,7 +75,6 @@ Robot with camera mounted on top:
 
 **Phase 3 (Week 5-6):** Multi-language support
 - Python bindings (PyO3)
-- C++ bindings (FFI)
 - Examples and tests
 
 ---
@@ -119,23 +118,6 @@ broadcaster.send_static_transform(
 tree = TFTree()
 tf = tree.lookup_transform("camera_frame", "base_link")
 point_base = tf.transform_point(point_camera)
-```
-
-### C++
-```cpp
-#include <horus/tf.hpp>
-
-using namespace horus::tf;
-
-// Define transforms
-TFBroadcaster broadcaster;
-Transform camera_tf({0.5, 0.0, 0.2}, {0.0, 0.0, 0.0, 1.0});
-broadcaster.send_static_transform("base_link", "camera_frame", camera_tf);
-
-// Use transforms
-TFTree tree;
-auto tf = tree.lookup_transform("camera_frame", "base_link", now());
-auto point_base = tf.transform_point(point_camera);
 ```
 
 ---

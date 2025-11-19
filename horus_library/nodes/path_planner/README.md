@@ -8,6 +8,29 @@ The Path Planner Node implements multiple path planning algorithms for autonomou
 
 This node is designed for global path planning in autonomous navigation systems and integrates seamlessly with local planners, costmaps, and control nodes.
 
+## Architecture
+
+**This node is a thin wrapper** around the pure algorithms in `horus_library/algorithms/`:
+
+- **`algorithms::astar::AStar`** - Grid-based A* pathfinding algorithm
+- **`algorithms::rrt::RRT`** - Sampling-based RRT motion planning algorithm
+- **`algorithms::occupancy_grid::OccupancyGrid`** - 2D occupancy grid mapping with ray tracing
+
+The node handles:
+- Topic subscription/publishing (Hub I/O)
+- Lidar data reception and processing
+- Coordinate frame conversions (world ↔ grid)
+- Dynamic replanning triggers
+- Path validity checking
+
+The algorithms handle:
+- Pure pathfinding computation (no I/O)
+- Obstacle avoidance logic
+- Path optimization
+- Grid operations
+
+This separation enables algorithm reuse across different nodes and simplifies testing.
+
 ## Topics
 
 ### Subscribers

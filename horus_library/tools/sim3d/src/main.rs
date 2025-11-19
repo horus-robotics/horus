@@ -66,7 +66,8 @@ fn run_visual_mode(cli: Cli) {
             })
             .set(AssetPlugin {
                 ..default()
-            }),
+            })
+            .disable::<bevy::log::LogPlugin>(), // Disable since we init tracing manually
     );
 
     #[cfg(feature = "visual")]

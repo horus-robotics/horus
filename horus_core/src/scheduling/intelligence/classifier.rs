@@ -97,8 +97,10 @@ impl TierClassifier {
 
     /// Get statistics about tier distribution
     pub fn tier_stats(&self) -> TierStats {
-        let mut stats = TierStats::default();
-        stats.total_nodes = self.assignments.len();
+        let mut stats = TierStats {
+            total_nodes: self.assignments.len(),
+            ..Default::default()
+        };
 
         for tier in self.assignments.values() {
             match tier {

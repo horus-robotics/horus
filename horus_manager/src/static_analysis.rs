@@ -40,9 +40,9 @@ impl LinkUsageTracker {
                     topic.yellow(),
                     producers.to_string().red().bold()
                 ));
-                warnings.push(format!(
-                    "    Hint: Link is Single-Producer-Single-Consumer. Use Hub<T> for multiple producers."
-                ));
+                warnings.push(
+                    "    Hint: Link is Single-Producer-Single-Consumer. Use Hub<T> for multiple producers.".to_string()
+                );
             }
 
             if *consumers > 1 {
@@ -51,9 +51,9 @@ impl LinkUsageTracker {
                     topic.yellow(),
                     consumers.to_string().red().bold()
                 ));
-                warnings.push(format!(
-                    "    Hint: Link is Single-Producer-Single-Consumer. Use Hub<T> for multiple consumers."
-                ));
+                warnings.push(
+                    "    Hint: Link is Single-Producer-Single-Consumer. Use Hub<T> for multiple consumers.".to_string()
+                );
             }
         }
 

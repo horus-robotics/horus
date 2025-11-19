@@ -1,88 +1,53 @@
-# HORUS Library for Python
+# HORUS Library - Python Bindings
 
-Standard robotics messages, nodes, and algorithms for HORUS.
+Standard robotics messages, nodes, and algorithms for HORUS (Python).
+
+## Package Structure
+
+This package mirrors the Rust `horus_library` structure:
+
+```
+horus_library/                  (Python package)
+├── messages/                   # Standard message types
+│   ├── __init__.py            # Geometry, Control, Sensor, etc.
+│   └── (re-exports from _library.so)
+├── nodes/                      # Reusable robotics nodes (future)
+│   └── __init__.py
+├── algorithms/                 # Common algorithms (future)
+│   └── __init__.py
+├── _library.abi3.so           # Compiled Rust extension
+└── __init__.py                # Package root (re-exports everything)
+```
 
 ## Installation
 
-```bash
-cd horus_library/python
-maturin develop --release
-```
+Built automatically with the main HORUS installation.
 
-Or install from PyPI (when published):
-```bash
-pip install horus-library
-```
+## Usage
 
-## Quick Start
-
-```python
-from horus.library import Pose2D, Twist, Transform
-
-# Create a 2D pose
-pose = Pose2D(x=1.0, y=2.0, theta=0.5)
-print(pose)  # Pose2D(x=1.000, y=2.000, theta=0.500)
-
-# Create a twist command (2D robot)
-cmd = Twist.new_2d(linear_x=0.5, angular_z=0.1)
-print(cmd)  # Twist(linear=[0.50, 0.00, 0.00], angular=[0.00, 0.00, 0.10])
-
-# Create a transform
-tf = Transform.from_pose_2d(pose)
-print(tf)
-```
-
-## Available Message Types
-
-### Geometry Messages
-- **Pose2D** - 2D position and orientation (x, y, theta)
-- **Twist** - Linear and angular velocity (3D)
-- **Transform** - 3D transformation with translation and quaternion rotation
-- **Point3** - 3D point
-- **Vector3** - 3D vector with operations (dot, cross, normalize)
-- **Quaternion** - 3D rotation representation
-
-## Usage with HORUS Nodes
+### Recommended: Via main `horus` package
 
 ```python
 import horus
-from horus.library import Pose2D, Twist
 
-def robot_tick(node):
-    # Get current pose
-    if node.has_msg("pose"):
-        pose = node.get("pose")  # Returns Pose2D
-        print(f"Robot at: {pose}")
-
-    # Send velocity command
-    cmd = Twist.new_2d(linear_x=0.5, angular_z=0.0)
-    node.send("cmd_vel", cmd)
-
-robot = horus.Node(
-    name="robot_controller",
-    subs="pose",
-    pubs="cmd_vel",
-    tick=robot_tick
-)
-
-horus.run(robot)
+# All library types available at top level
+pose = horus.Pose2D(x=1.0, y=2.0, theta=0.5)
+cmd = horus.CmdVel(linear=1.0, angular=0.5)
+scan = horus.LaserScan()
 ```
 
-## Features
+### Alternative: Organized submodule imports
 
--  Type-safe message classes
--  Zero-copy where possible (same memory layout as Rust)
--  Familiar Pythonic API
--  All methods documented
--  Compatible with horus core package
+```python
+from horus_library.messages import Pose2D, CmdVel, LaserScan
+# from horus_library.nodes import ...  # Future
+# from horus_library.algorithms import ...  # Future
+```
 
-## Coming Soon
+## Available Messages
 
-- Sensor messages (LaserScan, IMU, Odometry)
-- Control messages (MotorCommand, ServoCommand)
-- Standard nodes (PIDController, Logger, etc.)
-- Algorithms (filters, transforms, etc.)
+See [Message Types Reference](https://docs.horus-registry.dev/messages) for complete documentation.
 
-## License
+## Cross-Language Compatibility
 
-Apache-2.0
+All message types are binary-compatible with Rust, enabling seamless Python ↔ Rust communication.

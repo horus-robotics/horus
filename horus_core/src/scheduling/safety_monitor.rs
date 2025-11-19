@@ -77,13 +77,19 @@ pub struct WCETEnforcer {
     critical_overruns: AtomicU64,
 }
 
-impl WCETEnforcer {
-    pub fn new() -> Self {
+impl Default for WCETEnforcer {
+    fn default() -> Self {
         Self {
             budgets: HashMap::new(),
             overruns: AtomicU64::new(0),
             critical_overruns: AtomicU64::new(0),
         }
+    }
+}
+
+impl WCETEnforcer {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Set WCET budget for a node

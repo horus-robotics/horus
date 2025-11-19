@@ -2,7 +2,6 @@
 ///
 /// Minimal overhead wire protocol for network communication
 /// Fixed 24-byte header + variable topic name + payload
-
 use std::mem;
 
 /// HORUS Binary Protocol packet format
@@ -39,7 +38,6 @@ use std::mem;
 /// ```
 ///
 /// Total header size: 24 bytes + topic_name_len
-
 const MAGIC: u32 = 0x484F5255; // "HORU" in ASCII
 const VERSION: u8 = 0x01;
 

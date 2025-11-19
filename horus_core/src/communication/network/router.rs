@@ -7,7 +7,6 @@
 /// - Zero-allocation buffer pooling
 /// - Batched operations
 /// - Zero-copy where possible
-
 use crate::communication::network::protocol::{HorusPacket, MessageType};
 use crate::communication::network::fragmentation::{Fragment, FragmentManager};
 use crate::error::HorusResult;

@@ -51,7 +51,6 @@ test = [
 
 [tool.maturin]
 features = ["pyo3/extension-module"]
-python-source = "python"
 module-name = "horus._horus"
 
 [tool.pytest.ini_options]
@@ -76,7 +75,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["python/horus"]
+source = ["horus"]
 omit = [
     "*/tests/*",
     "*/__pycache__/*",

@@ -219,7 +219,7 @@ pub fn execute_build_only(files: Vec<PathBuf>, release: bool, clean: bool) -> Re
     if language == "rust" {
         use crate::static_analysis;
         // Non-fatal: warnings only, don't fail the build
-        if let Err(e) = static_analysis::check_link_usage(&target_file) {
+        if let Err(e) = static_analysis::check_link_usage(target_file) {
             eprintln!("[WARNING] Static analysis error: {}", e);
         }
     }
@@ -255,7 +255,7 @@ pub fn execute_build_only(files: Vec<PathBuf>, release: bool, clean: bool) -> Re
             };
 
             println!("{} Compiling with {}...", "".cyan(), compiler);
-            compile_c_file(&target_file, &output_path, compiler, release)?;
+            compile_c_file(target_file, &output_path, compiler, release)?;
             println!(
                 "{} Successfully built: {}",
                 "".green(),
@@ -301,6 +301,17 @@ path = "{}"
                 source_relative_path
             );
 
+            // Auto-detect nodes and required features
+            use crate::node_detector;
+            let auto_features = node_detector::detect_features_from_file(target_file).unwrap_or_default();
+            if !auto_features.is_empty() {
+                eprintln!(
+                    "  {} Auto-detected hardware nodes (features: {})",
+                    "".cyan(),
+                    auto_features.join(", ").yellow()
+                );
+            }
+
             // Find HORUS source directory
             let horus_source = find_horus_source_dir()?;
             println!(
@@ -321,17 +332,34 @@ path = "{}"
                 let dep_path = horus_source.join(dep_name);
 
                 if dep_path.exists() && dep_path.join("Cargo.toml").exists() {
-                    cargo_toml.push_str(&format!(
-                        "{} = {{ path = \"{}\" }}\n",
-                        dep_name,
-                        dep_path.display()
-                    ));
-                    println!(
-                        "  {} Added dependency: {} -> {}",
-                        "".cyan(),
-                        dep,
-                        dep_path.display()
-                    );
+                    // Auto-inject features for horus_library
+                    if dep_name == "horus_library" && !auto_features.is_empty() {
+                        cargo_toml.push_str(&format!(
+                            "{} = {{ path = \"{}\", features = [{}] }}\n",
+                            dep_name,
+                            dep_path.display(),
+                            auto_features.iter().map(|f| format!("\"{}\"", f)).collect::<Vec<_>>().join(", ")
+                        ));
+                        println!(
+                            "  {} Added dependency: {} -> {} (auto-features: {})",
+                            "".cyan(),
+                            dep,
+                            dep_path.display(),
+                            auto_features.join(", ").yellow()
+                        );
+                    } else {
+                        cargo_toml.push_str(&format!(
+                            "{} = {{ path = \"{}\" }}\n",
+                            dep_name,
+                            dep_path.display()
+                        ));
+                        println!(
+                            "  {} Added dependency: {} -> {}",
+                            "".cyan(),
+                            dep,
+                            dep_path.display()
+                        );
+                    }
                 } else {
                     eprintln!(
                         "  {} Warning: dependency {} not found at {}",
@@ -425,9 +453,8 @@ path = "{}"
             if Path::new("horus.yaml").exists() {
                 if let Ok(yaml_content) = fs::read_to_string("horus.yaml") {
                     if let Ok(yaml) = serde_yaml::from_str::<serde_yaml::Value>(&yaml_content) {
-                        if let Some(deps_value) = yaml.get("dependencies") {
-                            if let serde_yaml::Value::Sequence(list) = deps_value {
-                                for item in list {
+                        if let Some(serde_yaml::Value::Sequence(list)) = yaml.get("dependencies") {
+                            for item in list {
                                     if let Some(dep_str) = parse_yaml_cargo_dependency(item) {
                                         // Extract dependency name from the generated string (e.g., "serde = ..." -> "serde")
                                         let dep_name = dep_str.split('=').next().unwrap().trim();
@@ -438,7 +465,6 @@ path = "{}"
                                         }
                                     }
                                 }
-                            }
                         }
                     }
                 }
@@ -691,7 +717,7 @@ fn execute_from_horus_yaml(
     env::set_current_dir(project_dir)?;
 
     let result = (|| -> Result<()> {
-        // Check if this is a C/C++ project with build system
+        // Check if this is a C project with build system
         if Path::new("Makefile").exists() || Path::new("makefile").exists() {
             return execute_makefile_project(args, release, clean);
         }
@@ -1068,10 +1094,8 @@ fn execute_multiple_files(
                     let name = node_name.clone();
                     let handle = std::thread::spawn(move || {
                         let reader = BufReader::new(stdout);
-                        for line in reader.lines() {
-                            if let Ok(line) = line {
-                                println!("{} {}", format!("[{}]", name).color(color), line);
-                            }
+                        for line in reader.lines().map_while(Result::ok) {
+                            println!("{} {}", format!("[{}]", name).color(color), line);
                         }
                     });
                     handles.push(handle);
@@ -1082,10 +1106,8 @@ fn execute_multiple_files(
                     let name = node_name.clone();
                     let handle = std::thread::spawn(move || {
                         let reader = BufReader::new(stderr);
-                        for line in reader.lines() {
-                            if let Ok(line) = line {
-                                eprintln!("{} {}", format!("[{}]", name).color(color), line);
-                            }
+                        for line in reader.lines().map_while(Result::ok) {
+                            eprintln!("{} {}", format!("[{}]", name).color(color), line);
                         }
                     });
                     handles.push(handle);
@@ -1331,12 +1353,10 @@ path = "{}"
     if Path::new("horus.yaml").exists() {
         if let Ok(yaml_content) = fs::read_to_string("horus.yaml") {
             if let Ok(yaml) = serde_yaml::from_str::<serde_yaml::Value>(&yaml_content) {
-                if let Some(deps_value) = yaml.get("dependencies") {
-                    if let serde_yaml::Value::Sequence(list) = deps_value {
-                        for item in list {
-                            if let Some(dep_str) = parse_yaml_cargo_dependency(item) {
-                                cargo_toml.push_str(&format!("{}\n", dep_str));
-                            }
+                if let Some(serde_yaml::Value::Sequence(list)) = yaml.get("dependencies") {
+                    for item in list {
+                        if let Some(dep_str) = parse_yaml_cargo_dependency(item) {
+                            cargo_toml.push_str(&format!("{}\n", dep_str));
                         }
                     }
                 }
@@ -1460,14 +1480,12 @@ path = "{}"
             if Path::new("horus.yaml").exists() {
                 if let Ok(yaml_content) = fs::read_to_string("horus.yaml") {
                     if let Ok(yaml) = serde_yaml::from_str::<serde_yaml::Value>(&yaml_content) {
-                        if let Some(deps_value) = yaml.get("dependencies") {
-                            if let serde_yaml::Value::Sequence(list) = deps_value {
-                                for item in list {
+                        if let Some(serde_yaml::Value::Sequence(list)) = yaml.get("dependencies") {
+                            for item in list {
                                     if let Some(dep_str) = parse_yaml_cargo_dependency(item) {
                                         cargo_toml.push_str(&format!("{}\n", dep_str));
                                     }
                                 }
-                            }
                         }
                     }
                 }
@@ -1599,7 +1617,7 @@ fn resolve_glob_pattern(pattern: &str) -> Result<Vec<ExecutionTarget>> {
         bail!("No executable files found matching pattern: {}\n\n{}\n  {} Supported extensions: {}\n  {} Check pattern: {}",
             pattern.green(),
             "No matches found:".yellow(),
-            "•".cyan(), ".rs, .py, .c, .cc, .cpp, .horus".green(),
+            "•".cyan(), ".rs, .py, .c, .horus".green(),
             "•".cyan(), "Use quotes around patterns like \"nodes/*.py\"".dimmed()
         );
     }
@@ -1679,7 +1697,7 @@ fn detect_language(file: &Path) -> Result<String> {
             file.display(),
             "Supported file types:".yellow(),
             "•".cyan(),
-            ".rs (Rust), .py (Python), .c/.cc/.cpp (C/C++)".green(),
+            ".rs (Rust), .py (Python), .c (C drivers)".green(),
             "•".cyan(),
             file.extension()
                 .and_then(|s| s.to_str())
@@ -1774,8 +1792,8 @@ fn parse_rust_import(line: &str) -> Option<String> {
     let line = line.trim();
 
     // use horus_library::*
-    if line.starts_with("use ") {
-        let parts: Vec<&str> = line[4..].split("::").collect();
+    if let Some(rest) = line.strip_prefix("use ") {
+        let parts: Vec<&str> = rest.split("::").collect();
         if !parts.is_empty() {
             let package = parts[0].trim_end_matches(';');
             if package.starts_with("horus") {
@@ -1785,8 +1803,8 @@ fn parse_rust_import(line: &str) -> Option<String> {
     }
 
     // extern crate horus_library
-    if line.starts_with("extern crate ") {
-        let package = line[13..].trim_end_matches(';').trim();
+    if let Some(rest) = line.strip_prefix("extern crate ") {
+        let package = rest.trim_end_matches(';').trim();
         if package.starts_with("horus") {
             return Some(package.to_string());
         }
@@ -1800,16 +1818,16 @@ fn parse_python_import(line: &str) -> Option<String> {
     let line = line.trim();
 
     // import horus
-    if line.starts_with("import ") {
-        let package = line[7..].split_whitespace().next()?;
+    if let Some(rest) = line.strip_prefix("import ") {
+        let package = rest.split_whitespace().next()?;
         if package.starts_with("horus") {
             return Some(package.split('.').next()?.to_string());
         }
     }
 
     // from horus_library import
-    if line.starts_with("from ") {
-        let parts: Vec<&str> = line[5..].split(" import ").collect();
+    if let Some(rest) = line.strip_prefix("from ") {
+        let parts: Vec<&str> = rest.split(" import ").collect();
         if !parts.is_empty() {
             let package = parts[0].trim();
             if package.starts_with("horus") {
@@ -1832,8 +1850,7 @@ fn parse_all_python_imports(line: &str) -> Option<String> {
 
     // import numpy
     // import numpy as np
-    if line.starts_with("import ") {
-        let rest = &line[7..];
+    if let Some(rest) = line.strip_prefix("import ") {
         let package = rest.split_whitespace().next()?.split('.').next()?;
         // Skip relative imports and standard library
         if !is_stdlib_package(package) && !package.starts_with('.') {
@@ -1842,8 +1859,8 @@ fn parse_all_python_imports(line: &str) -> Option<String> {
     }
 
     // from numpy import something
-    if line.starts_with("from ") {
-        let parts: Vec<&str> = line[5..].split(" import ").collect();
+    if let Some(rest) = line.strip_prefix("from ") {
+        let parts: Vec<&str> = rest.split(" import ").collect();
         if !parts.is_empty() {
             let package = parts[0].trim().split('.').next()?;
             // Skip relative imports and standard library
@@ -1933,8 +1950,8 @@ fn parse_yaml_cargo_dependency(value: &serde_yaml::Value) -> Option<String> {
             }
 
             // Parse cargo: or pip: prefixed dependencies
-            let dep_clean = if dep.starts_with("cargo:") {
-                &dep[6..]  // Remove "cargo:" prefix
+            let dep_clean = if let Some(rest) = dep.strip_prefix("cargo:") {
+                rest  // Remove "cargo:" prefix
             } else if dep.starts_with("pip:") {
                 // Skip pip dependencies in Cargo.toml
                 return None;
@@ -2458,38 +2475,36 @@ pub fn parse_horus_yaml_ignore(path: &str) -> Result<IgnorePatterns> {
         Ok(yaml) => {
             let mut ignore = IgnorePatterns::default();
 
-            if let Some(ignore_section) = yaml.get("ignore") {
-                if let serde_yaml::Value::Mapping(ignore_map) = ignore_section {
-                    // Parse files
-                    if let Some(serde_yaml::Value::Sequence(files)) =
-                        ignore_map.get(&serde_yaml::Value::String("files".to_string()))
-                    {
-                        for file in files {
-                            if let serde_yaml::Value::String(pattern) = file {
-                                ignore.files.push(pattern.clone());
-                            }
+            if let Some(serde_yaml::Value::Mapping(ignore_map)) = yaml.get("ignore") {
+                // Parse files
+                if let Some(serde_yaml::Value::Sequence(files)) =
+                    ignore_map.get(serde_yaml::Value::String("files".to_string()))
+                {
+                    for file in files {
+                        if let serde_yaml::Value::String(pattern) = file {
+                            ignore.files.push(pattern.clone());
                         }
                     }
+                }
 
-                    // Parse directories
-                    if let Some(serde_yaml::Value::Sequence(dirs)) =
-                        ignore_map.get(&serde_yaml::Value::String("directories".to_string()))
-                    {
-                        for dir in dirs {
-                            if let serde_yaml::Value::String(pattern) = dir {
-                                ignore.directories.push(pattern.clone());
-                            }
+                // Parse directories
+                if let Some(serde_yaml::Value::Sequence(dirs)) =
+                    ignore_map.get(serde_yaml::Value::String("directories".to_string()))
+                {
+                    for dir in dirs {
+                        if let serde_yaml::Value::String(pattern) = dir {
+                            ignore.directories.push(pattern.clone());
                         }
                     }
+                }
 
-                    // Parse packages
-                    if let Some(serde_yaml::Value::Sequence(pkgs)) =
-                        ignore_map.get(&serde_yaml::Value::String("packages".to_string()))
-                    {
-                        for pkg in pkgs {
-                            if let serde_yaml::Value::String(package) = pkg {
-                                ignore.packages.push(package.clone());
-                            }
+                // Parse packages
+                if let Some(serde_yaml::Value::Sequence(pkgs)) =
+                    ignore_map.get(serde_yaml::Value::String("packages".to_string()))
+                {
+                    for pkg in pkgs {
+                        if let serde_yaml::Value::String(package) = pkg {
+                            ignore.packages.push(package.clone());
                         }
                     }
                 }
@@ -2707,15 +2722,17 @@ fn split_dependencies(deps: HashSet<String>) -> (Vec<String>, Vec<PipPackage>, V
 /// Split dependencies including path dependencies
 /// Returns: (horus_packages, pip_packages, cargo_packages, path_packages)
 /// path_packages is Vec<(name, path)>
-fn split_dependencies_with_path_context(
-    deps: HashSet<String>,
-    context_language: Option<&str>,
-) -> (
+type SplitDependencies = (
     Vec<String>,
     Vec<PipPackage>,
     Vec<CargoPackage>,
     Vec<(String, String)>,
-) {
+);
+
+fn split_dependencies_with_path_context(
+    deps: HashSet<String>,
+    context_language: Option<&str>,
+) -> SplitDependencies {
     let mut horus_packages = Vec::new();
     let mut pip_packages = Vec::new();
     let mut cargo_packages = Vec::new();
@@ -2880,7 +2897,7 @@ fn install_pip_packages(packages: Vec<PipPackage>) -> Result<()> {
 
             // Install package with pip to cache directory using system pip
             let mut cmd = Command::new(&python_cmd);
-            cmd.args(&[
+            cmd.args([
                 "-m",
                 "pip",
                 "install",
@@ -2991,7 +3008,7 @@ fn install_cargo_packages(packages: Vec<CargoPackage>) -> Result<()> {
             cmd.arg("install");
 
             if let Some(version) = &pkg.version {
-                cmd.arg(&format!("{}@{}", pkg.name, version));
+                cmd.arg(format!("{}@{}", pkg.name, version));
             } else {
                 cmd.arg(&pkg.name);
             }
@@ -3869,17 +3886,15 @@ path = "{}"
             if Path::new("horus.yaml").exists() {
                 if let Ok(yaml_content) = fs::read_to_string("horus.yaml") {
                     if let Ok(yaml) = serde_yaml::from_str::<serde_yaml::Value>(&yaml_content) {
-                        if let Some(deps_value) = yaml.get("dependencies") {
-                            if let serde_yaml::Value::Sequence(list) = deps_value {
-                                for item in list {
-                                    if let Some(dep_str) = parse_yaml_cargo_dependency(item) {
-                                        // Extract dependency name from the generated string (e.g., "serde = ..." -> "serde")
-                                        let dep_name = dep_str.split('=').next().unwrap().trim();
+                        if let Some(serde_yaml::Value::Sequence(list)) = yaml.get("dependencies") {
+                            for item in list {
+                                if let Some(dep_str) = parse_yaml_cargo_dependency(item) {
+                                    // Extract dependency name from the generated string (e.g., "serde = ..." -> "serde")
+                                    let dep_name = dep_str.split('=').next().unwrap().trim();
 
-                                        // Skip if already added from cargo_packages
-                                        if !added_cargo_deps.contains(dep_name) {
-                                            cargo_toml.push_str(&format!("{}\n", dep_str));
-                                        }
+                                    // Skip if already added from cargo_packages
+                                    if !added_cargo_deps.contains(dep_name) {
+                                        cargo_toml.push_str(&format!("{}\n", dep_str));
                                     }
                                 }
                             }
@@ -3953,8 +3968,8 @@ fn get_project_name() -> Result<String> {
     if Path::new("Cargo.toml").exists() {
         let content = fs::read_to_string("Cargo.toml")?;
         for line in content.lines() {
-            if line.starts_with("name = ") {
-                let name = line[7..].trim_matches('"').trim_matches('\'');
+            if let Some(rest) = line.strip_prefix("name = ") {
+                let name = rest.trim_matches('"').trim_matches('\'');
                 return Ok(name.to_string());
             }
         }
@@ -4019,22 +4034,8 @@ fn setup_c_environment() -> Result<()> {
     // Copy horus.h header file to .horus/include/
     let header_path = include_dir.join("horus.h");
     if !header_path.exists() {
-        // Try to copy from horus_cpp directory first
-        let possible_h_paths = ["horus_cpp/include/horus.h", "../horus_cpp/include/horus.h"];
-
-        let mut h_found = false;
-        for path in &possible_h_paths {
-            let p = PathBuf::from(path);
-            if p.exists() {
-                fs::copy(&p, &header_path)?;
-                println!("  {} Installed horus.h", "".green());
-                h_found = true;
-                break;
-            }
-        }
-
-        // Fallback to embedded horus.h content if not found
-        if !h_found {
+        // Create embedded horus.h content for C driver integration
+        {
             // Embedded horus.h content
             let header_content = r#"// HORUS C API - Hardware driver integration interface
 #ifndef HORUS_H
@@ -4164,82 +4165,13 @@ typedef struct {
         }
     }
 
-    // Copy horus.hpp C++ header file to .horus/include/
-    let hpp_header_path = include_dir.join("horus.hpp");
-    if !hpp_header_path.exists() {
-        // Try to find horus.hpp in horus_cpp directory
-        let possible_hpp_paths = [
-            "horus_cpp/include/horus.hpp",
-            "../horus_cpp/include/horus.hpp",
-            "target/horus_cpp/include/horus.hpp",
-        ];
-
-        let mut hpp_found = false;
-        for path in &possible_hpp_paths {
-            let p = PathBuf::from(path);
-            if p.exists() {
-                fs::copy(&p, &hpp_header_path)?;
-                println!("  {} Installed horus.hpp", "".green());
-                hpp_found = true;
-                break;
-            }
-        }
-
-        if !hpp_found {
-            println!(
-                "  {} horus.hpp not found - C++ framework API not available",
-                "".yellow()
-            );
-        }
-    }
-
-    // Check if horus_cpp library exists in .horus/lib/
-    let lib_name = if cfg!(target_os = "windows") {
-        "horus_cpp.dll"
-    } else if cfg!(target_os = "macos") {
-        "libhorus_cpp.dylib"
-    } else {
-        "libhorus_cpp.so"
-    };
-
-    let lib_path = lib_dir.join(lib_name);
-    if !lib_path.exists() {
-        // Try to find and copy horus_cpp library
-        if let Ok(horus_cpp_lib) = find_horus_cpp_library() {
-            fs::copy(&horus_cpp_lib, &lib_path)?;
-            println!("  {} Installed {}", "".green(), lib_name);
-        } else {
-            println!(
-                "  {} {} not found - will attempt to build",
-                "".yellow(),
-                lib_name
-            );
-        }
-    }
+    // C++ bindings removed - HORUS now supports Rust and Python only
+    // For C driver integration, use multi-process pattern with shared memory
 
     Ok(())
 }
 
-fn find_horus_cpp_library() -> Result<PathBuf> {
-    // Look for horus_cpp library in common locations
-    let possible_paths = [
-        "horus_cpp/target/release/libhorus_cpp.so",
-        "horus_cpp/target/debug/libhorus_cpp.so",
-        "../horus_cpp/target/release/libhorus_cpp.so",
-        "../horus_cpp/target/debug/libhorus_cpp.so",
-        "target/release/libhorus_cpp.so",
-        "target/debug/libhorus_cpp.so",
-    ];
-
-    for path in &possible_paths {
-        let p = PathBuf::from(path);
-        if p.exists() {
-            return Ok(p);
-        }
-    }
-
-    bail!("horus_cpp library not found")
-}
+// Removed: find_horus_cpp_library() - C++ bindings no longer supported
 
 fn execute_c_node(file: PathBuf, args: Vec<String>, release: bool) -> Result<()> {
     eprintln!("{} Setting up C environment...", "".cyan());
@@ -4323,62 +4255,25 @@ fn should_recompile(source: &Path, binary: &Path) -> Result<bool> {
 }
 
 fn compile_c_file(source: &Path, output: &Path, compiler: &str, release: bool) -> Result<()> {
-    // Detect if this is a C++ file
-    let is_cpp = matches!(
-        source.extension().and_then(|e| e.to_str()),
-        Some("cpp") | Some("cc") | Some("cxx") | Some("C")
-    );
-
-    // Use C++ compiler if needed
-    let actual_compiler = if is_cpp {
-        if compiler.contains("gcc") {
-            "g++"
-        } else if compiler.contains("clang") {
-            "clang++"
-        } else {
-            "g++" // default
-        }
-    } else {
-        compiler
-    };
-
-    let mut cmd = Command::new(actual_compiler);
+    // C++ support removed - C only for hardware drivers
+    let mut cmd = Command::new(compiler);
 
     // Basic arguments
     cmd.arg(source);
     cmd.arg("-o");
     cmd.arg(output);
 
-    // Add C++ standard if C++ file
-    if is_cpp {
-        cmd.arg("-std=c++17");
-    }
-
-    // Check if source uses HORUS headers
+    // Check if source uses HORUS C API
     let content = fs::read_to_string(source).unwrap_or_default();
     let uses_horus_h = content.contains("#include <horus.h>")
         || content.contains("#include \"horus.h\"")
-        || content.contains("horus.h\""); // Catches relative paths too
-    let uses_horus_hpp = content.contains("#include <horus.hpp>")
-        || content.contains("#include \"horus.hpp\"")
-        || content.contains("horus.hpp\""); // Catches relative paths too
-    let _uses_framework =
-        uses_horus_hpp || content.contains("horus::Node") || content.contains("horus::Scheduler");
+        || content.contains("horus.h\"");
 
-    if uses_horus_h || uses_horus_hpp {
-        // Include path for horus headers
+    if uses_horus_h {
+        // Include path for horus C headers
         cmd.arg("-I.horus/include");
-
-        // Library path
-        cmd.arg("-L.horus/lib");
-
-        // Link with horus_cpp (works for both C and C++)
-        let horus_cpp_lib = PathBuf::from(".horus/lib/libhorus_cpp.so");
-        if horus_cpp_lib.exists() {
-            cmd.arg("-lhorus_cpp");
-        } else {
-            println!("  {} libhorus_cpp.so not found in .horus/lib/", "".yellow());
-        }
+        // Note: C drivers should communicate via shared memory
+        // No linking required - use horus_shm_* functions from horus.h
     }
 
     // Standard libraries
@@ -4590,7 +4485,7 @@ fn detect_system_python_package(package_name: &str) -> Result<Option<String>> {
 
     // Check if package is installed in system Python using pip show
     let output = Command::new("python3")
-        .args(&["-m", "pip", "show", package_name])
+        .args(["-m", "pip", "show", package_name])
         .output();
 
     if let Ok(output) = output {
@@ -4796,7 +4691,7 @@ fn update_existing_horus_yaml(
         // Check if dependency already exists (in any form)
         let base_name = dep_str
             .split(':')
-            .last()
+            .next_back()
             .unwrap_or(&dep_str)
             .split('@')
             .next()
@@ -4805,7 +4700,7 @@ fn update_existing_horus_yaml(
         let already_exists = existing_deps.iter().any(|e| {
             let e_base = e
                 .split(':')
-                .last()
+                .next_back()
                 .unwrap_or(e)
                 .split('@')
                 .next()

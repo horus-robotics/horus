@@ -1,17 +1,22 @@
 use crate::{LaserScan, Odometry, PathPlan};
 use horus_core::error::HorusResult;
 
+// Import algorithms from horus_library/algorithms
+use crate::algorithms::astar::AStar;
+use crate::algorithms::rrt::RRT;
+use crate::algorithms::occupancy_grid::OccupancyGrid;
+
 // Type alias for cleaner signatures
 type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo};
-use std::cmp::Ordering;
-use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Path Planner Node - A* and RRT path planning for autonomous navigation
 ///
 /// Plans collision-free paths from current position to goal using A* algorithm
 /// for grid-based environments and RRT for complex obstacle spaces.
+///
+/// This node is a thin wrapper around the pure algorithms in horus_library/algorithms.
 pub struct PathPlannerNode {
     plan_publisher: Hub<PathPlan>,
     odometry_subscriber: Hub<Odometry>,
@@ -21,12 +26,14 @@ pub struct PathPlannerNode {
     // Current state
     current_pose: (f64, f64, f64), // (x, y, theta)
     goal_pose: (f64, f64, f64),
-    grid_map: Vec<Vec<bool>>, // Occupancy grid: true = obstacle, false = free
+
+    // Algorithm instances
+    astar: AStar,
+    rrt: RRT,
+    occupancy_grid: OccupancyGrid,
 
     // Configuration
-    grid_resolution: f64, // meters per cell
-    grid_width: usize,
-    grid_height: usize,
+    grid_resolution: f64,
     robot_radius: f64,
     planning_algorithm: PlanningAlgorithm,
 
@@ -34,55 +41,12 @@ pub struct PathPlannerNode {
     current_path: Vec<(f64, f64)>,
     path_valid: bool,
     replanning_threshold: f64, // replan if deviation > threshold
-
-    // A* parameters
-    heuristic_weight: f64,
-
-    // RRT parameters
-    rrt_max_iterations: usize,
-    rrt_step_size: f64,
-    rrt_goal_bias: f64,
 }
 
 #[derive(Clone, Copy)]
 enum PlanningAlgorithm {
     AStar,
     Rrt,
-}
-
-#[derive(Clone, Debug)]
-#[allow(dead_code)]
-struct AStarNode {
-    x: i32,
-    y: i32,
-    g_cost: f64, // Cost from start
-    h_cost: f64, // Heuristic cost to goal
-    f_cost: f64, // Total cost
-    parent: Option<(i32, i32)>,
-}
-
-impl Eq for AStarNode {}
-
-impl PartialEq for AStarNode {
-    fn eq(&self, other: &Self) -> bool {
-        self.x == other.x && self.y == other.y
-    }
-}
-
-impl Ord for AStarNode {
-    fn cmp(&self, other: &Self) -> Ordering {
-        // Reverse ordering for min-heap
-        other
-            .f_cost
-            .partial_cmp(&self.f_cost)
-            .unwrap_or(Ordering::Equal)
-    }
-}
-
-impl PartialOrd for AStarNode {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
 }
 
 impl PathPlannerNode {
@@ -98,6 +62,23 @@ impl PathPlannerNode {
         lidar_topic: &str,
         goal_topic: &str,
     ) -> Result<Self> {
+        let grid_width = 200;
+        let grid_height = 200;
+        let grid_resolution = 0.1;
+
+        // Create algorithm instances
+        let astar = AStar::new(grid_width, grid_height);
+
+        let rrt = RRT::new(
+            (0.0, 0.0),
+            (0.0, 0.0),
+            (-10.0, -10.0),
+            (10.0, 10.0),
+        );
+
+        let mut occupancy_grid = OccupancyGrid::new(grid_width, grid_height, grid_resolution);
+        occupancy_grid.set_origin(-10.0, -10.0);
+
         Ok(Self {
             plan_publisher: Hub::new(plan_topic)?,
             odometry_subscriber: Hub::new(odom_topic)?,
@@ -106,34 +87,26 @@ impl PathPlannerNode {
 
             current_pose: (0.0, 0.0, 0.0),
             goal_pose: (0.0, 0.0, 0.0),
-            grid_map: Vec::new(),
 
-            grid_resolution: 0.1, // 10cm resolution
-            grid_width: 200,      // 20m x 20m grid
-            grid_height: 200,
+            astar,
+            rrt,
+            occupancy_grid,
+
+            grid_resolution,
             robot_radius: 0.3, // 30cm robot radius
             planning_algorithm: PlanningAlgorithm::AStar,
 
             current_path: Vec::new(),
             path_valid: false,
             replanning_threshold: 0.5, // 50cm deviation
-
-            heuristic_weight: 1.0,
-
-            rrt_max_iterations: 1000,
-            rrt_step_size: 0.5,
-            rrt_goal_bias: 0.1,
         })
     }
 
     /// Set grid map parameters
     pub fn set_grid_config(&mut self, resolution: f64, width: usize, height: usize) {
         self.grid_resolution = resolution;
-        self.grid_width = width;
-        self.grid_height = height;
-
-        // Initialize empty grid
-        self.grid_map = vec![vec![false; width]; height];
+        self.astar = AStar::new(width, height);
+        self.occupancy_grid = OccupancyGrid::new(width, height, resolution);
     }
 
     /// Set robot radius for collision checking
@@ -166,38 +139,13 @@ impl PathPlannerNode {
         self.path_valid
     }
 
-    fn world_to_grid(&self, world_x: f64, world_y: f64) -> (i32, i32) {
-        let grid_x = (world_x / self.grid_resolution + self.grid_width as f64 / 2.0) as i32;
-        let grid_y = (world_y / self.grid_resolution + self.grid_height as f64 / 2.0) as i32;
-        (grid_x, grid_y)
-    }
-
-    fn grid_to_world(&self, grid_x: i32, grid_y: i32) -> (f64, f64) {
-        let world_x = (grid_x as f64 - self.grid_width as f64 / 2.0) * self.grid_resolution;
-        let world_y = (grid_y as f64 - self.grid_height as f64 / 2.0) * self.grid_resolution;
-        (world_x, world_y)
-    }
-
-    fn is_valid_grid_cell(&self, x: i32, y: i32) -> bool {
-        x >= 0 && x < self.grid_width as i32 && y >= 0 && y < self.grid_height as i32
-    }
-
-    fn is_cell_free(&self, x: i32, y: i32) -> bool {
-        if !self.is_valid_grid_cell(x, y) {
-            return false;
-        }
-        !self.grid_map[y as usize][x as usize]
-    }
-
     fn update_occupancy_grid(&mut self, lidar_data: &LaserScan) {
-        // Clear previous obstacles (simplified - real implementation would use probabilistic updates)
-        for row in &mut self.grid_map {
-            row.fill(false);
-        }
+        // Clear previous obstacles
+        self.occupancy_grid.clear();
 
         let (robot_x, robot_y, robot_theta) = self.current_pose;
 
-        // Process lidar points
+        // Process lidar points using ray tracing
         for (i, &range) in lidar_data.ranges.iter().enumerate() {
             if range > 0.1 && range < lidar_data.range_max {
                 let angle = lidar_data.angle_min as f64
@@ -207,24 +155,25 @@ impl PathPlannerNode {
                 let obstacle_x = robot_x + range as f64 * angle.cos();
                 let obstacle_y = robot_y + range as f64 * angle.sin();
 
-                let (grid_x, grid_y) = self.world_to_grid(obstacle_x, obstacle_y);
+                // Use occupancy grid's ray tracing
+                self.occupancy_grid.ray_trace(
+                    (robot_x, robot_y),
+                    (obstacle_x, obstacle_y),
+                    true, // Mark free cells along ray
+                );
 
-                if self.is_valid_grid_cell(grid_x, grid_y) {
-                    self.grid_map[grid_y as usize][grid_x as usize] = true;
+                // Inflate obstacles by robot radius
+                let (grid_x, grid_y) = self.occupancy_grid.world_to_grid(obstacle_x, obstacle_y);
+                let inflation_cells = (self.robot_radius / self.grid_resolution).ceil() as i32;
 
-                    // Inflate obstacles by robot radius
-                    let inflation_cells = (self.robot_radius / self.grid_resolution).ceil() as i32;
-                    for dy in -inflation_cells..=inflation_cells {
-                        for dx in -inflation_cells..=inflation_cells {
-                            let nx = grid_x + dx;
-                            let ny = grid_y + dy;
-                            if self.is_valid_grid_cell(nx, ny) {
-                                let dist =
-                                    ((dx * dx + dy * dy) as f64).sqrt() * self.grid_resolution;
-                                if dist <= self.robot_radius {
-                                    self.grid_map[ny as usize][nx as usize] = true;
-                                }
-                            }
+                for dy in -inflation_cells..=inflation_cells {
+                    for dx in -inflation_cells..=inflation_cells {
+                        let nx = grid_x + dx;
+                        let ny = grid_y + dy;
+                        let dist = ((dx * dx + dy * dy) as f64).sqrt() * self.grid_resolution;
+
+                        if dist <= self.robot_radius && nx >= 0 && ny >= 0 {
+                            self.occupancy_grid.set_occupied(nx as usize, ny as usize);
                         }
                     }
                 }
@@ -232,191 +181,75 @@ impl PathPlannerNode {
         }
     }
 
-    fn euclidean_distance(&self, x1: f64, y1: f64, x2: f64, y2: f64) -> f64 {
-        ((x2 - x1).powi(2) + (y2 - y1).powi(2)).sqrt()
-    }
-
     fn plan_path_astar(&mut self) -> Vec<(f64, f64)> {
         let (start_x, start_y, _) = self.current_pose;
         let (goal_x, goal_y, _) = self.goal_pose;
 
-        let (start_grid_x, start_grid_y) = self.world_to_grid(start_x, start_y);
-        let (goal_grid_x, goal_grid_y) = self.world_to_grid(goal_x, goal_y);
+        // Convert occupancy grid to A* grid format
+        let (width, height) = self.occupancy_grid.get_dimensions();
+        let mut grid = vec![vec![false; width]; height];
 
-        if !self.is_cell_free(start_grid_x, start_grid_y)
-            || !self.is_cell_free(goal_grid_x, goal_grid_y)
-        {
-            return Vec::new(); // Start or goal is in obstacle
-        }
-
-        let mut open_set = BinaryHeap::new();
-        let mut closed_set = HashSet::new();
-        let mut came_from: HashMap<(i32, i32), (i32, i32)> = HashMap::new();
-
-        let start_node = AStarNode {
-            x: start_grid_x,
-            y: start_grid_y,
-            g_cost: 0.0,
-            h_cost: self.euclidean_distance(
-                start_grid_x as f64,
-                start_grid_y as f64,
-                goal_grid_x as f64,
-                goal_grid_y as f64,
-            ),
-            f_cost: 0.0,
-            parent: None,
-        };
-
-        open_set.push(start_node);
-
-        let directions = [
-            (-1, -1),
-            (-1, 0),
-            (-1, 1),
-            (0, -1),
-            (0, 1),
-            (1, -1),
-            (1, 0),
-            (1, 1),
-        ];
-
-        while let Some(current) = open_set.pop() {
-            let current_pos = (current.x, current.y);
-
-            if current.x == goal_grid_x && current.y == goal_grid_y {
-                // Reconstruct path
-                let mut path = Vec::new();
-                let mut pos = current_pos;
-
-                loop {
-                    let (world_x, world_y) = self.grid_to_world(pos.0, pos.1);
-                    path.push((world_x, world_y));
-
-                    if let Some(parent) = came_from.get(&pos) {
-                        pos = *parent;
-                    } else {
-                        break;
-                    }
-                }
-
-                path.reverse();
-                return path;
-            }
-
-            closed_set.insert(current_pos);
-
-            for &(dx, dy) in &directions {
-                let neighbor_x = current.x + dx;
-                let neighbor_y = current.y + dy;
-                let neighbor_pos = (neighbor_x, neighbor_y);
-
-                if closed_set.contains(&neighbor_pos) || !self.is_cell_free(neighbor_x, neighbor_y)
-                {
-                    continue;
-                }
-
-                let movement_cost = if dx.abs() + dy.abs() == 2 {
-                    1.414 // Diagonal movement
-                } else {
-                    1.0 // Orthogonal movement
-                };
-
-                let tentative_g_cost = current.g_cost + movement_cost;
-                let h_cost = self.euclidean_distance(
-                    neighbor_x as f64,
-                    neighbor_y as f64,
-                    goal_grid_x as f64,
-                    goal_grid_y as f64,
-                ) * self.heuristic_weight;
-
-                let neighbor_node = AStarNode {
-                    x: neighbor_x,
-                    y: neighbor_y,
-                    g_cost: tentative_g_cost,
-                    h_cost,
-                    f_cost: tentative_g_cost + h_cost,
-                    parent: Some(current_pos),
-                };
-
-                came_from.insert(neighbor_pos, current_pos);
-                open_set.push(neighbor_node);
+        for y in 0..height {
+            for x in 0..width {
+                grid[y][x] = self.occupancy_grid.is_occupied(x, y);
             }
         }
 
-        Vec::new() // No path found
+        // Set grid in A* planner
+        self.astar.set_grid(grid);
+
+        // Convert world coordinates to grid coordinates
+        let (start_grid_x, start_grid_y) = self.occupancy_grid.world_to_grid(start_x, start_y);
+        let (goal_grid_x, goal_grid_y) = self.occupancy_grid.world_to_grid(goal_x, goal_y);
+
+        // Set start and goal in A*
+        self.astar.set_start(start_grid_x, start_grid_y);
+        self.astar.set_goal(goal_grid_x, goal_grid_y);
+
+        // Plan using A*
+        if let Some(grid_path) = self.astar.plan() {
+            // Convert grid coordinates back to world coordinates
+            grid_path
+                .iter()
+                .map(|(gx, gy)| self.occupancy_grid.grid_to_world(*gx, *gy))
+                .collect()
+        } else {
+            Vec::new()
+        }
     }
 
     fn plan_path_rrt(&mut self) -> Vec<(f64, f64)> {
-        // Simplified RRT implementation
         let (start_x, start_y, _) = self.current_pose;
         let (goal_x, goal_y, _) = self.goal_pose;
 
-        let mut tree: Vec<(f64, f64)> = vec![(start_x, start_y)];
-        let mut parents: Vec<Option<usize>> = vec![None];
+        // Reset RRT with new start/goal
+        let (width, height) = self.occupancy_grid.get_dimensions();
+        let bounds_size = width as f64 * self.grid_resolution;
 
-        for iteration in 0..self.rrt_max_iterations {
-            // Sample random point or goal with bias (using simple PRNG)
-            let rand_value = ((iteration as u64 * 1103515245 + 12345) % (1u64 << 31)) as f64
-                / (1u64 << 31) as f64;
-            let (rand_x, rand_y) = if rand_value < self.rrt_goal_bias {
-                (goal_x, goal_y)
-            } else {
-                let x_rand = ((iteration as u64 * 1664525 + 1013904223) % (1u64 << 31)) as f64
-                    / (1u64 << 31) as f64;
-                let y_rand = ((iteration as u64 * 2147483647 + 1) % (1u64 << 31)) as f64
-                    / (1u64 << 31) as f64;
-                let x = (x_rand - 0.5) * self.grid_width as f64 * self.grid_resolution;
-                let y = (y_rand - 0.5) * self.grid_height as f64 * self.grid_resolution;
-                (x, y)
-            };
+        self.rrt = RRT::new(
+            (start_x, start_y),
+            (goal_x, goal_y),
+            (-bounds_size / 2.0, -bounds_size / 2.0),
+            (bounds_size / 2.0, bounds_size / 2.0),
+        );
 
-            // Find nearest node in tree
-            let mut nearest_idx = 0;
-            let mut nearest_dist = self.euclidean_distance(tree[0].0, tree[0].1, rand_x, rand_y);
-
-            for (i, &(tx, ty)) in tree.iter().enumerate().skip(1) {
-                let dist = self.euclidean_distance(tx, ty, rand_x, rand_y);
-                if dist < nearest_dist {
-                    nearest_dist = dist;
-                    nearest_idx = i;
-                }
-            }
-
-            let (nearest_x, nearest_y) = tree[nearest_idx];
-
-            // Extend towards random point
-            let direction_x = (rand_x - nearest_x) / nearest_dist;
-            let direction_y = (rand_y - nearest_y) / nearest_dist;
-
-            let new_x = nearest_x + direction_x * self.rrt_step_size.min(nearest_dist);
-            let new_y = nearest_y + direction_y * self.rrt_step_size.min(nearest_dist);
-
-            // Check if new point is collision-free
-            let (grid_x, grid_y) = self.world_to_grid(new_x, new_y);
-            if self.is_cell_free(grid_x, grid_y) {
-                tree.push((new_x, new_y));
-                parents.push(Some(nearest_idx));
-
-                // Check if we reached the goal
-                if self.euclidean_distance(new_x, new_y, goal_x, goal_y)
-                    < self.grid_resolution * 2.0
-                {
-                    // Reconstruct path
-                    let mut path = Vec::new();
-                    let mut current_idx = Some(tree.len() - 1);
-
-                    while let Some(idx) = current_idx {
-                        path.push(tree[idx]);
-                        current_idx = parents[idx];
-                    }
-
-                    path.reverse();
-                    return path;
+        // Add obstacles from occupancy grid
+        // Convert grid obstacles to circular obstacles for RRT
+        for y in 0..height {
+            for x in 0..width {
+                if self.occupancy_grid.is_occupied(x, y) {
+                    let (world_x, world_y) = self.occupancy_grid.grid_to_world(x as i32, y as i32);
+                    self.rrt.add_obstacle((world_x, world_y), self.grid_resolution);
                 }
             }
         }
 
-        Vec::new() // No path found
+        // Plan using RRT
+        self.rrt.plan().unwrap_or_default()
+    }
+
+    fn euclidean_distance(&self, x1: f64, y1: f64, x2: f64, y2: f64) -> f64 {
+        ((x2 - x1).powi(2) + (y2 - y1).powi(2)).sqrt()
     }
 
     fn check_path_deviation(&self) -> bool {
@@ -512,6 +345,3 @@ impl Node for PathPlannerNode {
         }
     }
 }
-
-// Default impl removed - use PathPlannerNode::new() instead which returns HorusResult
-// Default configuration is built into new()
