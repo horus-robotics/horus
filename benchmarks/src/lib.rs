@@ -3,6 +3,13 @@
 //! Professional benchmarking utilities for the HORUS robotics framework.
 //! Provides standardized testing scenarios, statistical analysis, and comparison tools.
 
+// Benchmarks - allow common warnings for test code
+#![allow(clippy::all)]
+#![allow(deprecated)]
+#![allow(unused_imports)]
+#![allow(unused_assignments)]
+#![allow(unreachable_patterns)]
+
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
@@ -119,7 +126,8 @@ fn calculate_std_dev(values: &[f64], mean: f64) -> f64 {
         return 0.0;
     }
     // Use n-1 for unbiased sample variance estimator
-    let variance = values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / (values.len() - 1) as f64;
+    let variance =
+        values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / (values.len() - 1) as f64;
     variance.sqrt()
 }
 

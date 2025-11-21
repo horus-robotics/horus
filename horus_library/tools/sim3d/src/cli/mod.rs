@@ -1,6 +1,14 @@
+//! Command-line interface for sim3d binary and validation tools
+
+pub mod validation;
+
+// Re-export validation types for use by horus_manager
+
+use bevy::prelude::Resource;
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
+/// Simple CLI for sim3d binary (just runs the simulator)
 #[derive(Parser, Debug, Clone, Resource)]
 #[command(name = "sim3d")]
 #[command(about = "HORUS 3D Robotics Simulator", long_about = None)]
@@ -27,7 +35,7 @@ pub struct Cli {
     pub speed: f32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Resource)]
 pub enum Mode {
     Visual,
     Headless,
@@ -38,5 +46,3 @@ impl Cli {
         Parser::parse()
     }
 }
-
-use bevy::prelude::Resource;

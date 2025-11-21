@@ -1,9 +1,9 @@
+use crate::communication::network::fragmentation::{Fragment, FragmentManager};
 /// UDP direct backend for point-to-point network communication
 ///
 /// Provides <50μs latency for LAN communication using direct UDP sockets.
 /// No discovery overhead - you specify the target host directly.
 use crate::communication::network::protocol::{HorusPacket, MessageType};
-use crate::communication::network::fragmentation::{Fragment, FragmentManager};
 use crate::error::HorusResult;
 use std::collections::VecDeque;
 use std::net::{IpAddr, SocketAddr, UdpSocket};
@@ -33,7 +33,8 @@ where
         let socket = UdpSocket::bind("0.0.0.0:0")
             .map_err(|e| format!("Failed to bind UDP socket: {}", e))?;
 
-        socket.set_nonblocking(true)
+        socket
+            .set_nonblocking(true)
             .map_err(|e| format!("Failed to set nonblocking: {}", e))?;
 
         // Note: socket buffer sizes could be optimized with socket2 crate
@@ -102,11 +103,15 @@ where
                                         match Fragment::decode(&packet.payload) {
                                             Ok(fragment) => {
                                                 // Try to reassemble
-                                                if let Some(complete_data) = fragment_manager.reassemble(fragment) {
+                                                if let Some(complete_data) =
+                                                    fragment_manager.reassemble(fragment)
+                                                {
                                                     // Deserialize complete message
-                                                    match bincode::deserialize::<T>(&complete_data) {
+                                                    match bincode::deserialize::<T>(&complete_data)
+                                                    {
                                                         Ok(msg) => {
-                                                            let mut queue = recv_queue.lock().unwrap();
+                                                            let mut queue =
+                                                                recv_queue.lock().unwrap();
                                                             if queue.len() < RECV_QUEUE_SIZE {
                                                                 queue.push_back(msg);
                                                             } else {
@@ -152,8 +157,7 @@ where
     /// Send a message over UDP
     pub fn send(&self, msg: &T) -> HorusResult<()> {
         // Serialize payload
-        let payload = bincode::serialize(msg)
-            .map_err(|e| format!("Serialization error: {}", e))?;
+        let payload = bincode::serialize(msg).map_err(|e| format!("Serialization error: {}", e))?;
 
         // Fragment the payload if needed
         let fragments = self.fragment_manager.fragment(&payload);
@@ -176,7 +180,8 @@ where
             packet.encode(&mut buffer);
 
             // Send UDP packet
-            self.socket.send_to(&buffer, self.remote_addr)
+            self.socket
+                .send_to(&buffer, self.remote_addr)
                 .map_err(|e| format!("UDP send error: {}", e))?;
         }
         drop(seq);
@@ -232,11 +237,9 @@ mod tests {
         let listener_socket = UdpSocket::bind("127.0.0.1:19870").unwrap();
 
         // Create backend that sends to listener
-        let backend = UdpDirectBackend::<TestMessage>::new(
-            "test_udp",
-            "127.0.0.1".parse().unwrap(),
-            19870,
-        ).unwrap();
+        let backend =
+            UdpDirectBackend::<TestMessage>::new("test_udp", "127.0.0.1".parse().unwrap(), 19870)
+                .unwrap();
 
         // Send message
         let msg = TestMessage { data: 42 };
@@ -279,11 +282,14 @@ mod tests {
             "test_large",
             "127.0.0.1".parse().unwrap(),
             19871,
-        ).unwrap();
+        )
+        .unwrap();
 
         // Create large message (6 MB, like a camera image)
         let large_data = vec![42u8; 6 * 1024 * 1024];
-        let msg = LargeMessage { data: large_data.clone() };
+        let msg = LargeMessage {
+            data: large_data.clone(),
+        };
 
         // Send large message (should be fragmented)
         backend.send(&msg).unwrap();

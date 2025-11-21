@@ -226,8 +226,7 @@ impl RTNode for LoggingNode {
 #[test]
 fn test_rt_node_basic() {
     // Use standard config (RT features disabled)
-    let mut scheduler = Scheduler::new()
-        .with_config(SchedulerConfig::standard());
+    let mut scheduler = Scheduler::new().with_config(SchedulerConfig::standard());
 
     // Add RT nodes as regular nodes (RTNodeWrapper handles the conversion)
     scheduler
@@ -274,8 +273,7 @@ fn test_rt_node_priority_ordering() {
 #[test]
 fn test_rt_node_with_safety_critical_config() {
     // Use safety-critical configuration (all RT features enabled)
-    let mut scheduler = Scheduler::new()
-        .with_config(SchedulerConfig::safety_critical());
+    let mut scheduler = Scheduler::new().with_config(SchedulerConfig::safety_critical());
 
     scheduler
         .add(

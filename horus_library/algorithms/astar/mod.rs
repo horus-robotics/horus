@@ -58,7 +58,10 @@ impl PartialEq for Node {
 impl Ord for Node {
     fn cmp(&self, other: &Self) -> Ordering {
         // Reverse ordering for min-heap
-        other.f_cost.partial_cmp(&self.f_cost).unwrap_or(Ordering::Equal)
+        other
+            .f_cost
+            .partial_cmp(&self.f_cost)
+            .unwrap_or(Ordering::Equal)
     }
 }
 
@@ -166,7 +169,9 @@ impl AStar {
             return None;
         }
 
-        if self.is_obstacle(self.start.0, self.start.1) || self.is_obstacle(self.goal.0, self.goal.1) {
+        if self.is_obstacle(self.start.0, self.start.1)
+            || self.is_obstacle(self.goal.0, self.goal.1)
+        {
             return None;
         }
 
@@ -313,7 +318,11 @@ impl AStar {
         neighbors
     }
 
-    fn reconstruct_path(&self, nodes: &HashMap<(i32, i32), Node>, mut current: (i32, i32)) -> Vec<(i32, i32)> {
+    fn reconstruct_path(
+        &self,
+        nodes: &HashMap<(i32, i32), Node>,
+        mut current: (i32, i32),
+    ) -> Vec<(i32, i32)> {
         let mut path = vec![current];
 
         while let Some(node) = nodes.get(&current) {

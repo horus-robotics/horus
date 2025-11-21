@@ -2,9 +2,11 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
+use crate::error::{EnhancedError, ErrorCategory, Result};
 use crate::physics::world::PhysicsWorld;
-use crate::scene::spawner::{ObjectSpawnConfig, ObjectSpawner, SpawnShape, SpawnedObjects};
 use crate::robot::urdf_loader::URDFLoader;
+use crate::scene::spawner::{ObjectSpawnConfig, ObjectSpawner, SpawnShape, SpawnedObjects};
+use crate::scene::validation::SceneValidator;
 use crate::tf::TFTree;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -100,33 +102,117 @@ fn default_ambient() -> [f32; 3] {
 
 impl SceneDefinition {
     /// Load scene from YAML file
-    pub fn from_yaml_file<P: AsRef<Path>>(path: P) -> Result<Self, String> {
-        let content = std::fs::read_to_string(path.as_ref())
-            .map_err(|e| format!("Failed to read file: {}", e))?;
+    pub fn from_yaml_file<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let path_buf = path.as_ref().to_path_buf();
 
-        serde_yaml::from_str(&content)
-            .map_err(|e| format!("Failed to parse YAML: {}", e))
+        // Read file with enhanced error
+        let content = std::fs::read_to_string(&path_buf).map_err(|e| {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                EnhancedError::file_not_found(&path_buf)
+            } else {
+                EnhancedError::new(format!("Failed to read scene file: {}", e))
+                    .with_file(&path_buf)
+                    .with_category(ErrorCategory::FileNotFound)
+                    .with_hint("Ensure the file exists and you have read permissions")
+            }
+        })?;
+
+        // Validate before parsing
+        let validator = SceneValidator::new().map_err(|e| {
+            EnhancedError::new(format!("Failed to create validator: {}", e))
+                .with_category(ErrorCategory::ConfigError)
+        })?;
+
+        let report = validator.validate_yaml(&content).map_err(|e| {
+            EnhancedError::new(format!("Validation error: {}", e))
+                .with_file(&path_buf)
+                .with_category(ErrorCategory::ValidationError)
+        })?;
+
+        if !report.valid {
+            let error_messages: Vec<String> =
+                report.errors.iter().map(|e| format!("  - {}", e)).collect();
+
+            return Err(EnhancedError::new(format!(
+                "Scene validation failed:\n{}",
+                error_messages.join("\n")
+            ))
+            .with_file(&path_buf)
+            .with_category(ErrorCategory::ValidationError)
+            .with_hint("Check the scene YAML against the schema requirements")
+            .with_suggestion(
+                "Common validation issues:\n  \
+                 - Missing required field 'name'\n  \
+                 - Invalid data types (e.g., string instead of number)\n  \
+                 - Invalid array sizes (e.g., position must have exactly 3 elements)\n  \
+                 - Out of range values (e.g., negative mass)",
+            ));
+        }
+
+        // Parse YAML with enhanced error
+        serde_yaml::from_str(&content).map_err(|e| {
+            let mut error = EnhancedError::from(e).with_file(&path_buf);
+            error.suggestion = Some(format!(
+                "Scene file syntax error. Check:\n  \
+                     - YAML indentation (use spaces, not tabs)\n  \
+                     - Array syntax: [x, y, z] or list with dashes\n  \
+                     - Field names match schema\n\
+                     \nExample valid scene:\n  \
+                     name: \"MyScene\"\n  \
+                     gravity: [0.0, -9.81, 0.0]\n  \
+                     objects:\n  \
+                       - name: \"box1\"\n  \
+                         shape: {{type: box, size: [1.0, 1.0, 1.0]}}\n  \
+                         position: [0.0, 0.5, 0.0]"
+            ));
+            error
+        })
     }
 
     /// Load scene from JSON file
-    pub fn from_json_file<P: AsRef<Path>>(path: P) -> Result<Self, String> {
-        let content = std::fs::read_to_string(path.as_ref())
-            .map_err(|e| format!("Failed to read file: {}", e))?;
+    pub fn from_json_file<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let path_buf = path.as_ref().to_path_buf();
 
-        serde_json::from_str(&content)
-            .map_err(|e| format!("Failed to parse JSON: {}", e))
+        let content = std::fs::read_to_string(&path_buf).map_err(|e| {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                EnhancedError::file_not_found(&path_buf)
+            } else {
+                EnhancedError::new(format!("Failed to read scene file: {}", e)).with_file(&path_buf)
+            }
+        })?;
+
+        serde_json::from_str(&content).map_err(|e| EnhancedError::from(e).with_file(&path_buf))
     }
 
     /// Load scene from YAML string
-    pub fn from_yaml_str(yaml: &str) -> Result<Self, String> {
-        serde_yaml::from_str(yaml)
-            .map_err(|e| format!("Failed to parse YAML: {}", e))
+    pub fn from_yaml_str(yaml: &str) -> Result<Self> {
+        // Validate before parsing
+        let validator = SceneValidator::new()
+            .map_err(|e| EnhancedError::new(format!("Failed to create validator: {}", e)))?;
+
+        let report = validator.validate_yaml(yaml).map_err(|e| {
+            EnhancedError::new(format!("Validation error: {}", e))
+                .with_category(ErrorCategory::ValidationError)
+        })?;
+
+        if !report.valid {
+            let error_messages: Vec<String> =
+                report.errors.iter().map(|e| format!("  - {}", e)).collect();
+
+            return Err(EnhancedError::new(format!(
+                "Scene validation failed:\n{}",
+                error_messages.join("\n")
+            ))
+            .with_category(ErrorCategory::ValidationError)
+            .with_hint("Check the scene YAML against the schema requirements"));
+        }
+
+        serde_yaml::from_str(yaml).map_err(EnhancedError::from)
     }
 
     /// Load scene from JSON string
-    pub fn from_json_str(json: &str) -> Result<Self, String> {
-        serde_json::from_str(json)
-            .map_err(|e| format!("Failed to parse JSON: {}", e))
+    pub fn from_json_str(json: &str) -> Result<Self> {
+        serde_json::from_str(json).map_err(EnhancedError::from)
     }
 
     /// Convert to spawn configs
@@ -163,7 +249,12 @@ impl SceneDefinition {
                     )
                 } else {
                     // Use quaternion directly
-                    Quat::from_xyzw(obj.rotation[1], obj.rotation[2], obj.rotation[3], obj.rotation[0])
+                    Quat::from_xyzw(
+                        obj.rotation[1],
+                        obj.rotation[2],
+                        obj.rotation[3],
+                        obj.rotation[0],
+                    )
                 };
 
                 let color = obj
@@ -273,24 +364,44 @@ impl SceneLoader {
         materials: &mut Assets<StandardMaterial>,
         spawned_objects: &mut SpawnedObjects,
         tf_tree: &mut TFTree,
-    ) -> Result<LoadedScene, String> {
+    ) -> Result<LoadedScene> {
         // Determine file format from extension
         let path_ref = path.as_ref();
         let extension = path_ref
             .extension()
             .and_then(|s| s.to_str())
-            .ok_or("Invalid file extension")?;
+            .ok_or_else(|| {
+                EnhancedError::new("Invalid file extension")
+                    .with_file(path_ref)
+                    .with_hint("Scene file must have a valid extension (.yaml, .yml, or .json)")
+            })?;
 
         let definition = match extension {
             "yaml" | "yml" => SceneDefinition::from_yaml_file(path_ref)?,
             "json" => SceneDefinition::from_json_file(path_ref)?,
-            _ => return Err(format!("Unsupported file format: {}", extension)),
+            _ => {
+                return Err(
+                    EnhancedError::new(format!("Unsupported file format: {}", extension))
+                        .with_file(path_ref)
+                        .with_hint("Supported formats: .yaml, .yml, .json")
+                        .with_suggestion("Rename your scene file to use .yaml or .json extension"),
+                )
+            }
         };
 
         // Get the directory of the world file for resolving relative URDF paths
         let world_dir = path_ref.parent().unwrap_or(Path::new("."));
 
-        Self::spawn_scene(definition, world_dir, commands, physics_world, meshes, materials, spawned_objects, tf_tree)
+        Self::spawn_scene(
+            definition,
+            world_dir,
+            commands,
+            physics_world,
+            meshes,
+            materials,
+            spawned_objects,
+            tf_tree,
+        )
     }
 
     /// Spawn a scene from a definition
@@ -303,19 +414,14 @@ impl SceneLoader {
         materials: &mut Assets<StandardMaterial>,
         spawned_objects: &mut SpawnedObjects,
         tf_tree: &mut TFTree,
-    ) -> Result<LoadedScene, String> {
+    ) -> Result<LoadedScene> {
         let mut loaded_scene = LoadedScene::new(definition.clone());
 
         // Spawn objects
         let configs = definition.to_spawn_configs();
         for config in configs {
-            let entity = ObjectSpawner::spawn_object(
-                config,
-                commands,
-                physics_world,
-                meshes,
-                materials,
-            );
+            let entity =
+                ObjectSpawner::spawn_object(config, commands, physics_world, meshes, materials);
             loaded_scene.entities.push(entity);
             spawned_objects.add(entity);
         }
@@ -329,23 +435,38 @@ impl SceneLoader {
                 world_dir.join(&robot_def.urdf_path)
             };
 
-            info!("Loading robot '{}' from URDF: {}", robot_def.name, urdf_path.display());
+            info!(
+                "Loading robot '{}' from URDF: {}",
+                robot_def.name,
+                urdf_path.display()
+            );
 
-            let urdf_loader = URDFLoader::new().with_base_path(world_dir);
-            match urdf_loader.load(&urdf_path, commands, physics_world, tf_tree, meshes, materials) {
+            let mut urdf_loader = URDFLoader::new().with_base_path(world_dir);
+            match urdf_loader.load(
+                &urdf_path,
+                commands,
+                physics_world,
+                tf_tree,
+                meshes,
+                materials,
+            ) {
                 Ok(robot_entity) => {
                     // Apply position and rotation from scene definition
                     let position = Vec3::from(robot_def.position);
                     let rotation = if let Some(euler) = robot_def.rotation_euler {
-                        Quat::from_euler(EulerRot::XYZ,
+                        Quat::from_euler(
+                            EulerRot::XYZ,
                             euler[0].to_radians(),
                             euler[1].to_radians(),
-                            euler[2].to_radians())
+                            euler[2].to_radians(),
+                        )
                     } else {
                         Quat::from_array(robot_def.rotation)
                     };
 
-                    commands.entity(robot_entity).insert(Transform::from_translation(position).with_rotation(rotation));
+                    commands
+                        .entity(robot_entity)
+                        .insert(Transform::from_translation(position).with_rotation(rotation));
 
                     loaded_scene.entities.push(robot_entity);
                     spawned_objects.add(robot_entity);
@@ -368,10 +489,7 @@ impl SceneLoader {
     }
 
     /// Clear the current scene
-    pub fn clear_scene(
-        commands: &mut Commands,
-        spawned_objects: &mut SpawnedObjects,
-    ) {
+    pub fn clear_scene(commands: &mut Commands, spawned_objects: &mut SpawnedObjects) {
         for entity in spawned_objects.objects.drain(..) {
             commands.entity(entity).despawn_recursive();
         }
@@ -387,7 +505,7 @@ impl SceneLoader {
         materials: &mut Assets<StandardMaterial>,
         spawned_objects: &mut SpawnedObjects,
         tf_tree: &mut TFTree,
-    ) -> Result<LoadedScene, String> {
+    ) -> Result<LoadedScene> {
         Self::clear_scene(commands, spawned_objects);
         Self::spawn_scene(
             loaded_scene.definition.clone(),

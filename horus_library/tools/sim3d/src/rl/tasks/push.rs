@@ -1,13 +1,13 @@
 use bevy::prelude::*;
 use rand::Rng;
 
+use crate::physics::rigid_body::RigidBodyComponent;
+use crate::physics::world::PhysicsWorld;
 use crate::rl::{
     Action, EpisodeInfo, Observation, RLTask, StepResult, TaskConfig, TaskParameters,
     TerminationReason,
 };
 use crate::robot::Robot;
-use crate::physics::rigid_body::RigidBodyComponent;
-use crate::physics::world::PhysicsWorld;
 
 /// Push task: Push an object to a target location
 pub struct PushTask {
@@ -57,11 +57,7 @@ impl PushTask {
         let distance = rng.gen_range(2.0..5.0);
         let angle = rng.gen_range(0.0..std::f32::consts::TAU);
 
-        self.target_position = Vec3::new(
-            distance * angle.cos(),
-            0.5,
-            distance * angle.sin(),
-        );
+        self.target_position = Vec3::new(distance * angle.cos(), 0.5, distance * angle.sin());
     }
 
     /// Find pusher and object entities
@@ -218,11 +214,8 @@ impl RLTask for PushTask {
         if let Some(entity) = self.object_entity {
             if let Some(mut transform) = world.get_mut::<Transform>(entity) {
                 let mut rng = rand::thread_rng();
-                transform.translation = Vec3::new(
-                    rng.gen_range(-1.0..1.0),
-                    0.5,
-                    rng.gen_range(-1.0..1.0),
-                );
+                transform.translation =
+                    Vec3::new(rng.gen_range(-1.0..1.0), 0.5, rng.gen_range(-1.0..1.0));
             }
         }
 
@@ -258,7 +251,9 @@ impl RLTask for PushTask {
                         // Simple collision: if pusher is close to object, push it
                         if let Some(object_entity) = self.object_entity {
                             let pusher_pos = transform.translation;
-                            if let Some(mut object_transform) = world.get_mut::<Transform>(object_entity) {
+                            if let Some(mut object_transform) =
+                                world.get_mut::<Transform>(object_entity)
+                            {
                                 let object_pos = object_transform.translation;
                                 let distance = pusher_pos.distance(object_pos);
 
@@ -475,11 +470,7 @@ impl RLTask for PushTask {
             let object_vel = self.get_object_velocity(world);
             if object_vel.length() > 0.01 {
                 let vel_end = object_pos + object_vel * 0.5;
-                gizmos.arrow(
-                    object_pos,
-                    vel_end,
-                    Color::srgb(1.0, 0.0, 1.0),
-                );
+                gizmos.arrow(object_pos, vel_end, Color::srgb(1.0, 0.0, 1.0));
             }
         }
 
@@ -495,11 +486,7 @@ impl RLTask for PushTask {
             if let Some(rot) = self.get_pusher_orientation(world) {
                 let forward = rot * Vec3::X;
                 let heading_end = pusher_pos + forward * 0.5;
-                gizmos.arrow(
-                    pusher_pos,
-                    heading_end,
-                    Color::srgb(1.0, 0.0, 0.0),
-                );
+                gizmos.arrow(pusher_pos, heading_end, Color::srgb(1.0, 0.0, 0.0));
             }
         }
 

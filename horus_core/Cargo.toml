@@ -49,6 +49,9 @@ rcgen = { version = "0.13", optional = true }  # For self-signed certs
 # Macros (optional)
 horus_macros = { path = "../horus_macros", optional = true }
 
+# HTTP client for model downloading (optional)
+reqwest = { version = "0.11", features = ["blocking"], optional = true }
+
 [dev-dependencies]
 criterion = "0.5"
 

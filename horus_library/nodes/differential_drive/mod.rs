@@ -70,7 +70,8 @@ impl DifferentialDriveNode {
     /// Set wheel base (distance between wheels in meters)
     pub fn set_wheel_base(&mut self, wheel_base: f32) {
         let wheel_base = wheel_base.max(0.1);
-        self.diff_drive = DifferentialDrive::new(wheel_base as f64, self.diff_drive.get_wheel_radius());
+        self.diff_drive =
+            DifferentialDrive::new(wheel_base as f64, self.diff_drive.get_wheel_radius());
     }
 
     /// Set wheel radius (in meters)
@@ -132,7 +133,7 @@ impl DifferentialDriveNode {
             (self.position_x, self.position_y, self.orientation),
             linear_vel,
             angular_vel,
-            dt as f64
+            dt as f64,
         );
 
         self.position_x = new_x;

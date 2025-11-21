@@ -1,7 +1,7 @@
 // Benchmark for Physics simulation performance
 // Run with: cargo bench --bench physics_bench
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 
 fn benchmark_physics_step(c: &mut Criterion) {
     c.bench_function("physics_step_240hz", |b| {

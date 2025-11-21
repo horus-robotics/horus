@@ -6,15 +6,15 @@ use bevy_egui::{egui, EguiContexts};
 #[cfg(feature = "visual")]
 use crate::robot::Robot;
 #[cfg(feature = "visual")]
-use crate::sensors::lidar3d::Lidar3D;
-#[cfg(feature = "visual")]
-use crate::sensors::imu::IMU;
-#[cfg(feature = "visual")]
-use crate::sensors::gps::GPS;
-#[cfg(feature = "visual")]
 use crate::sensors::encoder::Encoder;
 #[cfg(feature = "visual")]
 use crate::sensors::force_torque::ForceTorqueSensor;
+#[cfg(feature = "visual")]
+use crate::sensors::gps::GPS;
+#[cfg(feature = "visual")]
+use crate::sensors::imu::IMU;
+#[cfg(feature = "visual")]
+use crate::sensors::lidar3d::Lidar3D;
 #[cfg(feature = "visual")]
 use crate::systems::horus_sync::HorusSyncStats;
 
@@ -150,7 +150,10 @@ pub fn stats_panel_system(
             ui.indent("frame_breakdown", |ui| {
                 ui.label(format!("  Physics: {:.2}ms", frame_time.physics_time_ms));
                 ui.label(format!("  Sensors: {:.2}ms", frame_time.sensor_time_ms));
-                ui.label(format!("  Rendering: {:.2}ms", frame_time.rendering_time_ms));
+                ui.label(format!(
+                    "  Rendering: {:.2}ms",
+                    frame_time.rendering_time_ms
+                ));
             });
 
             ui.add_space(10.0);

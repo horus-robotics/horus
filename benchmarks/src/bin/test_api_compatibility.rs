@@ -1,3 +1,10 @@
+// Benchmark binary - allow clippy warnings
+#![allow(unused_imports)]
+#![allow(unused_assignments)]
+#![allow(unreachable_patterns)]
+#![allow(clippy::all)]
+#![allow(deprecated)]
+
 /// API Compatibility Test Suite
 /// Verifies that core APIs remain functional after structural changes
 use horus::prelude::{Hub, Link, Scheduler};

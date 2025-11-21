@@ -303,7 +303,8 @@ path = "{}"
 
             // Auto-detect nodes and required features
             use crate::node_detector;
-            let auto_features = node_detector::detect_features_from_file(target_file).unwrap_or_default();
+            let auto_features =
+                node_detector::detect_features_from_file(target_file).unwrap_or_default();
             if !auto_features.is_empty() {
                 eprintln!(
                     "  {} Auto-detected hardware nodes (features: {})",
@@ -338,7 +339,11 @@ path = "{}"
                             "{} = {{ path = \"{}\", features = [{}] }}\n",
                             dep_name,
                             dep_path.display(),
-                            auto_features.iter().map(|f| format!("\"{}\"", f)).collect::<Vec<_>>().join(", ")
+                            auto_features
+                                .iter()
+                                .map(|f| format!("\"{}\"", f))
+                                .collect::<Vec<_>>()
+                                .join(", ")
                         ));
                         println!(
                             "  {} Added dependency: {} -> {} (auto-features: {})",
@@ -446,25 +451,24 @@ path = "{}"
 
             // Also add dependencies directly from horus.yaml (in case some weren't parsed by resolve_dependencies)
             // Track already-added cargo packages to avoid duplicates
-            let added_cargo_deps: HashSet<String> = cargo_packages.iter()
-                .map(|pkg| pkg.name.clone())
-                .collect();
+            let added_cargo_deps: HashSet<String> =
+                cargo_packages.iter().map(|pkg| pkg.name.clone()).collect();
 
             if Path::new("horus.yaml").exists() {
                 if let Ok(yaml_content) = fs::read_to_string("horus.yaml") {
                     if let Ok(yaml) = serde_yaml::from_str::<serde_yaml::Value>(&yaml_content) {
                         if let Some(serde_yaml::Value::Sequence(list)) = yaml.get("dependencies") {
                             for item in list {
-                                    if let Some(dep_str) = parse_yaml_cargo_dependency(item) {
-                                        // Extract dependency name from the generated string (e.g., "serde = ..." -> "serde")
-                                        let dep_name = dep_str.split('=').next().unwrap().trim();
+                                if let Some(dep_str) = parse_yaml_cargo_dependency(item) {
+                                    // Extract dependency name from the generated string (e.g., "serde = ..." -> "serde")
+                                    let dep_name = dep_str.split('=').next().unwrap().trim();
 
-                                        // Skip if already added from cargo_packages
-                                        if !added_cargo_deps.contains(dep_name) {
-                                            cargo_toml.push_str(&format!("{}\n", dep_str));
-                                        }
+                                    // Skip if already added from cargo_packages
+                                    if !added_cargo_deps.contains(dep_name) {
+                                        cargo_toml.push_str(&format!("{}\n", dep_str));
                                     }
                                 }
+                            }
                         }
                     }
                 }
@@ -1482,10 +1486,10 @@ path = "{}"
                     if let Ok(yaml) = serde_yaml::from_str::<serde_yaml::Value>(&yaml_content) {
                         if let Some(serde_yaml::Value::Sequence(list)) = yaml.get("dependencies") {
                             for item in list {
-                                    if let Some(dep_str) = parse_yaml_cargo_dependency(item) {
-                                        cargo_toml.push_str(&format!("{}\n", dep_str));
-                                    }
+                                if let Some(dep_str) = parse_yaml_cargo_dependency(item) {
+                                    cargo_toml.push_str(&format!("{}\n", dep_str));
                                 }
+                            }
                         }
                     }
                 }
@@ -1951,7 +1955,7 @@ fn parse_yaml_cargo_dependency(value: &serde_yaml::Value) -> Option<String> {
 
             // Parse cargo: or pip: prefixed dependencies
             let dep_clean = if let Some(rest) = dep.strip_prefix("cargo:") {
-                rest  // Remove "cargo:" prefix
+                rest // Remove "cargo:" prefix
             } else if dep.starts_with("pip:") {
                 // Skip pip dependencies in Cargo.toml
                 return None;
@@ -1967,14 +1971,18 @@ fn parse_yaml_cargo_dependency(value: &serde_yaml::Value) -> Option<String> {
                 // Split version and features
                 if let Some(features_pos) = rest.find(":features=") {
                     let version = rest[..features_pos].trim();
-                    let features_str = rest[features_pos + 10..].trim();  // Skip ":features="
+                    let features_str = rest[features_pos + 10..].trim(); // Skip ":features="
                     let features: Vec<&str> = features_str.split(',').map(|s| s.trim()).collect();
 
                     return Some(format!(
                         "{} = {{ version = \"{}\", features = [{}] }}",
                         pkg_name,
                         version,
-                        features.iter().map(|f| format!("\"{}\"", f)).collect::<Vec<_>>().join(", ")
+                        features
+                            .iter()
+                            .map(|f| format!("\"{}\"", f))
+                            .collect::<Vec<_>>()
+                            .join(", ")
                     ));
                 } else {
                     // Just version, no features
@@ -3479,10 +3487,7 @@ fn execute_python_node(file: PathBuf, args: Vec<String>, _release: bool) -> Resu
         let running = Arc::new(AtomicBool::new(true));
         let r = running.clone();
         ctrlc::set_handler(move || {
-            println!(
-                "{}",
-                "\nCtrl+C received, stopping Python process...".red()
-            );
+            println!("{}", "\nCtrl+C received, stopping Python process...".red());
             r.store(false, Ordering::SeqCst);
             // Send SIGINT to child process on Unix systems
             #[cfg(unix)]
@@ -3518,10 +3523,7 @@ fn execute_python_node(file: PathBuf, args: Vec<String>, _release: bool) -> Resu
         let running = Arc::new(AtomicBool::new(true));
         let r = running.clone();
         ctrlc::set_handler(move || {
-            println!(
-                "{}",
-                "\nCtrl+C received, stopping Python process...".red()
-            );
+            println!("{}", "\nCtrl+C received, stopping Python process...".red());
             r.store(false, Ordering::SeqCst);
             // Send SIGINT to child process on Unix systems
             #[cfg(unix)]
@@ -3879,9 +3881,8 @@ path = "{}"
 
             // Also add dependencies directly from horus.yaml (in case some weren't parsed by resolve_dependencies)
             // Track already-added cargo packages to avoid duplicates
-            let added_cargo_deps: HashSet<String> = cargo_packages.iter()
-                .map(|pkg| pkg.name.clone())
-                .collect();
+            let added_cargo_deps: HashSet<String> =
+                cargo_packages.iter().map(|pkg| pkg.name.clone()).collect();
 
             if Path::new("horus.yaml").exists() {
                 if let Ok(yaml_content) = fs::read_to_string("horus.yaml") {
@@ -4029,7 +4030,7 @@ fn setup_rust_environment(_source: &Path) -> Result<()> {
 fn setup_c_environment() -> Result<()> {
     let horus_dir = PathBuf::from(".horus");
     let include_dir = horus_dir.join("include");
-    let lib_dir = horus_dir.join("lib");
+    let _lib_dir = horus_dir.join("lib");
 
     // Copy horus.h header file to .horus/include/
     let header_path = include_dir.join("horus.h");
@@ -4800,15 +4801,60 @@ pub fn check_hardware_requirements(file_path: &Path, language: &str) -> Result<(
 
     // Detect hardware nodes being used
     let hardware_nodes = vec![
-        ("I2cBusNode", "i2c-hardware", "/dev/i2c-*", "sudo apt install i2c-tools"),
-        ("SpiBusNode", "spi-hardware", "/dev/spidev*", "sudo raspi-config -> Interface Options -> SPI"),
-        ("CanBusNode", "can-hardware", "/sys/class/net/can*", "sudo apt install can-utils"),
-        ("UltrasonicNode", "gpio-hardware", "/sys/class/gpio", "sudo apt install libraspberrypi-dev"),
-        ("StepperMotorNode", "gpio-hardware", "/sys/class/gpio", "sudo apt install libraspberrypi-dev"),
-        ("BldcMotorNode", "gpio-hardware", "/sys/class/gpio", "sudo apt install libraspberrypi-dev"),
-        ("DynamixelNode", "serial-hardware", "/dev/tty*", "Serial port access"),
-        ("RoboclawMotorNode", "serial-hardware", "/dev/tty*", "Serial port access"),
-        ("BatteryMonitorNode", "i2c-hardware", "/dev/i2c-*", "sudo apt install i2c-tools"),
+        (
+            "I2cBusNode",
+            "i2c-hardware",
+            "/dev/i2c-*",
+            "sudo apt install i2c-tools",
+        ),
+        (
+            "SpiBusNode",
+            "spi-hardware",
+            "/dev/spidev*",
+            "sudo raspi-config -> Interface Options -> SPI",
+        ),
+        (
+            "CanBusNode",
+            "can-hardware",
+            "/sys/class/net/can*",
+            "sudo apt install can-utils",
+        ),
+        (
+            "UltrasonicNode",
+            "gpio-hardware",
+            "/sys/class/gpio",
+            "sudo apt install libraspberrypi-dev",
+        ),
+        (
+            "StepperMotorNode",
+            "gpio-hardware",
+            "/sys/class/gpio",
+            "sudo apt install libraspberrypi-dev",
+        ),
+        (
+            "BldcMotorNode",
+            "gpio-hardware",
+            "/sys/class/gpio",
+            "sudo apt install libraspberrypi-dev",
+        ),
+        (
+            "DynamixelNode",
+            "serial-hardware",
+            "/dev/tty*",
+            "Serial port access",
+        ),
+        (
+            "RoboclawMotorNode",
+            "serial-hardware",
+            "/dev/tty*",
+            "Serial port access",
+        ),
+        (
+            "BatteryMonitorNode",
+            "i2c-hardware",
+            "/dev/i2c-*",
+            "sudo apt install i2c-tools",
+        ),
     ];
 
     let mut detected_nodes = Vec::new();
@@ -4850,7 +4896,10 @@ pub fn check_hardware_requirements(file_path: &Path, language: &str) -> Result<(
 
     // Print warnings if issues detected
     if !missing_features.is_empty() || !missing_devices.is_empty() {
-        eprintln!("\n{}", "[WARNING] Hardware Configuration Check".yellow().bold());
+        eprintln!(
+            "\n{}",
+            "[WARNING] Hardware Configuration Check".yellow().bold()
+        );
 
         if !detected_nodes.is_empty() {
             eprintln!("\n{}", "Detected hardware nodes:".cyan());
@@ -4866,10 +4915,20 @@ pub fn check_hardware_requirements(file_path: &Path, language: &str) -> Result<(
             }
             eprintln!("\n{}", "To enable hardware support:".green());
             let features_list = missing_features.join(",");
-            eprintln!("  {} cargo build --features=\"{}\"", ">".cyan(), features_list);
+            eprintln!(
+                "  {} cargo build --features=\"{}\"",
+                ">".cyan(),
+                features_list
+            );
             eprintln!("\n{}", "Or add to your Cargo.toml:".green());
-            eprintln!("  horus_library = {{ version = \"0.1\", features = [{}] }}",
-                missing_features.iter().map(|f| format!("\"{}\"", f)).collect::<Vec<_>>().join(", "));
+            eprintln!(
+                "  horus_library = {{ version = \"0.1\", features = [{}] }}",
+                missing_features
+                    .iter()
+                    .map(|f| format!("\"{}\"", f))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
         }
 
         if !missing_devices.is_empty() {
@@ -4894,7 +4953,10 @@ pub fn check_hardware_requirements(file_path: &Path, language: &str) -> Result<(
 }
 
 /// Check if cargo features are enabled for hardware nodes
-fn check_cargo_features(file_path: &Path, detected_nodes: &[(&str, &str, &str, &str)]) -> Result<HashSet<String>> {
+fn check_cargo_features(
+    file_path: &Path,
+    detected_nodes: &[(&str, &str, &str, &str)],
+) -> Result<HashSet<String>> {
     let mut enabled_features = HashSet::new();
 
     // Check Cargo.toml if it exists

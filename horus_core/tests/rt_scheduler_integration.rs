@@ -125,8 +125,7 @@ fn test_scheduler_with_rt_nodes() {
 #[test]
 fn test_scheduler_with_safety_critical_config() {
     // Configure for safety-critical operation
-    let mut scheduler = Scheduler::new()
-        .with_config(SchedulerConfig::safety_critical());
+    let mut scheduler = Scheduler::new().with_config(SchedulerConfig::safety_critical());
 
     // Add critical nodes
     scheduler.add_rt(
@@ -156,8 +155,7 @@ fn test_wcet_violation_detection() {
     config.realtime.deadline_monitoring = true;
     config.realtime.safety_monitor = true;
 
-    let mut scheduler = Scheduler::new()
-        .with_config(config);
+    let mut scheduler = Scheduler::new().with_config(config);
 
     // Add node that will violate WCET
     // Execution time (100μs) > WCET budget (50μs)
@@ -181,8 +179,7 @@ fn test_deadline_miss_detection() {
     config.realtime.safety_monitor = true;
     config.realtime.max_deadline_misses = 5; // Allow some misses before emergency stop
 
-    let mut scheduler = Scheduler::new()
-        .with_config(config);
+    let mut scheduler = Scheduler::new().with_config(config);
 
     // Add node with tight deadline that might be missed
     scheduler.add_rt(
@@ -241,8 +238,7 @@ fn test_watchdog_functionality() {
     config.realtime.watchdog_timeout_ms = 50; // 50ms watchdog timeout
     config.realtime.safety_monitor = true;
 
-    let mut scheduler = Scheduler::new()
-        .with_config(config);
+    let mut scheduler = Scheduler::new().with_config(config);
 
     // Add RT node that will be monitored by watchdog
     scheduler.add_rt(
@@ -260,8 +256,7 @@ fn test_watchdog_functionality() {
 #[test]
 fn test_high_performance_rt_config() {
     // Configure for high-performance racing robot
-    let mut scheduler = Scheduler::new()
-        .with_config(SchedulerConfig::high_performance());
+    let mut scheduler = Scheduler::new().with_config(SchedulerConfig::high_performance());
 
     // Add ultra-fast control nodes
     scheduler.add_rt(

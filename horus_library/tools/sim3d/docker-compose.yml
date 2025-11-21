@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  # Single sim3d instance
+  sim3d:
+    build:
+      context: ../../../
+      dockerfile: horus_library/tools/sim3d/Dockerfile
+    image: sim3d:latest
+    container_name: sim3d
+    restart: unless-stopped
+    environment:
+      - RUST_LOG=info
+      - SIM3D_DATA_DIR=/data
+      - SIM3D_RECORDINGS_DIR=/recordings
+      - SIM3D_HEADLESS=true
+    volumes:
+      - ./data:/data
+      - ./recordings:/recordings
+      - ./config:/config:ro
+    ports:
+      - "8080:8080"
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '2'
+          memory: 4G
+    # Health check
+    healthcheck:
+      test: ["CMD", "test", "-f", "/app/sim3d"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  # Multi-instance setup for distributed training
+  sim3d-worker-1:
+    extends: sim3d
+    container_name: sim3d-worker-1
+    environment:
+      - RUST_LOG=info
+      - SIM3D_DATA_DIR=/data
+      - SIM3D_RECORDINGS_DIR=/recordings
+      - SIM3D_HEADLESS=true
+      - SIM3D_WORKER_ID=1
+      - SIM3D_MASTER_ADDR=sim3d-master
+      - SIM3D_MASTER_PORT=8080
+    ports:
+      - "8081:8080"
+    profiles:
+      - distributed
+
+  sim3d-worker-2:
+    extends: sim3d
+    container_name: sim3d-worker-2
+    environment:
+      - RUST_LOG=info
+      - SIM3D_DATA_DIR=/data
+      - SIM3D_RECORDINGS_DIR=/recordings
+      - SIM3D_HEADLESS=true
+      - SIM3D_WORKER_ID=2
+      - SIM3D_MASTER_ADDR=sim3d-master
+      - SIM3D_MASTER_PORT=8080
+    ports:
+      - "8082:8080"
+    profiles:
+      - distributed
+
+  # Master node for distributed training
+  sim3d-master:
+    extends: sim3d
+    container_name: sim3d-master
+    environment:
+      - RUST_LOG=info
+      - SIM3D_DATA_DIR=/data
+      - SIM3D_RECORDINGS_DIR=/recordings
+      - SIM3D_HEADLESS=true
+      - SIM3D_ROLE=master
+      - SIM3D_NUM_WORKERS=2
+    ports:
+      - "8080:8080"
+    profiles:
+      - distributed
+
+volumes:
+  data:
+    driver: local
+  recordings:
+    driver: local
+  config:
+    driver: local
+
+networks:
+  default:
+    name: sim3d-network
+    driver: bridge

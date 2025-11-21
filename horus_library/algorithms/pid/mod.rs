@@ -28,9 +28,9 @@
 
 /// PID Controller
 pub struct PID {
-    kp: f64,  // Proportional gain
-    ki: f64,  // Integral gain
-    kd: f64,  // Derivative gain
+    kp: f64, // Proportional gain
+    ki: f64, // Integral gain
+    kd: f64, // Derivative gain
 
     integral: f64,
     last_error: f64,
@@ -276,7 +276,7 @@ mod tests {
         // Simulate control loop
         for _ in 0..100 {
             let output = pid.compute(setpoint, position, dt);
-            position += output * dt;  // Simple integration
+            position += output * dt; // Simple integration
         }
 
         // Should converge toward setpoint

@@ -51,7 +51,8 @@ impl CratesIoClient {
     pub fn get_crate_info(&self, name: &str) -> Result<CrateInfo> {
         let url = format!("{}/crates/{}", CRATES_IO_API, name);
 
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
             .send()
             .context("Failed to query crates.io")?;
@@ -60,7 +61,8 @@ impl CratesIoClient {
             bail!("Crate '{}' not found on crates.io", name);
         }
 
-        response.json::<CrateInfo>()
+        response
+            .json::<CrateInfo>()
             .context("Failed to parse crate info")
     }
 
@@ -79,7 +81,8 @@ impl CratesIoClient {
         let url = format!("{}/{}/{}-{}.crate", CRATES_IO_CDN, name, name, version);
 
         eprintln!("  {} Downloading from crates.io...");
-        let response = self.client
+        let response = self
+            .client
             .get(&url)
             .send()
             .context("Failed to download crate")?;

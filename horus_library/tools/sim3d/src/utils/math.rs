@@ -240,12 +240,10 @@ impl Interpolation {
         let t2 = t * t;
         let t3 = t2 * t;
 
-        0.5 * (
-            (2.0 * p1) +
-            (-p0 + p2) * t +
-            (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2 +
-            (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t3
-        )
+        0.5 * ((2.0 * p1)
+            + (-p0 + p2) * t
+            + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2
+            + (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t3)
     }
 }
 
@@ -354,8 +352,16 @@ mod tests {
 
     #[test]
     fn test_deg_rad_conversion() {
-        assert!(AngleUtils::approx_eq(AngleUtils::deg_to_rad(180.0), PI, 0.001));
-        assert!(AngleUtils::approx_eq(AngleUtils::rad_to_deg(PI), 180.0, 0.001));
+        assert!(AngleUtils::approx_eq(
+            AngleUtils::deg_to_rad(180.0),
+            PI,
+            0.001
+        ));
+        assert!(AngleUtils::approx_eq(
+            AngleUtils::rad_to_deg(PI),
+            180.0,
+            0.001
+        ));
     }
 
     #[test]

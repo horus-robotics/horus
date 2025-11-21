@@ -169,11 +169,7 @@ impl TFLookup {
     }
 
     /// Check if transform from source to target is available
-    pub fn can_transform(
-        tf_tree: &TFTree,
-        source_frame: &str,
-        target_frame: &str,
-    ) -> bool {
+    pub fn can_transform(tf_tree: &TFTree, source_frame: &str, target_frame: &str) -> bool {
         if source_frame == target_frame {
             return true;
         }
@@ -181,10 +177,7 @@ impl TFLookup {
     }
 
     /// Get all child frames of a given frame
-    pub fn get_child_frames(
-        tf_tree: &TFTree,
-        parent_frame: &str,
-    ) -> Vec<String> {
+    pub fn get_child_frames(tf_tree: &TFTree, parent_frame: &str) -> Vec<String> {
         let mut children = Vec::new();
 
         for frame_name in tf_tree.get_all_frames() {
@@ -201,10 +194,7 @@ impl TFLookup {
     }
 
     /// Get all descendant frames (recursive children)
-    pub fn get_descendant_frames(
-        tf_tree: &TFTree,
-        parent_frame: &str,
-    ) -> Vec<String> {
+    pub fn get_descendant_frames(tf_tree: &TFTree, parent_frame: &str) -> Vec<String> {
         let mut descendants = Vec::new();
         let children = Self::get_child_frames(tf_tree, parent_frame);
 
@@ -233,10 +223,7 @@ impl TFInterpolator {
     }
 
     /// Interpolate transform at given time from historical data
-    pub fn interpolate_at_time(
-        transforms: &[(f32, Transform)],
-        time: f32,
-    ) -> Option<Transform> {
+    pub fn interpolate_at_time(transforms: &[(f32, Transform)], time: f32) -> Option<Transform> {
         if transforms.is_empty() {
             return None;
         }
@@ -339,11 +326,7 @@ impl TFBuffer {
     }
 
     /// Get transform at specific time (with interpolation)
-    pub fn lookup_transform_at_time(
-        &self,
-        frame_id: &str,
-        time: f32,
-    ) -> Option<Transform> {
+    pub fn lookup_transform_at_time(&self, frame_id: &str, time: f32) -> Option<Transform> {
         let history = self.frame_history.get(frame_id)?;
         TFInterpolator::interpolate_at_time(history, time)
     }

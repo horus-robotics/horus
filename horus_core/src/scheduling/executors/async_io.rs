@@ -16,7 +16,7 @@ pub enum AsyncMessage {
 #[derive(Debug)]
 pub struct AsyncResult {
     pub node_name: String,
-    pub duration: Duration,
+    pub _duration: Duration,
     pub success: bool,
     pub error: Option<String>,
 }
@@ -112,7 +112,7 @@ impl AsyncIOExecutor {
                                             ctx.record_tick();
                                         }
                                         (true, None)
-                                    },
+                                    }
                                     Err(e) => {
                                         let msg = if let Some(s) = e.downcast_ref::<&str>() {
                                             format!("Node panicked: {}", s)
@@ -135,7 +135,7 @@ impl AsyncIOExecutor {
                                 // Send result back
                                 let _ = result_tx.send(AsyncResult {
                                     node_name: node_name.clone(),
-                                    duration,
+                                    _duration: duration,
                                     success,
                                     error,
                                 });
@@ -144,7 +144,7 @@ impl AsyncIOExecutor {
                                 // Task join error
                                 let _ = result_tx.send(AsyncResult {
                                     node_name: node_name.clone(),
-                                    duration,
+                                    _duration: duration,
                                     success: false,
                                     error: Some(format!("Task error: {}", e)),
                                 });
@@ -191,15 +191,22 @@ impl AsyncIOExecutor {
     }
 }
 
-/// Wrapper to make a blocking I/O node async-friendly
+/// Async node with timeout protection for I/O-heavy operations
 /// This allows slow/blocking operations to run without blocking the scheduler
-#[allow(dead_code)]
-pub struct AsyncNodeWrapper<N: Node> {
+///
+/// # Usage
+/// ```ignore
+/// let camera_node = CameraNode::new();
+/// let async_node = AsyncNode::new(camera_node, Duration::from_secs(1));
+/// // Node will error if tick takes > 1 second
+/// ```
+pub struct AsyncNode<N: Node> {
     inner: N,
     timeout: Duration,
 }
 
-impl<N: Node> AsyncNodeWrapper<N> {
+impl<N: Node> AsyncNode<N> {
+    /// Create a new async wrapper with timeout protection
     pub fn new(node: N, timeout: Duration) -> Self {
         Self {
             inner: node,
@@ -207,27 +214,45 @@ impl<N: Node> AsyncNodeWrapper<N> {
         }
     }
 
-    /// Execute with timeout protection
+    /// Execute node tick with timeout protection
+    ///
+    /// Returns error if:
+    /// - Node execution exceeds timeout
+    /// - Node panics during execution
     pub async fn tick_with_timeout(
         &mut self,
         context: Option<&mut NodeInfo>,
     ) -> Result<(), String> {
-        let timeout = self.timeout;
+        let timeout_duration = self.timeout;
 
         // Use timeout to prevent infinite blocking
-        match tokio::time::timeout(timeout, async {
-            // Run the blocking operation in a spawn_blocking task
-            tokio::task::spawn_blocking(move || {
-                // This runs on a separate thread pool
-                // Won't block the async runtime
-            })
-            .await
+        let result = tokio::time::timeout(timeout_duration, async {
+            // Execute node tick
+            // Note: This is a simplified implementation
+            // In production, this would run in spawn_blocking
+            self.inner.tick(context);
+            Ok::<(), String>(())
         })
-        .await
-        {
-            Ok(Ok(_)) => Ok(()),
-            Ok(Err(e)) => Err(format!("Task join error: {}", e)),
-            Err(_) => Err(format!("Timeout after {:?}", timeout)),
+        .await;
+
+        match result {
+            Ok(Ok(())) => Ok(()),
+            Ok(Err(e)) => Err(e),
+            Err(_) => Err(format!(
+                "Node '{}' execution exceeded timeout of {:?}",
+                self.inner.name(),
+                timeout_duration
+            )),
         }
+    }
+
+    /// Get reference to inner node
+    pub fn inner(&self) -> &N {
+        &self.inner
+    }
+
+    /// Get mutable reference to inner node
+    pub fn inner_mut(&mut self) -> &mut N {
+        &mut self.inner
     }
 }

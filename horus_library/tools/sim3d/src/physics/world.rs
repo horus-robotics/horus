@@ -1,7 +1,7 @@
+use crate::physics::rigid_body::{ContactForce, RigidBodyComponent};
 use bevy::prelude::*;
 use nalgebra::Vector3;
 use rapier3d::prelude::*;
-use crate::physics::rigid_body::{RigidBodyComponent, ContactForce};
 
 #[derive(Resource)]
 pub struct PhysicsWorld {

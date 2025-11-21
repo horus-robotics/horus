@@ -49,10 +49,10 @@ pub enum MessageType {
     DiscoveryRequest = 0x02,
     DiscoveryResponse = 0x03,
     Heartbeat = 0x04,
-    Fragment = 0x05,  // Fragmented message
-    RouterSubscribe = 0x06,  // Subscribe to topic via router
-    RouterUnsubscribe = 0x07,  // Unsubscribe from topic
-    RouterPublish = 0x08,  // Publish to router (router forwards to subscribers)
+    Fragment = 0x05,          // Fragmented message
+    RouterSubscribe = 0x06,   // Subscribe to topic via router
+    RouterUnsubscribe = 0x07, // Unsubscribe from topic
+    RouterPublish = 0x08,     // Publish to router (router forwards to subscribers)
 }
 
 /// Fixed-size packet header (24 bytes)
@@ -193,9 +193,7 @@ impl HorusPacket {
         }
 
         // Read header
-        let header = unsafe {
-            std::ptr::read_unaligned(buf.as_ptr() as *const PacketHeader)
-        };
+        let header = unsafe { std::ptr::read_unaligned(buf.as_ptr() as *const PacketHeader) };
 
         // Validate magic
         if header.magic != MAGIC {

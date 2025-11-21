@@ -5,13 +5,13 @@
 //   hub = Hub(CmdVel)  # Type determines everything
 
 use horus::communication::hub::Hub;
-use horus_library::messages::GenericMessage;
 use horus_library::messages::cmd_vel::CmdVel;
 use horus_library::messages::geometry::Pose2D;
+use horus_library::messages::GenericMessage;
 use pyo3::prelude::*;
-use std::sync::{Arc, Mutex};
 use std::fs;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 /// Helper function to record pub/sub metadata for dashboard discovery
 /// Writes metadata files to /dev/shm/horus/pubsub_metadata/
@@ -22,7 +22,8 @@ fn record_pubsub_metadata(node_name: &str, topic_name: &str, direction: &str) {
     let _ = fs::create_dir_all(&metadata_dir);
 
     // Create metadata filename: {node_name}_{topic_name}_{direction}
-    let filename = format!("{}_{}_{}",
+    let filename = format!(
+        "{}_{}_{}",
         node_name.replace('/', "_"),
         topic_name.replace('/', "_"),
         direction
@@ -52,7 +53,7 @@ enum HubType {
 ///     hub = Hub(CmdVel)       # Creates Hub<CmdVel> - zero overhead!
 ///     hub = Hub(Pose2D)       # Creates Hub<Pose2D>
 ///     hub = Hub("custom")     # Generic hub (fallback, slower)
-#[pyclass(name = "Hub")]  // Export as "Hub" in Python, not "PyHub"
+#[pyclass(name = "Hub")] // Export as "Hub" in Python, not "PyHub"
 pub struct PyHub {
     hub_type: HubType,
     topic: String,
@@ -77,10 +78,10 @@ impl PyHub {
         let type_name = if let Ok(name) = msg_type.getattr(py, "__name__") {
             name.extract::<String>(py)?
         } else if let Ok(s) = msg_type.extract::<String>(py) {
-            s  // String fallback for generic hubs
+            s // String fallback for generic hubs
         } else {
             return Err(pyo3::exceptions::PyTypeError::new_err(
-                "Hub() requires a message type (CmdVel, Pose2D) or topic string"
+                "Hub() requires a message type (CmdVel, Pose2D) or topic string",
             ));
         };
 
@@ -98,7 +99,10 @@ impl PyHub {
                     Hub::<CmdVel>::new_with_capacity(&topic, cap)
                 } else {
                     Hub::<CmdVel>::new(&topic)
-                }.map_err(|_| pyo3::exceptions::PyRuntimeError::new_err("Failed to create Hub<CmdVel>"))?;
+                }
+                .map_err(|_| {
+                    pyo3::exceptions::PyRuntimeError::new_err("Failed to create Hub<CmdVel>")
+                })?;
                 HubType::CmdVel(Arc::new(Mutex::new(hub)))
             }
             "Pose2D" => {
@@ -106,7 +110,10 @@ impl PyHub {
                     Hub::<Pose2D>::new_with_capacity(&topic, cap)
                 } else {
                     Hub::<Pose2D>::new(&topic)
-                }.map_err(|_| pyo3::exceptions::PyRuntimeError::new_err("Failed to create Hub<Pose2D>"))?;
+                }
+                .map_err(|_| {
+                    pyo3::exceptions::PyRuntimeError::new_err("Failed to create Hub<Pose2D>")
+                })?;
                 HubType::Pose2D(Arc::new(Mutex::new(hub)))
             }
             _ => {
@@ -115,7 +122,12 @@ impl PyHub {
                     Hub::<GenericMessage>::new_with_capacity(&topic, cap)
                 } else {
                     Hub::<GenericMessage>::new(&topic)
-                }.map_err(|_| pyo3::exceptions::PyRuntimeError::new_err("Failed to create Hub<GenericMessage>"))?;
+                }
+                .map_err(|_| {
+                    pyo3::exceptions::PyRuntimeError::new_err(
+                        "Failed to create Hub<GenericMessage>",
+                    )
+                })?;
                 HubType::Generic(Arc::new(Mutex::new(hub)))
             }
         };
@@ -161,7 +173,8 @@ impl PyHub {
                         if !info.is_none(py) {
                             use horus::core::LogSummary;
                             let log_msg = cmd.log_summary();
-                            let _ = info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
+                            let _ =
+                                info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
 
                             // Record metadata for dashboard discovery
                             if let Ok(node_name) = info.getattr(py, "name") {
@@ -183,7 +196,12 @@ impl PyHub {
                 let timestamp: u64 = message.getattr(py, "timestamp")?.extract(py)?;
 
                 // Create Rust Pose2D - zero-copy!
-                let pose = Pose2D { x, y, theta, timestamp };
+                let pose = Pose2D {
+                    x,
+                    y,
+                    theta,
+                    timestamp,
+                };
 
                 // Send via typed Hub<Pose2D>
                 let hub = hub.lock().unwrap();
@@ -196,7 +214,8 @@ impl PyHub {
                         if !info.is_none(py) {
                             use horus::core::LogSummary;
                             let log_msg = pose.log_summary();
-                            let _ = info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
+                            let _ =
+                                info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
 
                             // Record metadata for dashboard discovery
                             if let Ok(node_name) = info.getattr(py, "name") {
@@ -214,15 +233,20 @@ impl PyHub {
                 // Convert Python object to MessagePack via pythonize
                 let bound = message.bind(py);
                 let value: serde_json::Value = pythonize::depythonize_bound(bound.clone())
-                    .map_err(|e| pyo3::exceptions::PyTypeError::new_err(
-                        format!("Failed to convert Python object: {}", e)
-                    ))?;
+                    .map_err(|e| {
+                        pyo3::exceptions::PyTypeError::new_err(format!(
+                            "Failed to convert Python object: {}",
+                            e
+                        ))
+                    })?;
 
                 // Serialize to MessagePack
-                let msgpack_bytes = rmp_serde::to_vec(&value)
-                    .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(
-                        format!("Failed to serialize to MessagePack: {}", e)
-                    ))?;
+                let msgpack_bytes = rmp_serde::to_vec(&value).map_err(|e| {
+                    pyo3::exceptions::PyRuntimeError::new_err(format!(
+                        "Failed to serialize to MessagePack: {}",
+                        e
+                    ))
+                })?;
 
                 // Create GenericMessage (with size validation)
                 let msg = GenericMessage::new(msgpack_bytes)
@@ -239,7 +263,8 @@ impl PyHub {
                         if !info.is_none(py) {
                             use horus::core::LogSummary;
                             let log_msg = msg.log_summary();
-                            let _ = info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
+                            let _ =
+                                info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
 
                             // Record metadata for dashboard discovery
                             if let Ok(node_name) = info.getattr(py, "name") {
@@ -286,7 +311,11 @@ impl PyHub {
                             if !info.is_none(py) {
                                 use horus::core::LogSummary;
                                 let log_msg = cmd.log_summary();
-                                let _ = info.call_method1(py, "log_sub", (&self.topic, log_msg, ipc_ns));
+                                let _ = info.call_method1(
+                                    py,
+                                    "log_sub",
+                                    (&self.topic, log_msg, ipc_ns),
+                                );
 
                                 // Record metadata for dashboard discovery
                                 if let Ok(node_name) = info.getattr(py, "name") {
@@ -318,7 +347,11 @@ impl PyHub {
                             if !info.is_none(py) {
                                 use horus::core::LogSummary;
                                 let log_msg = pose.log_summary();
-                                let _ = info.call_method1(py, "log_sub", (&self.topic, log_msg, ipc_ns));
+                                let _ = info.call_method1(
+                                    py,
+                                    "log_sub",
+                                    (&self.topic, log_msg, ipc_ns),
+                                );
 
                                 // Record metadata for dashboard discovery
                                 if let Ok(node_name) = info.getattr(py, "name") {
@@ -333,7 +366,8 @@ impl PyHub {
                     // Create Python Pose2D object
                     let horus_module = py.import_bound("horus")?;
                     let pose2d_class = horus_module.getattr("Pose2D")?;
-                    let py_pose = pose2d_class.call1((pose.x, pose.y, pose.theta, pose.timestamp))?;
+                    let py_pose =
+                        pose2d_class.call1((pose.x, pose.y, pose.theta, pose.timestamp))?;
                     Ok(Some(py_pose.into()))
                 } else {
                     Ok(None)
@@ -350,7 +384,11 @@ impl PyHub {
                             if !info.is_none(py) {
                                 use horus::core::LogSummary;
                                 let log_msg = msg.log_summary();
-                                let _ = info.call_method1(py, "log_sub", (&self.topic, log_msg, ipc_ns));
+                                let _ = info.call_method1(
+                                    py,
+                                    "log_sub",
+                                    (&self.topic, log_msg, ipc_ns),
+                                );
 
                                 // Record metadata for dashboard discovery
                                 if let Ok(node_name) = info.getattr(py, "name") {
@@ -364,16 +402,20 @@ impl PyHub {
 
                     // Deserialize MessagePack to serde_json::Value
                     let data = msg.data();
-                    let value: serde_json::Value = rmp_serde::from_slice(&data)
-                        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(
-                            format!("Failed to deserialize MessagePack: {}", e)
-                        ))?;
+                    let value: serde_json::Value = rmp_serde::from_slice(&data).map_err(|e| {
+                        pyo3::exceptions::PyRuntimeError::new_err(format!(
+                            "Failed to deserialize MessagePack: {}",
+                            e
+                        ))
+                    })?;
 
                     // Convert serde Value to Python object
-                    let py_obj = pythonize::pythonize(py, &value)
-                        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(
-                            format!("Failed to convert to Python: {}", e)
-                        ))?;
+                    let py_obj = pythonize::pythonize(py, &value).map_err(|e| {
+                        pyo3::exceptions::PyRuntimeError::new_err(format!(
+                            "Failed to convert to Python: {}",
+                            e
+                        ))
+                    })?;
 
                     Ok(Some(py_obj.into()))
                 } else {
@@ -415,7 +457,8 @@ impl PyHub {
                         if !info.is_none(py) {
                             use horus::core::LogSummary;
                             let log_msg = msg.log_summary();
-                            let _ = info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
+                            let _ =
+                                info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
 
                             // Record metadata for dashboard discovery
                             if let Ok(node_name) = info.getattr(py, "name") {
@@ -430,8 +473,8 @@ impl PyHub {
                 Ok(success)
             }
             _ => Err(pyo3::exceptions::PyTypeError::new_err(
-                "send_bytes() only supported for generic hubs"
-            ))
+                "send_bytes() only supported for generic hubs",
+            )),
         }
     }
 
@@ -445,16 +488,25 @@ impl PyHub {
     /// Returns:
     ///     True if sent successfully
     #[pyo3(signature = (data, _metadata, node=None))]
-    fn send_with_metadata(&self, py: Python, data: Vec<u8>, _metadata: String, node: Option<PyObject>) -> PyResult<bool> {
+    fn send_with_metadata(
+        &self,
+        py: Python,
+        data: Vec<u8>,
+        _metadata: String,
+        node: Option<PyObject>,
+    ) -> PyResult<bool> {
         use std::time::Instant;
         let start = Instant::now();
 
-        // For now, metadata is ignored - just send the bytes
-        // TODO: Store metadata in GenericMessage if needed
+        // Create GenericMessage with metadata
         match &self.hub_type {
             HubType::Generic(hub) => {
-                let msg = GenericMessage::new(data)
-                    .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?;
+                let msg = if _metadata.is_empty() {
+                    GenericMessage::new(data)
+                } else {
+                    GenericMessage::with_metadata(data, _metadata)
+                }
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?;
                 let hub = hub.lock().unwrap();
                 let success = hub.send(msg.clone(), &mut None).is_ok();
 
@@ -465,7 +517,8 @@ impl PyHub {
                         if !info.is_none(py) {
                             use horus::core::LogSummary;
                             let log_msg = msg.log_summary();
-                            let _ = info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
+                            let _ =
+                                info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
 
                             // Record metadata for dashboard discovery
                             if let Ok(node_name) = info.getattr(py, "name") {
@@ -480,8 +533,8 @@ impl PyHub {
                 Ok(success)
             }
             _ => Err(pyo3::exceptions::PyTypeError::new_err(
-                "send_with_metadata() only supported for generic hubs"
-            ))
+                "send_with_metadata() only supported for generic hubs",
+            )),
         }
     }
 
@@ -520,7 +573,8 @@ impl PyHub {
                         if !info.is_none(py) {
                             use horus::core::LogSummary;
                             let log_msg = msg.log_summary();
-                            let _ = info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
+                            let _ =
+                                info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
 
                             // Record metadata for dashboard discovery
                             if let Ok(node_name) = info.getattr(py, "name") {
@@ -535,8 +589,8 @@ impl PyHub {
                 Ok(success)
             }
             _ => Err(pyo3::exceptions::PyTypeError::new_err(
-                "send_numpy() only supported for generic hubs"
-            ))
+                "send_numpy() only supported for generic hubs",
+            )),
         }
     }
 
@@ -547,7 +601,11 @@ impl PyHub {
     ///
     /// Returns:
     ///     Tuple of (bytes, metadata_str, timestamp) or None
-    fn recv_with_metadata(&self, py: Python, node: Option<PyObject>) -> PyResult<Option<(PyObject, String, f64)>> {
+    fn recv_with_metadata(
+        &self,
+        py: Python,
+        node: Option<PyObject>,
+    ) -> PyResult<Option<(PyObject, String, f64)>> {
         use std::time::Instant;
         let start = Instant::now();
 
@@ -563,7 +621,11 @@ impl PyHub {
                             if !info.is_none(py) {
                                 use horus::core::LogSummary;
                                 let log_msg = msg.log_summary();
-                                let _ = info.call_method1(py, "log_sub", (&self.topic, log_msg, ipc_ns));
+                                let _ = info.call_method1(
+                                    py,
+                                    "log_sub",
+                                    (&self.topic, log_msg, ipc_ns),
+                                );
 
                                 // Record metadata for dashboard discovery
                                 if let Ok(node_name) = info.getattr(py, "name") {
@@ -595,8 +657,8 @@ impl PyHub {
                 }
             }
             _ => Err(pyo3::exceptions::PyTypeError::new_err(
-                "recv_with_metadata() only supported for generic hubs"
-            ))
+                "recv_with_metadata() only supported for generic hubs",
+            )),
         }
     }
 

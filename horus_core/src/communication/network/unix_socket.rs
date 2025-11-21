@@ -3,10 +3,10 @@
 /// Provides <5μs latency for same-machine communication using Unix sockets.
 /// More efficient than TCP loopback as it avoids the IP stack.
 use crate::error::HorusResult;
-use std::os::unix::net::{UnixStream, UnixListener};
-use std::sync::{Arc, Mutex};
-use std::path::PathBuf;
 use std::io::{Read, Write};
+use std::os::unix::net::{UnixListener, UnixStream};
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 const UNIX_SOCKET_DIR: &str = "/tmp/horus_sockets";
 const BUFFER_SIZE: usize = 65536; // 64KB buffer
@@ -30,8 +30,7 @@ where
         std::fs::create_dir_all(UNIX_SOCKET_DIR)
             .map_err(|e| format!("Failed to create socket directory: {}", e))?;
 
-        let socket_path = PathBuf::from(UNIX_SOCKET_DIR)
-            .join(format!("horus_{}.sock", topic));
+        let socket_path = PathBuf::from(UNIX_SOCKET_DIR).join(format!("horus_{}.sock", topic));
 
         // Remove existing socket if present
         let _ = std::fs::remove_file(&socket_path);
@@ -40,7 +39,8 @@ where
         let listener = UnixListener::bind(&socket_path)
             .map_err(|e| format!("Failed to bind Unix socket: {}", e))?;
 
-        listener.set_nonblocking(true)
+        listener
+            .set_nonblocking(true)
             .map_err(|e| format!("Failed to set nonblocking: {}", e))?;
 
         // Wait for first subscriber with timeout
@@ -51,13 +51,17 @@ where
                     // No connection yet, sleep briefly
                     std::thread::sleep(std::time::Duration::from_millis(10));
                 }
-                Err(e) => return Err(crate::error::HorusError::Communication(
-                    format!("Failed to accept connection: {}", e)
-                )),
+                Err(e) => {
+                    return Err(crate::error::HorusError::Communication(format!(
+                        "Failed to accept connection: {}",
+                        e
+                    )))
+                }
             }
         };
 
-        stream.set_nonblocking(false)
+        stream
+            .set_nonblocking(false)
             .map_err(|e| format!("Failed to set blocking: {}", e))?;
 
         Ok(Self {
@@ -71,14 +75,14 @@ where
 
     /// Create a new subscriber (connects to existing publisher)
     pub fn new_subscriber(topic: &str) -> HorusResult<Self> {
-        let socket_path = PathBuf::from(UNIX_SOCKET_DIR)
-            .join(format!("horus_{}.sock", topic));
+        let socket_path = PathBuf::from(UNIX_SOCKET_DIR).join(format!("horus_{}.sock", topic));
 
         // Connect to publisher
         let stream = UnixStream::connect(&socket_path)
             .map_err(|e| format!("Failed to connect to Unix socket: {}", e))?;
 
-        stream.set_nonblocking(false)
+        stream
+            .set_nonblocking(false)
             .map_err(|e| format!("Failed to set blocking: {}", e))?;
 
         Ok(Self {
@@ -93,19 +97,22 @@ where
     /// Send a message over Unix socket
     pub fn send(&self, msg: &T) -> HorusResult<()> {
         // Serialize using bincode (faster than JSON)
-        let serialized = bincode::serialize(msg)
-            .map_err(|e| format!("Serialization error: {}", e))?;
+        let serialized =
+            bincode::serialize(msg).map_err(|e| format!("Serialization error: {}", e))?;
 
         // Write length prefix (4 bytes)
         let len = serialized.len() as u32;
         let len_bytes = len.to_le_bytes();
 
         let mut stream = self.stream.lock().unwrap();
-        stream.write_all(&len_bytes)
+        stream
+            .write_all(&len_bytes)
             .map_err(|e| format!("Failed to write length: {}", e))?;
-        stream.write_all(&serialized)
+        stream
+            .write_all(&serialized)
             .map_err(|e| format!("Failed to write data: {}", e))?;
-        stream.flush()
+        stream
+            .flush()
             .map_err(|e| format!("Failed to flush: {}", e))?;
 
         Ok(())
@@ -192,7 +199,8 @@ mod tests {
         std::thread::sleep(std::time::Duration::from_millis(50));
 
         // Create subscriber
-        let mut sub_backend = UnixSocketBackend::<TestMessage>::new_subscriber("test_basic").unwrap();
+        let mut sub_backend =
+            UnixSocketBackend::<TestMessage>::new_subscriber("test_basic").unwrap();
 
         // Receive message
         let received = sub_backend.recv().unwrap();

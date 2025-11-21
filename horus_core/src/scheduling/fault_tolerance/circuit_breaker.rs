@@ -174,7 +174,6 @@ impl CircuitBreaker {
 }
 
 /// Statistics for monitoring
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct CircuitBreakerStats {
     pub state: CircuitState,

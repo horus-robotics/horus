@@ -48,7 +48,10 @@ impl fmt::Display for NodeState {
 ///
 /// This enum is deprecated in favor of using u32 directly for more flexibility.
 /// Use numeric priorities instead: 0 = highest priority, higher numbers = lower priority.
-#[deprecated(since = "0.2.0", note = "Use u32 directly for priority. Lower numbers = higher priority.")]
+#[deprecated(
+    since = "0.2.0",
+    note = "Use u32 directly for priority. Lower numbers = higher priority."
+)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NodePriority {
     Critical = 0,

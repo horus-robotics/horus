@@ -1,0 +1,222 @@
+# YCB Object Dataset Configuration
+# Yale-CMU-Berkeley Object and Model Set
+# Common objects for manipulation research
+
+objects:
+  # Food Items
+  - name: "002_master_chef_can"
+    category: "food"
+    mesh: "meshes/ycb/002_master_chef_can/textured.obj"
+    mass: 0.414
+    dimensions: [0.102, 0.102, 0.1398]
+    friction: 0.5
+    restitution: 0.1
+
+  - name: "003_cracker_box"
+    category: "food"
+    mesh: "meshes/ycb/003_cracker_box/textured.obj"
+    mass: 0.411
+    dimensions: [0.16, 0.21, 0.07]
+    friction: 0.6
+    restitution: 0.1
+
+  - name: "004_sugar_box"
+    category: "food"
+    mesh: "meshes/ycb/004_sugar_box/textured.obj"
+    mass: 0.514
+    dimensions: [0.038, 0.089, 0.175]
+    friction: 0.6
+    restitution: 0.1
+
+  - name: "005_tomato_soup_can"
+    category: "food"
+    mesh: "meshes/ycb/005_tomato_soup_can/textured.obj"
+    mass: 0.349
+    dimensions: [0.067, 0.067, 0.101]
+    friction: 0.5
+    restitution: 0.1
+
+  - name: "006_mustard_bottle"
+    category: "food"
+    mesh: "meshes/ycb/006_mustard_bottle/textured.obj"
+    mass: 0.603
+    dimensions: [0.095, 0.06, 0.19]
+    friction: 0.5
+    restitution: 0.2
+
+  # Kitchen Items
+  - name: "007_tuna_fish_can"
+    category: "food"
+    mesh: "meshes/ycb/007_tuna_fish_can/textured.obj"
+    mass: 0.171
+    dimensions: [0.085, 0.085, 0.033]
+    friction: 0.5
+    restitution: 0.1
+
+  - name: "008_pudding_box"
+    category: "food"
+    mesh: "meshes/ycb/008_pudding_box/textured.obj"
+    mass: 0.187
+    dimensions: [0.032, 0.096, 0.093]
+    friction: 0.6
+    restitution: 0.1
+
+  - name: "009_gelatin_box"
+    category: "food"
+    mesh: "meshes/ycb/009_gelatin_box/textured.obj"
+    mass: 0.097
+    dimensions: [0.028, 0.085, 0.073]
+    friction: 0.6
+    restitution: 0.1
+
+  - name: "010_potted_meat_can"
+    category: "food"
+    mesh: "meshes/ycb/010_potted_meat_can/textured.obj"
+    mass: 0.37
+    dimensions: [0.097, 0.051, 0.089]
+    friction: 0.5
+    restitution: 0.1
+
+  # Tools
+  - name: "019_pitcher_base"
+    category: "kitchen"
+    mesh: "meshes/ycb/019_pitcher_base/textured.obj"
+    mass: 0.178
+    dimensions: [0.12, 0.15, 0.19]
+    friction: 0.5
+    restitution: 0.2
+
+  - name: "021_bleach_cleanser"
+    category: "kitchen"
+    mesh: "meshes/ycb/021_bleach_cleanser/textured.obj"
+    mass: 1.131
+    dimensions: [0.065, 0.095, 0.255]
+    friction: 0.5
+    restitution: 0.2
+
+  - name: "024_bowl"
+    category: "kitchen"
+    mesh: "meshes/ycb/024_bowl/textured.obj"
+    mass: 0.147
+    dimensions: [0.162, 0.162, 0.05]
+    friction: 0.4
+    restitution: 0.3
+
+  - name: "025_mug"
+    category: "kitchen"
+    mesh: "meshes/ycb/025_mug/textured.obj"
+    mass: 0.118
+    dimensions: [0.093, 0.093, 0.095]
+    friction: 0.4
+    restitution: 0.3
+
+  # Shapes
+  - name: "036_wood_block"
+    category: "shapes"
+    mesh: "meshes/ycb/036_wood_block/textured.obj"
+    mass: 0.729
+    dimensions: [0.085, 0.085, 0.199]
+    friction: 0.7
+    restitution: 0.2
+
+  - name: "051_large_clamp"
+    category: "tools"
+    mesh: "meshes/ycb/051_large_clamp/textured.obj"
+    mass: 0.125
+    dimensions: [0.155, 0.09, 0.022]
+    friction: 0.6
+    restitution: 0.2
+
+  - name: "052_extra_large_clamp"
+    category: "tools"
+    mesh: "meshes/ycb/052_extra_large_clamp/textured.obj"
+    mass: 0.102
+    dimensions: [0.2, 0.11, 0.025]
+    friction: 0.6
+    restitution: 0.2
+
+  # Power Tools
+  - name: "035_power_drill"
+    category: "tools"
+    mesh: "meshes/ycb/035_power_drill/textured.obj"
+    mass: 0.895
+    dimensions: [0.19, 0.06, 0.15]
+    friction: 0.6
+    restitution: 0.2
+
+  # Balls
+  - name: "037_scissors"
+    category: "tools"
+    mesh: "meshes/ycb/037_scissors/textured.obj"
+    mass: 0.082
+    dimensions: [0.19, 0.08, 0.015]
+    friction: 0.5
+    restitution: 0.2
+
+  - name: "040_large_marker"
+    category: "office"
+    mesh: "meshes/ycb/040_large_marker/textured.obj"
+    mass: 0.016
+    dimensions: [0.012, 0.012, 0.145]
+    friction: 0.5
+    restitution: 0.3
+
+  # Soft Objects (approximated as rigid)
+  - name: "061_foam_brick"
+    category: "shapes"
+    mesh: "meshes/ycb/061_foam_brick/textured.obj"
+    mass: 0.028
+    dimensions: [0.075, 0.05, 0.05]
+    friction: 0.8
+    restitution: 0.5
+
+# Primitive shapes for testing
+primitives:
+  - name: "cube_5cm"
+    type: "box"
+    dimensions: [0.05, 0.05, 0.05]
+    mass: 0.125
+    friction: 0.5
+    restitution: 0.3
+    color: [0.8, 0.2, 0.2, 1.0]
+
+  - name: "sphere_5cm"
+    type: "sphere"
+    radius: 0.025
+    mass: 0.065
+    friction: 0.3
+    restitution: 0.6
+    color: [0.2, 0.8, 0.2, 1.0]
+
+  - name: "cylinder_10cm"
+    type: "cylinder"
+    radius: 0.025
+    length: 0.1
+    mass: 0.196
+    friction: 0.4
+    restitution: 0.4
+    color: [0.2, 0.2, 0.8, 1.0]
+
+  - name: "capsule_10cm"
+    type: "capsule"
+    radius: 0.02
+    length: 0.1
+    mass: 0.157
+    friction: 0.4
+    restitution: 0.5
+    color: [0.8, 0.8, 0.2, 1.0]
+
+# Usage instructions
+usage:
+  description: "Load YCB objects into simulation for manipulation tasks"
+  example_rust: |
+    use sim3d::assets::YCBLoader;
+
+    let loader = YCBLoader::new("assets/objects/ycb_objects.yaml")?;
+    let can = loader.spawn_object("002_master_chef_can", Vec3::new(0.0, 0.0, 0.5))?;
+
+  example_python: |
+    import sim3d
+
+    loader = sim3d.YCBLoader("assets/objects/ycb_objects.yaml")
+    can = loader.spawn("002_master_chef_can", position=[0, 0, 0.5])

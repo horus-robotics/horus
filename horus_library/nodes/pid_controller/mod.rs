@@ -104,16 +104,19 @@ impl PidControllerNode {
     /// Get current PID state
     pub fn get_state(&self) -> (f32, f32, f32, f32) {
         let (last_error, integral) = self.pid.get_state();
-        (self.setpoint, self.feedback, last_error as f32, integral as f32)
+        (
+            self.setpoint,
+            self.feedback,
+            last_error as f32,
+            integral as f32,
+        )
     }
 
     fn calculate_pid_output(&mut self, dt: f32) -> f32 {
         // Use PID algorithm to compute output
-        let output = self.pid.compute(
-            self.setpoint as f64,
-            self.feedback as f64,
-            dt as f64
-        );
+        let output = self
+            .pid
+            .compute(self.setpoint as f64, self.feedback as f64, dt as f64);
         output as f32
     }
 

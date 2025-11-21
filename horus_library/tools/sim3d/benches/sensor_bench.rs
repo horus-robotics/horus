@@ -1,7 +1,7 @@
 // Benchmark for Sensor performance
 // Run with: cargo bench --bench sensor_bench
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 
 fn benchmark_gps_update(c: &mut Criterion) {
     c.bench_function("gps_sensor_update", |b| {
@@ -16,16 +16,12 @@ fn benchmark_gps_velocity_computation(c: &mut Criterion) {
     let mut group = c.benchmark_group("gps_velocity_methods");
 
     for method in ["simple_diff", "weighted_avg", "linear_regression"].iter() {
-        group.bench_with_input(
-            BenchmarkId::from_parameter(method),
-            method,
-            |b, _method| {
-                b.iter(|| {
-                    // Placeholder: would compute velocity using specified method
-                    black_box(42)
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::from_parameter(method), method, |b, _method| {
+            b.iter(|| {
+                // Placeholder: would compute velocity using specified method
+                black_box(42)
+            });
+        });
     }
 
     group.finish();

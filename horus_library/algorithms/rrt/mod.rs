@@ -253,7 +253,13 @@ impl RRT {
             && point.1 <= self.bounds_max.1
     }
 
-    fn line_circle_collision(&self, p1: (f64, f64), p2: (f64, f64), center: (f64, f64), radius: f64) -> bool {
+    fn line_circle_collision(
+        &self,
+        p1: (f64, f64),
+        p2: (f64, f64),
+        center: (f64, f64),
+        radius: f64,
+    ) -> bool {
         let dx = p2.0 - p1.0;
         let dy = p2.1 - p1.1;
         let fx = p1.0 - center.0;
@@ -272,7 +278,7 @@ impl RRT {
         let t1 = (-b - discriminant.sqrt()) / (2.0 * a);
         let t2 = (-b + discriminant.sqrt()) / (2.0 * a);
 
-        (t1 >= 0.0 && t1 <= 1.0) || (t2 >= 0.0 && t2 <= 1.0) || (t1 < 0.0 && t2 > 1.0)
+        (0.0..=1.0).contains(&t1) || (0.0..=1.0).contains(&t2) || (t1 < 0.0 && t2 > 1.0)
     }
 
     fn extract_path(&self, goal_idx: usize) -> Vec<(f64, f64)> {
@@ -295,12 +301,7 @@ mod tests {
 
     #[test]
     fn test_basic_planning() {
-        let mut rrt = RRT::new(
-            (0.0, 0.0),
-            (10.0, 10.0),
-            (-5.0, -5.0),
-            (15.0, 15.0),
-        );
+        let mut rrt = RRT::new((0.0, 0.0), (10.0, 10.0), (-5.0, -5.0), (15.0, 15.0));
 
         rrt.set_max_iterations(2000);
         let result = rrt.plan();
@@ -319,12 +320,7 @@ mod tests {
 
     #[test]
     fn test_with_obstacle() {
-        let mut rrt = RRT::new(
-            (0.0, 0.0),
-            (10.0, 10.0),
-            (-5.0, -5.0),
-            (15.0, 15.0),
-        );
+        let mut rrt = RRT::new((0.0, 0.0), (10.0, 10.0), (-5.0, -5.0), (15.0, 15.0));
 
         rrt.set_max_iterations(3000);
         rrt.add_obstacle((5.0, 5.0), 2.0);
@@ -345,29 +341,22 @@ mod tests {
 
     #[test]
     fn test_goal_bias() {
-        let mut rrt = RRT::new(
-            (0.0, 0.0),
-            (10.0, 10.0),
-            (-5.0, -5.0),
-            (15.0, 15.0),
-        );
+        let mut rrt = RRT::new((0.0, 0.0), (10.0, 10.0), (-5.0, -5.0), (15.0, 15.0));
 
         // High goal bias should find path faster
         rrt.set_max_iterations(1000);
         rrt.set_goal_bias(0.3);
 
         let result = rrt.plan();
-        assert!(result.is_some(), "High goal bias should help find path quickly");
+        assert!(
+            result.is_some(),
+            "High goal bias should help find path quickly"
+        );
     }
 
     #[test]
     fn test_tree_growth() {
-        let mut rrt = RRT::new(
-            (0.0, 0.0),
-            (10.0, 10.0),
-            (-5.0, -5.0),
-            (15.0, 15.0),
-        );
+        let mut rrt = RRT::new((0.0, 0.0), (10.0, 10.0), (-5.0, -5.0), (15.0, 15.0));
 
         rrt.set_max_iterations(100);
         rrt.plan();
@@ -378,12 +367,7 @@ mod tests {
 
     #[test]
     fn test_reset() {
-        let mut rrt = RRT::new(
-            (0.0, 0.0),
-            (10.0, 10.0),
-            (-5.0, -5.0),
-            (15.0, 15.0),
-        );
+        let mut rrt = RRT::new((0.0, 0.0), (10.0, 10.0), (-5.0, -5.0), (15.0, 15.0));
 
         rrt.set_max_iterations(500);
         rrt.plan();
@@ -394,17 +378,15 @@ mod tests {
         rrt.reset();
 
         let size_after = rrt.tree_size();
-        assert_eq!(size_after, 1, "Tree should only have start node after reset");
+        assert_eq!(
+            size_after, 1,
+            "Tree should only have start node after reset"
+        );
     }
 
     #[test]
     fn test_path_cost() {
-        let path = vec![
-            (0.0, 0.0),
-            (1.0, 0.0),
-            (1.0, 1.0),
-            (2.0, 1.0),
-        ];
+        let path = vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (2.0, 1.0)];
 
         let cost = RRT::path_cost(&path);
         assert!((cost - 3.0).abs() < 0.01);

@@ -1,3 +1,4 @@
+use crate::communication::network::fragmentation::{Fragment, FragmentManager};
 /// High-performance async router client backend
 ///
 /// Optimizations:
@@ -8,7 +9,6 @@
 /// - Batched operations
 /// - Zero-copy where possible
 use crate::communication::network::protocol::{HorusPacket, MessageType};
-use crate::communication::network::fragmentation::{Fragment, FragmentManager};
 use crate::error::HorusResult;
 use crossbeam::channel::{bounded, Receiver, Sender};
 use crossbeam::queue::SegQueue;
@@ -19,11 +19,11 @@ use tokio::net::TcpStream;
 use tokio::runtime::Handle;
 
 const DEFAULT_ROUTER_PORT: u16 = 7777;
-const RECV_QUEUE_SIZE: usize = 1024;  // Increased from 128
+const RECV_QUEUE_SIZE: usize = 1024; // Increased from 128
 const BUFFER_SIZE: usize = 65536;
 const SEND_QUEUE_SIZE: usize = 256;
-const BUFFER_POOL_SIZE: usize = 128;  // Pre-allocated buffers
-const SMALL_BUFFER_SIZE: usize = 2048;  // For most messages
+const BUFFER_POOL_SIZE: usize = 128; // Pre-allocated buffers
+const SMALL_BUFFER_SIZE: usize = 2048; // For most messages
 
 /// Lock-free buffer pool for zero-allocation sends
 #[derive(Debug)]
@@ -72,12 +72,11 @@ impl BufferPool {
 pub struct RouterBackend<T> {
     topic_name: String,
     router_addr: SocketAddr,
-    send_tx: Sender<Vec<u8>>,  // Lock-free send queue
-    recv_rx: Receiver<T>,      // Lock-free recv queue
-    sequence: parking_lot::Mutex<u32>,  // Faster mutex
+    send_tx: Sender<Vec<u8>>,          // Lock-free send queue
+    recv_rx: Receiver<T>,              // Lock-free recv queue
+    sequence: parking_lot::Mutex<u32>, // Faster mutex
     fragment_manager: Arc<FragmentManager>,
-    buffer_pool: Arc<BufferPool>,  // Zero-allocation buffer pool
-    runtime_handle: Handle,
+    buffer_pool: Arc<BufferPool>, // Zero-allocation buffer pool
     _phantom: std::marker::PhantomData<T>,
 }
 
@@ -112,7 +111,6 @@ where
             sequence: parking_lot::Mutex::new(0),
             fragment_manager: Arc::new(FragmentManager::default()),
             buffer_pool: Arc::new(BufferPool::new()),
-            runtime_handle: runtime_handle.clone(),
             _phantom: std::marker::PhantomData,
         };
 
@@ -126,7 +124,9 @@ where
                 send_rx,
                 recv_tx,
                 buffer_pool_clone,
-            ).await {
+            )
+            .await
+            {
                 eprintln!("Router connection error: {}", e);
             }
         });
@@ -143,10 +143,12 @@ where
         buffer_pool: Arc<BufferPool>,
     ) -> HorusResult<()> {
         // Connect with TCP_NODELAY for low latency
-        let mut stream = TcpStream::connect(router_addr).await
+        let mut stream = TcpStream::connect(router_addr)
+            .await
             .map_err(|e| format!("Failed to connect to router at {}: {}", router_addr, e))?;
 
-        stream.set_nodelay(true)
+        stream
+            .set_nodelay(true)
             .map_err(|e| format!("Failed to set TCP_NODELAY: {}", e))?;
 
         // Send subscribe message
@@ -155,9 +157,13 @@ where
         subscribe_packet.encode(&mut buffer);
 
         let len_bytes = (buffer.len() as u32).to_le_bytes();
-        stream.write_all(&len_bytes).await
+        stream
+            .write_all(&len_bytes)
+            .await
             .map_err(|e| format!("Failed to send subscribe length: {}", e))?;
-        stream.write_all(&buffer).await
+        stream
+            .write_all(&buffer)
+            .await
             .map_err(|e| format!("Failed to send subscribe: {}", e))?;
 
         // Split stream for concurrent read/write
@@ -196,7 +202,11 @@ where
             }
 
             // Read packet data
-            if read_half.read_exact(&mut read_buffer[..packet_len]).await.is_err() {
+            if read_half
+                .read_exact(&mut read_buffer[..packet_len])
+                .await
+                .is_err()
+            {
                 break;
             }
 
@@ -210,7 +220,7 @@ where
                     MessageType::RouterPublish => {
                         // Fast path: direct deserialize
                         if let Ok(msg) = bincode::deserialize::<T>(&packet.payload) {
-                            let _ = recv_tx.try_send(msg);  // Non-blocking
+                            let _ = recv_tx.try_send(msg); // Non-blocking
                         }
                     }
                     MessageType::Fragment => {
@@ -235,8 +245,7 @@ where
     /// Send a message (optimized with zero-allocation buffer pooling)
     pub fn send(&self, msg: &T) -> HorusResult<()> {
         // Serialize payload
-        let payload = bincode::serialize(msg)
-            .map_err(|e| format!("Serialization error: {}", e))?;
+        let payload = bincode::serialize(msg).map_err(|e| format!("Serialization error: {}", e))?;
 
         // Fragment if needed
         let fragments = self.fragment_manager.fragment(&payload);
@@ -259,10 +268,9 @@ where
             packet.encode(&mut buffer);
 
             // Send via lock-free queue (non-blocking)
-            self.send_tx.try_send(buffer)
-                .map_err(|_| crate::error::HorusError::Communication(
-                    "Send queue full".to_string()
-                ))?;
+            self.send_tx.try_send(buffer).map_err(|_| {
+                crate::error::HorusError::Communication("Send queue full".to_string())
+            })?;
         }
 
         Ok(())

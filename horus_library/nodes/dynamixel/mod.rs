@@ -154,7 +154,7 @@ impl DynamixelModel {
     fn max_position_rad(&self) -> f32 {
         use std::f32::consts::PI;
         match self {
-            Self::AX12A | Self::AX18A => 5.23, // ~300 degrees
+            Self::AX12A | Self::AX18A => 5.23,                 // ~300 degrees
             Self::MX28 | Self::MX64 | Self::MX106 => 2.0 * PI, // 360 degrees
             _ => 2.0 * PI,
         }
@@ -162,7 +162,6 @@ impl DynamixelModel {
 
     /// Get maximum velocity in rad/s
     fn max_velocity_rad_s(&self) -> f32 {
-        
         match self {
             Self::AX12A => 10.47,     // 100 RPM
             Self::AX18A => 20.94,     // 200 RPM
@@ -210,11 +209,11 @@ impl DynamixelModel {
 struct DynamixelServo {
     id: u8,
     model: DynamixelModel,
-    position: f32,      // radians
-    velocity: f32,      // rad/s
-    current: f32,       // mA
-    temperature: u8,    // °C
-    voltage: f32,       // V
+    position: f32,   // radians
+    velocity: f32,   // rad/s
+    current: f32,    // mA
+    temperature: u8, // °C
+    voltage: f32,    // V
     torque_enabled: bool,
     goal_position: f32,
     goal_velocity: f32,
@@ -323,7 +322,10 @@ impl DynamixelNode {
 
     /// Check if servo has errors
     pub fn has_error(&self, id: u8) -> bool {
-        self.servos.get(&id).map(|s| s.hardware_error != 0).unwrap_or(false)
+        self.servos
+            .get(&id)
+            .map(|s| s.hardware_error != 0)
+            .unwrap_or(false)
     }
 
     /// Get communication statistics
@@ -369,7 +371,9 @@ impl DynamixelNode {
                             ctx.log_warning("    2. Add user to dialout group: sudo usermod -a -G dialout $USER");
                             ctx.log_warning("    3. Verify Dynamixel power and connections");
                             ctx.log_warning("    4. Check baud rate matches servo configuration");
-                            ctx.log_warning("    5. Rebuild with: cargo build --features=\"serial-hardware\"");
+                            ctx.log_warning(
+                                "    5. Rebuild with: cargo build --features=\"serial-hardware\"",
+                            );
                         }
                         self.hardware_enabled = false;
                     }
@@ -381,7 +385,9 @@ impl DynamixelNode {
                         Ok(()) => {
                             ctx.log_debug(&format!(
                                 "Servo {} (HW): position {:.3} rad ({:.1}°)",
-                                id, clamped_pos, clamped_pos.to_degrees()
+                                id,
+                                clamped_pos,
+                                clamped_pos.to_degrees()
                             ));
                             self.successful_packets += 1;
                             return;
@@ -400,7 +406,9 @@ impl DynamixelNode {
             // Simulation fallback
             ctx.log_debug(&format!(
                 "Servo {} (SIM): position {:.3} rad ({:.1}°)",
-                id, clamped_pos, clamped_pos.to_degrees()
+                id,
+                clamped_pos,
+                clamped_pos.to_degrees()
             ));
 
             self.successful_packets += 1;
@@ -514,9 +522,16 @@ impl DynamixelNode {
     /// Scan for servos on the bus
     pub fn scan(&mut self, mut ctx: Option<&mut NodeInfo>) -> Vec<u8> {
         // In real implementation, ping IDs 0-252 to find servos
-        ctx.log_info(&format!("Scanning for Dynamixel servos on {}...", self.port));
+        ctx.log_info(&format!(
+            "Scanning for Dynamixel servos on {}...",
+            self.port
+        ));
         let found_ids: Vec<u8> = self.servos.keys().copied().collect();
-        ctx.log_info(&format!("Found {} servos: {:?}", found_ids.len(), found_ids));
+        ctx.log_info(&format!(
+            "Found {} servos: {:?}",
+            found_ids.len(),
+            found_ids
+        ));
         found_ids
     }
 
@@ -618,11 +633,16 @@ impl DynamixelNode {
 
         let len = (data.len() + 5) as u16;
         let mut packet = vec![
-            0xFF, 0xFF, 0xFD, 0x00,  // Header
+            0xFF,
+            0xFF,
+            0xFD,
+            0x00, // Header
             id,
-            (len & 0xFF) as u8, (len >> 8) as u8,  // Length
-            0x03,  // Instruction: WRITE
-            (address & 0xFF) as u8, (address >> 8) as u8,  // Address
+            (len & 0xFF) as u8,
+            (len >> 8) as u8, // Length
+            0x03,             // Instruction: WRITE
+            (address & 0xFF) as u8,
+            (address >> 8) as u8, // Address
         ];
         packet.extend_from_slice(data);
 
@@ -644,17 +664,14 @@ impl DynamixelNode {
             let max_pos = servo.model.max_position_rad();
 
             // Convert radians to encoder value
-            let normalized = (position_rad / max_pos + 1.0) / 2.0;  // -max..max -> 0..1
+            let normalized = (position_rad / max_pos + 1.0) / 2.0; // -max..max -> 0..1
             let encoder_value = (normalized * resolution as f32) as u32;
             let clamped = encoder_value.min(resolution);
 
             match self.protocol {
                 DynamixelProtocol::Protocol1 => {
                     // Address 30 for Goal Position (2 bytes)
-                    let data = [
-                        (clamped & 0xFF) as u8,
-                        ((clamped >> 8) & 0xFF) as u8,
-                    ];
+                    let data = [(clamped & 0xFF) as u8, ((clamped >> 8) & 0xFF) as u8];
                     self.write_protocol1(id, 30, &data)?;
                 }
                 DynamixelProtocol::Protocol2 => {
@@ -673,7 +690,7 @@ impl DynamixelNode {
         } else {
             Err(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
-                format!("Servo {} not found", id)
+                format!("Servo {} not found", id),
             ))
         }
     }
@@ -697,9 +714,17 @@ impl Node for DynamixelNode {
                 let servo_id = i + 1; // Assume joint index maps to servo ID
 
                 if cmd.modes[idx] == JointCommand::MODE_POSITION {
-                    self.send_position_command(servo_id, cmd.positions[idx] as f32, ctx.as_deref_mut());
+                    self.send_position_command(
+                        servo_id,
+                        cmd.positions[idx] as f32,
+                        ctx.as_deref_mut(),
+                    );
                 } else if cmd.modes[idx] == JointCommand::MODE_VELOCITY {
-                    self.send_velocity_command(servo_id, cmd.velocities[idx] as f32, ctx.as_deref_mut());
+                    self.send_velocity_command(
+                        servo_id,
+                        cmd.velocities[idx] as f32,
+                        ctx.as_deref_mut(),
+                    );
                 }
             }
         }

@@ -249,11 +249,7 @@ impl RuntimeParams {
 
     /// Get metadata for a parameter
     pub fn get_metadata(&self, key: &str) -> Option<ParamMetadata> {
-        self.metadata
-            .read()
-            .ok()?
-            .get(key)
-            .cloned()
+        self.metadata.read().ok()?.get(key).cloned()
     }
 
     /// Get version for a parameter (for concurrent edit protection)
@@ -304,10 +300,7 @@ impl RuntimeParams {
                     .unwrap_or_else(|| "(none)".to_string());
                 let new_str = new_value.to_string();
 
-                let log_entry = format!(
-                    "[{}] {}: {} -> {}\n",
-                    timestamp, key, old_str, new_str
-                );
+                let log_entry = format!("[{}] {}: {} -> {}\n", timestamp, key, old_str, new_str);
 
                 // Append to log file (ignore errors to not block parameter updates)
                 use std::io::Write;
@@ -323,7 +316,12 @@ impl RuntimeParams {
     }
 
     /// Validate a value against validation rules
-    fn validate_value(&self, key: &str, value: &Value, rules: &[ValidationRule]) -> Result<(), HorusError> {
+    fn validate_value(
+        &self,
+        key: &str,
+        value: &Value,
+        rules: &[ValidationRule],
+    ) -> Result<(), HorusError> {
         for rule in rules {
             match rule {
                 ValidationRule::MinValue(min) => {
@@ -358,8 +356,9 @@ impl RuntimeParams {
                 }
                 ValidationRule::RegexPattern(pattern) => {
                     if let Some(s) = value.as_str() {
-                        let re = regex::Regex::new(pattern)
-                            .map_err(|e| HorusError::InvalidInput(format!("Invalid regex: {}", e)))?;
+                        let re = regex::Regex::new(pattern).map_err(|e| {
+                            HorusError::InvalidInput(format!("Invalid regex: {}", e))
+                        })?;
                         if !re.is_match(s) {
                             return Err(HorusError::InvalidInput(format!(
                                 "Parameter '{}' value '{}' does not match pattern '{}'",
@@ -520,10 +519,10 @@ mod tests {
     #[test]
     fn test_set_and_get_float() {
         let params = create_test_params();
-        params.set("float_key", 3.14).unwrap();
+        params.set("float_key", 2.718).unwrap();
 
         let value: Option<f64> = params.get("float_key");
-        assert_eq!(value, Some(3.14));
+        assert_eq!(value, Some(2.718));
     }
 
     #[test]
@@ -584,10 +583,10 @@ mod tests {
     #[test]
     fn test_get_f64() {
         let params = create_test_params();
-        params.set("pi", 3.14159).unwrap();
+        params.set("pi", 2.71828).unwrap();
 
         let value = params.get_f64("pi", 0.0);
-        assert_eq!(value, 3.14159);
+        assert_eq!(value, 2.71828);
     }
 
     #[test]
@@ -605,7 +604,7 @@ mod tests {
         params.set("enabled", true).unwrap();
 
         let value = params.get_bool("enabled", false);
-        assert_eq!(value, true);
+        assert!(value);
     }
 
     #[test]

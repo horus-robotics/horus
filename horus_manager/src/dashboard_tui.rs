@@ -136,8 +136,8 @@ struct DependencyData {
 
 #[derive(Debug, Clone, PartialEq)]
 enum DependencyStatus {
-    Missing,     // Declared but not installed
-    Installed,   // Both declared and installed (shown in packages list)
+    Missing,   // Declared but not installed
+    Installed, // Both declared and installed (shown in packages list)
 }
 
 #[derive(Debug, Clone)]
@@ -157,7 +157,7 @@ struct TuiGraphNode {
     id: String,
     label: String,
     node_type: TuiNodeType,
-    x: i32,  // TUI coordinates (character cells)
+    x: i32, // TUI coordinates (character cells)
     y: i32,
     pid: Option<u32>,
     active: bool,
@@ -512,15 +512,11 @@ impl TuiDashboard {
                             // Zoom out
                             self.graph_zoom = (self.graph_zoom / 1.2).max(0.2);
                         }
-                        KeyCode::Left
-                            if self.active_tab == Tab::Graph && !self.show_log_panel =>
-                        {
+                        KeyCode::Left if self.active_tab == Tab::Graph && !self.show_log_panel => {
                             // Pan left
                             self.graph_offset_x += 5;
                         }
-                        KeyCode::Right
-                            if self.active_tab == Tab::Graph && !self.show_log_panel =>
-                        {
+                        KeyCode::Right if self.active_tab == Tab::Graph && !self.show_log_panel => {
                             // Pan right
                             self.graph_offset_x -= 5;
                         }
@@ -785,7 +781,9 @@ impl TuiDashboard {
         let available_height = area.height.saturating_sub(3); // Subtract borders and header
         let page_size = available_height as usize;
 
-        let rows: Vec<Row> = self.nodes.iter()
+        let rows: Vec<Row> = self
+            .nodes
+            .iter()
             .skip(self.scroll_offset)
             .take(page_size)
             .map(|node| {
@@ -803,7 +801,11 @@ impl TuiDashboard {
             .collect();
 
         let is_focused = self.overview_panel_focus == OverviewPanelFocus::Nodes;
-        let border_color = if is_focused { Color::Cyan } else { Color::White };
+        let border_color = if is_focused {
+            Color::Cyan
+        } else {
+            Color::White
+        };
 
         let table = Table::new(rows)
             .header(
@@ -812,7 +814,10 @@ impl TuiDashboard {
             )
             .block(
                 Block::default()
-                    .title(format!("Active Nodes ({}) - Use Left/Right to switch panels", self.get_active_node_count()))
+                    .title(format!(
+                        "Active Nodes ({}) - Use Left/Right to switch panels",
+                        self.get_active_node_count()
+                    ))
                     .borders(Borders::ALL)
                     .border_style(Style::default().fg(border_color)),
             )
@@ -846,7 +851,9 @@ impl TuiDashboard {
         let available_height = area.height.saturating_sub(3); // Subtract borders and header
         let page_size = available_height as usize;
 
-        let rows: Vec<Row> = self.topics.iter()
+        let rows: Vec<Row> = self
+            .topics
+            .iter()
             .skip(self.scroll_offset)
             .take(page_size)
             .map(|topic| {
@@ -883,7 +890,11 @@ impl TuiDashboard {
             .collect();
 
         let is_focused = self.overview_panel_focus == OverviewPanelFocus::Topics;
-        let border_color = if is_focused { Color::Cyan } else { Color::White };
+        let border_color = if is_focused {
+            Color::Cyan
+        } else {
+            Color::White
+        };
 
         let table = Table::new(rows)
             .header(
@@ -898,7 +909,10 @@ impl TuiDashboard {
             )
             .block(
                 Block::default()
-                    .title(format!("Active Topics ({}) - Use Left/Right to switch panels", self.get_active_topic_count()))
+                    .title(format!(
+                        "Active Topics ({}) - Use Left/Right to switch panels",
+                        self.get_active_topic_count()
+                    ))
                     .borders(Borders::ALL)
                     .border_style(Style::default().fg(border_color)),
             )
@@ -1054,9 +1068,11 @@ impl TuiDashboard {
 
         if self.graph_nodes.is_empty() {
             // Show message if no graph data
-            let text = Paragraph::new("No nodes or topics detected. Start some HORUS nodes to see the graph.")
-                .style(Style::default().fg(Color::Yellow))
-                .alignment(Alignment::Center);
+            let text = Paragraph::new(
+                "No nodes or topics detected. Start some HORUS nodes to see the graph.",
+            )
+            .style(Style::default().fg(Color::Yellow))
+            .alignment(Alignment::Center);
             f.render_widget(text, inner);
             return;
         }
@@ -1077,10 +1093,16 @@ impl TuiDashboard {
             }
         }
 
-        let mut canvas: Vec<Vec<ColoredCell>> = vec![vec![ColoredCell {
-            text: " ".to_string(),
-            color: None
-        }; width]; height];
+        let mut canvas: Vec<Vec<ColoredCell>> = vec![
+            vec![
+                ColoredCell {
+                    text: " ".to_string(),
+                    color: None
+                };
+                width
+            ];
+            height
+        ];
 
         // Create a map of node ID to node for quick lookup
         let node_map: HashMap<String, &TuiGraphNode> =
@@ -1147,9 +1169,9 @@ impl TuiDashboard {
             TuiNodeType::Process => {
                 // Draw process as a circle with color coding
                 let (symbol, color) = if node.active {
-                    ("●", Color::Green)  // Active processes are green
+                    ("●", Color::Green) // Active processes are green
                 } else {
-                    ("○", Color::DarkGray)  // Inactive processes are gray
+                    ("○", Color::DarkGray) // Inactive processes are gray
                 };
 
                 if x < width {
@@ -1158,7 +1180,11 @@ impl TuiDashboard {
 
                 // Draw label next to the node with appropriate color
                 let label = format!(" {}", node.label);
-                let label_color = if node.active { Color::Cyan } else { Color::DarkGray };
+                let label_color = if node.active {
+                    Color::Cyan
+                } else {
+                    Color::DarkGray
+                };
 
                 for (i, ch) in label.chars().enumerate() {
                     let label_x = x + i + 1;
@@ -1190,8 +1216,7 @@ impl TuiDashboard {
         edge_type: &TuiEdgeType,
         active: bool,
         dimensions: (usize, usize),
-    )
-    where
+    ) where
         T: Clone,
         T: From<(String, Option<Color>)>,
     {
@@ -1205,10 +1230,18 @@ impl TuiDashboard {
         // Color code based on edge type and activity
         let edge_color = match edge_type {
             TuiEdgeType::Publish => {
-                if active { Color::Blue } else { Color::DarkGray }
+                if active {
+                    Color::Blue
+                } else {
+                    Color::DarkGray
+                }
             }
             TuiEdgeType::Subscribe => {
-                if active { Color::Magenta } else { Color::DarkGray }
+                if active {
+                    Color::Magenta
+                } else {
+                    Color::DarkGray
+                }
             }
         };
 
@@ -1217,6 +1250,7 @@ impl TuiDashboard {
     }
 
     // Draw a smooth Bézier curve between two points (like rqt_graph)
+    #[allow(clippy::too_many_arguments)]
     fn draw_bezier_curve<T>(
         &self,
         canvas: &mut [Vec<T>],
@@ -1227,8 +1261,7 @@ impl TuiDashboard {
         color: Color,
         width: usize,
         height: usize,
-    )
-    where
+    ) where
         T: Clone,
         T: From<(String, Option<Color>)>,
     {
@@ -1247,7 +1280,7 @@ impl TuiDashboard {
         // Sample the curve at regular intervals for smoothness
         let distance = (dx * dx + dy * dy).sqrt();
         let num_samples = (distance * 1.5) as usize;
-        let num_samples = num_samples.max(10).min(200);
+        let num_samples = num_samples.clamp(10, 200);
 
         let mut prev_x = x1 as i32;
         let mut prev_y = y1 as i32;
@@ -1280,6 +1313,7 @@ impl TuiDashboard {
     }
 
     // Draw a line segment using Bresenham's algorithm with smooth characters
+    #[allow(clippy::too_many_arguments)]
     fn draw_line_segment<T>(
         &self,
         canvas: &mut [Vec<T>],
@@ -1290,8 +1324,7 @@ impl TuiDashboard {
         color: Color,
         width: usize,
         height: usize,
-    )
-    where
+    ) where
         T: Clone,
         T: From<(String, Option<Color>)>,
     {
@@ -1307,13 +1340,13 @@ impl TuiDashboard {
             if x >= 0 && (x as usize) < width && y >= 0 && (y as usize) < height {
                 // Choose character based on line direction for smooth appearance
                 let ch = if dx > dy * 2 {
-                    "─"  // Mostly horizontal
+                    "─" // Mostly horizontal
                 } else if dy > dx * 2 {
-                    "│"  // Mostly vertical
+                    "│" // Mostly vertical
                 } else if (x2 > x1 && y2 > y1) || (x2 < x1 && y2 < y1) {
-                    "╱"  // Diagonal /
+                    "╱" // Diagonal /
                 } else {
-                    "╲"  // Diagonal \
+                    "╲" // Diagonal \
                 };
 
                 canvas[y as usize][x as usize] = T::from((ch.to_string(), Some(color)));
@@ -1336,6 +1369,7 @@ impl TuiDashboard {
     }
 
     // Draw an arrowhead at the destination with proper direction
+    #[allow(clippy::too_many_arguments)]
     fn draw_arrowhead<T>(
         &self,
         canvas: &mut [Vec<T>],
@@ -1346,8 +1380,7 @@ impl TuiDashboard {
         color: Color,
         width: usize,
         height: usize,
-    )
-    where
+    ) where
         T: Clone,
         T: From<(String, Option<Color>)>,
     {
@@ -1364,32 +1397,51 @@ impl TuiDashboard {
         let angle = dy.atan2(dx);
 
         // Choose arrow based on angle (8 directions)
-        let arrow = if angle >= -std::f32::consts::PI / 8.0 && angle < std::f32::consts::PI / 8.0 {
-            "→"  // Right
-        } else if angle >= std::f32::consts::PI / 8.0 && angle < 3.0 * std::f32::consts::PI / 8.0 {
-            "↘"  // Down-right
-        } else if angle >= 3.0 * std::f32::consts::PI / 8.0 && angle < 5.0 * std::f32::consts::PI / 8.0 {
-            "↓"  // Down
-        } else if angle >= 5.0 * std::f32::consts::PI / 8.0 && angle < 7.0 * std::f32::consts::PI / 8.0 {
-            "↙"  // Down-left
-        } else if angle < -7.0 * std::f32::consts::PI / 8.0 || angle >= 7.0 * std::f32::consts::PI / 8.0 {
-            "←"  // Left
-        } else if angle >= -7.0 * std::f32::consts::PI / 8.0 && angle < -5.0 * std::f32::consts::PI / 8.0 {
-            "↖"  // Up-left
-        } else if angle >= -5.0 * std::f32::consts::PI / 8.0 && angle < -3.0 * std::f32::consts::PI / 8.0 {
-            "↑"  // Up
+        let arrow = if (-std::f32::consts::PI / 8.0..std::f32::consts::PI / 8.0).contains(&angle) {
+            "→" // Right
+        } else if (std::f32::consts::PI / 8.0..3.0 * std::f32::consts::PI / 8.0).contains(&angle) {
+            "↘" // Down-right
+        } else if (3.0 * std::f32::consts::PI / 8.0..5.0 * std::f32::consts::PI / 8.0)
+            .contains(&angle)
+        {
+            "↓" // Down
+        } else if (5.0 * std::f32::consts::PI / 8.0..7.0 * std::f32::consts::PI / 8.0)
+            .contains(&angle)
+        {
+            "↙" // Down-left
+        } else if !(-7.0 * std::f32::consts::PI / 8.0..7.0 * std::f32::consts::PI / 8.0)
+            .contains(&angle)
+        {
+            "←" // Left
+        } else if (-7.0 * std::f32::consts::PI / 8.0..-5.0 * std::f32::consts::PI / 8.0)
+            .contains(&angle)
+        {
+            "↖" // Up-left
+        } else if (-5.0 * std::f32::consts::PI / 8.0..-3.0 * std::f32::consts::PI / 8.0)
+            .contains(&angle)
+        {
+            "↑" // Up
         } else {
-            "↗"  // Up-right
+            "↗" // Up-right
         };
 
         // Place arrow slightly before destination to avoid node overlap
-        let offset_x = if dx.abs() > 2.0 { -(dx.signum() as i32) } else { 0 };
-        let offset_y = if dy.abs() > 2.0 { -(dy.signum() as i32) } else { 0 };
+        let offset_x = if dx.abs() > 2.0 {
+            -(dx.signum() as i32)
+        } else {
+            0
+        };
+        let offset_y = if dy.abs() > 2.0 {
+            -(dy.signum() as i32)
+        } else {
+            0
+        };
 
         let arrow_x = end_x + offset_x;
         let arrow_y = end_y + offset_y;
 
-        if arrow_x >= 0 && (arrow_x as usize) < width && arrow_y >= 0 && (arrow_y as usize) < height {
+        if arrow_x >= 0 && (arrow_x as usize) < width && arrow_y >= 0 && (arrow_y as usize) < height
+        {
             canvas[arrow_y as usize][arrow_x as usize] = T::from((arrow.to_string(), Some(color)));
         }
     }
@@ -1439,7 +1491,9 @@ impl TuiDashboard {
                 let style = if is_selected {
                     Style::default().add_modifier(Modifier::REVERSED)
                 } else if workspace.is_current {
-                    Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)
+                    Style::default()
+                        .fg(Color::Green)
+                        .add_modifier(Modifier::BOLD)
                 } else {
                     Style::default()
                 };
@@ -1472,7 +1526,11 @@ impl TuiDashboard {
                     .title(format!(
                         "Local Workspaces ({}) {}",
                         workspaces.len(),
-                        if local_focused { "[FOCUSED - Press ← →]" } else { "[Press → to focus]" }
+                        if local_focused {
+                            "[FOCUSED - Press ← →]"
+                        } else {
+                            "[Press → to focus]"
+                        }
                     ))
                     .borders(Borders::ALL)
                     .border_style(if local_focused {
@@ -1528,7 +1586,11 @@ impl TuiDashboard {
                     .title(format!(
                         "Global Packages ({}) {}",
                         global_packages.len(),
-                        if global_focused { "[FOCUSED - Press ← →]" } else { "[Press ← to focus]" }
+                        if global_focused {
+                            "[FOCUSED - Press ← →]"
+                        } else {
+                            "[Press ← to focus]"
+                        }
                     ))
                     .borders(Borders::ALL)
                     .border_style(if global_focused {
@@ -1887,7 +1949,9 @@ impl TuiDashboard {
                 "Navigation:",
                 Style::default().fg(Color::Cyan),
             )]),
-            Line::from("  Tab        - Next tab (Overview  Nodes  Topics  Graph  Packages  Params)"),
+            Line::from(
+                "  Tab        - Next tab (Overview  Nodes  Topics  Graph  Packages  Params)",
+            ),
             Line::from("  Shift+Tab  - Previous tab"),
             Line::from("  ↑/↓        - Navigate lists"),
             Line::from("  PgUp/PgDn  - Scroll quickly"),
@@ -1921,7 +1985,9 @@ impl TuiDashboard {
                 Style::default().fg(Color::Cyan),
             )]),
             Line::from("  ← →        - Switch between Local Workspaces and Global Packages"),
-            Line::from("  Enter      - Drill into selected workspace to view packages & dependencies"),
+            Line::from(
+                "  Enter      - Drill into selected workspace to view packages & dependencies",
+            ),
             Line::from("  ESC        - Navigate back to workspace list"),
             Line::from("  Note       - Missing dependencies (from horus.yaml) shown in red"),
             Line::from(""),
@@ -2168,12 +2234,10 @@ impl TuiDashboard {
     fn select_next(&mut self) {
         // Get max index based on current tab
         let max_index = match self.active_tab {
-            Tab::Overview => {
-                match self.overview_panel_focus {
-                    OverviewPanelFocus::Nodes => self.nodes.len().saturating_sub(1),
-                    OverviewPanelFocus::Topics => self.topics.len().saturating_sub(1),
-                }
-            }
+            Tab::Overview => match self.overview_panel_focus {
+                OverviewPanelFocus::Nodes => self.nodes.len().saturating_sub(1),
+                OverviewPanelFocus::Topics => self.topics.len().saturating_sub(1),
+            },
             Tab::Nodes => self.nodes.len().saturating_sub(1),
             Tab::Topics => self.topics.len().saturating_sub(1),
             Tab::Parameters => {
@@ -2298,7 +2362,8 @@ impl TuiDashboard {
             PackageViewMode::List => {
                 // Drill down into selected workspace (use cached data)
                 if self.selected_index < self.workspace_cache.len() {
-                    self.selected_workspace = Some(self.workspace_cache[self.selected_index].clone());
+                    self.selected_workspace =
+                        Some(self.workspace_cache[self.selected_index].clone());
                     self.package_view_mode = PackageViewMode::WorkspaceDetails;
                     self.selected_index = 0;
                     self.scroll_offset = 0;
@@ -2584,7 +2649,7 @@ impl TuiDashboard {
                     crate::graph::NodeType::Process => TuiNodeType::Process,
                     crate::graph::NodeType::Topic => TuiNodeType::Topic,
                 },
-                x: 0,  // Will be set by layout
+                x: 0, // Will be set by layout
                 y: 0,
                 pid: node.pid,
                 active: node.active,
@@ -2653,18 +2718,22 @@ impl TuiDashboard {
             ) {
                 match (&from_node.node_type, &to_node.node_type) {
                     (TuiNodeType::Process, TuiNodeType::Topic) => {
-                        process_to_topics.entry(edge.from.clone())
+                        process_to_topics
+                            .entry(edge.from.clone())
                             .or_default()
                             .push(edge.to.clone());
-                        topic_to_processes.entry(edge.to.clone())
+                        topic_to_processes
+                            .entry(edge.to.clone())
                             .or_default()
                             .push(edge.from.clone());
                     }
                     (TuiNodeType::Topic, TuiNodeType::Process) => {
-                        topic_to_processes.entry(edge.from.clone())
+                        topic_to_processes
+                            .entry(edge.from.clone())
                             .or_default()
                             .push(edge.to.clone());
-                        process_to_topics.entry(edge.to.clone())
+                        process_to_topics
+                            .entry(edge.to.clone())
                             .or_default()
                             .push(edge.from.clone());
                     }
@@ -2693,7 +2762,10 @@ impl TuiDashboard {
                             let sum: f32 = procs
                                 .iter()
                                 .filter_map(|proc_id| {
-                                    process_order.iter().position(|p| p == proc_id).map(|i| i as f32)
+                                    process_order
+                                        .iter()
+                                        .position(|p| p == proc_id)
+                                        .map(|i| i as f32)
                                 })
                                 .sum();
                             sum / procs.len() as f32
@@ -2705,7 +2777,8 @@ impl TuiDashboard {
                 })
                 .collect();
 
-            topic_barycenters.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+            topic_barycenters
+                .sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
             topic_order = topic_barycenters.into_iter().map(|(id, _)| id).collect();
 
             // Reorder processes based on average position of connected topics
@@ -2720,7 +2793,10 @@ impl TuiDashboard {
                             let sum: f32 = tops
                                 .iter()
                                 .filter_map(|topic_id| {
-                                    topic_order.iter().position(|t| t == topic_id).map(|i| i as f32)
+                                    topic_order
+                                        .iter()
+                                        .position(|t| t == topic_id)
+                                        .map(|i| i as f32)
                                 })
                                 .sum();
                             sum / tops.len() as f32
@@ -2732,7 +2808,8 @@ impl TuiDashboard {
                 })
                 .collect();
 
-            process_barycenters.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+            process_barycenters
+                .sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
             process_order = process_barycenters.into_iter().map(|(id, _)| id).collect();
         }
 
@@ -2741,7 +2818,8 @@ impl TuiDashboard {
         let topic_spacing = 4;
 
         // Calculate label width for dynamic positioning
-        let max_label_len = process_order.iter()
+        let max_label_len = process_order
+            .iter()
             .filter_map(|p| self.graph_nodes.iter().find(|n| &n.id == p))
             .map(|n| n.label.len())
             .max()
@@ -2795,12 +2873,14 @@ impl TuiDashboard {
             ) {
                 match (&from_node.node_type, &to_node.node_type) {
                     (TuiNodeType::Process, TuiNodeType::Topic) => {
-                        process_to_topics.entry(edge.from.clone())
+                        process_to_topics
+                            .entry(edge.from.clone())
                             .or_default()
                             .push(edge.to.clone());
                     }
                     (TuiNodeType::Topic, TuiNodeType::Process) => {
-                        topic_to_processes.entry(edge.from.clone())
+                        topic_to_processes
+                            .entry(edge.from.clone())
                             .or_default()
                             .push(edge.to.clone());
                     }
@@ -2810,13 +2890,15 @@ impl TuiDashboard {
         }
 
         // Calculate dynamic spacing based on label lengths
-        let max_process_len = processes.iter()
+        let max_process_len = processes
+            .iter()
             .filter_map(|p| self.graph_nodes.iter().find(|n| &n.id == p))
             .map(|n| n.label.len())
             .max()
             .unwrap_or(15);
 
-        let max_topic_len = topics.iter()
+        let max_topic_len = topics
+            .iter()
             .filter_map(|t| self.graph_nodes.iter().find(|n| &n.id == t))
             .map(|n| n.label.len() + 2) // +2 for brackets
             .max()
@@ -2846,10 +2928,12 @@ impl TuiDashboard {
             if let Some(connected_procs) = topic_to_processes.get(topic_id) {
                 if !connected_procs.is_empty() {
                     // Calculate average X position of connected processes
-                    let avg_x: f32 = connected_procs.iter()
+                    let avg_x: f32 = connected_procs
+                        .iter()
                         .filter_map(|p| self.graph_nodes.iter().find(|n| &n.id == p))
                         .map(|n| n.x as f32)
-                        .sum::<f32>() / connected_procs.len() as f32;
+                        .sum::<f32>()
+                        / connected_procs.len() as f32;
 
                     topic_x = avg_x as i32;
                 }
@@ -2896,10 +2980,12 @@ impl TuiDashboard {
         // Build edge map for attraction forces
         let mut edge_map: HashMap<String, Vec<String>> = HashMap::new();
         for edge in &self.graph_edges {
-            edge_map.entry(edge.from.clone())
+            edge_map
+                .entry(edge.from.clone())
                 .or_default()
                 .push(edge.to.clone());
-            edge_map.entry(edge.to.clone())
+            edge_map
+                .entry(edge.to.clone())
                 .or_default()
                 .push(edge.from.clone());
         }
@@ -3061,8 +3147,8 @@ fn get_active_nodes() -> Result<Vec<NodeStatus>> {
 }
 
 fn get_local_workspaces(current_workspace_path: &Option<std::path::PathBuf>) -> Vec<WorkspaceData> {
-    use std::fs;
     use std::collections::HashSet;
+    use std::fs;
 
     let mut workspaces = Vec::new();
 
@@ -3078,9 +3164,7 @@ fn get_local_workspaces(current_workspace_path: &Option<std::path::PathBuf>) -> 
         let yaml_dependencies = if horus_yaml_path.exists() {
             fs::read_to_string(&horus_yaml_path)
                 .ok()
-                .and_then(|content| {
-                    serde_yaml::from_str::<serde_yaml::Value>(&content).ok()
-                })
+                .and_then(|content| serde_yaml::from_str::<serde_yaml::Value>(&content).ok())
                 .and_then(|yaml| {
                     yaml.get("dependencies")
                         .and_then(|deps| deps.as_sequence())
@@ -3105,7 +3189,10 @@ fn get_local_workspaces(current_workspace_path: &Option<std::path::PathBuf>) -> 
                 for pkg_entry in pkg_entries.flatten() {
                     // Check if it's a directory OR a symlink pointing to a directory
                     let is_pkg_dir = pkg_entry.file_type().map(|t| t.is_dir()).unwrap_or(false)
-                        || (pkg_entry.file_type().map(|t| t.is_symlink()).unwrap_or(false)
+                        || (pkg_entry
+                            .file_type()
+                            .map(|t| t.is_symlink())
+                            .unwrap_or(false)
                             && pkg_entry.path().is_dir());
 
                     if is_pkg_dir {
@@ -3212,9 +3299,9 @@ fn get_local_workspaces(current_workspace_path: &Option<std::path::PathBuf>) -> 
     // Sort by: current workspace first, then alphabetically
     workspaces.sort_by(|a, b| {
         match (a.is_current, b.is_current) {
-            (true, false) => std::cmp::Ordering::Less,    // Current workspace comes first
+            (true, false) => std::cmp::Ordering::Less, // Current workspace comes first
             (false, true) => std::cmp::Ordering::Greater, // Current workspace comes first
-            _ => a.name.cmp(&b.name),                     // Otherwise sort alphabetically
+            _ => a.name.cmp(&b.name),                  // Otherwise sort alphabetically
         }
     });
     workspaces

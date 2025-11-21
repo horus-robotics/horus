@@ -762,8 +762,10 @@ impl SpiMessage {
 
 impl LogSummary for SpiMessage {
     fn log_summary(&self) -> String {
-        format!("SPI[{}.{}]: {} bytes @ {}Hz mode={}",
-            self.bus, self.chip_select, self.length, self.speed_hz, self.mode)
+        format!(
+            "SPI[{}.{}]: {} bytes @ {}Hz mode={}",
+            self.bus, self.chip_select, self.length, self.speed_hz, self.mode
+        )
     }
 }
 
@@ -836,11 +838,7 @@ impl SerialData {
 
     /// Get port ID as string
     pub fn get_port(&self) -> String {
-        let end = self
-            .port_id
-            .iter()
-            .position(|&b| b == 0)
-            .unwrap_or(64);
+        let end = self.port_id.iter().position(|&b| b == 0).unwrap_or(64);
         String::from_utf8_lossy(&self.port_id[..end]).into_owned()
     }
 
@@ -1016,21 +1014,29 @@ impl I2cMessage {
 
 impl LogSummary for SerialData {
     fn log_summary(&self) -> String {
-        format!("Serial[{}]: {} bytes @ {}bps", self.get_port(), self.data_length, self.baud_rate)
+        format!(
+            "Serial[{}]: {} bytes @ {}bps",
+            self.get_port(),
+            self.data_length,
+            self.baud_rate
+        )
     }
 }
 
 impl LogSummary for I2cMessage {
     fn log_summary(&self) -> String {
-        format!("I2C[0x{:02X}]: {} {} bytes", self.device_address,
+        format!(
+            "I2C[0x{:02X}]: {} {} bytes",
+            self.device_address,
             match self.transaction_type {
                 Self::TYPE_READ => "read",
                 Self::TYPE_WRITE => "write",
                 Self::TYPE_READ_REGISTER => "read_reg",
                 Self::TYPE_WRITE_REGISTER => "write_reg",
-                _ => "unknown"
+                _ => "unknown",
             },
-            self.data_length)
+            self.data_length
+        )
     }
 }
 
@@ -1259,9 +1265,7 @@ impl CanFrame {
     /// Unpack 16-bit value from CAN data (little-endian)
     pub fn unpack_u16(&self, offset: usize) -> Option<u16> {
         if offset + 1 < self.dlc as usize {
-            Some(
-                (self.data[offset] as u16) | ((self.data[offset + 1] as u16) << 8)
-            )
+            Some((self.data[offset] as u16) | ((self.data[offset + 1] as u16) << 8))
         } else {
             None
         }
@@ -1274,7 +1278,7 @@ impl CanFrame {
                 (self.data[offset] as u32)
                     | ((self.data[offset + 1] as u32) << 8)
                     | ((self.data[offset + 2] as u32) << 16)
-                    | ((self.data[offset + 3] as u32) << 24)
+                    | ((self.data[offset + 3] as u32) << 24),
             )
         } else {
             None
@@ -1284,11 +1288,13 @@ impl CanFrame {
 
 impl LogSummary for CanFrame {
     fn log_summary(&self) -> String {
-        format!("CAN[0x{:03X}]: {} bytes{}{}",
+        format!(
+            "CAN[0x{:03X}]: {} bytes{}{}",
             self.id,
             self.dlc,
             if self.is_extended { " EXT" } else { "" },
-            if self.is_fd { " FD" } else { "" })
+            if self.is_fd { " FD" } else { "" }
+        )
     }
 }
 

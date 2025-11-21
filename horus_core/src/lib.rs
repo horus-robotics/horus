@@ -34,6 +34,7 @@ pub mod communication;
 pub mod core;
 pub mod error;
 pub mod memory;
+pub mod ml;
 pub mod params;
 pub mod scheduling;
 
@@ -43,8 +44,8 @@ pub mod rtos;
 // Re-export commonly used types for easy access
 pub use communication::{Hub, Link, LinkMetrics};
 pub use core::{
-    HealthStatus, Node, NodeConfig, NodeHeartbeat, NodeInfo, NodeInfoExt, NodeMetrics,
-    NodeState, TopicMetadata,
+    HealthStatus, Node, NodeConfig, NodeHeartbeat, NodeInfo, NodeInfoExt, NodeMetrics, NodeState,
+    TopicMetadata,
 };
 pub use error::{HorusError, HorusResult};
 pub use params::RuntimeParams;

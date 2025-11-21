@@ -1,6 +1,6 @@
 use bevy::prelude::*;
-use rand::Rng;
 use rand::rngs::ThreadRng;
+use rand::Rng;
 use rand_distr::{Distribution, Normal, Uniform};
 
 /// Trait for noise models that can be applied to sensor data
@@ -143,9 +143,7 @@ pub struct CombinedNoise {
 
 impl CombinedNoise {
     pub fn new() -> Self {
-        Self {
-            models: Vec::new(),
-        }
+        Self { models: Vec::new() }
     }
 
     pub fn add_model(mut self, model: Box<dyn NoiseModel>) -> Self {

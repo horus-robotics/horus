@@ -228,12 +228,14 @@ pub struct ViewModePlugin;
 
 impl Plugin for ViewModePlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<CurrentViewMode>()
-            .add_systems(Update, (
+        app.init_resource::<CurrentViewMode>().add_systems(
+            Update,
+            (
                 view_mode_hotkey_system,
                 apply_view_mode_system,
                 follow_mode_update_system,
-            ));
+            ),
+        );
 
         #[cfg(feature = "visual")]
         app.add_systems(Update, view_mode_panel_system);
@@ -245,11 +247,7 @@ pub struct ViewModeUtils;
 
 impl ViewModeUtils {
     /// Calculate camera position for a specific view mode
-    pub fn calculate_camera_position(
-        mode: ViewMode,
-        focus: Vec3,
-        radius: f32,
-    ) -> Vec3 {
+    pub fn calculate_camera_position(mode: ViewMode, focus: Vec3, radius: f32) -> Vec3 {
         match mode {
             ViewMode::Orbit => {
                 let yaw = Quat::from_rotation_y(0.0);
@@ -327,7 +325,10 @@ mod tests {
     #[test]
     fn test_view_mode_utils_radius() {
         assert_eq!(ViewModeUtils::get_recommended_radius(ViewMode::Orbit), 10.0);
-        assert_eq!(ViewModeUtils::get_recommended_radius(ViewMode::TopDown), 15.0);
+        assert_eq!(
+            ViewModeUtils::get_recommended_radius(ViewMode::TopDown),
+            15.0
+        );
         assert_eq!(ViewModeUtils::get_recommended_radius(ViewMode::Follow), 5.0);
     }
 

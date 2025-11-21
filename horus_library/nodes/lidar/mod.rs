@@ -16,6 +16,9 @@ pub enum LidarBackend {
     RplidarA1,
     RplidarA2,
     RplidarA3,
+    YdlidarX2,
+    YdlidarX4,
+    YdlidarTMiniPro,
 }
 
 /// LiDAR Node - Generic LiDAR interface for obstacle detection and mapping
@@ -23,7 +26,7 @@ pub enum LidarBackend {
 /// Captures laser scan data from various LiDAR sensors and publishes LaserScan messages.
 /// Supports multiple hardware backends:
 /// - RPLidar A1/A2/A3 series
-/// - YDLIDAR (future)
+/// - YDLIDAR X2/X4/T-mini Pro series
 /// - Simulation mode for testing
 pub struct LidarNode {
     publisher: Hub<LaserScan>,
@@ -66,9 +69,12 @@ impl LidarNode {
             scan_frequency: 10.0,
             min_range: 0.1,
             max_range: match backend {
-                LidarBackend::RplidarA1 => 12.0,  // A1: 12m max range
-                LidarBackend::RplidarA2 => 16.0,  // A2: 16m max range
-                LidarBackend::RplidarA3 => 25.0,  // A3: 25m max range
+                LidarBackend::RplidarA1 => 12.0,       // A1: 12m max range
+                LidarBackend::RplidarA2 => 16.0,       // A2: 16m max range
+                LidarBackend::RplidarA3 => 25.0,       // A3: 25m max range
+                LidarBackend::YdlidarX2 => 8.0,        // X2: 8m max range
+                LidarBackend::YdlidarX4 => 10.0,       // X4: 10m max range
+                LidarBackend::YdlidarTMiniPro => 12.0, // T-mini Pro: 12m max range
                 _ => 30.0,
             },
             angle_increment: std::f32::consts::PI / 180.0, // 1 degree
@@ -151,9 +157,13 @@ impl LidarNode {
                         // Get device info
                         match device.get_device_info() {
                             Ok(info) => {
-                                eprintln!("RPLidar connected: model={}, firmware={}.{}, hardware={}",
-                                    info.model, info.firmware_version.0, info.firmware_version.1,
-                                    info.hardware_version);
+                                eprintln!(
+                                    "RPLidar connected: model={}, firmware={}.{}, hardware={}",
+                                    info.model,
+                                    info.firmware_version.0,
+                                    info.firmware_version.1,
+                                    info.hardware_version
+                                );
                             }
                             Err(e) => {
                                 eprintln!("Failed to get RPLidar info: {:?}", e);
@@ -187,6 +197,34 @@ impl LidarNode {
                         false
                     }
                 }
+            }
+            LidarBackend::YdlidarX2 | LidarBackend::YdlidarX4 | LidarBackend::YdlidarTMiniPro => {
+                // YDLIDAR support requires the ydlidar_driver crate
+                // To enable: Add `ydlidar_driver = "0.1"` to Cargo.toml dependencies
+                // and implement connection logic similar to RPLidar above
+                //
+                // Basic implementation would look like:
+                // #[cfg(feature = "ydlidar")]
+                // {
+                //     use ydlidar_driver::run_driver;
+                //     match run_driver(&self.serial_port) {
+                //         Ok(driver_threads) => {
+                //             self.ydlidar = Some(driver_threads);
+                //             self.is_initialized = true;
+                //             true
+                //         }
+                //         Err(e) => {
+                //             eprintln!("Failed to initialize YDLIDAR: {:?}", e);
+                //             false
+                //         }
+                //     }
+                // }
+                eprintln!(
+                    "YDLIDAR support ({:?}) is not yet fully implemented",
+                    self.backend
+                );
+                eprintln!("To add support, enable the 'ydlidar' feature and add ydlidar_driver dependency");
+                false
             }
             _ => {
                 eprintln!("Unsupported LiDAR backend: {:?}", self.backend);
@@ -238,7 +276,8 @@ impl LidarNode {
                                         let quality = measurement.quality();
 
                                         // Only use high-quality measurements
-                                        if quality > 10 && distance_m >= self.min_range
+                                        if quality > 10
+                                            && distance_m >= self.min_range
                                             && distance_m <= self.max_range
                                         {
                                             let idx = angle_deg as usize % 360;
@@ -271,6 +310,20 @@ impl LidarNode {
                 } else {
                     None
                 }
+            }
+            LidarBackend::YdlidarX2 | LidarBackend::YdlidarX4 | LidarBackend::YdlidarTMiniPro => {
+                // YDLIDAR scan data acquisition would be implemented here
+                // when the ydlidar_driver feature is enabled
+                //
+                // Example implementation:
+                // #[cfg(feature = "ydlidar")]
+                // {
+                //     if let Some(ref driver) = self.ydlidar {
+                //         // Get scan from ydlidar_driver
+                //         // Process and return scan data
+                //     }
+                // }
+                None
             }
             _ => None,
         }

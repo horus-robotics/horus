@@ -1,10 +1,10 @@
-use bevy::prelude::*;
 use crate::cli::Cli;
 use crate::physics::PhysicsWorld;
 use crate::rendering::camera_controller::OrbitCamera;
 use crate::scene::loader::SceneLoader;
 use crate::scene::spawner::SpawnedObjects;
 use crate::tf::TFTree;
+use bevy::prelude::*;
 
 pub fn setup_scene(
     mut commands: Commands,
@@ -45,7 +45,10 @@ pub fn setup_scene(
             &mut tf_tree,
         ) {
             Ok(loaded_scene) => {
-                info!("Successfully loaded scene: {}", loaded_scene.definition.name);
+                info!(
+                    "Successfully loaded scene: {}",
+                    loaded_scene.definition.name
+                );
                 commands.insert_resource(loaded_scene);
             }
             Err(e) => {

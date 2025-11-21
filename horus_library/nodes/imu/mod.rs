@@ -13,7 +13,7 @@ use linux_embedded_hal::I2cdev;
 use mpu6050::Mpu6050;
 
 #[cfg(feature = "bno055-imu")]
-use bno055::{Bno055, BNO055OperationMode, BNO055PowerMode};
+use bno055::{BNO055OperationMode, BNO055PowerMode, Bno055};
 
 /// IMU backend type
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -79,7 +79,7 @@ impl ImuNode {
             sample_rate: 100.0, // 100 Hz default
             backend,
             i2c_bus: "/dev/i2c-1".to_string(), // Default for Raspberry Pi
-            i2c_address: 0x68, // Default MPU6050 address
+            i2c_address: 0x68,                 // Default MPU6050 address
             is_initialized: false,
             sample_count: 0,
             last_sample_time: 0,

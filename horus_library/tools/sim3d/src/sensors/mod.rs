@@ -1,10 +1,16 @@
 pub mod camera;
 pub mod depth;
+pub mod distortion;
 pub mod encoder;
+pub mod event_camera;
 pub mod force_torque;
 pub mod gps;
 pub mod imu;
 pub mod lidar3d;
 pub mod noise;
+pub mod radar;
 pub mod rgbd;
-
+pub mod segmentation;
+pub mod sonar;
+pub mod tactile;
+pub mod thermal;

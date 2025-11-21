@@ -41,6 +41,14 @@ mpu6050 = { version = "0.1", optional = true }  # MPU6050 IMU
 nmea = { version = "0.5", optional = true }  # GPS NMEA parsing
 sysinfo = { version = "0.30", optional = true }  # System monitoring
 
+# ML/AI dependencies
+ort = { version = "=2.0.0-rc.10", optional = true }  # ONNX Runtime
+tflite = { version = "0.9", optional = true }  # TensorFlow Lite
+ndarray = { version = "0.16", optional = true }  # N-dimensional arrays
+image = { version = "0.24", optional = true }  # Image processing
+imageproc = { version = "0.23", optional = true }  # Image processing algorithms
+reqwest = { version = "0.11", features = ["blocking", "json"], optional = true }  # HTTP client for LLM APIs
+
 [features]
 default = []
 
@@ -72,6 +80,12 @@ nmea-gps = ["nmea", "serial-hardware"]
 rplidar = ["serial-hardware"]
 netft = []  # Feature flag (hardware support without crate dependency)
 sysinfo = ["dep:sysinfo"]
+
+# ML/AI features
+onnx = ["ort", "ndarray", "image", "imageproc"]
+tflite-inference = ["tflite", "ndarray", "image", "imageproc"]
+ml-inference = ["onnx", "reqwest"]
+cuda = []  # GPU acceleration for ML inference (requires CUDA toolkit)
 
 # Convenience feature bundles
 full-hardware = [

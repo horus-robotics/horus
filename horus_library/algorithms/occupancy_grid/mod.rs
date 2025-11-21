@@ -29,8 +29,8 @@
 pub struct OccupancyGrid {
     width: usize,
     height: usize,
-    resolution: f64,  // meters per cell
-    grid: Vec<Vec<f64>>,  // 0.0 = free, 1.0 = occupied
+    resolution: f64,     // meters per cell
+    grid: Vec<Vec<f64>>, // 0.0 = free, 1.0 = occupied
     origin: (f64, f64),  // World coordinates of grid[0][0]
 }
 
@@ -82,7 +82,7 @@ impl OccupancyGrid {
         if self.is_valid(x, y) {
             self.grid[y][x]
         } else {
-            1.0  // Out of bounds = occupied
+            1.0 // Out of bounds = occupied
         }
     }
 

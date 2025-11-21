@@ -7,9 +7,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 // GPIO hardware support
 #[cfg(feature = "gpio-hardware")]
-use sysfs_gpio::{Direction, Pin};
-#[cfg(feature = "gpio-hardware")]
 use std::thread;
+#[cfg(feature = "gpio-hardware")]
+use sysfs_gpio::{Direction, Pin};
 
 /// Ultrasonic Distance Sensor Node
 ///
@@ -53,19 +53,19 @@ pub struct UltrasonicNode {
 
     // Configuration
     num_sensors: u8,
-    sensor_names: [[u8; 32]; 16],    // Sensor names for multi-sensor systems
-    measurement_rate: f32,             // Hz
-    speed_of_sound: f32,               // m/s (depends on temperature)
-    temperature_celsius: f32,          // For speed of sound calculation
-    min_range: [f32; 16],              // Minimum valid range per sensor (m)
-    max_range: [f32; 16],              // Maximum valid range per sensor (m)
-    field_of_view: [f32; 16],          // Beam angle in radians
+    sensor_names: [[u8; 32]; 16], // Sensor names for multi-sensor systems
+    measurement_rate: f32,        // Hz
+    speed_of_sound: f32,          // m/s (depends on temperature)
+    temperature_celsius: f32,     // For speed of sound calculation
+    min_range: [f32; 16],         // Minimum valid range per sensor (m)
+    max_range: [f32; 16],         // Maximum valid range per sensor (m)
+    field_of_view: [f32; 16],     // Beam angle in radians
     enable_median_filter: bool,
     median_filter_size: usize,
 
     // State tracking per sensor
-    last_measurement_time: [u64; 16], // Nanoseconds
-    current_range: [f32; 16],         // Current filtered range (m)
+    last_measurement_time: [u64; 16],  // Nanoseconds
+    current_range: [f32; 16],          // Current filtered range (m)
     raw_range_history: [[f32; 5]; 16], // For median filtering
     history_index: [usize; 16],
     measurement_count: [u64; 16],
@@ -75,8 +75,8 @@ pub struct UltrasonicNode {
     echo_end_time: [u64; 16],
 
     // Timing
-    trigger_duration_ns: u64,          // Trigger pulse duration (10μs default)
-    max_echo_time_ns: u64,             // Maximum echo wait time (38ms for 4m range)
+    trigger_duration_ns: u64, // Trigger pulse duration (10μs default)
+    max_echo_time_ns: u64,    // Maximum echo wait time (38ms for 4m range)
     measurement_interval_ns: u64,
     last_trigger_time: u64,
 
@@ -106,8 +106,8 @@ impl UltrasonicNode {
             measurement_rate: 10.0, // 10 Hz default
             speed_of_sound: 343.0,  // m/s at 20°C
             temperature_celsius: 20.0,
-            min_range: [0.02; 16],  // 2cm
-            max_range: [4.0; 16],   // 4m (HC-SR04 typical)
+            min_range: [0.02; 16],     // 2cm
+            max_range: [4.0; 16],      // 4m (HC-SR04 typical)
             field_of_view: [0.26; 16], // ~15 degrees in radians
             enable_median_filter: true,
             median_filter_size: 5,
@@ -120,8 +120,8 @@ impl UltrasonicNode {
             trigger_sent: [false; 16],
             echo_start_time: [0; 16],
             echo_end_time: [0; 16],
-            trigger_duration_ns: 10_000, // 10 microseconds
-            max_echo_time_ns: 38_000_000, // 38 milliseconds
+            trigger_duration_ns: 10_000,          // 10 microseconds
+            max_echo_time_ns: 38_000_000,         // 38 milliseconds
             measurement_interval_ns: 100_000_000, // 100ms = 10Hz
             last_trigger_time: 0,
             #[cfg(feature = "gpio-hardware")]
@@ -267,14 +267,18 @@ impl UltrasonicNode {
 
     /// Initialize GPIO pins for a sensor
     #[cfg(feature = "gpio-hardware")]
-    fn init_gpio_hardware(&mut self, sensor_id: u8, mut ctx: Option<&mut NodeInfo>) -> std::io::Result<()> {
+    fn init_gpio_hardware(
+        &mut self,
+        sensor_id: u8,
+        mut ctx: Option<&mut NodeInfo>,
+    ) -> std::io::Result<()> {
         let idx = sensor_id as usize;
         let (trigger_num, echo_num) = self.gpio_pin_numbers[idx];
 
         if trigger_num == 0 || echo_num == 0 {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
-                format!("GPIO pins not configured for sensor {}", sensor_id)
+                format!("GPIO pins not configured for sensor {}", sensor_id),
             ));
         }
 
@@ -308,7 +312,10 @@ impl UltrasonicNode {
         let idx = sensor_id as usize;
 
         let trigger = self.trigger_pins[idx].as_ref().ok_or_else(|| {
-            std::io::Error::new(std::io::ErrorKind::NotConnected, "Trigger pin not initialized")
+            std::io::Error::new(
+                std::io::ErrorKind::NotConnected,
+                "Trigger pin not initialized",
+            )
         })?;
 
         let echo = self.echo_pins[idx].as_ref().ok_or_else(|| {
@@ -357,7 +364,12 @@ impl UltrasonicNode {
     }
 
     /// Measure ultrasonic distance (tries hardware first, falls back to simulation)
-    fn simulate_measurement(&mut self, sensor_id: u8, current_time: u64, ctx: Option<&mut NodeInfo>) -> Option<f32> {
+    fn simulate_measurement(
+        &mut self,
+        sensor_id: u8,
+        current_time: u64,
+        ctx: Option<&mut NodeInfo>,
+    ) -> Option<f32> {
         let idx = sensor_id as usize;
 
         // Check if it's time for a new measurement
@@ -379,13 +391,20 @@ impl UltrasonicNode {
                                 "UltrasonicNode sensor {}: Hardware unavailable - using SIMULATION mode",
                                 sensor_id
                             ));
-                            ctx.log_warning(&format!("  Tried GPIO pins: trigger={}, echo={}", trigger_num, echo_num));
+                            ctx.log_warning(&format!(
+                                "  Tried GPIO pins: trigger={}, echo={}",
+                                trigger_num, echo_num
+                            ));
                             ctx.log_warning(&format!("  Error: {}", e));
                             ctx.log_warning("  Fix:");
                             ctx.log_warning("    1. Install: sudo apt install libraspberrypi-dev");
-                            ctx.log_warning("    2. Enable GPIO: sudo raspi-config -> Interface Options");
+                            ctx.log_warning(
+                                "    2. Enable GPIO: sudo raspi-config -> Interface Options",
+                            );
                             ctx.log_warning("    3. Check wiring: Verify GPIO pin connections");
-                            ctx.log_warning("    4. Rebuild with: cargo build --features=\"gpio-hardware\"");
+                            ctx.log_warning(
+                                "    4. Rebuild with: cargo build --features=\"gpio-hardware\"",
+                            );
                         }
                         self.hardware_enabled = false;
                     } else {
@@ -414,7 +433,10 @@ impl UltrasonicNode {
                                 "UltrasonicNode sensor {}: Measurement failed - using SIMULATION mode",
                                 sensor_id
                             ));
-                            ctx.log_warning(&format!("  GPIO: trigger={}, echo={}", trigger_num, echo_num));
+                            ctx.log_warning(&format!(
+                                "  GPIO: trigger={}, echo={}",
+                                trigger_num, echo_num
+                            ));
                             ctx.log_warning(&format!("  Error: {}", e));
                             ctx.log_warning("  Common causes: timeout, poor wiring, interference");
                         }
@@ -437,7 +459,8 @@ impl UltrasonicNode {
         if current_time >= self.echo_start_time[idx] {
             // In simulation, generate a realistic distance reading
             let simulated_distance = 0.5 + (sensor_id as f32 * 0.3); // Varies by sensor
-            let echo_duration = ((simulated_distance * 2.0) / self.speed_of_sound * 1_000_000_000.0) as u64;
+            let echo_duration =
+                ((simulated_distance * 2.0) / self.speed_of_sound * 1_000_000_000.0) as u64;
 
             self.echo_end_time[idx] = self.echo_start_time[idx] + echo_duration;
             self.trigger_sent[idx] = false;
@@ -451,7 +474,12 @@ impl UltrasonicNode {
     }
 
     /// Process a measurement for a sensor
-    fn process_measurement(&mut self, sensor_id: u8, distance: f32, mut ctx: Option<&mut NodeInfo>) {
+    fn process_measurement(
+        &mut self,
+        sensor_id: u8,
+        distance: f32,
+        mut ctx: Option<&mut NodeInfo>,
+    ) {
         let idx = sensor_id as usize;
 
         // Validate range
@@ -534,7 +562,9 @@ impl Node for UltrasonicNode {
         // Process measurements for all sensors
         for sensor_id in 0..self.num_sensors {
             // Simulate/read measurement from hardware
-            if let Some(distance) = self.simulate_measurement(sensor_id, current_time, ctx.as_deref_mut()) {
+            if let Some(distance) =
+                self.simulate_measurement(sensor_id, current_time, ctx.as_deref_mut())
+            {
                 self.process_measurement(sensor_id, distance, ctx.as_deref_mut());
             }
         }

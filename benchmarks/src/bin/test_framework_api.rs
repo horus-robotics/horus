@@ -1,3 +1,10 @@
+// Benchmark binary - allow clippy warnings
+#![allow(unused_imports)]
+#![allow(unused_assignments)]
+#![allow(unreachable_patterns)]
+#![allow(clippy::all)]
+#![allow(deprecated)]
+
 use horus::error::HorusResult;
 /// Framework API Lock Test Suite
 /// Locks down Node trait, Scheduler, and full framework usage patterns

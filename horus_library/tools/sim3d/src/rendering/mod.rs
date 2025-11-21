@@ -1,4 +1,11 @@
+pub mod ambient_occlusion;
+pub mod area_lights;
+pub mod atmosphere;
 pub mod camera_controller;
+pub mod environment;
 pub mod gizmos;
 pub mod materials;
+pub mod pbr_extended;
+pub mod post_processing;
 pub mod setup;
+pub mod shadows;

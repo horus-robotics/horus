@@ -4,7 +4,7 @@
 //! to train more robust policies.
 
 use bevy::prelude::*;
-use rand::{Rng, thread_rng};
+use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 
 /// Configuration for domain randomization
@@ -53,19 +53,13 @@ pub struct PhysicsRandomization {
 impl Default for PhysicsRandomization {
     fn default() -> Self {
         Self {
-            mass_range: Some((0.8, 1.2)),         // ±20%
-            friction_range: Some((0.3, 0.9)),     // 0.3-0.9
-            restitution_range: Some((0.0, 0.3)),  // 0.0-0.3
-            gravity_range: Some((
-                Vec3::new(0.0, -8.0, 0.0),
-                Vec3::new(0.0, -12.0, 0.0),
-            )),
+            mass_range: Some((0.8, 1.2)),        // ±20%
+            friction_range: Some((0.3, 0.9)),    // 0.3-0.9
+            restitution_range: Some((0.0, 0.3)), // 0.0-0.3
+            gravity_range: Some((Vec3::new(0.0, -8.0, 0.0), Vec3::new(0.0, -12.0, 0.0))),
             joint_damping_range: Some((0.1, 1.0)),
             joint_stiffness_range: Some((50.0, 200.0)),
-            com_offset_range: Some((
-                Vec3::new(-0.05, -0.05, -0.05),
-                Vec3::new(0.05, 0.05, 0.05),
-            )),
+            com_offset_range: Some((Vec3::new(-0.05, -0.05, -0.05), Vec3::new(0.05, 0.05, 0.05))),
         }
     }
 }
@@ -91,19 +85,10 @@ impl Default for VisualRandomization {
         Self {
             light_intensity_range: Some((500.0, 2000.0)),
             light_color_temp_range: Some((3000.0, 7000.0)),
-            light_direction_range: Some((
-                Vec3::new(-1.0, 0.5, -1.0),
-                Vec3::new(1.0, 1.0, 1.0),
-            )),
-            material_color_range: Some((
-                Color::srgb(0.5, 0.5, 0.5),
-                Color::srgb(1.0, 1.0, 1.0),
-            )),
+            light_direction_range: Some((Vec3::new(-1.0, 0.5, -1.0), Vec3::new(1.0, 1.0, 1.0))),
+            material_color_range: Some((Color::srgb(0.5, 0.5, 0.5), Color::srgb(1.0, 1.0, 1.0))),
             randomize_textures: false,
-            camera_position_noise: Some((
-                Vec3::new(-0.1, -0.1, -0.1),
-                Vec3::new(0.1, 0.1, 0.1),
-            )),
+            camera_position_noise: Some((Vec3::new(-0.1, -0.1, -0.1), Vec3::new(0.1, 0.1, 0.1))),
             camera_rotation_noise: Some((-0.1, 0.1)),
         }
     }
@@ -127,19 +112,10 @@ pub struct EnvironmentRandomization {
 impl Default for EnvironmentRandomization {
     fn default() -> Self {
         Self {
-            object_position_noise: Some((
-                Vec3::new(-0.2, 0.0, -0.2),
-                Vec3::new(0.2, 0.1, 0.2),
-            )),
+            object_position_noise: Some((Vec3::new(-0.2, 0.0, -0.2), Vec3::new(0.2, 0.1, 0.2))),
             object_rotation_noise: Some((-std::f32::consts::PI / 4.0, std::f32::consts::PI / 4.0)),
-            target_position_noise: Some((
-                Vec3::new(-0.1, -0.1, -0.1),
-                Vec3::new(0.1, 0.1, 0.1),
-            )),
-            object_scale_range: Some((
-                Vec3::new(0.9, 0.9, 0.9),
-                Vec3::new(1.1, 1.1, 1.1),
-            )),
+            target_position_noise: Some((Vec3::new(-0.1, -0.1, -0.1), Vec3::new(0.1, 0.1, 0.1))),
+            object_scale_range: Some((Vec3::new(0.9, 0.9, 0.9), Vec3::new(1.1, 1.1, 1.1))),
             num_distractors_range: Some((0, 3)),
         }
     }
@@ -306,7 +282,8 @@ impl DomainRandomizer {
                 thread_rng().gen_range(min.x..max.x),
                 thread_rng().gen_range(min.y..max.y),
                 thread_rng().gen_range(min.z..max.z),
-            ).normalize()
+            )
+            .normalize()
         } else {
             Vec3::new(0.0, 1.0, 0.0)
         }

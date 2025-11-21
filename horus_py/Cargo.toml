@@ -12,6 +12,7 @@ pyo3 = { version = "0.22", features = ["extension-module", "abi3-py39", "num-big
 numpy = "0.22"  # Zero-copy NumPy array support
 horus = { path = "../horus" }
 horus_library = { path = "../horus_library" }
+sim2d = { path = "../horus_library/tools/sim2d", features = ["python"] }
 tokio = { version = "1", features = ["rt-multi-thread", "time", "sync"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

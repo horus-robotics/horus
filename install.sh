@@ -263,7 +263,7 @@ else
     PYTHON_AVAILABLE=false
 fi
 
-# Check for pip (needed for maturin)
+# Check for pip (needed for Python bindings)
 if [ "$PYTHON_AVAILABLE" = true ]; then
     if command -v pip3 &> /dev/null || command -v pip &> /dev/null; then
         echo -e "${CYAN}${NC} Detected pip: $(pip3 --version 2>/dev/null || pip --version)"
@@ -337,7 +337,6 @@ HORUS_VERSION=$(grep -m1 '^version' horus/Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
 HORUS_CORE_VERSION=$(grep -m1 '^version' horus_core/Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
 HORUS_MACROS_VERSION=$(grep -m1 '^version' horus_macros/Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
 HORUS_LIBRARY_VERSION=$(grep -m1 '^version' horus_library/Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
-HORUS_CPP_VERSION=$(grep -m1 '^version' horus_cpp/Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
 HORUS_PY_VERSION=$(grep -m1 '^version' horus_py/Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
 
 echo -e "${CYAN}  ${NC} Detected versions:"
@@ -345,7 +344,6 @@ echo "    horus: $HORUS_VERSION"
 echo "    horus_core: $HORUS_CORE_VERSION"
 echo "    horus_macros: $HORUS_MACROS_VERSION"
 echo "    horus_library: $HORUS_LIBRARY_VERSION"
-echo "    horus_cpp: $HORUS_CPP_VERSION"
 echo "    horus_py: $HORUS_PY_VERSION"
 echo ""
 
@@ -362,7 +360,6 @@ if [ -f "$VERSION_FILE" ]; then
         rm -rf "$CACHE_DIR/horus_core@$OLD_VERSION" 2>/dev/null || true
         rm -rf "$CACHE_DIR/horus_macros@$OLD_VERSION" 2>/dev/null || true
         rm -rf "$CACHE_DIR/horus_library@$OLD_VERSION" 2>/dev/null || true
-        rm -rf "$CACHE_DIR/horus_cpp@$OLD_VERSION" 2>/dev/null || true
         rm -rf "$CACHE_DIR/horus_py@$OLD_VERSION" 2>/dev/null || true
 
         echo -e "${GREEN}${NC} Old versions removed"
@@ -504,172 +501,37 @@ EOF
 
 echo -e "${GREEN}${NC} Installed horus_library"
 
-# Step 8: Install horus_cpp (C++ Framework)
-echo -e "${CYAN}${NC} Installing horus_cpp@$HORUS_CPP_VERSION (C++ Framework)..."
-HORUS_CPP_DIR="$CACHE_DIR/horus_cpp@$HORUS_CPP_VERSION"
-mkdir -p "$HORUS_CPP_DIR/lib"
-mkdir -p "$HORUS_CPP_DIR/include"
-
-# Build the C++ library if not already built
-if [ ! -f "target/release/libhorus_cpp.so" ] && [ ! -f "target/release/libhorus_cpp.dylib" ]; then
-    echo -e "${CYAN}  ${NC} Building C++ framework library..."
-    cd horus_cpp
-    cargo build --release
-    cd ..
-fi
-
-# Copy C++ library (both dynamic and static)
-cp -r target/release/libhorus_cpp.so "$HORUS_CPP_DIR/lib/" 2>/dev/null || true
-cp -r target/release/libhorus_cpp.a "$HORUS_CPP_DIR/lib/" 2>/dev/null || true
-cp -r target/release/libhorus_cpp.dylib "$HORUS_CPP_DIR/lib/" 2>/dev/null || true  # macOS
-
-# Copy C++ header files
-if [ -f "horus_cpp/include/horus.hpp" ]; then
-    cp horus_cpp/include/horus.hpp "$HORUS_CPP_DIR/include/"
-fi
-
-# horus.h (internal FFI) is needed by horus.hpp
-if [ -f "horus_cpp/include/horus.h" ]; then
-    cp horus_cpp/include/horus.h "$HORUS_CPP_DIR/include/"
-fi
-
-# Create metadata
-cat > "$HORUS_CPP_DIR/metadata.json" << EOF
-{
-  "name": "horus_cpp",
-  "version": "$HORUS_CPP_VERSION",
-  "description": "HORUS C++ Framework - Modern C++ API with Node/Scheduler pattern",
-  "install_type": "source"
-}
-EOF
-
-echo -e "${GREEN}${NC} Installed horus_cpp"
-
-# Step 9: Install horus_py (Python bindings)
+# Step 8: Install horus_py (Python bindings) - Optional
 if [ "$PYTHON_AVAILABLE" = true ]; then
-    echo -e "${CYAN}${NC} Installing horus_py@$HORUS_PY_VERSION (Python bindings)..."
-    HORUS_PY_DIR="$CACHE_DIR/horus_py@$HORUS_PY_VERSION"
-    mkdir -p "$HORUS_PY_DIR"
+    echo -e "${CYAN}${NC} Installing horus_py@$HORUS_PY_VERSION (Python bindings - optional)..."
 
-    # Check if maturin is installed
-    if ! command -v maturin &> /dev/null; then
-        echo -e "${CYAN}  ${NC} Installing maturin (Python/Rust build tool)..."
+    # Try to install from PyPI (pre-built wheel)
+    echo -e "${CYAN}  ${NC} Attempting to install from PyPI..."
 
-        # Try installing with pip (handling PEP 668 externally-managed-environment)
-        # First try --user flag
-        if pip3 install maturin --user --quiet 2>/dev/null; then
-            # Add user bin to PATH for this session
-            export PATH="$HOME/.local/bin:$PATH"
-            echo -e "${GREEN}${NC} Installed maturin via pip (user)"
-        # Try system package manager on Debian/Ubuntu/Raspberry Pi OS
-        elif command -v apt &> /dev/null && sudo apt install -y python3-maturin >/dev/null 2>&1; then
-            echo -e "${GREEN}${NC} Installed maturin via apt"
-        # Try with --break-system-packages (not recommended but works)
-        elif pip3 install maturin --user --break-system-packages --quiet 2>/dev/null; then
-            export PATH="$HOME/.local/bin:$PATH"
-            echo -e "${GREEN}${NC} Installed maturin via pip (--break-system-packages)"
-            echo -e "${YELLOW}  ${NC} Note: Used --break-system-packages flag"
+    # Try pip install with --user flag first
+    if pip3 install horus --user --quiet 2>/dev/null; then
+        echo -e "${GREEN}${NC} Installed horus Python package from PyPI"
+
+        # Verify installation
+        if python3 -c "import horus; print(f'horus {horus.__version__}')" 2>/dev/null; then
+            INSTALLED_VERSION=$(python3 -c "import horus; print(horus.__version__)" 2>/dev/null)
+            echo -e "${GREEN}${NC} Python bindings working (version: $INSTALLED_VERSION)"
         else
-            echo -e "${YELLOW}${NC}  Could not install maturin automatically"
-            echo -e "${YELLOW}${NC}  Skipping horus_py installation"
-            echo ""
-            echo -e "  ${CYAN}To install Python bindings manually:${NC}"
-            echo -e "    Option 1 (System package):"
-            echo -e "      ${CYAN}sudo apt install python3-maturin${NC}  (Debian/Ubuntu/Raspberry Pi)"
-            echo ""
-            echo -e "    Option 2 (Virtual environment):"
-            echo -e "      ${CYAN}python3 -m venv ~/.horus_venv${NC}"
-            echo -e "      ${CYAN}source ~/.horus_venv/bin/activate${NC}"
-            echo -e "      ${CYAN}pip install maturin${NC}"
-            echo -e "      ${CYAN}cd horus_py && maturin develop --release${NC}"
-            echo ""
-            PYTHON_AVAILABLE=false
-        fi
-
-        # Verify maturin is now available
-        if [ "$PYTHON_AVAILABLE" = true ] && ! command -v maturin &> /dev/null; then
-            echo -e "${YELLOW}${NC}  maturin installed but not in PATH"
-            PYTHON_AVAILABLE=false
+            echo -e "${YELLOW}⊘${NC} Python bindings installed but import failed"
         fi
     else
-        echo -e "${CYAN}  ${NC} maturin already installed: $(maturin --version)"
-    fi
-
-    if [ "$PYTHON_AVAILABLE" = true ]; then
-        # Build and install using maturin
-        echo -e "${CYAN}  ${NC} Building and installing Python package..."
-        cd horus_py
-
-        # Use maturin develop to build and install in development mode
-        maturin develop --release --quiet
-
-        if [ $? -eq 0 ]; then
-            echo -e "${GREEN}${NC} Built and installed horus_py Python package"
-
-            # Set up proper package structure in cache for HORUS runtime
-            echo -e "${CYAN}  ${NC} Setting up package structure in cache..."
-            mkdir -p "$HORUS_PY_DIR/lib/horus"
-
-            # Copy the Python wrapper
-            cp -r python/horus/__init__.py "$HORUS_PY_DIR/lib/horus/" 2>/dev/null || true
-
-            # Find and copy the compiled extension
-            # maturin develop installs it to python/horus/ with .abi3.so extension
-            EXTENSION_FOUND=false
-
-            # Check python/horus/ directory (where maturin develop puts it)
-            if [ -f "python/horus/_horus.abi3.so" ]; then
-                cp python/horus/_horus.abi3.so "$HORUS_PY_DIR/lib/horus/_horus.so"
-                EXTENSION_FOUND=true
-            elif [ -f "python/horus/_horus.so" ]; then
-                cp python/horus/_horus.so "$HORUS_PY_DIR/lib/horus/_horus.so"
-                EXTENSION_FOUND=true
-            # Check for macOS
-            elif [ -f "python/horus/_horus.abi3.dylib" ]; then
-                cp python/horus/_horus.abi3.dylib "$HORUS_PY_DIR/lib/horus/_horus.so"
-                EXTENSION_FOUND=true
-            fi
-
-            if [ "$EXTENSION_FOUND" = false ]; then
-                echo -e "${YELLOW}${NC}  Warning: Could not find compiled extension module"
-                echo -e "  Expected location: python/horus/_horus.abi3.so"
-            else
-                echo -e "${GREEN}${NC} Copied compiled extension to cache"
-            fi
-
-            # Create metadata
-            cat > "$HORUS_PY_DIR/metadata.json" << PYEOF
-{
-  "name": "horus_py",
-  "version": "$HORUS_PY_VERSION",
-  "description": "HORUS Python bindings - Python API for HORUS framework",
-  "install_type": "source"
-}
-PYEOF
-
-            # Test both installations: pip-installed and cache
-            if python3 -c "import horus" 2>/dev/null; then
-                echo -e "${GREEN}${NC} horus_py is importable in Python (system)"
-            else
-                echo -e "${YELLOW}${NC}  Warning: horus_py built but import test failed (system)"
-            fi
-
-            # Test cache installation
-            if PYTHONPATH="$HORUS_PY_DIR/lib" python3 -c "import horus" 2>/dev/null; then
-                echo -e "${GREEN}${NC} horus_py is importable from cache"
-            else
-                echo -e "${YELLOW}${NC}  Warning: horus_py not importable from cache"
-            fi
-        else
-            echo -e "${RED}${NC} Failed to build horus_py"
-            echo -e "${YELLOW}${NC}  You can try building manually:"
-            echo -e "    ${CYAN}cd horus_py && maturin develop --release${NC}"
-        fi
-
-        cd ..
+        # If pip install fails, it's optional - don't build from source
+        echo -e "${YELLOW}⊘${NC} Python bindings: Not available on PyPI yet (optional)"
+        echo ""
+        echo -e "  ${CYAN}Python bindings will be available after the first release.${NC}"
+        echo -e "  For now, you can:"
+        echo -e "    1. Wait for the next release (recommended)"
+        echo -e "    2. Build from source (developers only):"
+        echo -e "       ${CYAN}cd horus_py && pip install maturin && maturin develop --release${NC}"
+        echo ""
     fi
 else
-    echo -e "${YELLOW}${NC} Skipping horus_py (Python not available)"
+    echo -e "${YELLOW}⊘${NC} Skipping horus_py (Python not available)"
 fi
 echo ""
 
@@ -776,12 +638,6 @@ if [ -d "$HORUS_LIBRARY_DIR" ]; then
     echo -e "${GREEN}${NC} horus_library: OK"
 else
     echo -e "${RED}${NC} horus_library: Missing"
-fi
-
-if [ -d "$HORUS_CPP_DIR" ]; then
-    echo -e "${GREEN}${NC} horus_cpp: OK"
-else
-    echo -e "${RED}${NC} horus_cpp: Missing"
 fi
 
 if [ "$PYTHON_AVAILABLE" = true ]; then

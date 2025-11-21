@@ -1,7 +1,7 @@
 // Benchmark for IK Solver performance
 // Run with: cargo bench --bench ik_solver_bench
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 
 // Mock IK solver functions for benchmarking
 // In a real scenario, these would use the actual sim3d IK solver

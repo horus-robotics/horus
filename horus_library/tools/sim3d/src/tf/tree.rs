@@ -64,11 +64,7 @@ impl TFTree {
         Ok(())
     }
 
-    pub fn update_frame(
-        &mut self,
-        name: &str,
-        transform: Isometry3<f32>,
-    ) -> Result<(), String> {
+    pub fn update_frame(&mut self, name: &str, transform: Isometry3<f32>) -> Result<(), String> {
         self.frames
             .get_mut(name)
             .ok_or_else(|| format!("Frame '{}' not found", name))?

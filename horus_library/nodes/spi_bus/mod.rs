@@ -8,7 +8,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 // SPI hardware support
 #[cfg(feature = "spi-hardware")]
-use spidev::{Spidev, SpidevOptions, SpidevTransfer, SpiModeFlags};
+use spidev::{SpiModeFlags, Spidev, SpidevOptions, SpidevTransfer};
 
 /// SPI (Serial Peripheral Interface) Bus Node
 ///
@@ -225,10 +225,7 @@ impl SpiBusNode {
 
         // Validate message
         if msg.length == 0 || msg.length > 256 {
-            ctx.log_warning(&format!(
-                "Invalid SPI transaction length: {}",
-                msg.length
-            ));
+            ctx.log_warning(&format!("Invalid SPI transaction length: {}", msg.length));
             msg.success = false;
             self.error_count += 1;
             return;
@@ -255,7 +252,8 @@ impl SpiBusNode {
                 Err(e) => {
                     // Provide detailed troubleshooting information (only log once)
                     if self.hardware_enabled || self.transaction_count == 0 {
-                        let device_path = format!("/dev/spidev{}.{}", self.bus_number, msg.chip_select);
+                        let device_path =
+                            format!("/dev/spidev{}.{}", self.bus_number, msg.chip_select);
                         ctx.log_warning(&format!(
                             "SpiBusNode: Hardware unavailable - using SIMULATION mode"
                         ));
@@ -263,10 +261,14 @@ impl SpiBusNode {
                         ctx.log_warning(&format!("  Error: {}", e));
                         ctx.log_warning("  Fix:");
                         ctx.log_warning("    1. Install: sudo apt install libraspberrypi-dev");
-                        ctx.log_warning("    2. Enable SPI: sudo raspi-config -> Interface Options -> SPI");
+                        ctx.log_warning(
+                            "    2. Enable SPI: sudo raspi-config -> Interface Options -> SPI",
+                        );
                         ctx.log_warning("    3. Add user to group: sudo usermod -a -G spi $USER");
                         ctx.log_warning("    4. Reboot or re-login");
-                        ctx.log_warning("    5. Rebuild with: cargo build --features=\"spi-hardware\"");
+                        ctx.log_warning(
+                            "    5. Rebuild with: cargo build --features=\"spi-hardware\"",
+                        );
                     }
                     self.hardware_enabled = false;
                     // Fall through to simulation
@@ -307,7 +309,11 @@ impl SpiBusNode {
             "SPI{}.{}{}: RX {} bytes | {:02X?}",
             msg.bus,
             msg.chip_select,
-            if self.hardware_enabled { " (HW)" } else { " (SIM)" },
+            if self.hardware_enabled {
+                " (HW)"
+            } else {
+                " (SIM)"
+            },
             msg.length,
             &msg.rx_data[..msg.length.min(8) as usize]
         ));
@@ -369,7 +375,11 @@ impl SpiBusNode {
 
     /// Open SPI hardware device for a specific chip select
     #[cfg(feature = "spi-hardware")]
-    fn open_hardware_device(&mut self, chip_select: u8, mut ctx: Option<&mut NodeInfo>) -> std::io::Result<()> {
+    fn open_hardware_device(
+        &mut self,
+        chip_select: u8,
+        mut ctx: Option<&mut NodeInfo>,
+    ) -> std::io::Result<()> {
         // Construct device path: /dev/spidev{bus}.{cs}
         let device_path = format!("/dev/spidev{}.{}", self.bus_number, chip_select);
 
@@ -380,7 +390,9 @@ impl SpiBusNode {
         let config = self.device_configs.get(&chip_select);
         let speed_hz = config.map(|c| c.speed_hz).unwrap_or(self.default_speed_hz);
         let mode = config.map(|c| c.mode).unwrap_or(self.default_mode);
-        let bits_per_word = config.map(|c| c.bits_per_word).unwrap_or(self.default_bits_per_word);
+        let bits_per_word = config
+            .map(|c| c.bits_per_word)
+            .unwrap_or(self.default_bits_per_word);
 
         // Convert HORUS mode to spidev mode flags
         let mode_flags = match mode {

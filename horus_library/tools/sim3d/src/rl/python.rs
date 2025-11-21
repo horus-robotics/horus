@@ -14,10 +14,7 @@ use numpy::{PyArray1, PyArray2, PyArrayMethods, ToPyArray};
 use bevy::prelude::*;
 use std::sync::{Arc, Mutex};
 
-use super::{
-    Action, Observation, RLTask, RLTaskManager, StepResult,
-    tasks::*,
-};
+use super::{tasks::*, Action, Observation, RLTask, RLTaskManager, StepResult};
 
 /// Python-exposed RL environment (Gymnasium compatible)
 #[cfg(feature = "python")]
@@ -72,12 +69,18 @@ impl PySim3DEnv {
             let obs_array = obs.data.to_pyarray_bound(py).to_owned();
             Ok(obs_array.unbind())
         } else {
-            Err(pyo3::exceptions::PyRuntimeError::new_err("Failed to reset environment"))
+            Err(pyo3::exceptions::PyRuntimeError::new_err(
+                "Failed to reset environment",
+            ))
         }
     }
 
     /// Step the environment (Gym/Gymnasium API)
-    fn step(&mut self, py: Python, action: Vec<f32>) -> PyResult<(Py<PyArray1<f32>>, f32, bool, bool, Py<PyDict>)> {
+    fn step(
+        &mut self,
+        py: Python,
+        action: Vec<f32>,
+    ) -> PyResult<(Py<PyArray1<f32>>, f32, bool, bool, Py<PyDict>)> {
         let mut task_manager = self.task_manager.lock().unwrap();
         let mut world = self.world.lock().unwrap();
 
@@ -91,7 +94,10 @@ impl PySim3DEnv {
             info.set_item("total_reward", result.info.total_reward)?;
             info.set_item("steps", result.info.steps)?;
             info.set_item("success", result.info.success)?;
-            info.set_item("termination_reason", format!("{:?}", result.info.termination_reason))?;
+            info.set_item(
+                "termination_reason",
+                format!("{:?}", result.info.termination_reason),
+            )?;
 
             Ok((
                 obs_array.unbind(),
@@ -101,7 +107,9 @@ impl PySim3DEnv {
                 info.unbind(),
             ))
         } else {
-            Err(pyo3::exceptions::PyRuntimeError::new_err("Failed to step environment"))
+            Err(pyo3::exceptions::PyRuntimeError::new_err(
+                "Failed to step environment",
+            ))
         }
     }
 
@@ -170,10 +178,7 @@ impl PyVecSim3DEnv {
             envs.push(PySim3DEnv::new(task_type, obs_dim, action_dim)?);
         }
 
-        Ok(Self {
-            envs,
-            num_envs,
-        })
+        Ok(Self { envs, num_envs })
     }
 
     /// Reset all environments
@@ -189,9 +194,10 @@ impl PyVecSim3DEnv {
         // Reshape to (num_envs, obs_dim)
         let obs_array = PyArray2::from_vec2_bound(
             py,
-            &observations.chunks(self.envs[0].obs_dim)
+            &observations
+                .chunks(self.envs[0].obs_dim)
                 .map(|chunk| chunk.to_vec())
-                .collect::<Vec<_>>()
+                .collect::<Vec<_>>(),
         )?;
 
         Ok(obs_array.unbind())
@@ -202,11 +208,19 @@ impl PyVecSim3DEnv {
         &mut self,
         py: Python,
         actions: Vec<Vec<f32>>,
-    ) -> PyResult<(Py<PyArray2<f32>>, Vec<f32>, Vec<bool>, Vec<bool>, Vec<Py<PyDict>>)> {
+    ) -> PyResult<(
+        Py<PyArray2<f32>>,
+        Vec<f32>,
+        Vec<bool>,
+        Vec<bool>,
+        Vec<Py<PyDict>>,
+    )> {
         if actions.len() != self.num_envs {
-            return Err(pyo3::exceptions::PyValueError::new_err(
-                format!("Expected {} actions, got {}", self.num_envs, actions.len())
-            ));
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "Expected {} actions, got {}",
+                self.num_envs,
+                actions.len()
+            )));
         }
 
         let mut observations = Vec::new();
@@ -234,9 +248,10 @@ impl PyVecSim3DEnv {
         // Reshape observations to (num_envs, obs_dim)
         let obs_array = PyArray2::from_vec2_bound(
             py,
-            &observations.chunks(self.envs[0].obs_dim)
+            &observations
+                .chunks(self.envs[0].obs_dim)
                 .map(|chunk| chunk.to_vec())
-                .collect::<Vec<_>>()
+                .collect::<Vec<_>>(),
         )?;
 
         Ok((obs_array.unbind(), rewards, dones, truncateds, infos))

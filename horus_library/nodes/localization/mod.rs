@@ -189,16 +189,26 @@ impl LocalizationNode {
         // Use sensor fusion for angular velocity (odometry + IMU)
         let state = self.ekf.get_state();
         let odom_omega = state[5];
-        let imu_omega = imu.angular_velocity[2] as f64;
+        let imu_omega = imu.angular_velocity[2];
 
         // Clear old measurements and add new ones
         self.angular_velocity_fusion.clear();
 
         // Odometry has higher variance for angular velocity
-        self.angular_velocity_fusion.add_measurement_with_time("odom", odom_omega, 0.1, current_time);
+        self.angular_velocity_fusion.add_measurement_with_time(
+            "odom",
+            odom_omega,
+            0.1,
+            current_time,
+        );
 
         // IMU has lower variance for angular velocity (more accurate)
-        self.angular_velocity_fusion.add_measurement_with_time("imu", imu_omega, 0.05, current_time);
+        self.angular_velocity_fusion.add_measurement_with_time(
+            "imu",
+            imu_omega,
+            0.05,
+            current_time,
+        );
 
         // Fuse angular velocities
         if let Some(fused_omega) = self.angular_velocity_fusion.fuse() {
@@ -208,8 +218,8 @@ impl LocalizationNode {
         }
 
         // Use IMU accelerations to validate velocity changes (simplified)
-        let accel_x = imu.linear_acceleration[0] as f64;
-        let accel_y = imu.linear_acceleration[1] as f64;
+        let accel_x = imu.linear_acceleration[0];
+        let accel_y = imu.linear_acceleration[1];
 
         // Simple acceleration-based velocity correction
         let dt = 0.01; // Assume ~100Hz IMU rate

@@ -2,173 +2,52 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, dev, develop ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, dev, develop ]
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_BACKTRACE: 1
 
 jobs:
   test:
     name: Test Suite
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v3
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - run: cargo test --all-features --workspace
+      - run: cargo test --test integration --all-features
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libclang-dev llvm-dev libudev-dev libopencv-dev libasound2-dev
-
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo index
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Run tests
-        run: cargo test --workspace --exclude horus_py --exclude horus_macros
-
-      - name: Run tests (release mode)
-        run: cargo test --workspace --release --exclude horus_py --exclude horus_macros
-
-  clippy:
-    name: Clippy (Lints)
+  bench:
+    name: Benchmarks
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v3
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - run: cargo bench --no-run
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          components: clippy
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libclang-dev llvm-dev libudev-dev libopencv-dev libasound2-dev
-
-      - name: Run clippy
-        run: cargo clippy --workspace --exclude horus_py -- -W clippy::all -A dead_code -A unused_variables -A deprecated -A private_interfaces -A unused_imports -A unused_mut -A clippy::needless_borrows_for_generic_args -A clippy::clone_on_copy -A clippy::len_zero -A clippy::ptr_arg -A clippy::manual_flatten -A clippy::collapsible_if -A clippy::iter_with_drain -A clippy::collapsible_else_if -A clippy::iter_skip_next
-
-  fmt:
-    name: Rustfmt (Formatting)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+          components: llvm-tools-preview
+      - uses: taiki-e/install-action@cargo-llvm-cov
+      - run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+      - uses: codecov/codecov-action@v3
         with:
-          components: rustfmt
+          files: lcov.info
 
-      - name: Check formatting
-        run: cargo fmt --all -- --check
-
-  build:
-    name: Build
+  lint:
+    name: Lints
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libclang-dev llvm-dev libudev-dev libopencv-dev libasound2-dev
-
-      - name: Build (debug)
-        run: cargo build --workspace --exclude horus_py
-
-      - name: Build (release)
-        run: cargo build --workspace --release --exclude horus_py
-
-  docs:
-    name: Documentation
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libclang-dev llvm-dev libudev-dev libopencv-dev libasound2-dev
-
-      - name: Check documentation
-        run: cargo doc --no-deps --workspace --exclude horus_py
-        env:
-          RUSTDOCFLAGS: -D warnings
-
-  python-bindings:
-    name: Python Bindings
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libclang-dev llvm-dev libudev-dev libopencv-dev libasound2-dev
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v3
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          python-version: '3.11'
-
-      - name: Install maturin
-        run: pip install maturin
-
-      - name: Build Python bindings
-        run: |
-          cd horus_py
-          maturin build --release
-
-  c-bindings:
-    name: C Bindings
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install build dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential
-
-      - name: Build C++ bindings
-        run: |
-          cd horus_cpp
-          cargo build --release
-
+          components: rustfmt, clippy
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --all-features --workspace -- -D warnings

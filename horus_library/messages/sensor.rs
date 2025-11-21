@@ -544,9 +544,10 @@ impl NavSatFix {
 
 impl LogSummary for NavSatFix {
     fn log_summary(&self) -> String {
-        format!("GPS: lat={:.6}, lon={:.6}, alt={:.1}m, sats={}, fix={}",
-            self.latitude, self.longitude, self.altitude,
-            self.satellites_visible, self.status)
+        format!(
+            "GPS: lat={:.6}, lon={:.6}, alt={:.1}m, sats={}, fix={}",
+            self.latitude, self.longitude, self.altitude, self.satellites_visible, self.status
+        )
     }
 }
 

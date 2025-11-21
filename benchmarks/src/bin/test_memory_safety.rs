@@ -1,3 +1,10 @@
+// Benchmark binary - allow clippy warnings
+#![allow(unused_imports)]
+#![allow(unused_assignments)]
+#![allow(unreachable_patterns)]
+#![allow(clippy::all)]
+#![allow(deprecated)]
+
 /// Memory Safety Test Suite
 /// Verifies that memory operations are safe and don't cause segfaults or leaks
 use horus::prelude::{Hub, Link};

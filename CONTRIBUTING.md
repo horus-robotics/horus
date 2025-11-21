@@ -10,10 +10,14 @@ Thank you for your interest in contributing to HORUS! This document provides gui
    git clone https://github.com/your-username/horus.git
    cd horus
    ```
-3. **Create a branch** for your feature:
+3. **Create a branch from `dev`** for your feature:
    ```bash
+   git checkout dev
+   git pull origin dev
    git checkout -b feature/your-feature-name
    ```
+
+**Important:** All pull requests should target the `dev` branch, not `main`. The `main` branch is used for stable releases only.
 
 ## Development Setup
 
@@ -183,6 +187,7 @@ When reporting bugs, include:
    ```
 
 5. **Submit PR** with:
+   - **Base branch: `dev`** (not `main`)
    - Clear title and description
    - Link to related issues
    - Screenshots/examples if UI changes
@@ -195,6 +200,8 @@ When reporting bugs, include:
 ```markdown
 ## Description
 Brief description of changes
+
+**Note:** This PR targets the `dev` branch.
 
 ## Changes
 - Added feature X

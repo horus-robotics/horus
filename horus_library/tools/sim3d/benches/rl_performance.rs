@@ -3,12 +3,9 @@
 //! Measures physics step timing, observation generation overhead,
 //! and vectorized environment scaling.
 
-use std::time::{Duration, Instant};
 use bevy::prelude::*;
-use sim3d::rl::{
-    tasks::*,
-    Action, RLTask, RLTaskManager,
-};
+use sim3d::rl::{tasks::*, Action, RLTask, RLTaskManager};
+use std::time::{Duration, Instant};
 
 /// Benchmark result structure
 #[derive(Debug)]
@@ -27,16 +24,21 @@ impl BenchmarkResult {
         let total_time: Duration = times.iter().sum();
         let iterations = times.len();
 
-        let times_us: Vec<f64> = times.iter().map(|d| d.as_secs_f64() * 1_000_000.0).collect();
+        let times_us: Vec<f64> = times
+            .iter()
+            .map(|d| d.as_secs_f64() * 1_000_000.0)
+            .collect();
 
         let avg_time_us = times_us.iter().sum::<f64>() / iterations as f64;
         let min_time_us = times_us.iter().cloned().fold(f64::INFINITY, f64::min);
         let max_time_us = times_us.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
 
         // Calculate standard deviation
-        let variance = times_us.iter()
+        let variance = times_us
+            .iter()
             .map(|t| (t - avg_time_us).powi(2))
-            .sum::<f64>() / iterations as f64;
+            .sum::<f64>()
+            / iterations as f64;
         let std_dev_us = variance.sqrt();
 
         Self {
@@ -53,17 +55,31 @@ impl BenchmarkResult {
     fn print(&self) {
         println!("\n=== {} ===", self.name);
         println!("Iterations: {}", self.iterations);
-        println!("Total time: {:.2}ms", self.total_time.as_secs_f64() * 1000.0);
-        println!("Average: {:.2}µs ({:.2}ms)", self.avg_time_us, self.avg_time_us / 1000.0);
+        println!(
+            "Total time: {:.2}ms",
+            self.total_time.as_secs_f64() * 1000.0
+        );
+        println!(
+            "Average: {:.2}µs ({:.2}ms)",
+            self.avg_time_us,
+            self.avg_time_us / 1000.0
+        );
         println!("Min: {:.2}µs", self.min_time_us);
         println!("Max: {:.2}µs", self.max_time_us);
         println!("StdDev: {:.2}µs", self.std_dev_us);
-        println!("Throughput: {:.0} steps/sec", 1_000_000.0 / self.avg_time_us);
+        println!(
+            "Throughput: {:.0} steps/sec",
+            1_000_000.0 / self.avg_time_us
+        );
     }
 }
 
 /// Benchmark physics step timing
-fn benchmark_physics_step<T: RLTask>(task_name: &str, mut task: T, iterations: usize) -> BenchmarkResult {
+fn benchmark_physics_step<T: RLTask>(
+    task_name: &str,
+    mut task: T,
+    iterations: usize,
+) -> BenchmarkResult {
     let mut world = World::new();
     task.reset(&mut world);
 
@@ -86,7 +102,11 @@ fn benchmark_physics_step<T: RLTask>(task_name: &str, mut task: T, iterations: u
 }
 
 /// Benchmark observation generation
-fn benchmark_observation_generation<T: RLTask>(task_name: &str, mut task: T, iterations: usize) -> BenchmarkResult {
+fn benchmark_observation_generation<T: RLTask>(
+    task_name: &str,
+    mut task: T,
+    iterations: usize,
+) -> BenchmarkResult {
     let mut world = World::new();
     task.reset(&mut world);
 
@@ -108,7 +128,11 @@ fn benchmark_observation_generation<T: RLTask>(task_name: &str, mut task: T, ite
 }
 
 /// Benchmark reward computation
-fn benchmark_reward_computation<T: RLTask>(task_name: &str, mut task: T, iterations: usize) -> BenchmarkResult {
+fn benchmark_reward_computation<T: RLTask>(
+    task_name: &str,
+    mut task: T,
+    iterations: usize,
+) -> BenchmarkResult {
     let mut world = World::new();
     task.reset(&mut world);
 
@@ -182,7 +206,7 @@ fn benchmark_vectorized_scaling(num_envs: usize, steps: usize) -> BenchmarkResul
 
     BenchmarkResult::new(
         format!("Vectorized Scaling - {} envs", num_envs),
-        step_times
+        step_times,
     )
 }
 
@@ -217,10 +241,7 @@ fn benchmark_full_episode(task_name: &str, max_steps: usize) -> BenchmarkResult 
         episode_times.push(start.elapsed());
     }
 
-    BenchmarkResult::new(
-        format!("Full Episode - {}", task_name),
-        episode_times
-    )
+    BenchmarkResult::new(format!("Full Episode - {}", task_name), episode_times)
 }
 
 #[test]
@@ -246,7 +267,8 @@ fn run_all_benchmarks() {
     benchmark_observation_generation("Balancing", BalancingTask::new(6, 1), iterations).print();
     benchmark_observation_generation("Locomotion", LocomotionTask::new(22, 12), iterations).print();
     benchmark_observation_generation("Navigation", NavigationTask::new(21, 2), iterations).print();
-    benchmark_observation_generation("Manipulation", ManipulationTask::new(25, 4), iterations).print();
+    benchmark_observation_generation("Manipulation", ManipulationTask::new(25, 4), iterations)
+        .print();
     benchmark_observation_generation("Push", PushTask::new(30, 2), iterations).print();
 
     // Reward computation benchmarks
@@ -287,7 +309,11 @@ fn run_quick_benchmark() {
     let result = benchmark_physics_step("Reaching", ReachingTask::new(10, 6), 100);
     result.print();
 
-    assert!(result.avg_time_us < 100_000.0, "Step time too slow: {:.2}µs", result.avg_time_us);
+    assert!(
+        result.avg_time_us < 100_000.0,
+        "Step time too slow: {:.2}µs",
+        result.avg_time_us
+    );
     println!("\n[OK] Performance within acceptable range");
 }
 
@@ -328,10 +354,18 @@ fn benchmark_memory_overhead() {
 
     let creation_time = start_time.elapsed();
 
-    println!("Created {} environments in {:.2}ms", num_envs, creation_time.as_secs_f64() * 1000.0);
-    println!("Per-env creation time: {:.2}µs", creation_time.as_secs_f64() * 1_000_000.0 / num_envs as f64);
+    println!(
+        "Created {} environments in {:.2}ms",
+        num_envs,
+        creation_time.as_secs_f64() * 1000.0
+    );
+    println!(
+        "Per-env creation time: {:.2}µs",
+        creation_time.as_secs_f64() * 1_000_000.0 / num_envs as f64
+    );
 
     // Estimate memory (rough approximation)
-    let estimated_mem_mb = (std::mem::size_of::<ReachingTask>() + std::mem::size_of::<World>()) * num_envs / 1_000_000;
+    let estimated_mem_mb =
+        (std::mem::size_of::<ReachingTask>() + std::mem::size_of::<World>()) * num_envs / 1_000_000;
     println!("Estimated memory (base): ~{}MB", estimated_mem_mb);
 }

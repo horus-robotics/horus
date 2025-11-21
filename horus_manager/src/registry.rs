@@ -112,7 +112,8 @@ impl RegistryClient {
     }
 
     // Install a package to a specific target (used by install_to_target)
-    pub fn install(&self, package_name: &str, version: Option<&str>) -> Result<()> {
+    // Returns the actual installed version
+    pub fn install(&self, package_name: &str, version: Option<&str>) -> Result<String> {
         // Default: auto-detect global/local
         use crate::workspace;
         let target = workspace::detect_or_select_workspace(true)?;
@@ -120,12 +121,13 @@ impl RegistryClient {
     }
 
     // Install a package from registry to a specific target
+    // Returns the actual installed version
     pub fn install_to_target(
         &self,
         package_name: &str,
         version: Option<&str>,
         target: crate::workspace::InstallTarget,
-    ) -> Result<()> {
+    ) -> Result<String> {
         // Detect package source
         let source = self.detect_package_source(package_name)?;
 
@@ -254,9 +256,11 @@ impl RegistryClient {
                     None
                 };
                 self.install_from_registry(&spec.name, version_str.as_deref(), target)
+                    .map(|_| ()) // Ignore version for dependency spec
             }
             DependencySource::Path(path) => {
                 self.install_from_path(&spec.name, path, target, base_dir)
+                    .map(|_| ()) // Ignore version for dependency spec
             }
         }
     }
@@ -266,7 +270,7 @@ impl RegistryClient {
         package_name: &str,
         version: Option<&str>,
         target: crate::workspace::InstallTarget,
-    ) -> Result<()> {
+    ) -> Result<String> {
         println!(" Downloading {} from HORUS registry...", package_name);
 
         let version_str = version.unwrap_or("latest");
@@ -436,7 +440,7 @@ impl RegistryClient {
             }
         }
 
-        Ok(())
+        Ok(actual_version)
     }
 
     fn install_from_pypi(
@@ -444,7 +448,7 @@ impl RegistryClient {
         package_name: &str,
         version: Option<&str>,
         target: crate::workspace::InstallTarget,
-    ) -> Result<()> {
+    ) -> Result<String> {
         use std::process::Command;
         println!(" Installing {} from PyPI...", package_name);
 
@@ -455,8 +459,7 @@ impl RegistryClient {
 
             match choice {
                 SystemPackageChoice::Cancel => {
-                    println!("Installation cancelled");
-                    return Ok(());
+                    return Err(anyhow!("Installation cancelled by user"));
                 }
                 SystemPackageChoice::UseSystem => {
                     // Create reference to system package instead of installing
@@ -540,10 +543,14 @@ impl RegistryClient {
             return Err(anyhow!("pip install failed:\n{}", stderr));
         }
 
+        // Detect actual installed version from .dist-info directory
+        let actual_version = detect_pypi_installed_version(&pkg_dir, package_name)
+            .unwrap_or_else(|| version_str.to_string());
+
         // Create metadata.json
         let metadata = serde_json::json!({
             "name": package_name,
-            "version": version_str,
+            "version": actual_version,
             "source": "PyPI"
         });
         let metadata_path = pkg_dir.join("metadata.json");
@@ -572,8 +579,8 @@ impl RegistryClient {
                 std::os::unix::fs::symlink(&pkg_dir, &local_link)?;
 
                 println!(
-                    " Installed {} {} to global cache",
-                    package_name, version_str
+                    " Installed {} v{} to global cache",
+                    package_name, actual_version
                 );
                 println!(
                     "   Linked: {} -> {}",
@@ -582,11 +589,11 @@ impl RegistryClient {
                 );
             }
         } else {
-            println!(" Installed {} {} locally", package_name, version_str);
+            println!(" Installed {} v{} locally", package_name, actual_version);
             println!("   Location: {}", pkg_dir.display());
         }
 
-        Ok(())
+        Ok(actual_version)
     }
 
     fn install_from_cratesio(
@@ -594,7 +601,7 @@ impl RegistryClient {
         package_name: &str,
         version: Option<&str>,
         target: crate::workspace::InstallTarget,
-    ) -> Result<()> {
+    ) -> Result<String> {
         use std::process::Command;
         println!(" Installing {} from crates.io...", package_name);
 
@@ -612,8 +619,7 @@ impl RegistryClient {
 
             match choice {
                 SystemPackageChoice::Cancel => {
-                    println!("Installation cancelled");
-                    return Ok(());
+                    return Err(anyhow!("Installation cancelled by user"));
                 }
                 SystemPackageChoice::UseSystem => {
                     // Create reference to system binary instead of installing
@@ -686,10 +692,14 @@ impl RegistryClient {
             return Err(anyhow!("cargo install failed:\n{}", stderr));
         }
 
+        // Detect actual installed version from the binary
+        let actual_version = detect_cargo_installed_version(&pkg_dir, package_name)
+            .unwrap_or_else(|| version_str.to_string());
+
         // Create metadata.json
         let metadata = serde_json::json!({
             "name": package_name,
-            "version": version_str,
+            "version": actual_version,
             "source": "CratesIO"
         });
         let metadata_path = pkg_dir.join("metadata.json");
@@ -718,8 +728,8 @@ impl RegistryClient {
                 std::os::unix::fs::symlink(&pkg_dir, &local_link)?;
 
                 println!(
-                    " Installed {} {} to global cache",
-                    package_name, version_str
+                    " Installed {} v{} to global cache",
+                    package_name, actual_version
                 );
                 println!(
                     "   Linked: {} -> {}",
@@ -729,12 +739,12 @@ impl RegistryClient {
                 println!("   Binaries available in: {}/bin/", pkg_dir.display());
             }
         } else {
-            println!(" Installed {} {} locally", package_name, version_str);
+            println!(" Installed {} v{} locally", package_name, actual_version);
             println!("   Location: {}", pkg_dir.display());
             println!("   Binaries available in: {}/bin/", pkg_dir.display());
         }
 
-        Ok(())
+        Ok(actual_version)
     }
 
     // Install multiple dependencies recursively
@@ -1278,7 +1288,7 @@ impl RegistryClient {
             python_version: get_python_version(),
             rust_version: get_rust_version(),
             gcc_version: get_gcc_version(),
-            cuda_version: None, // TODO: Detect CUDA
+            cuda_version: get_cuda_version(),
         };
 
         // Generate horus_id (hash of all content)
@@ -1428,6 +1438,49 @@ fn get_gcc_version() -> Option<String> {
         })
 }
 
+fn get_cuda_version() -> Option<String> {
+    // Try nvcc first (CUDA compiler)
+    if let Some(version) = std::process::Command::new("nvcc")
+        .arg("--version")
+        .output()
+        .ok()
+        .and_then(|output| {
+            String::from_utf8(output.stdout).ok().and_then(|s| {
+                // Parse output like: "Cuda compilation tools, release 11.8, V11.8.89"
+                // Look for "release X.Y" pattern
+                s.lines()
+                    .find(|line| line.contains("release"))
+                    .and_then(|line| {
+                        line.split("release")
+                            .nth(1)
+                            .and_then(|part| part.split(',').next())
+                            .map(|v| v.trim().to_string())
+                    })
+            })
+        })
+    {
+        return Some(version);
+    }
+
+    // Fallback to nvidia-smi
+    std::process::Command::new("nvidia-smi")
+        .output()
+        .ok()
+        .and_then(|output| {
+            String::from_utf8(output.stdout).ok().and_then(|s| {
+                // Parse output to find CUDA Version line
+                // Format: "CUDA Version: 12.0"
+                s.lines()
+                    .find(|line| line.contains("CUDA Version"))
+                    .and_then(|line| {
+                        line.split("CUDA Version:")
+                            .nth(1)
+                            .map(|v| v.split_whitespace().next().unwrap_or("").to_string())
+                    })
+            })
+        })
+}
+
 // Check if any version of a package exists in global cache
 fn check_global_versions(cache_dir: &Path, package_name: &str) -> Result<bool> {
     if !cache_dir.exists() {
@@ -1506,6 +1559,74 @@ fn detect_package_version(dir: &Path) -> Option<String> {
                     if let Some(version) = package.get("version").and_then(|v| v.as_str()) {
                         return Some(version.to_string());
                     }
+                }
+            }
+        }
+    }
+
+    None
+}
+
+// Detect installed version from PyPI package .dist-info directory
+fn detect_pypi_installed_version(pkg_dir: &Path, package_name: &str) -> Option<String> {
+    // PyPI packages create .dist-info directories with the format: package_name-version.dist-info
+    // We need to find this directory and extract the version
+
+    if let Ok(entries) = fs::read_dir(pkg_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
+                    // Look for .dist-info directories
+                    if dir_name.ends_with(".dist-info") {
+                        // Extract package name and version from directory name
+                        // Format: package_name-version.dist-info
+                        let without_suffix = dir_name.trim_end_matches(".dist-info");
+
+                        // Handle package name normalization (PyPI normalizes names)
+                        let normalized_pkg = package_name
+                            .replace("-", "_")
+                            .replace(".", "_")
+                            .to_lowercase();
+                        let normalized_dir = without_suffix
+                            .replace("-", "_")
+                            .replace(".", "_")
+                            .to_lowercase();
+
+                        if normalized_dir.starts_with(&normalized_pkg) {
+                            // Try to extract version after package name
+                            // Format is usually: package_name-version
+                            let parts: Vec<&str> = without_suffix.rsplitn(2, '-').collect();
+                            if parts.len() == 2 {
+                                return Some(parts[0].to_string());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    None
+}
+
+// Detect installed version from cargo binary
+fn detect_cargo_installed_version(pkg_dir: &Path, package_name: &str) -> Option<String> {
+    // Cargo install creates binaries in bin/ subdirectory
+    // Try to run the binary with --version flag
+
+    let bin_path = pkg_dir.join("bin").join(package_name);
+
+    if bin_path.exists() {
+        use std::process::Command;
+
+        if let Ok(output) = Command::new(&bin_path).arg("--version").output() {
+            if output.status.success() {
+                let version_output = String::from_utf8_lossy(&output.stdout);
+                // Parse version from output (usually: "package_name version")
+                let parts: Vec<&str> = version_output.split_whitespace().collect();
+                if parts.len() >= 2 {
+                    return Some(parts[1].to_string());
                 }
             }
         }
@@ -2192,13 +2313,14 @@ impl PackageProvider for RegistryClient {
 // Additional methods for path and git dependencies
 impl RegistryClient {
     // Install a package from local filesystem path
+    // Returns the detected version
     pub fn install_from_path(
         &self,
         package_name: &str,
         path: &Path,
         target: crate::workspace::InstallTarget,
         base_dir: Option<&Path>,
-    ) -> Result<()> {
+    ) -> Result<String> {
         use crate::workspace::InstallTarget;
 
         println!(
@@ -2297,7 +2419,7 @@ impl RegistryClient {
             "ℹ".cyan()
         );
 
-        Ok(())
+        Ok(version)
     }
 }
 
@@ -2434,7 +2556,7 @@ impl RegistryClient {
         package_name: &str,
         system_version: &str,
         target: &crate::workspace::InstallTarget,
-    ) -> Result<()> {
+    ) -> Result<String> {
         use crate::workspace::InstallTarget;
         use std::process::Command;
 
@@ -2494,7 +2616,7 @@ impl RegistryClient {
             metadata_file.display()
         );
 
-        Ok(())
+        Ok(system_version.to_string())
     }
 
     // Create reference to system cargo binary
@@ -2503,7 +2625,7 @@ impl RegistryClient {
         package_name: &str,
         system_version: &str,
         target: &crate::workspace::InstallTarget,
-    ) -> Result<()> {
+    ) -> Result<String> {
         use crate::workspace::InstallTarget;
 
         println!("  {} Creating reference to system binary...", "".green());
@@ -2566,6 +2688,6 @@ impl RegistryClient {
         );
         println!("  {} Binary linked: {}", "".cyan(), bin_link.display());
 
-        Ok(())
+        Ok(system_version.to_string())
     }
 }

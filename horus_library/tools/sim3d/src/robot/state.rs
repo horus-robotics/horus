@@ -87,7 +87,8 @@ impl RobotJointStates {
         if !self.joints.contains_key(&name) {
             self.joint_order.push(name.clone());
         }
-        self.joints.insert(name.clone(), JointState::new(name, joint_type));
+        self.joints
+            .insert(name.clone(), JointState::new(name, joint_type));
     }
 
     /// Update joint state
@@ -351,10 +352,7 @@ pub fn detect_joint_state_changes_system(
 }
 
 /// Helper to get joint state by name from a robot
-pub fn get_robot_joint_position(
-    robot_states: &RobotJointStates,
-    joint_name: &str,
-) -> Option<f32> {
+pub fn get_robot_joint_position(robot_states: &RobotJointStates, joint_name: &str) -> Option<f32> {
     robot_states.get_joint(joint_name).map(|j| j.position)
 }
 
@@ -428,8 +426,7 @@ mod tests {
 
     #[test]
     fn test_joint_state() {
-        let mut joint = JointState::new("joint1", JointType::Revolute)
-            .with_limits(-1.57, 1.57);
+        let mut joint = JointState::new("joint1", JointType::Revolute).with_limits(-1.57, 1.57);
 
         joint.position = 1.0;
         assert!(joint.is_within_limits());
@@ -453,8 +450,7 @@ mod tests {
 
     #[test]
     fn test_joint_state_limits() {
-        let mut joint = JointState::new("test", JointType::Revolute)
-            .with_limits(-3.14, 3.14);
+        let mut joint = JointState::new("test", JointType::Revolute).with_limits(-3.14, 3.14);
 
         assert_eq!(joint.limits, Some((-3.14, 3.14)));
 

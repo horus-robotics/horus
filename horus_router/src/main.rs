@@ -103,7 +103,10 @@ impl RouterState {
                     warn!("Failed to send to client {}: {}", client.addr, e);
                 }
             }
-            info!("Published message on topic '{}' to {} subscribers", topic, count);
+            info!(
+                "Published message on topic '{}' to {} subscribers",
+                topic, count
+            );
         } else {
             warn!("No subscribers for topic '{}'", topic);
         }
@@ -134,11 +137,7 @@ impl RouterState {
 }
 
 /// Handle a single client connection (generic over stream type)
-async fn handle_client_inner<S>(
-    stream: S,
-    addr: SocketAddr,
-    state: Arc<RouterState>,
-)
+async fn handle_client_inner<S>(stream: S, addr: SocketAddr, state: Arc<RouterState>)
 where
     S: AsyncReadExt + AsyncWriteExt + Unpin + Send + 'static,
 {
@@ -198,10 +197,15 @@ where
                                     }
                                     MessageType::RouterPublish | MessageType::Fragment => {
                                         // Forward to all subscribers
-                                        state.publish(&packet.topic, buffer[..packet_len].to_vec()).await;
+                                        state
+                                            .publish(&packet.topic, buffer[..packet_len].to_vec())
+                                            .await;
                                     }
                                     _ => {
-                                        warn!("Unexpected message type from {}: {:?}", addr, packet.msg_type);
+                                        warn!(
+                                            "Unexpected message type from {}: {:?}",
+                                            addr, packet.msg_type
+                                        );
                                     }
                                 }
                             }
@@ -235,7 +239,11 @@ async fn handle_tcp_client(stream: TcpStream, addr: SocketAddr, state: Arc<Route
 
 /// Handle TLS client
 #[cfg(feature = "tls")]
-async fn handle_tls_client(stream: TlsStream<TcpStream>, addr: SocketAddr, state: Arc<RouterState>) {
+async fn handle_tls_client(
+    stream: TlsStream<TcpStream>,
+    addr: SocketAddr,
+    state: Arc<RouterState>,
+) {
     handle_client_inner(stream, addr, state).await;
 }
 
@@ -250,9 +258,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "horus_router=info"
     };
 
-    tracing_subscriber::fmt()
-        .with_env_filter(filter)
-        .init();
+    tracing_subscriber::fmt().with_env_filter(filter).init();
 
     // Create router state
     let state = Arc::new(RouterState::new());

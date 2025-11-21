@@ -152,14 +152,20 @@ pub fn discover_graph_data() -> (Vec<GraphNode>, Vec<GraphEdge>) {
                 let x_variation = (hash % 80) as f32 - 40.0;
                 let vertical_spacing = 120.0;
                 let y_variation = ((hash / 100) % 40) as f32 - 20.0;
-                Pos2::new(x_base + x_variation, index as f32 * vertical_spacing + y_variation)
+                Pos2::new(
+                    x_base + x_variation,
+                    index as f32 * vertical_spacing + y_variation,
+                )
             }
             NodeType::Topic => {
                 let x_base = 300.0;
                 let x_variation = (hash % 100) as f32 - 50.0;
                 let vertical_spacing = 140.0;
                 let y_variation = ((hash / 100) % 50) as f32 - 25.0;
-                Pos2::new(x_base + x_variation, index as f32 * vertical_spacing + y_variation)
+                Pos2::new(
+                    x_base + x_variation,
+                    index as f32 * vertical_spacing + y_variation,
+                )
             }
         }
     };

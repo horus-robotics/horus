@@ -1,3 +1,7 @@
+// Python bindings - allow common clippy warnings
+#![allow(clippy::all)]
+#![allow(deprecated)]
+
 use horus_library::messages::{cmd_vel, geometry, sensor};
 use numpy::PyArray1;
 use pyo3::prelude::*;
@@ -7,6 +11,7 @@ mod control_messages;
 mod diagnostics_messages;
 mod input_messages;
 mod io_messages;
+mod sensor_messages;
 
 use control_messages::*;
 use diagnostics_messages::*;
@@ -1145,7 +1150,10 @@ impl PyNavSatFix {
     fn __repr__(&self) -> String {
         format!(
             "NavSatFix(lat={:.6}, lon={:.6}, alt={:.1}m, sats={})",
-            self.inner.latitude, self.inner.longitude, self.inner.altitude, self.inner.satellites_visible
+            self.inner.latitude,
+            self.inner.longitude,
+            self.inner.altitude,
+            self.inner.satellites_visible
         )
     }
 
@@ -1306,7 +1314,10 @@ impl PyRange {
     }
 
     fn __repr__(&self) -> String {
-        format!("Range(type={}, range={:.2}m)", self.inner.sensor_type, self.inner.range)
+        format!(
+            "Range(type={}, range={:.2}m)",
+            self.inner.sensor_type, self.inner.range
+        )
     }
 
     fn __str__(&self) -> String {

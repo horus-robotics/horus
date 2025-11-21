@@ -1,7 +1,18 @@
+// Sim3D - in active development, allow common warnings
+#![allow(clippy::all)]
+#![allow(deprecated)]
+#![allow(unused_imports)]
+#![allow(unused_assignments)]
+#![allow(unreachable_patterns)]
+#![allow(unexpected_cfgs)]
+
 use bevy::prelude::*;
 
+mod assets;
 mod cli;
 mod config;
+mod error;
+mod gpu;
 mod horus_bridge;
 mod physics;
 mod rendering;
@@ -20,7 +31,7 @@ mod rl;
 use cli::{Cli, Mode};
 use physics::PhysicsWorld;
 use scene::spawner::SpawnedObjects;
-use systems::sensor_update::{SensorUpdatePlugin, SensorSystemSet};
+use systems::sensor_update::{SensorSystemSet, SensorUpdatePlugin};
 use tf::TFTree;
 
 /// System sets for organizing update order
@@ -64,9 +75,7 @@ fn run_visual_mode(cli: Cli) {
                 }),
                 ..default()
             })
-            .set(AssetPlugin {
-                ..default()
-            })
+            .set(AssetPlugin { ..default() })
             .disable::<bevy::log::LogPlugin>(), // Disable since we init tracing manually
     );
 
@@ -212,10 +221,7 @@ fn run_headless_mode(cli: Cli) {
 }
 
 /// Setup scene for headless mode (no rendering components)
-fn setup_headless_scene(
-    commands: Commands,
-    mut physics_world: ResMut<PhysicsWorld>,
-) {
+fn setup_headless_scene(_commands: Commands, mut physics_world: ResMut<PhysicsWorld>) {
     info!("Setting up headless scene");
 
     // Create a simple ground plane for physics
@@ -242,11 +248,7 @@ fn setup_headless_scene(
         ..
     } = &mut *physics_world;
 
-    collider_set.insert_with_parent(
-        ground_collider,
-        ground_handle,
-        rigid_body_set,
-    );
+    collider_set.insert_with_parent(ground_collider, ground_handle, rigid_body_set);
 
     info!("Headless scene setup complete");
 }

@@ -29,7 +29,7 @@
 
 /// Linear Kalman Filter
 pub struct KalmanFilter {
-    n_states: usize,      // Number of state variables
+    n_states: usize,       // Number of state variables
     n_measurements: usize, // Number of measurements
 
     state: Vec<f64>,                  // State vector
@@ -37,7 +37,7 @@ pub struct KalmanFilter {
     process_noise: Vec<Vec<f64>>,     // Process noise covariance (Q)
     measurement_noise: Vec<Vec<f64>>, // Measurement noise covariance (R)
 
-    state_transition: Vec<Vec<f64>>,  // State transition matrix (F)
+    state_transition: Vec<Vec<f64>>,   // State transition matrix (F)
     measurement_matrix: Vec<Vec<f64>>, // Measurement matrix (H)
 }
 
@@ -166,7 +166,10 @@ impl KalmanFilter {
 
 // Matrix operations
 fn matrix_vector_mult(matrix: &[Vec<f64>], vector: &[f64]) -> Vec<f64> {
-    matrix.iter().map(|row| row.iter().zip(vector).map(|(a, b)| a * b).sum()).collect()
+    matrix
+        .iter()
+        .map(|row| row.iter().zip(vector).map(|(a, b)| a * b).sum())
+        .collect()
 }
 
 fn matrix_mult(a: &[Vec<f64>], b: &[Vec<f64>]) -> Vec<Vec<f64>> {
@@ -198,11 +201,17 @@ fn transpose(matrix: &[Vec<f64>]) -> Vec<Vec<f64>> {
 }
 
 fn matrix_add(a: &[Vec<f64>], b: &[Vec<f64>]) -> Vec<Vec<f64>> {
-    a.iter().zip(b).map(|(row_a, row_b)| row_a.iter().zip(row_b).map(|(x, y)| x + y).collect()).collect()
+    a.iter()
+        .zip(b)
+        .map(|(row_a, row_b)| row_a.iter().zip(row_b).map(|(x, y)| x + y).collect())
+        .collect()
 }
 
 fn matrix_sub(a: &[Vec<f64>], b: &[Vec<f64>]) -> Vec<Vec<f64>> {
-    a.iter().zip(b).map(|(row_a, row_b)| row_a.iter().zip(row_b).map(|(x, y)| x - y).collect()).collect()
+    a.iter()
+        .zip(b)
+        .map(|(row_a, row_b)| row_a.iter().zip(row_b).map(|(x, y)| x - y).collect())
+        .collect()
 }
 
 fn vec_add(a: &[f64], b: &[f64]) -> Vec<f64> {
@@ -250,7 +259,7 @@ mod tests {
     #[test]
     fn test_predict() {
         let mut kf = KalmanFilter::new(2, 1);
-        kf.set_state(vec![0.0, 1.0]);  // position=0, velocity=1
+        kf.set_state(vec![0.0, 1.0]); // position=0, velocity=1
 
         // Set up constant velocity model
         kf.set_state_transition(vec![vec![1.0, 1.0], vec![0.0, 1.0]]);

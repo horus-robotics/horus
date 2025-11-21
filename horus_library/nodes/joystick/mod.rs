@@ -145,16 +145,26 @@ impl JoystickInputNode {
 
     /// Set per-axis deadzone
     pub fn set_axis_deadzone(&mut self, axis_id: u32, deadzone: f32) {
-        self.per_axis_deadzones.insert(axis_id, deadzone.clamp(0.0, 1.0));
+        self.per_axis_deadzones
+            .insert(axis_id, deadzone.clamp(0.0, 1.0));
     }
 
     /// Get per-axis deadzone (returns global deadzone if not set)
     pub fn get_axis_deadzone(&self, axis_id: u32) -> f32 {
-        self.per_axis_deadzones.get(&axis_id).copied().unwrap_or(self.deadzone)
+        self.per_axis_deadzones
+            .get(&axis_id)
+            .copied()
+            .unwrap_or(self.deadzone)
     }
 
     /// Set axis inversion for specific axes
-    pub fn set_axis_inversion(&mut self, invert_x: bool, invert_y: bool, invert_rx: bool, invert_ry: bool) {
+    pub fn set_axis_inversion(
+        &mut self,
+        invert_x: bool,
+        invert_y: bool,
+        invert_rx: bool,
+        invert_ry: bool,
+    ) {
         self.axis_invert_x = invert_x;
         self.axis_invert_y = invert_y;
         self.axis_invert_rx = invert_rx;
@@ -183,7 +193,8 @@ impl JoystickInputNode {
 
     /// Calibrate a specific axis
     pub fn calibrate_axis(&mut self, axis_id: u32, center: f32, min: f32, max: f32) {
-        self.axis_calibrations.insert(axis_id, AxisCalibration { center, min, max });
+        self.axis_calibrations
+            .insert(axis_id, AxisCalibration { center, min, max });
     }
 
     /// Start automatic axis calibration (call this and move all sticks to extremes)
@@ -206,8 +217,37 @@ impl JoystickInputNode {
     /// Get battery level (0.0 to 1.0) if supported
     #[cfg(feature = "gilrs")]
     pub fn get_battery_level(&self) -> Option<f32> {
-        // gilrs doesn't currently provide battery info API
-        // This is a placeholder for future implementation
+        use gilrs::{BatteryLevel, PowerInfo};
+
+        // Try to get the connected gamepad
+        if let Some((_id, gamepad)) = self.gilrs.gamepads().find(|(_, gp)| gp.is_connected()) {
+            // Get power info from gamepad
+            if let Some(power) = gamepad.power_info() {
+                return match power {
+                    PowerInfo::Unknown => None,
+                    PowerInfo::Wired => Some(1.0), // Wired controllers at full power
+                    PowerInfo::Discharging(level) => {
+                        // Convert BatteryLevel enum to float
+                        Some(match level {
+                            BatteryLevel::Empty => 0.0,
+                            BatteryLevel::Low => 0.25,
+                            BatteryLevel::Medium => 0.50,
+                            BatteryLevel::Full => 1.0,
+                        })
+                    }
+                    PowerInfo::Charging(level) => {
+                        // Convert BatteryLevel enum to float
+                        Some(match level {
+                            BatteryLevel::Empty => 0.0,
+                            BatteryLevel::Low => 0.25,
+                            BatteryLevel::Medium => 0.50,
+                            BatteryLevel::Full => 1.0,
+                        })
+                    }
+                    PowerInfo::Charged => Some(1.0),
+                };
+            }
+        }
         None
     }
 
@@ -250,10 +290,10 @@ impl JoystickInputNode {
     /// Apply axis inversion
     fn apply_inversion(&self, value: f32, axis_id: u32) -> f32 {
         let should_invert = match axis_id {
-            0 => self.axis_invert_x,   // LeftStickX
-            1 => self.axis_invert_y,   // LeftStickY
-            3 => self.axis_invert_rx,  // RightStickX
-            4 => self.axis_invert_ry,  // RightStickY
+            0 => self.axis_invert_x,  // LeftStickX
+            1 => self.axis_invert_y,  // LeftStickY
+            3 => self.axis_invert_rx, // RightStickX
+            4 => self.axis_invert_ry, // RightStickY
             _ => false,
         };
 
@@ -394,8 +434,12 @@ impl Node for JoystickInputNode {
                         // Process axis value through calibration, deadzone, and inversion
                         let processed_value = self.process_axis_value(value, axis_id);
 
-                        let joystick_input =
-                            JoystickInput::new_axis(gamepad_id, axis_id, axis_name.clone(), processed_value);
+                        let joystick_input = JoystickInput::new_axis(
+                            gamepad_id,
+                            axis_id,
+                            axis_name.clone(),
+                            processed_value,
+                        );
 
                         self.publisher.send(joystick_input, &mut ctx).ok();
 

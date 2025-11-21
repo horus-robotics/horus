@@ -1,3 +1,4 @@
+use colored::Colorize;
 /// Production-Ready Network Communication Example
 ///
 /// Demonstrates:
@@ -7,13 +8,11 @@
 /// - Connection health monitoring
 ///
 /// Run with: cargo run --example network_production --release
-
 use horus_core::communication::network::{ReconnectContext, ReconnectStrategy};
 use horus_core::communication::Hub;
 use horus_core::core::LogSummary;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use colored::Colorize;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct SensorData {
@@ -55,7 +54,11 @@ fn run_publisher() -> Result<(), Box<dyn std::error::Error>> {
             }
             Err(e) => {
                 reconnect_ctx.begin_reconnect();
-                eprintln!("{} {}", "[ERROR]".red().bold(), format!("Connection failed: {}", e));
+                eprintln!(
+                    "{} {}",
+                    "[ERROR]".red().bold(),
+                    format!("Connection failed: {}", e)
+                );
 
                 if !reconnect_ctx.should_retry() {
                     eprintln!("{}", "Max retries exceeded. Giving up.".red());
@@ -120,7 +123,11 @@ fn run_subscriber() -> Result<(), Box<dyn std::error::Error>> {
             }
             Err(e) => {
                 reconnect_ctx.begin_reconnect();
-                eprintln!("{} {}", "[ERROR]".red().bold(), format!("Connection failed: {}", e));
+                eprintln!(
+                    "{} {}",
+                    "[ERROR]".red().bold(),
+                    format!("Connection failed: {}", e)
+                );
 
                 if !reconnect_ctx.should_retry() {
                     return Err("Failed to connect after max retries".into());
@@ -147,11 +154,19 @@ fn run_subscriber() -> Result<(), Box<dyn std::error::Error>> {
                 // Check for message loss (timestamp gaps)
                 if last_timestamp > 0 && data.timestamp != last_timestamp + 1 {
                     let lost = data.timestamp - last_timestamp - 1;
-                    eprintln!("{} {}", "[WARNING]".yellow().bold(), format!("Detected {} lost messages", lost));
+                    eprintln!(
+                        "{} {}",
+                        "[WARNING]".yellow().bold(),
+                        format!("Detected {} lost messages", lost)
+                    );
                 }
                 last_timestamp = data.timestamp;
 
-                println!("Received: {} (total: {})", data.log_summary(), message_count);
+                println!(
+                    "Received: {} (total: {})",
+                    data.log_summary(),
+                    message_count
+                );
 
                 // Health check: alert if temperature out of range
                 if data.temperature > 28.0 {

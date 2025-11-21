@@ -123,7 +123,12 @@ impl PyKeyboardInput {
     #[pyo3(signature = (key="", code=0, modifiers=vec![], pressed=true))]
     fn new(key: &str, code: u32, modifiers: Vec<String>, pressed: bool) -> Self {
         Self {
-            inner: keyboard_input_msg::KeyboardInput::new(key.to_string(), code, modifiers, pressed),
+            inner: keyboard_input_msg::KeyboardInput::new(
+                key.to_string(),
+                code,
+                modifiers,
+                pressed,
+            ),
         }
     }
 

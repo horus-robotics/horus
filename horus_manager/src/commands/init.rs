@@ -17,15 +17,15 @@ pub fn run_init(workspace_name: Option<String>) -> Result<()> {
     println!("{}", "Workspace initialized successfully!".green().bold());
     println!();
     println!("Next steps:");
-    println!("  1. Create a new project: {}", "horus new my_robot".yellow());
+    println!(
+        "  1. Create a new project: {}",
+        "horus new my_robot".yellow()
+    );
     println!(
         "  2. Install packages:     {}",
         "horus pkg install <package>".yellow()
     );
-    println!(
-        "  3. Start dashboard:      {}",
-        "horus dashboard".yellow()
-    );
+    println!("  3. Start dashboard:      {}", "horus dashboard".yellow());
     println!();
 
     Ok(())

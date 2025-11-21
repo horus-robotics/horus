@@ -1,6 +1,6 @@
 use bevy::prelude::*;
-use rapier3d::prelude::*;
 use rand::Rng;
+use rapier3d::prelude::*;
 use std::f32::consts::PI;
 
 use crate::physics::world::PhysicsWorld;
@@ -184,10 +184,7 @@ fn cast_lidar_rays(
     // Convert position and rotation to nalgebra
     let ray_origin = point![position.x, position.y, position.z];
     let base_rotation = nalgebra::UnitQuaternion::new_normalize(nalgebra::Quaternion::new(
-        rotation.w,
-        rotation.x,
-        rotation.y,
-        rotation.z,
+        rotation.w, rotation.x, rotation.y, rotation.z,
     ));
 
     // Cast rays in a spherical pattern
@@ -381,10 +378,7 @@ fn cast_lidar2d_rays(
 
     let ray_origin = point![position.x, position.y, position.z];
     let base_rotation = nalgebra::UnitQuaternion::new_normalize(nalgebra::Quaternion::new(
-        rotation.w,
-        rotation.x,
-        rotation.y,
-        rotation.z,
+        rotation.w, rotation.x, rotation.y, rotation.z,
     ));
 
     for i in 0..lidar.num_rays {

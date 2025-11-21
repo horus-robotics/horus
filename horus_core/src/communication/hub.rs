@@ -2,10 +2,10 @@ use crate::communication::network::{parse_endpoint, Endpoint, NetworkBackend};
 use crate::core::node::NodeInfo;
 use crate::error::HorusResult;
 use crate::memory::shm_topic::ShmTopic;
-use std::sync::Arc;
-use std::time::Instant;
 use std::sync::mpsc::{channel, Sender};
+use std::sync::Arc;
 use std::sync::OnceLock;
+use std::time::Instant;
 
 /// Metadata record for async pub/sub graph visualization
 #[derive(Debug, Clone)]
@@ -38,7 +38,10 @@ fn get_metadata_channel() -> &'static Sender<MetadataRecord> {
 
                 while let Ok(record) = rx.recv() {
                     // Rate limiting: only write once every 5 seconds per connection
-                    let key = format!("{}_{}_{}", record.node_name, record.topic_name, record.direction);
+                    let key = format!(
+                        "{}_{}_{}",
+                        record.node_name, record.topic_name, record.direction
+                    );
                     if let Some(&last_ts) = last_write.get(&key) {
                         if record.timestamp - last_ts < 5 {
                             continue; // Skip, written recently
@@ -51,7 +54,10 @@ fn get_metadata_channel() -> &'static Sender<MetadataRecord> {
 
                     let safe_node_name = record.node_name.replace(['/', ' '], "_");
                     let safe_topic_name = record.topic_name.replace(['/', ' '], "_");
-                    let filename = format!("{}_{}_{}", safe_node_name, safe_topic_name, record.direction);
+                    let filename = format!(
+                        "{}_{}_{}",
+                        safe_node_name, safe_topic_name, record.direction
+                    );
                     let filepath = metadata_dir.join(filename);
 
                     let _ = fs::write(&filepath, record.timestamp.to_string());
@@ -133,13 +139,13 @@ pub struct HubMetrics {
 /// Optimized Hub for pub/sub messaging with cache-aligned lock-free hot paths
 #[repr(align(64))] // Cache-line aligned structure
 pub struct Hub<T> {
-    shm_topic: Arc<ShmTopic<T>>,                          // Local shared memory (always present)
+    shm_topic: Arc<ShmTopic<T>>, // Local shared memory (always present)
     network: Option<std::sync::Mutex<NetworkBackend<T>>>, // Optional network backend (needs Mutex for recv)
     is_network: bool,                                     // Fast dispatch flag
     topic_name: String,
-    state: std::sync::atomic::AtomicU8,                  // Lock-free state using atomic u8
-    metrics: Arc<AtomicHubMetrics>,                      // Lock-free atomic metrics
-    _padding: [u8; 14],                                  // Pad to prevent false sharing
+    state: std::sync::atomic::AtomicU8, // Lock-free state using atomic u8
+    metrics: Arc<AtomicHubMetrics>,     // Lock-free atomic metrics
+    _padding: [u8; 14],                 // Pad to prevent false sharing
 }
 
 // Manual Clone implementation since AtomicU8 doesn't implement Clone
@@ -198,7 +204,16 @@ impl ConnectionState {
     }
 }
 
-impl<T: Send + Sync + 'static + Clone + std::fmt::Debug + serde::Serialize + serde::de::DeserializeOwned> Hub<T> {
+impl<
+        T: Send
+            + Sync
+            + 'static
+            + Clone
+            + std::fmt::Debug
+            + serde::Serialize
+            + serde::de::DeserializeOwned,
+    > Hub<T>
+{
     /// Create a new Hub
     pub fn new(topic_name: &str) -> HorusResult<Self> {
         Self::new_with_capacity(topic_name, 1024)
@@ -264,7 +279,10 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug + serde::Serialize + ser
     /// # Arguments
     /// * `config_path` - Path to the configuration file (TOML or YAML)
     /// * `hub_name` - Name of the hub to look up in the config file
-    pub fn from_config_file<P: AsRef<std::path::Path>>(config_path: P, hub_name: &str) -> HorusResult<Self> {
+    pub fn from_config_file<P: AsRef<std::path::Path>>(
+        config_path: P,
+        hub_name: &str,
+    ) -> HorusResult<Self> {
         use crate::communication::config::HorusConfig;
 
         // Load config from specific file
@@ -368,8 +386,9 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug + serde::Serialize + ser
         // Network path (if network backend is present)
         if self.is_network {
             if let Some(ref network_mutex) = self.network {
-                let network = network_mutex.lock()
-                    .expect("Network mutex lock poisoned - another thread panicked while holding the lock");
+                let network = network_mutex.lock().expect(
+                    "Network mutex lock poisoned - another thread panicked while holding the lock",
+                );
                 match network.send(&msg) {
                     Ok(_) => {
                         self.metrics
@@ -473,8 +492,9 @@ impl<T: Send + Sync + 'static + Clone + std::fmt::Debug + serde::Serialize + ser
         // Network path (if network backend is present)
         if self.is_network {
             if let Some(ref network_mutex) = self.network {
-                let mut network = network_mutex.lock()
-                    .expect("Network mutex lock poisoned - another thread panicked while holding the lock");
+                let mut network = network_mutex.lock().expect(
+                    "Network mutex lock poisoned - another thread panicked while holding the lock",
+                );
                 if let Some(msg) = network.recv() {
                     self.metrics
                         .messages_received

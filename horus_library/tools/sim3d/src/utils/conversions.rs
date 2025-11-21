@@ -12,7 +12,12 @@ pub fn glam_to_nalgebra(v: Vec3) -> Vector3<f32> {
 pub fn isometry_to_transform(iso: Isometry3<f32>) -> Transform {
     Transform {
         translation: Vec3::new(iso.translation.x, iso.translation.y, iso.translation.z),
-        rotation: Quat::from_xyzw(iso.rotation.i, iso.rotation.j, iso.rotation.k, iso.rotation.w),
+        rotation: Quat::from_xyzw(
+            iso.rotation.i,
+            iso.rotation.j,
+            iso.rotation.k,
+            iso.rotation.w,
+        ),
         scale: Vec3::ONE,
     }
 }

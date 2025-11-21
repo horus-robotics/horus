@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use std::io::Write;
 use std::fs::File;
+use std::io::Write;
 
 fn main() {
     let mut map = HashMap::new();

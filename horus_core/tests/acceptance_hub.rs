@@ -40,7 +40,9 @@ fn test_scenario_2_multiple_subscribers() {
     let sub2 = Hub::<i32>::new(&topic).expect("Failed to create subscriber 2");
     let sub3 = Hub::<i32>::new(&topic).expect("Failed to create subscriber 3");
 
-    pub_hub.send(100, &mut None).expect("Failed to send message");
+    pub_hub
+        .send(100, &mut None)
+        .expect("Failed to send message");
 
     assert_eq!(
         sub1.recv(&mut None),
@@ -108,9 +110,21 @@ fn test_scenario_4_message_buffering_same_hub() {
     hub.send(3, &mut None).expect("Failed to send message 3");
 
     // Read buffered messages from the same hub
-    assert_eq!(hub.recv(&mut None), Some(1), "Should receive buffered message 1");
-    assert_eq!(hub.recv(&mut None), Some(2), "Should receive buffered message 2");
-    assert_eq!(hub.recv(&mut None), Some(3), "Should receive buffered message 3");
+    assert_eq!(
+        hub.recv(&mut None),
+        Some(1),
+        "Should receive buffered message 1"
+    );
+    assert_eq!(
+        hub.recv(&mut None),
+        Some(2),
+        "Should receive buffered message 2"
+    );
+    assert_eq!(
+        hub.recv(&mut None),
+        Some(3),
+        "Should receive buffered message 3"
+    );
 }
 
 #[test]
@@ -162,7 +176,9 @@ fn test_scenario_7_large_messages() {
         .send(msg.clone(), &mut None)
         .expect("Failed to send large message");
 
-    let received = sub_hub.recv(&mut None).expect("Should receive large message");
+    let received = sub_hub
+        .recv(&mut None)
+        .expect("Should receive large message");
     assert_eq!(received, msg, "Large message should be received completely");
     assert_eq!(received.data.len(), 1000, "Vec should have correct length");
 }
@@ -281,7 +297,9 @@ fn test_resource_cleanup() {
     let hub2 = Hub::<i32>::new(&topic).expect("Failed to create hub2 after hub1 dropped");
     hub2.send(100, &mut None).expect("Failed to send on hub2");
 
-    let msg = hub2.recv(&mut None).expect("Should receive message on hub2");
+    let msg = hub2
+        .recv(&mut None)
+        .expect("Should receive message on hub2");
     assert_eq!(msg, 100, "New hub should work after old hub dropped");
 }
 
@@ -296,7 +314,10 @@ fn test_different_message_types() {
     hub_string
         .send("Hello, HORUS!".to_string(), None)
         .expect("Failed to send String");
-    assert_eq!(hub_string.recv(&mut None), Some("Hello, HORUS!".to_string()));
+    assert_eq!(
+        hub_string.recv(&mut None),
+        Some("Hello, HORUS!".to_string())
+    );
 
     // Test with Vec
     let hub_vec = Hub::<Vec<i32>>::new(&topic_vec).expect("Failed to create Vec hub");
@@ -318,8 +339,10 @@ fn test_custom_struct() {
 
     impl horus_core::core::LogSummary for SensorData {
         fn log_summary(&self) -> String {
-            format!("SensorData[T:{:.1}°C, H:{:.1}%, P:{:.2}hPa]",
-                    self.temperature, self.humidity, self.pressure)
+            format!(
+                "SensorData[T:{:.1}°C, H:{:.1}%, P:{:.2}hPa]",
+                self.temperature, self.humidity, self.pressure
+            )
         }
     }
 

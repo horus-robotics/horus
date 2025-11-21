@@ -1,3 +1,10 @@
+// Benchmark binary - allow clippy warnings
+#![allow(unused_imports)]
+#![allow(unused_assignments)]
+#![allow(unreachable_patterns)]
+#![allow(clippy::all)]
+#![allow(deprecated)]
+
 /// IPC Functionality Test Suite
 /// Verifies that IPC mechanisms work correctly in various scenarios
 use horus::prelude::{Hub, Link};

@@ -104,20 +104,20 @@ struct LinkHeader {
 /// - `"topic@192.168.1.5:9000"` → Direct network connection (5-15µs latency)
 #[repr(align(64))]
 pub struct Link<T> {
-    shm_region: Option<Arc<ShmRegion>>,      // Local shared memory (if local)
-    network: Option<DirectBackend<T>>,        // Network backend (if network)
-    is_network: bool,                         // Fast dispatch flag
+    shm_region: Option<Arc<ShmRegion>>, // Local shared memory (if local)
+    network: Option<DirectBackend<T>>,  // Network backend (if network)
+    is_network: bool,                   // Fast dispatch flag
     topic_name: String,
     producer_node: String,
     consumer_node: String,
     role: LinkRole,
-    header: Option<NonNull<LinkHeader>>,     // Only for local
-    data_ptr: Option<NonNull<u8>>,           // Only for local
-    last_seen_sequence: AtomicU64,           // Consumer tracks what it's read (local memory)
+    header: Option<NonNull<LinkHeader>>, // Only for local
+    data_ptr: Option<NonNull<u8>>,       // Only for local
+    last_seen_sequence: AtomicU64,       // Consumer tracks what it's read (local memory)
     metrics: Arc<AtomicLinkMetrics>,
-    state: std::sync::atomic::AtomicU8,      // Lock-free state using atomic u8
+    state: std::sync::atomic::AtomicU8, // Lock-free state using atomic u8
     _phantom: PhantomData<T>,
-    _padding: [u8; 5],                       // Adjusted padding for state field
+    _padding: [u8; 5], // Adjusted padding for state field
 }
 
 // Manual Debug implementation since DirectBackend doesn't implement Debug for all T
@@ -137,7 +137,12 @@ impl<T> std::fmt::Debug for Link<T> {
 
 impl<T> Link<T>
 where
-    T: crate::core::LogSummary + serde::Serialize + serde::de::DeserializeOwned + Send + Sync + 'static,
+    T: crate::core::LogSummary
+        + serde::Serialize
+        + serde::de::DeserializeOwned
+        + Send
+        + Sync
+        + 'static,
 {
     // ====== PRIMARY API (recommended) ======
 
@@ -423,7 +428,8 @@ where
         let addr_str = parts[1];
 
         // Parse address
-        let addr: SocketAddr = addr_str.parse()
+        let addr: SocketAddr = addr_str
+            .parse()
             .map_err(|e| format!("Invalid address '{}': {}", addr_str, e))?;
 
         // Create network backend based on role
@@ -432,7 +438,12 @@ where
             LinkRole::Consumer => DirectBackend::new_consumer(addr)?,
         };
 
-        log::info!("Link '{}': Created as {:?} (network {})", topic_name, role, addr);
+        log::info!(
+            "Link '{}': Created as {:?} (network {})",
+            topic_name,
+            role,
+            addr
+        );
 
         let metrics = Arc::new(AtomicLinkMetrics {
             messages_sent: AtomicU64::new(0),
@@ -723,7 +734,9 @@ where
         if self.is_network {
             if let Some(ref network) = self.network {
                 if let Some(msg) = network.recv() {
-                    self.metrics.messages_received.fetch_add(1, Ordering::Relaxed);
+                    self.metrics
+                        .messages_received
+                        .fetch_add(1, Ordering::Relaxed);
                     self.state.store(
                         ConnectionState::Connected.into_u8(),
                         std::sync::atomic::Ordering::Relaxed,
@@ -808,7 +821,8 @@ where
     pub fn has_messages(&self) -> bool {
         if self.is_network {
             // Network: check if receive queue has messages (non-blocking peek)
-            self.network.as_ref()
+            self.network
+                .as_ref()
                 .map(|net| net.has_messages())
                 .unwrap_or(false)
         } else {
@@ -867,7 +881,12 @@ where
 // Clone implementation for local shared memory Links only
 impl<T> Clone for Link<T>
 where
-    T: crate::core::LogSummary + serde::Serialize + serde::de::DeserializeOwned + Send + Sync + 'static,
+    T: crate::core::LogSummary
+        + serde::Serialize
+        + serde::de::DeserializeOwned
+        + Send
+        + Sync
+        + 'static,
 {
     /// Clone this Link
     ///
@@ -898,17 +917,17 @@ where
         }
 
         Self {
-            shm_region: self.shm_region.clone(),  // Arc - cheap clone
-            network: None,  // Network backend dropped (only local Links can be cloned)
+            shm_region: self.shm_region.clone(), // Arc - cheap clone
+            network: None, // Network backend dropped (only local Links can be cloned)
             is_network: false,
             topic_name: self.topic_name.clone(),
             producer_node: self.producer_node.clone(),
             consumer_node: self.consumer_node.clone(),
             role: self.role,
-            header: self.header,  // NonNull - just copy the pointer
-            data_ptr: self.data_ptr,  // NonNull - just copy the pointer
+            header: self.header,     // NonNull - just copy the pointer
+            data_ptr: self.data_ptr, // NonNull - just copy the pointer
             last_seen_sequence: AtomicU64::new(self.last_seen_sequence.load(Ordering::Relaxed)),
-            metrics: self.metrics.clone(),  // Arc - cheap clone
+            metrics: self.metrics.clone(), // Arc - cheap clone
             state: std::sync::atomic::AtomicU8::new(self.state.load(Ordering::Relaxed)),
             _phantom: PhantomData,
             _padding: [0; 5],

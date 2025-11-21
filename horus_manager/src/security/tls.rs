@@ -90,7 +90,11 @@ impl TlsConfig {
         println!("Generating trusted TLS certificate using mkcert...");
 
         // Build list of hostnames/IPs to include
-        let mut hosts = vec!["localhost".to_string(), "127.0.0.1".to_string(), "::1".to_string()];
+        let mut hosts = vec![
+            "localhost".to_string(),
+            "127.0.0.1".to_string(),
+            "::1".to_string(),
+        ];
 
         // Add local network IP if available
         if let Some(local_ip) = Self::get_local_ip() {
@@ -129,7 +133,6 @@ impl TlsConfig {
 
     /// Generate self-signed certificate
     pub fn generate_self_signed_cert(&self, hostname: &str) -> Result<()> {
-
         println!("Generating self-signed TLS certificate...");
         println!("   Hostname: {}", hostname);
 

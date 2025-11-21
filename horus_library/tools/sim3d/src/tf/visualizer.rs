@@ -1,5 +1,5 @@
-use bevy::prelude::*;
 use crate::tf::TFTree;
+use bevy::prelude::*;
 
 #[derive(Resource)]
 pub struct TFVisualizer {
@@ -75,7 +75,12 @@ pub fn render_tf_frames(
 fn isometry_to_bevy_transform(iso: &nalgebra::Isometry3<f32>) -> Transform {
     let translation = Vec3::new(iso.translation.x, iso.translation.y, iso.translation.z);
 
-    let rotation = Quat::from_xyzw(iso.rotation.i, iso.rotation.j, iso.rotation.k, iso.rotation.w);
+    let rotation = Quat::from_xyzw(
+        iso.rotation.i,
+        iso.rotation.j,
+        iso.rotation.k,
+        iso.rotation.w,
+    );
 
     Transform {
         translation,

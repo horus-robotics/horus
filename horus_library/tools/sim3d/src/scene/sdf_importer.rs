@@ -213,8 +213,8 @@ impl Default for SDFPhysics {
 impl SDFImporter {
     /// Load SDF world from file
     pub fn load_file(path: impl AsRef<Path>) -> Result<SDFWorld, String> {
-        let mut file = File::open(path.as_ref())
-            .map_err(|e| format!("Failed to open SDF file: {}", e))?;
+        let mut file =
+            File::open(path.as_ref()).map_err(|e| format!("Failed to open SDF file: {}", e))?;
 
         let mut contents = String::new();
         file.read_to_string(&mut contents)
@@ -225,10 +225,19 @@ impl SDFImporter {
 
     /// Parse SDF from string
     pub fn parse_string(xml: &str) -> Result<SDFWorld, String> {
-        let doc = roxmltree::Document::parse(xml)
-            .map_err(|e| format!("Failed to parse XML: {}", e))?;
+        let doc =
+            roxmltree::Document::parse(xml).map_err(|e| format!("Failed to parse XML: {}", e))?;
 
         let root = doc.root_element();
+
+        // Check SDF version if present (warn if unsupported, but continue parsing)
+        if root.has_tag_name("sdf") {
+            if let Some(version) = root.attribute("version") {
+                if let Err(msg) = Self::validate_sdf_version(version) {
+                    eprintln!("Warning: {}", msg);
+                }
+            }
+        }
 
         // Find <world> element
         let world_elem = if root.has_tag_name("world") {
@@ -244,6 +253,20 @@ impl SDFImporter {
         };
 
         Self::parse_world(world_elem)
+    }
+
+    /// Validate SDF version (supports 1.4, 1.5, 1.6, 1.7, 1.8)
+    fn validate_sdf_version(version: &str) -> Result<(), String> {
+        const SUPPORTED_VERSIONS: &[&str] = &["1.4", "1.5", "1.6", "1.7", "1.8"];
+
+        if SUPPORTED_VERSIONS.contains(&version) {
+            Ok(())
+        } else {
+            Err(format!(
+                "SDF version {} not officially supported. Supported versions: {:?}. Will attempt to parse anyway.",
+                version, SUPPORTED_VERSIONS
+            ))
+        }
     }
 
     fn parse_world(elem: roxmltree::Node) -> Result<SDFWorld, String> {
@@ -330,10 +353,7 @@ impl SDFImporter {
     }
 
     fn parse_link(elem: roxmltree::Node) -> Result<SDFLink, String> {
-        let name = elem
-            .attribute("name")
-            .unwrap_or("unnamed_link")
-            .to_string();
+        let name = elem.attribute("name").unwrap_or("unnamed_link").to_string();
 
         let mut link = SDFLink {
             name,
@@ -421,10 +441,19 @@ impl SDFImporter {
                     for limit_child in child.children().filter(|n| n.is_element()) {
                         if let Some(text) = limit_child.text() {
                             match limit_child.tag_name().name() {
-                                "lower" => axis.limit_lower = text.trim().parse().unwrap_or(-f32::INFINITY),
-                                "upper" => axis.limit_upper = text.trim().parse().unwrap_or(f32::INFINITY),
-                                "effort" => axis.limit_effort = text.trim().parse().unwrap_or(f32::INFINITY),
-                                "velocity" => axis.limit_velocity = text.trim().parse().unwrap_or(f32::INFINITY),
+                                "lower" => {
+                                    axis.limit_lower = text.trim().parse().unwrap_or(-f32::INFINITY)
+                                }
+                                "upper" => {
+                                    axis.limit_upper = text.trim().parse().unwrap_or(f32::INFINITY)
+                                }
+                                "effort" => {
+                                    axis.limit_effort = text.trim().parse().unwrap_or(f32::INFINITY)
+                                }
+                                "velocity" => {
+                                    axis.limit_velocity =
+                                        text.trim().parse().unwrap_or(f32::INFINITY)
+                                }
                                 _ => {}
                             }
                         }
@@ -480,9 +509,7 @@ impl SDFImporter {
         let mut collision = SDFCollision {
             name,
             pose: SDFPose::default(),
-            geometry: SDFGeometry::Box {
-                size: Vec3::ONE,
-            },
+            geometry: SDFGeometry::Box { size: Vec3::ONE },
         };
 
         for child in elem.children().filter(|n| n.is_element()) {
@@ -501,14 +528,15 @@ impl SDFImporter {
     }
 
     fn parse_visual(elem: roxmltree::Node) -> Result<SDFVisual, String> {
-        let name = elem.attribute("name").unwrap_or("unnamed_visual").to_string();
+        let name = elem
+            .attribute("name")
+            .unwrap_or("unnamed_visual")
+            .to_string();
 
         let mut visual = SDFVisual {
             name,
             pose: SDFPose::default(),
-            geometry: SDFGeometry::Box {
-                size: Vec3::ONE,
-            },
+            geometry: SDFGeometry::Box { size: Vec3::ONE },
             material: SDFMaterial::default(),
         };
 
@@ -518,6 +546,11 @@ impl SDFImporter {
                 "geometry" => {
                     if let Ok(geom) = Self::parse_geometry(child) {
                         visual.geometry = geom;
+                    }
+                }
+                "material" => {
+                    if let Ok(mat) = Self::parse_material(child) {
+                        visual.material = mat;
                     }
                 }
                 _ => {}
@@ -602,18 +635,102 @@ impl SDFImporter {
         Err("No valid geometry found".to_string())
     }
 
+    fn parse_material(elem: roxmltree::Node) -> Result<SDFMaterial, String> {
+        let mut material = SDFMaterial::default();
+
+        for child in elem.children().filter(|n| n.is_element()) {
+            match child.tag_name().name() {
+                "ambient" => {
+                    material.ambient = Self::parse_color(child);
+                }
+                "diffuse" => {
+                    material.diffuse = Self::parse_color(child);
+                }
+                "specular" => {
+                    material.specular = Self::parse_color(child);
+                }
+                "emissive" => {
+                    material.emissive = Self::parse_color(child);
+                }
+                _ => {}
+            }
+        }
+
+        Ok(material)
+    }
+
+    fn parse_color(elem: roxmltree::Node) -> [f32; 4] {
+        if let Some(text) = elem.text() {
+            let parts: Vec<f32> = text
+                .split_whitespace()
+                .filter_map(|s| s.parse().ok())
+                .collect();
+            if parts.len() >= 4 {
+                return [parts[0], parts[1], parts[2], parts[3]];
+            } else if parts.len() == 3 {
+                return [parts[0], parts[1], parts[2], 1.0];
+            }
+        }
+        [1.0, 1.0, 1.0, 1.0]
+    }
+
     fn parse_light(elem: roxmltree::Node) -> Result<SDFLight, String> {
-        let name = elem.attribute("name").unwrap_or("unnamed_light").to_string();
+        let name = elem
+            .attribute("name")
+            .unwrap_or("unnamed_light")
+            .to_string();
         let light_type = elem.attribute("type").unwrap_or("point").to_string();
 
-        Ok(SDFLight {
+        let mut light = SDFLight {
             name,
             light_type,
             pose: SDFPose::default(),
             diffuse: [1.0, 1.0, 1.0, 1.0],
             specular: [1.0, 1.0, 1.0, 1.0],
             attenuation: SDFAttenuation::default(),
-        })
+        };
+
+        for child in elem.children().filter(|n| n.is_element()) {
+            match child.tag_name().name() {
+                "pose" => {
+                    if let Ok(pose) = Self::parse_pose(child) {
+                        light.pose = pose;
+                    }
+                }
+                "diffuse" => {
+                    light.diffuse = Self::parse_color(child);
+                }
+                "specular" => {
+                    light.specular = Self::parse_color(child);
+                }
+                "attenuation" => {
+                    if let Ok(atten) = Self::parse_attenuation(child) {
+                        light.attenuation = atten;
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        Ok(light)
+    }
+
+    fn parse_attenuation(elem: roxmltree::Node) -> Result<SDFAttenuation, String> {
+        let mut attenuation = SDFAttenuation::default();
+
+        for child in elem.children().filter(|n| n.is_element()) {
+            if let Some(text) = child.text() {
+                match child.tag_name().name() {
+                    "range" => attenuation.range = text.trim().parse().unwrap_or(10.0),
+                    "constant" => attenuation.constant = text.trim().parse().unwrap_or(1.0),
+                    "linear" => attenuation.linear = text.trim().parse().unwrap_or(0.0),
+                    "quadratic" => attenuation.quadratic = text.trim().parse().unwrap_or(0.0),
+                    _ => {}
+                }
+            }
+        }
+
+        Ok(attenuation)
     }
 
     fn parse_physics(elem: roxmltree::Node) -> Result<SDFPhysics, String> {
@@ -623,7 +740,9 @@ impl SDFImporter {
             if let Some(text) = child.text() {
                 match child.tag_name().name() {
                     "max_step_size" => physics.max_step_size = text.trim().parse().unwrap_or(0.001),
-                    "real_time_factor" => physics.real_time_factor = text.trim().parse().unwrap_or(1.0),
+                    "real_time_factor" => {
+                        physics.real_time_factor = text.trim().parse().unwrap_or(1.0)
+                    }
                     "real_time_update_rate" => {
                         physics.real_time_update_rate = text.trim().parse().unwrap_or(1000.0)
                     }

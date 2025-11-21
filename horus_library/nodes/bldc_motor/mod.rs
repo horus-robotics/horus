@@ -7,7 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 // GPIO/PWM hardware support (Raspberry Pi)
 #[cfg(feature = "gpio-hardware")]
-use rppal::pwm::{Pwm, Channel, Polarity};
+use rppal::pwm::{Channel, Polarity, Pwm};
 
 /// BLDC (Brushless DC) Motor Controller Node
 ///
@@ -54,39 +54,39 @@ use rppal::pwm::{Pwm, Channel, Polarity};
 /// ```
 pub struct BldcMotorNode {
     subscriber: Hub<MotorCommand>,
-    publisher: Hub<MotorCommand>,      // Echo commands
+    publisher: Hub<MotorCommand>, // Echo commands
     telemetry_publisher: Hub<BldcTelemetry>,
 
     // Configuration
     num_motors: u8,
     protocol: BldcProtocol,
-    pwm_min: [u16; 8],        // Minimum PWM value (typically 1000μs)
-    pwm_max: [u16; 8],        // Maximum PWM value (typically 2000μs)
-    pwm_neutral: [u16; 8],    // Neutral/zero throttle (typically 1500μs)
-    min_velocity: [f64; 8],   // Minimum RPM
-    max_velocity: [f64; 8],   // Maximum RPM
+    pwm_min: [u16; 8],      // Minimum PWM value (typically 1000μs)
+    pwm_max: [u16; 8],      // Maximum PWM value (typically 2000μs)
+    pwm_neutral: [u16; 8],  // Neutral/zero throttle (typically 1500μs)
+    min_velocity: [f64; 8], // Minimum RPM
+    max_velocity: [f64; 8], // Maximum RPM
     invert_direction: [bool; 8],
 
     // State tracking per motor
-    current_velocity: [f64; 8],     // Current velocity in RPM
-    target_velocity: [f64; 8],      // Target velocity in RPM
-    current_throttle: [f64; 8],     // Current throttle (0.0-1.0)
+    current_velocity: [f64; 8], // Current velocity in RPM
+    target_velocity: [f64; 8],  // Target velocity in RPM
+    current_throttle: [f64; 8], // Current throttle (0.0-1.0)
     motor_armed: [bool; 8],
     motor_enabled: [bool; 8],
     last_command_time: [u64; 8],
 
     // Telemetry (from ESC feedback)
-    voltage: [f32; 8],        // Motor/battery voltage
-    current: [f32; 8],        // Motor current draw
-    temperature: [f32; 8],    // ESC/motor temperature
-    rpm_measured: [f64; 8],   // Measured RPM (if available)
+    voltage: [f32; 8],      // Motor/battery voltage
+    current: [f32; 8],      // Motor current draw
+    temperature: [f32; 8],  // ESC/motor temperature
+    rpm_measured: [f64; 8], // Measured RPM (if available)
     error_count: [u32; 8],
 
     // Control parameters
     acceleration_limit: [f64; 8], // RPM per second
     command_timeout_ms: u64,
     enable_telemetry: bool,
-    armed: bool,              // Global arm state
+    armed: bool, // Global arm state
 
     // Hardware PWM channels (Raspberry Pi hardware PWM)
     #[cfg(feature = "gpio-hardware")]
@@ -176,7 +176,7 @@ impl BldcMotorNode {
             #[cfg(feature = "gpio-hardware")]
             pwm_channels: [NONE_PWM; 8],
             hardware_enabled: false,
-            pwm_gpio_pins: [0; 8], // Will be configured via set_pwm_pin()
+            pwm_gpio_pins: [0; 8],  // Will be configured via set_pwm_pin()
             pwm_frequency_hz: 50.0, // Default 50Hz for standard PWM ESCs
         })
     }
@@ -331,14 +331,18 @@ impl BldcMotorNode {
 
     /// Initialize PWM hardware for a motor
     #[cfg(feature = "gpio-hardware")]
-    fn init_pwm_hardware(&mut self, motor_id: u8, mut ctx: Option<&mut NodeInfo>) -> std::io::Result<()> {
+    fn init_pwm_hardware(
+        &mut self,
+        motor_id: u8,
+        mut ctx: Option<&mut NodeInfo>,
+    ) -> std::io::Result<()> {
         let idx = motor_id as usize;
         let gpio_pin = self.pwm_gpio_pins[idx];
 
         if gpio_pin == 0 {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
-                format!("PWM pin not configured for motor {}", motor_id)
+                format!("PWM pin not configured for motor {}", motor_id),
             ));
         }
 
@@ -350,7 +354,7 @@ impl BldcMotorNode {
             _ => {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::InvalidInput,
-                    format!("Invalid PWM GPIO pin {} (use 12, 13, 18, or 19)", gpio_pin)
+                    format!("Invalid PWM GPIO pin {} (use 12, 13, 18, or 19)", gpio_pin),
                 ));
             }
         };
@@ -361,8 +365,9 @@ impl BldcMotorNode {
             self.pwm_frequency_hz,
             0.0, // Start at 0% duty cycle
             Polarity::Normal,
-            true // enabled
-        ).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            true, // enabled
+        )
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
 
         self.pwm_channels[idx] = Some(pwm);
 
@@ -401,20 +406,14 @@ impl BldcMotorNode {
 
         // Calculate protocol-specific PWM value
         let pwm_us = match self.protocol {
-            BldcProtocol::StandardPwm => {
-                self.throttle_to_pwm(motor_id, throttle)
-            }
-            BldcProtocol::OneShot125 => {
-                125 + (throttle * 125.0) as u16
-            }
-            BldcProtocol::OneShot42 => {
-                42 + (throttle * 42.0) as u16
-            }
-            BldcProtocol::MultiShot => {
-                5 + (throttle * 20.0) as u16
-            }
-            BldcProtocol::DShot150 | BldcProtocol::DShot300
-            | BldcProtocol::DShot600 | BldcProtocol::DShot1200 => {
+            BldcProtocol::StandardPwm => self.throttle_to_pwm(motor_id, throttle),
+            BldcProtocol::OneShot125 => 125 + (throttle * 125.0) as u16,
+            BldcProtocol::OneShot42 => 42 + (throttle * 42.0) as u16,
+            BldcProtocol::MultiShot => 5 + (throttle * 20.0) as u16,
+            BldcProtocol::DShot150
+            | BldcProtocol::DShot300
+            | BldcProtocol::DShot600
+            | BldcProtocol::DShot1200 => {
                 // DShot uses 11-bit throttle value (0-2047)
                 // For PWM approximation, map to standard range
                 if throttle < 0.001 {
@@ -423,9 +422,7 @@ impl BldcMotorNode {
                     1000 + (throttle * 1000.0) as u16
                 }
             }
-            BldcProtocol::ProShot => {
-                1000 + (throttle * 1000.0) as u16
-            }
+            BldcProtocol::ProShot => 1000 + (throttle * 1000.0) as u16,
             BldcProtocol::Can => {
                 // CAN doesn't use PWM, but for fallback purposes
                 1000 + (throttle * 1000.0) as u16
@@ -450,8 +447,12 @@ impl BldcMotorNode {
                         ctx.log_warning("  Fix:");
                         ctx.log_warning("    1. Install: sudo apt install libraspberrypi-dev");
                         ctx.log_warning("    2. Use hardware PWM pins: GPIO 12, 13, 18, or 19");
-                        ctx.log_warning("    3. Check ESC wiring: Signal wire to GPIO, power to battery");
-                        ctx.log_warning("    4. Rebuild with: cargo build --features=\"gpio-hardware\"");
+                        ctx.log_warning(
+                            "    3. Check ESC wiring: Signal wire to GPIO, power to battery",
+                        );
+                        ctx.log_warning(
+                            "    4. Rebuild with: cargo build --features=\"gpio-hardware\"",
+                        );
                     }
                     self.hardware_enabled = false;
                 } else {
@@ -465,7 +466,10 @@ impl BldcMotorNode {
                     Ok(()) => {
                         ctx.log_debug(&format!(
                             "Motor {} (HW): {:?} {}μs ({:.1}%)",
-                            motor_id, self.protocol, pwm_us, throttle * 100.0
+                            motor_id,
+                            self.protocol,
+                            pwm_us,
+                            throttle * 100.0
                         ));
                         return;
                     }
@@ -480,7 +484,10 @@ impl BldcMotorNode {
         // Simulation fallback
         ctx.log_debug(&format!(
             "Motor {} (SIM): {:?} {}μs ({:.1}%)",
-            motor_id, self.protocol, pwm_us, throttle * 100.0
+            motor_id,
+            self.protocol,
+            pwm_us,
+            throttle * 100.0
         ));
     }
 
@@ -549,7 +556,10 @@ impl BldcMotorNode {
                 ));
             }
             _ => {
-                ctx.log_warning(&format!("Motor {}: unknown control mode {}", motor_id, cmd.mode));
+                ctx.log_warning(&format!(
+                    "Motor {}: unknown control mode {}",
+                    motor_id, cmd.mode
+                ));
             }
         }
     }
@@ -592,7 +602,8 @@ impl BldcMotorNode {
         self.rpm_measured[idx] = self.current_velocity[idx];
         self.voltage[idx] = 14.8 - (self.current_throttle[idx] * 0.5) as f32; // Battery sag
         self.current[idx] = (self.current_throttle[idx] * 30.0) as f32; // Up to 30A
-        self.temperature[idx] = 25.0 + (self.current_throttle[idx] * 50.0) as f32; // Heat up
+        self.temperature[idx] = 25.0 + (self.current_throttle[idx] * 50.0) as f32;
+        // Heat up
     }
 
     /// Check for command timeouts

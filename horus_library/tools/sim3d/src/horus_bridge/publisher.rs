@@ -52,7 +52,13 @@ impl HorusPublisher {
         self.enabled
     }
 
-    pub fn publish_transform(&self, frame_id: impl Into<String>, child_frame: impl Into<String>, transform: &Transform, time: f64) {
+    pub fn publish_transform(
+        &self,
+        frame_id: impl Into<String>,
+        child_frame: impl Into<String>,
+        transform: &Transform,
+        time: f64,
+    ) {
         if !self.enabled {
             return;
         }
@@ -68,7 +74,13 @@ impl HorusPublisher {
         }
     }
 
-    pub fn publish_pointcloud(&self, topic: impl Into<String>, pointcloud: &PointCloud, frame_id: impl Into<String>, time: f64) {
+    pub fn publish_pointcloud(
+        &self,
+        topic: impl Into<String>,
+        pointcloud: &PointCloud,
+        frame_id: impl Into<String>,
+        time: f64,
+    ) {
         if !self.enabled {
             return;
         }
@@ -80,7 +92,13 @@ impl HorusPublisher {
         }
     }
 
-    pub fn publish_laserscan(&self, topic: impl Into<String>, scan: &LaserScan, frame_id: impl Into<String>, time: f64) {
+    pub fn publish_laserscan(
+        &self,
+        topic: impl Into<String>,
+        scan: &LaserScan,
+        frame_id: impl Into<String>,
+        time: f64,
+    ) {
         if !self.enabled {
             return;
         }
@@ -103,7 +121,16 @@ impl HorusPublisher {
         }
     }
 
-    pub fn publish_odometry(&self, topic: impl Into<String>, transform: &Transform, linear_vel: Vec3, angular_vel: Vec3, frame_id: impl Into<String>, child_frame_id: impl Into<String>, time: f64) {
+    pub fn publish_odometry(
+        &self,
+        topic: impl Into<String>,
+        transform: &Transform,
+        linear_vel: Vec3,
+        angular_vel: Vec3,
+        frame_id: impl Into<String>,
+        child_frame_id: impl Into<String>,
+        time: f64,
+    ) {
         if !self.enabled {
             return;
         }
@@ -132,7 +159,14 @@ impl HorusPublisher {
         }
     }
 
-    pub fn publish_joint_state(&self, names: Vec<String>, positions: Vec<f32>, velocities: Vec<f32>, efforts: Vec<f32>, time: f64) {
+    pub fn publish_joint_state(
+        &self,
+        names: Vec<String>,
+        positions: Vec<f32>,
+        velocities: Vec<f32>,
+        efforts: Vec<f32>,
+        time: f64,
+    ) {
         if !self.enabled {
             return;
         }
@@ -190,7 +224,11 @@ impl HorusPublisher {
     }
 }
 
-fn convert_pointcloud_to_msg(pointcloud: &PointCloud, frame_id: impl Into<String>, time: f64) -> PointCloud2 {
+fn convert_pointcloud_to_msg(
+    pointcloud: &PointCloud,
+    frame_id: impl Into<String>,
+    time: f64,
+) -> PointCloud2 {
     let num_points = pointcloud.points.len();
 
     let fields = vec![
@@ -237,12 +275,7 @@ pub fn publish_tf_system(
 
     for (transform, name) in query.iter() {
         let bevy_transform = transform.compute_transform();
-        publisher.publish_transform(
-            "world",
-            name.as_str(),
-            &bevy_transform,
-            current_time,
-        );
+        publisher.publish_transform("world", name.as_str(), &bevy_transform, current_time);
     }
 }
 

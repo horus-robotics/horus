@@ -1,0 +1,95 @@
+version: "1.0"
+name: "Omnidirectional Robot - Warehouse Navigation"
+description: "Use holonomic drive to navigate efficiently in tight warehouse spaces"
+
+world:
+  width: 25.0
+  height: 20.0
+  obstacles:
+    # Warehouse shelving units (vertical)
+    - pos: [8.0, 5.0]
+      size: [1.0, 8.0]
+      shape: rectangle
+      color: [0.7, 0.5, 0.3]
+
+    - pos: [8.0, 15.0]
+      size: [1.0, 8.0]
+      shape: rectangle
+      color: [0.7, 0.5, 0.3]
+
+    - pos: [17.0, 5.0]
+      size: [1.0, 8.0]
+      shape: rectangle
+      color: [0.7, 0.5, 0.3]
+
+    - pos: [17.0, 15.0]
+      size: [1.0, 8.0]
+      shape: rectangle
+      color: [0.7, 0.5, 0.3]
+
+    # Horizontal shelves
+    - pos: [12.5, 10.0]
+      size: [5.0, 1.0]
+      shape: rectangle
+      color: [0.7, 0.5, 0.3]
+
+    # Boxes on floor
+    - pos: [5.0, 8.0]
+      size: [0.8, 0.8]
+      shape: rectangle
+      color: [0.6, 0.4, 0.2]
+
+    - pos: [20.0, 12.0]
+      size: [0.8, 0.8]
+      shape: rectangle
+      color: [0.6, 0.4, 0.2]
+
+robots:
+  - name: "holonomic_robot"
+    position: [3.0, 3.0]
+    heading: 0.0
+    velocity: [0.0, 0.0]
+    config:
+      name: "holonomic_robot"
+      topic_prefix: "/holonomic"
+      position: [3.0, 3.0]
+      width: 0.6
+      length: 0.6
+      max_speed: 2.5
+      color: [0.3, 0.7, 0.9]
+      kinematics:
+        kinematic_type: omnidirectional
+      lidar:
+        enabled: true
+        range_max: 15.0
+        range_min: 0.1
+        num_rays: 360
+        angle_min: -3.14159
+        angle_max: 3.14159
+      camera:
+        enabled: false
+
+simulation:
+  time: 0.0
+  timestep: 0.016
+  paused: false
+
+# Goal: Navigate to multiple waypoints efficiently using omnidirectional movement
+# Target waypoints: (22.0, 17.0), (12.5, 5.0), (3.0, 17.0)
+#
+# Omnidirectional kinematics notes:
+#   - CmdVel.linear = x velocity (forward/backward in robot frame)
+#   - CmdVel.angular = y velocity (left/right strafe in robot frame)
+#   - Robot does NOT rotate automatically from velocity commands
+#   - Can move in any direction without changing orientation
+#
+# Example commands:
+#   Move forward: CmdVel(1.0, 0.0)
+#   Strafe right: CmdVel(0.0, 1.0)
+#   Strafe left: CmdVel(0.0, -1.0)
+#   Diagonal (forward-right): CmdVel(0.7, 0.7)
+#   Diagonal (backward-left): CmdVel(-0.7, -0.7)
+#   Stop: CmdVel(0.0, 0.0)
+#
+# Tip: Omnidirectional robots can "slide" sideways through narrow gaps
+# that would require rotation for differential drive robots!

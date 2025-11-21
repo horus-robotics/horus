@@ -580,10 +580,12 @@ impl PwmCommand {
 
 impl LogSummary for PwmCommand {
     fn log_summary(&self) -> String {
-        format!("PWM[{}]: {:.1}% @ {}Hz",
+        format!(
+            "PWM[{}]: {:.1}% @ {}Hz",
             self.channel_id,
             self.duty_cycle * 100.0,
-            self.frequency)
+            self.frequency
+        )
     }
 }
 
@@ -744,7 +746,9 @@ impl StepperCommand {
 
 impl LogSummary for StepperCommand {
     fn log_summary(&self) -> String {
-        format!("Stepper[{}]: mode={}, target={:.2}, v={:.1} steps/s",
-            self.motor_id, self.mode, self.target, self.max_velocity)
+        format!(
+            "Stepper[{}]: mode={}, target={:.2}, v={:.1} steps/s",
+            self.motor_id, self.mode, self.target, self.max_velocity
+        )
     }
 }

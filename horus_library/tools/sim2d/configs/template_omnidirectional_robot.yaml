@@ -1,0 +1,91 @@
+# Omnidirectional Robot Template (Holonomic Drive)
+# This is a template for an omnidirectional holonomic robot
+# Can move in any direction without changing orientation
+# Copy and modify this file for your custom holonomic robot
+
+name: "omnidirectional_robot"
+topic_prefix: "/holonomic"  # HORUS topic prefix for all robot messages
+
+# Initial position and orientation
+position: [0.0, 0.0]  # [x, y] in meters
+
+# Physical dimensions (typically square/circular for omni robots)
+width: 0.6    # meters (side-to-side)
+length: 0.6   # meters (front-to-back, often equal to width)
+
+# Performance
+max_speed: 2.5  # meters per second (can be faster due to efficient movement)
+
+# Visual appearance
+color: [0.3, 0.7, 0.9]  # RGB color (0.0-1.0 range) - cyan for omni
+
+# Robot kinematics
+kinematics:
+  kinematic_type: omnidirectional  # Holonomic drive
+  # No additional parameters needed for omnidirectional drive
+
+# LIDAR sensor configuration
+lidar:
+  enabled: true
+  range_max: 10.0      # Maximum detection range (meters)
+  range_min: 0.1       # Minimum detection range (meters)
+  num_rays: 360        # Number of laser rays
+  angle_min: -3.14159  # Start angle (radians)
+  angle_max: 3.14159   # End angle (radians)
+  # Published to: <topic_prefix>/lidar
+
+# Camera sensor configuration
+camera:
+  enabled: false  # Set to true to enable camera
+  # Published to: <topic_prefix>/camera
+
+# Additional sensors (automatically enabled):
+# - Odometry: <topic_prefix>/odom
+# - IMU: <topic_prefix>/imu
+# - Ground truth pose: <topic_prefix>/pose
+
+# Control interface:
+# - Subscribe to: <topic_prefix>/cmd_vel (CmdVel messages)
+#   - linear: X velocity in robot frame (m/s) - forward/backward
+#   - angular: Y velocity in robot frame (m/s) - left/right strafe
+#
+# IMPORTANT: For omnidirectional robots:
+#   - 'linear' controls forward/backward motion
+#   - 'angular' controls left/right strafing (NOT rotation!)
+#   - Robot does NOT rotate from velocity commands
+#   - Can combine both for diagonal movement
+
+# Movement examples:
+#   Forward:           CmdVel(1.0, 0.0)
+#   Backward:          CmdVel(-1.0, 0.0)
+#   Strafe right:      CmdVel(0.0, 1.0)
+#   Strafe left:       CmdVel(0.0, -1.0)
+#   Diagonal (NE):     CmdVel(0.7, 0.7)   # 45-degree angle
+#   Diagonal (SW):     CmdVel(-0.7, -0.7)
+#   Diagonal (NW):     CmdVel(0.7, -0.7)
+#   Diagonal (SE):     CmdVel(-0.7, 0.7)
+
+# Example usage:
+#   sim2d --robot configs/template_omnidirectional_robot.yaml
+#   horus run "echo 'CmdVel(0.7, 0.7)' > /holonomic/cmd_vel"   # Move diagonally NE
+#   horus run "echo 'CmdVel(0.0, 1.0)' > /holonomic/cmd_vel"   # Strafe right
+#   horus run "echo 'CmdVel(-1.0, 0.5)' > /holonomic/cmd_vel"  # Move back-right
+
+# Advantages of omnidirectional robots:
+# 1. Can move in any direction instantly
+# 2. No need to rotate before moving
+# 3. Can navigate tight spaces more efficiently
+# 4. Better for warehouse/indoor environments
+# 5. Can maintain orientation while moving
+
+# Use cases:
+# - Warehouse automation
+# - Indoor delivery robots
+# - Research platforms
+# - AGVs (Automated Guided Vehicles)
+# - Scenarios requiring precise positioning
+
+# Note: Real omnidirectional robots typically use:
+# - Mecanum wheels (4 wheels with rollers at 45 degrees)
+# - Omni wheels (wheels with perpendicular rollers)
+# - Kiwi drive (3 wheels at 120 degrees)

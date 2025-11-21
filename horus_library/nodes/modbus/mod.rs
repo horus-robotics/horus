@@ -41,8 +41,8 @@ pub struct ModbusNode {
     slave_id: u8,
     timeout_ms: u64,
     backend: ModbusBackend,
-    serial_port: String,  // For RTU mode
-    baud_rate: u32,       // For RTU mode
+    serial_port: String, // For RTU mode
+    baud_rate: u32,      // For RTU mode
 
     // State
     is_connected: bool,
@@ -64,7 +64,12 @@ pub struct ModbusNode {
 impl ModbusNode {
     /// Create a new Modbus node with default topics in simulation mode
     pub fn new() -> Result<Self> {
-        Self::new_with_backend("modbus_request", "modbus_response", "modbus_status", ModbusBackend::Simulation)
+        Self::new_with_backend(
+            "modbus_request",
+            "modbus_response",
+            "modbus_status",
+            ModbusBackend::Simulation,
+        )
     }
 
     /// Create a new Modbus node with custom topics
@@ -73,7 +78,12 @@ impl ModbusNode {
         response_topic: &str,
         status_topic: &str,
     ) -> Result<Self> {
-        Self::new_with_backend(request_topic, response_topic, status_topic, ModbusBackend::Simulation)
+        Self::new_with_backend(
+            request_topic,
+            response_topic,
+            status_topic,
+            ModbusBackend::Simulation,
+        )
     }
 
     /// Create a new Modbus node with specific backend
@@ -189,17 +199,18 @@ impl ModbusNode {
                 if let Some(ref rt) = self.runtime {
                     let socket_addr = format!("{}:{}", self.server_address, self.server_port);
 
-                    match rt.block_on(async {
-                        tcp::connect(socket_addr.parse().ok()?).await.ok()
-                    }) {
+                    match rt.block_on(async { tcp::connect(socket_addr.parse().ok()?).await.ok() })
+                    {
                         Some(ctx) => {
                             self.tcp_context = Some(ctx);
                             self.is_connected = true;
                             true
                         }
                         None => {
-                            eprintln!("Failed to connect to Modbus TCP server {}:{}",
-                                self.server_address, self.server_port);
+                            eprintln!(
+                                "Failed to connect to Modbus TCP server {}:{}",
+                                self.server_address, self.server_port
+                            );
                             if self.connection_attempts > 3 {
                                 eprintln!("Falling back to simulation mode");
                                 self.backend = ModbusBackend::Simulation;
@@ -239,8 +250,10 @@ impl ModbusNode {
                             true
                         }
                         None => {
-                            eprintln!("Failed to open Modbus RTU port {} @ {} baud",
-                                self.serial_port, self.baud_rate);
+                            eprintln!(
+                                "Failed to open Modbus RTU port {} @ {} baud",
+                                self.serial_port, self.baud_rate
+                            );
                             if self.connection_attempts > 3 {
                                 eprintln!("Falling back to simulation mode");
                                 self.backend = ModbusBackend::Simulation;
@@ -299,7 +312,8 @@ impl ModbusNode {
                     5 | 6 => {
                         // Write Single Coil / Register
                         if request.data_length > 0 {
-                            self.device_cache.insert(request.start_address, request.data[0]);
+                            self.device_cache
+                                .insert(request.start_address, request.data[0]);
                         }
                         response.data[0] = request.data[0];
                     }
@@ -329,7 +343,9 @@ impl ModbusNode {
                         match request.function_code {
                             1 => {
                                 // Read Coils
-                                ctx.read_coils(request.start_address, request.quantity).await.ok()
+                                ctx.read_coils(request.start_address, request.quantity)
+                                    .await
+                                    .ok()
                                     .map(|coils| {
                                         response.data_length = coils.len().min(256) as u8;
                                         for (i, coil) in coils.iter().enumerate().take(256) {
@@ -340,7 +356,9 @@ impl ModbusNode {
                             }
                             2 => {
                                 // Read Discrete Inputs
-                                ctx.read_discrete_inputs(request.start_address, request.quantity).await.ok()
+                                ctx.read_discrete_inputs(request.start_address, request.quantity)
+                                    .await
+                                    .ok()
                                     .map(|inputs| {
                                         response.data_length = inputs.len().min(256) as u8;
                                         for (i, input) in inputs.iter().enumerate().take(256) {
@@ -351,7 +369,9 @@ impl ModbusNode {
                             }
                             3 => {
                                 // Read Holding Registers
-                                ctx.read_holding_registers(request.start_address, request.quantity).await.ok()
+                                ctx.read_holding_registers(request.start_address, request.quantity)
+                                    .await
+                                    .ok()
                                     .map(|regs| {
                                         response.data_length = regs.len().min(256) as u8;
                                         for (i, &reg) in regs.iter().enumerate().take(256) {
@@ -362,7 +382,9 @@ impl ModbusNode {
                             }
                             4 => {
                                 // Read Input Registers
-                                ctx.read_input_registers(request.start_address, request.quantity).await.ok()
+                                ctx.read_input_registers(request.start_address, request.quantity)
+                                    .await
+                                    .ok()
                                     .map(|regs| {
                                         response.data_length = regs.len().min(256) as u8;
                                         for (i, &reg) in regs.iter().enumerate().take(256) {
@@ -374,7 +396,9 @@ impl ModbusNode {
                             5 => {
                                 // Write Single Coil
                                 let value = request.data[0] != 0;
-                                ctx.write_single_coil(request.start_address, value).await.ok()
+                                ctx.write_single_coil(request.start_address, value)
+                                    .await
+                                    .ok()
                                     .map(|_| {
                                         response.data[0] = request.data[0];
                                         response
@@ -382,7 +406,9 @@ impl ModbusNode {
                             }
                             6 => {
                                 // Write Single Register
-                                ctx.write_single_register(request.start_address, request.data[0]).await.ok()
+                                ctx.write_single_register(request.start_address, request.data[0])
+                                    .await
+                                    .ok()
                                     .map(|_| {
                                         response.data[0] = request.data[0];
                                         response
@@ -391,14 +417,20 @@ impl ModbusNode {
                             15 => {
                                 // Write Multiple Coils
                                 let coils: Vec<bool> = request.data[..request.data_length as usize]
-                                    .iter().map(|&v| v != 0).collect();
-                                ctx.write_multiple_coils(request.start_address, &coils).await.ok()
+                                    .iter()
+                                    .map(|&v| v != 0)
+                                    .collect();
+                                ctx.write_multiple_coils(request.start_address, &coils)
+                                    .await
+                                    .ok()
                                     .map(|_| response)
                             }
                             16 => {
                                 // Write Multiple Registers
                                 let regs = &request.data[..request.data_length as usize];
-                                ctx.write_multiple_registers(request.start_address, regs).await.ok()
+                                ctx.write_multiple_registers(request.start_address, regs)
+                                    .await
+                                    .ok()
                                     .map(|_| response)
                             }
                             _ => {
@@ -415,9 +447,7 @@ impl ModbusNode {
                 }
             }
             #[cfg(not(feature = "modbus-hardware"))]
-            ModbusBackend::ModbusTcp | ModbusBackend::ModbusRtu => {
-                None
-            }
+            ModbusBackend::ModbusTcp | ModbusBackend::ModbusRtu => None,
         }
     }
 
@@ -451,12 +481,16 @@ impl Node for ModbusNode {
                 ctx.log_info("Modbus simulation mode enabled");
             }
             ModbusBackend::ModbusTcp => {
-                ctx.log_info(&format!("Modbus TCP: {}:{} (slave {})",
-                    self.server_address, self.server_port, self.slave_id));
+                ctx.log_info(&format!(
+                    "Modbus TCP: {}:{} (slave {})",
+                    self.server_address, self.server_port, self.slave_id
+                ));
             }
             ModbusBackend::ModbusRtu => {
-                ctx.log_info(&format!("Modbus RTU: {} @ {} baud (slave {})",
-                    self.serial_port, self.baud_rate, self.slave_id));
+                ctx.log_info(&format!(
+                    "Modbus RTU: {} @ {} baud (slave {})",
+                    self.serial_port, self.baud_rate, self.slave_id
+                ));
             }
         }
 

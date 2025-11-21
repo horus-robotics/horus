@@ -110,9 +110,7 @@ impl AuthService {
         let mut sessions = self.sessions.write().unwrap();
         let expired_timeout = Duration::from_secs(3600);
 
-        sessions.retain(|_, session| {
-            session.last_used.elapsed() < expired_timeout
-        });
+        sessions.retain(|_, session| session.last_used.elapsed() < expired_timeout);
     }
 
     /// Get active session count
@@ -185,8 +183,7 @@ pub fn get_password_file_path() -> Result<PathBuf> {
         .context("Could not find home directory")?
         .join(".horus");
 
-    std::fs::create_dir_all(&horus_dir)
-        .context("Failed to create .horus directory")?;
+    std::fs::create_dir_all(&horus_dir).context("Failed to create .horus directory")?;
 
     Ok(horus_dir.join("dashboard_password.hash"))
 }
@@ -194,15 +191,13 @@ pub fn get_password_file_path() -> Result<PathBuf> {
 /// Load password hash from file
 pub fn load_password_hash() -> Result<String> {
     let path = get_password_file_path()?;
-    std::fs::read_to_string(&path)
-        .context("Failed to read password hash file")
+    std::fs::read_to_string(&path).context("Failed to read password hash file")
 }
 
 /// Save password hash to file
 pub fn save_password_hash(hash: &str) -> Result<()> {
     let path = get_password_file_path()?;
-    std::fs::write(&path, hash)
-        .context("Failed to write password hash file")
+    std::fs::write(&path, hash).context("Failed to write password hash file")
 }
 
 /// Check if password has been set up
@@ -214,13 +209,19 @@ pub fn is_password_configured() -> bool {
 
 /// Prompt user to set up password (for CLI)
 pub fn prompt_for_password_setup() -> Result<String> {
-    use std::io::{self, Write};
     use colored::Colorize;
+    use std::io::{self, Write};
 
-    println!("\n{} HORUS Dashboard - First Time Setup", "[SECURITY]".cyan().bold());
+    println!(
+        "\n{} HORUS Dashboard - First Time Setup",
+        "[SECURITY]".cyan().bold()
+    );
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!("Set a dashboard password (or press Enter for no password):");
-    println!("{} Without a password, anyone on your network can access the dashboard", "[NOTE]".yellow());
+    println!(
+        "{} Without a password, anyone on your network can access the dashboard",
+        "[NOTE]".yellow()
+    );
 
     loop {
         print!("Password: ");
@@ -229,8 +230,15 @@ pub fn prompt_for_password_setup() -> Result<String> {
 
         // Allow empty password (no authentication)
         if password.is_empty() {
-            println!("{} No password set - dashboard will be accessible without login", "[WARNING]".yellow().bold());
-            println!("{} You can add a password later with: {}", "[TIP]".cyan(), "horus dashboard -r".bright_blue());
+            println!(
+                "{} No password set - dashboard will be accessible without login",
+                "[WARNING]".yellow().bold()
+            );
+            println!(
+                "{} You can add a password later with: {}",
+                "[TIP]".cyan(),
+                "horus dashboard -r".bright_blue()
+            );
             println!();
 
             // Save empty hash to indicate no password
@@ -239,7 +247,10 @@ pub fn prompt_for_password_setup() -> Result<String> {
         }
 
         if password.len() < 8 {
-            println!("{} Password must be at least 8 characters. Please try again.", "[ERROR]".red().bold());
+            println!(
+                "{} Password must be at least 8 characters. Please try again.",
+                "[ERROR]".red().bold()
+            );
             println!("{} Or press Enter for no password", "[TIP]".cyan());
             continue;
         }
@@ -249,7 +260,10 @@ pub fn prompt_for_password_setup() -> Result<String> {
         let confirm = rpassword::read_password()?;
 
         if password != confirm {
-            println!("{} Passwords don't match. Please try again.", "[ERROR]".red().bold());
+            println!(
+                "{} Passwords don't match. Please try again.",
+                "[ERROR]".red().bold()
+            );
             continue;
         }
 
@@ -275,13 +289,19 @@ pub fn prompt_for_password() -> Result<String> {
 
 /// Prompt user to reset password
 pub fn reset_password() -> Result<String> {
-    use std::io::{self, Write};
     use colored::Colorize;
+    use std::io::{self, Write};
 
-    println!("\n{} HORUS Dashboard - Password Reset", "[SECURITY]".cyan().bold());
+    println!(
+        "\n{} HORUS Dashboard - Password Reset",
+        "[SECURITY]".cyan().bold()
+    );
     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!("Enter a new dashboard password (or press Enter to disable password):");
-    println!("{} Without a password, anyone on your network can access the dashboard", "[NOTE]".yellow());
+    println!(
+        "{} Without a password, anyone on your network can access the dashboard",
+        "[NOTE]".yellow()
+    );
 
     loop {
         print!("New password: ");
@@ -290,7 +310,10 @@ pub fn reset_password() -> Result<String> {
 
         // Allow empty password (no authentication)
         if password.is_empty() {
-            println!("{} Password removed - dashboard will be accessible without login", "[WARNING]".yellow().bold());
+            println!(
+                "{} Password removed - dashboard will be accessible without login",
+                "[WARNING]".yellow().bold()
+            );
             println!();
 
             // Save empty hash to indicate no password
@@ -299,7 +322,10 @@ pub fn reset_password() -> Result<String> {
         }
 
         if password.len() < 8 {
-            println!("{} Password must be at least 8 characters. Please try again.", "[ERROR]".red().bold());
+            println!(
+                "{} Password must be at least 8 characters. Please try again.",
+                "[ERROR]".red().bold()
+            );
             println!("{} Or press Enter to disable password", "[TIP]".cyan());
             continue;
         }
@@ -309,7 +335,10 @@ pub fn reset_password() -> Result<String> {
         let confirm = rpassword::read_password()?;
 
         if password != confirm {
-            println!("{} Passwords don't match. Please try again.", "[ERROR]".red().bold());
+            println!(
+                "{} Passwords don't match. Please try again.",
+                "[ERROR]".red().bold()
+            );
             continue;
         }
 
@@ -317,7 +346,10 @@ pub fn reset_password() -> Result<String> {
         let hash = hash_password(&password)?;
         save_password_hash(&hash)?;
 
-        println!("{} Password reset successfully!", "[SUCCESS]".green().bold());
+        println!(
+            "{} Password reset successfully!",
+            "[SUCCESS]".green().bold()
+        );
         println!();
 
         return Ok(hash);

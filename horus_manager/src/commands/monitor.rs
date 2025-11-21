@@ -2,7 +2,6 @@ use horus_core::core::{HealthStatus, NodeHeartbeat, NodeState};
 use horus_core::error::HorusResult;
 use std::path::Path;
 use std::sync::{Arc, RwLock};
-use std::thread;
 use std::time::{Duration, Instant};
 
 // Data structures for comprehensive monitoring
@@ -158,7 +157,10 @@ fn discover_nodes_uncached() -> HorusResult<Vec<NodeStatus>> {
     if let Ok(process_nodes) = discover_horus_processes() {
         for process_node in process_nodes {
             // Only add if not already found
-            if !nodes.iter().any(|n| n.process_id == process_node.process_id || n.name == process_node.name) {
+            if !nodes
+                .iter()
+                .any(|n| n.process_id == process_node.process_id || n.name == process_node.name)
+            {
                 nodes.push(process_node);
             }
         }
@@ -810,7 +812,8 @@ fn scan_topics_directory(shm_path: &Path) -> HorusResult<Vec<SharedMemoryInfo>> 
 
                 let is_recent = if let Some(mod_time) = modified {
                     // Use 30 second threshold to handle slow publishers (e.g., 0.1 Hz = 10 sec between publishes)
-                    mod_time.elapsed().unwrap_or(Duration::from_secs(3600)) < Duration::from_secs(30)
+                    mod_time.elapsed().unwrap_or(Duration::from_secs(3600))
+                        < Duration::from_secs(30)
                 } else {
                     false
                 };
@@ -1175,7 +1178,10 @@ fn discover_nodes_from_pubsub_activity() -> anyhow::Result<Vec<NodeStatus>> {
         };
 
         // Try to match against known topics to extract node name and topic name correctly
-        let (node_name, topic_name) = if let Some(topic) = known_topics.iter().find(|t| without_direction.ends_with(&format!("_{}", t))) {
+        let (node_name, topic_name) = if let Some(topic) = known_topics
+            .iter()
+            .find(|t| without_direction.ends_with(&format!("_{}", t)))
+        {
             // Found matching topic - strip it to get the node name
             let node = without_direction
                 .strip_suffix(&format!("_{}", topic))

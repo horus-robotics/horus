@@ -163,7 +163,8 @@ pub fn tf_links_visualization_system(
     }
 
     // Build a map of frame names to positions
-    let mut frame_positions: std::collections::HashMap<String, Vec3> = std::collections::HashMap::new();
+    let mut frame_positions: std::collections::HashMap<String, Vec3> =
+        std::collections::HashMap::new();
 
     for (publisher, transform) in publishers.iter() {
         frame_positions.insert(publisher.frame_name.clone(), transform.translation);
@@ -272,7 +273,8 @@ pub fn tf_chain_visualization_system(
             let mut chain_positions = Vec::new();
 
             // Build frame map
-            let mut frame_map: std::collections::HashMap<String, (String, Vec3)> = std::collections::HashMap::new();
+            let mut frame_map: std::collections::HashMap<String, (String, Vec3)> =
+                std::collections::HashMap::new();
             for (publisher, transform) in publishers.iter() {
                 frame_map.insert(
                     publisher.frame_name.clone(),
@@ -345,18 +347,17 @@ pub struct TFVisualizationPlugin;
 
 impl Plugin for TFVisualizationPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<TFVisualization>()
-            .add_systems(
-                Update,
-                (
-                    tf_frame_visualization_system,
-                    tf_links_visualization_system,
-                    tf_trail_system,
-                    tf_chain_visualization_system,
-                    tf_viz_keyboard_system,
-                )
-                    .chain(),
-            );
+        app.init_resource::<TFVisualization>().add_systems(
+            Update,
+            (
+                tf_frame_visualization_system,
+                tf_links_visualization_system,
+                tf_trail_system,
+                tf_chain_visualization_system,
+                tf_viz_keyboard_system,
+            )
+                .chain(),
+        );
     }
 }
 

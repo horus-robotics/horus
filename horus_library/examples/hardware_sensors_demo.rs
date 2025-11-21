@@ -16,11 +16,10 @@
 /// ```bash
 /// cargo run --example hardware_sensors_demo
 /// ```
-
 use horus_core::{Node, Runtime};
-use horus_library::nodes::imu::{ImuNode, ImuBackend};
-use horus_library::nodes::gps::{GpsNode, GpsBackend};
-use horus_library::nodes::lidar::{LidarNode, LidarBackend};
+use horus_library::nodes::gps::{GpsBackend, GpsNode};
+use horus_library::nodes::imu::{ImuBackend, ImuNode};
+use horus_library::nodes::lidar::{LidarBackend, LidarNode};
 use std::env;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

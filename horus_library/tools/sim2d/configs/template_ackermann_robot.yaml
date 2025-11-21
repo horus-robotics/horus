@@ -1,0 +1,75 @@
+# Ackermann Steering Robot Template (Car-like)
+# This is a template for an Ackermann steering robot (like a car)
+# Copy and modify this file for your custom car-like robot
+
+name: "ackermann_robot"
+topic_prefix: "/car"  # HORUS topic prefix for all robot messages
+
+# Initial position and orientation
+position: [0.0, 0.0]  # [x, y] in meters
+
+# Physical dimensions (car-like proportions)
+width: 0.9    # meters (side-to-side, wider than differential)
+length: 1.8   # meters (front-to-back, longer for car-like)
+
+# Performance
+max_speed: 3.0  # meters per second (cars typically faster)
+
+# Visual appearance
+color: [0.8, 0.2, 0.2]  # RGB color (0.0-1.0 range) - red for car
+
+# Robot kinematics
+kinematics:
+  kinematic_type: ackermann  # Car-like Ackermann steering
+  ackermann:
+    wheelbase: 1.2              # Distance between front and rear axles (meters)
+    max_steering_angle: 0.6     # Maximum steering angle in radians (~34 degrees)
+    # Note: Smaller wheelbase = tighter turning radius
+    #       Larger max_steering_angle = sharper turns
+
+# LIDAR sensor configuration
+lidar:
+  enabled: true
+  range_max: 15.0      # Longer range for faster vehicle
+  range_min: 0.2       # Slightly higher min range
+  num_rays: 360        # Full 360-degree coverage
+  angle_min: -3.14159  # Start angle (radians)
+  angle_max: 3.14159   # End angle (radians)
+  # Published to: <topic_prefix>/lidar
+
+# Camera sensor configuration
+camera:
+  enabled: false  # Set to true to enable camera (useful for lane following)
+  # Published to: <topic_prefix>/camera
+
+# Additional sensors (automatically enabled):
+# - Odometry: <topic_prefix>/odom
+# - IMU: <topic_prefix>/imu
+# - Ground truth pose: <topic_prefix>/pose
+
+# Control interface:
+# - Subscribe to: <topic_prefix>/cmd_vel (CmdVel messages)
+#   - linear: forward/backward speed (m/s)
+#   - angular: STEERING ANGLE in radians (NOT angular velocity!)
+#     * Positive = turn left
+#     * Negative = turn right
+#     * Range: [-max_steering_angle, max_steering_angle]
+#
+# IMPORTANT: For Ackermann, angular field is steering angle, not angular velocity!
+
+# Turning radius calculation:
+#   R = wheelbase / tan(steering_angle)
+#   For wheelbase=1.2m, max_steering_angle=0.6rad:
+#   Minimum turning radius ≈ 1.74m
+
+# Example usage:
+#   sim2d --robot configs/template_ackermann_robot.yaml
+#   horus run "echo 'CmdVel(2.0, 0.3)' > /car/cmd_vel"   # Forward with left turn
+#   horus run "echo 'CmdVel(2.0, -0.3)' > /car/cmd_vel"  # Forward with right turn
+#   horus run "echo 'CmdVel(-1.0, 0.0)' > /car/cmd_vel"  # Reverse straight
+
+# Tips for Ackermann steering:
+# 1. Cannot rotate in place (unlike differential drive)
+# 2. Requires space for turning
+# 3. Use reverse gear for tight spots
+# 4. Plan paths considering turning radius constraints

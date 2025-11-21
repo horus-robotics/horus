@@ -72,7 +72,7 @@ pub struct RoboclawMotorNode {
     diagnostic_pub: Hub<RoboclawDiagnostics>,
 
     // Configuration
-    device_address: u8,       // Roboclaw address (0x80-0x87)
+    device_address: u8, // Roboclaw address (0x80-0x87)
     baud_rate: u32,
     serial_port: String,
     timeout_ms: u32,
@@ -92,12 +92,12 @@ pub struct RoboclawMotorNode {
     // Encoder configuration
     encoder_resolution: [u32; 2], // Pulses per revolution (PPR)
     gear_ratio: [f64; 2],
-    wheel_radius: [f64; 2],       // meters
+    wheel_radius: [f64; 2], // meters
 
     // Limits
-    max_current: f64,             // Amperes
-    max_velocity: [i32; 2],       // QPPS (quad pulses per second)
-    max_acceleration: [u32; 2],   // QPPS/second
+    max_current: f64,           // Amperes
+    max_velocity: [i32; 2],     // QPPS (quad pulses per second)
+    max_acceleration: [u32; 2], // QPPS/second
 
     // Diagnostics
     battery_voltage: f64,
@@ -117,11 +117,11 @@ pub struct RoboclawMotorNode {
 #[derive(Debug, Clone, Copy)]
 struct MotorState {
     encoder_count: i32,
-    velocity: i32,              // QPPS
-    duty_cycle: i16,            // -10000 to +10000
-    current: f64,               // Amperes
+    velocity: i32,   // QPPS
+    duty_cycle: i16, // -10000 to +10000
+    current: f64,    // Amperes
     enabled: bool,
-    direction: i8,              // -1, 0, or 1
+    direction: i8, // -1, 0, or 1
 }
 
 impl Default for MotorState {
@@ -143,7 +143,7 @@ pub struct PidParams {
     pub p: f64,
     pub i: f64,
     pub d: f64,
-    pub qpps: u32,  // Max velocity for velocity PID
+    pub qpps: u32, // Max velocity for velocity PID
 }
 
 impl Default for PidParams {
@@ -160,13 +160,13 @@ impl Default for PidParams {
 /// Roboclaw feedback message
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct RoboclawFeedback {
-    pub motor_id: u8,           // 1 or 2
+    pub motor_id: u8, // 1 or 2
     pub encoder_count: i32,
-    pub velocity: i32,          // QPPS
+    pub velocity: i32, // QPPS
     pub duty_cycle: i16,
-    pub current: f64,           // Amperes
-    pub position: f64,          // meters or radians (depends on configuration)
-    pub linear_velocity: f64,   // m/s or rad/s
+    pub current: f64,         // Amperes
+    pub position: f64,        // meters or radians (depends on configuration)
+    pub linear_velocity: f64, // m/s or rad/s
     pub timestamp: u64,
 }
 
@@ -188,11 +188,11 @@ impl Default for RoboclawFeedback {
 /// Roboclaw diagnostic information
 #[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct RoboclawDiagnostics {
-    pub battery_voltage: f64,   // Volts
-    pub main_current: f64,      // Amperes
+    pub battery_voltage: f64, // Volts
+    pub main_current: f64,    // Amperes
     pub motor1_current: f64,
     pub motor2_current: f64,
-    pub temperature1: f64,      // Celsius
+    pub temperature1: f64, // Celsius
     pub temperature2: f64,
     pub error_status: u16,
     pub warning_flags: u8,
@@ -220,7 +220,8 @@ impl RoboclawMotorNode {
     pub fn new(serial_port: &str, address: u8) -> Result<Self> {
         if address < 0x80 || address > 0x87 {
             return Err(horus_core::error::HorusError::config(&format!(
-                "Invalid Roboclaw address: 0x{:02X}. Must be 0x80-0x87", address
+                "Invalid Roboclaw address: 0x{:02X}. Must be 0x80-0x87",
+                address
             )));
         }
 
@@ -387,7 +388,10 @@ impl RoboclawMotorNode {
             if self.hardware_port.is_none() {
                 if let Err(e) = self.open_hardware(ctx.as_deref_mut()) {
                     // Provide detailed troubleshooting information (only log once)
-                    if self.hardware_enabled || (self.motor_states[0].encoder_count == 0 && self.motor_states[1].encoder_count == 0) {
+                    if self.hardware_enabled
+                        || (self.motor_states[0].encoder_count == 0
+                            && self.motor_states[1].encoder_count == 0)
+                    {
                         ctx.log_warning(&format!(
                             "RoboclawMotorNode: Hardware unavailable - using SIMULATION mode"
                         ));
@@ -395,10 +399,14 @@ impl RoboclawMotorNode {
                         ctx.log_warning(&format!("  Error: {}", e));
                         ctx.log_warning("  Fix:");
                         ctx.log_warning("    1. Check serial port: ls /dev/tty*");
-                        ctx.log_warning("    2. Add user to dialout group: sudo usermod -a -G dialout $USER");
+                        ctx.log_warning(
+                            "    2. Add user to dialout group: sudo usermod -a -G dialout $USER",
+                        );
                         ctx.log_warning("    3. Verify Roboclaw power and USB connection");
                         ctx.log_warning("    4. Check device address (default 0x80)");
-                        ctx.log_warning("    5. Rebuild with: cargo build --features=\"serial-hardware\"");
+                        ctx.log_warning(
+                            "    5. Rebuild with: cargo build --features=\"serial-hardware\"",
+                        );
                     }
                     self.hardware_enabled = false;
                 }
@@ -471,7 +479,10 @@ impl RoboclawMotorNode {
             if self.hardware_port.is_none() {
                 if let Err(e) = self.open_hardware(ctx.as_deref_mut()) {
                     // Provide detailed troubleshooting information (only log once)
-                    if self.hardware_enabled || (self.motor_states[0].encoder_count == 0 && self.motor_states[1].encoder_count == 0) {
+                    if self.hardware_enabled
+                        || (self.motor_states[0].encoder_count == 0
+                            && self.motor_states[1].encoder_count == 0)
+                    {
                         ctx.log_warning(&format!(
                             "RoboclawMotorNode: Hardware unavailable - using SIMULATION mode"
                         ));
@@ -479,10 +490,14 @@ impl RoboclawMotorNode {
                         ctx.log_warning(&format!("  Error: {}", e));
                         ctx.log_warning("  Fix:");
                         ctx.log_warning("    1. Check serial port: ls /dev/tty*");
-                        ctx.log_warning("    2. Add user to dialout group: sudo usermod -a -G dialout $USER");
+                        ctx.log_warning(
+                            "    2. Add user to dialout group: sudo usermod -a -G dialout $USER",
+                        );
                         ctx.log_warning("    3. Verify Roboclaw power and USB connection");
                         ctx.log_warning("    4. Check device address (default 0x80)");
-                        ctx.log_warning("    5. Rebuild with: cargo build --features=\"serial-hardware\"");
+                        ctx.log_warning(
+                            "    5. Rebuild with: cargo build --features=\"serial-hardware\"",
+                        );
                     }
                     self.hardware_enabled = false;
                 }
@@ -544,7 +559,12 @@ impl RoboclawMotorNode {
     }
 
     /// Process motor command
-    fn process_motor_command(&mut self, motor_id: u8, cmd: MotorCommand, mut ctx: Option<&mut NodeInfo>) {
+    fn process_motor_command(
+        &mut self,
+        motor_id: u8,
+        cmd: MotorCommand,
+        mut ctx: Option<&mut NodeInfo>,
+    ) {
         match cmd.mode {
             3 => {
                 // Voltage/duty cycle mode (MODE 3)
@@ -581,7 +601,8 @@ impl RoboclawMotorNode {
             if self.motor_states[i].enabled {
                 // Simulate encoder increments based on velocity
                 let delta = (self.motor_states[i].velocity as f64 * dt as f64) as i32;
-                self.motor_states[i].encoder_count = self.motor_states[i].encoder_count.wrapping_add(delta);
+                self.motor_states[i].encoder_count =
+                    self.motor_states[i].encoder_count.wrapping_add(delta);
 
                 // Simulate current draw (proportional to velocity)
                 let velocity_ratio = self.motor_states[i].velocity.abs() as f64 / 44000.0;
@@ -623,7 +644,10 @@ impl RoboclawMotorNode {
         };
 
         if let Err(e) = publisher.send(feedback, &mut None) {
-            ctx.log_error(&format!("Failed to publish motor {} feedback: {:?}", motor_id, e));
+            ctx.log_error(&format!(
+                "Failed to publish motor {} feedback: {:?}",
+                motor_id, e
+            ));
         }
 
         self.last_feedback_time[idx] = feedback.timestamp;
@@ -702,7 +726,7 @@ impl RoboclawMotorNode {
         packet.extend_from_slice(data);
 
         let crc = Self::crc16_roboclaw(&packet);
-        packet.push((crc >> 8) as u8);  // CRC MSB
+        packet.push((crc >> 8) as u8); // CRC MSB
         packet.push((crc & 0xFF) as u8); // CRC LSB
 
         port.write_all(&packet)?;
@@ -723,16 +747,21 @@ impl RoboclawMotorNode {
         // M1 Forward: 0, M1 Backward: 1
         // M2 Forward: 4, M2 Backward: 5
         let command = if motor_id == 1 {
-            if duty >= 0 { 0 } else { 1 }
+            if duty >= 0 {
+                0
+            } else {
+                1
+            }
         } else {
-            if duty >= 0 { 4 } else { 5 }
+            if duty >= 0 {
+                4
+            } else {
+                5
+            }
         };
 
         // Data: 2 bytes (magnitude, big-endian)
-        let data = [
-            ((magnitude >> 8) & 0xFF) as u8,
-            (magnitude & 0xFF) as u8,
-        ];
+        let data = [((magnitude >> 8) & 0xFF) as u8, (magnitude & 0xFF) as u8];
 
         self.send_command_hardware(command, &data)?;
         Ok(())

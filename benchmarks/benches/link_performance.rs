@@ -261,7 +261,9 @@ fn bench_link_primitives(c: &mut Criterion) {
         let consumer: Link<f64> = Link::consumer(&topic).unwrap();
 
         b.iter(|| {
-            producer.send(black_box(3.14159265359f64), &mut None).unwrap();
+            producer
+                .send(black_box(3.14159265359f64), &mut None)
+                .unwrap();
             let _ = black_box(consumer.recv(&mut None));
         });
     });

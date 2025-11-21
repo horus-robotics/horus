@@ -2,8 +2,8 @@
 ///
 /// Uses the DiscoveryService to find peers and broadcasts messages to all of them
 use crate::communication::network::discovery::DiscoveryService;
-use crate::communication::network::protocol::{HorusPacket, MessageType};
 use crate::communication::network::fragmentation::{Fragment, FragmentManager};
+use crate::communication::network::protocol::{HorusPacket, MessageType};
 use crate::error::HorusResult;
 use std::collections::VecDeque;
 use std::net::{SocketAddr, UdpSocket};
@@ -119,11 +119,15 @@ where
                                         match Fragment::decode(&packet.payload) {
                                             Ok(fragment) => {
                                                 // Try to reassemble
-                                                if let Some(complete_data) = fragment_manager.reassemble(fragment) {
+                                                if let Some(complete_data) =
+                                                    fragment_manager.reassemble(fragment)
+                                                {
                                                     // Deserialize complete message
-                                                    match bincode::deserialize::<T>(&complete_data) {
+                                                    match bincode::deserialize::<T>(&complete_data)
+                                                    {
                                                         Ok(msg) => {
-                                                            let mut queue = recv_queue.lock().unwrap();
+                                                            let mut queue =
+                                                                recv_queue.lock().unwrap();
                                                             if queue.len() < RECV_QUEUE_SIZE {
                                                                 queue.push_back(msg);
                                                             } else {
@@ -195,8 +199,7 @@ where
     /// Send a message to all discovered peers
     pub fn send(&self, msg: &T) -> HorusResult<()> {
         // Serialize payload
-        let payload = bincode::serialize(msg)
-            .map_err(|e| format!("Serialization error: {}", e))?;
+        let payload = bincode::serialize(msg).map_err(|e| format!("Serialization error: {}", e))?;
 
         // Fragment the payload if needed
         let fragments = self.fragment_manager.fragment(&payload);

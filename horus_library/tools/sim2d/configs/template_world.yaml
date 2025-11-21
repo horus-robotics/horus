@@ -1,0 +1,76 @@
+# World Configuration Template
+# This template defines the simulation environment
+# Copy and modify for custom worlds
+
+# World dimensions (meters)
+width: 20.0
+height: 15.0
+
+# Obstacles in the world
+obstacles:
+  # Rectangle obstacle example
+  - pos: [10.0, 7.5]        # [x, y] center position in meters
+    size: [2.0, 1.5]        # [width, height] in meters
+    shape: rectangle
+    color: [0.6, 0.4, 0.2]  # Optional RGB color (0.0-1.0), brown
+
+  # Circle obstacle example
+  - pos: [5.0, 5.0]         # [x, y] center position
+    size: [1.5, 1.5]        # [diameter, diameter] for circles
+    shape: circle
+    color: [0.5, 0.5, 0.5]  # Optional RGB color, gray
+
+  # Wall example (long thin rectangle)
+  - pos: [15.0, 10.0]
+    size: [0.2, 10.0]       # Thin width, tall height
+    shape: rectangle
+    color: [0.3, 0.3, 0.3]  # Dark gray wall
+
+  # Goal marker example (small bright obstacle)
+  - pos: [18.0, 13.0]
+    size: [0.5, 0.5]
+    shape: circle
+    color: [0.0, 1.0, 0.0]  # Bright green for goal
+
+# Notes:
+# - Coordinates are in meters
+# - Origin (0, 0) is bottom-left corner
+# - Maximum coordinates are (width, height)
+# - Obstacles are static (immovable)
+# - For dynamic obstacles, see examples/dynamic_obstacles.py
+
+# Common world patterns:
+
+# Empty world (no obstacles):
+#   obstacles: []
+
+# Maze-like environment:
+#   - Use multiple thin rectangles as walls
+#   - Leave corridors for navigation
+#   - Example size for walls: [0.5, length]
+
+# Warehouse layout:
+#   - Large rectangles for shelving units
+#   - Narrow passages between shelves
+#   - Open areas for loading/unloading
+
+# Outdoor environment:
+#   - Scattered circular obstacles (trees, poles)
+#   - Larger world size (e.g., 50x50m)
+#   - Fewer but larger obstacles
+
+# Parking lot:
+#   - Rectangular parking spaces
+#   - Lane markings (thin rectangles)
+#   - Boundary walls
+
+# Tips:
+# 1. Start with a few large obstacles, then add detail
+# 2. Use contrasting colors for different obstacle types
+# 3. Leave enough space for robot to navigate
+# 4. Typical robot size: 0.5-1.0m, plan accordingly
+# 5. Use bright colors (green, yellow) for goals/waypoints
+# 6. Keep world size reasonable (15-30m) for visualization
+
+# Example usage:
+#   sim2d --world configs/template_world.yaml --robot configs/template_differential_robot.yaml

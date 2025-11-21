@@ -1,13 +1,13 @@
 use bevy::prelude::*;
 use rand::Rng;
 
+use crate::physics::rigid_body::RigidBodyComponent;
+use crate::physics::world::PhysicsWorld;
 use crate::rl::{
     Action, EpisodeInfo, Observation, RLTask, StepResult, TaskConfig, TaskParameters,
     TerminationReason,
 };
 use crate::robot::Robot;
-use crate::physics::rigid_body::RigidBodyComponent;
-use crate::physics::world::PhysicsWorld;
 
 /// Manipulation task: Grasp and manipulate objects to target positions
 pub struct ManipulationTask {
@@ -204,11 +204,8 @@ impl RLTask for ManipulationTask {
         if let Some(entity) = self.gripper_entity {
             if let Some(mut transform) = world.get_mut::<Transform>(entity) {
                 let mut rng = rand::thread_rng();
-                transform.translation = Vec3::new(
-                    rng.gen_range(-0.3..0.3),
-                    1.0,
-                    rng.gen_range(-0.3..0.3),
-                );
+                transform.translation =
+                    Vec3::new(rng.gen_range(-0.3..0.3), 1.0, rng.gen_range(-0.3..0.3));
             }
         }
 
@@ -216,11 +213,8 @@ impl RLTask for ManipulationTask {
         if let Some(entity) = self.object_entity {
             if let Some(mut transform) = world.get_mut::<Transform>(entity) {
                 let mut rng = rand::thread_rng();
-                transform.translation = Vec3::new(
-                    rng.gen_range(-0.4..0.4),
-                    0.5,
-                    rng.gen_range(-0.4..0.4),
-                );
+                transform.translation =
+                    Vec3::new(rng.gen_range(-0.4..0.4), 0.5, rng.gen_range(-0.4..0.4));
             }
         }
 
@@ -261,7 +255,9 @@ impl RLTask for ManipulationTask {
                     if self.is_grasped {
                         if let Some(gripper_pos) = self.get_gripper_position(world) {
                             if let Some(object_entity) = self.object_entity {
-                                if let Some(mut transform) = world.get_mut::<Transform>(object_entity) {
+                                if let Some(mut transform) =
+                                    world.get_mut::<Transform>(object_entity)
+                                {
                                     transform.translation = gripper_pos - Vec3::new(0.0, 0.1, 0.0);
                                 }
                             }
@@ -398,7 +394,10 @@ impl RLTask for ManipulationTask {
         };
 
         // Penalty for dropping object
-        let drop_penalty = if !self.is_grasped && self.grasp_time > 0 && self.current_step > self.grasp_time + 10 {
+        let drop_penalty = if !self.is_grasped
+            && self.grasp_time > 0
+            && self.current_step > self.grasp_time + 10
+        {
             -2.0
         } else {
             0.0

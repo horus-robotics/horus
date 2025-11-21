@@ -66,13 +66,13 @@ pub struct ForceTorqueSensorNode {
     // Configuration
     sensor_model: SensorModel,
     connection_type: ConnectionType,
-    device_address: String,     // IP address or serial port
-    sample_rate: u32,           // Hz
+    device_address: String, // IP address or serial port
+    sample_rate: u32,       // Hz
     frame_id: String,
 
     // Current readings (raw)
-    raw_force: [f64; 3],        // Fx, Fy, Fz in sensor frame (Newtons)
-    raw_torque: [f64; 3],       // Tx, Ty, Tz in sensor frame (Nm)
+    raw_force: [f64; 3],  // Fx, Fy, Fz in sensor frame (Newtons)
+    raw_torque: [f64; 3], // Tx, Ty, Tz in sensor frame (Nm)
 
     // Bias (for zeroing)
     bias_force: [f64; 3],
@@ -82,28 +82,28 @@ pub struct ForceTorqueSensorNode {
     calibration_matrix: [[f64; 6]; 6],
 
     // Tool compensation
-    tool_mass: f64,             // kg
-    tool_com: [f64; 3],         // Center of mass offset (x, y, z) in meters
-    gravity_vector: [f64; 3],   // Gravity direction in sensor frame
+    tool_mass: f64,           // kg
+    tool_com: [f64; 3],       // Center of mass offset (x, y, z) in meters
+    gravity_vector: [f64; 3], // Gravity direction in sensor frame
 
     // Measurement ranges
-    force_range: [f64; 3],      // Max force in each axis (N)
-    torque_range: [f64; 3],     // Max torque in each axis (Nm)
+    force_range: [f64; 3],  // Max force in each axis (N)
+    torque_range: [f64; 3], // Max torque in each axis (Nm)
 
     // Filtering
     use_lowpass_filter: bool,
     filter_cutoff_hz: f64,
     filtered_force: [f64; 3],
     filtered_torque: [f64; 3],
-    filter_alpha: f64,          // Exponential smoothing factor
+    filter_alpha: f64, // Exponential smoothing factor
 
     // Overload detection
-    overload_threshold: f64,    // Fraction of max range (0.0-1.0)
+    overload_threshold: f64, // Fraction of max range (0.0-1.0)
     overload_detected: bool,
     overload_count: u32,
 
     // Temperature
-    temperature: f64,           // Celsius
+    temperature: f64, // Celsius
     temperature_compensation_enabled: bool,
 
     // Statistics
@@ -124,20 +124,20 @@ pub struct ForceTorqueSensorNode {
 }
 
 /// Force/torque sensor models with predefined specifications
-#[allow(non_camel_case_types)]  // Product names like ATI_Nano17 are intentional
+#[allow(non_camel_case_types)] // Product names like ATI_Nano17 are intentional
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SensorModel {
-    ATI_Nano17,      // ±12 N, ±120 Nmm
-    ATI_Mini40,      // ±240 N, ±6 Nm
-    ATI_Mini45,      // ±290 N, ±10 Nm
-    ATI_Gamma,       // ±660 N, ±60 Nm
-    ATI_Delta,       // ±3300 N, ±330 Nm
-    ATI_Theta,       // ±6600 N, ±660 Nm
-    Robotiq_FT300,   // ±300 N, ±30 Nm
-    OnRobot_HexE,    // ±400 N, ±20 Nm
-    Weiss_KMS40,     // ±400 N, ±15 Nm
-    Optoforce_HEX,   // ±200 N, ±4 Nm
-    Generic,         // User-defined ranges
+    ATI_Nano17,    // ±12 N, ±120 Nmm
+    ATI_Mini40,    // ±240 N, ±6 Nm
+    ATI_Mini45,    // ±290 N, ±10 Nm
+    ATI_Gamma,     // ±660 N, ±60 Nm
+    ATI_Delta,     // ±3300 N, ±330 Nm
+    ATI_Theta,     // ±6600 N, ±660 Nm
+    Robotiq_FT300, // ±300 N, ±30 Nm
+    OnRobot_HexE,  // ±400 N, ±20 Nm
+    Weiss_KMS40,   // ±400 N, ±15 Nm
+    Optoforce_HEX, // ±200 N, ±4 Nm
+    Generic,       // User-defined ranges
 }
 
 /// Force/torque backend type
@@ -226,8 +226,8 @@ impl ForceTorqueSensorNode {
             tool_mass: 0.0,
             tool_com: [0.0; 3],
             gravity_vector: [0.0, 0.0, -9.81], // Assuming Z-up frame
-            force_range: [100.0, 100.0, 100.0],   // Default 100N
-            torque_range: [10.0, 10.0, 10.0],     // Default 10Nm
+            force_range: [100.0, 100.0, 100.0], // Default 100N
+            torque_range: [10.0, 10.0, 10.0],  // Default 10Nm
             use_lowpass_filter: true,
             filter_cutoff_hz: 100.0,
             filtered_force: [0.0; 3],
@@ -494,8 +494,14 @@ impl ForceTorqueSensorNode {
     /// Simple pseudo-random number generator (avoiding rand dependency)
     fn pseudo_random(&self) -> f64 {
         // Use measurement count and time as seed
-        let seed = self.measurement_count.wrapping_mul(1103515245).wrapping_add(12345);
-        let time_seed = self.last_measurement_time.wrapping_mul(214013).wrapping_add(2531011);
+        let seed = self
+            .measurement_count
+            .wrapping_mul(1103515245)
+            .wrapping_add(12345);
+        let time_seed = self
+            .last_measurement_time
+            .wrapping_mul(214013)
+            .wrapping_add(2531011);
         let combined = seed.wrapping_add(time_seed);
         ((combined % 1000) as f64 / 1000.0) - 0.5
     }
@@ -509,7 +515,10 @@ impl ForceTorqueSensorNode {
             }
             #[cfg(feature = "netft")]
             FtBackend::AtiNetFt => {
-                ctx.log_info(&format!("Initializing ATI NetFT sensor at {}", self.device_address));
+                ctx.log_info(&format!(
+                    "Initializing ATI NetFT sensor at {}",
+                    self.device_address
+                ));
 
                 // ATI NetFT uses UDP on port 49152
                 let bind_addr = "0.0.0.0:0"; // Bind to any available port
@@ -525,7 +534,9 @@ impl ForceTorqueSensorNode {
                         }
 
                         // Set read timeout
-                        if let Err(e) = socket.set_read_timeout(Some(std::time::Duration::from_millis(100))) {
+                        if let Err(e) =
+                            socket.set_read_timeout(Some(std::time::Duration::from_millis(100)))
+                        {
                             ctx.log_error(&format!("Failed to set socket timeout: {:?}", e));
                         }
 
@@ -699,14 +710,20 @@ impl ForceTorqueSensorNode {
         if overload {
             ctx.log_warning(&format!(
                 "F/T Sensor OVERLOAD: F=[{:.1}, {:.1}, {:.1}]N T=[{:.1}, {:.1}, {:.1}]Nm",
-                final_force[0], final_force[1], final_force[2],
-                final_torque[0], final_torque[1], final_torque[2]
+                final_force[0],
+                final_force[1],
+                final_force[2],
+                final_torque[0],
+                final_torque[1],
+                final_torque[2]
             ));
         }
 
         // Update statistics
-        let force_mag = (final_force[0].powi(2) + final_force[1].powi(2) + final_force[2].powi(2)).sqrt();
-        let torque_mag = (final_torque[0].powi(2) + final_torque[1].powi(2) + final_torque[2].powi(2)).sqrt();
+        let force_mag =
+            (final_force[0].powi(2) + final_force[1].powi(2) + final_force[2].powi(2)).sqrt();
+        let torque_mag =
+            (final_torque[0].powi(2) + final_torque[1].powi(2) + final_torque[2].powi(2)).sqrt();
         self.max_recorded_force = self.max_recorded_force.max(force_mag);
         self.max_recorded_torque = self.max_recorded_torque.max(torque_mag);
 

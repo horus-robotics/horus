@@ -1,0 +1,72 @@
+version: "1.0"
+name: "Obstacle Avoidance Maze"
+description: "Navigate through a maze of obstacles using LIDAR sensor"
+
+world:
+  width: 25.0
+  height: 20.0
+  obstacles:
+    # Vertical walls
+    - pos: [8.0, 10.0]
+      size: [1.0, 15.0]
+      shape: rectangle
+      color: [0.5, 0.5, 0.5]
+
+    - pos: [17.0, 10.0]
+      size: [1.0, 15.0]
+      shape: rectangle
+      color: [0.5, 0.5, 0.5]
+
+    # Horizontal obstacles
+    - pos: [12.5, 15.0]
+      size: [7.0, 1.0]
+      shape: rectangle
+      color: [0.5, 0.5, 0.5]
+
+    - pos: [12.5, 5.0]
+      size: [7.0, 1.0]
+      shape: rectangle
+      color: [0.5, 0.5, 0.5]
+
+    # Central obstacle
+    - pos: [12.5, 10.0]
+      size: [2.0, 2.0]
+      shape: circle
+      color: [0.8, 0.2, 0.2]
+
+robots:
+  - name: "robot1"
+    position: [3.0, 10.0]
+    heading: 0.0
+    velocity: [0.0, 0.0]
+    config:
+      name: "robot1"
+      topic_prefix: "/robot1"
+      position: [3.0, 10.0]
+      width: 0.5
+      length: 0.8
+      max_speed: 1.5
+      color: [0.2, 0.8, 0.3]
+      kinematics:
+        kinematic_type: differential
+      lidar:
+        enabled: true
+        range_max: 12.0
+        range_min: 0.1
+        num_rays: 360
+        angle_min: -3.14159
+        angle_max: 3.14159
+      camera:
+        enabled: false
+
+simulation:
+  time: 0.0
+  timestep: 0.016
+  paused: false
+
+# Goal: Navigate from (3.0, 10.0) to (22.0, 10.0) through the maze
+# Tips:
+#   - Use LIDAR data to detect obstacles
+#   - Subscribe to /robot1/lidar for range data
+#   - Implement reactive obstacle avoidance
+#   - Example: horus monitor /robot1/lidar

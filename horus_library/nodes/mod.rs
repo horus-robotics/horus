@@ -96,7 +96,12 @@ pub mod pid_controller;
 pub mod safety_monitor;
 
 // Vision nodes (require camera backends)
-#[cfg(any(feature = "opencv-backend", feature = "v4l2-backend", feature = "realsense", feature = "zed"))]
+#[cfg(any(
+    feature = "opencv-backend",
+    feature = "v4l2-backend",
+    feature = "realsense",
+    feature = "zed"
+))]
 pub mod camera;
 
 #[cfg(feature = "realsense")]
@@ -172,20 +177,34 @@ pub mod serial;
 #[cfg(feature = "spi-hardware")]
 pub mod spi_bus;
 
+// Machine Learning & AI nodes
+#[cfg(any(feature = "onnx", feature = "tflite-inference"))]
+pub mod ml_inference;
+
+#[cfg(feature = "onnx")]
+pub mod cv;
+
+pub mod llm;
+
 // Re-export node types for convenience
 //
 // Hardware-independent nodes (always available)
-pub use emergency_stop::EmergencyStopNode;
-pub use safety_monitor::SafetyMonitorNode;
 pub use collision_detector::CollisionDetectorNode;
 pub use differential_drive::DifferentialDriveNode;
+pub use emergency_stop::EmergencyStopNode;
 pub use localization::LocalizationNode;
 pub use odometry::OdometryNode;
 pub use path_planner::PathPlannerNode;
 pub use pid_controller::PidControllerNode;
+pub use safety_monitor::SafetyMonitorNode;
 
 // Vision nodes
-#[cfg(any(feature = "opencv-backend", feature = "v4l2-backend", feature = "realsense", feature = "zed"))]
+#[cfg(any(
+    feature = "opencv-backend",
+    feature = "v4l2-backend",
+    feature = "realsense",
+    feature = "zed"
+))]
 pub use camera::CameraNode;
 
 #[cfg(feature = "realsense")]
@@ -260,6 +279,23 @@ pub use serial::SerialNode;
 
 #[cfg(feature = "spi-hardware")]
 pub use spi_bus::SpiBusNode;
+
+// ML/AI nodes
+#[cfg(feature = "onnx")]
+pub use ml_inference::{InferenceConfig, ONNXInferenceNode};
+
+#[cfg(feature = "tflite-inference")]
+pub use ml_inference::{TFLiteConfig, TFLiteInferenceNode};
+
+#[cfg(feature = "onnx")]
+pub use cv::{
+    PoseConfig, PoseEstimationNode, PoseModelType, SegmentationConfig, SemanticSegmentationNode,
+    YOLOConfig, YOLOv8DetectorNode,
+};
+
+// LLM nodes
+#[cfg(feature = "ml-inference")]
+pub use llm::{CloudLLMNode, LLMConfig, LLMProvider};
 
 // Re-export core HORUS types for convenience
 pub use horus_core::{Hub, Node, NodeInfo};

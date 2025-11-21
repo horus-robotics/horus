@@ -94,7 +94,7 @@ impl PurePursuit {
     /// Returns (linear_velocity, angular_velocity)
     pub fn compute_velocity(
         &mut self,
-        current_pose: (f64, f64, f64),  // (x, y, theta)
+        current_pose: (f64, f64, f64), // (x, y, theta)
         desired_linear_velocity: f64,
     ) -> (f64, f64) {
         if self.path.is_empty() {
@@ -170,9 +170,7 @@ impl PurePursuit {
             return 0.0;
         }
 
-        let curvature = 2.0 * target_y / l_squared;
-
-        curvature
+        2.0 * target_y / l_squared
     }
 
     fn distance(&self, p1: (f64, f64), p2: (f64, f64)) -> f64 {
@@ -206,12 +204,7 @@ mod tests {
         let mut pursuit = PurePursuit::new(0.5);
 
         // Straight line path
-        let path = vec![
-            (0.0, 0.0),
-            (1.0, 0.0),
-            (2.0, 0.0),
-            (3.0, 0.0),
-        ];
+        let path = vec![(0.0, 0.0), (1.0, 0.0), (2.0, 0.0), (3.0, 0.0)];
         pursuit.set_path(path);
 
         // Robot at start, facing forward
@@ -226,12 +219,7 @@ mod tests {
         let mut pursuit = PurePursuit::new(0.5);
 
         // Curved path
-        let path = vec![
-            (0.0, 0.0),
-            (1.0, 0.0),
-            (2.0, 1.0),
-            (3.0, 2.0),
-        ];
+        let path = vec![(0.0, 0.0), (1.0, 0.0), (2.0, 1.0), (3.0, 2.0)];
         pursuit.set_path(path);
 
         // Robot at start
@@ -246,11 +234,7 @@ mod tests {
     fn test_goal_reached() {
         let mut pursuit = PurePursuit::new(0.5);
 
-        let path = vec![
-            (0.0, 0.0),
-            (1.0, 0.0),
-            (2.0, 0.0),
-        ];
+        let path = vec![(0.0, 0.0), (1.0, 0.0), (2.0, 0.0)];
         pursuit.set_path(path);
 
         // Not at goal
@@ -264,10 +248,7 @@ mod tests {
     fn test_velocity_at_goal() {
         let mut pursuit = PurePursuit::new(0.5);
 
-        let path = vec![
-            (0.0, 0.0),
-            (1.0, 0.0),
-        ];
+        let path = vec![(0.0, 0.0), (1.0, 0.0)];
         pursuit.set_path(path);
 
         // At goal, should stop
@@ -292,10 +273,10 @@ mod tests {
         let mut pursuit = PurePursuit::new(0.5);
 
         pursuit.set_look_ahead_limits(0.3, 1.5);
-        pursuit.set_look_ahead_distance(0.1);  // Below min
+        pursuit.set_look_ahead_distance(0.1); // Below min
         assert!(pursuit.look_ahead_distance >= 0.3);
 
-        pursuit.set_look_ahead_distance(2.0);  // Above max
+        pursuit.set_look_ahead_distance(2.0); // Above max
         assert!(pursuit.look_ahead_distance <= 1.5);
     }
 
@@ -303,12 +284,7 @@ mod tests {
     fn test_segment_tracking() {
         let mut pursuit = PurePursuit::new(0.5);
 
-        let path = vec![
-            (0.0, 0.0),
-            (1.0, 0.0),
-            (2.0, 0.0),
-            (3.0, 0.0),
-        ];
+        let path = vec![(0.0, 0.0), (1.0, 0.0), (2.0, 0.0), (3.0, 0.0)];
         pursuit.set_path(path);
 
         // Initially at segment 0
@@ -323,11 +299,7 @@ mod tests {
     fn test_reset() {
         let mut pursuit = PurePursuit::new(0.5);
 
-        let path = vec![
-            (0.0, 0.0),
-            (1.0, 0.0),
-            (2.0, 0.0),
-        ];
+        let path = vec![(0.0, 0.0), (1.0, 0.0), (2.0, 0.0)];
         pursuit.set_path(path);
 
         pursuit.compute_velocity((1.5, 0.0, 0.0), 1.0);

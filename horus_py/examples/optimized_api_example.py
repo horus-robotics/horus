@@ -213,8 +213,16 @@ def main():
     print("Zero-copy: Direct struct serialization (no pickle overhead)")
     print("Cross-language: Same API in Rust, Python, C++")
     print("IDE support: Autocomplete and type hints")
-    print("\nCurrently supported types: Pose2D, CmdVel")
-    print("More types coming soon!")
+    print("\nSupported message types (horus.library):")
+    print("  Geometry: Pose2D, CmdVel, Twist, Transform, Point3, Vector3, Quaternion")
+    print("  Control: MotorCommand, DifferentialDriveCommand, ServoCommand")
+    print("           PwmCommand, StepperCommand, PidConfig")
+    print("  Sensors: LaserScan, Imu, Odometry, Range, BatteryState, NavSatFix")
+    print("  I/O: DigitalIO, AnalogIO")
+    print("  Input: JoystickInput, KeyboardInput")
+    print("  Diagnostics: Status, EmergencyStop, Heartbeat, ResourceUsage")
+    print("\nFor complete API documentation, see horus_library/python/src/")
+    print("All types support zero-copy serialization and cross-language communication")
     print("=" * 70 + "\n")
 
 

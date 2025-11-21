@@ -125,7 +125,13 @@ impl SafetyLayer {
     }
 
     /// Perform comprehensive safety check
-    pub fn check_all(&self, velocity: f64, obstacle_dist: f64, battery: f64, temp: f64) -> SafetyStatus {
+    pub fn check_all(
+        &self,
+        velocity: f64,
+        obstacle_dist: f64,
+        battery: f64,
+        temp: f64,
+    ) -> SafetyStatus {
         let mut critical = false;
         let mut warning = false;
 

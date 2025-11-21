@@ -53,8 +53,8 @@ use std::os::unix::io::AsRawFd;
 /// can.send_frame(frame);
 /// ```
 pub struct CanBusNode {
-    tx_subscriber: Hub<CanFrame>,  // Frames to transmit
-    rx_publisher: Hub<CanFrame>,   // Received frames
+    tx_subscriber: Hub<CanFrame>,   // Frames to transmit
+    rx_publisher: Hub<CanFrame>,    // Received frames
     error_publisher: Hub<CanFrame>, // Error frames
 
     // Hardware socket (Linux SocketCAN)
@@ -99,7 +99,7 @@ pub struct CanBusNode {
 #[derive(Debug, Clone, Copy)]
 struct CanIdFilter {
     id: u32,
-    mask: u32,         // Bit mask (1 = must match, 0 = don't care)
+    mask: u32, // Bit mask (1 = must match, 0 = don't care)
     is_extended: bool,
 }
 
@@ -148,7 +148,7 @@ impl CanBusNode {
             socket: None,
             hardware_enabled: false,
             interface_name: interface.to_string(),
-            bitrate: 500_000, // 500 kbit/s default
+            bitrate: 500_000,      // 500 kbit/s default
             fd_bitrate: 2_000_000, // 2 Mbit/s for CAN-FD data phase
             enable_fd: false,
             enable_loopback: false,
@@ -205,7 +205,8 @@ impl CanBusNode {
     /// Add a CAN ID filter
     pub fn add_filter(&mut self, id: u32, mask: u32) {
         let is_extended = id > CanFrame::MAX_STANDARD_ID;
-        self.id_filters.push(CanIdFilter::new(id, mask, is_extended));
+        self.id_filters
+            .push(CanIdFilter::new(id, mask, is_extended));
     }
 
     /// Add a CAN ID range filter
@@ -242,9 +243,10 @@ impl CanBusNode {
             return true;
         }
 
-        let matches = self.id_filters.iter().any(|filter| {
-            filter.matches(frame.id, frame.is_extended)
-        });
+        let matches = self
+            .id_filters
+            .iter()
+            .any(|filter| filter.matches(frame.id, frame.is_extended));
 
         match self.filter_mode {
             FilterMode::Accept => true,
@@ -286,13 +288,19 @@ impl CanBusNode {
     fn send_frame(&mut self, mut frame: CanFrame, mut ctx: Option<&mut NodeInfo>) -> bool {
         // Check bus state
         if self.bus_state == BusState::BusOff || self.bus_state == BusState::Stopped {
-            ctx.log_warning(&format!("Cannot send frame: bus state is {:?}", self.bus_state));
+            ctx.log_warning(&format!(
+                "Cannot send frame: bus state is {:?}",
+                self.bus_state
+            ));
             return false;
         }
 
         // Validate frame
         if !frame.is_valid() {
-            ctx.log_warning(&format!("Invalid CAN frame: id=0x{:X}, dlc={}", frame.id, frame.dlc));
+            ctx.log_warning(&format!(
+                "Invalid CAN frame: id=0x{:X}, dlc={}",
+                frame.id, frame.dlc
+            ));
             return false;
         }
 
@@ -315,7 +323,10 @@ impl CanBusNode {
                     return true;
                 }
                 Err(e) => {
-                    ctx.log_error(&format!("Hardware send failed: {:?}, falling back to simulation", e));
+                    ctx.log_error(&format!(
+                        "Hardware send failed: {:?}, falling back to simulation",
+                        e
+                    ));
                     self.hardware_enabled = false;
                 }
             }
@@ -351,14 +362,68 @@ impl CanBusNode {
             data: [
                 (self.rx_count & 0xFF) as u8,
                 ((self.rx_count >> 8) & 0xFF) as u8,
-                0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
             ],
             dlc: 2,
             is_fd: false,
@@ -378,7 +443,10 @@ impl CanBusNode {
         if frame.is_error {
             self.error_count += 1;
             self.last_error_time = frame.timestamp;
-            ctx.log_warning(&format!("CAN error frame received on {}", self.interface_name));
+            ctx.log_warning(&format!(
+                "CAN error frame received on {}",
+                self.interface_name
+            ));
             let _ = self.error_publisher.send(frame, &mut None);
             return;
         }
@@ -480,7 +548,10 @@ impl CanBusNode {
         {
             match self.open_hardware_socket(ctx.as_deref_mut()) {
                 Ok(()) => {
-                    ctx.log_info(&format!("SocketCAN hardware enabled on {}", self.interface_name));
+                    ctx.log_info(&format!(
+                        "SocketCAN hardware enabled on {}",
+                        self.interface_name
+                    ));
                 }
                 Err(e) => {
                     ctx.log_warning(&format!(
@@ -493,7 +564,9 @@ impl CanBusNode {
                     ctx.log_warning("    2. Load kernel module: sudo modprobe vcan");
                     ctx.log_warning("    3. Create interface: sudo ip link add dev can0 type vcan");
                     ctx.log_warning("    4. Bring up interface: sudo ip link set up can0");
-                    ctx.log_warning("    5. For real CAN hardware, use socketcan_interface drivers");
+                    ctx.log_warning(
+                        "    5. For real CAN hardware, use socketcan_interface drivers",
+                    );
                     ctx.log_warning("    6. Rebuild with: cargo build --features=\"can-hardware\"");
                     self.hardware_enabled = false;
                 }
@@ -541,7 +614,10 @@ impl CanBusNode {
 
         self.socket = Some(socket);
         self.hardware_enabled = true;
-        ctx.log_info(&format!("Opened SocketCAN interface: {}", self.interface_name));
+        ctx.log_info(&format!(
+            "Opened SocketCAN interface: {}",
+            self.interface_name
+        ));
 
         Ok(())
     }
@@ -570,7 +646,7 @@ impl CanBusNode {
 
         // Data (bytes 8-15)
         let data_len = raw[4].min(8) as usize;
-        raw[8..8+data_len].copy_from_slice(&frame.data[..data_len]);
+        raw[8..8 + data_len].copy_from_slice(&frame.data[..data_len]);
 
         raw
     }
@@ -596,7 +672,7 @@ impl CanBusNode {
 
         // Parse data from bytes 8-15
         let mut data = [0u8; 64];
-        data[..dlc as usize].copy_from_slice(&raw[8..8+dlc as usize]);
+        data[..dlc as usize].copy_from_slice(&raw[8..8 + dlc as usize]);
 
         let mut horus_frame = CanFrame {
             id,
@@ -657,7 +733,12 @@ impl CanBusNode {
                         .unwrap()
                         .as_nanos() as u64;
 
-                    let id_with_flags = u32::from_ne_bytes([raw_frame[0], raw_frame[1], raw_frame[2], raw_frame[3]]);
+                    let id_with_flags = u32::from_ne_bytes([
+                        raw_frame[0],
+                        raw_frame[1],
+                        raw_frame[2],
+                        raw_frame[3],
+                    ]);
                     let id = id_with_flags & 0x1FFFFFFF;
                     let is_extended = (id_with_flags & 0x80000000) != 0;
                     let is_rtr = (id_with_flags & 0x40000000) != 0;
@@ -665,7 +746,7 @@ impl CanBusNode {
                     let dlc = raw_frame[4].min(8);
 
                     let mut data = [0u8; 64];
-                    data[..dlc as usize].copy_from_slice(&raw_frame[8..8+dlc as usize]);
+                    data[..dlc as usize].copy_from_slice(&raw_frame[8..8 + dlc as usize]);
 
                     let mut horus_frame = CanFrame {
                         id,
@@ -733,7 +814,10 @@ impl Node for CanBusNode {
                     }
                 }
                 Err(e) => {
-                    ctx.log_error(&format!("Hardware receive failed: {:?}, falling back to simulation", e));
+                    ctx.log_error(&format!(
+                        "Hardware receive failed: {:?}, falling back to simulation",
+                        e
+                    ));
                     self.hardware_enabled = false;
                     // Fall through to simulation
                     self.simulate_receive(current_time, ctx.as_deref_mut());

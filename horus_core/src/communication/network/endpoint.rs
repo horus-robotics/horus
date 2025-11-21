@@ -10,13 +10,21 @@ pub enum Endpoint {
     Localhost { topic: String, port: Option<u16> },
 
     /// Direct network connection: "topic@192.168.1.5" or "topic@192.168.1.5:9000"
-    Direct { topic: String, host: IpAddr, port: u16 },
+    Direct {
+        topic: String,
+        host: IpAddr,
+        port: u16,
+    },
 
     /// Multicast discovery: "topic@*"
     Multicast { topic: String },
 
     /// Router (central broker): "topic@router" or "topic@router:7777"
-    Router { topic: String, host: Option<IpAddr>, port: Option<u16> },
+    Router {
+        topic: String,
+        host: Option<IpAddr>,
+        port: Option<u16>,
+    },
 }
 
 /// Default port for HORUS direct connections
@@ -66,8 +74,8 @@ pub fn parse_endpoint(input: &str) -> Result<Endpoint, String> {
     if location == "router" {
         return Ok(Endpoint::Router {
             topic,
-            host: None,  // Use default localhost
-            port: None,  // Use default 7777
+            host: None, // Use default localhost
+            port: None, // Use default 7777
         });
     }
 
@@ -78,7 +86,7 @@ pub fn parse_endpoint(input: &str) -> Result<Endpoint, String> {
             .map_err(|e| format!("Invalid router port '{}': {}", port_str, e))?;
         return Ok(Endpoint::Router {
             topic,
-            host: None,  // Use default localhost
+            host: None, // Use default localhost
             port: Some(port),
         });
     }
@@ -122,7 +130,10 @@ pub fn parse_endpoint(input: &str) -> Result<Endpoint, String> {
                 port: DEFAULT_PORT,
             });
         } else {
-            return Err(format!("Missing closing bracket in IPv6 address '{}'", location));
+            return Err(format!(
+                "Missing closing bracket in IPv6 address '{}'",
+                location
+            ));
         }
     }
 
@@ -146,7 +157,10 @@ pub fn parse_endpoint(input: &str) -> Result<Endpoint, String> {
     }
 
     // Failed to parse
-    Err(format!("Invalid IP address or host:port format '{}'", location))
+    Err(format!(
+        "Invalid IP address or host:port format '{}'",
+        location
+    ))
 }
 
 #[cfg(test)]

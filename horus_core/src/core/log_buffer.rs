@@ -8,7 +8,7 @@ use std::sync::Mutex;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogEntry {
     pub timestamp: String,
-    pub tick_number: u64,      // Deterministic tick counter for replay/comparison
+    pub tick_number: u64, // Deterministic tick counter for replay/comparison
     pub node_name: String,
     pub log_type: LogType,
     pub topic: Option<String>,

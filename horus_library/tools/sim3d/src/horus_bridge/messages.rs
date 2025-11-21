@@ -35,7 +35,11 @@ impl Default for Vector3Message {
 
 impl From<Vec3> for Vector3Message {
     fn from(v: Vec3) -> Self {
-        Self { x: v.x, y: v.y, z: v.z }
+        Self {
+            x: v.x,
+            y: v.y,
+            z: v.z,
+        }
     }
 }
 
@@ -55,7 +59,12 @@ pub struct QuaternionMessage {
 
 impl From<Quat> for QuaternionMessage {
     fn from(q: Quat) -> Self {
-        Self { x: q.x, y: q.y, z: q.z, w: q.w }
+        Self {
+            x: q.x,
+            y: q.y,
+            z: q.z,
+            w: q.w,
+        }
     }
 }
 

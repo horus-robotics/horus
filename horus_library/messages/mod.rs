@@ -22,6 +22,7 @@ pub mod diagnostics;
 pub mod force;
 pub mod geometry;
 pub mod io;
+pub mod ml;
 pub mod navigation;
 pub mod perception;
 pub mod sensor;
@@ -56,7 +57,9 @@ pub use diagnostics::{
 };
 
 // Vision
-pub use vision::{CameraInfo, CompressedImage, Detection, DetectionArray, Image};
+pub use vision::{
+    CameraInfo, CompressedImage, Detection, DetectionArray, Image, ImageEncoding, RegionOfInterest,
+};
 
 // Navigation
 pub use navigation::{CostMap, Goal, OccupancyGrid, Path, PathPlan};
@@ -78,6 +81,13 @@ pub use coordination::{FleetStatus, FormationControl, RobotState, TaskAssignment
 
 // Timing
 pub use timing::{ClockStats, ScheduledEvent, TimeSync, Timeline};
+
+// Machine Learning
+pub use ml::{
+    ChatMessage, Classification, DataType, DeploymentConfig, FeatureVector, InferenceMetrics,
+    Keypoint, LLMRequest, LLMResponse, ModelFormat, ModelInfo, Pose, PoseArray, Predictions,
+    SegmentationMask, Tensor, TrainingMetrics,
+};
 
 // Input (existing)
 pub use joystick_msg::JoystickInput;
@@ -155,7 +165,7 @@ pub struct GenericMessage {
     inline_len: u16,
 
     /// Overflow buffer for larger messages (256-4096 bytes)
-    overflow_data: [u8; 3840],  // 4096 - 256
+    overflow_data: [u8; 3840], // 4096 - 256
     overflow_len: u32,
 
     /// Optional metadata (fixed-size buffer)
@@ -280,8 +290,7 @@ impl GenericMessage {
     /// let msg = GenericMessage::from_value(&data)?;
     /// ```
     pub fn from_value<T: Serialize>(value: &T) -> Result<Self, String> {
-        let data = rmp_serde::to_vec(value)
-            .map_err(|e| format!("Failed to serialize: {}", e))?;
+        let data = rmp_serde::to_vec(value).map_err(|e| format!("Failed to serialize: {}", e))?;
         Self::new(data)
     }
 
@@ -302,8 +311,7 @@ impl GenericMessage {
     /// ```
     pub fn to_value<T: for<'de> Deserialize<'de>>(&self) -> Result<T, String> {
         let data = self.data();
-        rmp_serde::from_slice(&data)
-            .map_err(|e| format!("Failed to deserialize: {}", e))
+        rmp_serde::from_slice(&data).map_err(|e| format!("Failed to deserialize: {}", e))
     }
 }
 
@@ -441,10 +449,14 @@ impl<'de> Deserialize<'de> for GenericMessage {
                     }
                 }
 
-                let inline_data = inline_data.ok_or_else(|| de::Error::missing_field("inline_data"))?;
-                let inline_len = inline_len.ok_or_else(|| de::Error::missing_field("inline_len"))?;
-                let overflow_data = overflow_data.ok_or_else(|| de::Error::missing_field("overflow_data"))?;
-                let overflow_len = overflow_len.ok_or_else(|| de::Error::missing_field("overflow_len"))?;
+                let inline_data =
+                    inline_data.ok_or_else(|| de::Error::missing_field("inline_data"))?;
+                let inline_len =
+                    inline_len.ok_or_else(|| de::Error::missing_field("inline_len"))?;
+                let overflow_data =
+                    overflow_data.ok_or_else(|| de::Error::missing_field("overflow_data"))?;
+                let overflow_len =
+                    overflow_len.ok_or_else(|| de::Error::missing_field("overflow_len"))?;
                 let metadata = metadata.ok_or_else(|| de::Error::missing_field("metadata"))?;
 
                 // Reconstruct the full message
@@ -462,8 +474,11 @@ impl<'de> Deserialize<'de> for GenericMessage {
                 let inline_copy_len = inline_data.len().min(INLINE_BUFFER_SIZE);
                 msg.inline_data[..inline_copy_len].copy_from_slice(&inline_data[..inline_copy_len]);
 
-                let overflow_copy_len = overflow_data.len().min(MAX_GENERIC_PAYLOAD - INLINE_BUFFER_SIZE);
-                msg.overflow_data[..overflow_copy_len].copy_from_slice(&overflow_data[..overflow_copy_len]);
+                let overflow_copy_len = overflow_data
+                    .len()
+                    .min(MAX_GENERIC_PAYLOAD - INLINE_BUFFER_SIZE);
+                msg.overflow_data[..overflow_copy_len]
+                    .copy_from_slice(&overflow_data[..overflow_copy_len]);
 
                 let metadata_copy_len = metadata.len().min(256);
                 msg.metadata[..metadata_copy_len].copy_from_slice(&metadata[..metadata_copy_len]);
@@ -472,7 +487,13 @@ impl<'de> Deserialize<'de> for GenericMessage {
             }
         }
 
-        const FIELDS: &[&str] = &["inline_data", "inline_len", "overflow_data", "overflow_len", "metadata"];
+        const FIELDS: &[&str] = &[
+            "inline_data",
+            "inline_len",
+            "overflow_data",
+            "overflow_len",
+            "metadata",
+        ];
         deserializer.deserialize_struct("GenericMessage", FIELDS, GenericMessageVisitor)
     }
 }

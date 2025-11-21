@@ -44,30 +44,30 @@ pub struct OdometryNode {
 
     // Robot configuration
     kinematic_model: KinematicModel,
-    wheel_base: f64,      // Distance between wheels (m)
-    wheel_radius: f64,    // Wheel radius (m)
-    track_width: f64,     // Distance between left and right wheels (m)
+    wheel_base: f64,         // Distance between wheels (m)
+    wheel_radius: f64,       // Wheel radius (m)
+    track_width: f64,        // Distance between left and right wheels (m)
     encoder_resolution: u32, // Ticks per revolution
 
     // Current state
-    x: f64,               // Position x (m)
-    y: f64,               // Position y (m)
-    theta: f64,           // Orientation (radians)
-    vx: f64,              // Linear velocity x (m/s)
-    vy: f64,              // Linear velocity y (m/s)
-    vtheta: f64,          // Angular velocity (rad/s)
+    x: f64,      // Position x (m)
+    y: f64,      // Position y (m)
+    theta: f64,  // Orientation (radians)
+    vx: f64,     // Linear velocity x (m/s)
+    vy: f64,     // Linear velocity y (m/s)
+    vtheta: f64, // Angular velocity (rad/s)
 
     // Previous encoder values
     prev_left_ticks: i64,
     prev_right_ticks: i64,
-    prev_time: u64,       // Nanoseconds
+    prev_time: u64, // Nanoseconds
 
     // Covariance estimates
     position_variance: f64,
     orientation_variance: f64,
 
     // Configuration
-    update_rate: f64,     // Hz
+    update_rate: f64, // Hz
     use_encoder_input: bool,
     use_velocity_input: bool,
     frame_id: String,
@@ -307,8 +307,12 @@ impl OdometryNode {
         } else {
             // Curved motion
             let dtheta = vtheta * dt;
-            self.x += (vx_body * (self.theta + dtheta / 2.0).cos() - vy_body * (self.theta + dtheta / 2.0).sin()) * dt;
-            self.y += (vx_body * (self.theta + dtheta / 2.0).sin() + vy_body * (self.theta + dtheta / 2.0).cos()) * dt;
+            self.x += (vx_body * (self.theta + dtheta / 2.0).cos()
+                - vy_body * (self.theta + dtheta / 2.0).sin())
+                * dt;
+            self.y += (vx_body * (self.theta + dtheta / 2.0).sin()
+                + vy_body * (self.theta + dtheta / 2.0).cos())
+                * dt;
             self.theta += dtheta;
         }
 
@@ -338,22 +342,22 @@ impl OdometryNode {
         odom.pose.theta = self.theta;
 
         // Set twist (velocity in body frame)
-        odom.twist.linear[0] = self.vx;  // x component
-        odom.twist.linear[1] = self.vy;  // y component
+        odom.twist.linear[0] = self.vx; // x component
+        odom.twist.linear[1] = self.vy; // y component
         odom.twist.angular[2] = self.vtheta; // z component (yaw)
 
         // Set covariance (simplified - diagonal only)
         // Pose covariance (6x6): [x, y, z, roll, pitch, yaw]
-        odom.pose_covariance[0] = self.position_variance;     // x variance
-        odom.pose_covariance[7] = self.position_variance;     // y variance
-        odom.pose_covariance[14] = 1e9;                       // z (not used)
-        odom.pose_covariance[21] = 1e9;                       // roll (not used)
-        odom.pose_covariance[28] = 1e9;                       // pitch (not used)
+        odom.pose_covariance[0] = self.position_variance; // x variance
+        odom.pose_covariance[7] = self.position_variance; // y variance
+        odom.pose_covariance[14] = 1e9; // z (not used)
+        odom.pose_covariance[21] = 1e9; // roll (not used)
+        odom.pose_covariance[28] = 1e9; // pitch (not used)
         odom.pose_covariance[35] = self.orientation_variance; // yaw variance
 
         // Twist covariance
-        odom.twist_covariance[0] = 0.001;  // vx variance
-        odom.twist_covariance[7] = 0.001;  // vy variance
+        odom.twist_covariance[0] = 0.001; // vx variance
+        odom.twist_covariance[7] = 0.001; // vy variance
         odom.twist_covariance[35] = 0.001; // vtheta variance
 
         // Set frame IDs

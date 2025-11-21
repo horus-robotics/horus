@@ -1,0 +1,50 @@
+version: "1.0"
+name: "Example Scenario"
+description: "A sample scenario demonstrating the scenario format"
+world:
+  width: 20.0
+  height: 15.0
+  obstacles:
+    - pos: [5.0, 5.0]
+      shape: Rectangle
+      size: [2.0, 1.5]
+      color: [0.8, 0.2, 0.2]
+    - pos: [10.0, 8.0]
+      shape: Circle
+      size: [1.5, 1.5]
+      color: [0.2, 0.8, 0.2]
+    - pos: [15.0, 10.0]
+      shape: Rectangle
+      size: [1.0, 3.0]
+      color: [0.2, 0.2, 0.8]
+robots:
+  - name: "explorer_bot"
+    position: [2.0, 2.0]
+    heading: 0.785  # 45 degrees
+    velocity: [0.0, 0.0]
+    config:
+      name: "explorer_bot"
+      topic_prefix: "/explorer"
+      position: [2.0, 2.0]
+      width: 0.5
+      length: 0.8
+      max_speed: 2.0
+      color: [0.0, 0.7, 1.0]
+      visual:
+        turret:
+          enabled: false
+        cannon:
+          enabled: false
+        tread_marks:
+          enabled: false
+      lidar:
+        enabled: true
+        range_max: 10.0
+        range_min: 0.1
+        num_rays: 360
+        angle_min: -3.14159
+        angle_max: 3.14159
+simulation:
+  time: 0.0
+  timestep: 0.016
+  paused: false

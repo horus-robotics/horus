@@ -1,13 +1,13 @@
 use bevy::prelude::*;
 use rand::Rng;
 
+use crate::physics::rigid_body::RigidBodyComponent;
+use crate::physics::world::PhysicsWorld;
 use crate::rl::{
     Action, EpisodeInfo, Observation, RLTask, StepResult, TaskConfig, TaskParameters,
     TerminationReason,
 };
 use crate::robot::Robot;
-use crate::physics::rigid_body::RigidBodyComponent;
-use crate::physics::world::PhysicsWorld;
 
 /// Locomotion task: Learn to walk/run at a target velocity while staying upright
 pub struct LocomotionTask {
@@ -130,11 +130,7 @@ impl LocomotionTask {
         let speed = rng.gen_range(0.5..2.0);
         let direction = rng.gen_range(-std::f32::consts::PI..std::f32::consts::PI);
 
-        self.target_velocity = Vec3::new(
-            speed * direction.cos(),
-            0.0,
-            speed * direction.sin(),
-        );
+        self.target_velocity = Vec3::new(speed * direction.cos(), 0.0, speed * direction.sin());
     }
 }
 
@@ -181,7 +177,8 @@ impl RLTask for LocomotionTask {
                     // Apply torque/force based on action
                     // This is simplified - in practice would apply to joints
                     let torque_scale = 5.0;
-                    let rotation_delta = Quat::from_rotation_y(action_value * torque_scale * self.config.dt);
+                    let rotation_delta =
+                        Quat::from_rotation_y(action_value * torque_scale * self.config.dt);
                     transform.rotation = transform.rotation * rotation_delta;
                 }
             }
@@ -299,11 +296,7 @@ impl RLTask for LocomotionTask {
         let stability_penalty = -ang_vel.length() * 0.01;
 
         // Heavy penalty for falling
-        let fall_penalty = if self.has_fallen(world) {
-            -10.0
-        } else {
-            0.0
-        };
+        let fall_penalty = if self.has_fallen(world) { -10.0 } else { 0.0 };
 
         velocity_reward
             + height_reward
@@ -326,11 +319,7 @@ impl RLTask for LocomotionTask {
         if let Some(transform) = self.get_base_transform(world) {
             let start = transform.translation;
             let end = start + self.target_velocity;
-            gizmos.arrow(
-                start,
-                end,
-                Color::srgb(0.0, 1.0, 0.0),
-            );
+            gizmos.arrow(start, end, Color::srgb(0.0, 1.0, 0.0));
         }
 
         // Draw current velocity vector
@@ -338,11 +327,7 @@ impl RLTask for LocomotionTask {
             let velocity = self.get_base_velocity(world);
             let start = transform.translation;
             let end = start + velocity;
-            gizmos.arrow(
-                start,
-                end,
-                Color::srgb(0.0, 0.5, 1.0),
-            );
+            gizmos.arrow(start, end, Color::srgb(0.0, 0.5, 1.0));
         }
 
         // Draw height limit plane

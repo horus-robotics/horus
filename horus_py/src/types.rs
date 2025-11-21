@@ -1,4 +1,4 @@
-use horus::{NodeConfig as CoreNodeConfig};
+use horus::NodeConfig as CoreNodeConfig;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use std::collections::HashMap;

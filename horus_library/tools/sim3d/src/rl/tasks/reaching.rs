@@ -1,12 +1,12 @@
 use bevy::prelude::*;
 use rand::Rng;
 
+use crate::physics::rigid_body::RigidBodyComponent;
 use crate::rl::{
     Action, EpisodeInfo, Observation, RLTask, StepResult, TaskConfig, TaskParameters,
     TerminationReason,
 };
 use crate::robot::Robot;
-use crate::physics::rigid_body::RigidBodyComponent;
 
 /// Reaching task: Robot must reach a target position in 3D space
 pub struct ReachingTask {

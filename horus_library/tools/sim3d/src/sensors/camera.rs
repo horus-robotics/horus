@@ -172,7 +172,13 @@ pub struct DepthImage {
 }
 
 impl DepthImage {
-    pub fn new(image_handle: Handle<Image>, width: u32, height: u32, min_depth: f32, max_depth: f32) -> Self {
+    pub fn new(
+        image_handle: Handle<Image>,
+        width: u32,
+        height: u32,
+        min_depth: f32,
+        max_depth: f32,
+    ) -> Self {
         Self {
             image_handle,
             width,
@@ -281,7 +287,13 @@ pub fn setup_depth_camera_system(
                 far: camera.far,
                 aspect_ratio: camera.width as f32 / camera.height as f32,
             }),
-            DepthImage::new(image_handle, camera.width, camera.height, camera.near, camera.far),
+            DepthImage::new(
+                image_handle,
+                camera.width,
+                camera.height,
+                camera.near,
+                camera.far,
+            ),
         ));
     }
 }
@@ -310,7 +322,7 @@ pub fn extract_camera_images_system(
     images: Res<Assets<Image>>,
     query: Query<(&CameraImage, &Name)>,
 ) {
-    for (camera_image, name) in query.iter() {
+    for (camera_image, _name) in query.iter() {
         if let Some(_image) = images.get(&camera_image.image_handle) {
             // Image data is now available for processing
             // Can be exported to HORUS bridge or saved to disk

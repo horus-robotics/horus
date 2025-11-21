@@ -6,7 +6,6 @@
 /// - UDP direct (localhost loopback)
 ///
 /// Run with: cargo run --example network_perf_test --release
-
 use horus_core::communication::Hub;
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
@@ -31,7 +30,10 @@ fn bench_local_shm() {
 
     // Warmup
     for i in 0..100 {
-        let msg = TestMessage { id: i, data: vec![0u8; 1024] };
+        let msg = TestMessage {
+            id: i,
+            data: vec![0u8; 1024],
+        };
         hub.send(msg, &mut None).unwrap();
         let _ = hub.recv(&mut None);
     }
@@ -39,7 +41,10 @@ fn bench_local_shm() {
     // Measure send + recv latency
     let start = Instant::now();
     for i in 0..iterations {
-        let msg = TestMessage { id: i, data: vec![0u8; 1024] };
+        let msg = TestMessage {
+            id: i,
+            data: vec![0u8; 1024],
+        };
         hub.send(msg, &mut None).unwrap();
         let _ = hub.recv(&mut None).unwrap();
     }
@@ -76,7 +81,10 @@ fn bench_unix_socket() {
 
         // Send messages
         for i in 0..1000 {
-            let msg = TestMessage { id: i, data: vec![0u8; 1024] };
+            let msg = TestMessage {
+                id: i,
+                data: vec![0u8; 1024],
+            };
             backend.send(&msg).unwrap();
             thread::sleep(Duration::from_micros(100)); // Rate limit
         }
@@ -134,15 +142,16 @@ fn bench_udp_direct() {
     let _listener = UdpSocket::bind("127.0.0.1:39870").unwrap();
 
     // Create sender
-    let sender = UdpDirectBackend::<TestMessage>::new(
-        "bench_udp",
-        "127.0.0.1".parse().unwrap(),
-        39870,
-    ).unwrap();
+    let sender =
+        UdpDirectBackend::<TestMessage>::new("bench_udp", "127.0.0.1".parse().unwrap(), 39870)
+            .unwrap();
 
     // Warmup
     for i in 0..10 {
-        let msg = TestMessage { id: i, data: vec![0u8; 1024] };
+        let msg = TestMessage {
+            id: i,
+            data: vec![0u8; 1024],
+        };
         sender.send(&msg).unwrap();
         thread::sleep(Duration::from_micros(100));
     }
@@ -151,7 +160,10 @@ fn bench_udp_direct() {
     let iterations = 1000;
     let start = Instant::now();
     for i in 0..iterations {
-        let msg = TestMessage { id: i, data: vec![0u8; 1024] };
+        let msg = TestMessage {
+            id: i,
+            data: vec![0u8; 1024],
+        };
         sender.send(&msg).unwrap();
     }
     let elapsed = start.elapsed();
@@ -203,7 +215,10 @@ fn bench_protocol() {
     println!("  Iterations: {}", iterations);
     println!("  Encode avg: {:.2} ns", encode_avg_ns);
     println!("  Decode avg: {:.2} ns", decode_avg_ns);
-    println!("  Total round-trip: {:.2} ns", encode_avg_ns + decode_avg_ns);
+    println!(
+        "  Total round-trip: {:.2} ns",
+        encode_avg_ns + decode_avg_ns
+    );
 }
 
 fn main() {

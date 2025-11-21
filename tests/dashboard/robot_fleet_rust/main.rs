@@ -6,9 +6,9 @@
 // - Monitoring nodes (Battery Monitor, System Health)
 
 use horus::prelude::*;
-use horus_library::messages::vision::{Image, ImageEncoding};
-use horus_library::messages::sensor::{LaserScan, Imu, Odometry};
 use horus_library::messages::cmd_vel::CmdVel;
+use horus_library::messages::sensor::{Imu, LaserScan, Odometry};
+use horus_library::messages::vision::{Image, ImageEncoding};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 // ============================================================================

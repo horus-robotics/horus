@@ -12,10 +12,10 @@ const FRAGMENT_TIMEOUT: Duration = Duration::from_secs(5);
 /// A single fragment of a larger message
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Fragment {
-    pub fragment_id: u64,    // Unique ID for this fragmented message
-    pub index: u16,          // Fragment index (0-based)
-    pub total: u16,          // Total number of fragments
-    pub data: Vec<u8>,       // Fragment payload
+    pub fragment_id: u64, // Unique ID for this fragmented message
+    pub index: u16,       // Fragment index (0-based)
+    pub total: u16,       // Total number of fragments
+    pub data: Vec<u8>,    // Fragment payload
 }
 
 impl Fragment {

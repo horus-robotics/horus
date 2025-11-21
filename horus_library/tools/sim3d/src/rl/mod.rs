@@ -1,9 +1,12 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-pub mod tasks;
-pub mod domain_randomization;
+pub mod adversarial;
 pub mod controllers;
+pub mod curriculum;
+pub mod domain_randomization;
+pub mod reward_shaping;
+pub mod tasks;
 
 #[cfg(feature = "python")]
 pub mod python;

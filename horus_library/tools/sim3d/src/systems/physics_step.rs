@@ -1,5 +1,5 @@
-use bevy::prelude::*;
 use crate::physics::PhysicsWorld;
+use bevy::prelude::*;
 
 static mut ACCUMULATOR: f32 = 0.0;
 

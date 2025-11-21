@@ -227,7 +227,12 @@ impl CollisionDetectorNode {
 
         // Create small AABB for obstacle point (treat as small circle)
         let obstacle_radius = 0.05; // 5cm obstacle radius
-        let obstacle_bbox = AABB::from_center(obstacle_x, obstacle_y, obstacle_radius * 2.0, obstacle_radius * 2.0);
+        let obstacle_bbox = AABB::from_center(
+            obstacle_x,
+            obstacle_y,
+            obstacle_radius * 2.0,
+            obstacle_radius * 2.0,
+        );
 
         // Check AABB intersection
         let intersects = robot_bbox.intersects(&obstacle_bbox);

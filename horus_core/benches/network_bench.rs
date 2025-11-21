@@ -6,8 +6,7 @@
 /// - UDP direct (localhost): <50μs
 ///
 /// Run with: cargo bench --bench network_bench
-
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use horus_core::communication::Hub;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -99,11 +98,9 @@ fn bench_udp_loopback(c: &mut Criterion) {
     let _listener = UdpSocket::bind("127.0.0.1:29870").unwrap();
 
     // Create backend that sends to listener
-    let sender = UdpDirectBackend::<TestMessage>::new(
-        "bench_udp",
-        "127.0.0.1".parse().unwrap(),
-        29870,
-    ).unwrap();
+    let sender =
+        UdpDirectBackend::<TestMessage>::new("bench_udp", "127.0.0.1".parse().unwrap(), 29870)
+            .unwrap();
 
     // Send some messages to warm up
     for i in 0..10 {
@@ -166,19 +163,17 @@ fn bench_message_sizes(c: &mut Criterion) {
             }
         }
 
-        group.bench_with_input(
-            BenchmarkId::new("local_shm", size),
-            size,
-            |b, &size| {
-                let hub: Hub<VarMessage> = Hub::new(&format!("bench_size_{}", size)).unwrap();
-                b.iter(|| {
-                    let msg = VarMessage { data: vec![0u8; size] };
-                    hub.send(msg, None).unwrap();
-                    let received = hub.recv(None).unwrap();
-                    black_box(received);
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("local_shm", size), size, |b, &size| {
+            let hub: Hub<VarMessage> = Hub::new(&format!("bench_size_{}", size)).unwrap();
+            b.iter(|| {
+                let msg = VarMessage {
+                    data: vec![0u8; size],
+                };
+                hub.send(msg, None).unwrap();
+                let received = hub.recv(None).unwrap();
+                black_box(received);
+            });
+        });
     }
 
     group.finish();

@@ -5,12 +5,7 @@ pub struct GizmoUtils;
 
 impl GizmoUtils {
     /// Draw a coordinate frame (X=red, Y=green, Z=blue axes)
-    pub fn draw_frame(
-        gizmos: &mut Gizmos,
-        position: Vec3,
-        rotation: Quat,
-        size: f32,
-    ) {
+    pub fn draw_frame(gizmos: &mut Gizmos, position: Vec3, rotation: Quat, size: f32) {
         // X axis - Red
         let x_end = position + rotation * (Vec3::X * size);
         gizmos.arrow(position, x_end, Color::srgb(1.0, 0.0, 0.0));
@@ -129,13 +124,7 @@ impl GizmoUtils {
     }
 
     /// Draw a capsule (cylinder with hemispherical caps)
-    pub fn draw_capsule(
-        gizmos: &mut Gizmos,
-        start: Vec3,
-        end: Vec3,
-        radius: f32,
-        color: Color,
-    ) {
+    pub fn draw_capsule(gizmos: &mut Gizmos, start: Vec3, end: Vec3, radius: f32, color: Color) {
         // Draw central cylinder
         Self::draw_cylinder(gizmos, start, end, radius, color, 16);
 
@@ -227,12 +216,7 @@ impl GizmoUtils {
     }
 
     /// Draw a path as connected line segments
-    pub fn draw_path(
-        gizmos: &mut Gizmos,
-        points: &[Vec3],
-        color: Color,
-        closed: bool,
-    ) {
+    pub fn draw_path(gizmos: &mut Gizmos, points: &[Vec3], color: Color, closed: bool) {
         if points.len() < 2 {
             return;
         }
@@ -330,9 +314,18 @@ impl GizmoUtils {
 
         // Draw 12 edges
         let edges = [
-            (0, 1), (1, 2), (2, 3), (3, 0), // Bottom face
-            (4, 5), (5, 6), (6, 7), (7, 4), // Top face
-            (0, 4), (1, 5), (2, 6), (3, 7), // Vertical edges
+            (0, 1),
+            (1, 2),
+            (2, 3),
+            (3, 0), // Bottom face
+            (4, 5),
+            (5, 6),
+            (6, 7),
+            (7, 4), // Top face
+            (0, 4),
+            (1, 5),
+            (2, 6),
+            (3, 7), // Vertical edges
         ];
 
         for (i, j) in edges {
@@ -341,24 +334,14 @@ impl GizmoUtils {
     }
 
     /// Draw a 3D cross (XYZ axes marker)
-    pub fn draw_cross_3d(
-        gizmos: &mut Gizmos,
-        center: Vec3,
-        size: f32,
-        color: Color,
-    ) {
+    pub fn draw_cross_3d(gizmos: &mut Gizmos, center: Vec3, size: f32, color: Color) {
         gizmos.line(center - Vec3::X * size, center + Vec3::X * size, color);
         gizmos.line(center - Vec3::Y * size, center + Vec3::Y * size, color);
         gizmos.line(center - Vec3::Z * size, center + Vec3::Z * size, color);
     }
 
     /// Draw a billboard (always faces camera) - simplified version
-    pub fn draw_billboard_cross(
-        gizmos: &mut Gizmos,
-        position: Vec3,
-        size: f32,
-        color: Color,
-    ) {
+    pub fn draw_billboard_cross(gizmos: &mut Gizmos, position: Vec3, size: f32, color: Color) {
         // Draw a simple cross marker
         Self::draw_cross_3d(gizmos, position, size, color);
     }
@@ -376,22 +359,12 @@ impl PersistentGizmos {
     }
 
     /// Add a persistent line
-    pub fn add_line(
-        &mut self,
-        start: Vec3,
-        end: Vec3,
-        color: Color,
-        lifetime: f32,
-    ) {
+    pub fn add_line(&mut self, start: Vec3, end: Vec3, color: Color, lifetime: f32) {
         self.lines.push((start, end, color, lifetime));
     }
 
     /// Update and draw persistent gizmos
-    pub fn update_and_draw(
-        &mut self,
-        gizmos: &mut Gizmos,
-        delta_time: f32,
-    ) {
+    pub fn update_and_draw(&mut self, gizmos: &mut Gizmos, delta_time: f32) {
         // Update lifetimes and remove expired
         self.lines.retain_mut(|(start, end, color, lifetime)| {
             *lifetime -= delta_time;
@@ -445,12 +418,7 @@ mod tests {
         let mut persistent = PersistentGizmos::new();
         assert_eq!(persistent.count(), 0);
 
-        persistent.add_line(
-            Vec3::ZERO,
-            Vec3::X,
-            Color::WHITE,
-            1.0,
-        );
+        persistent.add_line(Vec3::ZERO, Vec3::X, Color::WHITE, 1.0);
 
         assert_eq!(persistent.count(), 1);
 

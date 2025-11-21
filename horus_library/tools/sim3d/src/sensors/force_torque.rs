@@ -1,6 +1,6 @@
+use crate::physics::ContactForce;
 use bevy::prelude::*;
 use rand::Rng;
-use crate::physics::ContactForce;
 
 /// Force/Torque sensor (6-axis load cell)
 #[derive(Component, Clone)]
@@ -278,15 +278,27 @@ pub fn force_torque_update_system(
 
         // Set covariances
         ft_data.force_covariance = vec![
-            (sensor.force_noise_std.x * sensor.force_noise_std.x) as f64, 0.0, 0.0,
-            0.0, (sensor.force_noise_std.y * sensor.force_noise_std.y) as f64, 0.0,
-            0.0, 0.0, (sensor.force_noise_std.z * sensor.force_noise_std.z) as f64,
+            (sensor.force_noise_std.x * sensor.force_noise_std.x) as f64,
+            0.0,
+            0.0,
+            0.0,
+            (sensor.force_noise_std.y * sensor.force_noise_std.y) as f64,
+            0.0,
+            0.0,
+            0.0,
+            (sensor.force_noise_std.z * sensor.force_noise_std.z) as f64,
         ];
 
         ft_data.torque_covariance = vec![
-            (sensor.torque_noise_std.x * sensor.torque_noise_std.x) as f64, 0.0, 0.0,
-            0.0, (sensor.torque_noise_std.y * sensor.torque_noise_std.y) as f64, 0.0,
-            0.0, 0.0, (sensor.torque_noise_std.z * sensor.torque_noise_std.z) as f64,
+            (sensor.torque_noise_std.x * sensor.torque_noise_std.x) as f64,
+            0.0,
+            0.0,
+            0.0,
+            (sensor.torque_noise_std.y * sensor.torque_noise_std.y) as f64,
+            0.0,
+            0.0,
+            0.0,
+            (sensor.torque_noise_std.z * sensor.torque_noise_std.z) as f64,
         ];
     }
 }
@@ -411,7 +423,13 @@ impl ForceTorqueCalibration {
     }
 
     /// Simple gravity compensation
-    pub fn compensate_gravity(&self, force: Vec3, torque: Vec3, mass: f32, com_offset: Vec3) -> (Vec3, Vec3) {
+    pub fn compensate_gravity(
+        &self,
+        force: Vec3,
+        torque: Vec3,
+        mass: f32,
+        com_offset: Vec3,
+    ) -> (Vec3, Vec3) {
         let gravity = Vec3::new(0.0, -9.81 * mass, 0.0);
 
         let compensated_force = force - gravity;
@@ -549,7 +567,7 @@ mod tests {
         let (sat_force, sat_torque) = sensor.saturate(force, torque);
 
         assert_eq!(sat_force.x, 100.0); // Clamped to max
-        assert_eq!(sat_force.y, 50.0);  // Within range
+        assert_eq!(sat_force.y, 50.0); // Within range
         assert_eq!(sat_force.z, 200.0); // Clamped to max
         assert_eq!(sat_torque.x, 10.0); // Clamped
     }
@@ -599,8 +617,18 @@ mod tests {
         let mut contact = ContactForce::new();
 
         // Add multiple contact forces
-        contact.add_contact(Vec3::new(5.0, 0.0, 0.0), Vec3::new(0.0, 1.0, 0.0), Vec3::X, Vec3::ZERO);
-        contact.add_contact(Vec3::new(3.0, 0.0, 0.0), Vec3::new(0.0, -1.0, 0.0), Vec3::X, Vec3::ZERO);
+        contact.add_contact(
+            Vec3::new(5.0, 0.0, 0.0),
+            Vec3::new(0.0, 1.0, 0.0),
+            Vec3::X,
+            Vec3::ZERO,
+        );
+        contact.add_contact(
+            Vec3::new(3.0, 0.0, 0.0),
+            Vec3::new(0.0, -1.0, 0.0),
+            Vec3::X,
+            Vec3::ZERO,
+        );
 
         assert_eq!(contact.contact_count, 2);
         assert_eq!(contact.force.x, 8.0); // 5 + 3 = 8
@@ -663,12 +691,7 @@ mod tests {
         use crate::physics::ContactForce;
 
         let mut contact = ContactForce::new();
-        contact.add_contact(
-            Vec3::new(3.0, 4.0, 0.0),
-            Vec3::ZERO,
-            Vec3::X,
-            Vec3::ZERO,
-        );
+        contact.add_contact(Vec3::new(3.0, 4.0, 0.0), Vec3::ZERO, Vec3::X, Vec3::ZERO);
 
         assert_eq!(contact.force_magnitude(), 5.0); // sqrt(9 + 16) = 5
     }

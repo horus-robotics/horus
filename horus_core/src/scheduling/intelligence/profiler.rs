@@ -33,6 +33,10 @@ pub struct NodeStats {
     pub min_us: f64,
     /// Maximum execution time observed
     pub max_us: f64,
+    /// Number of failures (for Isolated tier classification)
+    pub failure_count: usize,
+    /// Failure rate (failures / total ticks)
+    pub failure_rate: f64,
     /// Welford's algorithm internal state
     mean: f64,
     m2: f64,
@@ -49,6 +53,8 @@ impl Default for NodeStats {
             is_cpu_bound: false,
             min_us: f64::MAX,
             max_us: 0.0,
+            failure_count: 0,
+            failure_rate: 0.0,
             mean: 0.0,
             m2: 0.0,
         }
@@ -111,6 +117,25 @@ impl NodeStats {
     pub fn p99_us(&self) -> f64 {
         self.avg_us + 3.0 * self.stddev_us
     }
+
+    /// Record a failure for this node
+    pub fn record_failure(&mut self) {
+        self.failure_count += 1;
+        self.update_failure_rate();
+    }
+
+    /// Update failure rate based on total attempts
+    fn update_failure_rate(&mut self) {
+        let total_attempts = self.count + self.failure_count;
+        if total_attempts > 0 {
+            self.failure_rate = self.failure_count as f64 / total_attempts as f64;
+        }
+    }
+
+    /// Check if node has high failure rate (> 20%)
+    pub fn has_high_failure_rate(&self) -> bool {
+        self.failure_rate > 0.2 && (self.count + self.failure_count) >= 10
+    }
 }
 
 impl RuntimeProfiler {
@@ -154,6 +179,18 @@ impl RuntimeProfiler {
             .entry(node_name.to_string())
             .or_default()
             .update(duration_us);
+    }
+
+    /// Record a failure for a node (for Isolated tier classification)
+    pub fn record_node_failure(&mut self, node_name: &str) {
+        if !self.enabled {
+            return;
+        }
+
+        self.node_stats
+            .entry(node_name.to_string())
+            .or_default()
+            .record_failure();
     }
 
     /// Advance learning phase tick counter

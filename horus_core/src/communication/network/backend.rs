@@ -1,3 +1,8 @@
+use super::endpoint::Endpoint;
+use super::router::RouterBackend;
+use super::udp_direct::UdpDirectBackend;
+use super::udp_multicast::UdpMulticastBackend;
+use super::unix_socket::UnixSocketBackend;
 /// Network backend for Hub communication
 ///
 /// Provides actual network implementations:
@@ -5,11 +10,6 @@
 /// - Unix domain sockets (localhost)
 /// - Multicast discovery (future)
 use crate::error::HorusResult;
-use super::endpoint::Endpoint;
-use super::router::RouterBackend;
-use super::udp_direct::UdpDirectBackend;
-use super::udp_multicast::UdpMulticastBackend;
-use super::unix_socket::UnixSocketBackend;
 
 /// Network backend enum wrapping different transport types
 pub enum NetworkBackend<T> {
@@ -28,17 +28,20 @@ pub enum NetworkBackend<T> {
 
 impl<T> NetworkBackend<T>
 where
-    T: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + Clone + std::fmt::Debug + 'static,
+    T: serde::Serialize
+        + serde::de::DeserializeOwned
+        + Send
+        + Sync
+        + Clone
+        + std::fmt::Debug
+        + 'static,
 {
     /// Create a new network backend from an endpoint
-    pub fn new(endpoint: Endpoint) -> HorusResult<Self>
-    {
+    pub fn new(endpoint: Endpoint) -> HorusResult<Self> {
         match endpoint {
-            Endpoint::Local { .. } => {
-                Err(crate::error::HorusError::Communication(
-                    "Local endpoint should use shared memory, not network backend".to_string(),
-                ))
-            }
+            Endpoint::Local { .. } => Err(crate::error::HorusError::Communication(
+                "Local endpoint should use shared memory, not network backend".to_string(),
+            )),
 
             Endpoint::Localhost { topic, .. } => {
                 // Try to create Unix socket backend
@@ -76,8 +79,7 @@ where
     }
 
     /// Send a message over the network
-    pub fn send(&self, msg: &T) -> HorusResult<()>
-    {
+    pub fn send(&self, msg: &T) -> HorusResult<()> {
         match self {
             NetworkBackend::UnixSocket(backend) => backend.send(msg),
             NetworkBackend::UdpDirect(backend) => backend.send(msg),
@@ -87,8 +89,7 @@ where
     }
 
     /// Receive a message from the network
-    pub fn recv(&mut self) -> Option<T>
-    {
+    pub fn recv(&mut self) -> Option<T> {
         match self {
             NetworkBackend::UnixSocket(backend) => backend.recv(),
             NetworkBackend::UdpDirect(backend) => backend.recv(),
@@ -101,26 +102,22 @@ where
 impl<T> std::fmt::Debug for NetworkBackend<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            NetworkBackend::UnixSocket(backend) => {
-                f.debug_struct("NetworkBackend::UnixSocket")
-                    .field("backend", backend)
-                    .finish()
-            }
-            NetworkBackend::UdpDirect(backend) => {
-                f.debug_struct("NetworkBackend::UdpDirect")
-                    .field("backend", backend)
-                    .finish()
-            }
-            NetworkBackend::Multicast(backend) => {
-                f.debug_struct("NetworkBackend::Multicast")
-                    .field("backend", backend)
-                    .finish()
-            }
-            NetworkBackend::Router(backend) => {
-                f.debug_struct("NetworkBackend::Router")
-                    .field("backend", backend)
-                    .finish()
-            }
+            NetworkBackend::UnixSocket(backend) => f
+                .debug_struct("NetworkBackend::UnixSocket")
+                .field("backend", backend)
+                .finish(),
+            NetworkBackend::UdpDirect(backend) => f
+                .debug_struct("NetworkBackend::UdpDirect")
+                .field("backend", backend)
+                .finish(),
+            NetworkBackend::Multicast(backend) => f
+                .debug_struct("NetworkBackend::Multicast")
+                .field("backend", backend)
+                .finish(),
+            NetworkBackend::Router(backend) => f
+                .debug_struct("NetworkBackend::Router")
+                .field("backend", backend)
+                .finish(),
         }
     }
 }

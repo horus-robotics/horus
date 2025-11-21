@@ -33,12 +33,30 @@ fn create_test_router(state: Arc<horus_manager::dashboard::AppState>) -> Router 
     use axum::routing::{delete, get, post};
 
     Router::new()
-        .route("/api/params", get(horus_manager::dashboard::params_list_handler))
-        .route("/api/params/:key", get(horus_manager::dashboard::params_get_handler))
-        .route("/api/params/:key", post(horus_manager::dashboard::params_set_handler))
-        .route("/api/params/:key", delete(horus_manager::dashboard::params_delete_handler))
-        .route("/api/params/export", post(horus_manager::dashboard::params_export_handler))
-        .route("/api/params/import", post(horus_manager::dashboard::params_import_handler))
+        .route(
+            "/api/params",
+            get(horus_manager::dashboard::params_list_handler),
+        )
+        .route(
+            "/api/params/:key",
+            get(horus_manager::dashboard::params_get_handler),
+        )
+        .route(
+            "/api/params/:key",
+            post(horus_manager::dashboard::params_set_handler),
+        )
+        .route(
+            "/api/params/:key",
+            delete(horus_manager::dashboard::params_delete_handler),
+        )
+        .route(
+            "/api/params/export",
+            post(horus_manager::dashboard::params_export_handler),
+        )
+        .route(
+            "/api/params/import",
+            post(horus_manager::dashboard::params_import_handler),
+        )
         .with_state(state)
 }
 
@@ -298,7 +316,10 @@ async fn test_params_set_with_validation_fail() {
         validation: vec![ValidationRule::Range(0.0, 100.0)],
         read_only: false,
     };
-    state.params.set_metadata("validated_key", metadata).unwrap();
+    state
+        .params
+        .set_metadata("validated_key", metadata)
+        .unwrap();
 
     let app = create_test_router(state.clone());
 
@@ -501,7 +522,10 @@ bool_key: true
     assert_eq!(json["count"], 3);
 
     // Verify parameters were imported
-    assert_eq!(state.params.get::<String>("test_key").unwrap(), "test_value");
+    assert_eq!(
+        state.params.get::<String>("test_key").unwrap(),
+        "test_value"
+    );
     assert_eq!(state.params.get::<i32>("num_key").unwrap(), 123);
     assert_eq!(state.params.get::<bool>("bool_key").unwrap(), true);
 }
@@ -514,7 +538,8 @@ async fn test_params_import_json() {
     let json_data = json!({
         "json_key": "json_value",
         "json_num": 456
-    }).to_string();
+    })
+    .to_string();
 
     let payload = json!({
         "data": json_data,
@@ -542,7 +567,10 @@ async fn test_params_import_json() {
     assert_eq!(json["count"], 2);
 
     // Verify parameters were imported
-    assert_eq!(state.params.get::<String>("json_key").unwrap(), "json_value");
+    assert_eq!(
+        state.params.get::<String>("json_key").unwrap(),
+        "json_value"
+    );
     assert_eq!(state.params.get::<i32>("json_num").unwrap(), 456);
 }
 
@@ -766,8 +794,11 @@ async fn test_version_update_with_correct_version() {
     let json: Value = serde_json::from_slice(&body).unwrap();
 
     assert_eq!(json["success"], true);
-    assert_eq!(json["version"], version + 1);  // Version should be incremented
+    assert_eq!(json["version"], version + 1); // Version should be incremented
 
     // Verify value was changed
-    assert_eq!(state.params.get::<String>("versioned_param").unwrap(), "value2");
+    assert_eq!(
+        state.params.get::<String>("versioned_param").unwrap(),
+        "value2"
+    );
 }

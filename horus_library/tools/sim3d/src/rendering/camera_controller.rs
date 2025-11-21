@@ -1,5 +1,5 @@
-use bevy::prelude::*;
 use bevy::input::mouse::{MouseMotion, MouseWheel};
+use bevy::prelude::*;
 
 #[derive(Component)]
 pub struct OrbitCamera {

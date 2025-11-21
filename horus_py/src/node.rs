@@ -235,7 +235,7 @@ impl PyNodeInfo {
         use horus::core::log_buffer::{publish_log, LogEntry, LogType};
         publish_log(LogEntry {
             timestamp,
-            tick_number: 0,  // Python nodes don't have deterministic tick counter
+            tick_number: 0, // Python nodes don't have deterministic tick counter
             node_name,
             log_type: LogType::Publish,
             topic: Some(topic),
@@ -282,7 +282,7 @@ impl PyNodeInfo {
         use horus::core::log_buffer::{publish_log, LogEntry, LogType};
         publish_log(LogEntry {
             timestamp,
-            tick_number: 0,  // Python nodes don't have deterministic tick counter
+            tick_number: 0, // Python nodes don't have deterministic tick counter
             node_name,
             log_type: LogType::Subscribe,
             topic: Some(topic),

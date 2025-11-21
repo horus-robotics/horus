@@ -1,8 +1,6 @@
 use bevy::prelude::*;
 
-use crate::sensors::{
-    camera, encoder, force_torque, gps, imu, lidar3d,
-};
+use crate::sensors::{camera, encoder, force_torque, gps, imu, lidar3d};
 
 /// System set for sensor updates - ensures sensors run after physics
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
@@ -24,11 +22,7 @@ impl Plugin for SensorUpdatePlugin {
         // Configure system sets
         app.configure_sets(
             Update,
-            (
-                SensorSystemSet::Update,
-                SensorSystemSet::Visualization,
-            )
-                .chain(),
+            (SensorSystemSet::Update, SensorSystemSet::Visualization).chain(),
         );
 
         // Add sensor update systems

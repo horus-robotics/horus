@@ -228,7 +228,9 @@ pub fn add_features_to_dependency(
     let mut dep_line_idx = None;
 
     for (i, line) in lines.iter().enumerate() {
-        if line.trim().starts_with(&dep_prefix) || line.trim().starts_with(&format!("- {}@", package_name)) {
+        if line.trim().starts_with(&dep_prefix)
+            || line.trim().starts_with(&format!("- {}@", package_name))
+        {
             dep_line_idx = Some(i);
             break;
         }

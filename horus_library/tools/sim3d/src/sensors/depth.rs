@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use rand::thread_rng;
 
-use crate::sensors::noise::{NoiseModel, GaussianNoise};
+use crate::sensors::noise::{GaussianNoise, NoiseModel};
 
 /// Depth camera sensor component
 #[derive(Component, Clone)]
@@ -120,7 +120,7 @@ impl DepthCamera {
     }
 
     /// Check if sensor needs update based on rate
-    pub fn should_update(&self, delta_time: f32) -> bool {
+    pub fn should_update(&self, _delta_time: f32) -> bool {
         if self.rate_hz <= 0.0 {
             return false;
         }
@@ -134,14 +134,16 @@ impl DepthCamera {
         }
 
         let mut rng = thread_rng();
-        let noise = GaussianNoise::zero_mean(self.noise_std_dev);
+        let _noise = GaussianNoise::zero_mean(self.noise_std_dev);
 
         for depth in &mut self.depth_image {
             if *depth >= self.min_range && *depth <= self.max_range {
                 // Noise increases with distance (quadratic model)
                 let distance_factor = 1.0 + 0.01 * depth.powi(2);
                 let depth_noise = GaussianNoise::zero_mean(self.noise_std_dev * distance_factor);
-                *depth = depth_noise.apply(*depth, &mut rng).clamp(self.min_range, self.max_range);
+                *depth = depth_noise
+                    .apply(*depth, &mut rng)
+                    .clamp(self.min_range, self.max_range);
             }
         }
     }

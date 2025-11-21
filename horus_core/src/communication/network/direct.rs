@@ -20,7 +20,7 @@ use tokio::runtime::Handle;
 
 const SEND_QUEUE_SIZE: usize = 256;
 const RECV_QUEUE_SIZE: usize = 1024;
-const BUFFER_POOL_SIZE: usize = 64;  // Smaller pool for 1P1C
+const BUFFER_POOL_SIZE: usize = 64; // Smaller pool for 1P1C
 const SMALL_BUFFER_SIZE: usize = 2048;
 
 /// Lock-free buffer pool for zero-allocation sends
@@ -47,9 +47,9 @@ impl BufferPool {
 
     #[inline]
     fn get(&self) -> Vec<u8> {
-        self.small_buffers.pop().unwrap_or_else(|| {
-            Vec::with_capacity(SMALL_BUFFER_SIZE)
-        })
+        self.small_buffers
+            .pop()
+            .unwrap_or_else(|| Vec::with_capacity(SMALL_BUFFER_SIZE))
     }
 
     #[inline]
@@ -65,18 +65,17 @@ impl BufferPool {
 pub struct DirectBackend<T> {
     role: DirectRole,
     addr: SocketAddr,
-    send_tx: Option<Sender<Vec<u8>>>,  // Producer only
-    recv_rx: Option<Receiver<T>>,      // Consumer only
+    send_tx: Option<Sender<Vec<u8>>>, // Producer only
+    recv_rx: Option<Receiver<T>>,     // Consumer only
     buffer_pool: Arc<BufferPool>,
-    runtime_handle: Handle,
     _phantom: std::marker::PhantomData<T>,
 }
 
 /// Role in the direct connection
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum DirectRole {
-    Producer,  // Connects to consumer
-    Consumer,  // Listens for producer
+    Producer, // Connects to consumer
+    Consumer, // Listens for producer
 }
 
 impl<T> DirectBackend<T>
@@ -98,7 +97,8 @@ where
 
         // Spawn async producer task
         runtime_handle.spawn(async move {
-            if let Err(e) = Self::producer_handler(consumer_addr, send_rx, buffer_pool_clone).await {
+            if let Err(e) = Self::producer_handler(consumer_addr, send_rx, buffer_pool_clone).await
+            {
                 eprintln!("Producer connection error: {}", e);
             }
         });
@@ -109,7 +109,6 @@ where
             send_tx: Some(send_tx),
             recv_rx: None,
             buffer_pool,
-            runtime_handle,
             _phantom: std::marker::PhantomData,
         })
     }
@@ -138,7 +137,6 @@ where
             send_tx: None,
             recv_rx: Some(recv_rx),
             buffer_pool: Arc::new(BufferPool::new()),
-            runtime_handle,
             _phantom: std::marker::PhantomData,
         })
     }
@@ -150,10 +148,12 @@ where
         buffer_pool: Arc<BufferPool>,
     ) -> HorusResult<()> {
         // Connect to consumer
-        let mut stream = TcpStream::connect(consumer_addr).await
+        let mut stream = TcpStream::connect(consumer_addr)
+            .await
             .map_err(|e| format!("Failed to connect to consumer at {}: {}", consumer_addr, e))?;
 
-        stream.set_nodelay(true)
+        stream
+            .set_nodelay(true)
             .map_err(|e| format!("Failed to set TCP_NODELAY: {}", e))?;
 
         // Send loop
@@ -173,19 +173,20 @@ where
     }
 
     /// Consumer task: listen and receive
-    async fn consumer_handler(
-        listen_addr: SocketAddr,
-        recv_tx: Sender<T>,
-    ) -> HorusResult<()> {
+    async fn consumer_handler(listen_addr: SocketAddr, recv_tx: Sender<T>) -> HorusResult<()> {
         // Listen for producer
-        let listener = TcpListener::bind(listen_addr).await
+        let listener = TcpListener::bind(listen_addr)
+            .await
             .map_err(|e| format!("Failed to bind to {}: {}", listen_addr, e))?;
 
         // Accept first connection (1P1C - only one producer)
-        let (mut stream, _) = listener.accept().await
+        let (mut stream, _) = listener
+            .accept()
+            .await
             .map_err(|e| format!("Failed to accept connection: {}", e))?;
 
-        stream.set_nodelay(true)
+        stream
+            .set_nodelay(true)
             .map_err(|e| format!("Failed to set TCP_NODELAY: {}", e))?;
 
         // Receive loop
@@ -205,7 +206,11 @@ where
             }
 
             // Read message data
-            if stream.read_exact(&mut read_buffer[..msg_len]).await.is_err() {
+            if stream
+                .read_exact(&mut read_buffer[..msg_len])
+                .await
+                .is_err()
+            {
                 break;
             }
 
@@ -220,14 +225,12 @@ where
 
     /// Send a message (producer only)
     pub fn send(&self, msg: &T) -> HorusResult<()> {
-        let send_tx = self.send_tx.as_ref()
-            .ok_or_else(|| crate::error::HorusError::Communication(
-                "Cannot send from consumer".to_string()
-            ))?;
+        let send_tx = self.send_tx.as_ref().ok_or_else(|| {
+            crate::error::HorusError::Communication("Cannot send from consumer".to_string())
+        })?;
 
         // Serialize
-        let data = bincode::serialize(msg)
-            .map_err(|e| format!("Serialization error: {}", e))?;
+        let data = bincode::serialize(msg).map_err(|e| format!("Serialization error: {}", e))?;
 
         // Get pooled buffer
         let mut buffer = self.buffer_pool.get();
@@ -238,10 +241,9 @@ where
         buffer.extend_from_slice(&data);
 
         // Send via lock-free queue
-        send_tx.try_send(buffer)
-            .map_err(|_| crate::error::HorusError::Communication(
-                "Send queue full".to_string()
-            ))?;
+        send_tx
+            .try_send(buffer)
+            .map_err(|_| crate::error::HorusError::Communication("Send queue full".to_string()))?;
 
         Ok(())
     }
@@ -266,7 +268,8 @@ where
     /// - `true` if messages are available
     /// - `false` if no messages are available or this is a producer
     pub fn has_messages(&self) -> bool {
-        self.recv_rx.as_ref()
+        self.recv_rx
+            .as_ref()
             .map(|rx| !rx.is_empty())
             .unwrap_or(false)
     }

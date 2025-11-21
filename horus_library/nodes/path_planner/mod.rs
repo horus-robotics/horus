@@ -3,8 +3,8 @@ use horus_core::error::HorusResult;
 
 // Import algorithms from horus_library/algorithms
 use crate::algorithms::astar::AStar;
-use crate::algorithms::rrt::RRT;
 use crate::algorithms::occupancy_grid::OccupancyGrid;
+use crate::algorithms::rrt::RRT;
 
 // Type alias for cleaner signatures
 type Result<T> = HorusResult<T>;
@@ -69,12 +69,7 @@ impl PathPlannerNode {
         // Create algorithm instances
         let astar = AStar::new(grid_width, grid_height);
 
-        let rrt = RRT::new(
-            (0.0, 0.0),
-            (0.0, 0.0),
-            (-10.0, -10.0),
-            (10.0, 10.0),
-        );
+        let rrt = RRT::new((0.0, 0.0), (0.0, 0.0), (-10.0, -10.0), (10.0, 10.0));
 
         let mut occupancy_grid = OccupancyGrid::new(grid_width, grid_height, grid_resolution);
         occupancy_grid.set_origin(-10.0, -10.0);
@@ -239,7 +234,8 @@ impl PathPlannerNode {
             for x in 0..width {
                 if self.occupancy_grid.is_occupied(x, y) {
                     let (world_x, world_y) = self.occupancy_grid.grid_to_world(x as i32, y as i32);
-                    self.rrt.add_obstacle((world_x, world_y), self.grid_resolution);
+                    self.rrt
+                        .add_obstacle((world_x, world_y), self.grid_resolution);
                 }
             }
         }

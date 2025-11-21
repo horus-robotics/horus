@@ -1,0 +1,211 @@
+# Furniture and Environmental Objects
+# Common furniture items for indoor robotics scenarios
+
+furniture:
+  # Tables
+  - name: "table_dining"
+    type: "composite"
+    components:
+      - name: "tabletop"
+        geometry: {type: "box", size: [1.5, 0.8, 0.05]}
+        position: [0, 0, 0.75]
+        mass: 15.0
+        material: "wood"
+      - name: "leg1"
+        geometry: {type: "cylinder", radius: 0.04, length: 0.75}
+        position: [0.65, 0.35, 0.375]
+        mass: 2.0
+        material: "wood"
+      - name: "leg2"
+        geometry: {type: "cylinder", radius: 0.04, length: 0.75}
+        position: [-0.65, 0.35, 0.375]
+        mass: 2.0
+        material: "wood"
+      - name: "leg3"
+        geometry: {type: "cylinder", radius: 0.04, length: 0.75}
+        position: [0.65, -0.35, 0.375]
+        mass: 2.0
+        material: "wood"
+      - name: "leg4"
+        geometry: {type: "cylinder", radius: 0.04, length: 0.75}
+        position: [-0.65, -0.35, 0.375]
+        mass: 2.0
+        material: "wood"
+
+  - name: "table_coffee"
+    type: "composite"
+    components:
+      - name: "tabletop"
+        geometry: {type: "box", size: [1.0, 0.6, 0.03]}
+        position: [0, 0, 0.4]
+        mass: 8.0
+        material: "wood"
+      - name: "leg1"
+        geometry: {type: "box", size: [0.05, 0.05, 0.4]}
+        position: [0.45, 0.25, 0.2]
+        mass: 1.0
+        material: "wood"
+      - name: "leg2"
+        geometry: {type: "box", size: [0.05, 0.05, 0.4]}
+        position: [-0.45, 0.25, 0.2]
+        mass: 1.0
+        material: "wood"
+      - name: "leg3"
+        geometry: {type: "box", size: [0.05, 0.05, 0.4]}
+        position: [0.45, -0.25, 0.2]
+        mass: 1.0
+        material: "wood"
+      - name: "leg4"
+        geometry: {type: "box", size: [0.05, 0.05, 0.4]}
+        position: [-0.45, -0.25, 0.2]
+        mass: 1.0
+        material: "wood"
+
+  # Chairs
+  - name: "chair_basic"
+    type: "composite"
+    components:
+      - name: "seat"
+        geometry: {type: "box", size: [0.45, 0.45, 0.05]}
+        position: [0, 0, 0.45]
+        mass: 3.0
+        material: "wood"
+      - name: "backrest"
+        geometry: {type: "box", size: [0.45, 0.05, 0.5]}
+        position: [0, -0.2, 0.7]
+        mass: 2.0
+        material: "wood"
+      - name: "leg1"
+        geometry: {type: "cylinder", radius: 0.02, length: 0.45}
+        position: [0.18, 0.18, 0.225]
+        mass: 0.5
+        material: "metal"
+      - name: "leg2"
+        geometry: {type: "cylinder", radius: 0.02, length: 0.45}
+        position: [-0.18, 0.18, 0.225]
+        mass: 0.5
+        material: "metal"
+      - name: "leg3"
+        geometry: {type: "cylinder", radius: 0.02, length: 0.45}
+        position: [0.18, -0.18, 0.225]
+        mass: 0.5
+        material: "metal"
+      - name: "leg4"
+        geometry: {type: "cylinder", radius: 0.02, length: 0.45}
+        position: [-0.18, -0.18, 0.225]
+        mass: 0.5
+        material: "metal"
+
+  # Shelving
+  - name: "shelf_bookcase"
+    type: "composite"
+    components:
+      - name: "back"
+        geometry: {type: "box", size: [0.8, 0.02, 1.8]}
+        position: [0, -0.19, 0.9]
+        mass: 10.0
+        material: "wood"
+      - name: "shelf1"
+        geometry: {type: "box", size: [0.8, 0.4, 0.02]}
+        position: [0, 0, 0.45]
+        mass: 3.0
+        material: "wood"
+      - name: "shelf2"
+        geometry: {type: "box", size: [0.8, 0.4, 0.02]}
+        position: [0, 0, 0.9]
+        mass: 3.0
+        material: "wood"
+      - name: "shelf3"
+        geometry: {type: "box", size: [0.8, 0.4, 0.02]}
+        position: [0, 0, 1.35]
+        mass: 3.0
+        material: "wood"
+      - name: "shelf4"
+        geometry: {type: "box", size: [0.8, 0.4, 0.02]}
+        position: [0, 0, 1.78]
+        mass: 3.0
+        material: "wood"
+
+  # Cabinets
+  - name: "cabinet_kitchen"
+    type: "composite"
+    components:
+      - name: "body"
+        geometry: {type: "box", size: [0.6, 0.5, 0.8]}
+        position: [0, 0, 0.4]
+        mass: 25.0
+        material: "wood"
+        is_static: true
+
+  # Bed
+  - name: "bed_single"
+    type: "composite"
+    components:
+      - name: "mattress"
+        geometry: {type: "box", size: [2.0, 1.0, 0.2]}
+        position: [0, 0, 0.5]
+        mass: 20.0
+        material: "foam"
+      - name: "frame"
+        geometry: {type: "box", size: [2.0, 1.0, 0.1]}
+        position: [0, 0, 0.35]
+        mass: 30.0
+        material: "wood"
+
+# Navigation Obstacles
+obstacles:
+  - name: "cone_traffic"
+    geometry: {type: "cone", radius: 0.15, height: 0.7}
+    mass: 1.0
+    material: "plastic"
+    color: [1.0, 0.5, 0.0, 1.0]
+
+  - name: "barrel_orange"
+    geometry: {type: "cylinder", radius: 0.3, length: 0.9}
+    mass: 10.0
+    material: "plastic"
+    color: [1.0, 0.4, 0.0, 1.0]
+
+  - name: "wall_section"
+    geometry: {type: "box", size: [2.0, 0.15, 2.5]}
+    mass: 100.0
+    material: "concrete"
+    is_static: true
+
+  - name: "door_frame"
+    geometry: {type: "box", size: [1.0, 0.1, 2.1]}
+    mass: 50.0
+    material: "wood"
+    is_static: true
+
+# Material library reference
+materials:
+  wood:
+    density: 600  # kg/m³
+    friction: 0.7
+    restitution: 0.2
+    color: [0.6, 0.4, 0.2, 1.0]
+
+  metal:
+    density: 7800  # kg/m³
+    friction: 0.5
+    restitution: 0.3
+    color: [0.7, 0.7, 0.7, 1.0]
+
+  plastic:
+    density: 950  # kg/m³
+    friction: 0.4
+    restitution: 0.4
+    color: [0.8, 0.8, 0.8, 1.0]
+
+  foam:
+    density: 25  # kg/m³
+    friction: 0.8
+    restitution: 0.1
+    color: [0.9, 0.9, 0.9, 1.0]
+
+  concrete:
+    density: 2400  # kg/m³
+    friction: 0.9
+    restitution: 0.1
+    color: [0.5, 0.5, 0.5, 1.0]

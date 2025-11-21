@@ -37,7 +37,7 @@ pub struct Measurement {
 /// Multi-Sensor Fusion
 pub struct SensorFusion {
     measurements: HashMap<String, Measurement>,
-    max_age: f64,  // Maximum measurement age (seconds)
+    max_age: f64, // Maximum measurement age (seconds)
 }
 
 impl SensorFusion {
@@ -65,7 +65,13 @@ impl SensorFusion {
     }
 
     /// Add sensor measurement with timestamp
-    pub fn add_measurement_with_time(&mut self, sensor_id: &str, value: f64, variance: f64, timestamp: f64) {
+    pub fn add_measurement_with_time(
+        &mut self,
+        sensor_id: &str,
+        value: f64,
+        variance: f64,
+        timestamp: f64,
+    ) {
         self.measurements.insert(
             sensor_id.to_string(),
             Measurement {
@@ -302,9 +308,9 @@ mod tests {
     fn test_three_sensors() {
         let mut fusion = SensorFusion::new();
 
-        fusion.add_measurement("sensor1", 10.0, 0.1);  // High confidence
-        fusion.add_measurement("sensor2", 15.0, 1.0);   // Medium confidence
-        fusion.add_measurement("sensor3", 20.0, 10.0);  // Low confidence
+        fusion.add_measurement("sensor1", 10.0, 0.1); // High confidence
+        fusion.add_measurement("sensor2", 15.0, 1.0); // Medium confidence
+        fusion.add_measurement("sensor3", 20.0, 10.0); // Low confidence
 
         let result = fusion.fuse().unwrap();
 

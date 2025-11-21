@@ -161,8 +161,8 @@ impl GPS {
         // Slowly vary satellite count (changes every few seconds typically)
         if rng.gen_bool(0.01) {
             let delta = if rng.gen_bool(0.5) { 1 } else { -1 };
-            self.current_satellites = (self.current_satellites as i8 + delta)
-                .clamp(self.min_satellites as i8, 12) as u8;
+            self.current_satellites =
+                (self.current_satellites as i8 + delta).clamp(self.min_satellites as i8, 12) as u8;
         }
     }
 
@@ -179,7 +179,8 @@ impl GPS {
 
         // Quality based on HDOP and satellite count
         let hdop_quality = (5.0 - self.hdop).max(0.0) / 5.0;
-        let sat_quality = (self.current_satellites.saturating_sub(self.min_satellites) as f32) / 8.0;
+        let sat_quality =
+            (self.current_satellites.saturating_sub(self.min_satellites) as f32) / 8.0;
 
         (hdop_quality * 0.6 + sat_quality * 0.4).min(1.0)
     }
@@ -328,9 +329,15 @@ impl GPS {
 
         // Diagonal covariance matrix
         vec![
-            velocity_var, 0.0, 0.0,
-            0.0, velocity_var, 0.0,
-            0.0, 0.0, velocity_var,
+            velocity_var,
+            0.0,
+            0.0,
+            0.0,
+            velocity_var,
+            0.0,
+            0.0,
+            0.0,
+            velocity_var,
         ]
     }
 
@@ -444,9 +451,15 @@ pub fn gps_update_system(
 
         // Set covariance matrix (diagonal)
         gps_data.position_covariance = vec![
-            (gps.horizontal_noise_std * gps.horizontal_noise_std) as f64, 0.0, 0.0,
-            0.0, (gps.vertical_noise_std * gps.vertical_noise_std) as f64, 0.0,
-            0.0, 0.0, (gps.horizontal_noise_std * gps.horizontal_noise_std) as f64,
+            (gps.horizontal_noise_std * gps.horizontal_noise_std) as f64,
+            0.0,
+            0.0,
+            0.0,
+            (gps.vertical_noise_std * gps.vertical_noise_std) as f64,
+            0.0,
+            0.0,
+            0.0,
+            (gps.horizontal_noise_std * gps.horizontal_noise_std) as f64,
         ];
 
         // Update metadata
@@ -473,7 +486,8 @@ pub fn gps_update_system(
         // Compute velocity covariance if velocity is available
         if gps_data.velocity.is_some() {
             // Use horizontal noise std for covariance computation
-            gps_data.velocity_covariance = gps.compute_velocity_covariance(gps.horizontal_noise_std);
+            gps_data.velocity_covariance =
+                gps.compute_velocity_covariance(gps.horizontal_noise_std);
         } else {
             // No velocity estimate - set large covariance
             gps_data.velocity_covariance = vec![f64::MAX; 9];
@@ -482,10 +496,7 @@ pub fn gps_update_system(
 }
 
 /// GPS visualization system (draws GPS uncertainty circle)
-pub fn visualize_gps_system(
-    mut gizmos: Gizmos,
-    query: Query<(&GPS, &GPSData, &GlobalTransform)>,
-) {
+pub fn visualize_gps_system(mut gizmos: Gizmos, query: Query<(&GPS, &GPSData, &GlobalTransform)>) {
     for (gps, gps_data, transform) in query.iter() {
         if !gps_data.has_valid_fix() {
             continue;
@@ -510,11 +521,7 @@ pub fn visualize_gps_system(
 
         // Draw vertical uncertainty line
         let vradius = gps.vertical_noise_std * 2.0;
-        gizmos.line(
-            pos + Vec3::Y * vradius,
-            pos - Vec3::Y * vradius,
-            color,
-        );
+        gizmos.line(pos + Vec3::Y * vradius, pos - Vec3::Y * vradius, color);
 
         // Draw measured position
         gizmos.sphere(gps_data.position, 0.1, color);
@@ -585,11 +592,7 @@ mod tests {
         let origin = (37.7749, -122.4194); // San Francisco
         let world_pos = Vec3::new(1000.0, 10.0, 1000.0);
 
-        let (lat, lon, alt) = coordinate_conversion::world_to_gps(
-            world_pos,
-            origin.0,
-            origin.1,
-        );
+        let (lat, lon, alt) = coordinate_conversion::world_to_gps(world_pos, origin.0, origin.1);
 
         let back = coordinate_conversion::gps_to_world(lat, lon, alt, origin.0, origin.1);
 

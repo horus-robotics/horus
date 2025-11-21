@@ -60,17 +60,17 @@ impl EKF {
         }
 
         // Initialize process noise
-        ekf.process_noise[0][0] = 0.1;   // x
-        ekf.process_noise[1][1] = 0.1;   // y
-        ekf.process_noise[2][2] = 0.05;  // theta
-        ekf.process_noise[3][3] = 0.2;   // vx
-        ekf.process_noise[4][4] = 0.2;   // vy
-        ekf.process_noise[5][5] = 0.1;   // omega
+        ekf.process_noise[0][0] = 0.1; // x
+        ekf.process_noise[1][1] = 0.1; // y
+        ekf.process_noise[2][2] = 0.05; // theta
+        ekf.process_noise[3][3] = 0.2; // vx
+        ekf.process_noise[4][4] = 0.2; // vy
+        ekf.process_noise[5][5] = 0.1; // omega
 
         // Initialize odometry noise
-        ekf.odometry_noise[0][0] = 0.05;  // x measurement
-        ekf.odometry_noise[1][1] = 0.05;  // y measurement
-        ekf.odometry_noise[2][2] = 0.02;  // theta measurement
+        ekf.odometry_noise[0][0] = 0.05; // x measurement
+        ekf.odometry_noise[1][1] = 0.05; // y measurement
+        ekf.odometry_noise[2][2] = 0.02; // theta measurement
 
         ekf
     }
@@ -130,9 +130,9 @@ impl EKF {
         // Predict state using motion model
         let old_state = self.state;
 
-        self.state[0] += old_state[3] * dt;  // x += vx * dt
-        self.state[1] += old_state[4] * dt;  // y += vy * dt
-        self.state[2] += old_state[5] * dt;  // theta += omega * dt
+        self.state[0] += old_state[3] * dt; // x += vx * dt
+        self.state[1] += old_state[4] * dt; // y += vy * dt
+        self.state[2] += old_state[5] * dt; // theta += omega * dt
 
         // Normalize angle
         self.state[2] = normalize_angle(self.state[2]);
@@ -258,8 +258,8 @@ fn normalize_angle(angle: f64) -> f64 {
 /// Invert 3x3 matrix (simplified for covariance matrices)
 fn invert_3x3(m: [[f64; 3]; 3]) -> [[f64; 3]; 3] {
     let det = m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1])
-            - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
-            + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+        - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0])
+        + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
 
     if det.abs() < 1e-10 {
         // Return identity if not invertible
@@ -305,9 +305,9 @@ mod tests {
     #[test]
     fn test_prediction() {
         let mut ekf = EKF::new();
-        ekf.set_state([0.0, 0.0, 0.0, 1.0, 0.0, 0.0]);  // vx = 1.0 m/s
+        ekf.set_state([0.0, 0.0, 0.0, 1.0, 0.0, 0.0]); // vx = 1.0 m/s
 
-        ekf.predict(1.0);  // 1 second
+        ekf.predict(1.0); // 1 second
 
         let (x, y, _theta) = ekf.get_pose();
 
@@ -373,8 +373,13 @@ mod tests {
 
     #[test]
     fn test_angle_normalization() {
-        assert!((normalize_angle(3.5 * std::f64::consts::PI) + std::f64::consts::PI / 2.0).abs() < 0.01);
-        assert!((normalize_angle(-3.5 * std::f64::consts::PI) - std::f64::consts::PI / 2.0).abs() < 0.01);
+        assert!(
+            (normalize_angle(3.5 * std::f64::consts::PI) + std::f64::consts::PI / 2.0).abs() < 0.01
+        );
+        assert!(
+            (normalize_angle(-3.5 * std::f64::consts::PI) - std::f64::consts::PI / 2.0).abs()
+                < 0.01
+        );
     }
 
     #[test]
@@ -395,9 +400,9 @@ mod tests {
     #[test]
     fn test_rotation() {
         let mut ekf = EKF::new();
-        ekf.set_state([0.0, 0.0, 0.0, 0.0, 0.0, 1.0]);  // omega = 1 rad/s
+        ekf.set_state([0.0, 0.0, 0.0, 0.0, 0.0, 1.0]); // omega = 1 rad/s
 
-        ekf.predict(std::f64::consts::PI / 2.0);  // 90 degrees
+        ekf.predict(std::f64::consts::PI / 2.0); // 90 degrees
 
         let (_x, _y, theta) = ekf.get_pose();
 

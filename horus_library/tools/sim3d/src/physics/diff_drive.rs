@@ -30,14 +30,16 @@ impl DifferentialDrive {
         let angular_vel = angular_vel.clamp(-self.max_angular_velocity, self.max_angular_velocity);
 
         let left_vel = (linear_vel - angular_vel * self.wheel_separation / 2.0) / self.wheel_radius;
-        let right_vel = (linear_vel + angular_vel * self.wheel_separation / 2.0) / self.wheel_radius;
+        let right_vel =
+            (linear_vel + angular_vel * self.wheel_separation / 2.0) / self.wheel_radius;
 
         (left_vel, right_vel)
     }
 
     pub fn compute_body_velocity(&self, left_wheel_vel: f32, right_wheel_vel: f32) -> (f32, f32) {
         let linear_vel = (left_wheel_vel + right_wheel_vel) * self.wheel_radius / 2.0;
-        let angular_vel = (right_wheel_vel - left_wheel_vel) * self.wheel_radius / self.wheel_separation;
+        let angular_vel =
+            (right_wheel_vel - left_wheel_vel) * self.wheel_radius / self.wheel_separation;
 
         (linear_vel, angular_vel)
     }

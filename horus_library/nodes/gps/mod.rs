@@ -77,12 +77,12 @@ impl GpsNode {
         Ok(Self {
             publisher: Hub::new(topic)?,
             update_rate_hz: 1.0, // 1 Hz default (typical for GPS)
-            min_satellites: 4,    // Minimum for 3D fix
-            max_hdop: 20.0,       // Maximum acceptable HDOP
+            min_satellites: 4,   // Minimum for 3D fix
+            max_hdop: 20.0,      // Maximum acceptable HDOP
             frame_id: "gps".to_string(),
             backend,
             serial_port: "/dev/ttyUSB0".to_string(), // Common GPS serial port
-            baud_rate: 9600,      // Standard GPS baud rate
+            baud_rate: 9600,                         // Standard GPS baud rate
             last_fix: NavSatFix::default(),
             fix_count: 0,
             last_update_time: 0,
@@ -90,7 +90,7 @@ impl GpsNode {
             nmea_parser: None,
             #[cfg(feature = "nmea-gps")]
             serial: None,
-            sim_latitude: 37.7749,  // San Francisco (default)
+            sim_latitude: 37.7749, // San Francisco (default)
             sim_longitude: -122.4194,
             sim_altitude: 10.0,
         })
@@ -186,7 +186,10 @@ impl GpsNode {
                         true
                     }
                     Err(e) => {
-                        eprintln!("Failed to open GPS serial port {}: {:?}", self.serial_port, e);
+                        eprintln!(
+                            "Failed to open GPS serial port {}: {:?}",
+                            self.serial_port, e
+                        );
                         false
                     }
                 }
@@ -243,7 +246,9 @@ impl GpsNode {
             }
             #[cfg(feature = "nmea-gps")]
             GpsBackend::NmeaSerial => {
-                if let (Some(ref mut serial), Some(ref mut nmea)) = (&mut self.serial, &mut self.nmea_parser) {
+                if let (Some(ref mut serial), Some(ref mut nmea)) =
+                    (&mut self.serial, &mut self.nmea_parser)
+                {
                     let mut reader = BufReader::new(serial.try_clone().ok()?);
                     let mut line = String::new();
 
@@ -261,7 +266,8 @@ impl GpsNode {
                                         nmea.altitude.unwrap_or(0.0),
                                     );
 
-                                    fix.satellites_visible = nmea.num_of_fix_satellites.unwrap_or(0) as u16;
+                                    fix.satellites_visible =
+                                        nmea.num_of_fix_satellites.unwrap_or(0) as u16;
                                     fix.hdop = nmea.hdop.unwrap_or(99.99) as f32;
                                     fix.vdop = nmea.vdop.unwrap_or(99.99) as f32;
                                     fix.speed = nmea.speed_over_ground.unwrap_or(0.0) as f32;
@@ -269,15 +275,22 @@ impl GpsNode {
 
                                     // Estimate covariance from HDOP (rough approximation)
                                     let horizontal_accuracy = fix.hdop * 5.0; // meters
-                                    fix.position_covariance[0] = (horizontal_accuracy * horizontal_accuracy) as f64;
-                                    fix.position_covariance[4] = (horizontal_accuracy * horizontal_accuracy) as f64;
-                                    fix.position_covariance[8] = (horizontal_accuracy * horizontal_accuracy * 2.0) as f64;
-                                    fix.position_covariance_type = NavSatFix::COVARIANCE_TYPE_APPROXIMATED;
+                                    fix.position_covariance[0] =
+                                        (horizontal_accuracy * horizontal_accuracy) as f64;
+                                    fix.position_covariance[4] =
+                                        (horizontal_accuracy * horizontal_accuracy) as f64;
+                                    fix.position_covariance[8] =
+                                        (horizontal_accuracy * horizontal_accuracy * 2.0) as f64;
+                                    fix.position_covariance_type =
+                                        NavSatFix::COVARIANCE_TYPE_APPROXIMATED;
 
                                     ctx.log_debug(&format!(
                                         "GPS NMEA: {:.6}, {:.6}, alt={:.1}m, sats={}, HDOP={:.1}",
-                                        fix.latitude, fix.longitude, fix.altitude,
-                                        fix.satellites_visible, fix.hdop
+                                        fix.latitude,
+                                        fix.longitude,
+                                        fix.altitude,
+                                        fix.satellites_visible,
+                                        fix.hdop
                                     ));
 
                                     Some(fix)
@@ -341,7 +354,10 @@ impl Node for GpsNode {
                 ctx.log_info("GPS simulation mode enabled");
             }
             GpsBackend::NmeaSerial => {
-                ctx.log_info(&format!("GPS NMEA serial: {} @ {} baud", self.serial_port, self.baud_rate));
+                ctx.log_info(&format!(
+                    "GPS NMEA serial: {} @ {} baud",
+                    self.serial_port, self.baud_rate
+                ));
             }
         }
 

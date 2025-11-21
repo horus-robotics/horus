@@ -33,8 +33,8 @@ fn main() -> HorusResult<()> {
     // Add the controller node with priority 0 (highest)
     scheduler.add(
         Box::new(Controller::new()?),
-        0,     // priority (0 = highest)
-        Some(true)    // logging config
+        0,          // priority (0 = highest)
+        Some(true), // logging config
     );
 
     // Run the scheduler

@@ -33,6 +33,11 @@ fn _horus(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Priority constants
     m.add_class::<Priority>()?;
 
+    // Sim2D classes
+    m.add_class::<sim2d::python_api::Sim2D>()?;
+    m.add_class::<sim2d::python_api::RobotConfigPy>()?;
+    m.add_class::<sim2d::python_api::WorldConfigPy>()?;
+
     // Typed hubs now handled by polymorphic Hub class
     // typed_hub::register_typed_hubs(m)?;  // Old implementation - replaced
 

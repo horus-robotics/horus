@@ -159,7 +159,7 @@ impl HorusConfig {
         }
 
         Err(HorusError::config(
-            "No config file found in standard locations"
+            "No config file found in standard locations",
         ))
     }
 
@@ -189,9 +189,9 @@ impl HorusConfig {
 
     /// Get a hub config by name
     pub fn get_hub(&self, name: &str) -> HorusResult<&HubConfig> {
-        self.hubs.get(name).ok_or_else(|| {
-            HorusError::config(format!("Hub '{}' not found in config", name))
-        })
+        self.hubs
+            .get(name)
+            .ok_or_else(|| HorusError::config(format!("Hub '{}' not found in config", name)))
     }
 }
 

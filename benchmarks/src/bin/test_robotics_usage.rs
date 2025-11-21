@@ -1,3 +1,10 @@
+// Benchmark binary - allow clippy warnings
+#![allow(unused_imports)]
+#![allow(unused_assignments)]
+#![allow(unreachable_patterns)]
+#![allow(clippy::all)]
+#![allow(deprecated)]
+
 /// Robotics Usage Test Suite
 /// Verifies typical robotics usage patterns work correctly
 use horus::prelude::{Hub, Link};

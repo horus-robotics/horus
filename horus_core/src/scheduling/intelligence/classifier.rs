@@ -62,22 +62,27 @@ impl TierClassifier {
 
     /// Classify a single node based on its statistics
     fn classify_node(stats: &NodeStats) -> ExecutionTier {
-        // Priority 1: Ultra-fast deterministic nodes  JIT tier
+        // Priority 1: High-failure nodes → Isolated tier (for process isolation)
+        if stats.has_high_failure_rate() {
+            return ExecutionTier::Isolated;
+        }
+
+        // Priority 2: Ultra-fast deterministic nodes → JIT tier
         if stats.avg_us < 5.0 && stats.is_deterministic {
             return ExecutionTier::UltraFast;
         }
 
-        // Priority 2: I/O heavy nodes  Async tier
+        // Priority 3: I/O heavy nodes → Async tier
         if stats.is_io_heavy {
             return ExecutionTier::AsyncIO;
         }
 
-        // Priority 3: Fast nodes (<1ms)  Inline tier
+        // Priority 4: Fast nodes (<1ms) → Inline tier
         if stats.avg_us < 1000.0 {
             return ExecutionTier::Fast;
         }
 
-        // Priority 4: Default to background
+        // Priority 5: Default to background
         ExecutionTier::Background
     }
 

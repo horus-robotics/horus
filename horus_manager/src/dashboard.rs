@@ -36,7 +36,10 @@ impl WorkspaceCache {
     }
 
     /// Get workspaces from cache or refresh if stale/different path
-    fn get_or_refresh(&mut self, current: &Option<std::path::PathBuf>) -> Vec<crate::workspace::DiscoveredWorkspace> {
+    fn get_or_refresh(
+        &mut self,
+        current: &Option<std::path::PathBuf>,
+    ) -> Vec<crate::workspace::DiscoveredWorkspace> {
         const TTL: Duration = Duration::from_secs(300); // 5 minutes
 
         // Refresh if cache is stale or path changed
@@ -88,7 +91,10 @@ fn display_qr_code(url: &str) {
                 .light_color(unicode::Dense1x2::Dark)
                 .build();
 
-            println!("\n   {} Scan QR code with your phone:", "[QR CODE]".cyan().bold());
+            println!(
+                "\n   {} Scan QR code with your phone:",
+                "[QR CODE]".cyan().bold()
+            );
             for line in qr_string.lines() {
                 println!("   {}", line);
             }
@@ -106,11 +112,8 @@ async fn dashboard_session_middleware(
     next: axum::middleware::Next,
 ) -> Result<axum::response::Response, StatusCode> {
     // Use the session middleware from security module
-    crate::security::middleware::session_middleware(
-        State(state.auth_service.clone()),
-        req,
-        next,
-    ).await
+    crate::security::middleware::session_middleware(State(state.auth_service.clone()), req, next)
+        .await
 }
 
 /// Run the web dashboard server
@@ -155,14 +158,20 @@ pub async fn run(port: u16) -> anyhow::Result<()> {
         .route("/api/logs/node/:name", get(logs_node_handler))
         .route("/api/logs/topic/:name", get(logs_topic_handler))
         .route("/api/packages/registry", get(packages_registry_handler))
-        .route("/api/packages/environments", get(packages_environments_handler))
+        .route(
+            "/api/packages/environments",
+            get(packages_environments_handler),
+        )
         .route("/api/packages/install", post(packages_install_handler))
         .route("/api/packages/uninstall", post(packages_uninstall_handler))
         .route("/api/packages/publish", post(packages_publish_handler))
         .route("/api/params", get(params_list_handler))
         .route("/api/params/:key", get(params_get_handler))
         .route("/api/params/:key", post(params_set_handler))
-        .route("/api/params/:key", axum::routing::delete(params_delete_handler))
+        .route(
+            "/api/params/:key",
+            axum::routing::delete(params_delete_handler),
+        )
         .route("/api/params/export", post(params_export_handler))
         .route("/api/params/import", post(params_import_handler))
         .route("/api/ws", get(websocket_handler))
@@ -170,7 +179,10 @@ pub async fn run(port: u16) -> anyhow::Result<()> {
 
     // Only add authentication middleware if password is set
     if !auth_disabled {
-        api_routes = api_routes.layer(middleware::from_fn_with_state(state.clone(), dashboard_session_middleware));
+        api_routes = api_routes.layer(middleware::from_fn_with_state(
+            state.clone(),
+            dashboard_session_middleware,
+        ));
     }
 
     // Public routes (no authentication required)
@@ -221,7 +233,10 @@ pub async fn run(port: u16) -> anyhow::Result<()> {
     println!("{}", "HORUS Web Dashboard is running!".green().bold());
 
     println!("\n{}:", "Access URLs".cyan().bold());
-    println!("   • Local:    {}", format!("http://localhost:{}", port).bright_blue());
+    println!(
+        "   • Local:    {}",
+        format!("http://localhost:{}", port).bright_blue()
+    );
     if let Some(ref ip) = local_ip {
         let network_url = format!("http://{}:{}", ip, port);
         println!("   • Network:  {}", network_url.bright_blue());
@@ -232,14 +247,28 @@ pub async fn run(port: u16) -> anyhow::Result<()> {
 
     println!("\n{}:", "Security".cyan().bold());
     if auth_disabled {
-        println!("   {} {}", "⚠".yellow(), "Authentication DISABLED - No password required".yellow().bold());
+        println!(
+            "   {} {}",
+            "⚠".yellow(),
+            "Authentication DISABLED - No password required"
+                .yellow()
+                .bold()
+        );
         println!("   • Accessible to anyone on your network");
-        println!("   {} To enable password protection: {}", "[TIP]".cyan(), "horus dashboard -r".bright_blue());
+        println!(
+            "   {} To enable password protection: {}",
+            "[TIP]".cyan(),
+            "horus dashboard -r".bright_blue()
+        );
     } else {
         println!("   • Password-based authentication with session management");
         println!("   • Accessible from local network devices");
         println!("   • Rate limiting enabled (5 login attempts per minute)");
-        println!("   {}", "[NOTE] For production use, consider SSH tunneling or reverse proxy with HTTPS".dimmed());
+        println!(
+            "   {}",
+            "[NOTE] For production use, consider SSH tunneling or reverse proxy with HTTPS"
+                .dimmed()
+        );
     }
 
     println!("\n{}:", "Features".cyan().bold());
@@ -374,17 +403,16 @@ async fn index_handler(
 ) -> Response {
     // If authentication is disabled, go straight to dashboard
     let is_authenticated = if state.auth_disabled {
-        true  // Skip authentication entirely
+        true // Skip authentication entirely
     } else {
         // Check if user is authenticated by looking for session cookie
         if let Some(cookie_header) = req.headers().get(axum::http::header::COOKIE) {
             if let Ok(cookie_str) = cookie_header.to_str() {
                 // Extract session token from cookies
-                let token = cookie_str.split(';')
-                    .find_map(|cookie| {
-                        let cookie = cookie.trim();
-                        cookie.strip_prefix("session_token=")
-                    });
+                let token = cookie_str.split(';').find_map(|cookie| {
+                    let cookie = cookie.trim();
+                    cookie.strip_prefix("session_token=")
+                });
 
                 // Validate session if token exists
                 if let Some(token) = token {
@@ -508,8 +536,9 @@ async fn status_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse
             "nodes": nodes_count,
             "topics": topics_count,
             "workspace": workspace_info
-        }))
-    ).into_response()
+        })),
+    )
+        .into_response()
 }
 
 async fn nodes_handler() -> impl IntoResponse {
@@ -538,8 +567,9 @@ async fn nodes_handler() -> impl IntoResponse {
         StatusCode::OK,
         Json(serde_json::json!({
             "nodes": nodes
-        }))
-    ).into_response()
+        })),
+    )
+        .into_response()
 }
 
 async fn topics_handler() -> impl IntoResponse {
@@ -569,8 +599,9 @@ async fn topics_handler() -> impl IntoResponse {
         StatusCode::OK,
         Json(serde_json::json!({
             "topics": topics
-        }))
-    ).into_response()
+        })),
+    )
+        .into_response()
 }
 
 async fn graph_handler() -> impl IntoResponse {
@@ -613,8 +644,9 @@ async fn graph_handler() -> impl IntoResponse {
         Json(serde_json::json!({
             "nodes": graph_nodes,
             "edges": graph_edges
-        }))
-    ).into_response()
+        })),
+    )
+        .into_response()
 }
 
 async fn logs_all_handler() -> impl IntoResponse {
@@ -626,8 +658,9 @@ async fn logs_all_handler() -> impl IntoResponse {
         StatusCode::OK,
         Json(serde_json::json!({
             "logs": logs
-        }))
-    ).into_response()
+        })),
+    )
+        .into_response()
 }
 
 async fn logs_node_handler(Path(node_name): Path<String>) -> impl IntoResponse {
@@ -642,8 +675,9 @@ async fn logs_node_handler(Path(node_name): Path<String>) -> impl IntoResponse {
         Json(serde_json::json!({
             "node": node_name,
             "logs": logs
-        }))
-    ).into_response()
+        })),
+    )
+        .into_response()
 }
 
 async fn logs_topic_handler(Path(topic_name): Path<String>) -> impl IntoResponse {
@@ -672,8 +706,9 @@ async fn logs_topic_handler(Path(topic_name): Path<String>) -> impl IntoResponse
         Json(serde_json::json!({
             "topic": topic_name,
             "logs": logs
-        }))
-    ).into_response()
+        })),
+    )
+        .into_response()
 }
 
 // Marketplace handlers
@@ -709,15 +744,17 @@ async fn packages_registry_handler(Query(query): Query<SearchQuery>) -> impl Int
                 StatusCode::OK,
                 Json(serde_json::json!({
                     "packages": pkgs
-                }))
-            ).into_response()
+                })),
+            )
+                .into_response()
         }
         _ => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({
                 "error": "Failed to search packages"
-            }))
-        ).into_response(),
+            })),
+        )
+            .into_response(),
     }
 }
 
@@ -725,7 +762,6 @@ async fn packages_registry_handler(Query(query): Query<SearchQuery>) -> impl Int
 async fn packages_environments_handler() -> impl IntoResponse {
     use std::collections::HashSet;
     use std::fs;
-    
 
     let result = tokio::task::spawn_blocking(move || {
         let mut global_packages_set: HashSet<String> = HashSet::new();
@@ -794,9 +830,7 @@ async fn packages_environments_handler() -> impl IntoResponse {
             let yaml_dependencies = if horus_yaml_path.exists() {
                 fs::read_to_string(&horus_yaml_path)
                     .ok()
-                    .and_then(|content| {
-                        serde_yaml::from_str::<serde_yaml::Value>(&content).ok()
-                    })
+                    .and_then(|content| serde_yaml::from_str::<serde_yaml::Value>(&content).ok())
                     .and_then(|yaml| {
                         yaml.get("dependencies")
                             .and_then(|deps| deps.as_sequence())
@@ -821,12 +855,14 @@ async fn packages_environments_handler() -> impl IntoResponse {
                     for pkg_entry in pkg_entries.flatten() {
                         // Check if it's a directory OR a symlink pointing to a directory
                         let is_pkg_dir = pkg_entry.file_type().map(|t| t.is_dir()).unwrap_or(false)
-                            || (pkg_entry.file_type().map(|t| t.is_symlink()).unwrap_or(false)
+                            || (pkg_entry
+                                .file_type()
+                                .map(|t| t.is_symlink())
+                                .unwrap_or(false)
                                 && pkg_entry.path().is_dir());
 
                         if is_pkg_dir {
-                            let pkg_name =
-                                pkg_entry.file_name().to_string_lossy().to_string();
+                            let pkg_name = pkg_entry.file_name().to_string_lossy().to_string();
 
                             // Skip if already added
                             if local_packages_set.contains(&pkg_name) {
@@ -887,20 +923,14 @@ async fn packages_environments_handler() -> impl IntoResponse {
                         let version = if metadata_path.exists() {
                             fs::read_to_string(&metadata_path)
                                 .ok()
-                                .and_then(|s| {
-                                    serde_json::from_str::<serde_json::Value>(&s).ok()
-                                })
+                                .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
                                 .and_then(|j| {
                                     j.get("version")
                                         .and_then(|v| v.as_str())
                                         .map(|s| s.to_string())
                                 })
                                 .unwrap_or_else(|| {
-                                    dep_str
-                                        .split('@')
-                                        .nth(1)
-                                        .unwrap_or("unknown")
-                                        .to_string()
+                                    dep_str.split('@').nth(1).unwrap_or("unknown").to_string()
                                 })
                         } else {
                             dep_str.split('@').nth(1).unwrap_or("unknown").to_string()
@@ -938,8 +968,9 @@ async fn packages_environments_handler() -> impl IntoResponse {
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({
                 "error": "Failed to list environments"
-            }))
-        ).into_response(),
+            })),
+        )
+            .into_response(),
     }
 }
 
@@ -961,15 +992,15 @@ async fn packages_install_handler(Json(req): Json<InstallRequest>) -> impl IntoR
         let client = RegistryClient::new();
 
         // Determine target based on input and horus.yaml path
-        let horus_yaml_path = if let Some(target_str) = &target {
+        let (horus_yaml_path, version) = if let Some(target_str) = &target {
             if target_str == "global" {
                 // Install globally - no horus.yaml to update
-                client.install_to_target(
+                let version = client.install_to_target(
                     &req.package,
                     None,
                     crate::workspace::InstallTarget::Global,
                 )?;
-                None
+                (None, version)
             } else {
                 // Use specified path - find horus.yaml in parent package
                 let target_path = PathBuf::from(target_str);
@@ -989,12 +1020,12 @@ async fn packages_install_handler(Json(req): Json<InstallRequest>) -> impl IntoR
 
                 let yaml_path = parent_path.map(|p| p.join("horus.yaml"));
 
-                client.install_to_target(
+                let version = client.install_to_target(
                     &req.package,
                     None,
                     crate::workspace::InstallTarget::Local(target_path),
                 )?;
-                yaml_path
+                (yaml_path, version)
             }
         } else {
             // Default: auto-detect - look for horus.yaml in current dir
@@ -1004,12 +1035,9 @@ async fn packages_install_handler(Json(req): Json<InstallRequest>) -> impl IntoR
             } else {
                 None
             };
-            client.install(&req.package, None)?;
-            yaml_path
+            let version = client.install(&req.package, None)?;
+            (yaml_path, version)
         };
-
-        // Get installed version (try to read from metadata.json)
-        let version = "latest".to_string(); // TODO: Get actual version from install result
 
         // Update horus.yaml if path exists
         if let Some(yaml_path) = horus_yaml_path {
@@ -1032,22 +1060,25 @@ async fn packages_install_handler(Json(req): Json<InstallRequest>) -> impl IntoR
             Json(serde_json::json!({
                 "success": true,
                 "message": format!("Successfully installed {}", package_name)
-            }))
-        ).into_response(),
+            })),
+        )
+            .into_response(),
         Ok(Err(e)) => (
             StatusCode::BAD_REQUEST,
             Json(serde_json::json!({
                 "success": false,
                 "error": e.to_string()
-            }))
-        ).into_response(),
+            })),
+        )
+            .into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({
                 "success": false,
                 "error": format!("Task failed: {}", e)
-            }))
-        ).into_response(),
+            })),
+        )
+            .into_response(),
     }
 }
 
@@ -1162,22 +1193,25 @@ async fn packages_publish_handler() -> impl IntoResponse {
             Json(serde_json::json!({
                 "success": true,
                 "message": "Package published successfully"
-            }))
-        ).into_response(),
+            })),
+        )
+            .into_response(),
         Ok(Err(e)) => (
             StatusCode::BAD_REQUEST,
             Json(serde_json::json!({
                 "success": false,
                 "error": e.to_string()
-            }))
-        ).into_response(),
+            })),
+        )
+            .into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({
                 "success": false,
                 "error": format!("Task failed: {}", e)
-            }))
-        ).into_response(),
+            })),
+        )
+            .into_response(),
     }
 }
 
@@ -1255,7 +1289,7 @@ pub async fn params_get_handler(
 #[derive(serde::Deserialize)]
 pub struct SetParamRequest {
     pub value: serde_json::Value,
-    pub version: Option<u64>,  // Optional version for optimistic locking
+    pub version: Option<u64>, // Optional version for optimistic locking
 }
 
 /// Set a parameter
@@ -1266,7 +1300,9 @@ pub async fn params_set_handler(
 ) -> impl IntoResponse {
     // Use version-aware set if version is provided (optimistic locking)
     let result = if let Some(expected_version) = req.version {
-        state.params.set_with_version(&key, req.value.clone(), expected_version)
+        state
+            .params
+            .set_with_version(&key, req.value.clone(), expected_version)
     } else {
         state.params.set(&key, req.value.clone())
     };
@@ -1293,7 +1329,7 @@ pub async fn params_set_handler(
         Err(e) => {
             // Check if it's a version mismatch error
             let status_code = if e.to_string().contains("Version mismatch") {
-                StatusCode::CONFLICT  // 409 Conflict for version mismatch
+                StatusCode::CONFLICT // 409 Conflict for version mismatch
             } else {
                 StatusCode::INTERNAL_SERVER_ERROR
             };

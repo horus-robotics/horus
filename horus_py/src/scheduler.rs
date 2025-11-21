@@ -21,19 +21,19 @@ struct RegisteredNode {
     rate_hz: f64,                        // Phase 1: Per-node rate control
     last_tick: Instant,                  // Phase 1: Track last execution time
     // Fault tolerance fields
-    failure_count: u32,                  // Total failures
-    consecutive_failures: u32,           // Consecutive failures (reset on success)
-    circuit_open: bool,                  // Circuit breaker state
+    failure_count: u32,                    // Total failures
+    consecutive_failures: u32,             // Consecutive failures (reset on success)
+    circuit_open: bool,                    // Circuit breaker state
     last_restart_attempt: Option<Instant>, // Track when we last tried to restart
     // Soft real-time fields
-    deadline_ms: Option<f64>,            // Optional deadline in milliseconds
-    deadline_misses: u64,                // Counter for deadline violations
-    last_tick_duration_ms: f64,          // Last tick execution time
+    deadline_ms: Option<f64>,   // Optional deadline in milliseconds
+    deadline_misses: u64,       // Counter for deadline violations
+    last_tick_duration_ms: f64, // Last tick execution time
     // Watchdog fields
-    watchdog_enabled: bool,              // Is watchdog enabled for this node?
-    watchdog_timeout_ms: u64,            // Watchdog timeout in milliseconds
-    last_watchdog_feed: Instant,         // Last time watchdog was fed
-    watchdog_expired: bool,              // Has watchdog expired?
+    watchdog_enabled: bool,      // Is watchdog enabled for this node?
+    watchdog_timeout_ms: u64,    // Watchdog timeout in milliseconds
+    last_watchdog_feed: Instant, // Last time watchdog was fed
+    watchdog_expired: bool,      // Has watchdog expired?
 }
 
 /// Python wrapper for HORUS Scheduler with per-node rate control
@@ -45,9 +45,9 @@ struct RegisteredNode {
 pub struct PyScheduler {
     nodes: Arc<Mutex<Vec<RegisteredNode>>>,
     running: Arc<Mutex<bool>>,
-    tick_rate_hz: f64,            // Global scheduler tick rate
-    scheduler_name: String,       // Scheduler name for registry
-    working_dir: PathBuf,         // Working directory for registry
+    tick_rate_hz: f64,             // Global scheduler tick rate
+    scheduler_name: String,        // Scheduler name for registry
+    working_dir: PathBuf,          // Working directory for registry
     circuit_breaker_enabled: bool, // Fault tolerance: circuit breaker
     max_failures: u32,             // Max failures before circuit opens
     auto_restart: bool,            // Auto-restart failed nodes
@@ -65,8 +65,24 @@ impl PyScheduler {
         Self::setup_heartbeat_directory();
 
         // Extract config values or use defaults
-        let (tick_rate, circuit_breaker, max_failures, auto_restart, deadline_monitoring, watchdog_enabled, watchdog_timeout_ms) = if let Some(ref cfg) = config {
-            (cfg.tick_rate, cfg.circuit_breaker, cfg.max_failures, cfg.auto_restart, cfg.deadline_monitoring, cfg.watchdog_enabled, cfg.watchdog_timeout_ms)
+        let (
+            tick_rate,
+            circuit_breaker,
+            max_failures,
+            auto_restart,
+            deadline_monitoring,
+            watchdog_enabled,
+            watchdog_timeout_ms,
+        ) = if let Some(ref cfg) = config {
+            (
+                cfg.tick_rate,
+                cfg.circuit_breaker,
+                cfg.max_failures,
+                cfg.auto_restart,
+                cfg.deadline_monitoring,
+                cfg.watchdog_enabled,
+                cfg.watchdog_timeout_ms,
+            )
         } else {
             (100.0, true, 5, true, false, false, 1000) // Standard defaults
         };
@@ -136,11 +152,11 @@ impl PyScheduler {
             circuit_open: false,
             last_restart_attempt: None,
             // Soft real-time fields
-            deadline_ms: None,         // No deadline by default
+            deadline_ms: None, // No deadline by default
             deadline_misses: 0,
             last_tick_duration_ms: 0.0,
             // Watchdog fields
-            watchdog_enabled: false,   // Disabled by default, enable per-node
+            watchdog_enabled: false, // Disabled by default, enable per-node
             watchdog_timeout_ms: self.watchdog_timeout_ms, // Use global default
             last_watchdog_feed: Instant::now(),
             watchdog_expired: false,
@@ -310,7 +326,8 @@ impl PyScheduler {
                 dict.set_item("watchdog_timeout_ms", registered.watchdog_timeout_ms)?;
                 dict.set_item("watchdog_expired", registered.watchdog_expired)?;
                 if registered.watchdog_enabled {
-                    let time_since_feed = registered.last_watchdog_feed.elapsed().as_millis() as u64;
+                    let time_since_feed =
+                        registered.last_watchdog_feed.elapsed().as_millis() as u64;
                     dict.set_item("watchdog_time_since_feed_ms", time_since_feed)?;
                 } else {
                     dict.set_item("watchdog_time_since_feed_ms", py.None())?;
@@ -458,7 +475,8 @@ impl PyScheduler {
 
                     // Check watchdog expiration
                     if registered.watchdog_enabled && self.watchdog_enabled {
-                        let time_since_feed = registered.last_watchdog_feed.elapsed().as_millis() as u64;
+                        let time_since_feed =
+                            registered.last_watchdog_feed.elapsed().as_millis() as u64;
                         if time_since_feed > registered.watchdog_timeout_ms {
                             if !registered.watchdog_expired {
                                 registered.watchdog_expired = true;
@@ -552,7 +570,10 @@ impl PyScheduler {
                             // Check if this is a KeyboardInterrupt - if so, stop the scheduler immediately
                             if e.is_instance_of::<pyo3::exceptions::PyKeyboardInterrupt>(py) {
                                 use colored::Colorize;
-                                eprintln!("{}", "\nKeyboard interrupt received, shutting down...".red());
+                                eprintln!(
+                                    "{}",
+                                    "\nKeyboard interrupt received, shutting down...".red()
+                                );
                                 if let Ok(mut r) = self.running.lock() {
                                     *r = false;
                                 }
@@ -770,7 +791,8 @@ impl PyScheduler {
                                 use colored::Colorize;
                                 eprintln!(
                                     "{}",
-                                    format!("Attempting to restart node '{}'...", registered.name).yellow()
+                                    format!("Attempting to restart node '{}'...", registered.name)
+                                        .yellow()
                                 );
                                 registered.circuit_open = false;
                                 registered.consecutive_failures = 0;
@@ -798,7 +820,8 @@ impl PyScheduler {
 
                     // Check watchdog expiration
                     if registered.watchdog_enabled && self.watchdog_enabled {
-                        let time_since_feed = registered.last_watchdog_feed.elapsed().as_millis() as u64;
+                        let time_since_feed =
+                            registered.last_watchdog_feed.elapsed().as_millis() as u64;
                         if time_since_feed > registered.watchdog_timeout_ms {
                             if !registered.watchdog_expired {
                                 registered.watchdog_expired = true;
@@ -892,7 +915,10 @@ impl PyScheduler {
                             // Check if this is a KeyboardInterrupt - if so, stop the scheduler immediately
                             if e.is_instance_of::<pyo3::exceptions::PyKeyboardInterrupt>(py) {
                                 use colored::Colorize;
-                                eprintln!("{}", "\nKeyboard interrupt received, shutting down...".red());
+                                eprintln!(
+                                    "{}",
+                                    "\nKeyboard interrupt received, shutting down...".red()
+                                );
                                 if let Ok(mut r) = self.running.lock() {
                                     *r = false;
                                 }
@@ -1222,7 +1248,10 @@ impl PyScheduler {
                         // Check if this is a KeyboardInterrupt - if so, stop the scheduler immediately
                         if e.is_instance_of::<pyo3::exceptions::PyKeyboardInterrupt>(py) {
                             use colored::Colorize;
-                            eprintln!("{}", "\nKeyboard interrupt received, shutting down...".red());
+                            eprintln!(
+                                "{}",
+                                "\nKeyboard interrupt received, shutting down...".red()
+                            );
                             if let Ok(mut r) = self.running.lock() {
                                 *r = false;
                             }
@@ -1412,7 +1441,10 @@ impl PyScheduler {
                         // Check if this is a KeyboardInterrupt - if so, stop the scheduler immediately
                         if e.is_instance_of::<pyo3::exceptions::PyKeyboardInterrupt>(py) {
                             use colored::Colorize;
-                            eprintln!("{}", "\nKeyboard interrupt received, shutting down...".red());
+                            eprintln!(
+                                "{}",
+                                "\nKeyboard interrupt received, shutting down...".red()
+                            );
                             if let Ok(mut r) = self.running.lock() {
                                 *r = false;
                             }

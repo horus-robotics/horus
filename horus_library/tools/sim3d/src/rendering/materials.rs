@@ -158,11 +158,7 @@ impl MaterialLibrary {
     }
 
     /// Add a material to the library
-    pub fn add(
-        &mut self,
-        name: impl Into<String>,
-        handle: Handle<StandardMaterial>,
-    ) {
+    pub fn add(&mut self, name: impl Into<String>, handle: Handle<StandardMaterial>) {
         self.materials.insert(name.into(), handle);
     }
 
@@ -251,19 +247,12 @@ impl MaterialUtils {
     }
 
     /// Update material color
-    pub fn update_color(
-        material: &mut StandardMaterial,
-        color: Color,
-    ) {
+    pub fn update_color(material: &mut StandardMaterial, color: Color) {
         material.base_color = color;
     }
 
     /// Update material transparency
-    pub fn update_alpha(
-        material: &mut StandardMaterial,
-        alpha: f32,
-        alpha_mode: AlphaMode,
-    ) {
+    pub fn update_alpha(material: &mut StandardMaterial, alpha: f32, alpha_mode: AlphaMode) {
         material.base_color = material.base_color.with_alpha(alpha);
         material.alpha_mode = alpha_mode;
     }

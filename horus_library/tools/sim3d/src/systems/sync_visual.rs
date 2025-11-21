@@ -1,11 +1,11 @@
 use bevy::prelude::*;
 use rapier3d::prelude::*;
 
-use crate::physics::world::PhysicsWorld;
+use crate::physics::diff_drive::{CmdVel, DifferentialDrive};
 use crate::physics::rigid_body::{
-    RigidBodyComponent, Velocity, ExternalForce, ExternalImpulse, Damping, GravityScale,
+    Damping, ExternalForce, ExternalImpulse, GravityScale, RigidBodyComponent, Velocity,
 };
-use crate::physics::diff_drive::{DifferentialDrive, CmdVel};
+use crate::physics::world::PhysicsWorld;
 
 /// Sync Rapier3D rigid body transforms to Bevy visual transforms
 pub fn sync_physics_to_visual_system(
@@ -50,16 +50,10 @@ pub fn apply_external_forces_system(
         }
 
         if let Some(rigid_body) = physics_world.rigid_body_set.get_mut(rb_component.handle) {
-            let force = nalgebra::Vector3::new(
-                ext_force.force.x,
-                ext_force.force.y,
-                ext_force.force.z,
-            );
-            let torque = nalgebra::Vector3::new(
-                ext_force.torque.x,
-                ext_force.torque.y,
-                ext_force.torque.z,
-            );
+            let force =
+                nalgebra::Vector3::new(ext_force.force.x, ext_force.force.y, ext_force.force.z);
+            let torque =
+                nalgebra::Vector3::new(ext_force.torque.x, ext_force.torque.y, ext_force.torque.z);
 
             rigid_body.add_force(force, true);
             rigid_body.add_torque(torque, true);
@@ -130,7 +124,7 @@ pub fn apply_gravity_scale_system(
 
 /// Apply differential drive commands to rigid bodies
 pub fn apply_differential_drive_system(
-    time: Res<Time>,
+    _time: Res<Time>,
     mut physics_world: ResMut<PhysicsWorld>,
     mut query: Query<(&RigidBodyComponent, &DifferentialDrive, &CmdVel, &Transform)>,
 ) {
@@ -140,11 +134,7 @@ pub fn apply_differential_drive_system(
             let (_, _, yaw) = transform.rotation.to_euler(EulerRot::XYZ);
 
             // Compute desired velocities
-            let (linvel, angvel) = diff_drive.apply_velocity(
-                cmd_vel.linear,
-                cmd_vel.angular,
-                yaw,
-            );
+            let (linvel, angvel) = diff_drive.apply_velocity(cmd_vel.linear, cmd_vel.angular, yaw);
 
             // Apply velocities to rigid body
             rigid_body.set_linvel(linvel, true);
@@ -157,9 +147,15 @@ pub fn apply_differential_drive_system(
 pub fn apply_differential_drive_forces_system(
     time: Res<Time>,
     mut physics_world: ResMut<PhysicsWorld>,
-    query: Query<(&RigidBodyComponent, &DifferentialDrive, &CmdVel, &Transform, &Velocity)>,
+    query: Query<(
+        &RigidBodyComponent,
+        &DifferentialDrive,
+        &CmdVel,
+        &Transform,
+        &Velocity,
+    )>,
 ) {
-    let dt = time.delta_secs();
+    let _dt = time.delta_secs();
 
     for (rb_component, diff_drive, cmd_vel, transform, current_vel) in query.iter() {
         if let Some(rigid_body) = physics_world.rigid_body_set.get_mut(rb_component.handle) {
@@ -167,11 +163,8 @@ pub fn apply_differential_drive_forces_system(
             let (_, _, yaw) = transform.rotation.to_euler(EulerRot::XYZ);
 
             // Compute target velocities
-            let (target_linvel, target_angvel) = diff_drive.apply_velocity(
-                cmd_vel.linear,
-                cmd_vel.angular,
-                yaw,
-            );
+            let (target_linvel, target_angvel) =
+                diff_drive.apply_velocity(cmd_vel.linear, cmd_vel.angular, yaw);
 
             // Convert to bevy vectors for comparison
             let target_linvel_bevy = Vec3::new(target_linvel.x, target_linvel.y, target_linvel.z);
@@ -206,16 +199,10 @@ pub fn apply_velocity_system(
 ) {
     for (rb_component, velocity) in query.iter() {
         if let Some(rigid_body) = physics_world.rigid_body_set.get_mut(rb_component.handle) {
-            let linvel = nalgebra::Vector3::new(
-                velocity.linear.x,
-                velocity.linear.y,
-                velocity.linear.z,
-            );
-            let angvel = nalgebra::Vector3::new(
-                velocity.angular.x,
-                velocity.angular.y,
-                velocity.angular.z,
-            );
+            let linvel =
+                nalgebra::Vector3::new(velocity.linear.x, velocity.linear.y, velocity.linear.z);
+            let angvel =
+                nalgebra::Vector3::new(velocity.angular.x, velocity.angular.y, velocity.angular.z);
 
             rigid_body.set_linvel(linvel, true);
             rigid_body.set_angvel(angvel, true);

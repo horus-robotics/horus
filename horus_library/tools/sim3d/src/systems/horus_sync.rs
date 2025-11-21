@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
-// TODO: Re-enable when horus_bridge is available in library context
+// NOTE: horus_bridge integration disabled - requires global HORUS context setup
+// When enabled, uncomment:
 // use crate::horus_bridge::publisher::HorusPublisher;
 // use crate::horus_bridge::subscriber::HorusSubscriber;
 
@@ -34,7 +35,7 @@ impl Default for HorusSyncConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            publish_rate: 50.0, // 50 Hz default
+            publish_rate: 50.0,           // 50 Hz default
             last_publish: -f32::INFINITY, // Start with negative infinity so first publish always succeeds
         }
     }
@@ -139,7 +140,7 @@ pub fn track_horus_sync_stats_system(
     time: Res<Time>,
     config: Res<HorusSyncConfig>,
     mut stats: ResMut<HorusSyncStats>,
-    publisher: Res<HorusPublisher>,
+    _publisher: Res<HorusPublisher>,
 ) {
     if !config.enabled {
         return;
@@ -218,7 +219,7 @@ mod tests {
         config.update_time(0.0);
 
         assert!(!config.should_publish(0.05)); // 50ms < 100ms
-        assert!(config.should_publish(0.11));  // 110ms > 100ms
+        assert!(config.should_publish(0.11)); // 110ms > 100ms
     }
 
     #[test]

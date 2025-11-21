@@ -8,9 +8,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 // GPIO/PWM hardware support (Raspberry Pi)
 #[cfg(feature = "gpio-hardware")]
-use rppal::pwm::{Pwm, Channel, Polarity};
-#[cfg(feature = "gpio-hardware")]
 use rppal::gpio::{Gpio, OutputPin};
+#[cfg(feature = "gpio-hardware")]
+use rppal::pwm::{Channel, Polarity, Pwm};
 
 /// Motor driver backend type
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -63,10 +63,10 @@ pub struct DcMotorNode {
     // Configuration
     num_channels: u8,
     driver: MotorDriver,
-    max_duty_cycle: f32,  // Limit maximum speed (0.0-1.0)
-    min_duty_cycle: f32,  // Dead zone compensation
-    pwm_frequency: u32,   // PWM frequency in Hz
-    invert_channels: u8,  // Bitfield for channel inversion
+    max_duty_cycle: f32,   // Limit maximum speed (0.0-1.0)
+    min_duty_cycle: f32,   // Dead zone compensation
+    pwm_frequency: u32,    // PWM frequency in Hz
+    invert_channels: u8,   // Bitfield for channel inversion
     enable_feedback: bool, // Publish motor feedback
 
     // State tracking per channel (up to 8 channels)
@@ -77,13 +77,13 @@ pub struct DcMotorNode {
 
     // Hardware GPIO/PWM (per motor channel)
     #[cfg(feature = "gpio-hardware")]
-    pwm_channels: [Option<Pwm>; 8],          // PWM for speed control
+    pwm_channels: [Option<Pwm>; 8], // PWM for speed control
     #[cfg(feature = "gpio-hardware")]
-    dir1_pins: [Option<OutputPin>; 8],       // Direction pin 1
+    dir1_pins: [Option<OutputPin>; 8], // Direction pin 1
     #[cfg(feature = "gpio-hardware")]
-    dir2_pins: [Option<OutputPin>; 8],       // Direction pin 2
+    dir2_pins: [Option<OutputPin>; 8], // Direction pin 2
     #[cfg(feature = "gpio-hardware")]
-    standby_pin: Option<OutputPin>,          // TB6612 standby pin (shared)
+    standby_pin: Option<OutputPin>, // TB6612 standby pin (shared)
     hardware_enabled: bool,
     gpio_pin_numbers: [(u8, u8, u8); 8], // (pwm_pin, dir1_pin, dir2_pin) per motor
     standby_gpio_pin: u8,                // TB6612 standby pin number (0 = not used)
@@ -208,14 +208,18 @@ impl DcMotorNode {
 
     /// Initialize GPIO/PWM hardware for a motor channel
     #[cfg(feature = "gpio-hardware")]
-    fn init_hardware(&mut self, channel: u8, mut ctx: Option<&mut NodeInfo>) -> std::io::Result<()> {
+    fn init_hardware(
+        &mut self,
+        channel: u8,
+        mut ctx: Option<&mut NodeInfo>,
+    ) -> std::io::Result<()> {
         let idx = channel as usize;
         let (pwm_pin, dir1_pin, dir2_pin) = self.gpio_pin_numbers[idx];
 
         if pwm_pin == 0 || dir1_pin == 0 || dir2_pin == 0 {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
-                format!("GPIO pins not configured for motor {}", channel)
+                format!("GPIO pins not configured for motor {}", channel),
             ));
         }
 
@@ -226,7 +230,7 @@ impl DcMotorNode {
             _ => {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::InvalidInput,
-                    format!("Invalid PWM GPIO pin {} (use 12, 13, 18, or 19)", pwm_pin)
+                    format!("Invalid PWM GPIO pin {} (use 12, 13, 18, or 19)", pwm_pin),
                 ));
             }
         };
@@ -236,25 +240,34 @@ impl DcMotorNode {
             self.pwm_frequency as f64,
             0.0, // Start at 0% duty cycle
             Polarity::Normal,
-            true // enabled
-        ).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            true, // enabled
+        )
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
 
         self.pwm_channels[idx] = Some(pwm);
 
         // Initialize direction pins
         let gpio = Gpio::new().map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
 
-        let dir1 = gpio.get(dir1_pin).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?
+        let dir1 = gpio
+            .get(dir1_pin)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?
             .into_output();
         self.dir1_pins[idx] = Some(dir1);
 
-        let dir2 = gpio.get(dir2_pin).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?
+        let dir2 = gpio
+            .get(dir2_pin)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?
             .into_output();
         self.dir2_pins[idx] = Some(dir2);
 
         // Initialize standby pin for TB6612 (if configured)
-        if self.driver == MotorDriver::TB6612 && self.standby_gpio_pin != 0 && self.standby_pin.is_none() {
-            let standby = gpio.get(self.standby_gpio_pin)
+        if self.driver == MotorDriver::TB6612
+            && self.standby_gpio_pin != 0
+            && self.standby_pin.is_none()
+        {
+            let standby = gpio
+                .get(self.standby_gpio_pin)
                 .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?
                 .into_output();
             self.standby_pin = Some(standby);
@@ -274,7 +287,12 @@ impl DcMotorNode {
 
     /// Control motor via hardware GPIO/PWM
     #[cfg(feature = "gpio-hardware")]
-    fn set_motor_hardware(&mut self, channel: u8, duty_cycle: f32, enable: bool) -> std::io::Result<()> {
+    fn set_motor_hardware(
+        &mut self,
+        channel: u8,
+        duty_cycle: f32,
+        enable: bool,
+    ) -> std::io::Result<()> {
         let idx = channel as usize;
 
         let pwm = self.pwm_channels[idx].as_mut().ok_or_else(|| {
@@ -296,7 +314,8 @@ impl DcMotorNode {
                     // Coast: both direction pins low, PWM off
                     dir1.set_low();
                     dir2.set_low();
-                    pwm.set_duty_cycle(0.0).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+                    pwm.set_duty_cycle(0.0)
+                        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
                 }
                 MotorDriver::DRV8833 => {
                     // Coast: both PWM pins low
@@ -400,29 +419,37 @@ impl DcMotorNode {
 
         // Try hardware first, fall back to simulation
         #[cfg(feature = "gpio-hardware")]
-        if self.driver != MotorDriver::Simulation && (self.hardware_enabled || self.pwm_channels[idx].is_some()) {
+        if self.driver != MotorDriver::Simulation
+            && (self.hardware_enabled || self.pwm_channels[idx].is_some())
+        {
             // Initialize hardware if needed
             if self.pwm_channels[idx].is_none() {
                 let (pwm_pin, dir1_pin, dir2_pin) = self.gpio_pin_numbers[idx];
                 if pwm_pin != 0 && dir1_pin != 0 && dir2_pin != 0 {
                     if let Err(e) = self.init_hardware(channel, ctx.as_deref_mut()) {
                         // Failed to initialize - log detailed error (only once per channel)
-                        if self.last_command_time[idx] == SystemTime::now()
-                            .duration_since(UNIX_EPOCH)
-                            .unwrap()
-                            .as_millis() as u64
+                        if self.last_command_time[idx]
+                            == SystemTime::now()
+                                .duration_since(UNIX_EPOCH)
+                                .unwrap()
+                                .as_millis() as u64
                         {
                             ctx.log_warning(&format!(
                                 "DcMotorNode motor {}: Hardware unavailable - using SIMULATION mode",
                                 channel
                             ));
-                            ctx.log_warning(&format!("  Tried GPIO pins: PWM={}, DIR1={}, DIR2={}", pwm_pin, dir1_pin, dir2_pin));
+                            ctx.log_warning(&format!(
+                                "  Tried GPIO pins: PWM={}, DIR1={}, DIR2={}",
+                                pwm_pin, dir1_pin, dir2_pin
+                            ));
                             ctx.log_warning(&format!("  Error: {}", e));
                             ctx.log_warning("  Fix:");
                             ctx.log_warning("    1. Install: sudo apt install libraspberrypi-dev");
                             ctx.log_warning("    2. Use hardware PWM pins: GPIO 12, 13, 18, or 19");
                             ctx.log_warning("    3. Check motor driver wiring");
-                            ctx.log_warning("    4. Rebuild with: cargo build --features=\"gpio-hardware\"");
+                            ctx.log_warning(
+                                "    4. Rebuild with: cargo build --features=\"gpio-hardware\"",
+                            );
                         }
                         self.hardware_enabled = false;
                     } else {

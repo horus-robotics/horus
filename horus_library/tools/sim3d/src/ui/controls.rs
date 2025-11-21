@@ -105,7 +105,11 @@ pub fn controls_panel_system(
 
             // Pause/Resume button
             ui.horizontal(|ui| {
-                let button_text = if controls.paused { "▶ Resume" } else { "⏸ Pause" };
+                let button_text = if controls.paused {
+                    "▶ Resume"
+                } else {
+                    "⏸ Pause"
+                };
                 if ui.button(button_text).clicked() {
                     controls.toggle_pause();
                     if controls.paused {

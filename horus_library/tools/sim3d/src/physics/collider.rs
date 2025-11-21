@@ -7,11 +7,24 @@ pub struct PhysicsCollider {
 }
 
 pub enum ColliderShape {
-    Box { half_extents: Vec3 },
-    Sphere { radius: f32 },
-    Capsule { half_height: f32, radius: f32 },
-    Cylinder { half_height: f32, radius: f32 },
-    Mesh { vertices: Vec<Vec3>, indices: Vec<[u32; 3]> },
+    Box {
+        half_extents: Vec3,
+    },
+    Sphere {
+        radius: f32,
+    },
+    Capsule {
+        half_height: f32,
+        radius: f32,
+    },
+    Cylinder {
+        half_height: f32,
+        radius: f32,
+    },
+    Mesh {
+        vertices: Vec<Vec3>,
+        indices: Vec<[u32; 3]>,
+    },
 }
 
 pub struct ColliderBuilder {
@@ -55,27 +68,24 @@ impl ColliderBuilder {
 
     pub fn build(self) -> Collider {
         let shape = match self.shape {
-            ColliderShape::Box { half_extents } => SharedShape::cuboid(
-                half_extents.x,
-                half_extents.y,
-                half_extents.z,
-            ),
+            ColliderShape::Box { half_extents } => {
+                SharedShape::cuboid(half_extents.x, half_extents.y, half_extents.z)
+            }
             ColliderShape::Sphere { radius } => SharedShape::ball(radius),
-            ColliderShape::Capsule { half_height, radius } => {
-                SharedShape::capsule_y(half_height, radius)
-            }
-            ColliderShape::Cylinder { half_height, radius } => {
-                SharedShape::cylinder(half_height, radius)
-            }
+            ColliderShape::Capsule {
+                half_height,
+                radius,
+            } => SharedShape::capsule_y(half_height, radius),
+            ColliderShape::Cylinder {
+                half_height,
+                radius,
+            } => SharedShape::cylinder(half_height, radius),
             ColliderShape::Mesh { vertices, indices } => {
                 let vertices: Vec<_> = vertices
                     .iter()
                     .map(|v| nalgebra::Point3::new(v.x, v.y, v.z))
                     .collect();
-                let indices: Vec<_> = indices
-                    .iter()
-                    .map(|i| [i[0], i[1], i[2]])
-                    .collect();
+                let indices: Vec<_> = indices.iter().map(|i| [i[0], i[1], i[2]]).collect();
                 SharedShape::trimesh(vertices, indices)
             }
         };
@@ -102,11 +112,19 @@ pub fn create_sphere_collider(radius: f32) -> Collider {
 }
 
 pub fn create_capsule_collider(half_height: f32, radius: f32) -> Collider {
-    ColliderBuilder::new(ColliderShape::Capsule { half_height, radius }).build()
+    ColliderBuilder::new(ColliderShape::Capsule {
+        half_height,
+        radius,
+    })
+    .build()
 }
 
 pub fn create_cylinder_collider(half_height: f32, radius: f32) -> Collider {
-    ColliderBuilder::new(ColliderShape::Cylinder { half_height, radius }).build()
+    ColliderBuilder::new(ColliderShape::Cylinder {
+        half_height,
+        radius,
+    })
+    .build()
 }
 
 pub fn create_mesh_collider(vertices: Vec<Vec3>, indices: Vec<[u32; 3]>) -> Collider {

@@ -1,13 +1,13 @@
 use bevy::prelude::*;
 use rand::Rng;
 
+use crate::physics::rigid_body::RigidBodyComponent;
+use crate::physics::world::PhysicsWorld;
 use crate::rl::{
     Action, EpisodeInfo, Observation, RLTask, StepResult, TaskConfig, TaskParameters,
     TerminationReason,
 };
 use crate::robot::Robot;
-use crate::physics::rigid_body::RigidBodyComponent;
-use crate::physics::world::PhysicsWorld;
 
 /// Navigation task: Navigate to a goal position while avoiding obstacles
 pub struct NavigationTask {
@@ -57,11 +57,7 @@ impl NavigationTask {
         let distance = rng.gen_range(5.0..15.0);
         let angle = rng.gen_range(0.0..std::f32::consts::TAU);
 
-        self.goal_position = Vec3::new(
-            distance * angle.cos(),
-            0.5,
-            distance * angle.sin(),
-        );
+        self.goal_position = Vec3::new(distance * angle.cos(), 0.5, distance * angle.sin());
     }
 
     /// Find robot entity
@@ -387,22 +383,14 @@ impl RLTask for NavigationTask {
             if let Some(rot) = self.get_robot_orientation(world) {
                 let forward = rot * Vec3::X;
                 let heading_end = robot_pos + forward * 0.5;
-                gizmos.arrow(
-                    robot_pos,
-                    heading_end,
-                    Color::srgb(1.0, 0.0, 0.0),
-                );
+                gizmos.arrow(robot_pos, heading_end, Color::srgb(1.0, 0.0, 0.0));
             }
 
             // Draw velocity vector
             let velocity = self.get_robot_velocity(world);
             if velocity.length() > 0.01 {
                 let vel_end = robot_pos + velocity * 0.5;
-                gizmos.arrow(
-                    robot_pos,
-                    vel_end,
-                    Color::srgb(0.0, 0.5, 1.0),
-                );
+                gizmos.arrow(robot_pos, vel_end, Color::srgb(0.0, 0.5, 1.0));
             }
         }
 

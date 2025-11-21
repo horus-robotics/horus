@@ -296,8 +296,7 @@ fn main() {
 fn run_command(command: Commands) -> HorusResult<()> {
     match command {
         Commands::Init { name } => {
-            commands::init::run_init(name)
-                .map_err(|e| HorusError::Config(e.to_string()))
+            commands::init::run_init(name).map_err(|e| HorusError::Config(e.to_string()))
         }
 
         Commands::New {
@@ -464,10 +463,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                             let error = String::from_utf8_lossy(&result.stderr);
                             println!("\n{} Syntax error:", "[FAIL]".red().bold());
                             println!("  {}", error);
-                            return Err(HorusError::Config(format!(
-                                "C syntax error: {}",
-                                error
-                            )));
+                            return Err(HorusError::Config(format!("C syntax error: {}", error)));
                         }
                         Err(e) => {
                             println!("{}", "[WARNING]".yellow());
@@ -578,8 +574,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 } else {
                     println!("{}", "".red());
                     errors.push(
-                        "Missing or invalid 'language' field - must be: rust or python"
-                            .to_string(),
+                        "Missing or invalid 'language' field - must be: rust or python".to_string(),
                     );
                 }
 
@@ -1062,11 +1057,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 use std::process::Command;
 
                 // Check available space in current directory (where .horus will be created)
-                if let Ok(output) = Command::new("df")
-                    .arg("-BM")
-                    .arg(base_dir)
-                    .output()
-                {
+                if let Ok(output) = Command::new("df").arg("-BM").arg(base_dir).output() {
                     if output.status.success() {
                         let output_str = String::from_utf8_lossy(&output.stdout);
                         // Parse df output: Filesystem  1M-blocks  Used Available Use% Mounted
@@ -1215,7 +1206,10 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                     Err(e) => {
                                         println!("{}", "".yellow());
                                         if !quiet {
-                                            warn_msgs.push(format!("Could not parse Python imports: {}", e));
+                                            warn_msgs.push(format!(
+                                                "Could not parse Python imports: {}",
+                                                e
+                                            ));
                                         }
                                     }
                                 }
@@ -1252,7 +1246,11 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 println!("{} All checks passed!", "".green().bold());
                 Ok(())
             } else {
-                println!("{} {} error(s) found:\n", "[FAIL]".red().bold(), errors.len());
+                println!(
+                    "{} {} error(s) found:\n",
+                    "[FAIL]".red().bold(),
+                    errors.len()
+                );
                 for (i, err) in errors.iter().enumerate() {
                     println!("  {}. {}", i + 1, err);
                 }
@@ -1261,11 +1259,14 @@ fn run_command(command: Commands) -> HorusResult<()> {
             }
         }
 
-        Commands::Dashboard { port, tui, reset_password } => {
+        Commands::Dashboard {
+            port,
+            tui,
+            reset_password,
+        } => {
             // Reset password if requested
             if reset_password {
-                security::auth::reset_password()
-                    .map_err(|e| HorusError::Config(e.to_string()))?;
+                security::auth::reset_password().map_err(|e| HorusError::Config(e.to_string()))?;
             }
 
             if tui {
@@ -2196,7 +2197,11 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                     }
                                 }
                                 registry::PackageSource::Path { path } => {
-                                    println!("  {} {} (path dependency)", "[WARNING]".yellow(), pkg.name);
+                                    println!(
+                                        "  {} {} (path dependency)",
+                                        "[WARNING]".yellow(),
+                                        pkg.name
+                                    );
                                     println!("    Path: {}", path);
                                     println!("    {} Path dependencies are not portable across machines.", "Note:".dimmed());
                                     println!("    {} Please update horus.yaml with the correct path if needed.", "Tip:".dimmed());
@@ -2325,7 +2330,11 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                     }
                                 }
                                 registry::PackageSource::Path { path } => {
-                                    println!("  {} {} (path dependency)", "[WARNING]".yellow(), pkg.name);
+                                    println!(
+                                        "  {} {} (path dependency)",
+                                        "[WARNING]".yellow(),
+                                        pkg.name
+                                    );
                                     println!("    Path: {}", path);
                                     println!("    {} Path dependencies are not portable across machines.", "Note:".dimmed());
                                     println!("    {} Please update horus.yaml with the correct path if needed.", "Tip:".dimmed());
@@ -2494,7 +2503,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
             }
 
             Ok(())
-        },
+        }
 
         Commands::Sim3d {
             headless,
@@ -2578,7 +2587,9 @@ fn run_command(command: Commands) -> HorusResult<()> {
 
                 // Use features based on mode
                 if headless {
-                    cmd.arg("--no-default-features").arg("--features").arg("headless");
+                    cmd.arg("--no-default-features")
+                        .arg("--features")
+                        .arg("headless");
                 }
 
                 cmd.arg("--");
@@ -2610,7 +2621,7 @@ fn run_command(command: Commands) -> HorusResult<()> {
             }
 
             Ok(())
-        },
+        }
 
         Commands::Completion { shell } => {
             // Hidden command used by install.sh for automatic completion setup
@@ -2671,7 +2682,8 @@ fn parse_python_imports(python_file: &Path) -> Result<Vec<String>, std::io::Erro
 
         // Parse "import X" or "import X as Y"
         if let Some(rest) = trimmed.strip_prefix("import ") {
-            let module = rest.split_whitespace()
+            let module = rest
+                .split_whitespace()
                 .next()
                 .unwrap_or("")
                 .split('.')
@@ -2700,12 +2712,47 @@ fn parse_python_imports(python_file: &Path) -> Result<Vec<String>, std::io::Erro
 
     // Filter out standard library and relative imports
     let stdlib_modules = vec![
-        "os", "sys", "re", "json", "math", "time", "datetime", "collections",
-        "itertools", "functools", "pathlib", "typing", "abc", "io", "logging",
-        "argparse", "subprocess", "threading", "multiprocessing", "queue",
-        "socket", "http", "urllib", "email", "xml", "html", "random", "string",
-        "unittest", "pytest", "asyncio", "concurrent", "pickle", "copy", "enum",
-        "dataclasses", "contextlib", "warnings", "traceback", "pdb", "timeit",
+        "os",
+        "sys",
+        "re",
+        "json",
+        "math",
+        "time",
+        "datetime",
+        "collections",
+        "itertools",
+        "functools",
+        "pathlib",
+        "typing",
+        "abc",
+        "io",
+        "logging",
+        "argparse",
+        "subprocess",
+        "threading",
+        "multiprocessing",
+        "queue",
+        "socket",
+        "http",
+        "urllib",
+        "email",
+        "xml",
+        "html",
+        "random",
+        "string",
+        "unittest",
+        "pytest",
+        "asyncio",
+        "concurrent",
+        "pickle",
+        "copy",
+        "enum",
+        "dataclasses",
+        "contextlib",
+        "warnings",
+        "traceback",
+        "pdb",
+        "timeit",
     ];
 
     imports.retain(|module| !stdlib_modules.contains(&module.as_str()) && module != "horus");

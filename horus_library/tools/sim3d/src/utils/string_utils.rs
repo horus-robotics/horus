@@ -46,8 +46,7 @@ impl StringUtils {
                 let mut chars = word.chars();
                 match chars.next() {
                     Some(first) => {
-                        first.to_uppercase().collect::<String>()
-                            + &chars.as_str().to_lowercase()
+                        first.to_uppercase().collect::<String>() + &chars.as_str().to_lowercase()
                     }
                     None => String::new(),
                 }
@@ -222,8 +221,7 @@ impl PathUtils {
 
     /// Convert file:// URI to path
     pub fn resolve_file_uri(uri: &str) -> Option<PathBuf> {
-        uri.strip_prefix("file://")
-            .map(|path| PathBuf::from(path))
+        uri.strip_prefix("file://").map(|path| PathBuf::from(path))
     }
 
     /// Get relative path from base to target

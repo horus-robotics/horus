@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 use rand::thread_rng;
 
-use crate::sensors::noise::{NoiseModel, GaussianNoise};
 use crate::sensors::depth::DepthCamera;
+use crate::sensors::noise::{GaussianNoise, NoiseModel};
 
 /// RGB-D camera sensor (combines color and depth like Kinect/RealSense)
 #[derive(Component, Clone)]
@@ -49,7 +49,7 @@ impl RGBDCamera {
             color_image: vec![0; num_pixels * 3], // RGB = 3 bytes per pixel
             depth_image: vec![0.0; num_pixels],
             depth_noise_std_dev: 0.01, // 1cm standard deviation
-            color_noise_std_dev: 2.0,   // Small color noise
+            color_noise_std_dev: 2.0,  // Small color noise
         }
     }
 
@@ -187,7 +187,7 @@ impl RGBDCamera {
     }
 
     /// Check if sensor needs update based on rate
-    pub fn should_update(&self, delta_time: f32) -> bool {
+    pub fn should_update(&self, _delta_time: f32) -> bool {
         if self.rate_hz <= 0.0 {
             return false;
         }
@@ -204,8 +204,11 @@ impl RGBDCamera {
                 if *depth >= self.min_range && *depth <= self.max_range {
                     // Noise increases with distance (quadratic model)
                     let distance_factor = 1.0 + 0.01 * depth.powi(2);
-                    let depth_noise = GaussianNoise::zero_mean(self.depth_noise_std_dev * distance_factor);
-                    *depth = depth_noise.apply(*depth, &mut rng).clamp(self.min_range, self.max_range);
+                    let depth_noise =
+                        GaussianNoise::zero_mean(self.depth_noise_std_dev * distance_factor);
+                    *depth = depth_noise
+                        .apply(*depth, &mut rng)
+                        .clamp(self.min_range, self.max_range);
                 }
             }
         }

@@ -166,7 +166,6 @@ if [ -d "$CACHE_DIR" ]; then
         "horus_macros:Proc macros"
         "horus_library:Standard library"
         "horus_c:C bindings"
-        "horus_cpp:C++ Framework"
         "horus_py:Python bindings"
     )
 
@@ -178,7 +177,7 @@ if [ -d "$CACHE_DIR" ]; then
             COMP_VERSION=$(basename "$COMP_DIR" | sed "s/${comp}@//")
             echo -e "  $CHECK $desc: v$COMP_VERSION"
         else
-            if [ "$comp" = "horus_c" ] || [ "$comp" = "horus_cpp" ] || [ "$comp" = "horus_py" ]; then
+            if [ "$comp" = "horus_c" ] || [ "$comp" = "horus_py" ]; then
                 echo -e "  $INFO $desc: Not installed (optional)"
             else
                 echo -e "  $CROSS $desc: Not installed"
@@ -286,13 +285,6 @@ if [ -f "$HORUS_DIR/cache/horus_c@"*/lib/libhorus_c.so ] || [ -f "$HORUS_DIR/cac
     echo -e "  $CHECK C bindings: Installed"
 else
     echo -e "  $INFO C bindings: Not installed"
-fi
-
-# C++ Framework
-if [ -f "$HORUS_DIR/cache/horus_cpp@"*/lib/libhorus_cpp.so ] || [ -f "$HORUS_DIR/cache/horus_cpp@"*/lib/libhorus_cpp.dylib ]; then
-    echo -e "  $CHECK C++ Framework: Installed"
-else
-    echo -e "  $INFO C++ Framework: Not installed"
 fi
 
 echo ""

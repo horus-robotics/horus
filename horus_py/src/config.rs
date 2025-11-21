@@ -1,6 +1,4 @@
-use horus::scheduling::config::{
-    RobotPreset, SchedulerConfig,
-};
+use horus::scheduling::config::{RobotPreset, SchedulerConfig};
 use pyo3::prelude::*;
 
 /// Robot-specific configuration presets for quick setup

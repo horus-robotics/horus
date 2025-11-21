@@ -1,13 +1,13 @@
 use bevy::prelude::*;
 use rand::Rng;
 
+use crate::physics::rigid_body::RigidBodyComponent;
+use crate::physics::world::PhysicsWorld;
 use crate::rl::{
     Action, EpisodeInfo, Observation, RLTask, StepResult, TaskConfig, TaskParameters,
     TerminationReason,
 };
 use crate::robot::Robot;
-use crate::physics::rigid_body::RigidBodyComponent;
-use crate::physics::world::PhysicsWorld;
 
 /// Balancing task: Balance an inverted pendulum or cart-pole system
 pub struct BalancingTask {
@@ -274,11 +274,7 @@ impl RLTask for BalancingTask {
         let ang_vel_penalty = -ang_vel.z.abs() * 0.01;
 
         // Heavy penalty for falling
-        let failure_penalty = if !self.is_balanced(world) {
-            -10.0
-        } else {
-            0.0
-        };
+        let failure_penalty = if !self.is_balanced(world) { -10.0 } else { 0.0 };
 
         angle_reward + position_reward * 0.5 + velocity_penalty + ang_vel_penalty + failure_penalty
     }
@@ -350,7 +346,7 @@ impl RLTask for BalancingTask {
         }
 
         // Draw pole angle indicator
-        let angle = self.get_pole_angle(world);
+        let _angle = self.get_pole_angle(world);
         let balanced = self.is_balanced(world);
         let angle_color = if balanced {
             Color::srgb(0.0, 1.0, 0.0) // Green if balanced

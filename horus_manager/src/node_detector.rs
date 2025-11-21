@@ -14,11 +14,9 @@ const NODE_FEATURES: &[(&str, &[&str])] = &[
     ("CameraNode", &["opencv-backend"]),
     ("DepthCameraNode", &["realsense"]),
     ("ImageProcessorNode", &["opencv-backend"]),
-
     // Input devices
     ("JoystickInputNode", &["gilrs"]),
     ("KeyboardInputNode", &["crossterm"]),
-
     // Sensors
     ("BatteryMonitorNode", &["i2c-hardware"]),
     ("ImuNode", &["bno055-imu"]), // Will detect specific backend later
@@ -27,7 +25,6 @@ const NODE_FEATURES: &[(&str, &[&str])] = &[
     ("ForceTorqueSensorNode", &["netft"]),
     ("EncoderNode", &["gpio-hardware"]),
     ("UltrasonicNode", &["gpio-hardware"]),
-
     // Motors/Actuators
     ("BldcMotorNode", &["gpio-hardware"]),
     ("DcMotorNode", &["gpio-hardware"]),
@@ -35,7 +32,6 @@ const NODE_FEATURES: &[(&str, &[&str])] = &[
     ("ServoControllerNode", &["gpio-hardware"]),
     ("DynamixelNode", &["serial-hardware"]),
     ("RoboclawMotorNode", &["serial-hardware"]),
-
     // Industrial interfaces
     ("CanBusNode", &["can-hardware"]),
     ("DigitalIONode", &["gpio-hardware"]),
@@ -43,7 +39,6 @@ const NODE_FEATURES: &[(&str, &[&str])] = &[
     ("ModbusNode", &["modbus-hardware"]),
     ("SerialNode", &["serial-hardware"]),
     ("SpiBusNode", &["spi-hardware"]),
-
     // Hardware-independent nodes (no features needed)
     ("CollisionDetectorNode", &[]),
     ("DifferentialDriveNode", &[]),

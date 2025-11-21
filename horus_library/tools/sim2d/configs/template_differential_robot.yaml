@@ -1,0 +1,54 @@
+# Differential Drive Robot Template
+# This is a template for a standard differential drive robot (two independent wheels)
+# Copy and modify this file for your custom robot
+
+name: "differential_robot"
+topic_prefix: "/robot"  # HORUS topic prefix for all robot messages
+
+# Initial position and orientation
+position: [0.0, 0.0]  # [x, y] in meters
+
+# Physical dimensions
+width: 0.6   # meters (side-to-side)
+length: 0.9  # meters (front-to-back)
+
+# Performance
+max_speed: 2.0  # meters per second
+
+# Visual appearance
+color: [0.2, 0.6, 1.0]  # RGB color (0.0-1.0 range)
+
+# Robot kinematics
+kinematics:
+  kinematic_type: differential  # Two-wheeled differential drive
+  # No additional parameters needed for differential drive
+
+# LIDAR sensor configuration
+lidar:
+  enabled: true
+  range_max: 10.0      # Maximum detection range (meters)
+  range_min: 0.1       # Minimum detection range (meters)
+  num_rays: 360        # Number of laser rays (360 = 1 degree resolution)
+  angle_min: -3.14159  # Start angle (radians, -π = behind robot)
+  angle_max: 3.14159   # End angle (radians, π = behind robot)
+  # Published to: <topic_prefix>/lidar
+
+# Camera sensor configuration
+camera:
+  enabled: false  # Set to true to enable camera
+  # Note: Camera feature requires additional configuration
+  # Published to: <topic_prefix>/camera
+
+# Additional sensors (automatically enabled):
+# - Odometry: <topic_prefix>/odom
+# - IMU: <topic_prefix>/imu
+# - Ground truth pose: <topic_prefix>/pose
+
+# Control interface:
+# - Subscribe to: <topic_prefix>/cmd_vel (CmdVel messages)
+#   - linear: forward/backward velocity (m/s)
+#   - angular: rotational velocity (rad/s)
+
+# Example usage:
+#   sim2d --robot configs/template_differential_robot.yaml
+#   horus run "echo 'CmdVel(1.0, 0.0)' > /robot/cmd_vel"

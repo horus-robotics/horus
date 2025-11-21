@@ -153,8 +153,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Current settings:");
     println!("  - Mapping: {:?}", joystick.get_button_mapping());
     println!("  - Global deadzone: {:.2}", joystick.get_deadzone());
-    println!("  - Left stick X deadzone: {:.2}", joystick.get_axis_deadzone(0));
-    println!("  - Left stick Y deadzone: {:.2}", joystick.get_axis_deadzone(1));
+    println!(
+        "  - Left stick X deadzone: {:.2}",
+        joystick.get_axis_deadzone(0)
+    );
+    println!(
+        "  - Left stick Y deadzone: {:.2}",
+        joystick.get_axis_deadzone(1)
+    );
     println!("\nPress buttons and move sticks to see filtered input...");
     println!("Press Ctrl+C to exit\n");
 

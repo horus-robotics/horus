@@ -7,6 +7,11 @@ version = "0.1.5"
 edition = "2021"
 description = "Simple 2D robotics simulator with physics"
 
+[lib]
+name = "sim2d"
+path = "src/lib.rs"
+crate-type = ["lib", "cdylib"]
+
 [[bin]]
 name = "sim2d"
 path = "src/main.rs"
@@ -29,11 +34,26 @@ rfd = "0.15"  # File picker dialog
 anyhow = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_yaml = "0.9"
+serde_json = "1.0"
+csv = "1.3"
 toml = "0.8"
 image = { version = "0.24", features = ["png", "jpeg"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 bytemuck = { version = "1.0", features = ["derive"] }
+chrono = { version = "0.4", features = ["serde"] }
+rand = "0.8"
+rand_distr = "0.4"
 
 # CLI
 clap = { workspace = true, features = ["derive"] }
+
+# Python bindings (optional)
+pyo3 = { version = "0.22", features = ["extension-module"], optional = true }
+
+[features]
+default = []
+python = ["pyo3"]
+
+[dev-dependencies]
+tempfile = "3.8"

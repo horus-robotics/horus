@@ -3,7 +3,7 @@
 /// Both approaches work identically - pick based on preference:
 /// - Builder pattern: Maximum flexibility
 /// - Convenience constructors: Quick common patterns
-use horus_core::scheduling::{Scheduler, config::SchedulerConfig};
+use horus_core::scheduling::{config::SchedulerConfig, Scheduler};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("=== HORUS Scheduler API Patterns ===\n");
@@ -69,13 +69,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("-----------------------------");
 
     let mut config = SchedulerConfig::hard_realtime();
-    config.timing.global_rate_hz = 2000.0;  // Override to 2kHz
+    config.timing.global_rate_hz = 2000.0; // Override to 2kHz
 
     let _scheduler3 = Scheduler::new()
         .with_config(config)
         .with_capacity(64)
         // Note: Learning is ENABLED (default) - mixed workload
-        .with_safety_monitor(5)  // More tolerant (5 misses)
+        .with_safety_monitor(5) // More tolerant (5 misses)
         .with_name("MixedWorkload");
 
     println!("[OK] Custom composition:");

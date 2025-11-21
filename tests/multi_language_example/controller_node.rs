@@ -60,7 +60,7 @@ fn main() -> Result<()> {
     scheduler.add(
         Box::new(ControllerNode::new()?),
         0,          // priority
-        Some(true)  // enable logging
+        Some(true), // enable logging
     );
 
     scheduler.run()

@@ -201,7 +201,7 @@ The installer will:
 - Build all packages in release mode
 - Install `horus` CLI to `~/.cargo/bin/`
 - Install runtime libraries to `~/.horus/cache/`
-- Install Python bindings (if Python 3.9+ detected)
+- Install Python bindings from PyPI (if Python 3.9+ detected)
 
 ### Verify Installation
 
@@ -657,8 +657,17 @@ This demonstrates:
 
 ### Python
 
-Python bindings are automatically installed with `./install.sh` (requires Python 3.9+).
+Python bindings can be installed via pip (recommended) or automatically with `./install.sh`:
 
+```bash
+# Option 1: Install from PyPI (recommended - fast, pre-built)
+pip install horus
+
+# Option 2: Install with main HORUS installation
+./install.sh  # Auto-installs Python bindings if Python 3.9+ detected
+```
+
+**Quick Example:**
 ```python
 import horus
 
@@ -806,9 +815,11 @@ We welcome contributions to HORUS! Whether you're fixing bugs, adding features, 
 - For major features, open an issue first to discuss the approach
 
 **Development workflow:**
-1. Fork the repository and create a feature branch
+1. Fork the repository and create a feature branch from `dev`
 2. Make your changes with appropriate tests
-3. Submit a pull request with a clear description
+3. Submit a pull request to the `dev` branch (not `main`)
+
+**Important:** All pull requests should target the `dev` branch. The `main` branch is reserved for stable releases only.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for complete guidelines including code style, testing requirements, and PR process.
 

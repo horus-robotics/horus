@@ -88,8 +88,24 @@ urdf-rs = "0.8"
 roxmltree = "0.20"  # XML parsing
 
 # Asset Loading
-gltf = "1.4"
-image = "0.25"
+gltf = { version = "1.4", features = ["extras", "names"] }
+image = { version = "0.25", features = ["png", "jpeg", "dds", "tga"] }
+
+# Mesh Loading
+tobj = "4.0"              # OBJ loader
+stl_io = "0.7"            # STL loader
+collada = "0.15"          # COLLADA loader
+
+# Validation
+jsonschema = "0.18"       # JSON Schema validation
+schemars = "0.8"          # Schema generation
+
+# Asset Management
+lru = "0.12"              # LRU cache
+dashmap = "6.0"           # Concurrent hashmap
+
+# Geometry Processing
+lyon_tessellation = "1.0" # Tessellation
 
 # Utilities
 anyhow = "1.0"
@@ -100,9 +116,11 @@ serde_json = "1.0"
 rmp-serde = "1.1"
 chrono = "0.4"
 bytemuck = { version = "1.18", features = ["derive"] }
+flate2 = "1.0"  # Gzip compression
 
 # CLI
 clap = { version = "4.5", features = ["derive"] }
+glob = "0.3"              # File pattern matching
 
 # Parallel Processing (for RL)
 rayon = "1.10"
@@ -121,13 +139,31 @@ glam = "0.29"  # Bevy uses glam internally
 # Random number generation
 rand = "0.8"
 rand_distr = "0.4"
+fastrand = "2.0"
+
+# Procedural generation
+noise = "0.9"
 
 # Path utilities
 pathdiff = "0.2"
+shellexpand = "3.1"  # Tilde expansion in paths
+
+# Bit flags
+bitflags = "2.6"
+
+# GPU Acceleration
+wgpu = "23.0"
+futures = "0.3"
+pollster = "0.4"  # Block on async for GPU initialization
+
+# Plugin System
+libloading = "0.8"  # Dynamic library loading
+toml = "0.8"        # TOML configuration parsing
 
 [dev-dependencies]
 criterion = "0.5"
 approx = "0.5"
+tempfile = "3.8"
 
 [build-dependencies]
 # None required unless adding shader compilation

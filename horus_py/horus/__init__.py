@@ -27,6 +27,10 @@ try:
         PyRobotPreset as RobotPreset,
         PySchedulerConfig as SchedulerConfig,
         get_version,
+        # sim2d Python API
+        Sim2D,
+        RobotConfigPy,
+        WorldConfigPy,
     )
 except ImportError:
     # Fallback for testing without Rust bindings
@@ -1128,10 +1132,37 @@ __all__ = [
     "sleep",
     "gather",
     "wait_for",
+    # ML utilities
+    "MLNodeBase",
+    "PyTorchInferenceNode",
+    "TensorFlowInferenceNode",
+    "ONNXInferenceNode",
+    "PerformanceMonitor",
+    "preprocess_image_imagenet",
+    "preprocess_image_yolo",
+    "nms",
+    "calculate_iou",
+    # sim2d API
+    "Sim2D",
+    "RobotConfigPy",
+    "WorldConfigPy",
 ]
 
 # Import simple async API
 from .async_node import AsyncNode, AsyncHub, sleep, gather, wait_for
+
+# Import ML utilities
+from .ml_utils import (
+    MLNodeBase,
+    PyTorchInferenceNode,
+    TensorFlowInferenceNode,
+    ONNXInferenceNode,
+    PerformanceMonitor,
+    preprocess_image_imagenet,
+    preprocess_image_yolo,
+    nms,
+    calculate_iou,
+)
 
 # NOTE: Hub is now imported directly from Rust (no alias needed)
 # Old: Hub = _PyHub (removed - Hub is imported directly on line 24)

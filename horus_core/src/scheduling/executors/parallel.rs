@@ -1,3 +1,24 @@
+/// Parallel executor module for concurrent node execution
+///
+/// # Architecture Constraint
+///
+/// Due to Rust's ownership model and borrow checker, true parallel execution of
+/// nodes with mutable contexts is challenging. Each node requires mutable access
+/// to its NodeInfo context during tick(), which prevents multiple nodes from
+/// executing simultaneously without complex workarounds like:
+/// - Arc<Mutex> wrappers (adding synchronization overhead)
+/// - Message passing architectures
+/// - Unsafe code with manual synchronization
+///
+/// The current implementation provides the infrastructure for parallel execution
+/// but is limited by these constraints. For production use, consider:
+/// - Using the AsyncIOExecutor for I/O-bound nodes
+/// - JIT compilation for ultra-fast nodes
+/// - Dependency-based level execution in the main scheduler
+///
+/// This is a fundamental trade-off in Rust's design - we get memory safety
+/// and data race prevention at the cost of some parallel execution patterns
+/// being more difficult to implement.
 use crate::core::node::{Node, NodeInfo};
 use crate::error::HorusResult;
 use std::thread;
@@ -107,9 +128,11 @@ impl ParallelExecutor {
     /// Execute multiple levels sequentially, with parallelism within each level
     /// Levels represent topological ordering - level N+1 depends on level N
     ///
-    /// Note: Currently executes nodes within each level sequentially.
-    /// Parallel execution within levels is reserved for a future enhancement
-    /// to ensure thread safety with mutable node references.
+    /// Due to Rust's ownership constraints, parallel execution within levels
+    /// is currently implemented sequentially. True parallel execution would
+    /// require Arc<Mutex> wrappers or unsafe code patterns that could introduce
+    /// data races. The infrastructure is ready for future parallel enhancements
+    /// when a safe pattern is identified.
     pub fn execute_levels(
         &self,
         levels: &[Vec<usize>], // Each level contains node indices
@@ -117,7 +140,15 @@ impl ParallelExecutor {
         contexts: &mut [Option<NodeInfo>],
         logging_enabled: &[bool],
     ) -> HorusResult<()> {
+        // Process each dependency level sequentially
         for level in levels {
+            if level.is_empty() {
+                continue;
+            }
+
+            // For now, execute nodes in level sequentially
+            // True parallel execution requires overcoming Rust's borrow checker
+            // constraints for mutable references across threads
             for &idx in level {
                 if idx < nodes.len() {
                     let ctx = if logging_enabled[idx] {

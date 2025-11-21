@@ -9,9 +9,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 // I2C hardware support
 #[cfg(feature = "i2c-hardware")]
-use i2cdev::linux::{LinuxI2CDevice, LinuxI2CError};
-#[cfg(feature = "i2c-hardware")]
 use i2cdev::core::I2CDevice;
+#[cfg(feature = "i2c-hardware")]
+use i2cdev::linux::{LinuxI2CDevice, LinuxI2CError};
 
 /// I2C Bus Communication Node
 ///
@@ -19,8 +19,8 @@ use i2cdev::core::I2CDevice;
 /// EEPROMs, and other I2C peripherals. Supports multiple I2C buses
 /// and device addressing.
 pub struct I2cBusNode {
-    request_subscriber: Hub<I2cMessage>,  // I2C transaction requests
-    response_publisher: Hub<I2cMessage>,  // I2C transaction responses
+    request_subscriber: Hub<I2cMessage>, // I2C transaction requests
+    response_publisher: Hub<I2cMessage>, // I2C transaction responses
 
     // Hardware devices (per I2C address)
     #[cfg(feature = "i2c-hardware")]
@@ -51,7 +51,11 @@ impl I2cBusNode {
     }
 
     /// Create with custom bus number and topics
-    pub fn new_with_config(bus_number: u8, request_topic: &str, response_topic: &str) -> Result<Self> {
+    pub fn new_with_config(
+        bus_number: u8,
+        request_topic: &str,
+        response_topic: &str,
+    ) -> Result<Self> {
         Ok(Self {
             request_subscriber: Hub::new(request_topic)?,
             response_publisher: Hub::new(response_topic)?,
@@ -112,7 +116,11 @@ impl I2cBusNode {
     }
 
     /// Execute I2C transaction
-    fn execute_transaction(&mut self, mut request: I2cMessage, mut ctx: Option<&mut NodeInfo>) -> I2cMessage {
+    fn execute_transaction(
+        &mut self,
+        mut request: I2cMessage,
+        mut ctx: Option<&mut NodeInfo>,
+    ) -> I2cMessage {
         self.transactions_total += 1;
         request.bus_number = self.bus_number;
         request.clock_speed = self.clock_speed;
@@ -162,10 +170,14 @@ impl I2cBusNode {
                         ctx.log_warning(&format!("  Error: {}", e));
                         ctx.log_warning("  Fix:");
                         ctx.log_warning("    1. Install: sudo apt install i2c-tools");
-                        ctx.log_warning("    2. Enable I2C: sudo raspi-config -> Interface Options -> I2C");
+                        ctx.log_warning(
+                            "    2. Enable I2C: sudo raspi-config -> Interface Options -> I2C",
+                        );
                         ctx.log_warning("    3. Add user to group: sudo usermod -a -G i2c $USER");
                         ctx.log_warning("    4. Reboot or re-login");
-                        ctx.log_warning("    5. Rebuild with: cargo build --features=\"i2c-hardware\"");
+                        ctx.log_warning(
+                            "    5. Rebuild with: cargo build --features=\"i2c-hardware\"",
+                        );
                     }
                     self.hardware_enabled = false;
                     // Fall through to simulation
@@ -179,16 +191,14 @@ impl I2cBusNode {
                 I2cMessage::TYPE_READ => {
                     // Read data from simulated device
                     let len = request.data_length.min(device_memory.len() as u8);
-                    request.data[..len as usize]
-                        .copy_from_slice(&device_memory[..len as usize]);
+                    request.data[..len as usize].copy_from_slice(&device_memory[..len as usize]);
                     request.success = true;
                     request.error_code = 0;
                 }
                 I2cMessage::TYPE_WRITE => {
                     // Write data to simulated device
                     let len = request.data_length.min(device_memory.len() as u8);
-                    device_memory[..len as usize]
-                        .copy_from_slice(&request.data[..len as usize]);
+                    device_memory[..len as usize].copy_from_slice(&request.data[..len as usize]);
                     request.success = true;
                     request.error_code = 0;
                 }
@@ -197,8 +207,7 @@ impl I2cBusNode {
                     let reg = request.register_address as usize;
                     let len = request.data_length as usize;
                     if reg + len <= device_memory.len() {
-                        request.data[..len]
-                            .copy_from_slice(&device_memory[reg..reg + len]);
+                        request.data[..len].copy_from_slice(&device_memory[reg..reg + len]);
                         request.success = true;
                         request.error_code = 0;
                     } else {
@@ -211,8 +220,7 @@ impl I2cBusNode {
                     let reg = request.register_address as usize;
                     let len = request.data_length as usize;
                     if reg + len <= device_memory.len() {
-                        device_memory[reg..reg + len]
-                            .copy_from_slice(&request.data[..len]);
+                        device_memory[reg..reg + len].copy_from_slice(&request.data[..len]);
                         request.success = true;
                         request.error_code = 0;
                     } else {
@@ -271,7 +279,10 @@ impl I2cBusNode {
             }
         }
 
-        ctx.log_info(&format!("I2C scan complete: {} devices found", found_devices.len()));
+        ctx.log_info(&format!(
+            "I2C scan complete: {} devices found",
+            found_devices.len()
+        ));
 
         found_devices
     }
@@ -280,7 +291,11 @@ impl I2cBusNode {
 
     /// Open I2C hardware device for a specific address
     #[cfg(feature = "i2c-hardware")]
-    fn open_hardware_device(&mut self, address: u16, mut ctx: Option<&mut NodeInfo>) -> std::io::Result<()> {
+    fn open_hardware_device(
+        &mut self,
+        address: u16,
+        mut ctx: Option<&mut NodeInfo>,
+    ) -> std::io::Result<()> {
         // Construct device path: /dev/i2c-{bus}
         let device_path = format!("/dev/i2c-{}", self.bus_number);
 
@@ -304,9 +319,12 @@ impl I2cBusNode {
             self.open_hardware_device(request.device_address, None)?;
         }
 
-        let dev = self.i2c_devices.get_mut(&request.device_address).ok_or_else(|| {
-            std::io::Error::new(std::io::ErrorKind::NotFound, "I2C device not found")
-        })?;
+        let dev = self
+            .i2c_devices
+            .get_mut(&request.device_address)
+            .ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::NotFound, "I2C device not found")
+            })?;
 
         // Execute based on transaction type
         match request.transaction_type {
@@ -339,7 +357,7 @@ impl I2cBusNode {
             _ => {
                 return Err(std::io::Error::new(
                     std::io::ErrorKind::InvalidInput,
-                    "Unknown transaction type"
+                    "Unknown transaction type",
                 ));
             }
         }

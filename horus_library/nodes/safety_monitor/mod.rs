@@ -69,10 +69,10 @@ impl SafetyMonitorNode {
     pub fn new_with_topic(topic: &str) -> Result<Self> {
         // Create safety layer with default limits
         let mut safety_layer = SafetyLayer::new();
-        safety_layer.set_max_velocity(2.0);           // 2 m/s max
-        safety_layer.set_min_obstacle_distance(0.3);  // 30cm min distance
-        safety_layer.set_min_battery(15.0);           // 15% battery
-        safety_layer.set_max_temperature(80.0);       // 80°C max
+        safety_layer.set_max_velocity(2.0); // 2 m/s max
+        safety_layer.set_min_obstacle_distance(0.3); // 30cm min distance
+        safety_layer.set_min_battery(15.0); // 15% battery
+        safety_layer.set_max_temperature(80.0); // 80°C max
 
         Ok(Self {
             publisher: Hub::new(topic)?,
@@ -254,7 +254,7 @@ impl SafetyMonitorNode {
             self.current_velocity,
             self.obstacle_distance,
             self.battery_percent,
-            self.temperature
+            self.temperature,
         );
 
         // Map algorithm safety status to node status level
@@ -265,7 +265,10 @@ impl SafetyMonitorNode {
         };
 
         // Return the worst (highest priority) status
-        resource_status.max(comm_status).max(custom_status).max(safety_status)
+        resource_status
+            .max(comm_status)
+            .max(custom_status)
+            .max(safety_status)
     }
 
     fn publish_safety_status(&self) {

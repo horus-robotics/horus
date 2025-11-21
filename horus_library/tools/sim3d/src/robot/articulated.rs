@@ -132,14 +132,14 @@ pub fn apply_joint_control_system(
         }
 
         // Compute control output
-        let control_output = controller.compute_torque(
-            joint_state.position,
-            joint_state.velocity,
-            dt,
-        );
+        let control_output =
+            controller.compute_torque(joint_state.position, joint_state.velocity, dt);
 
         // Apply control to physics joint
-        if let Some(impulse_joint) = physics_world.impulse_joint_set.get_mut(physics_joint.handle) {
+        if let Some(impulse_joint) = physics_world
+            .impulse_joint_set
+            .get_mut(physics_joint.handle)
+        {
             match physics_joint.joint_type {
                 JointType::Revolute => {
                     // Apply motor torque for revolute joint
@@ -148,12 +148,14 @@ pub fn apply_joint_control_system(
                             // Use motor with force-based control
                             impulse_joint.data.set_motor(
                                 JointAxis::AngX,
-                                0.0,                  // target_pos (not used for force-based)
-                                0.0,                  // target_vel
-                                control_output,       // stiffness (acts as torque)
-                                0.0,                  // damping
+                                0.0,            // target_pos (not used for force-based)
+                                0.0,            // target_vel
+                                control_output, // stiffness (acts as torque)
+                                0.0,            // damping
                             );
-                            impulse_joint.data.set_motor_model(JointAxis::AngX, MotorModel::ForceBased);
+                            impulse_joint
+                                .data
+                                .set_motor_model(JointAxis::AngX, MotorModel::ForceBased);
                         }
                         ControlMode::Velocity => {
                             // Use velocity motor
@@ -176,7 +178,9 @@ pub fn apply_joint_control_system(
                                 control_output,
                                 0.0,
                             );
-                            impulse_joint.data.set_motor_model(JointAxis::LinX, MotorModel::ForceBased);
+                            impulse_joint
+                                .data
+                                .set_motor_model(JointAxis::LinX, MotorModel::ForceBased);
                         }
                         ControlMode::Velocity => {
                             impulse_joint.data.set_motor_velocity(
@@ -307,7 +311,9 @@ impl JointTrajectory {
             let last = self.points.last().unwrap();
             return Some((
                 last.positions.clone(),
-                last.velocities.clone().unwrap_or_else(|| vec![0.0; last.positions.len()]),
+                last.velocities
+                    .clone()
+                    .unwrap_or_else(|| vec![0.0; last.positions.len()]),
             ));
         }
 
@@ -323,7 +329,8 @@ impl JointTrajectory {
         let mut velocities = Vec::new();
 
         for i in 0..prev_point.positions.len() {
-            let pos = prev_point.positions[i] + t * (next_point.positions[i] - prev_point.positions[i]);
+            let pos =
+                prev_point.positions[i] + t * (next_point.positions[i] - prev_point.positions[i]);
             positions.push(pos);
 
             let vel = if let (Some(prev_vel), Some(next_vel)) =
@@ -524,7 +531,8 @@ impl IKSolver {
                 joint_angles[joint_idx] += rotation_angle * damping;
 
                 // Clamp to reasonable limits (±π for most joints)
-                joint_angles[joint_idx] = joint_angles[joint_idx].clamp(-std::f32::consts::PI, std::f32::consts::PI);
+                joint_angles[joint_idx] =
+                    joint_angles[joint_idx].clamp(-std::f32::consts::PI, std::f32::consts::PI);
 
                 // Update end-effector position
                 ee_position = self.forward_kinematics(&joint_angles, joint_chain);
@@ -605,14 +613,24 @@ pub mod helpers {
     use super::*;
 
     /// Create a simple position controller for a joint
-    pub fn create_position_controller(kp: f32, ki: f32, kd: f32, max_torque: f32) -> JointController {
+    pub fn create_position_controller(
+        kp: f32,
+        ki: f32,
+        kd: f32,
+        max_torque: f32,
+    ) -> JointController {
         let mut controller = JointController::position_control(kp, ki, kd);
         controller.pid = controller.pid.with_limits(-max_torque, max_torque);
         controller
     }
 
     /// Create a simple velocity controller for a joint
-    pub fn create_velocity_controller(kp: f32, ki: f32, kd: f32, max_force: f32) -> JointController {
+    pub fn create_velocity_controller(
+        kp: f32,
+        ki: f32,
+        kd: f32,
+        max_force: f32,
+    ) -> JointController {
         let mut controller = JointController::velocity_control(kp, ki, kd);
         controller.pid = controller.pid.with_limits(-max_force, max_force);
         controller
@@ -831,8 +849,7 @@ mod tests {
 
     #[test]
     fn test_ik_single_joint() {
-        let solver = IKSolver::default()
-            .with_max_iterations(20);
+        let solver = IKSolver::default().with_max_iterations(20);
 
         let joint_chain = vec![(Vec3::ZERO, Vec3::Z, 0.0)];
         let target = Vec3::new(0.05, 0.05, 0.0);
@@ -845,8 +862,7 @@ mod tests {
 
     #[test]
     fn test_ik_ccd_already_at_target() {
-        let solver = IKSolver::default()
-            .with_tolerance(0.01);
+        let solver = IKSolver::default().with_tolerance(0.01);
 
         // Set up arm already pointing at target
         let joint_chain = vec![
@@ -881,8 +897,7 @@ mod tests {
 
     #[test]
     fn test_ik_multiple_iterations() {
-        let solver = IKSolver::default()
-            .with_max_iterations(5); // Very few iterations
+        let solver = IKSolver::default().with_max_iterations(5); // Very few iterations
 
         let joint_chain = vec![
             (Vec3::ZERO, Vec3::Z, 0.0),

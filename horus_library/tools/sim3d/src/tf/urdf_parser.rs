@@ -142,8 +142,8 @@ pub struct URDFParser;
 impl URDFParser {
     /// Load and parse URDF from file
     pub fn load_file(path: impl AsRef<Path>) -> Result<URDFRobot, String> {
-        let xml = fs::read_to_string(path)
-            .map_err(|e| format!("Failed to read URDF file: {}", e))?;
+        let xml =
+            fs::read_to_string(path).map_err(|e| format!("Failed to read URDF file: {}", e))?;
         Self::parse_string(&xml)
     }
 
@@ -241,9 +241,7 @@ impl URDFParser {
             .ok_or("Joint missing name")?
             .to_string();
 
-        let joint_type = elem
-            .attribute("type")
-            .ok_or("Joint missing type")?;
+        let joint_type = elem.attribute("type").ok_or("Joint missing type")?;
 
         let joint_type = match joint_type {
             "fixed" => URDFJointType::Fixed,
@@ -344,12 +342,30 @@ impl URDFParser {
                         .unwrap_or(1.0);
                 }
                 "inertia" => {
-                    inertia[0] = child.attribute("ixx").and_then(|s| s.parse().ok()).unwrap_or(1.0);
-                    inertia[1] = child.attribute("ixy").and_then(|s| s.parse().ok()).unwrap_or(0.0);
-                    inertia[2] = child.attribute("ixz").and_then(|s| s.parse().ok()).unwrap_or(0.0);
-                    inertia[3] = child.attribute("iyy").and_then(|s| s.parse().ok()).unwrap_or(1.0);
-                    inertia[4] = child.attribute("iyz").and_then(|s| s.parse().ok()).unwrap_or(0.0);
-                    inertia[5] = child.attribute("izz").and_then(|s| s.parse().ok()).unwrap_or(1.0);
+                    inertia[0] = child
+                        .attribute("ixx")
+                        .and_then(|s| s.parse().ok())
+                        .unwrap_or(1.0);
+                    inertia[1] = child
+                        .attribute("ixy")
+                        .and_then(|s| s.parse().ok())
+                        .unwrap_or(0.0);
+                    inertia[2] = child
+                        .attribute("ixz")
+                        .and_then(|s| s.parse().ok())
+                        .unwrap_or(0.0);
+                    inertia[3] = child
+                        .attribute("iyy")
+                        .and_then(|s| s.parse().ok())
+                        .unwrap_or(1.0);
+                    inertia[4] = child
+                        .attribute("iyz")
+                        .and_then(|s| s.parse().ok())
+                        .unwrap_or(0.0);
+                    inertia[5] = child
+                        .attribute("izz")
+                        .and_then(|s| s.parse().ok())
+                        .unwrap_or(1.0);
                 }
                 _ => {}
             }
@@ -422,7 +438,12 @@ impl URDFParser {
                             .filter_map(|s| s.parse().ok())
                             .collect();
                         if parts.len() >= 3 {
-                            color = Some(Color::srgba(parts[0], parts[1], parts[2], parts.get(3).copied().unwrap_or(1.0)));
+                            color = Some(Color::srgba(
+                                parts[0],
+                                parts[1],
+                                parts[2],
+                                parts.get(3).copied().unwrap_or(1.0),
+                            ));
                         }
                     }
                 }

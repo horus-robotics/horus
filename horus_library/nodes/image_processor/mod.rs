@@ -39,8 +39,8 @@ pub struct ImageProcessorNode {
     grayscale_enabled: bool,
     gaussian_blur_size: u32,
     edge_detection_enabled: bool,
-    brightness_adjustment: f32,  // -1.0 to 1.0
-    contrast_adjustment: f32,    // 0.5 to 2.0
+    brightness_adjustment: f32, // -1.0 to 1.0
+    contrast_adjustment: f32,   // 0.5 to 2.0
     backend: ImageBackend,
 
     // Hardware fields
@@ -64,7 +64,11 @@ impl ImageProcessorNode {
     }
 
     /// Create with specific backend
-    pub fn new_with_backend(input_topic: &str, output_topic: &str, backend: ImageBackend) -> Result<Self> {
+    pub fn new_with_backend(
+        input_topic: &str,
+        output_topic: &str,
+        backend: ImageBackend,
+    ) -> Result<Self> {
         Ok(Self {
             subscriber: Hub::new(input_topic)?,
             publisher: Hub::new(output_topic)?,
@@ -155,13 +159,9 @@ impl ImageProcessorNode {
         let start_time = std::time::Instant::now();
 
         match self.backend {
-            ImageBackend::Simulation => {
-                self.process_image_simulation(image, ctx)
-            }
+            ImageBackend::Simulation => self.process_image_simulation(image, ctx),
             #[cfg(feature = "opencv")]
-            ImageBackend::OpenCV => {
-                self.process_image_opencv(image, ctx)
-            }
+            ImageBackend::OpenCV => self.process_image_opencv(image, ctx),
             #[cfg(not(feature = "opencv"))]
             ImageBackend::OpenCV => {
                 ctx.log_warning("OpenCV backend requested but opencv feature not enabled");
@@ -173,7 +173,11 @@ impl ImageProcessorNode {
     }
 
     /// Process image using simulation (no actual processing)
-    fn process_image_simulation(&mut self, image: Image, mut ctx: Option<&mut NodeInfo>) -> Option<Image> {
+    fn process_image_simulation(
+        &mut self,
+        image: Image,
+        mut ctx: Option<&mut NodeInfo>,
+    ) -> Option<Image> {
         let start_time = std::time::Instant::now();
 
         // Create output image (start with copy)
@@ -231,13 +235,20 @@ impl ImageProcessorNode {
 
     #[cfg(feature = "opencv")]
     /// Process image using OpenCV
-    fn process_image_opencv(&mut self, image: Image, mut ctx: Option<&mut NodeInfo>) -> Option<Image> {
+    fn process_image_opencv(
+        &mut self,
+        image: Image,
+        mut ctx: Option<&mut NodeInfo>,
+    ) -> Option<Image> {
         let start_time = std::time::Instant::now();
 
         // Convert HORUS Image to OpenCV Mat
         let mat_result = Mat::from_slice(&image.data);
         if mat_result.is_err() {
-            ctx.log_error(&format!("Failed to create Mat from image data: {:?}", mat_result.err()));
+            ctx.log_error(&format!(
+                "Failed to create Mat from image data: {:?}",
+                mat_result.err()
+            ));
             return None;
         }
         let mut mat = mat_result.unwrap();
@@ -272,7 +283,14 @@ impl ImageProcessorNode {
 
             let mut resized = Mat::default();
             let size = Size::new(self.target_width as i32, self.target_height as i32);
-            match imgproc::resize(&working_mat, &mut resized, size, 0.0, 0.0, imgproc::INTER_LINEAR) {
+            match imgproc::resize(
+                &working_mat,
+                &mut resized,
+                size,
+                0.0,
+                0.0,
+                imgproc::INTER_LINEAR,
+            ) {
                 Ok(_) => working_mat = resized,
                 Err(e) => ctx.log_error(&format!("Resize failed: {:?}", e)),
             }
@@ -295,8 +313,18 @@ impl ImageProcessorNode {
                 self.gaussian_blur_size
             ));
             let mut blurred = Mat::default();
-            let ksize = Size::new(self.gaussian_blur_size as i32, self.gaussian_blur_size as i32);
-            match imgproc::gaussian_blur(&working_mat, &mut blurred, ksize, 0.0, 0.0, opencv::core::BORDER_DEFAULT) {
+            let ksize = Size::new(
+                self.gaussian_blur_size as i32,
+                self.gaussian_blur_size as i32,
+            );
+            match imgproc::gaussian_blur(
+                &working_mat,
+                &mut blurred,
+                ksize,
+                0.0,
+                0.0,
+                opencv::core::BORDER_DEFAULT,
+            ) {
                 Ok(_) => working_mat = blurred,
                 Err(e) => ctx.log_error(&format!("Gaussian blur failed: {:?}", e)),
             }
@@ -326,7 +354,9 @@ impl ImageProcessorNode {
             let mut gray_for_edges = working_mat.clone();
             if working_mat.channels() == 3 {
                 let mut temp_gray = Mat::default();
-                if imgproc::cvt_color(&working_mat, &mut temp_gray, imgproc::COLOR_BGR2GRAY, 0).is_ok() {
+                if imgproc::cvt_color(&working_mat, &mut temp_gray, imgproc::COLOR_BGR2GRAY, 0)
+                    .is_ok()
+                {
                     gray_for_edges = temp_gray;
                 }
             }

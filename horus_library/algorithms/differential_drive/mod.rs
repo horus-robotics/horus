@@ -25,8 +25,8 @@
 
 /// Differential Drive Kinematics
 pub struct DifferentialDrive {
-    wheel_base: f64,     // Distance between wheels (m)
-    wheel_radius: f64,   // Wheel radius (m)
+    wheel_base: f64,   // Distance between wheels (m)
+    wheel_radius: f64, // Wheel radius (m)
 }
 
 impl DifferentialDrive {
@@ -199,7 +199,7 @@ mod tests {
     fn test_wheel_conversions() {
         let dd = DifferentialDrive::new(0.5, 0.1);
 
-        let angular = 10.0;  // rad/s
+        let angular = 10.0; // rad/s
         let linear = dd.wheel_angular_to_linear(angular);
         let angular2 = dd.wheel_linear_to_angular(linear);
 

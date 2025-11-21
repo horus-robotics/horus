@@ -67,18 +67,13 @@ pub fn tf_update_system(
 
         let nalgebra_translation = Translation3::new(translation.x, translation.y, translation.z);
         let nalgebra_rotation = UnitQuaternion::from_quaternion(nalgebra::Quaternion::new(
-            rotation.w,
-            rotation.x,
-            rotation.y,
-            rotation.z,
+            rotation.w, rotation.x, rotation.y, rotation.z,
         ));
         let isometry = Isometry3::from_parts(nalgebra_translation.into(), nalgebra_rotation);
 
         // Update or add frame to TF tree
         if tf_tree.frames.contains_key(&publisher.frame_name) {
-            tf_tree
-                .update_frame(&publisher.frame_name, isometry)
-                .ok();
+            tf_tree.update_frame(&publisher.frame_name, isometry).ok();
         } else {
             tf_tree
                 .add_frame(&publisher.frame_name, &publisher.parent_frame, isometry)
@@ -123,9 +118,7 @@ pub fn tf_update_from_physics_system(
 
             // Update TF tree
             if tf_tree.frames.contains_key(&publisher.frame_name) {
-                tf_tree
-                    .update_frame(&publisher.frame_name, isometry)
-                    .ok();
+                tf_tree.update_frame(&publisher.frame_name, isometry).ok();
             } else {
                 tf_tree
                     .add_frame(&publisher.frame_name, &publisher.parent_frame, isometry)
@@ -151,7 +144,8 @@ pub fn tf_update_robot_joints_system(
                 let isometry = match joint_state.joint_type {
                     crate::physics::joints::JointType::Revolute => {
                         // Rotation around Z-axis (assuming that's the joint axis)
-                        let rotation = UnitQuaternion::from_euler_angles(0.0, 0.0, joint_state.position);
+                        let rotation =
+                            UnitQuaternion::from_euler_angles(0.0, 0.0, joint_state.position);
                         Isometry3::from_parts(Translation3::new(0.0, 0.0, 0.0).into(), rotation)
                     }
                     crate::physics::joints::JointType::Prismatic => {
@@ -310,7 +304,9 @@ pub fn add_tf_publisher(
     frame_name: impl Into<String>,
     parent_frame: impl Into<String>,
 ) {
-    commands.entity(entity).insert(TFPublisher::new(frame_name, parent_frame));
+    commands
+        .entity(entity)
+        .insert(TFPublisher::new(frame_name, parent_frame));
 }
 
 /// Helper function to create a TF publisher with custom rate
@@ -349,7 +345,7 @@ mod tests {
         publisher.update_time(0.0);
 
         assert!(!publisher.should_update(0.05)); // 50ms < 100ms
-        assert!(publisher.should_update(0.11));  // 110ms > 100ms
+        assert!(publisher.should_update(0.11)); // 110ms > 100ms
     }
 
     #[test]

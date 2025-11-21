@@ -214,7 +214,6 @@ if [ -n "$NEEDS_REBUILD" ]; then
             rm -rf "$CACHE_DIR"/horus_macros@"$OLD_CACHED_VERSION" 2>/dev/null || true
             rm -rf "$CACHE_DIR"/horus_library@"$OLD_CACHED_VERSION" 2>/dev/null || true
             rm -rf "$CACHE_DIR"/horus_c@"$OLD_CACHED_VERSION" 2>/dev/null || true
-            rm -rf "$CACHE_DIR"/horus_cpp@"$OLD_CACHED_VERSION" 2>/dev/null || true
             rm -rf "$CACHE_DIR"/horus_py@"$OLD_CACHED_VERSION" 2>/dev/null || true
         fi
     fi
@@ -264,33 +263,6 @@ if [ -n "$NEEDS_REBUILD" ]; then
         cp target/horus.h "$HORUS_C_DIR/include/"
     fi
 
-    # Update horus_cpp (C++ Framework)
-    HORUS_CPP_DIR="$CACHE_DIR/horus_cpp@$HORUS_C_VERSION"
-    mkdir -p "$HORUS_CPP_DIR/lib"
-    mkdir -p "$HORUS_CPP_DIR/include"
-
-    # Build the C++ library if not already built
-    if [ ! -f "target/release/libhorus_cpp.so" ] && [ ! -f "target/release/libhorus_cpp.dylib" ]; then
-        echo -e "${CYAN}  ${NC} Building C++ framework library..."
-        cd horus_cpp
-        cargo build --release --quiet
-        cd ..
-    fi
-
-    cp -r target/release/libhorus_cpp.so "$HORUS_CPP_DIR/lib/" 2>/dev/null || true
-    cp -r target/release/libhorus_cpp.a "$HORUS_CPP_DIR/lib/" 2>/dev/null || true
-    cp -r target/release/libhorus_cpp.dylib "$HORUS_CPP_DIR/lib/" 2>/dev/null || true
-
-    if [ -f "horus_cpp/include/horus.hpp" ]; then
-        cp horus_cpp/include/horus.hpp "$HORUS_CPP_DIR/include/"
-    fi
-
-    if [ -f "$HORUS_C_DIR/include/horus.h" ]; then
-        cp "$HORUS_C_DIR/include/horus.h" "$HORUS_CPP_DIR/include/"
-    elif [ -f "horus_c/include/horus.h" ]; then
-        cp horus_c/include/horus.h "$HORUS_CPP_DIR/include/"
-    fi
-
     # Update horus_py (Python bindings) if Python is available
     if command -v python3 &> /dev/null && command -v pip3 &> /dev/null; then
         PYTHON_VERSION=$(python3 --version | awk '{print $2}')
@@ -298,28 +270,14 @@ if [ -n "$NEEDS_REBUILD" ]; then
         PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
 
         if [ "$PYTHON_MAJOR" -ge 3 ] && [ "$PYTHON_MINOR" -ge 9 ]; then
-            HORUS_PY_VERSION=$(grep -m1 '^version' horus_py/Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
-            HORUS_PY_DIR="$CACHE_DIR/horus_py@$HORUS_PY_VERSION"
+            echo -e "${CYAN}${NC} Updating Python bindings from PyPI..."
 
-            # Check if maturin is available
-            if command -v maturin &> /dev/null || command -v "$HOME/.local/bin/maturin" &> /dev/null; then
-                echo -e "${CYAN}${NC} Updating Python bindings..."
-                cd horus_py
-                (maturin develop --release --quiet 2>/dev/null || "$HOME/.local/bin/maturin" develop --release --quiet 2>/dev/null) && {
-                    mkdir -p "$HORUS_PY_DIR/lib/horus"
-                    cp -r python/horus/__init__.py "$HORUS_PY_DIR/lib/horus/" 2>/dev/null || true
-
-                    # Copy extension
-                    if [ -f "python/horus/_horus.abi3.so" ]; then
-                        cp python/horus/_horus.abi3.so "$HORUS_PY_DIR/lib/horus/_horus.so"
-                    elif [ -f "python/horus/_horus.so" ]; then
-                        cp python/horus/_horus.so "$HORUS_PY_DIR/lib/horus/_horus.so"
-                    elif [ -f "python/horus/_horus.abi3.dylib" ]; then
-                        cp python/horus/_horus.abi3.dylib "$HORUS_PY_DIR/lib/horus/_horus.so"
-                    fi
-                    echo -e "${GREEN}${NC} Python bindings updated"
-                }
-                cd ..
+            # Update from PyPI (pre-built wheel)
+            if pip3 install --upgrade horus --user --quiet 2>/dev/null; then
+                INSTALLED_VERSION=$(python3 -c "import horus; print(horus.__version__)" 2>/dev/null)
+                echo -e "${GREEN}${NC} Python bindings updated (version: $INSTALLED_VERSION)"
+            else
+                echo -e "${YELLOW}⊘${NC} Python bindings: Update skipped (optional)"
             fi
         fi
     fi

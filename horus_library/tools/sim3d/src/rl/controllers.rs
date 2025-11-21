@@ -323,8 +323,7 @@ mod tests {
 
     #[test]
     fn test_output_limits() {
-        let mut pid = PIDController::new(10.0, 0.0, 0.0, 0.01)
-            .with_limits(-0.5, 0.5);
+        let mut pid = PIDController::new(10.0, 0.0, 0.0, 0.01).with_limits(-0.5, 0.5);
 
         let output = pid.update(100.0, 0.0); // Very large error
         assert!(output >= -0.5 && output <= 0.5);
@@ -332,8 +331,7 @@ mod tests {
 
     #[test]
     fn test_integral_anti_windup() {
-        let mut pid = PIDController::new(0.0, 1.0, 0.0, 0.01)
-            .with_integral_limit(10.0);
+        let mut pid = PIDController::new(0.0, 1.0, 0.0, 0.01).with_integral_limit(10.0);
 
         // Accumulate error to trigger anti-windup
         for _ in 0..1000 {

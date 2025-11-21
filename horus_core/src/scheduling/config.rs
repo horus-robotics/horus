@@ -520,35 +520,35 @@ impl SchedulerConfig {
         config.execution = ExecutionMode::JITOptimized;
 
         // Timing: High-frequency control with strict jitter limits
-        config.timing.global_rate_hz = 1000.0;  // 1 kHz default
-        config.timing.max_jitter_us = 5;        // 5μs max jitter
-        config.timing.deadline_miss_policy = DeadlineMissPolicy::Panic;  // Hard RT: panic on deadline miss
+        config.timing.global_rate_hz = 1000.0; // 1 kHz default
+        config.timing.max_jitter_us = 5; // 5μs max jitter
+        config.timing.deadline_miss_policy = DeadlineMissPolicy::Panic; // Hard RT: panic on deadline miss
 
         // Fault tolerance: Fast recovery
         config.fault.circuit_breaker_enabled = true;
-        config.fault.max_failures = 3;           // Fail fast
-        config.fault.auto_restart = false;       // No auto-restart in RT (unsafe)
-        config.fault.redundancy_factor = 2;      // N-version programming
+        config.fault.max_failures = 3; // Fail fast
+        config.fault.auto_restart = false; // No auto-restart in RT (unsafe)
+        config.fault.redundancy_factor = 2; // N-version programming
 
         // Real-time: Maximum enforcement
         config.realtime.wcet_enforcement = true;
         config.realtime.deadline_monitoring = true;
         config.realtime.watchdog_enabled = true;
-        config.realtime.watchdog_timeout_ms = 10;  // 10ms watchdog
+        config.realtime.watchdog_timeout_ms = 10; // 10ms watchdog
         config.realtime.safety_monitor = true;
-        config.realtime.max_deadline_misses = 3;   // Strict: 3 strikes and emergency stop
+        config.realtime.max_deadline_misses = 3; // Strict: 3 strikes and emergency stop
         config.realtime.priority_inheritance = true;
         config.realtime.formal_verification = true;
         config.realtime.memory_locking = true;
         config.realtime.rt_scheduling_class = true;
 
         // Resources: Dedicated cores, no power management
-        config.resources.io_priority = 0;  // Highest I/O priority
-        config.resources.power_management = false;  // Disable power saving
+        config.resources.io_priority = 0; // Highest I/O priority
+        config.resources.power_management = false; // Disable power saving
 
         // Monitoring: Minimal overhead
-        config.monitoring.profiling_enabled = false;  // Disable profiling in production RT
-        config.monitoring.black_box_enabled = true;   // But enable black box for forensics
+        config.monitoring.profiling_enabled = false; // Disable profiling in production RT
+        config.monitoring.black_box_enabled = true; // But enable black box for forensics
         config.monitoring.black_box_size_mb = 100;
 
         config

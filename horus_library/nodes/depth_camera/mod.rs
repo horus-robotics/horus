@@ -65,10 +65,10 @@ pub struct DepthCameraNode {
     // Configuration
     camera_model: CameraModel,
     device_serial: String,
-    resolution: (u32, u32),    // Width x Height
+    resolution: (u32, u32), // Width x Height
     depth_resolution: (u32, u32),
-    frame_rate: u32,           // Hz
-    depth_range: (f32, f32),   // Min and max depth in meters
+    frame_rate: u32,         // Hz
+    depth_range: (f32, f32), // Min and max depth in meters
 
     // Feature flags
     enable_rgb: bool,
@@ -76,19 +76,19 @@ pub struct DepthCameraNode {
     enable_ir: bool,
     enable_pointcloud: bool,
     align_depth_to_color: bool,
-    enable_emitter: bool,       // Active IR projector (structured light)
+    enable_emitter: bool, // Active IR projector (structured light)
 
     // Post-processing
     use_spatial_filter: bool,
     use_temporal_filter: bool,
     use_hole_filling: bool,
-    depth_units: f32,          // Meters per depth unit (e.g., 0.001 for mm)
+    depth_units: f32, // Meters per depth unit (e.g., 0.001 for mm)
 
     // Camera intrinsics
-    rgb_fx: f64,    // Focal length x
-    rgb_fy: f64,    // Focal length y
-    rgb_cx: f64,    // Principal point x
-    rgb_cy: f64,    // Principal point y
+    rgb_fx: f64, // Focal length x
+    rgb_fy: f64, // Focal length y
+    rgb_cx: f64, // Principal point x
+    rgb_cy: f64, // Principal point y
     depth_fx: f64,
     depth_fy: f64,
     depth_cx: f64,
@@ -130,37 +130,37 @@ pub enum DepthBackend {
 }
 
 /// Depth camera models with predefined specifications
-#[allow(non_camel_case_types)]  // Product names like OAK_D are intentional
+#[allow(non_camel_case_types)] // Product names like OAK_D are intentional
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum CameraModel {
     // Intel RealSense
-    RealSenseD415,      // 1280x720 @ 90fps, ±10% depth accuracy
-    RealSenseD435,      // 1280x720 @ 90fps, ±2% depth accuracy
-    RealSenseD435i,     // D435 + IMU
-    RealSenseD455,      // 1280x720 @ 90fps, wider FOV
-    RealSenseL515,      // 1024x768 @ 30fps, LiDAR-based, ±5mm accuracy
+    RealSenseD415,  // 1280x720 @ 90fps, ±10% depth accuracy
+    RealSenseD435,  // 1280x720 @ 90fps, ±2% depth accuracy
+    RealSenseD435i, // D435 + IMU
+    RealSenseD455,  // 1280x720 @ 90fps, wider FOV
+    RealSenseL515,  // 1024x768 @ 30fps, LiDAR-based, ±5mm accuracy
 
     // Stereolabs ZED
-    ZED,                // 2208x1242 @ 15fps, 0.5-20m range
-    ZED2,               // 2208x1242 @ 15fps, neural depth
-    ZED2i,              // ZED2 + IMU
-    ZEDMini,            // 1344x376 @ 30fps, compact
+    ZED,     // 2208x1242 @ 15fps, 0.5-20m range
+    ZED2,    // 2208x1242 @ 15fps, neural depth
+    ZED2i,   // ZED2 + IMU
+    ZEDMini, // 1344x376 @ 30fps, compact
 
     // Microsoft Kinect
-    KinectV1,           // 640x480 @ 30fps, structured light, 0.8-4m
-    KinectV2,           // 512x424 @ 30fps, ToF, 0.5-4.5m
-    AzureKinect,        // 1024x1024 @ 30fps, ToF, 0.25-5.46m
+    KinectV1,    // 640x480 @ 30fps, structured light, 0.8-4m
+    KinectV2,    // 512x424 @ 30fps, ToF, 0.5-4.5m
+    AzureKinect, // 1024x1024 @ 30fps, ToF, 0.25-5.46m
 
     // Orbbec
-    OrbbecAstra,        // 640x480 @ 30fps, structured light
-    OrbbecAstraPro,     // Astra + RGB camera
-    OrbbecFemto,        // 640x576 @ 30fps, ToF
+    OrbbecAstra,    // 640x480 @ 30fps, structured light
+    OrbbecAstraPro, // Astra + RGB camera
+    OrbbecFemto,    // 640x576 @ 30fps, ToF
 
     // Others
-    StructureCore,      // 640x480 @ 30fps, wide FOV
-    OAK_D,              // Luxonis OAK-D, 1280x800 @ 60fps
+    StructureCore, // 640x480 @ 30fps, wide FOV
+    OAK_D,         // Luxonis OAK-D, 1280x800 @ 60fps
 
-    Generic,            // User-defined parameters
+    Generic, // User-defined parameters
 }
 
 impl DepthCameraNode {
@@ -488,25 +488,29 @@ impl DepthCameraNode {
                 let mut config = Config::new();
 
                 if self.enable_rgb {
-                    config.enable_stream(
-                        Rs2StreamKind::Color,
-                        None,
-                        self.resolution.0 as usize,
-                        self.resolution.1 as usize,
-                        Rs2Format::Rgb8,
-                        self.frame_rate as usize,
-                    ).ok();
+                    config
+                        .enable_stream(
+                            Rs2StreamKind::Color,
+                            None,
+                            self.resolution.0 as usize,
+                            self.resolution.1 as usize,
+                            Rs2Format::Rgb8,
+                            self.frame_rate as usize,
+                        )
+                        .ok();
                 }
 
                 if self.enable_depth {
-                    config.enable_stream(
-                        Rs2StreamKind::Depth,
-                        None,
-                        self.depth_resolution.0 as usize,
-                        self.depth_resolution.1 as usize,
-                        Rs2Format::Z16,
-                        self.frame_rate as usize,
-                    ).ok();
+                    config
+                        .enable_stream(
+                            Rs2StreamKind::Depth,
+                            None,
+                            self.depth_resolution.0 as usize,
+                            self.depth_resolution.1 as usize,
+                            Rs2Format::Z16,
+                            self.frame_rate as usize,
+                        )
+                        .ok();
                 }
 
                 // Start pipeline
@@ -590,9 +594,9 @@ impl DepthCameraNode {
         for y in 0..height {
             for x in 0..width {
                 let idx = ((y * width + x) * 3) as usize;
-                data[idx] = (x * 255 / width) as u8;         // R: horizontal gradient
-                data[idx + 1] = (y * 255 / height) as u8;    // G: vertical gradient
-                data[idx + 2] = 128;                          // B: constant
+                data[idx] = (x * 255 / width) as u8; // R: horizontal gradient
+                data[idx + 1] = (y * 255 / height) as u8; // G: vertical gradient
+                data[idx + 2] = 128; // B: constant
             }
         }
         data
@@ -617,7 +621,8 @@ impl DepthCameraNode {
                 let normalized = dist / max_dist;
 
                 // Map to depth range (closer in center)
-                let depth_m = self.depth_range.0 + (self.depth_range.1 - self.depth_range.0) * normalized;
+                let depth_m =
+                    self.depth_range.0 + (self.depth_range.1 - self.depth_range.0) * normalized;
                 let depth_units = (depth_m / self.depth_units) as u16;
 
                 data[(y * width + x) as usize] = depth_units;
@@ -642,9 +647,24 @@ impl DepthCameraNode {
         cloud.is_dense = false;
 
         // Set up point cloud fields (XYZ format)
-        cloud.fields[0] = crate::perception::PointField::new("x", 0, crate::perception::PointFieldType::Float32, 1);
-        cloud.fields[1] = crate::perception::PointField::new("y", 4, crate::perception::PointFieldType::Float32, 1);
-        cloud.fields[2] = crate::perception::PointField::new("z", 8, crate::perception::PointFieldType::Float32, 1);
+        cloud.fields[0] = crate::perception::PointField::new(
+            "x",
+            0,
+            crate::perception::PointFieldType::Float32,
+            1,
+        );
+        cloud.fields[1] = crate::perception::PointField::new(
+            "y",
+            4,
+            crate::perception::PointFieldType::Float32,
+            1,
+        );
+        cloud.fields[2] = crate::perception::PointField::new(
+            "z",
+            8,
+            crate::perception::PointFieldType::Float32,
+            1,
+        );
         cloud.field_count = 3;
         cloud.point_step = 12; // 3 * 4 bytes
         cloud.row_step = width * cloud.point_step;
@@ -734,15 +754,13 @@ impl DepthCameraNode {
         let rgb_data = match self.backend {
             DepthBackend::Simulation => self.simulate_rgb_frame(),
             #[cfg(feature = "realsense")]
-            DepthBackend::RealSense => {
-                match self.capture_rgb_hardware() {
-                    Some(data) => data,
-                    None => {
-                        ctx.log_debug("Failed to capture RGB frame from hardware, using simulation");
-                        self.simulate_rgb_frame()
-                    }
+            DepthBackend::RealSense => match self.capture_rgb_hardware() {
+                Some(data) => data,
+                None => {
+                    ctx.log_debug("Failed to capture RGB frame from hardware, using simulation");
+                    self.simulate_rgb_frame()
                 }
-            }
+            },
             #[cfg(not(feature = "realsense"))]
             DepthBackend::RealSense => self.simulate_rgb_frame(),
             _ => self.simulate_rgb_frame(),
@@ -781,15 +799,13 @@ impl DepthCameraNode {
         let depth_data = match self.backend {
             DepthBackend::Simulation => self.simulate_depth_frame(),
             #[cfg(feature = "realsense")]
-            DepthBackend::RealSense => {
-                match self.capture_depth_hardware() {
-                    Some(data) => data,
-                    None => {
-                        ctx.log_debug("Failed to capture depth frame from hardware, using simulation");
-                        self.simulate_depth_frame()
-                    }
+            DepthBackend::RealSense => match self.capture_depth_hardware() {
+                Some(data) => data,
+                None => {
+                    ctx.log_debug("Failed to capture depth frame from hardware, using simulation");
+                    self.simulate_depth_frame()
                 }
-            }
+            },
             #[cfg(not(feature = "realsense"))]
             DepthBackend::RealSense => self.simulate_depth_frame(),
             _ => self.simulate_depth_frame(),
@@ -799,9 +815,9 @@ impl DepthCameraNode {
             width: self.depth_resolution.0,
             height: self.depth_resolution.1,
             depths: depth_data.clone(),
-            min_depth: (self.depth_range.0 * 1000.0) as u16,  // Convert meters to mm
-            max_depth: (self.depth_range.1 * 1000.0) as u16,  // Convert meters to mm
-            depth_scale: 1.0, // 1mm per unit
+            min_depth: (self.depth_range.0 * 1000.0) as u16, // Convert meters to mm
+            max_depth: (self.depth_range.1 * 1000.0) as u16, // Convert meters to mm
+            depth_scale: 1.0,                                // 1mm per unit
             frame_id: [0; 32],
             timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)

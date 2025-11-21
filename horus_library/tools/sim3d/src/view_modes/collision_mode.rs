@@ -102,9 +102,12 @@ pub fn collision_shapes_visualization_system(
 
         // Determine color based on collision state
         let base_color = if let Some(state) = collision_state {
-            if collision_viz.highlight_colliding && state.is_recently_colliding(current_time, collision_viz.collision_fade_time) {
+            if collision_viz.highlight_colliding
+                && state.is_recently_colliding(current_time, collision_viz.collision_fade_time)
+            {
                 // Red for recent collision
-                let fade_factor = (current_time - state.last_collision_time) / collision_viz.collision_fade_time;
+                let fade_factor =
+                    (current_time - state.last_collision_time) / collision_viz.collision_fade_time;
                 Color::srgb(1.0, 1.0 - fade_factor, 1.0 - fade_factor)
             } else {
                 Color::srgb(0.0, 1.0, 0.0) // Green when not colliding
@@ -156,8 +159,7 @@ pub fn collision_shapes_visualization_system(
             let aabb_size = max - min;
 
             gizmos.cuboid(
-                Transform::from_translation(aabb_center)
-                    .with_scale(aabb_size),
+                Transform::from_translation(aabb_center).with_scale(aabb_size),
                 Color::srgb(1.0, 1.0, 0.0).with_alpha(0.2), // Yellow AABB
             );
         }
@@ -167,7 +169,10 @@ pub fn collision_shapes_visualization_system(
             if let Some(rigid_body) = physics_world.rigid_body_set.get(rb.handle) {
                 if rigid_body.is_sleeping() {
                     gizmos.sphere(
-                        Isometry3d::new(position + Vec3::new(0.0, transform.scale.y * 0.6, 0.0), Quat::IDENTITY),
+                        Isometry3d::new(
+                            position + Vec3::new(0.0, transform.scale.y * 0.6, 0.0),
+                            Quat::IDENTITY,
+                        ),
                         0.1,
                         Color::srgb(0.5, 0.5, 0.5), // Gray for sleeping
                     );
@@ -327,18 +332,17 @@ pub struct CollisionVisualizationPlugin;
 
 impl Plugin for CollisionVisualizationPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<CollisionVisualization>()
-            .add_systems(
-                Update,
-                (
-                    collision_shapes_visualization_system,
-                    collision_pairs_visualization_system,
-                    collision_islands_visualization_system,
-                    broadphase_grid_visualization_system,
-                    collision_viz_keyboard_system,
-                )
-                    .chain(),
-            );
+        app.init_resource::<CollisionVisualization>().add_systems(
+            Update,
+            (
+                collision_shapes_visualization_system,
+                collision_pairs_visualization_system,
+                collision_islands_visualization_system,
+                broadphase_grid_visualization_system,
+                collision_viz_keyboard_system,
+            )
+                .chain(),
+        );
     }
 }
 

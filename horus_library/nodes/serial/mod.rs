@@ -28,8 +28,8 @@ pub enum SerialBackend {
 /// - Hardware (serialport crate for actual serial communication)
 /// - Simulation mode for testing
 pub struct SerialNode {
-    rx_publisher: Hub<SerialData>,   // Received data
-    tx_subscriber: Hub<SerialData>,  // Data to transmit
+    rx_publisher: Hub<SerialData>,  // Received data
+    tx_subscriber: Hub<SerialData>, // Data to transmit
 
     // Configuration
     port_path: String,
@@ -58,7 +58,13 @@ pub struct SerialNode {
 impl SerialNode {
     /// Create a new serial node with default port and topics in simulation mode
     pub fn new() -> Result<Self> {
-        Self::new_with_backend("/dev/ttyUSB0", 9600, "serial/rx", "serial/tx", SerialBackend::Simulation)
+        Self::new_with_backend(
+            "/dev/ttyUSB0",
+            9600,
+            "serial/rx",
+            "serial/tx",
+            SerialBackend::Simulation,
+        )
     }
 
     /// Create a new serial node with custom configuration
@@ -68,7 +74,13 @@ impl SerialNode {
         rx_topic: &str,
         tx_topic: &str,
     ) -> Result<Self> {
-        Self::new_with_backend(port, baud_rate, rx_topic, tx_topic, SerialBackend::Simulation)
+        Self::new_with_backend(
+            port,
+            baud_rate,
+            rx_topic,
+            tx_topic,
+            SerialBackend::Simulation,
+        )
     }
 
     /// Create a new serial node with specific backend
@@ -219,11 +231,17 @@ impl SerialNode {
                     Ok(port) => {
                         self.serial = Some(port);
                         self.port_open = true;
-                        ctx.log_info(&format!("Hardware serial port {} opened successfully", self.port_path));
+                        ctx.log_info(&format!(
+                            "Hardware serial port {} opened successfully",
+                            self.port_path
+                        ));
                         true
                     }
                     Err(e) => {
-                        ctx.log_error(&format!("Failed to open serial port {}: {:?}", self.port_path, e));
+                        ctx.log_error(&format!(
+                            "Failed to open serial port {}: {:?}",
+                            self.port_path, e
+                        ));
                         ctx.log_warning("Falling back to simulation mode");
                         self.backend = SerialBackend::Simulation;
                         self.port_open = true;
@@ -233,7 +251,9 @@ impl SerialNode {
             }
             #[cfg(not(feature = "serial-hardware"))]
             SerialBackend::Hardware => {
-                ctx.log_warning("Hardware backend requested but serial-hardware feature not enabled");
+                ctx.log_warning(
+                    "Hardware backend requested but serial-hardware feature not enabled",
+                );
                 ctx.log_warning("Falling back to simulation mode");
                 self.backend = SerialBackend::Simulation;
                 self.port_open = true;
@@ -285,7 +305,10 @@ impl SerialNode {
                     // Publish received data
                     let _ = self.rx_publisher.send(msg, &mut None);
 
-                    ctx.log_debug(&format!("Received {} bytes from serial port (sim)", available));
+                    ctx.log_debug(&format!(
+                        "Received {} bytes from serial port (sim)",
+                        available
+                    ));
                 }
             }
             #[cfg(feature = "serial-hardware")]
@@ -308,7 +331,10 @@ impl SerialNode {
                                 // Publish received data
                                 let _ = self.rx_publisher.send(msg, &mut None);
 
-                                ctx.log_debug(&format!("Received {} bytes from hardware serial port", n));
+                                ctx.log_debug(&format!(
+                                    "Received {} bytes from hardware serial port",
+                                    n
+                                ));
                             }
                         }
                         Ok(_) => {
@@ -348,7 +374,10 @@ impl SerialNode {
                 // In simulation, just count bytes
                 self.bytes_transmitted += bytes.len() as u64;
 
-                ctx.log_debug(&format!("Transmitted {} bytes to serial port (sim)", bytes.len()));
+                ctx.log_debug(&format!(
+                    "Transmitted {} bytes to serial port (sim)",
+                    bytes.len()
+                ));
 
                 // Log as string if valid UTF-8
                 if let Some(text) = data.get_string() {
@@ -365,7 +394,10 @@ impl SerialNode {
 
                             self.bytes_transmitted += bytes.len() as u64;
 
-                            ctx.log_debug(&format!("Transmitted {} bytes to hardware serial port", bytes.len()));
+                            ctx.log_debug(&format!(
+                                "Transmitted {} bytes to hardware serial port",
+                                bytes.len()
+                            ));
 
                             // Log as string if valid UTF-8
                             if let Some(text) = data.get_string() {
@@ -405,7 +437,10 @@ impl Node for SerialNode {
                 ctx.log_info("Serial simulation mode enabled");
             }
             SerialBackend::Hardware => {
-                ctx.log_info(&format!("Serial hardware: {} @ {} baud", self.port_path, self.baud_rate));
+                ctx.log_info(&format!(
+                    "Serial hardware: {} @ {} baud",
+                    self.port_path, self.baud_rate
+                ));
             }
         }
 

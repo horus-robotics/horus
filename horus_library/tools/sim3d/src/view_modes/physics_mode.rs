@@ -100,7 +100,8 @@ pub fn physics_visualization_system(
         if physics_viz.show_angular_velocity {
             let angular_velocity = rigid_body.angvel();
             if angular_velocity.norm() > 0.01 {
-                let ang_vel_bevy = Vec3::new(angular_velocity.x, angular_velocity.y, angular_velocity.z);
+                let ang_vel_bevy =
+                    Vec3::new(angular_velocity.x, angular_velocity.y, angular_velocity.z);
                 let axis = ang_vel_bevy.normalize();
                 let magnitude = angular_velocity.norm();
                 let radius = 0.2 * magnitude.min(5.0);
@@ -118,7 +119,7 @@ pub fn physics_visualization_system(
         // Show bounding box
         if physics_viz.show_bounding_boxes {
             // Estimate bounding box from transform scale
-            let half_extents = transform.scale * 0.5;
+            let _half_extents = transform.scale * 0.5;
 
             gizmos.cuboid(
                 Transform::from_translation(position)
@@ -130,7 +131,7 @@ pub fn physics_visualization_system(
 
         // Show collision shapes (simplified box representation)
         if physics_viz.show_collision_shapes {
-            let half_extents = transform.scale * 0.5;
+            let _half_extents = transform.scale * 0.5;
 
             gizmos.cuboid(
                 Transform::from_translation(position)
@@ -293,17 +294,16 @@ pub struct PhysicsVisualizationPlugin;
 
 impl Plugin for PhysicsVisualizationPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<PhysicsVisualization>()
-            .add_systems(
-                Update,
-                (
-                    physics_visualization_system,
-                    physics_grid_system,
-                    contact_visualization_system,
-                    physics_viz_keyboard_system,
-                )
-                    .chain(),
-            );
+        app.init_resource::<PhysicsVisualization>().add_systems(
+            Update,
+            (
+                physics_visualization_system,
+                physics_grid_system,
+                contact_visualization_system,
+                physics_viz_keyboard_system,
+            )
+                .chain(),
+        );
     }
 }
 

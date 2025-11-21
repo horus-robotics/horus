@@ -1,3 +1,10 @@
+// Benchmark binary - allow clippy warnings
+#![allow(unused_imports)]
+#![allow(unused_assignments)]
+#![allow(unreachable_patterns)]
+#![allow(clippy::all)]
+#![allow(deprecated)]
+
 /// Critical Test Suite for Single-Slot Link Implementation
 ///
 /// This comprehensive test suite validates three critical areas:

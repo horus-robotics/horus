@@ -7,9 +7,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 // I2C hardware support for fuel gauges/power monitors
 #[cfg(feature = "i2c-hardware")]
-use i2cdev::linux::LinuxI2CDevice;
-#[cfg(feature = "i2c-hardware")]
 use i2cdev::core::I2CDevice;
+#[cfg(feature = "i2c-hardware")]
+use i2cdev::linux::LinuxI2CDevice;
 
 /// Battery Monitor Node
 ///
@@ -56,7 +56,7 @@ pub struct BatteryMonitorNode {
     // Configuration
     cell_count: u8,
     nominal_voltage_per_cell: f32, // V (3.7V for LiPo, 3.2V for LiFePO4, 1.2V for NiMH)
-    capacity_mah: f32,              // mAh
+    capacity_mah: f32,             // mAh
     chemistry: BatteryChemistry,
     monitor_interface: MonitorInterface,
 
@@ -67,20 +67,20 @@ pub struct BatteryMonitorNode {
     critical_voltage: f32, // V (critical shutdown)
 
     // Current state
-    voltage: f32,                    // V
-    current: f32,                    // A (negative = discharging)
-    charge_mah: f32,                 // mAh remaining
-    percentage: f32,                 // %
-    temperature: f32,                // °C
-    cell_voltages: [f32; 16],        // Individual cell voltages
+    voltage: f32,             // V
+    current: f32,             // A (negative = discharging)
+    charge_mah: f32,          // mAh remaining
+    percentage: f32,          // %
+    temperature: f32,         // °C
+    cell_voltages: [f32; 16], // Individual cell voltages
     power_supply_status: u8,
     cycle_count: u32,
 
     // Monitoring
-    sampling_rate: f32,              // Hz
+    sampling_rate: f32, // Hz
     enable_cell_monitoring: bool,
     last_sample_time: u64,
-    voltage_history: [f32; 10],      // Moving average
+    voltage_history: [f32; 10], // Moving average
     history_index: usize,
 
     // Alerts
@@ -88,26 +88,26 @@ pub struct BatteryMonitorNode {
     critical_battery_warned: bool,
     over_current_warned: bool,
     over_temperature_warned: bool,
-    max_current: f32,                // A
-    max_temperature: f32,            // °C
+    max_current: f32,     // A
+    max_temperature: f32, // °C
 
     // Hardware I2C device (INA219/INA226 current/voltage sensor)
     #[cfg(feature = "i2c-hardware")]
     i2c_device: Option<LinuxI2CDevice>,
     hardware_enabled: bool,
-    i2c_address: u16, // I2C address (0x40 default for INA219)
-    i2c_bus: u8,      // I2C bus number (default 1)
+    i2c_address: u16,           // I2C address (0x40 default for INA219)
+    i2c_bus: u8,                // I2C bus number (default 1)
     shunt_resistance_mohm: f32, // Shunt resistor value in milliohms (100mΩ default)
 }
 
 /// Battery chemistry type
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BatteryChemistry {
-    LiPo,      // Lithium Polymer
-    LiFePO4,   // Lithium Iron Phosphate
-    LiIon,     // Lithium Ion
-    NiMH,      // Nickel Metal Hydride
-    LeadAcid,  // Lead Acid
+    LiPo,     // Lithium Polymer
+    LiFePO4,  // Lithium Iron Phosphate
+    LiIon,    // Lithium Ion
+    NiMH,     // Nickel Metal Hydride
+    LeadAcid, // Lead Acid
     Custom,
 }
 
@@ -132,15 +132,15 @@ impl BatteryMonitorNode {
     pub fn new_with_topic(topic: &str) -> Result<Self> {
         let mut node = Self {
             publisher: Hub::new(topic)?,
-            cell_count: 3,                      // 3S default
-            nominal_voltage_per_cell: 3.7,     // LiPo default
+            cell_count: 3,                 // 3S default
+            nominal_voltage_per_cell: 3.7, // LiPo default
             capacity_mah: 5000.0,
             chemistry: BatteryChemistry::LiPo,
             monitor_interface: MonitorInterface::Simulated,
-            full_voltage: 12.6,      // 4.2V × 3
-            nominal_voltage: 11.1,   // 3.7V × 3
-            low_voltage: 10.5,       // 3.5V × 3
-            critical_voltage: 9.9,   // 3.3V × 3
+            full_voltage: 12.6,    // 4.2V × 3
+            nominal_voltage: 11.1, // 3.7V × 3
+            low_voltage: 10.5,     // 3.5V × 3
+            critical_voltage: 9.9, // 3.3V × 3
             voltage: 11.1,
             current: 0.0,
             charge_mah: 5000.0,
@@ -158,13 +158,13 @@ impl BatteryMonitorNode {
             critical_battery_warned: false,
             over_current_warned: false,
             over_temperature_warned: false,
-            max_current: 100.0,      // 100A default max
-            max_temperature: 60.0,   // 60°C default max
+            max_current: 100.0,    // 100A default max
+            max_temperature: 60.0, // 60°C default max
             #[cfg(feature = "i2c-hardware")]
             i2c_device: None,
             hardware_enabled: false,
-            i2c_address: 0x40, // Default INA219 address
-            i2c_bus: 1,        // Default I2C bus
+            i2c_address: 0x40,            // Default INA219 address
+            i2c_bus: 1,                   // Default I2C bus
             shunt_resistance_mohm: 100.0, // 100mΩ default shunt
         };
 
@@ -369,7 +369,10 @@ impl BatteryMonitorNode {
     #[cfg(feature = "i2c-hardware")]
     fn read_i2c_hardware(&mut self) -> std::io::Result<(f32, f32)> {
         let device = self.i2c_device.as_mut().ok_or_else(|| {
-            std::io::Error::new(std::io::ErrorKind::NotConnected, "I2C device not initialized")
+            std::io::Error::new(
+                std::io::ErrorKind::NotConnected,
+                "I2C device not initialized",
+            )
         })?;
 
         // Read bus voltage (register 0x02)
@@ -450,7 +453,8 @@ impl BatteryMonitorNode {
             self.over_current_warned = true;
             ctx.log_warning(&format!(
                 "Over-current: {:.1}A (limit: {:.1}A)",
-                self.current.abs(), self.max_current
+                self.current.abs(),
+                self.max_current
             ));
         } else if self.current.abs() < self.max_current * 0.9 {
             self.over_current_warned = false;
@@ -558,7 +562,9 @@ impl Node for BatteryMonitorNode {
 
         // Try hardware first, fall back to simulation
         #[cfg(feature = "i2c-hardware")]
-        if (self.hardware_enabled || self.i2c_device.is_some()) && self.monitor_interface == MonitorInterface::I2C {
+        if (self.hardware_enabled || self.i2c_device.is_some())
+            && self.monitor_interface == MonitorInterface::I2C
+        {
             // Initialize I2C if needed
             if self.i2c_device.is_none() && self.i2c_address != 0 {
                 if let Err(e) = self.init_i2c_hardware(&mut ctx) {
@@ -568,14 +574,21 @@ impl Node for BatteryMonitorNode {
                         ctx.log_warning(&format!(
                             "BatteryMonitorNode: Hardware unavailable - using SIMULATION mode"
                         ));
-                        ctx.log_warning(&format!("  Tried: {} address 0x{:02X}", device_path, self.i2c_address));
+                        ctx.log_warning(&format!(
+                            "  Tried: {} address 0x{:02X}",
+                            device_path, self.i2c_address
+                        ));
                         ctx.log_warning(&format!("  Error: {}", e));
                         ctx.log_warning("  Fix:");
                         ctx.log_warning("    1. Install: sudo apt install i2c-tools");
-                        ctx.log_warning("    2. Enable I2C: sudo raspi-config -> Interface Options -> I2C");
+                        ctx.log_warning(
+                            "    2. Enable I2C: sudo raspi-config -> Interface Options -> I2C",
+                        );
                         ctx.log_warning("    3. Verify INA219/INA226 wiring and address");
                         ctx.log_warning("    4. Test with: i2cdetect -y 1");
-                        ctx.log_warning("    5. Rebuild with: cargo build --features=\"i2c-hardware\"");
+                        ctx.log_warning(
+                            "    5. Rebuild with: cargo build --features=\"i2c-hardware\"",
+                        );
                     }
                     self.hardware_enabled = false;
                 } else {
@@ -642,12 +655,7 @@ impl Node for BatteryMonitorNode {
 
                 ctx.log_info(&format!(
                     "Battery: {:.2}V ({:.0}%) {:.1}A {:.1}°C {} | {}",
-                    self.voltage,
-                    self.percentage,
-                    self.current,
-                    self.temperature,
-                    status,
-                    time_str
+                    self.voltage, self.percentage, self.current, self.temperature, status, time_str
                 ));
 
                 LAST_LOG_TIME = current_time;

@@ -115,12 +115,7 @@ impl IMUData {
 pub fn imu_update_system(
     time: Res<Time>,
     gravity: Res<Gravity>,
-    mut query: Query<(
-        &mut IMU,
-        &mut IMUData,
-        &GlobalTransform,
-        Option<&Velocity>,
-    )>,
+    mut query: Query<(&mut IMU, &mut IMUData, &GlobalTransform, Option<&Velocity>)>,
 ) {
     let current_time = time.elapsed_secs();
     let dt = time.delta_secs();
@@ -195,21 +190,39 @@ pub fn imu_update_system(
 
         // Set covariances based on noise levels
         imu_data.orientation_covariance = vec![
-            (imu.orientation_noise_std * imu.orientation_noise_std) as f64, 0.0, 0.0,
-            0.0, (imu.orientation_noise_std * imu.orientation_noise_std) as f64, 0.0,
-            0.0, 0.0, (imu.orientation_noise_std * imu.orientation_noise_std) as f64,
+            (imu.orientation_noise_std * imu.orientation_noise_std) as f64,
+            0.0,
+            0.0,
+            0.0,
+            (imu.orientation_noise_std * imu.orientation_noise_std) as f64,
+            0.0,
+            0.0,
+            0.0,
+            (imu.orientation_noise_std * imu.orientation_noise_std) as f64,
         ];
 
         imu_data.angular_velocity_covariance = vec![
-            (imu.gyro_noise_std.x * imu.gyro_noise_std.x) as f64, 0.0, 0.0,
-            0.0, (imu.gyro_noise_std.y * imu.gyro_noise_std.y) as f64, 0.0,
-            0.0, 0.0, (imu.gyro_noise_std.z * imu.gyro_noise_std.z) as f64,
+            (imu.gyro_noise_std.x * imu.gyro_noise_std.x) as f64,
+            0.0,
+            0.0,
+            0.0,
+            (imu.gyro_noise_std.y * imu.gyro_noise_std.y) as f64,
+            0.0,
+            0.0,
+            0.0,
+            (imu.gyro_noise_std.z * imu.gyro_noise_std.z) as f64,
         ];
 
         imu_data.linear_acceleration_covariance = vec![
-            (imu.accel_noise_std.x * imu.accel_noise_std.x) as f64, 0.0, 0.0,
-            0.0, (imu.accel_noise_std.y * imu.accel_noise_std.y) as f64, 0.0,
-            0.0, 0.0, (imu.accel_noise_std.z * imu.accel_noise_std.z) as f64,
+            (imu.accel_noise_std.x * imu.accel_noise_std.x) as f64,
+            0.0,
+            0.0,
+            0.0,
+            (imu.accel_noise_std.y * imu.accel_noise_std.y) as f64,
+            0.0,
+            0.0,
+            0.0,
+            (imu.accel_noise_std.z * imu.accel_noise_std.z) as f64,
         ];
 
         imu_data.timestamp = current_time;
@@ -225,10 +238,7 @@ impl Default for Gravity {
     }
 }
 
-pub fn visualize_imu_system(
-    mut gizmos: Gizmos,
-    query: Query<(&IMU, &IMUData, &GlobalTransform)>,
-) {
+pub fn visualize_imu_system(mut gizmos: Gizmos, query: Query<(&IMU, &IMUData, &GlobalTransform)>) {
     for (_imu, imu_data, transform) in query.iter() {
         let pos = transform.translation();
 
@@ -244,22 +254,14 @@ pub fn visualize_imu_system(
         // Draw angular velocity
         if imu_data.angular_velocity.length() > 0.01 {
             let angvel_dir = imu_data.angular_velocity.normalize_or_zero();
-            gizmos.line(
-                pos,
-                pos + angvel_dir * 0.5,
-                Color::srgb(1.0, 1.0, 0.0),
-            );
+            gizmos.line(pos, pos + angvel_dir * 0.5, Color::srgb(1.0, 1.0, 0.0));
         }
 
         // Draw acceleration
         if imu_data.linear_acceleration.length() > 0.1 {
             let accel_world = imu_data.orientation * imu_data.linear_acceleration;
             let accel_dir = accel_world.normalize_or_zero();
-            gizmos.line(
-                pos,
-                pos + accel_dir * 0.5,
-                Color::srgb(1.0, 0.0, 1.0),
-            );
+            gizmos.line(pos, pos + accel_dir * 0.5, Color::srgb(1.0, 0.0, 1.0));
         }
     }
 }

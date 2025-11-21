@@ -87,7 +87,10 @@ impl AABB {
 
     /// Get center point
     pub fn center(&self) -> (f64, f64) {
-        ((self.min_x + self.max_x) / 2.0, (self.min_y + self.max_y) / 2.0)
+        (
+            (self.min_x + self.max_x) / 2.0,
+            (self.min_y + self.max_y) / 2.0,
+        )
     }
 
     /// Get area

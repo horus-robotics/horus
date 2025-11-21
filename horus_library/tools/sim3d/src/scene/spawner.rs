@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 use rapier3d::prelude::*;
 
-use crate::physics::world::PhysicsWorld;
 use crate::physics::collider::{ColliderBuilder, ColliderShape};
-use crate::physics::rigid_body::{RigidBodyComponent, Velocity, Mass, Damping};
+use crate::physics::rigid_body::{Damping, Mass, RigidBodyComponent, Velocity};
+use crate::physics::world::PhysicsWorld;
 
 #[derive(Clone)]
 pub struct ObjectSpawnConfig {
@@ -117,14 +117,11 @@ impl ObjectSpawner {
     ) -> Entity {
         // Create rigid body
         // Build with position and rotation
+        use nalgebra::{Translation3, UnitQuaternion};
         use rapier3d::prelude::Isometry;
-        use nalgebra::{UnitQuaternion, Translation3};
 
-        let translation = Translation3::new(
-            config.position.x,
-            config.position.y,
-            config.position.z,
-        );
+        let translation =
+            Translation3::new(config.position.x, config.position.y, config.position.z);
         let rotation = UnitQuaternion::from_quaternion(nalgebra::Quaternion::new(
             config.rotation.w,
             config.rotation.x,
@@ -134,9 +131,7 @@ impl ObjectSpawner {
         let position = Isometry::from_parts(translation.into(), rotation);
 
         let rigid_body = if config.is_static {
-            RigidBodyBuilder::fixed()
-                .position(position)
-                .build()
+            RigidBodyBuilder::fixed().position(position).build()
         } else {
             RigidBodyBuilder::dynamic()
                 .position(position)
@@ -188,7 +183,9 @@ impl ObjectSpawner {
 
         // Create visual mesh
         let mesh = match &config.shape {
-            SpawnShape::Box { size } => meshes.add(bevy::prelude::Cuboid::new(size.x, size.y, size.z)),
+            SpawnShape::Box { size } => {
+                meshes.add(bevy::prelude::Cuboid::new(size.x, size.y, size.z))
+            }
             SpawnShape::Sphere { radius } => meshes.add(bevy::prelude::Sphere { radius: *radius }),
             SpawnShape::Cylinder { radius, height } => meshes.add(bevy::prelude::Cylinder {
                 radius: *radius,
@@ -259,8 +256,8 @@ impl ObjectSpawner {
         meshes: &mut Assets<Mesh>,
         materials: &mut Assets<StandardMaterial>,
     ) -> Entity {
-        let config = ObjectSpawnConfig::new(name, SpawnShape::Sphere { radius })
-            .at_position(position);
+        let config =
+            ObjectSpawnConfig::new(name, SpawnShape::Sphere { radius }).at_position(position);
         Self::spawn_object(config, commands, physics_world, meshes, materials)
     }
 

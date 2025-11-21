@@ -47,7 +47,9 @@ mod tests {
                 impl std::fmt::Display for HorusError {
                     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                         match self {
-                            HorusError::Communication(msg) => write!(f, "Communication error: {}", msg),
+                            HorusError::Communication(msg) => {
+                                write!(f, "Communication error: {}", msg)
+                            }
                         }
                     }
                 }
@@ -73,10 +75,18 @@ mod tests {
                     pub trait Node {
                         fn name(&self) -> &'static str;
                         fn tick(&mut self, ctx: Option<&mut super::NodeInfo>);
-                        fn init(&mut self, _ctx: &mut super::NodeInfo) -> crate::tests::mock::horus_core::error::HorusResult<()> {
+                        fn init(
+                            &mut self,
+                            _ctx: &mut super::NodeInfo,
+                        ) -> crate::tests::mock::horus_core::error::HorusResult<()>
+                        {
                             Ok(())
                         }
-                        fn shutdown(&mut self, _ctx: &mut super::NodeInfo) -> crate::tests::mock::horus_core::error::HorusResult<()> {
+                        fn shutdown(
+                            &mut self,
+                            _ctx: &mut super::NodeInfo,
+                        ) -> crate::tests::mock::horus_core::error::HorusResult<()>
+                        {
                             Ok(())
                         }
                         fn get_publishers(&self) -> Vec<TopicMetadata> {

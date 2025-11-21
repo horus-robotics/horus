@@ -34,15 +34,15 @@ pub struct EncoderNode {
     wheel_radius: f64,       // wheel radius in meters
     gear_ratio: f64,         // gear ratio
     backend: EncoderBackend,
-    gpio_pin_a: u64,         // GPIO pin for channel A
-    gpio_pin_b: u64,         // GPIO pin for channel B
+    gpio_pin_a: u64, // GPIO pin for channel A
+    gpio_pin_b: u64, // GPIO pin for channel B
 
     // State
     last_position: f64, // last encoder position
     last_time: u64,
     velocity: f64,
     total_distance: f64,
-    encoder_count: i64,  // Raw encoder count
+    encoder_count: i64, // Raw encoder count
 
     // Hardware drivers
     #[cfg(feature = "gpio-hardware")]
@@ -83,7 +83,7 @@ impl EncoderNode {
             wheel_radius: 0.1,          // 10cm wheel radius default
             gear_ratio: 1.0,            // Direct drive default
             backend,
-            gpio_pin_a: 17,             // Default GPIO pins for Raspberry Pi
+            gpio_pin_a: 17, // Default GPIO pins for Raspberry Pi
             gpio_pin_b: 27,
             last_position: 0.0,
             last_time: 0,
@@ -167,14 +167,20 @@ impl EncoderNode {
                 // Initialize pin A
                 let pin_a = Pin::new(self.gpio_pin_a);
                 if let Err(e) = pin_a.export() {
-                    ctx.log_error(&format!("Failed to export GPIO pin {}: {:?}", self.gpio_pin_a, e));
+                    ctx.log_error(&format!(
+                        "Failed to export GPIO pin {}: {:?}",
+                        self.gpio_pin_a, e
+                    ));
                     ctx.log_warning("Falling back to simulation mode");
                     self.backend = EncoderBackend::Simulation;
                     return true;
                 }
 
                 if let Err(e) = pin_a.set_direction(Direction::In) {
-                    ctx.log_error(&format!("Failed to set GPIO pin {} direction: {:?}", self.gpio_pin_a, e));
+                    ctx.log_error(&format!(
+                        "Failed to set GPIO pin {} direction: {:?}",
+                        self.gpio_pin_a, e
+                    ));
                     let _ = pin_a.unexport();
                     ctx.log_warning("Falling back to simulation mode");
                     self.backend = EncoderBackend::Simulation;
@@ -182,7 +188,10 @@ impl EncoderNode {
                 }
 
                 if let Err(e) = pin_a.set_edge(Edge::BothEdges) {
-                    ctx.log_error(&format!("Failed to set GPIO pin {} edge: {:?}", self.gpio_pin_a, e));
+                    ctx.log_error(&format!(
+                        "Failed to set GPIO pin {} edge: {:?}",
+                        self.gpio_pin_a, e
+                    ));
                     let _ = pin_a.unexport();
                     ctx.log_warning("Falling back to simulation mode");
                     self.backend = EncoderBackend::Simulation;
@@ -192,7 +201,10 @@ impl EncoderNode {
                 // Initialize pin B
                 let pin_b = Pin::new(self.gpio_pin_b);
                 if let Err(e) = pin_b.export() {
-                    ctx.log_error(&format!("Failed to export GPIO pin {}: {:?}", self.gpio_pin_b, e));
+                    ctx.log_error(&format!(
+                        "Failed to export GPIO pin {}: {:?}",
+                        self.gpio_pin_b, e
+                    ));
                     let _ = pin_a.unexport();
                     ctx.log_warning("Falling back to simulation mode");
                     self.backend = EncoderBackend::Simulation;
@@ -200,7 +212,10 @@ impl EncoderNode {
                 }
 
                 if let Err(e) = pin_b.set_direction(Direction::In) {
-                    ctx.log_error(&format!("Failed to set GPIO pin {} direction: {:?}", self.gpio_pin_b, e));
+                    ctx.log_error(&format!(
+                        "Failed to set GPIO pin {} direction: {:?}",
+                        self.gpio_pin_b, e
+                    ));
                     let _ = pin_a.unexport();
                     let _ = pin_b.unexport();
                     ctx.log_warning("Falling back to simulation mode");
@@ -254,15 +269,15 @@ impl EncoderNode {
 
                     if state_change {
                         // Determine direction
-                        let forward = (self.last_a && !self.last_b && !a && !b) ||
-                                     (!self.last_a && !self.last_b && !a && b) ||
-                                     (!self.last_a && b && a && b) ||
-                                     (a && b && a && !b);
+                        let forward = (self.last_a && !self.last_b && !a && !b)
+                            || (!self.last_a && !self.last_b && !a && b)
+                            || (!self.last_a && b && a && b)
+                            || (a && b && a && !b);
 
-                        let backward = (!self.last_a && !self.last_b && a && !b) ||
-                                      (a && !self.last_b && a && b) ||
-                                      (a && b && !a && b) ||
-                                      (!a && b && !a && !b);
+                        let backward = (!self.last_a && !self.last_b && a && !b)
+                            || (a && !self.last_b && a && b)
+                            || (a && b && !a && b)
+                            || (!a && b && !a && !b);
 
                         if forward {
                             self.encoder_count += 1;
@@ -283,9 +298,7 @@ impl EncoderNode {
                 }
             }
             #[cfg(not(feature = "gpio-hardware"))]
-            EncoderBackend::GpioQuadrature => {
-                0.0
-            }
+            EncoderBackend::GpioQuadrature => 0.0,
         }
     }
 
@@ -355,7 +368,10 @@ impl Node for EncoderNode {
                 ctx.log_info("Encoder simulation mode enabled");
             }
             EncoderBackend::GpioQuadrature => {
-                ctx.log_info(&format!("GPIO quadrature encoder: pins {} and {}", self.gpio_pin_a, self.gpio_pin_b));
+                ctx.log_info(&format!(
+                    "GPIO quadrature encoder: pins {} and {}",
+                    self.gpio_pin_a, self.gpio_pin_b
+                ));
             }
         }
 

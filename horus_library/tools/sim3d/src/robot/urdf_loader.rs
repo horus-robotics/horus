@@ -1,37 +1,57 @@
+use anyhow::{Context, Result};
 use bevy::prelude::*;
 use bevy::render::mesh::Mesh;
 use rapier3d::prelude::*;
-use urdf_rs::{Geometry, Joint, Link, Robot as URDFRobot, Visual};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use anyhow::{Context, Result};
+use urdf_rs::{Geometry, Joint, Link, Robot as URDFRobot, Visual};
 
-use crate::physics::world::PhysicsWorld;
+use crate::assets::mesh::{MeshLoadOptions, MeshLoader};
+use crate::assets::resolver::PathResolver;
 use crate::physics::collider::{ColliderBuilder, ColliderShape};
-use crate::physics::joints::{create_revolute_joint, create_revolute_joint_with_limits,
-                              create_prismatic_joint, create_prismatic_joint_with_limits,
-                              create_fixed_joint, create_spherical_joint, PhysicsJoint, JointType};
+use crate::physics::joints::{
+    create_fixed_joint, create_prismatic_joint, create_prismatic_joint_with_limits,
+    create_revolute_joint, create_revolute_joint_with_limits, create_spherical_joint, JointType,
+    PhysicsJoint,
+};
+use crate::physics::world::PhysicsWorld;
 use crate::robot::robot::Robot;
 use crate::tf::tree::TFTree;
 
 pub struct URDFLoader {
     base_path: PathBuf,
+    mesh_loader: MeshLoader,
+    path_resolver: PathResolver,
 }
 
 impl URDFLoader {
     pub fn new() -> Self {
+        let mut mesh_loader = MeshLoader::new();
+        let mut path_resolver = PathResolver::new();
+
+        // Add common robot model paths
+        mesh_loader.add_base_path(PathBuf::from("assets/models"));
+        mesh_loader.add_base_path(PathBuf::from("assets/robots"));
+        path_resolver.add_base_path(PathBuf::from("assets/models"));
+        path_resolver.add_base_path(PathBuf::from("assets/robots"));
+
         Self {
             base_path: PathBuf::from("."),
+            mesh_loader,
+            path_resolver,
         }
     }
 
     pub fn with_base_path(mut self, path: impl Into<PathBuf>) -> Self {
-        self.base_path = path.into();
+        let path_buf = path.into();
+        self.base_path = path_buf.clone();
+        self.mesh_loader.add_base_path(path_buf.clone());
+        self.path_resolver.add_base_path(path_buf);
         self
     }
 
     pub fn load(
-        &self,
+        &mut self,
         urdf_path: impl AsRef<Path>,
         commands: &mut Commands,
         physics_world: &mut PhysicsWorld,
@@ -50,7 +70,7 @@ impl URDFLoader {
     }
 
     pub fn spawn_robot(
-        &self,
+        &mut self,
         urdf: URDFRobot,
         commands: &mut Commands,
         physics_world: &mut PhysicsWorld,
@@ -61,11 +81,13 @@ impl URDFLoader {
         let robot_name = urdf.name.clone();
 
         // Create root entity for the robot
-        let root_entity = commands.spawn((
-            Robot::new(&robot_name),
-            Transform::default(),
-            Visibility::default(),
-        )).id();
+        let root_entity = commands
+            .spawn((
+                Robot::new(&robot_name),
+                Transform::default(),
+                Visibility::default(),
+            ))
+            .id();
 
         // Map link names to entity IDs
         let mut link_entities: HashMap<String, Entity> = HashMap::new();
@@ -124,9 +146,9 @@ impl URDFLoader {
                     origin.rpy[2] as f32,
                 );
 
-                commands.entity(child_entity).insert(
-                    Transform::from_translation(translation).with_rotation(rotation)
-                );
+                commands
+                    .entity(child_entity)
+                    .insert(Transform::from_translation(translation).with_rotation(rotation));
 
                 // Parent child to parent
                 commands.entity(parent_entity).add_child(child_entity);
@@ -146,7 +168,7 @@ impl URDFLoader {
     }
 
     fn spawn_link(
-        &self,
+        &mut self,
         link: &Link,
         robot_name: &str,
         commands: &mut Commands,
@@ -179,16 +201,17 @@ impl URDFLoader {
                 .build()
         } else {
             // Static body for links without inertia
-            RigidBodyBuilder::fixed()
-                .build()
+            RigidBodyBuilder::fixed().build()
         };
 
         // Create entity and spawn rigid body
-        let entity = commands.spawn((
-            Name::new(format!("{}::{}", robot_name, link.name)),
-            Transform::default(),
-            Visibility::default(),
-        )).id();
+        let entity = commands
+            .spawn((
+                Name::new(format!("{}::{}", robot_name, link.name)),
+                Transform::default(),
+                Visibility::default(),
+            ))
+            .id();
 
         let rb_handle = physics_world.spawn_rigid_body(rigid_body, entity);
 
@@ -215,17 +238,23 @@ impl URDFLoader {
         commands: &mut Commands,
         physics_world: &mut PhysicsWorld,
     ) -> Result<()> {
-        let parent_entity = link_entities.get(&joint.parent.link)
+        let parent_entity = link_entities
+            .get(&joint.parent.link)
             .context(format!("Parent link '{}' not found", joint.parent.link))?;
 
-        let child_entity = link_entities.get(&joint.child.link)
+        let child_entity = link_entities
+            .get(&joint.child.link)
             .context(format!("Child link '{}' not found", joint.child.link))?;
 
-        let parent_rb = link_rb_handles.get(&joint.parent.link)
-            .context(format!("Parent rigid body for '{}' not found", joint.parent.link))?;
+        let parent_rb = link_rb_handles.get(&joint.parent.link).context(format!(
+            "Parent rigid body for '{}' not found",
+            joint.parent.link
+        ))?;
 
-        let child_rb = link_rb_handles.get(&joint.child.link)
-            .context(format!("Child rigid body for '{}' not found", joint.child.link))?;
+        let child_rb = link_rb_handles.get(&joint.child.link).context(format!(
+            "Child rigid body for '{}' not found",
+            joint.child.link
+        ))?;
 
         // Convert origin to anchor points
         let origin = &joint.origin;
@@ -249,32 +278,41 @@ impl URDFLoader {
                     let min_angle = limit.lower as f32;
                     let max_angle = limit.upper as f32;
                     (
-                        create_revolute_joint_with_limits(anchor, anchor, axis, min_angle, max_angle),
-                        JointType::Revolute
+                        create_revolute_joint_with_limits(
+                            anchor, anchor, axis, min_angle, max_angle,
+                        ),
+                        JointType::Revolute,
                     )
                 } else {
-                    (create_revolute_joint(anchor, anchor, axis), JointType::Revolute)
+                    (
+                        create_revolute_joint(anchor, anchor, axis),
+                        JointType::Revolute,
+                    )
                 }
             }
-            urdf_rs::JointType::Continuous => {
-                (create_revolute_joint(anchor, anchor, axis), JointType::Revolute)
-            }
+            urdf_rs::JointType::Continuous => (
+                create_revolute_joint(anchor, anchor, axis),
+                JointType::Revolute,
+            ),
             urdf_rs::JointType::Prismatic => {
                 let limit = &joint.limit;
                 if limit.upper != 0.0 || limit.lower != 0.0 {
                     let min_dist = limit.lower as f32;
                     let max_dist = limit.upper as f32;
                     (
-                        create_prismatic_joint_with_limits(anchor, anchor, axis, min_dist, max_dist),
-                        JointType::Prismatic
+                        create_prismatic_joint_with_limits(
+                            anchor, anchor, axis, min_dist, max_dist,
+                        ),
+                        JointType::Prismatic,
                     )
                 } else {
-                    (create_prismatic_joint(anchor, anchor, axis), JointType::Prismatic)
+                    (
+                        create_prismatic_joint(anchor, anchor, axis),
+                        JointType::Prismatic,
+                    )
                 }
             }
-            urdf_rs::JointType::Fixed => {
-                (create_fixed_joint(anchor, anchor), JointType::Fixed)
-            }
+            urdf_rs::JointType::Fixed => (create_fixed_joint(anchor, anchor), JointType::Fixed),
             urdf_rs::JointType::Floating => {
                 // Floating joints are represented by no joint constraint
                 return Ok(());
@@ -290,12 +328,10 @@ impl URDFLoader {
         };
 
         // Insert joint into physics world
-        let joint_handle = physics_world.impulse_joint_set.insert(
-            *parent_rb,
-            *child_rb,
-            physics_joint,
-            true,
-        );
+        let joint_handle =
+            physics_world
+                .impulse_joint_set
+                .insert(*parent_rb, *child_rb, physics_joint, true);
 
         // Add PhysicsJoint component to child entity
         commands.entity(*child_entity).insert(PhysicsJoint {
@@ -319,12 +355,24 @@ impl URDFLoader {
             Geometry::Cylinder { radius, length } => {
                 let half_height = *length as f32 / 2.0;
                 let radius = *radius as f32;
-                Some(ColliderBuilder::new(ColliderShape::Cylinder { half_height, radius }).build())
+                Some(
+                    ColliderBuilder::new(ColliderShape::Cylinder {
+                        half_height,
+                        radius,
+                    })
+                    .build(),
+                )
             }
             Geometry::Capsule { radius, length } => {
                 let half_height = *length as f32 / 2.0;
                 let radius = *radius as f32;
-                Some(ColliderBuilder::new(ColliderShape::Capsule { half_height, radius }).build())
+                Some(
+                    ColliderBuilder::new(ColliderShape::Capsule {
+                        half_height,
+                        radius,
+                    })
+                    .build(),
+                )
             }
             Geometry::Sphere { radius } => {
                 let radius = *radius as f32;
@@ -333,12 +381,17 @@ impl URDFLoader {
             Geometry::Mesh { filename, scale } => {
                 // Load mesh file and create trimesh collider
                 let mesh_path = self.resolve_mesh_path(filename);
-                let scale = scale.as_ref().map(|s| Vec3::new(s[0] as f32, s[1] as f32, s[2] as f32))
+                let scale = scale
+                    .as_ref()
+                    .map(|s| Vec3::new(s[0] as f32, s[1] as f32, s[2] as f32))
                     .unwrap_or(Vec3::ONE);
 
                 // For now, we'll skip mesh colliders and let them be implemented later
                 // with proper mesh loading infrastructure
-                warn!("Mesh colliders not yet fully implemented, skipping: {}", mesh_path.display());
+                warn!(
+                    "Mesh colliders not yet fully implemented, skipping: {}",
+                    mesh_path.display()
+                );
                 None
             }
         };
@@ -347,7 +400,7 @@ impl URDFLoader {
     }
 
     fn spawn_visual_mesh(
-        &self,
+        &mut self,
         visual: &Visual,
         parent_entity: Entity,
         commands: &mut Commands,
@@ -389,11 +442,8 @@ impl URDFLoader {
         // Spawn visual based on geometry type
         match &visual.geometry {
             Geometry::Box { size } => {
-                let cuboid = bevy::prelude::Cuboid::new(
-                    size[0] as f32,
-                    size[1] as f32,
-                    size[2] as f32,
-                );
+                let cuboid =
+                    bevy::prelude::Cuboid::new(size[0] as f32, size[1] as f32, size[2] as f32);
                 commands.entity(parent_entity).with_children(|parent| {
                     parent.spawn((
                         Mesh3d(meshes.add(Mesh::from(cuboid))),
@@ -422,7 +472,9 @@ impl URDFLoader {
                 });
             }
             Geometry::Sphere { radius } => {
-                let sphere = bevy::prelude::Sphere { radius: *radius as f32 };
+                let sphere = bevy::prelude::Sphere {
+                    radius: *radius as f32,
+                };
                 commands.entity(parent_entity).with_children(|parent| {
                     parent.spawn((
                         Mesh3d(meshes.add(Mesh::from(sphere))),
@@ -450,21 +502,86 @@ impl URDFLoader {
                     ));
                 });
             }
-            Geometry::Mesh { filename, scale: _ } => {
-                // TODO: External mesh file loading not yet implemented
-                warn!("Mesh file loading not yet supported in URDF loader: {}", filename);
-                // For now, spawn a placeholder cube
-                let cuboid = bevy::prelude::Cuboid::new(0.1, 0.1, 0.1);
-                commands.entity(parent_entity).with_children(|parent| {
-                    parent.spawn((
-                        Mesh3d(meshes.add(Mesh::from(cuboid))),
-                        MeshMaterial3d(materials.add(StandardMaterial {
-                            base_color: Color::srgb(1.0, 0.0, 1.0), // Magenta for "missing mesh"
+            Geometry::Mesh { filename, scale } => {
+                // Load mesh file using the mesh loader
+                let resolved_path = match self.resolve_mesh_path_full(filename) {
+                    Ok(path) => path,
+                    Err(e) => {
+                        warn!("Failed to resolve mesh path '{}': {}", filename, e);
+                        warn!("Spawning fallback cube geometry instead");
+                        // Spawn fallback cube when mesh path cannot be resolved
+                        let cuboid = bevy::prelude::Cuboid::new(0.1, 0.1, 0.1);
+                        commands.entity(parent_entity).with_children(|parent| {
+                            parent.spawn((
+                                Mesh3d(meshes.add(Mesh::from(cuboid))),
+                                MeshMaterial3d(materials.add(StandardMaterial {
+                                    base_color: Color::srgb(1.0, 0.0, 1.0), // Magenta for "missing mesh"
+                                    ..default()
+                                })),
+                                transform,
+                            ));
+                        });
+                        return Ok(());
+                    }
+                };
+
+                // Set up mesh load options with scale
+                let mesh_scale = scale
+                    .as_ref()
+                    .map(|s| Vec3::new(s[0] as f32, s[1] as f32, s[2] as f32))
+                    .unwrap_or(Vec3::ONE);
+
+                let load_options = MeshLoadOptions::default()
+                    .with_scale(mesh_scale)
+                    .generate_normals(true)
+                    .generate_tangents(false)
+                    .validate(true);
+
+                // Load the mesh
+                match self.mesh_loader.load(&resolved_path, load_options) {
+                    Ok(loaded_mesh) => {
+                        info!(
+                            "Successfully loaded mesh: {} ({} vertices, {} triangles)",
+                            resolved_path.display(),
+                            loaded_mesh.vertex_count,
+                            loaded_mesh.triangle_count
+                        );
+
+                        // Add mesh to assets
+                        let mesh_handle = meshes.add(loaded_mesh.mesh);
+
+                        // Use material from URDF if available, otherwise use mesh material
+                        let material_handle = materials.add(StandardMaterial {
+                            base_color: material,
                             ..default()
-                        })),
-                        transform,
-                    ));
-                });
+                        });
+
+                        // Spawn the loaded mesh
+                        commands.entity(parent_entity).with_children(|parent| {
+                            parent.spawn((
+                                Mesh3d(mesh_handle),
+                                MeshMaterial3d(material_handle),
+                                transform,
+                            ));
+                        });
+                    }
+                    Err(e) => {
+                        warn!("Failed to load mesh '{}': {}", resolved_path.display(), e);
+                        warn!("Spawning fallback cube geometry instead");
+                        // Spawn fallback cube when mesh loading fails
+                        let cuboid = bevy::prelude::Cuboid::new(0.1, 0.1, 0.1);
+                        commands.entity(parent_entity).with_children(|parent| {
+                            parent.spawn((
+                                Mesh3d(meshes.add(Mesh::from(cuboid))),
+                                MeshMaterial3d(materials.add(StandardMaterial {
+                                    base_color: Color::srgb(1.0, 0.0, 1.0), // Magenta for "missing mesh"
+                                    ..default()
+                                })),
+                                transform,
+                            ));
+                        });
+                    }
+                }
             }
         }
 
@@ -472,7 +589,7 @@ impl URDFLoader {
     }
 
     fn resolve_mesh_path(&self, filename: &str) -> PathBuf {
-        // Handle package:// URIs
+        // Simple fallback for collider mesh paths (not used for visual meshes)
         if filename.starts_with("package://") {
             let relative_path = filename.strip_prefix("package://").unwrap();
             self.base_path.join(relative_path)
@@ -483,13 +600,21 @@ impl URDFLoader {
         }
     }
 
+    fn resolve_mesh_path_full(&self, filename: &str) -> Result<PathBuf> {
+        // Use the PathResolver for comprehensive URI resolution
+        self.path_resolver
+            .resolve(filename)
+            .with_context(|| format!("Failed to resolve mesh URI: {}", filename))
+    }
+
     fn get_rb_handle_for_entity(
         &self,
         entity: Entity,
         physics_world: &PhysicsWorld,
     ) -> Option<RigidBodyHandle> {
         // Search through rigid body set to find handle matching entity
-        physics_world.rigid_body_set
+        physics_world
+            .rigid_body_set
             .iter()
             .find(|(_, rb)| Entity::from_bits(rb.user_data as u64) == entity)
             .map(|(handle, _)| handle)

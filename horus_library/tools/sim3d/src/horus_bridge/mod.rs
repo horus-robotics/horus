@@ -6,8 +6,10 @@ use bevy::prelude::*;
 use std::sync::{Arc, Mutex};
 
 pub use messages::*;
-pub use publisher::{HorusPublisher, publish_lidar2d_system, publish_lidar3d_system, publish_tf_system};
-pub use subscriber::{HorusSubscriber, apply_cmd_vel_system, handle_robot_commands_system};
+pub use publisher::{
+    publish_lidar2d_system, publish_lidar3d_system, publish_tf_system, HorusPublisher,
+};
+pub use subscriber::{apply_cmd_vel_system, handle_robot_commands_system, HorusSubscriber};
 
 /// Configuration for the HORUS bridge
 #[derive(Resource, Clone)]
@@ -238,8 +240,16 @@ impl BridgeUtils {
     /// Convert velocity components to Twist message
     pub fn velocities_to_twist(linear: Vec3, angular: Vec3) -> Twist {
         Twist {
-            linear: Vector3Message { x: linear.x, y: linear.y, z: linear.z },
-            angular: Vector3Message { x: angular.x, y: angular.y, z: angular.z },
+            linear: Vector3Message {
+                x: linear.x,
+                y: linear.y,
+                z: linear.z,
+            },
+            angular: Vector3Message {
+                x: angular.x,
+                y: angular.y,
+                z: angular.z,
+            },
         }
     }
 
@@ -362,25 +372,16 @@ impl Plugin for HorusBridgePlugin {
         }
 
         if self.config.publish_sensors {
-            app.add_systems(Update, (
-                publish_lidar3d_system,
-                publish_lidar2d_system,
-            ));
+            app.add_systems(Update, (publish_lidar3d_system, publish_lidar2d_system));
         }
 
         // Add subscription systems if enabled
         if self.config.subscribe_cmd_vel {
-            app.add_systems(Update, (
-                apply_cmd_vel_system,
-                handle_robot_commands_system,
-            ));
+            app.add_systems(Update, (apply_cmd_vel_system, handle_robot_commands_system));
         }
 
         // Add monitoring and cleanup systems
-        app.add_systems(Update, (
-            bridge_monitor_system,
-            bridge_cleanup_system,
-        ));
+        app.add_systems(Update, (bridge_monitor_system, bridge_cleanup_system));
     }
 }
 

@@ -25,6 +25,15 @@ thiserror = { workspace = true }
 default = ["macros"]
 macros = ["dep:horus_macros"]
 
+# Hardware feature flags (compile-time)
+gpio-hardware = []
+bno055-imu = []
+mpu6050-imu = []
+gilrs = []
+crossterm = []
+rplidar = []
+modbus-hardware = []
+
 [lib]
 name = "horus"
 path = "src/lib.rs"

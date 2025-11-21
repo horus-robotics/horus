@@ -290,16 +290,14 @@ impl LockedAxes {
     }
 
     pub fn lock_all_translation(mut self) -> Self {
-        self.locked_axes |= Self::TRANSLATION_LOCKED_X
-            | Self::TRANSLATION_LOCKED_Y
-            | Self::TRANSLATION_LOCKED_Z;
+        self.locked_axes |=
+            Self::TRANSLATION_LOCKED_X | Self::TRANSLATION_LOCKED_Y | Self::TRANSLATION_LOCKED_Z;
         self
     }
 
     pub fn lock_all_rotation(mut self) -> Self {
-        self.locked_axes |= Self::ROTATION_LOCKED_X
-            | Self::ROTATION_LOCKED_Y
-            | Self::ROTATION_LOCKED_Z;
+        self.locked_axes |=
+            Self::ROTATION_LOCKED_X | Self::ROTATION_LOCKED_Y | Self::ROTATION_LOCKED_Z;
         self
     }
 }

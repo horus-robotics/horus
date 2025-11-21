@@ -497,7 +497,81 @@ impl CostMap {
             };
         }
 
-        // TODO: Add inflation around obstacles
+        // Apply obstacle inflation
+        self.inflate_obstacles();
+    }
+
+    /// Inflate obstacles in the costmap
+    /// Uses distance transform to propagate costs around obstacles
+    fn inflate_obstacles(&mut self) {
+        if self.inflation_radius <= 0.0 {
+            return; // No inflation needed
+        }
+
+        let width = self.occupancy_grid.width as usize;
+        let height = self.occupancy_grid.height as usize;
+        let resolution = self.occupancy_grid.resolution;
+
+        // Calculate inflation radius in cells
+        let inflation_cells = (self.inflation_radius / resolution).ceil() as i32;
+
+        // Create a copy of current costs to avoid modifying while iterating
+        let original_costs = self.costs.clone();
+
+        // For each cell, check if it should be inflated
+        for y in 0..height {
+            for x in 0..width {
+                let center_idx = y * width + x;
+
+                // Skip if already at or above lethal cost (it's an obstacle)
+                if original_costs[center_idx] >= self.lethal_cost {
+                    continue;
+                }
+
+                // Check neighborhood for obstacles
+                let mut min_distance = f32::MAX;
+                let mut found_obstacle = false;
+
+                // Search within inflation radius
+                for dy in -inflation_cells..=inflation_cells {
+                    for dx in -inflation_cells..=inflation_cells {
+                        let nx = x as i32 + dx;
+                        let ny = y as i32 + dy;
+
+                        // Check bounds
+                        if nx < 0 || ny < 0 || nx >= width as i32 || ny >= height as i32 {
+                            continue;
+                        }
+
+                        let neighbor_idx = (ny as usize) * width + (nx as usize);
+
+                        // Check if neighbor is an obstacle
+                        if original_costs[neighbor_idx] >= self.lethal_cost {
+                            // Calculate Euclidean distance in meters
+                            let dist = ((dx * dx + dy * dy) as f32).sqrt() * resolution;
+
+                            if dist < min_distance {
+                                min_distance = dist;
+                                found_obstacle = true;
+                            }
+                        }
+                    }
+                }
+
+                // Apply inflation cost if obstacle found within radius
+                if found_obstacle && min_distance <= self.inflation_radius {
+                    // Calculate inflated cost using exponential decay
+                    // Cost decreases from lethal_cost at obstacle to free space cost at inflation_radius
+                    let factor = 1.0 - (min_distance / self.inflation_radius);
+                    let inflation_cost = ((self.lethal_cost as f32 - 1.0)
+                        * factor.powf(self.cost_scaling_factor))
+                    .min(self.lethal_cost as f32 - 1.0);
+
+                    // Keep the higher of the two costs
+                    self.costs[center_idx] = self.costs[center_idx].max(inflation_cost as u8);
+                }
+            }
+        }
     }
 
     /// Get cost at world coordinates

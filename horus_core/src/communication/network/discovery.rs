@@ -161,7 +161,8 @@ impl DiscoveryService {
                                             );
                                             let mut response_buffer = Vec::new();
                                             response.encode(&mut response_buffer);
-                                            let _ = socket.send_to(&response_buffer, multicast_addr);
+                                            let _ =
+                                                socket.send_to(&response_buffer, multicast_addr);
                                         }
                                     }
                                     MessageType::DiscoveryResponse => {

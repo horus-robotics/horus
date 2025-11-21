@@ -4,7 +4,7 @@ use super::auth::AuthService;
 use axum::{
     body::Body,
     extract::State,
-    http::{Request, StatusCode, header},
+    http::{header, Request, StatusCode},
     middleware::Next,
     response::Response,
 };

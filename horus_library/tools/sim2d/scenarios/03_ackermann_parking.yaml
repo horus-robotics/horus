@@ -1,0 +1,96 @@
+version: "1.0"
+name: "Ackermann Steering - Parking Challenge"
+description: "Learn car-like Ackermann steering by parking in tight spaces"
+
+world:
+  width: 30.0
+  height: 20.0
+  obstacles:
+    # Parking lot boundaries
+    - pos: [15.0, 2.0]
+      size: [25.0, 0.5]
+      shape: rectangle
+      color: [0.3, 0.3, 0.3]
+
+    - pos: [15.0, 18.0]
+      size: [25.0, 0.5]
+      shape: rectangle
+      color: [0.3, 0.3, 0.3]
+
+    # Parking spaces (obstacles representing other parked cars)
+    - pos: [8.0, 5.0]
+      size: [1.8, 0.9]
+      shape: rectangle
+      color: [0.6, 0.6, 0.7]
+
+    - pos: [14.0, 5.0]
+      size: [1.8, 0.9]
+      shape: rectangle
+      color: [0.6, 0.6, 0.7]
+
+    - pos: [8.0, 15.0]
+      size: [1.8, 0.9]
+      shape: rectangle
+      color: [0.6, 0.6, 0.7]
+
+    - pos: [14.0, 15.0]
+      size: [1.8, 0.9]
+      shape: rectangle
+      color: [0.6, 0.6, 0.7]
+
+    # Parking space markers (small obstacles)
+    - pos: [11.0, 4.0]
+      size: [0.2, 2.0]
+      shape: rectangle
+      color: [1.0, 1.0, 0.0]
+
+    - pos: [11.0, 16.0]
+      size: [0.2, 2.0]
+      shape: rectangle
+      color: [1.0, 1.0, 0.0]
+
+robots:
+  - name: "car"
+    position: [5.0, 10.0]
+    heading: 0.0
+    velocity: [0.0, 0.0]
+    config:
+      name: "car"
+      topic_prefix: "/car"
+      position: [5.0, 10.0]
+      width: 0.9
+      length: 1.8
+      max_speed: 3.0
+      color: [0.8, 0.2, 0.2]
+      kinematics:
+        kinematic_type: ackermann
+        ackermann:
+          wheelbase: 1.2
+          max_steering_angle: 0.6  # ~34 degrees
+      lidar:
+        enabled: true
+        range_max: 15.0
+        range_min: 0.1
+        num_rays: 360
+        angle_min: -3.14159
+        angle_max: 3.14159
+      camera:
+        enabled: false
+
+simulation:
+  time: 0.0
+  timestep: 0.016
+  paused: false
+
+# Goal: Park the car in the yellow-marked space at (11.0, 10.0)
+# Ackermann steering notes:
+#   - CmdVel.linear = forward/backward speed
+#   - CmdVel.angular = steering angle (not angular velocity!)
+#   - Maximum steering angle: 0.6 radians (~34 degrees)
+#   - Turning radius: R = wheelbase / tan(steering_angle)
+#
+# Example commands:
+#   Forward with slight right turn: CmdVel(1.0, 0.3)
+#   Forward with left turn: CmdVel(1.0, -0.3)
+#   Reverse straight: CmdVel(-0.5, 0.0)
+#   Stop: CmdVel(0.0, 0.0)

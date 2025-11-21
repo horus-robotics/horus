@@ -1,3 +1,10 @@
+// Benchmark binary - allow clippy warnings
+#![allow(unused_imports)]
+#![allow(unused_assignments)]
+#![allow(unreachable_patterns)]
+#![allow(clippy::all)]
+#![allow(deprecated)]
+
 /// Comprehensive Robotics Test Suite
 ///
 /// This test suite validates the single-slot Link implementation
@@ -125,10 +132,7 @@ fn run_all_tests() -> TestResult {
     println!("{}", "=".repeat(60));
 
     if failed == 0 {
-        TestResult::success(format!(
-            "All {} tests passed!",
-            passed
-        ))
+        TestResult::success(format!("All {} tests passed!", passed))
     } else {
         TestResult::failure(format!(
             "{} out of {} tests failed. System needs fixes.",

@@ -362,19 +362,12 @@ pub fn discover_all_workspaces(current_workspace: &Option<PathBuf>) -> Vec<Disco
 
 /// Recursively scan for nested .horus/ directories within a workspace
 /// Limited to depth 3 to avoid excessive scanning
-fn scan_for_nested_workspaces<F>(
-    base_path: &Path,
-    add_workspace: &mut F,
-    current_workspace: &Path,
-) where
+fn scan_for_nested_workspaces<F>(base_path: &Path, add_workspace: &mut F, current_workspace: &Path)
+where
     F: FnMut(PathBuf, String, bool),
 {
-    fn scan_recursive<F>(
-        path: &Path,
-        depth: usize,
-        add_workspace: &mut F,
-        current_workspace: &Path,
-    ) where
+    fn scan_recursive<F>(path: &Path, depth: usize, add_workspace: &mut F, current_workspace: &Path)
+    where
         F: FnMut(PathBuf, String, bool),
     {
         const MAX_DEPTH: usize = 3;

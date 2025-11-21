@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sim3d-config
+  namespace: sim3d
+  labels:
+    app: sim3d
+data:
+  config.yaml: |
+    # Sim3D Configuration
+    simulation:
+      physics:
+        timestep: 0.016666667  # 60 Hz
+        gravity: [0.0, -9.81, 0.0]
+        solver_iterations: 10
+
+      rendering:
+        headless: true
+        width: 1920
+        height: 1080
+        fps: 60
+
+      recording:
+        enabled: true
+        output_dir: /recordings
+        auto_save: true
+        format: compressed_json
+
+    rl:
+      num_envs: 16
+      parallel: true
+      async_mode: true
+
+    logging:
+      level: info
+      format: json
+      output: stdout

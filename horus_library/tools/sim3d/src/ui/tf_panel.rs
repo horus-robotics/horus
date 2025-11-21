@@ -4,9 +4,9 @@ use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 
 #[cfg(feature = "visual")]
-use crate::tf::tree::TFTree;
-#[cfg(feature = "visual")]
 use crate::systems::tf_update::TFPublisher;
+#[cfg(feature = "visual")]
+use crate::tf::tree::TFTree;
 
 /// Resource to control TF panel display options
 #[derive(Resource, Clone)]
@@ -48,7 +48,9 @@ impl TFPanelConfig {
     }
 
     pub fn is_selected(&self, frame_name: &str) -> bool {
-        self.selected_frame.as_ref().map_or(false, |f| f == frame_name)
+        self.selected_frame
+            .as_ref()
+            .map_or(false, |f| f == frame_name)
     }
 }
 
@@ -77,11 +79,18 @@ impl TFStats {
         for publisher in publishers {
             if publisher.frame_name.contains("world") || publisher.frame_name.contains("map") {
                 self.world_frames += 1;
-            } else if publisher.frame_name.contains("base") || publisher.frame_name.contains("robot") {
+            } else if publisher.frame_name.contains("base")
+                || publisher.frame_name.contains("robot")
+            {
                 self.robot_frames += 1;
-            } else if publisher.frame_name.contains("sensor") || publisher.frame_name.contains("camera") || publisher.frame_name.contains("lidar") {
+            } else if publisher.frame_name.contains("sensor")
+                || publisher.frame_name.contains("camera")
+                || publisher.frame_name.contains("lidar")
+            {
                 self.sensor_frames += 1;
-            } else if publisher.frame_name.contains("link") || publisher.frame_name.contains("joint") {
+            } else if publisher.frame_name.contains("link")
+                || publisher.frame_name.contains("joint")
+            {
                 self.link_frames += 1;
             }
         }
@@ -116,8 +125,10 @@ pub fn tf_panel_system(
 
             // Statistics
             ui.label(format!("Total Frames: {}", stats.total_frames));
-            ui.label(format!("World: {} | Robot: {} | Sensor: {} | Link: {}",
-                stats.world_frames, stats.robot_frames, stats.sensor_frames, stats.link_frames));
+            ui.label(format!(
+                "World: {} | Robot: {} | Sensor: {} | Link: {}",
+                stats.world_frames, stats.robot_frames, stats.sensor_frames, stats.link_frames
+            ));
 
             ui.add_space(10.0);
 
@@ -152,7 +163,10 @@ pub fn tf_panel_system(
                             world_frames.push(publisher);
                         } else if frame_name.contains("base") || frame_name.contains("robot") {
                             robot_frames.push(publisher);
-                        } else if frame_name.contains("sensor") || frame_name.contains("camera") || frame_name.contains("lidar") {
+                        } else if frame_name.contains("sensor")
+                            || frame_name.contains("camera")
+                            || frame_name.contains("lidar")
+                        {
                             sensor_frames.push(publisher);
                         } else if frame_name.contains("link") || frame_name.contains("joint") {
                             link_frames.push(publisher);
@@ -165,7 +179,13 @@ pub fn tf_panel_system(
                     if config.show_world_frame && !world_frames.is_empty() {
                         ui.collapsing("World Frames", |ui| {
                             for publisher in world_frames {
-                                display_frame_item(ui, publisher, &config, &tf_tree, time.elapsed_secs());
+                                display_frame_item(
+                                    ui,
+                                    publisher,
+                                    &config,
+                                    &tf_tree,
+                                    time.elapsed_secs(),
+                                );
                             }
                         });
                     }
@@ -174,7 +194,13 @@ pub fn tf_panel_system(
                     if config.show_robot_frames && !robot_frames.is_empty() {
                         ui.collapsing("Robot Frames", |ui| {
                             for publisher in robot_frames {
-                                display_frame_item(ui, publisher, &config, &tf_tree, time.elapsed_secs());
+                                display_frame_item(
+                                    ui,
+                                    publisher,
+                                    &config,
+                                    &tf_tree,
+                                    time.elapsed_secs(),
+                                );
                             }
                         });
                     }
@@ -183,7 +209,13 @@ pub fn tf_panel_system(
                     if config.show_sensor_frames && !sensor_frames.is_empty() {
                         ui.collapsing("Sensor Frames", |ui| {
                             for publisher in sensor_frames {
-                                display_frame_item(ui, publisher, &config, &tf_tree, time.elapsed_secs());
+                                display_frame_item(
+                                    ui,
+                                    publisher,
+                                    &config,
+                                    &tf_tree,
+                                    time.elapsed_secs(),
+                                );
                             }
                         });
                     }
@@ -192,7 +224,13 @@ pub fn tf_panel_system(
                     if config.show_link_frames && !link_frames.is_empty() {
                         ui.collapsing("Link Frames", |ui| {
                             for publisher in link_frames {
-                                display_frame_item(ui, publisher, &config, &tf_tree, time.elapsed_secs());
+                                display_frame_item(
+                                    ui,
+                                    publisher,
+                                    &config,
+                                    &tf_tree,
+                                    time.elapsed_secs(),
+                                );
                             }
                         });
                     }
@@ -201,7 +239,13 @@ pub fn tf_panel_system(
                     if !other_frames.is_empty() {
                         ui.collapsing("Other Frames", |ui| {
                             for publisher in other_frames {
-                                display_frame_item(ui, publisher, &config, &tf_tree, time.elapsed_secs());
+                                display_frame_item(
+                                    ui,
+                                    publisher,
+                                    &config,
+                                    &tf_tree,
+                                    time.elapsed_secs(),
+                                );
                             }
                         });
                     }
@@ -218,16 +262,18 @@ pub fn tf_panel_system(
 
                 // Try to get transform from TF tree
                 if let Ok(transform) = tf_tree.lookup_transform("world", selected) {
-                    ui.label(format!("Position: ({:.3}, {:.3}, {:.3})",
-                        transform.translation.x,
-                        transform.translation.y,
-                        transform.translation.z));
+                    ui.label(format!(
+                        "Position: ({:.3}, {:.3}, {:.3})",
+                        transform.translation.x, transform.translation.y, transform.translation.z
+                    ));
 
                     let (roll, pitch, yaw) = transform.rotation.euler_angles();
-                    ui.label(format!("Rotation: R:{:.2}° P:{:.2}° Y:{:.2}°",
+                    ui.label(format!(
+                        "Rotation: R:{:.2}° P:{:.2}° Y:{:.2}°",
                         roll.to_degrees(),
                         pitch.to_degrees(),
-                        yaw.to_degrees()));
+                        yaw.to_degrees()
+                    ));
                 } else {
                     ui.label("Transform not available");
                 }
@@ -257,7 +303,10 @@ fn display_frame_item(
         }
 
         // Frame name (clickable)
-        if ui.selectable_label(is_selected, &publisher.frame_name).clicked() {
+        if ui
+            .selectable_label(is_selected, &publisher.frame_name)
+            .clicked()
+        {
             // Selection is handled by the mut config, but we can't modify it here
             // This would need to be refactored to send an event
         }
@@ -283,10 +332,10 @@ fn display_frame_item(
     // Show transform info on hover
     ui.horizontal(|ui| {
         if let Ok(transform) = tf_tree.lookup_transform("world", &publisher.frame_name) {
-            ui.small(format!("  pos: ({:.2}, {:.2}, {:.2})",
-                transform.translation.x,
-                transform.translation.y,
-                transform.translation.z));
+            ui.small(format!(
+                "  pos: ({:.2}, {:.2}, {:.2})",
+                transform.translation.x, transform.translation.y, transform.translation.z
+            ));
         }
     });
 }

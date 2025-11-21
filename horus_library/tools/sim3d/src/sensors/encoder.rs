@@ -29,8 +29,8 @@ pub struct Encoder {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum EncoderType {
-    Rotary,  // For revolute joints (radians)
-    Linear,  // For prismatic joints (meters)
+    Rotary, // For revolute joints (radians)
+    Linear, // For prismatic joints (meters)
 }
 
 impl Default for Encoder {
@@ -38,7 +38,7 @@ impl Default for Encoder {
         Self {
             rate_hz: 1000.0, // High rate for encoders
             last_update: 0.0,
-            resolution: 4096, // 12-bit encoder
+            resolution: 4096,           // 12-bit encoder
             position_noise_std: 0.0001, // Very low noise
             velocity_noise_std: 0.001,
             enable_quantization: true,
@@ -168,7 +168,11 @@ impl EncoderData {
 /// System to update encoder sensors from joint states
 pub fn encoder_update_system(
     time: Res<Time>,
-    mut query: Query<(&mut Encoder, &mut EncoderData, &crate::robot::state::JointState)>,
+    mut query: Query<(
+        &mut Encoder,
+        &mut EncoderData,
+        &crate::robot::state::JointState,
+    )>,
 ) {
     let current_time = time.elapsed_secs();
     let dt = time.delta_secs();
@@ -248,7 +252,8 @@ impl IncrementalEncoder {
         }
 
         // Simple check for crossing index position
-        let crossed = (last_position < self.index_position && current_position >= self.index_position)
+        let crossed = (last_position < self.index_position
+            && current_position >= self.index_position)
             || (last_position > self.index_position && current_position <= self.index_position);
 
         if crossed {
@@ -451,8 +456,7 @@ mod tests {
 
     #[test]
     fn test_incremental_encoder_index() {
-        let mut encoder = IncrementalEncoder::new(4096, EncoderType::Rotary)
-            .with_index(0.0);
+        let mut encoder = IncrementalEncoder::new(4096, EncoderType::Rotary).with_index(0.0);
 
         assert!(!encoder.index_found);
 

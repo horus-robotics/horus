@@ -1,3 +1,10 @@
+// Benchmark binary - allow clippy warnings
+#![allow(unused_imports)]
+#![allow(unused_assignments)]
+#![allow(unreachable_patterns)]
+#![allow(clippy::all)]
+#![allow(deprecated)]
+
 //! # HORUS IPC Latency Benchmark - RDTSC-Based
 //!
 //! Accurate multi-process IPC latency measurement using CPU timestamp counters (rdtsc).
@@ -20,18 +27,18 @@ use colored::Colorize;
 use horus::prelude::{Hub, Link};
 use horus_library::messages::cmd_vel::CmdVel;
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
 use std::process::{Child, Command};
 use std::time::{Duration, SystemTime};
-use serde::{Deserialize, Serialize};
 
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::_rdtsc;
 
-const ITERATIONS: usize = 50_000;   // Increased for better statistics (was 10,000)
-const WARMUP: usize = 5_000;       // Increased warmup (was 1,000)
-const NUM_RUNS: usize = 10;        // More runs for better statistics (was 5)
+const ITERATIONS: usize = 50_000; // Increased for better statistics (was 10,000)
+const WARMUP: usize = 5_000; // Increased warmup (was 1,000)
+const NUM_RUNS: usize = 10; // More runs for better statistics (was 5)
 
 // Barrier states
 const BARRIER_CONSUMER_READY: u8 = 2;
@@ -69,8 +76,8 @@ struct BenchmarkResult {
 
     // Validation metadata
     tsc_verification_passed: bool,
-    cpu_frequency_source: String,  // "measured", "cpuinfo", or "detection_failed"
-    measurement_quality: String,   // "high", "medium", "low", or "invalid"
+    cpu_frequency_source: String, // "measured", "cpuinfo", or "detection_failed"
+    measurement_quality: String,  // "high", "medium", "low", or "invalid"
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -171,7 +178,7 @@ fn verify_tsc_synchronization() -> Result<u64, String> {
     let tsc_values1 = tsc_values.clone();
     let handle1 = thread::spawn(move || {
         set_cpu_affinity(0);
-        barrier1.wait();  // Synchronize with other thread
+        barrier1.wait(); // Synchronize with other thread
         let tsc = rdtsc();
         tsc_values1.lock().unwrap().push((0, tsc));
     });
@@ -180,7 +187,7 @@ fn verify_tsc_synchronization() -> Result<u64, String> {
     let tsc_values2 = tsc_values.clone();
     let handle2 = thread::spawn(move || {
         set_cpu_affinity(1);
-        barrier2.wait();  // Synchronize with other thread
+        barrier2.wait(); // Synchronize with other thread
         let tsc = rdtsc();
         tsc_values2.lock().unwrap().push((1, tsc));
     });
@@ -191,16 +198,26 @@ fn verify_tsc_synchronization() -> Result<u64, String> {
     let values = tsc_values.lock().unwrap();
     let tsc0 = values.iter().find(|(core, _)| *core == 0).unwrap().1;
     let tsc1 = values.iter().find(|(core, _)| *core == 1).unwrap().1;
-    let drift = if tsc0 > tsc1 { tsc0 - tsc1 } else { tsc1 - tsc0 };
+    let drift = if tsc0 > tsc1 {
+        tsc0 - tsc1
+    } else {
+        tsc1 - tsc0
+    };
 
     print!("  • Cross-core TSC drift: {} cycles ", drift);
     if drift < 1000 {
         println!("{}", "([OK] excellent)".bright_green());
     } else if drift < 5000 {
-        println!("{}", "([WARNING] moderate - expect some variance)".bright_yellow());
+        println!(
+            "{}",
+            "([WARNING] moderate - expect some variance)".bright_yellow()
+        );
     } else {
         println!("{}", "([FAIL] too large!)".bright_red());
-        return Err(format!("TSC drift too large ({} cycles). Results will be inaccurate!", drift));
+        return Err(format!(
+            "TSC drift too large ({} cycles). Results will be inaccurate!",
+            drift
+        ));
     }
 
     Ok(drift)
@@ -210,7 +227,7 @@ fn verify_tsc_synchronization() -> Result<u64, String> {
 fn verify_tsc_synchronization() -> Result<u64, String> {
     println!("\n{}", "TSC Verification:".bright_yellow());
     println!("  • [WARNING] Skipped on non-x86_64 platform");
-    Ok(0)  // No drift measurement on non-x86_64
+    Ok(0) // No drift measurement on non-x86_64
 }
 
 /// Check system state for optimal benchmarking conditions
@@ -226,11 +243,21 @@ fn check_system_state() {
         if let Ok(aslr) = std::fs::read_to_string("/proc/sys/kernel/randomize_va_space") {
             let aslr_val = aslr.trim();
             if aslr_val == "0" {
-                println!("  • ASLR: {} {}", "disabled".to_string(), " [OK]".bright_green());
+                println!(
+                    "  • ASLR: {} {}",
+                    "disabled".to_string(),
+                    " [OK]".bright_green()
+                );
                 ok_count += 1;
             } else {
-                println!("  • ASLR: {} {}", format!("enabled ({})", aslr_val), "([WARNING] may increase variance)".bright_yellow());
-                warnings.push("ASLR enabled - run: echo 0 | sudo tee /proc/sys/kernel/randomize_va_space");
+                println!(
+                    "  • ASLR: {} {}",
+                    format!("enabled ({})", aslr_val),
+                    "([WARNING] may increase variance)".bright_yellow()
+                );
+                warnings.push(
+                    "ASLR enabled - run: echo 0 | sudo tee /proc/sys/kernel/randomize_va_space",
+                );
             }
         }
     }
@@ -240,14 +267,24 @@ fn check_system_state() {
     {
         if let Ok(cmdline) = std::fs::read_to_string("/proc/cmdline") {
             if cmdline.contains("isolcpus") {
-                if let Some(isolcpus) = cmdline.split_whitespace()
+                if let Some(isolcpus) = cmdline
+                    .split_whitespace()
                     .find(|s| s.starts_with("isolcpus="))
-                    .and_then(|s| s.split('=').nth(1)) {
-                    println!("  • Core isolation: {} {}", isolcpus.to_string(), " [OK]".bright_green());
+                    .and_then(|s| s.split('=').nth(1))
+                {
+                    println!(
+                        "  • Core isolation: {} {}",
+                        isolcpus.to_string(),
+                        " [OK]".bright_green()
+                    );
                     ok_count += 1;
                 }
             } else {
-                println!("  • Core isolation: {} {}", "none".to_string(), "([WARNING] other processes may interfere)".bright_yellow());
+                println!(
+                    "  • Core isolation: {} {}",
+                    "none".to_string(),
+                    "([WARNING] other processes may interfere)".bright_yellow()
+                );
                 warnings.push("No core isolation - add 'isolcpus=0,1' to kernel cmdline");
             }
         }
@@ -265,7 +302,10 @@ fn check_system_state() {
             } else if proc_count < 400 {
                 println!("{}", "([WARNING] moderate)".bright_yellow());
             } else {
-                println!("{}", "([WARNING] high - may affect results)".bright_yellow());
+                println!(
+                    "{}",
+                    "([WARNING] high - may affect results)".bright_yellow()
+                );
                 warnings.push("Many processes running - consider stopping non-essential services");
             }
         }
@@ -274,7 +314,10 @@ fn check_system_state() {
     // Summary
     println!();
     if warnings.is_empty() {
-        println!("  {} System optimized for benchmarking!", "[OK]".bright_green());
+        println!(
+            "  {} System optimized for benchmarking!",
+            "[OK]".bright_green()
+        );
     } else {
         println!("  {} Warnings:", "[WARNING]".bright_yellow());
         for warning in &warnings {
@@ -325,7 +368,8 @@ fn detect_platform() -> PlatformInfo {
                         "AuthenticAMD" => "AMD",
                         "ARM" => "ARM",
                         _ => v,
-                    }.to_string();
+                    }
+                    .to_string();
                 }
             }
 
@@ -344,7 +388,8 @@ fn detect_platform() -> PlatformInfo {
             }
 
             // Core counts
-            let processor_lines: Vec<_> = cpuinfo.lines()
+            let processor_lines: Vec<_> = cpuinfo
+                .lines()
                 .filter(|l| l.starts_with("processor"))
                 .collect();
             platform.num_logical_cores = processor_lines.len();
@@ -387,7 +432,8 @@ fn detect_platform() -> PlatformInfo {
                 let level_num: u32 = level.trim().parse().unwrap_or(0);
                 if let Ok(size) = std::fs::read_to_string(format!("{}/size", index_path)) {
                     let size_kb = parse_cache_size(&size);
-                    if let Ok(cache_type) = std::fs::read_to_string(format!("{}/type", index_path)) {
+                    if let Ok(cache_type) = std::fs::read_to_string(format!("{}/type", index_path))
+                    {
                         match (level_num, cache_type.trim()) {
                             (1, "Data") => platform.cache_l1d_kb = Some(size_kb),
                             (1, "Instruction") => platform.cache_l1i_kb = Some(size_kb),
@@ -438,7 +484,10 @@ fn detect_cpu_frequency() -> Result<f64, String> {
     {
         if let Ok(cpuinfo) = std::fs::read_to_string("/proc/cpuinfo") {
             if let Some(line) = cpuinfo.lines().find(|l| l.starts_with("model name")) {
-                println!("  • CPU model: {}", line.split(':').nth(1).unwrap_or("unknown").trim());
+                println!(
+                    "  • CPU model: {}",
+                    line.split(':').nth(1).unwrap_or("unknown").trim()
+                );
             }
         }
     }
@@ -446,15 +495,18 @@ fn detect_cpu_frequency() -> Result<f64, String> {
     // Check frequency governor
     #[cfg(target_os = "linux")]
     {
-        if let Ok(governor) = std::fs::read_to_string(
-            "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
-        ) {
+        if let Ok(governor) =
+            std::fs::read_to_string("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor")
+        {
             let gov = governor.trim();
             print!("  • Frequency governor: {} ", gov);
             if gov == "performance" {
                 println!("{}", "([OK] locked)".bright_green());
             } else {
-                println!("{}", "([WARNING] not locked - may cause variance)".bright_yellow());
+                println!(
+                    "{}",
+                    "([WARNING] not locked - may cause variance)".bright_yellow()
+                );
                 println!("    Run: sudo cpupower frequency-set --governor performance");
             }
         }
@@ -463,16 +515,23 @@ fn detect_cpu_frequency() -> Result<f64, String> {
     // Check turbo boost
     #[cfg(target_os = "linux")]
     {
-        if let Ok(turbo) = std::fs::read_to_string(
-            "/sys/devices/system/cpu/intel_pstate/no_turbo"
-        ) {
+        if let Ok(turbo) = std::fs::read_to_string("/sys/devices/system/cpu/intel_pstate/no_turbo")
+        {
             if turbo.trim() == "0" {
-                println!("  • {} {}",
-                         "Turbo boost: enabled".to_string(),
-                         "([WARNING] may cause variance)".bright_yellow());
-                println!("    Run: echo 1 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo");
+                println!(
+                    "  • {} {}",
+                    "Turbo boost: enabled".to_string(),
+                    "([WARNING] may cause variance)".bright_yellow()
+                );
+                println!(
+                    "    Run: echo 1 | sudo tee /sys/devices/system/cpu/intel_pstate/no_turbo"
+                );
             } else {
-                println!("  • Turbo boost: {} {}", "disabled".to_string(), " [OK]".bright_green());
+                println!(
+                    "  • Turbo boost: {} {}",
+                    "disabled".to_string(),
+                    " [OK]".bright_green()
+                );
             }
         }
     }
@@ -485,8 +544,10 @@ fn print_platform_info(platform: &PlatformInfo) {
     println!("\n{}", "Platform Information:".bright_yellow());
     println!("  • CPU: {} {}", platform.cpu_vendor, platform.cpu_model);
     println!("  • Architecture: {}", platform.arch);
-    println!("  • Cores: {} physical, {} logical",
-             platform.num_physical_cores, platform.num_logical_cores);
+    println!(
+        "  • Cores: {} physical, {} logical",
+        platform.num_physical_cores, platform.num_logical_cores
+    );
 
     if let Some(l1d) = platform.cache_l1d_kb {
         print!("  • Cache: L1d={}K", l1d);
@@ -502,7 +563,10 @@ fn print_platform_info(platform: &PlatformInfo) {
         println!();
     }
 
-    println!("  • OS: {} (kernel {})", platform.os, platform.kernel_version);
+    println!(
+        "  • OS: {} (kernel {})",
+        platform.os, platform.kernel_version
+    );
 }
 
 /// Save benchmark results to JSON database
@@ -519,8 +583,7 @@ fn save_results(result: &BenchmarkResult) -> Result<(), String> {
     let mut results: Vec<BenchmarkResult> = if std::path::Path::new(db_path).exists() {
         let content = std::fs::read_to_string(db_path)
             .map_err(|e| format!("Failed to read database: {}", e))?;
-        serde_json::from_str(&content)
-            .unwrap_or_else(|_| Vec::new())
+        serde_json::from_str(&content).unwrap_or_else(|_| Vec::new())
     } else {
         Vec::new()
     };
@@ -531,8 +594,7 @@ fn save_results(result: &BenchmarkResult) -> Result<(), String> {
     // Save back to file
     let json = serde_json::to_string_pretty(&results)
         .map_err(|e| format!("Failed to serialize: {}", e))?;
-    std::fs::write(db_path, json)
-        .map_err(|e| format!("Failed to write database: {}", e))?;
+    std::fs::write(db_path, json).map_err(|e| format!("Failed to write database: {}", e))?;
 
     Ok(())
 }
@@ -564,12 +626,18 @@ fn print_comparison(current: &BenchmarkResult) {
         std::collections::HashMap::new();
 
     for result in &all_results {
-        let key = format!("{} {}", result.platform.cpu_vendor, result.platform.cpu_model);
+        let key = format!(
+            "{} {}",
+            result.platform.cpu_vendor, result.platform.cpu_model
+        );
         platform_groups.entry(key).or_default().push(result);
     }
 
     // Print comparison table
-    println!("\n{:<50} {:>12} {:>12}", "Platform", "Link (ns)", "Hub (ns)");
+    println!(
+        "\n{:<50} {:>12} {:>12}",
+        "Platform", "Link (ns)", "Hub (ns)"
+    );
     println!("{}", "─".repeat(80));
 
     for (platform_name, results) in platform_groups.iter() {
@@ -618,7 +686,10 @@ fn main() {
 
     // Main coordinator
     println!("\n{}", "═".repeat(80).bright_cyan().bold());
-    println!("{}", "  HORUS IPC LATENCY BENCHMARK v2.0".bright_cyan().bold());
+    println!(
+        "{}",
+        "  HORUS IPC LATENCY BENCHMARK v2.0".bright_cyan().bold()
+    );
     println!(
         "{}",
         "  RDTSC-Based True Propagation Time Measurement".bright_cyan()
@@ -635,9 +706,15 @@ fn main() {
         Err(e) => {
             eprintln!("\n{}", format!("WARNING: {}", e).bright_yellow());
             eprintln!("{}", "TSC synchronization check failed.".bright_yellow());
-            eprintln!("{}", "Results will be marked as LOW QUALITY.".bright_red().bold());
-            eprintln!("{}", "For best results, fix TSC issues and re-run.\n".bright_yellow());
-            (0, false)  // Mark as failed but continue with warning
+            eprintln!(
+                "{}",
+                "Results will be marked as LOW QUALITY.".bright_red().bold()
+            );
+            eprintln!(
+                "{}",
+                "For best results, fix TSC issues and re-run.\n".bright_yellow()
+            );
+            (0, false) // Mark as failed but continue with warning
         }
     };
 
@@ -647,8 +724,14 @@ fn main() {
         Err(e) => {
             eprintln!("\n{}", format!("FATAL ERROR: {}", e).bright_red().bold());
             eprintln!("{}", "CPU frequency detection failed.".bright_red());
-            eprintln!("{}", "Accurate benchmarks require accurate frequency measurement.".bright_yellow());
-            eprintln!("{}", "Cannot proceed with arbitrary fallback values.".bright_yellow());
+            eprintln!(
+                "{}",
+                "Accurate benchmarks require accurate frequency measurement.".bright_yellow()
+            );
+            eprintln!(
+                "{}",
+                "Cannot proceed with arbitrary fallback values.".bright_yellow()
+            );
             eprintln!("\n{}", "Possible solutions:".bright_cyan());
             eprintln!("  1. Check CPU supports invariant TSC");
             eprintln!("  2. Run benchmark setup script: ./benchmarks/benchmark_setup.sh");
@@ -699,15 +782,15 @@ fn main() {
 
     // Determine measurement quality based on validation results
     let measurement_quality = if !tsc_verified {
-        "invalid".to_string()  // TSC verification failed
+        "invalid".to_string() // TSC verification failed
     } else if tsc_drift > 10000 {
-        "low".to_string()  // High TSC drift (>10K cycles)
+        "low".to_string() // High TSC drift (>10K cycles)
     } else if tsc_drift > 1000 {
-        "medium".to_string()  // Moderate TSC drift
+        "medium".to_string() // Moderate TSC drift
     } else if link_ipc_stats.is_none() || hub_ipc_stats.is_none() {
-        "invalid".to_string()  // Missing benchmark data
+        "invalid".to_string() // Missing benchmark data
     } else {
-        "high".to_string()  // All checks passed
+        "high".to_string() // All checks passed
     };
 
     // Save results to database
@@ -731,34 +814,78 @@ fn main() {
 
     // Validate results before saving (measurement integrity check)
     println!("\n{}", "═".repeat(80).bright_cyan());
-    println!("{}", "  MEASUREMENT QUALITY ASSESSMENT".bright_cyan().bold());
+    println!(
+        "{}",
+        "  MEASUREMENT QUALITY ASSESSMENT".bright_cyan().bold()
+    );
     println!("{}", "═".repeat(80).bright_cyan());
 
     match result.measurement_quality.as_str() {
         "high" => {
-            println!("  {}", "[OK] HIGH QUALITY - All validation checks passed".bright_green().bold());
+            println!(
+                "  {}",
+                "[OK] HIGH QUALITY - All validation checks passed"
+                    .bright_green()
+                    .bold()
+            );
             println!("  • TSC verification: PASSED");
             println!("  • CPU frequency: Measured via RDTSC");
-            println!("  • TSC drift: {} cycles (excellent)", result.tsc_drift_cycles);
-            println!("\n  {} These results meet high quality standards.", "[OK]".bright_green());
+            println!(
+                "  • TSC drift: {} cycles (excellent)",
+                result.tsc_drift_cycles
+            );
+            println!(
+                "\n  {} These results meet high quality standards.",
+                "[OK]".bright_green()
+            );
         }
         "medium" => {
-            println!("  {}", "[WARNING] MEDIUM QUALITY - Moderate TSC drift detected".bright_yellow().bold());
+            println!(
+                "  {}",
+                "[WARNING] MEDIUM QUALITY - Moderate TSC drift detected"
+                    .bright_yellow()
+                    .bold()
+            );
             println!("  • TSC verification: PASSED");
             println!("  • CPU frequency: Measured via RDTSC");
-            println!("  • TSC drift: {} cycles (moderate variance expected)", result.tsc_drift_cycles);
-            println!("\n  {} Usable for performance trends, but note increased variance.", "[WARNING]".bright_yellow());
+            println!(
+                "  • TSC drift: {} cycles (moderate variance expected)",
+                result.tsc_drift_cycles
+            );
+            println!(
+                "\n  {} Usable for performance trends, but note increased variance.",
+                "[WARNING]".bright_yellow()
+            );
         }
         "low" => {
-            println!("  {}", "[WARNING] LOW QUALITY - High TSC drift detected".bright_red().bold());
+            println!(
+                "  {}",
+                "[WARNING] LOW QUALITY - High TSC drift detected"
+                    .bright_red()
+                    .bold()
+            );
             println!("  • TSC verification: PASSED");
             println!("  • CPU frequency: Measured via RDTSC");
-            println!("  • TSC drift: {} cycles (high variance expected)", result.tsc_drift_cycles);
-            println!("\n  {} Not recommended for benchmarking.", "[WARNING]".bright_red());
-            println!("  {} Consider running benchmark_setup.sh for better quality.", "→".bright_cyan());
+            println!(
+                "  • TSC drift: {} cycles (high variance expected)",
+                result.tsc_drift_cycles
+            );
+            println!(
+                "\n  {} Not recommended for benchmarking.",
+                "[WARNING]".bright_red()
+            );
+            println!(
+                "  {} Consider running benchmark_setup.sh for better quality.",
+                "→".bright_cyan()
+            );
         }
         "invalid" => {
-            println!("  {}", "[FAIL] INVALID - Critical validation failures".bright_red().bold());
+            println!(
+                "  {}",
+                "[FAIL] INVALID - Critical validation failures"
+                    .bright_red()
+                    .bold()
+            );
             if !result.tsc_verification_passed {
                 println!("  • TSC verification: FAILED");
             }
@@ -768,7 +895,10 @@ fn main() {
             if result.hub_stats.is_none() {
                 println!("  • Hub benchmark: NO DATA");
             }
-            println!("\n  {}", "[FAIL] These results CANNOT be used.".bright_red().bold());
+            println!(
+                "\n  {}",
+                "[FAIL] These results CANNOT be used.".bright_red().bold()
+            );
             println!("  {} Fix validation issues and re-run.", "→".bright_red());
         }
         _ => {
@@ -778,13 +908,19 @@ fn main() {
 
     match save_results(&result) {
         Ok(_) => {
-            println!("\n{}", "Results saved to benchmark_results.json".bright_green());
+            println!(
+                "\n{}",
+                "Results saved to benchmark_results.json".bright_green()
+            );
             if result.measurement_quality == "invalid" {
                 println!("{}", "  (Marked as INVALID in database)".bright_red());
             }
         }
         Err(e) => {
-            eprintln!("\n{}", format!("ERROR: Could not save results: {}", e).bright_red());
+            eprintln!(
+                "\n{}",
+                format!("ERROR: Could not save results: {}", e).bright_red()
+            );
         }
     }
 
@@ -845,7 +981,10 @@ fn calculate_statistics(all_cycles: &[u64]) -> Option<Statistics> {
 
     // Check if outlier filtering removed ALL values
     if filtered.is_empty() {
-        eprintln!("WARNING: Outlier filtering removed ALL {} measurements!", all_cycles.len());
+        eprintln!(
+            "WARNING: Outlier filtering removed ALL {} measurements!",
+            all_cycles.len()
+        );
         eprintln!("This indicates extremely noisy data or incorrect filtering parameters.");
         return None;
     }
@@ -879,15 +1018,16 @@ fn print_results(all_latencies: &[Vec<u64>], cpu_freq: f64) -> Option<Statistics
     let stats = match calculate_statistics(&all_cycles) {
         Some(s) => s,
         None => {
-            println!("\n  {} Statistics calculation failed (empty filtered data)", "[FAIL]".bright_red());
+            println!(
+                "\n  {} Statistics calculation failed (empty filtered data)",
+                "[FAIL]".bright_red()
+            );
             return None;
         }
     };
 
     // Convert cycles to ns using detected frequency
-    let cycles_to_ns = |cycles: u64| -> u64 {
-        (cycles as f64 / cpu_freq) as u64
-    };
+    let cycles_to_ns = |cycles: u64| -> u64 { (cycles as f64 / cpu_freq) as u64 };
 
     println!("\n{}", "Results (after outlier filtering):".bright_yellow());
     println!(
@@ -913,14 +1053,33 @@ fn print_results(all_latencies: &[Vec<u64>], cpu_freq: f64) -> Option<Statistics
         stats.std_dev,
         cycles_to_ns(stats.std_dev as u64)
     );
-    println!("  P95:     {} cycles (~{} ns)", stats.p95, cycles_to_ns(stats.p95));
-    println!("  P99:     {} cycles (~{} ns)", stats.p99, cycles_to_ns(stats.p99));
-    println!("  Min:     {} cycles (~{} ns)", stats.min, cycles_to_ns(stats.min));
-    println!("  Max:     {} cycles (~{} ns)", stats.max, cycles_to_ns(stats.max));
+    println!(
+        "  P95:     {} cycles (~{} ns)",
+        stats.p95,
+        cycles_to_ns(stats.p95)
+    );
+    println!(
+        "  P99:     {} cycles (~{} ns)",
+        stats.p99,
+        cycles_to_ns(stats.p99)
+    );
+    println!(
+        "  Min:     {} cycles (~{} ns)",
+        stats.min,
+        cycles_to_ns(stats.min)
+    );
+    println!(
+        "  Max:     {} cycles (~{} ns)",
+        stats.max,
+        cycles_to_ns(stats.max)
+    );
 
     println!("\n{}", "Analysis:".bright_yellow());
-    println!("  • Core-to-core theoretical minimum: ~60 cycles ({}ns each way @ {:.2}GHz)",
-        cycles_to_ns(60), cpu_freq);
+    println!(
+        "  • Core-to-core theoretical minimum: ~60 cycles ({}ns each way @ {:.2}GHz)",
+        cycles_to_ns(60),
+        cpu_freq
+    );
     println!("  • Good SPSC queue target: 70-80 cycles");
 
     if stats.median < 100 {
@@ -942,9 +1101,12 @@ fn run_benchmark(ipc_type: &str) -> Vec<u64> {
 
     // Create barrier file for process synchronization
     if let Err(e) = fs::write(&barrier_file, &[0]) {
-        eprintln!("ERROR: Failed to create barrier file {}: {}", barrier_file, e);
+        eprintln!(
+            "ERROR: Failed to create barrier file {}: {}",
+            barrier_file, e
+        );
         eprintln!("This may indicate /tmp is full or insufficient permissions.");
-        return vec![];  // Return empty, will be detected as benchmark failure
+        return vec![]; // Return empty, will be detected as benchmark failure
     }
 
     let producer_mode = format!("{}_producer", ipc_type);
@@ -967,18 +1129,24 @@ fn run_benchmark(ipc_type: &str) -> Vec<u64> {
     let producer_output = match producer.wait_with_output() {
         Ok(output) => output,
         Err(e) => {
-            eprintln!("{}", format!("ERROR: Producer process failed to complete: {}", e).bright_red());
+            eprintln!(
+                "{}",
+                format!("ERROR: Producer process failed to complete: {}", e).bright_red()
+            );
             let _ = fs::remove_file(&barrier_file);
-            return vec![];  // Return empty - will be detected as measurement failure
+            return vec![]; // Return empty - will be detected as measurement failure
         }
     };
 
     let consumer_output = match consumer.wait_with_output() {
         Ok(output) => output,
         Err(e) => {
-            eprintln!("{}", format!("ERROR: Consumer process failed to complete: {}", e).bright_red());
+            eprintln!(
+                "{}",
+                format!("ERROR: Consumer process failed to complete: {}", e).bright_red()
+            );
             let _ = fs::remove_file(&barrier_file);
-            return vec![];  // Return empty - will be detected as measurement failure
+            return vec![]; // Return empty - will be detected as measurement failure
         }
     };
 
@@ -988,8 +1156,11 @@ fn run_benchmark(ipc_type: &str) -> Vec<u64> {
     if !producer_output.status.success() {
         eprintln!(
             "{}",
-            format!("Producer exited with error: {}",
-                String::from_utf8_lossy(&producer_output.stderr)).bright_red()
+            format!(
+                "Producer exited with error: {}",
+                String::from_utf8_lossy(&producer_output.stderr)
+            )
+            .bright_red()
         );
         return vec![];
     }
@@ -997,8 +1168,11 @@ fn run_benchmark(ipc_type: &str) -> Vec<u64> {
     if !consumer_output.status.success() {
         eprintln!(
             "{}",
-            format!("Consumer exited with error: {}",
-                String::from_utf8_lossy(&consumer_output.stderr)).bright_red()
+            format!(
+                "Consumer exited with error: {}",
+                String::from_utf8_lossy(&consumer_output.stderr)
+            )
+            .bright_red()
         );
         return vec![];
     }
@@ -1072,7 +1246,10 @@ fn hub_producer(topic: &str, _barrier_file: &str) {
         let mut msg = CmdVel::new(1.0, 0.5);
         msg.stamp_nanos = tsc;
         if let Err(e) = sender.send(msg, &mut None) {
-            eprintln!("Producer: FATAL - Failed to send warmup message {}: {:?}", i, e);
+            eprintln!(
+                "Producer: FATAL - Failed to send warmup message {}: {:?}",
+                i, e
+            );
             eprintln!("Producer: Hub IPC is not functioning properly");
             return;
         }
@@ -1088,7 +1265,10 @@ fn hub_producer(topic: &str, _barrier_file: &str) {
         let mut msg = CmdVel::new(1.0, 0.5);
         msg.stamp_nanos = tsc; // Embed timestamp
         if let Err(e) = sender.send(msg, &mut None) {
-            eprintln!("Producer: FATAL - Failed to send message {}/{}: {:?}", i, ITERATIONS, e);
+            eprintln!(
+                "Producer: FATAL - Failed to send message {}/{}: {:?}",
+                i, ITERATIONS, e
+            );
             eprintln!("Producer: Benchmark aborted due to IPC failure");
             return;
         }
@@ -1138,7 +1318,10 @@ fn hub_consumer(topic: &str, barrier_file: &str) {
             }
         }
     }
-    eprintln!("Consumer: Warmup complete ({} messages received)", warmup_count);
+    eprintln!(
+        "Consumer: Warmup complete ({} messages received)",
+        warmup_count
+    );
 
     // Measured receives - spin-poll and collect all unique messages
     eprintln!("Consumer: Starting measured iterations");
@@ -1177,8 +1360,11 @@ fn hub_consumer(topic: &str, barrier_file: &str) {
         }
     }
 
-    eprintln!("Consumer: Completed - received {} messages in {:?}",
-        received_count, start_time.elapsed());
+    eprintln!(
+        "Consumer: Completed - received {} messages in {:?}",
+        received_count,
+        start_time.elapsed()
+    );
 }
 
 // ============================================================================
@@ -1429,8 +1615,8 @@ fn filter_outliers(values: &[u64]) -> Vec<u64> {
 
     // Standard 1.5×IQR threshold (Tukey's method)
     // This identifies "outliers" beyond the "whiskers" of a boxplot
-    let lower_bound = q1.saturating_sub(iqr + iqr / 2);  // Q1 - 1.5×IQR
-    let upper_bound = q3.saturating_add(iqr + iqr / 2);  // Q3 + 1.5×IQR
+    let lower_bound = q1.saturating_sub(iqr + iqr / 2); // Q1 - 1.5×IQR
+    let upper_bound = q3.saturating_add(iqr + iqr / 2); // Q3 + 1.5×IQR
 
     sorted
         .into_iter()
@@ -1558,9 +1744,7 @@ struct Statistics {
 impl Statistics {
     /// Convert Statistics to IpcStats for database storage
     fn to_ipc_stats(&self, cpu_freq: f64) -> IpcStats {
-        let cycles_to_ns = |cycles: u64| -> u64 {
-            (cycles as f64 / cpu_freq) as u64
-        };
+        let cycles_to_ns = |cycles: u64| -> u64 { (cycles as f64 / cpu_freq) as u64 };
 
         IpcStats {
             median_cycles: self.median,
@@ -1748,7 +1932,7 @@ mod tests {
         // Verify we use n-1 (sample variance), not n (population variance)
         let values = vec![1, 2, 3, 4, 5];
         let sd = std_dev(&values);
-        
+
         // Sample std dev (n-1): 1.5811
         // Population std dev (n): 1.4142
         // Should be closer to 1.5811
@@ -1800,11 +1984,14 @@ mod tests {
         // Lower bound ≈ 110 - 75 = 35
         // 1 should be filtered out
         let mut values: Vec<u64> = (100..=180).step_by(10).collect();
-        values.insert(0, 1);  // Add extreme outlier
+        values.insert(0, 1); // Add extreme outlier
 
         let filtered = filter_outliers(&values);
         // Should remove the extreme outlier (1)
-        assert!(!filtered.contains(&1), "Extreme low outlier should be removed");
+        assert!(
+            !filtered.contains(&1),
+            "Extreme low outlier should be removed"
+        );
     }
 
     #[test]
@@ -1854,7 +2041,7 @@ mod tests {
         let values: Vec<u64> = (1..=1000).collect();
         let med = median(&values);
         let (lower, upper) = confidence_interval_95(&values);
-        
+
         // 95% CI should contain the median
         assert!(lower <= med);
         assert!(upper >= med);
@@ -1866,10 +2053,10 @@ mod tests {
         let values: Vec<u64> = (1..=1000).collect();
         let (lower, upper) = confidence_interval_95(&values);
         let width = upper - lower;
-        
+
         // Width should be positive but not too wide
         assert!(width > 0);
-        assert!(width < 200);  // Shouldn't be more than 20% of range
+        assert!(width < 200); // Shouldn't be more than 20% of range
     }
 
     #[test]
@@ -1878,11 +2065,11 @@ mod tests {
         let values: Vec<u64> = (400..=600).collect();
         let med = median(&values);
         let (lower, upper) = confidence_interval_95(&values);
-        
+
         // For symmetric data, CI should be roughly symmetric around median
         let lower_dist = med - lower;
         let upper_dist = upper - med;
-        
+
         // Allow 20% asymmetry (bootstrap has sampling variance)
         assert!((lower_dist as f64 - upper_dist as f64).abs() < 0.2 * lower_dist as f64);
     }
@@ -1913,10 +2100,10 @@ mod tests {
     fn test_calculate_statistics_normal_case() {
         let values: Vec<u64> = (1..=1000).collect();
         let result = calculate_statistics(&values);
-        
+
         assert!(result.is_some());
         let stats = result.unwrap();
-        
+
         // Verify statistics are reasonable
         assert_eq!(stats.raw_count, 1000);
         assert!(stats.filtered_count > 0);
@@ -1937,7 +2124,7 @@ mod tests {
         let values: Vec<u64> = (1..=999).collect();
         let med = median(&values);
         let p50 = percentile(&values, 50);
-        
+
         // Median and P50 should be very close (within 1 for integer math)
         assert!((med as i64 - p50 as i64).abs() <= 1);
     }
@@ -1948,7 +2135,7 @@ mod tests {
         let p50 = percentile(&values, 50);
         let p95 = percentile(&values, 95);
         let p99 = percentile(&values, 99);
-        
+
         // Percentiles should be ordered
         assert!(p50 <= p95);
         assert!(p95 <= p99);
@@ -1958,11 +2145,11 @@ mod tests {
     fn test_outlier_filtering_reduces_count() {
         // Add some outliers to a normal distribution
         let mut values: Vec<u64> = (100..=200).collect();
-        values.push(1);      // Extreme low
-        values.push(10000);  // Extreme high
-        
+        values.push(1); // Extreme low
+        values.push(10000); // Extreme high
+
         let filtered = filter_outliers(&values);
-        
+
         // Should have removed some outliers
         assert!(filtered.len() < values.len());
     }
@@ -1971,10 +2158,10 @@ mod tests {
     fn test_std_dev_increases_with_spread() {
         let narrow = vec![100, 101, 102, 103, 104];
         let wide = vec![100, 200, 300, 400, 500];
-        
+
         let sd_narrow = std_dev(&narrow);
         let sd_wide = std_dev(&wide);
-        
+
         // Wider distribution should have larger std dev
         assert!(sd_wide > sd_narrow);
     }
@@ -1983,10 +2170,10 @@ mod tests {
     fn test_bootstrap_ci_reproducibility() {
         // Bootstrap has randomness, but for same data should give similar results
         let values: Vec<u64> = (1..=100).collect();
-        
+
         let (lower1, upper1) = confidence_interval_95(&values);
         let (lower2, upper2) = confidence_interval_95(&values);
-        
+
         // Results should be similar (within 10% due to sampling variance)
         let width1 = upper1 - lower1;
         let width2 = upper2 - lower2;

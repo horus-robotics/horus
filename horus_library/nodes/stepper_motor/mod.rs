@@ -8,9 +8,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 // GPIO hardware support
 #[cfg(feature = "gpio-hardware")]
-use sysfs_gpio::{Direction, Pin};
-#[cfg(feature = "gpio-hardware")]
 use std::thread;
+#[cfg(feature = "gpio-hardware")]
+use sysfs_gpio::{Direction, Pin};
 
 /// Stepper Motor Controller Node - Step/Direction stepper motor control
 ///
@@ -55,25 +55,25 @@ pub struct StepperMotorNode {
 
     // Configuration per motor (up to 8 motors)
     num_motors: u8,
-    steps_per_rev: [u32; 8],      // Full steps per revolution (typically 200)
-    microsteps: [u16; 8],          // Current microstepping (1, 2, 4, 8, 16, 32, etc.)
-    gear_ratio: [f64; 8],          // Optional gear reduction ratio
-    max_velocity: [f64; 8],        // Maximum velocity in steps/sec
-    max_acceleration: [f64; 8],    // Maximum acceleration in steps/sec²
-    current_limit: [u16; 8],       // Current limit in milliamps (driver-dependent)
-    invert_direction: [bool; 8],   // Invert direction pin
+    steps_per_rev: [u32; 8],     // Full steps per revolution (typically 200)
+    microsteps: [u16; 8],        // Current microstepping (1, 2, 4, 8, 16, 32, etc.)
+    gear_ratio: [f64; 8],        // Optional gear reduction ratio
+    max_velocity: [f64; 8],      // Maximum velocity in steps/sec
+    max_acceleration: [f64; 8],  // Maximum acceleration in steps/sec²
+    current_limit: [u16; 8],     // Current limit in milliamps (driver-dependent)
+    invert_direction: [bool; 8], // Invert direction pin
 
     // State tracking per motor
-    current_position: [i64; 8],    // Current position in microsteps
-    target_position: [i64; 8],     // Target position in microsteps
-    current_velocity: [f64; 8],    // Current velocity in steps/sec
-    target_velocity: [f64; 8],     // Target velocity in steps/sec
-    motor_enabled: [bool; 8],      // Motor enable state
-    is_homing: [bool; 8],          // Homing in progress
-    home_position: [i64; 8],       // Home position in microsteps
-    is_homed: [bool; 8],           // Has been homed
-    last_step_time: [u64; 8],      // Last step time in nanoseconds
-    step_interval: [u64; 8],       // Current step interval in nanoseconds
+    current_position: [i64; 8], // Current position in microsteps
+    target_position: [i64; 8],  // Target position in microsteps
+    current_velocity: [f64; 8], // Current velocity in steps/sec
+    target_velocity: [f64; 8],  // Target velocity in steps/sec
+    motor_enabled: [bool; 8],   // Motor enable state
+    is_homing: [bool; 8],       // Homing in progress
+    home_position: [i64; 8],    // Home position in microsteps
+    is_homed: [bool; 8],        // Has been homed
+    last_step_time: [u64; 8],   // Last step time in nanoseconds
+    step_interval: [u64; 8],    // Current step interval in nanoseconds
 
     // Motion profile state
     motion_state: [MotionState; 8],
@@ -92,7 +92,7 @@ pub struct StepperMotorNode {
     enable_pins: [Option<Pin>; 8],
     hardware_enabled: bool,
     gpio_pin_numbers: [(u64, u64, u64); 8], // (step_pin, dir_pin, enable_pin) per motor
-    step_pulse_duration_us: u64, // Duration of step pulse in microseconds
+    step_pulse_duration_us: u64,            // Duration of step pulse in microseconds
 }
 
 /// Motion state for trapezoidal motion profile
@@ -126,9 +126,9 @@ impl StepperMotorNode {
             feedback_publisher: Hub::new(&format!("{}_position", topic))?,
             num_motors: 1,
             steps_per_rev: [200; 8], // NEMA 17 standard
-            microsteps: [16; 8],      // Common default
+            microsteps: [16; 8],     // Common default
             gear_ratio: [1.0; 8],
-            max_velocity: [1000.0; 8], // 1000 steps/sec default
+            max_velocity: [1000.0; 8],    // 1000 steps/sec default
             max_acceleration: [500.0; 8], // 500 steps/sec² default
             current_limit: [0; 8],
             invert_direction: [false; 8],
@@ -229,8 +229,7 @@ impl StepperMotorNode {
     pub fn get_position_radians(&self, motor_id: u8) -> Option<f64> {
         if motor_id < 8 {
             let idx = motor_id as usize;
-            let microsteps_per_rev =
-                self.steps_per_rev[idx] as f64 * self.microsteps[idx] as f64;
+            let microsteps_per_rev = self.steps_per_rev[idx] as f64 * self.microsteps[idx] as f64;
             let position = self.current_position[idx] as f64 / microsteps_per_rev * 2.0 * PI;
             Some(position / self.gear_ratio[idx])
         } else {
@@ -316,14 +315,18 @@ impl StepperMotorNode {
 
     /// Initialize GPIO pins for a motor
     #[cfg(feature = "gpio-hardware")]
-    fn init_gpio_hardware(&mut self, motor_id: u8, mut ctx: Option<&mut NodeInfo>) -> std::io::Result<()> {
+    fn init_gpio_hardware(
+        &mut self,
+        motor_id: u8,
+        mut ctx: Option<&mut NodeInfo>,
+    ) -> std::io::Result<()> {
         let idx = motor_id as usize;
         let (step_num, dir_num, enable_num) = self.gpio_pin_numbers[idx];
 
         if step_num == 0 || dir_num == 0 || enable_num == 0 {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
-                format!("GPIO pins not configured for motor {}", motor_id)
+                format!("GPIO pins not configured for motor {}", motor_id),
             ));
         }
 
@@ -374,7 +377,10 @@ impl StepperMotorNode {
         })?;
 
         let enable = self.enable_pins[idx].as_ref().ok_or_else(|| {
-            std::io::Error::new(std::io::ErrorKind::NotConnected, "Enable pin not initialized")
+            std::io::Error::new(
+                std::io::ErrorKind::NotConnected,
+                "Enable pin not initialized",
+            )
         })?;
 
         // Set direction pin
@@ -590,8 +596,7 @@ impl StepperMotorNode {
                 let vel_diff = self.target_velocity[idx] - self.current_velocity[idx];
                 let accel_step = accel * dt;
 
-                if vel_diff.abs() <= accel_step || self.current_velocity[idx].abs() <= accel_step
-                {
+                if vel_diff.abs() <= accel_step || self.current_velocity[idx].abs() <= accel_step {
                     // Reached target velocity
                     self.current_velocity[idx] = self.target_velocity[idx];
                     if self.current_velocity[idx] == 0.0 {
@@ -612,7 +617,12 @@ impl StepperMotorNode {
     }
 
     /// Generate steps for a single motor
-    fn generate_steps(&mut self, motor_id: u8, current_time: u64, ctx: Option<&mut NodeInfo>) -> bool {
+    fn generate_steps(
+        &mut self,
+        motor_id: u8,
+        current_time: u64,
+        ctx: Option<&mut NodeInfo>,
+    ) -> bool {
         if motor_id >= self.num_motors {
             return false;
         }
@@ -629,7 +639,11 @@ impl StepperMotorNode {
         }
 
         // Calculate direction
-        let mut direction = if self.current_velocity[idx] > 0.0 { 1 } else { -1 };
+        let mut direction = if self.current_velocity[idx] > 0.0 {
+            1
+        } else {
+            -1
+        };
         direction = if self.invert_direction[idx] {
             -direction
         } else {
@@ -650,13 +664,22 @@ impl StepperMotorNode {
                                 "StepperMotorNode motor {}: Hardware unavailable - using SIMULATION mode",
                                 motor_id
                             ));
-                            ctx.log_warning(&format!("  Tried GPIO pins: step={}, dir={}, enable={}", step_num, dir_num, enable_num));
+                            ctx.log_warning(&format!(
+                                "  Tried GPIO pins: step={}, dir={}, enable={}",
+                                step_num, dir_num, enable_num
+                            ));
                             ctx.log_warning(&format!("  Error: {}", e));
                             ctx.log_warning("  Fix:");
                             ctx.log_warning("    1. Install: sudo apt install libraspberrypi-dev");
-                            ctx.log_warning("    2. Enable GPIO: sudo raspi-config -> Interface Options");
-                            ctx.log_warning("    3. Check wiring: Verify stepper driver connections");
-                            ctx.log_warning("    4. Rebuild with: cargo build --features=\"gpio-hardware\"");
+                            ctx.log_warning(
+                                "    2. Enable GPIO: sudo raspi-config -> Interface Options",
+                            );
+                            ctx.log_warning(
+                                "    3. Check wiring: Verify stepper driver connections",
+                            );
+                            ctx.log_warning(
+                                "    4. Rebuild with: cargo build --features=\"gpio-hardware\"",
+                            );
                         }
                         self.hardware_enabled = false;
                     } else {

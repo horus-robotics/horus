@@ -86,7 +86,9 @@ impl TlsCertConfig {
     }
 
     /// Load or generate TLS certificate and private key
-    pub fn load_or_generate(&self) -> HorusResult<(Vec<CertificateDer<'static>>, PrivateKeyDer<'static>)> {
+    pub fn load_or_generate(
+        &self,
+    ) -> HorusResult<(Vec<CertificateDer<'static>>, PrivateKeyDer<'static>)> {
         // If paths are provided, load from files
         if let (Some(cert_path), Some(key_path)) = (&self.cert_path, &self.key_path) {
             return self.load_from_files(cert_path, key_path);
@@ -98,12 +100,16 @@ impl TlsCertConfig {
         }
 
         Err(HorusError::config(
-            "TLS enabled but no certificate paths provided and auto-generate is disabled"
+            "TLS enabled but no certificate paths provided and auto-generate is disabled",
         ))
     }
 
     /// Load certificate and key from PEM files
-    fn load_from_files(&self, cert_path: &str, key_path: &str) -> HorusResult<(Vec<CertificateDer<'static>>, PrivateKeyDer<'static>)> {
+    fn load_from_files(
+        &self,
+        cert_path: &str,
+        key_path: &str,
+    ) -> HorusResult<(Vec<CertificateDer<'static>>, PrivateKeyDer<'static>)> {
         // Load certificate
         let cert_file = std::fs::File::open(cert_path)
             .map_err(|e| HorusError::config(format!("Failed to open certificate file: {}", e)))?;
@@ -113,7 +119,9 @@ impl TlsCertConfig {
             .map_err(|e| HorusError::config(format!("Failed to parse certificate: {}", e)))?;
 
         if certs.is_empty() {
-            return Err(HorusError::config("No certificates found in certificate file"));
+            return Err(HorusError::config(
+                "No certificates found in certificate file",
+            ));
         }
 
         // Load private key
@@ -144,7 +152,9 @@ impl TlsCertConfig {
     ///
     /// For production use, obtain certificates from a trusted CA and use
     /// `with_files()` to load them.
-    fn generate_self_signed(&self) -> HorusResult<(Vec<CertificateDer<'static>>, PrivateKeyDer<'static>)> {
+    fn generate_self_signed(
+        &self,
+    ) -> HorusResult<(Vec<CertificateDer<'static>>, PrivateKeyDer<'static>)> {
         use rcgen::Ia5String;
 
         // Create certificate parameters
@@ -162,7 +172,9 @@ impl TlsCertConfig {
         params.subject_alt_names = vec![
             rcgen::SanType::DnsName(localhost_ia5),
             rcgen::SanType::IpAddress(std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1))),
-            rcgen::SanType::IpAddress(std::net::IpAddr::V6(std::net::Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1))),
+            rcgen::SanType::IpAddress(std::net::IpAddr::V6(std::net::Ipv6Addr::new(
+                0, 0, 0, 0, 0, 0, 0, 1,
+            ))),
         ];
 
         // Generate key pair first
@@ -170,7 +182,8 @@ impl TlsCertConfig {
             .map_err(|e| HorusError::config(format!("Failed to generate key pair: {}", e)))?;
 
         // Generate certificate using self_signed
-        let cert = params.self_signed(&key_pair)
+        let cert = params
+            .self_signed(&key_pair)
             .map_err(|e| HorusError::config(format!("Failed to generate certificate: {}", e)))?;
 
         // Get PEM-encoded certificate
@@ -182,15 +195,24 @@ impl TlsCertConfig {
         // Parse into rustls types
         let cert_der = rustls_pemfile::certs(&mut cert_pem.as_bytes())
             .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| HorusError::config(format!("Failed to parse generated certificate: {}", e)))?;
+            .map_err(|e| {
+                HorusError::config(format!("Failed to parse generated certificate: {}", e))
+            })?;
 
         let key_der = rustls_pemfile::private_key(&mut key_pem.as_bytes())
-            .map_err(|e| HorusError::config(format!("Failed to parse generated private key: {}", e)))?
+            .map_err(|e| {
+                HorusError::config(format!("Failed to parse generated private key: {}", e))
+            })?
             .ok_or_else(|| HorusError::config("Failed to extract private key"))?;
 
-        log::warn!("Generated self-signed TLS certificate for {}", self.common_name);
+        log::warn!(
+            "Generated self-signed TLS certificate for {}",
+            self.common_name
+        );
         log::warn!("Self-signed certificates provide encryption but NOT authentication");
-        log::warn!("Suitable for dev/testing/private networks only - use CA-signed certs for production");
+        log::warn!(
+            "Suitable for dev/testing/private networks only - use CA-signed certs for production"
+        );
 
         Ok((cert_der, key_der))
     }
