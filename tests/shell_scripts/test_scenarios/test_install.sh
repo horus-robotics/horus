@@ -3,8 +3,8 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/../helpers/common.sh"
+# Source helpers from mounted location
+source "/test_helpers/common.sh"
 
 HORUS_ROOT="${HORUS_ROOT:-/horus}"
 

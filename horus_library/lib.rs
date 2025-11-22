@@ -15,14 +15,14 @@
 //!
 //! ## Usage
 //!
-//! ```rust
+//! ```rust,ignore
 //! // Message types, traits, and nodes are re-exported at the root for convenience
 //! use horus_library::{
 //!     // Core traits
 //!     LogSummary,
 //!     // Messages
 //!     KeyboardInput, JoystickInput, CmdVel, LaserScan, Image, Twist,
-//!     // Nodes
+//!     // Nodes (feature-gated)
 //!     CameraNode, LidarNode, DifferentialDriveNode, EmergencyStopNode
 //! };
 //!

@@ -2,9 +2,7 @@ use bevy::prelude::*;
 use std::path::PathBuf;
 
 use super::{
-    dataset_export::DatasetRecorder,
-    sensor_data::SensorBagRecorder,
-    trajectory::RecordingSession,
+    dataset_export::DatasetRecorder, sensor_data::SensorBagRecorder, trajectory::RecordingSession,
     video_export::VideoRecorder,
 };
 

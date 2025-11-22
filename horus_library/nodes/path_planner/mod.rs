@@ -1,3 +1,5 @@
+#![allow(clippy::needless_range_loop)] // Grid indexing patterns are clearer with explicit indices
+
 use crate::{LaserScan, Odometry, PathPlan};
 use horus_core::error::HorusResult;
 

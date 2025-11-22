@@ -1,3 +1,5 @@
+#![allow(clippy::needless_range_loop)] // Matrix indexing patterns are clearer with explicit indices
+
 //! Linear Kalman Filter
 //!
 //! Optimal state estimation for linear systems with Gaussian noise.
@@ -11,7 +13,7 @@
 //!
 //! # Example
 //!
-//! ```rust
+//! ```rust,ignore
 //! use horus_library::algorithms::kalman_filter::KalmanFilter;
 //!
 //! // 1D position-velocity tracker

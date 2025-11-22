@@ -1,3 +1,5 @@
+#![allow(clippy::needless_range_loop)] // Matrix indexing patterns are clearer with explicit indices
+
 //! Extended Kalman Filter (EKF) for Robot Localization
 //!
 //! State estimation using sensor fusion with nonlinear motion and measurement models.

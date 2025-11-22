@@ -1,3 +1,5 @@
+#![allow(clippy::needless_range_loop)] // Matrix indexing patterns are clearer with explicit indices
+
 use crate::{Imu, LaserScan, Odometry};
 use horus_core::error::HorusResult;
 
