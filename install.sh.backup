@@ -1,12 +1,8 @@
 #!/bin/bash
 # HORUS Installation Script
-# Universal installer that works across all major operating systems
+# Installs the HORUS CLI and runtime libraries from source
 
 set -e  # Exit on error
-set -o pipefail  # Fail on pipe errors
-
-# Script version
-SCRIPT_VERSION="2.0.0"
 
 # Colors for output
 RED='\033[0;31m'
@@ -16,225 +12,68 @@ CYAN='\033[0;36m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Log file for debugging
-LOG_FILE="/tmp/horus_install_$(date +%Y%m%d_%H%M%S).log"
-exec 2> >(tee -a "$LOG_FILE" >&2)
-
-echo -e "${CYAN} HORUS Installation Script v${SCRIPT_VERSION}${NC}"
+echo -e "${CYAN} HORUS Installation Script${NC}"
 echo ""
 
-# Detect operating system
-detect_os() {
-    local os_type=""
-    local os_distro=""
+# Check if Rust is installed
+if ! command -v cargo &> /dev/null; then
+    echo -e "${RED} Error: Rust is not installed${NC}"
+    echo "Please install Rust from https://rustup.rs/"
+    exit 1
+fi
 
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        os_type="macos"
-        os_distro="macos"
-    elif [[ "$OSTYPE" == "linux"* ]]; then
-        os_type="linux"
-
-        # Check for WSL
-        if grep -qE "(Microsoft|WSL)" /proc/version 2>/dev/null; then
-            os_type="wsl"
-        fi
-
-        # Detect Linux distribution
-        if [ -f /etc/os-release ]; then
-            . /etc/os-release
-            os_distro="${ID,,}"
-
-            # Group similar distros
-            case "$os_distro" in
-                ubuntu|debian|raspbian|pop|mint|elementary)
-                    os_distro="debian-based"
-                    ;;
-                fedora|rhel|centos|rocky|almalinux)
-                    os_distro="fedora-based"
-                    ;;
-                arch|manjaro|endeavouros)
-                    os_distro="arch-based"
-                    ;;
-                opensuse*)
-                    os_distro="opensuse"
-                    ;;
-                alpine)
-                    os_distro="alpine"
-                    ;;
-                void)
-                    os_distro="void"
-                    ;;
-                nixos)
-                    os_distro="nixos"
-                    ;;
-                *)
-                    os_distro="unknown"
-                    ;;
-            esac
-        fi
-    else
-        os_type="unknown"
-        os_distro="unknown"
-    fi
-
-    echo "$os_type:$os_distro"
-}
-
-OS_INFO=$(detect_os)
-IFS=':' read -r OS_TYPE OS_DISTRO <<< "$OS_INFO"
-echo -e "${CYAN}${NC} Detected OS: $OS_TYPE ($OS_DISTRO)"
-
-# Auto-install Rust if not present
-install_rust() {
-    if ! command -v cargo &> /dev/null; then
-        echo -e "${YELLOW} Rust is not installed${NC}"
-        read -p "$(echo -e ${CYAN}?${NC}) Install Rust automatically? [Y/n]: " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-            echo -e "${CYAN} Installing Rust...${NC}"
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-            source "$HOME/.cargo/env"
-
-            if ! command -v cargo &> /dev/null; then
-                echo -e "${RED} Failed to install Rust${NC}"
-                echo "Please install manually from https://rustup.rs/"
-                exit 1
-            fi
-            echo -e "${GREEN} Rust installed successfully${NC}"
-        else
-            echo -e "${RED} Rust is required to build HORUS${NC}"
-            exit 1
-        fi
-    fi
-}
-
-# Install Rust
-install_rust
 echo -e "${CYAN}${NC} Detected Rust version: $(rustc --version)"
 
-# Auto-install system dependencies
-install_system_deps() {
-    local missing_deps=""
+# Check if C compiler/linker is installed
+if ! command -v cc &> /dev/null && ! command -v gcc &> /dev/null; then
+    echo -e "${RED} Error: C compiler not found${NC}"
+    echo ""
+    echo "HORUS requires a C compiler/linker to build native code."
+    echo ""
+    echo "Install build tools for your system:"
+    echo ""
+    echo -e "${CYAN}Ubuntu/Debian:${NC}"
+    echo "  sudo apt update && sudo apt install build-essential pkg-config libudev-dev libssl-dev libasound2-dev"
+    echo ""
+    echo -e "${CYAN}Fedora/RHEL/CentOS:${NC}"
+    echo "  sudo dnf groupinstall \"Development Tools\""
+    echo "  sudo dnf install pkg-config systemd-devel openssl-devel alsa-lib-devel"
+    echo ""
+    echo -e "${CYAN}Arch Linux:${NC}"
+    echo "  sudo pacman -S base-devel pkg-config systemd openssl alsa-lib"
+    echo ""
+    echo -e "${CYAN}macOS:${NC}"
+    echo "  xcode-select --install"
+    echo "  brew install pkg-config"
+    echo ""
+    exit 1
+fi
 
-    # Check C compiler
-    if ! command -v cc &> /dev/null && ! command -v gcc &> /dev/null && ! command -v clang &> /dev/null; then
-        missing_deps="compiler"
-    fi
+echo -e "${CYAN}${NC} Detected C compiler: $(cc --version | head -n1)"
 
-    # Check pkg-config
-    if ! command -v pkg-config &> /dev/null; then
-        missing_deps="$missing_deps pkg-config"
-    fi
+# Check if pkg-config is installed
+if ! command -v pkg-config &> /dev/null; then
+    echo -e "${RED} Error: pkg-config not found${NC}"
+    echo ""
+    echo "HORUS requires pkg-config to build system library dependencies."
+    echo ""
+    echo "Install pkg-config for your system:"
+    echo ""
+    echo -e "${CYAN}Ubuntu/Debian:${NC}"
+    echo "  sudo apt install pkg-config libudev-dev libssl-dev libasound2-dev"
+    echo ""
+    echo -e "${CYAN}Fedora/RHEL/CentOS:${NC}"
+    echo "  sudo dnf install pkg-config systemd-devel openssl-devel alsa-lib-devel"
+    echo ""
+    echo -e "${CYAN}Arch Linux:${NC}"
+    echo "  sudo pacman -S pkg-config systemd openssl alsa-lib"
+    echo ""
+    echo -e "${CYAN}macOS:${NC}"
+    echo "  brew install pkg-config"
+    echo ""
+    exit 1
+fi
 
-    # Check for OpenSSL
-    if ! pkg-config --exists openssl 2>/dev/null && [ "$OS_TYPE" != "macos" ]; then
-        missing_deps="$missing_deps openssl"
-    fi
-
-    # Check for libudev (Linux only)
-    if [ "$OS_TYPE" = "linux" ] || [ "$OS_TYPE" = "wsl" ]; then
-        if ! pkg-config --exists libudev 2>/dev/null; then
-            missing_deps="$missing_deps libudev"
-        fi
-    fi
-
-    # Check for ALSA (Linux only)
-    if [ "$OS_TYPE" = "linux" ] || [ "$OS_TYPE" = "wsl" ]; then
-        if ! pkg-config --exists alsa 2>/dev/null; then
-            missing_deps="$missing_deps alsa"
-        fi
-    fi
-
-    # Check for libclang (required for OpenCV)
-    if ! ldconfig -p 2>/dev/null | grep -q libclang && [ "$OS_TYPE" != "macos" ]; then
-        missing_deps="$missing_deps libclang"
-    fi
-
-    if [ -n "$missing_deps" ]; then
-        echo -e "${YELLOW} Missing dependencies:${missing_deps}${NC}"
-        echo ""
-        read -p "$(echo -e ${CYAN}?${NC}) Install missing dependencies automatically? [Y/n]: " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-            echo -e "${CYAN} Installing dependencies for $OS_DISTRO...${NC}"
-
-            case "$OS_DISTRO" in
-                debian-based)
-                    sudo apt-get update
-                    sudo apt-get install -y build-essential pkg-config libssl-dev libudev-dev libasound2-dev \
-                        libclang-dev libopencv-dev libx11-dev libxrandr-dev libxi-dev libxcursor-dev \
-                        libxinerama-dev libwayland-dev wayland-protocols libxkbcommon-dev
-                    ;;
-                fedora-based)
-                    sudo dnf groupinstall -y "Development Tools"
-                    sudo dnf install -y pkg-config openssl-devel systemd-devel alsa-lib-devel \
-                        clang-devel opencv-devel libX11-devel libXrandr-devel libXi-devel \
-                        libXcursor-devel libXinerama-devel wayland-devel wayland-protocols-devel \
-                        libxkbcommon-devel
-                    ;;
-                arch-based)
-                    sudo pacman -Sy --noconfirm base-devel pkg-config openssl systemd alsa-lib \
-                        clang opencv libx11 libxrandr libxi libxcursor libxinerama \
-                        wayland wayland-protocols libxkbcommon
-                    ;;
-                opensuse)
-                    sudo zypper install -y -t pattern devel_basis
-                    sudo zypper install -y pkg-config libopenssl-devel libudev-devel alsa-devel \
-                        clang-devel opencv-devel libX11-devel libXrandr-devel libXi-devel \
-                        libXcursor-devel libXinerama-devel wayland-devel wayland-protocols-devel \
-                        libxkbcommon-devel
-                    ;;
-                alpine)
-                    sudo apk add --no-cache build-base pkgconfig openssl-dev eudev-dev alsa-lib-dev \
-                        clang-dev opencv-dev libx11-dev libxrandr-dev libxi-dev libxcursor-dev \
-                        libxinerama-dev wayland-dev wayland-protocols libxkbcommon-dev
-                    ;;
-                macos)
-                    # Check for Xcode Command Line Tools
-                    if ! xcode-select -p &> /dev/null; then
-                        echo -e "${CYAN} Installing Xcode Command Line Tools...${NC}"
-                        xcode-select --install
-                        echo "Please wait for Xcode tools to install, then re-run this script"
-                        exit 1
-                    fi
-                    # Install via Homebrew
-                    if ! command -v brew &> /dev/null; then
-                        echo -e "${YELLOW} Homebrew not found${NC}"
-                        echo "Please install from https://brew.sh then re-run this script"
-                        exit 1
-                    fi
-                    brew install pkg-config opencv
-                    ;;
-                *)
-                    echo -e "${YELLOW} Cannot auto-install for $OS_DISTRO${NC}"
-                    echo ""
-                    echo "Please install manually:"
-                    echo "  - C/C++ compiler (gcc, clang, or cc)"
-                    echo "  - pkg-config"
-                    echo "  - OpenSSL development headers"
-                    echo "  - libudev development headers (Linux)"
-                    echo "  - ALSA development headers (Linux)"
-                    echo "  - libclang development headers"
-                    echo "  - OpenCV development headers (optional)"
-                    echo ""
-                    exit 1
-                    ;;
-            esac
-
-            echo -e "${GREEN} Dependencies installed${NC}"
-        else
-            echo -e "${YELLOW} Continuing without installing dependencies${NC}"
-            echo "Note: Build may fail if required dependencies are missing"
-        fi
-    else
-        echo -e "${GREEN} All required dependencies found${NC}"
-    fi
-}
-
-# Check and install system dependencies
-install_system_deps
-
-echo -e "${CYAN}${NC} Detected C compiler: $(cc --version 2>/dev/null | head -n1 || gcc --version 2>/dev/null | head -n1 || clang --version 2>/dev/null | head -n1)"
 echo -e "${CYAN}${NC} Detected pkg-config: $(pkg-config --version)"
 
 # Check for required system libraries
@@ -454,69 +293,17 @@ if [[ ! $REPLY =~ ^[Yy]$ ]] && [[ ! -z $REPLY ]]; then
     exit 0
 fi
 
-# Build with automatic retry and error recovery
-build_with_recovery() {
-    local max_retries=3
-    local retry=0
+# Step 1: Build all packages in release mode
+echo ""
+echo -e "${CYAN} Building HORUS packages (release mode)...${NC}"
+cargo build --release
 
-    while [ $retry -lt $max_retries ]; do
-        echo ""
-        echo -e "${CYAN} Building HORUS packages (attempt $((retry + 1))/$max_retries)...${NC}"
-
-        # Clean build on retry
-        if [ $retry -gt 0 ]; then
-            echo -e "${CYAN} Cleaning previous build artifacts...${NC}"
-            cargo clean
-        fi
-
-        # Try building
-        if cargo build --release 2>&1 | tee -a "$LOG_FILE"; then
-            echo -e "${GREEN} Build completed successfully${NC}"
-            return 0
-        else
-            ((retry++))
-
-            if [ $retry -lt $max_retries ]; then
-                echo -e "${YELLOW} Build failed, attempting recovery...${NC}"
-
-                # Common fixes for build failures
-                echo -e "${CYAN} Updating cargo index...${NC}"
-                cargo update
-
-                # Fix potential permission issues
-                if grep -q "permission denied" "$LOG_FILE"; then
-                    echo -e "${CYAN} Fixing permissions...${NC}"
-                    chmod -R u+rwx target/ 2>/dev/null || true
-                    chmod -R u+rwx ~/.cargo/ 2>/dev/null || true
-                fi
-
-                # Clear cargo cache if download failed
-                if grep -q "failed to download\|failed to fetch" "$LOG_FILE"; then
-                    echo -e "${CYAN} Clearing cargo cache...${NC}"
-                    rm -rf ~/.cargo/registry/cache
-                    rm -rf ~/.cargo/registry/index
-                fi
-
-                sleep 2
-            fi
-        fi
-    done
-
-    echo -e "${RED} Build failed after $max_retries attempts${NC}"
-    echo -e "${YELLOW} Check the log file for details: $LOG_FILE${NC}"
-    echo ""
-    echo "Troubleshooting steps:"
-    echo "  1. Try running: ./recovery_install.sh"
-    echo "  2. Check if you have enough disk space: df -h"
-    echo "  3. Try updating Rust: rustup update stable"
-    echo "  4. Report issue: https://github.com/softmata/horus/issues"
-    return 1
-}
-
-# Step 1: Build all packages
-if ! build_with_recovery; then
+if [ $? -ne 0 ]; then
+    echo -e "${RED} Build failed${NC}"
     exit 1
 fi
+
+echo -e "${GREEN}${NC} Build completed"
 echo ""
 
 # Step 2: Install CLI binary
