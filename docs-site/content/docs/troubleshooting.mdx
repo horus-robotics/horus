@@ -12,111 +12,37 @@ HORUS includes utility scripts to help you update, recover from broken installat
 
 | Script | Use When | What It Does |
 |--------|----------|--------------|
-| `./update.sh` | Update to latest version | Smart incremental update (auto git pull) |
+| `./install.sh` | Install or update | Full installation from source |
 | `./verify.sh` | Check installation health | Diagnose issues, verify setup |
-| `./recovery_install.sh` | Build errors, corrupted cache | Nuclear option: fresh rebuild |
-| `./install.sh` | First time installation | Full installation from source |
 | `./uninstall.sh` | Remove HORUS | Complete removal |
 
 ---
 
-## update.sh - Smart Updates
+## Updating HORUS
 
-**Use when:** You want to update to the latest version
-
-### Quick Usage
+To update to the latest version:
 
 ```bash
 cd /path/to/HORUS
-./update.sh  # Automatically pulls latest changes
+git pull
+./install.sh
 ```
 
-### What It Does
-
-1. **Safety checks**: Detects uncommitted changes, offers to stash
-2. **Git update**: Shows what changed, pulls latest commits
-3. **Smart detection**: Only rebuilds what's necessary
-4. **Dependency update**: Updates Cargo.toml if needed
-5. **Verification**: Quick smoke test after update
-
-### Example Session
-
+**To preview changes before updating:**
 ```bash
-$ ./update.sh
- HORUS Update Script
-
- Current version: 0.1.0
-
- Fetching latest changes from remote...
- Updates available on main
-
-Recent changes:
-  * a1b2c3d Fix edge detection bug
-  * d4e5f6g Add ONNX runtime support
-  * g7h8i9j Update dependencies
-
-Pull and update? [Y/n]: y
-
- Pulling latest changes...
- Updated to latest commit
-
- Analyzing changes...
- Cargo.toml files changed - dependencies may have updated
- Rust source files changed
-
- Updating dependencies...
- Dependencies updated
-
- Rebuilding HORUS (release mode)...
-   Compiling horus_core v0.1.3
-   Compiling horus v0.1.3
- Build completed
-
- Installing updated binary...
- Binary installed to ~/.cargo/bin/horus
-
- Updating library cache...
- Libraries updated
-
- Verifying update...
- New version: 0.1.3
- Smoke test passed
-
- Update complete!
-
-Version: 0.1.0  0.1.3
+git fetch
+git log HEAD..@{u}  # See what's new
+git pull
+./install.sh
 ```
 
-### Options
-
-**Handle uncommitted changes:**
+**If you have uncommitted changes:**
 ```bash
-  Warning: You have uncommitted changes
-
- M horus_core/src/scheduler.rs
- M docs/readme.md
-
-? Stash changes before updating? [y/N]: y
- Changes stashed
+git stash
+git pull
+./install.sh
+git stash pop  # Restore your changes
 ```
-
-**Rebuild even if up-to-date:**
-```bash
- Already up to date
-
-? Rebuild anyway? [y/N]: y
-```
-
-### Troubleshooting update.sh
-
-**Error: Not in a git repository**
-- Make sure you're in the HORUS repository root
-- Run: `git status` to verify
-
-**Build failed during update**
-- Try: `./recovery_install.sh` for fresh rebuild
-- Check error messages above
-- Verify dependencies: `./verify.sh`
 
 ---
 
@@ -260,139 +186,30 @@ fi
 
 ---
 
-## recovery_install.sh - Nuclear Recovery
+## Manual Recovery
 
 **Use when:** Build errors, corrupted cache, installation broken
 
-### Quick Usage
+### Quick Steps
 
 ```bash
-./recovery_install.sh
+# Navigate to HORUS source directory
+cd /path/to/HORUS
+
+# 1. Clean build artifacts
+cargo clean
+
+# 2. Remove cached libraries
+rm -rf ~/.horus/cache
+
+# 3. Fresh install
+./install.sh
+
+# 4. Verify installation
+./verify.sh
 ```
 
-### What It Does
-
-**Phase 1: Comprehensive Diagnostics**
-- Checks 30+ system requirements
-- Detects missing dependencies
-- Finds version conflicts
-- Reports all issues clearly
-
-**Phase 2: Deep Cleanup**
-- Removes all build artifacts (`target/`)
-- Cleans HORUS from cargo cache
-- Removes old binaries
-- Optionally cleans `~/.horus/cache`
-
-**Phase 3: Fresh Installation**
-- Runs `install.sh` from scratch
-- Clean build in release mode
-- Fresh library installation
-
-**Phase 4: Verification**
-- Tests binary works
-- Verifies all libraries installed
-- Checks PATH configuration
-
-### Example Session
-
-```bash
-$ ./recovery_install.sh
- HORUS Recovery Installation Script
-
-
-This script will:
-  • Detect system dependencies and issues
-  • Clean all build artifacts and caches
-  • Fresh installation from scratch
-  • Comprehensive verification
-
-? Continue with recovery installation? [y/N]: y
-
- PHASE 1: System Diagnostics 
-
- Checking Rust toolchain...
-   Rust: 1.75.0
-   Cargo: 1.75.0
-
- Checking C compiler...
-   C compiler: gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0
-
- Checking system dependencies...
-   pkg-config: 0.29.2
-   libopenssl: 3.0.2
-   libudev: not found (optional)
-
- Checking for existing HORUS installations...
-   Found existing binary: 0.1.0
-   Multiple 'horus' commands found in PATH
-      - /home/user/.cargo/bin/horus
-      - /usr/local/bin/horus
-
- Diagnostic Summary 
-  Errors:   0
-  Warnings: 3
-
-  Warnings found
-You can continue, but some features may not work.
-
-? Continue anyway? [y/N]: y
-
- PHASE 2: Cleanup 
-
- Cleaning build artifacts...
-   Removing target/ (1.2G)...
-   Build artifacts removed
-
- Cleaning HORUS from cargo cache...
-   Cargo cache cleaned
-
-? Remove ~/.horus/cache (installed libraries)? [Y/n]: y
-   HORUS cache removed
-
-? Remove ~/.horus/config (user settings)? [y/N]: n
-   Keeping user config
-
-   Old binary removed
-
- Cleanup complete
-
- PHASE 3: Fresh Installation 
-
- Running install.sh...
-
-[... install.sh output ...]
-
- PHASE 4: Verification 
-
- Testing HORUS binary...
-   Binary works: v0.1.0
-
- Testing basic commands...
-   --help works
-
- Checking PATH...
-   'horus' found in PATH
-       ~/.cargo/bin/horus
-
- Checking installed libraries...
-   Installed version: 0.1.0
-   horus installed
-   horus_core installed
-   horus_macros installed
-   horus_library installed
-
- Recovery installation successful!
-
-Next steps:
-  1. Test creating a project:
-     horus new test_project
-
-  2. Run it:
-     cd test_project && horus run
-```
-
-### When to Use Recovery Install
+### When to Use Recovery
 
 **Symptoms requiring recovery:**
 
@@ -425,19 +242,36 @@ Next steps:
 
 ### What Gets Removed
 
-**Always removed:**
+**By `cargo clean`:**
 - `target/` directory (build artifacts)
-- Old `~/.cargo/bin/horus` binary
-- HORUS entries in `~/.cargo/registry`
 
-**Ask before removing:**
-- `~/.horus/cache` (installed libraries)
+**By `rm -rf ~/.horus/cache`:**
+- Installed libraries
+- Cached dependencies
+
+**Never removed (safe):**
 - `~/.horus/config` (user settings)
-
-**Never removed:**
-- Project-local `.horus/` directories
 - `~/.horus/credentials` (registry auth)
+- Project-local `.horus/` directories
 - Your source code
+
+### Full Reset (Nuclear Option)
+
+If the quick steps don't work, do a complete reset:
+
+```bash
+# Remove everything HORUS-related
+cargo clean
+rm -rf ~/.horus
+rm -f ~/.cargo/bin/horus
+rm -f ~/.cargo/bin/sim2d
+
+# Fresh install
+./install.sh
+
+# Verify
+./verify.sh
+```
 
 ---
 
@@ -506,8 +340,8 @@ sudo apt install -y build-essential pkg-config \
   libvulkan-dev libfontconfig-dev libfreetype-dev \
   libv4l-dev
 
-# Or run recovery (auto-detects missing packages)
-./recovery_install.sh
+# Or run manual recovery (see Manual Recovery section)
+cargo clean && rm -rf ~/.horus/cache && ./install.sh
 ```
 
 ---
@@ -518,8 +352,8 @@ sudo apt install -y build-essential pkg-config \
 
 **Solution:**
 ```bash
-# Try recovery instead
-./recovery_install.sh
+# Try manual recovery
+cargo clean && rm -rf ~/.horus/cache && ./install.sh
 ```
 
 ---
@@ -529,8 +363,7 @@ sudo apt install -y build-essential pkg-config \
 **Solution:**
 ```bash
 # Force rebuild
-./update.sh
-# When asked "Rebuild anyway?", answer: y
+./install.sh
 ```
 
 ---
@@ -564,7 +397,7 @@ Segmentation fault
 **Solution:**
 ```bash
 # Full recovery
-./recovery_install.sh
+cargo clean && rm -rf ~/.horus/cache && ./install.sh
 ```
 
 ---
@@ -601,12 +434,12 @@ rm -rf .horus/
 horus run
 ```
 
-**Option 3: Recovery installation (for persistent issues)**
+**Option 3: Manual recovery (for persistent issues)**
 ```bash
 # Only needed if --clean doesn't work
 # This reinstalls HORUS libraries globally
 cd /path/to/HORUS
-./recovery_install.sh
+cargo clean && rm -rf ~/.horus/cache && ./install.sh
 ```
 
 **For multiple projects:**
@@ -719,7 +552,7 @@ echo ".horus/target/" >> .gitignore
 
 **Weekly (active development):**
 ```bash
-./update.sh  # Pulls latest and rebuilds
+git pull && ./install.sh  # Pulls latest and rebuilds
 ```
 
 **Monthly:**
@@ -729,14 +562,15 @@ echo ".horus/target/" >> .gitignore
 
 **After system updates:**
 ```bash
-./recovery_install.sh  # If Rust/GCC updated
+# If Rust/GCC updated, run manual recovery
+cargo clean && rm -rf ~/.horus/cache && ./install.sh
 ```
 
 ### CI/CD Integration
 
 ```bash
 # In CI pipeline
-./verify.sh || ./recovery_install.sh
+./verify.sh || (cargo clean && rm -rf ~/.horus/cache && ./install.sh)
 
 # Exit codes
 if ./verify.sh; then
@@ -756,12 +590,12 @@ fi
 
 2. **If warnings: Update**
    ```bash
-   ./update.sh
+   git pull && ./install.sh
    ```
 
-3. **If errors: Recovery**
+3. **If errors: Manual recovery**
    ```bash
-   ./recovery_install.sh
+   cargo clean && rm -rf ~/.horus/cache && ./install.sh
    ```
 
 4. **Still broken: Report issue**
@@ -781,9 +615,9 @@ If you encounter issues:
    ./verify.sh > diagnostic.txt
    ```
 
-2. **Try recovery:**
+2. **Try manual recovery:**
    ```bash
-   ./recovery_install.sh
+   cargo clean && rm -rf ~/.horus/cache && ./install.sh
    ```
 
 3. **Check common issues** (above)

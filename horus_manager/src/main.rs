@@ -853,6 +853,9 @@ fn run_command(command: Commands) -> HorusResult<()> {
                             DependencySource::Path(_) => {
                                 // Path deps checked separately
                             }
+                            DependencySource::Git { .. } => {
+                                // Git deps are cloned by horus run, skip here
+                            }
                         }
                     }
 

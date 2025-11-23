@@ -97,7 +97,8 @@ pub fn detect_rust_nodes(source: &str) -> HashSet<String> {
 
         // Pattern 1: use horus_library::CameraNode;
         // Pattern 2: use horus_library::nodes::CameraNode;
-        if line.starts_with("use horus_library::") {
+        // Pattern 3: use horus::library::nodes::CameraNode;
+        if line.starts_with("use horus_library::") || line.starts_with("use horus::library::") {
             for (node_name, _) in NODE_FEATURES {
                 if line.contains(node_name) {
                     nodes.insert(node_name.to_string());
@@ -105,7 +106,7 @@ pub fn detect_rust_nodes(source: &str) -> HashSet<String> {
             }
         }
 
-        // Pattern 3: Direct usage like CameraNode::new()
+        // Pattern 4: Direct usage like CameraNode::new()
         for (node_name, _) in NODE_FEATURES {
             if line.contains(&format!("{}::", node_name)) {
                 nodes.insert(node_name.to_string());
@@ -208,6 +209,19 @@ lidar = horus.LidarNode()
         let nodes = detect_rust_nodes(code);
         assert!(nodes.contains("CameraNode"));
         assert!(nodes.contains("LidarNode"));
+    }
+
+    #[test]
+    fn test_detect_rust_horus_library_nodes() {
+        // This is the pattern used in snakesim
+        let code = "use horus::library::nodes::{KeyboardInputNode, JoystickInputNode};";
+        let nodes = detect_rust_nodes(code);
+        assert!(nodes.contains("KeyboardInputNode"), "Should detect KeyboardInputNode");
+        assert!(nodes.contains("JoystickInputNode"), "Should detect JoystickInputNode");
+
+        let features = nodes_to_features(&nodes);
+        assert!(features.contains(&"crossterm".to_string()), "KeyboardInputNode requires crossterm");
+        assert!(features.contains(&"gilrs".to_string()), "JoystickInputNode requires gilrs");
     }
 
     #[test]

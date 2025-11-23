@@ -19,7 +19,7 @@ Option A: Manual registration through web interface
 
 Option B: Automatic registration
 - The first release will automatically register the name
-- Make sure the name "horus" is available on PyPI
+- The package is published as "horus-robotics" on PyPI
 
 ### 3. Generate PyPI API Token
 
@@ -28,7 +28,7 @@ Option B: Automatic registration
 3. Click "Add API token"
 4. Configure:
    - Token name: `GitHub Actions - HORUS`
-   - Scope: Select "Entire account" (or "Project: horus" after first release)
+   - Scope: Select "Entire account" (or "Project: horus-robotics" after first release)
 5. Click "Create token"
 6. **IMPORTANT:** Copy the token immediately (starts with `pypi-`)
    - You won't be able to see it again!
@@ -86,13 +86,13 @@ git push origin main --tags
 3. Each platform should show green checkmarks
 
 ### Verify on PyPI
-1. Go to: https://pypi.org/project/horus/
+1. Go to: https://pypi.org/project/horus-robotics/
 2. New version should appear within minutes
 3. Check that all platforms are available
 
 ### Test Installation
 ```bash
-pip install horus==0.1.6
+pip install horus-robotics==0.1.6
 python -c "import horus; print(horus.__version__)"
 ```
 
@@ -155,14 +155,14 @@ git tag v0.2.0-alpha1 # Alpha release
 
 Users can install with:
 ```bash
-pip install --pre horus  # Install pre-release versions
+pip install --pre horus-robotics  # Install pre-release versions
 ```
 
 ## Yanking Releases
 
 If you publish a broken version:
 
-1. Go to https://pypi.org/project/horus/
+1. Go to https://pypi.org/project/horus-robotics/
 2. Click on the version
 3. Click "Options" → "Yank version"
 4. Provide a reason

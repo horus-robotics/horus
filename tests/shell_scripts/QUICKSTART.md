@@ -218,12 +218,6 @@ wait
 - Tests basic functionality
 - Reports accurate status codes
 
-### test_update.sh
-- Pulls latest changes from git
-- Rebuilds when needed
-- Preserves user configuration
-- Migrates versions correctly
-
 ### test_uninstall.sh
 - Removes all binaries
 - Cleans library cache

@@ -2,6 +2,9 @@
 # HORUS Installation Verification Script
 # Check installation health and diagnose issues
 
+# Get script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -10,6 +13,21 @@ CYAN='\033[0;36m'
 BLUE='\033[0;34m'
 MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
+
+# Source shared dependency functions
+if [ -f "$SCRIPT_DIR/scripts/deps.sh" ]; then
+    source "$SCRIPT_DIR/scripts/deps.sh"
+    DEPS_SOURCED=true
+else
+    DEPS_SOURCED=false
+    # Fallback OS detection
+    OS_TYPE="unknown"
+    OS_DISTRO="unknown"
+    case "$(uname -s)" in
+        Linux*) OS_TYPE="linux" ;;
+        Darwin*) OS_TYPE="macos" ;;
+    esac
+fi
 
 # Symbols
 CHECK="${GREEN}[+]${NC}"
@@ -30,6 +48,9 @@ WARNINGS=0
 #=====================================
 echo -e "${MAGENTA}System Requirements:${NC}"
 echo ""
+
+# OS Detection
+echo -e "  ${INFO} OS: $OS_TYPE ($OS_DISTRO)"
 
 # Rust
 if command -v rustc &> /dev/null; then
@@ -60,10 +81,14 @@ fi
 
 # C Compiler
 if command -v cc &> /dev/null; then
-    CC_NAME=$(cc --version | head -n1 | awk '{print $1}')
+    CC_NAME=$(cc --version 2>/dev/null | head -n1 | cut -d' ' -f1-3)
     echo -e "  $CHECK C compiler: $CC_NAME"
 elif command -v gcc &> /dev/null; then
-    echo -e "  $CHECK C compiler: GCC"
+    GCC_VERSION=$(gcc --version | head -n1)
+    echo -e "  $CHECK C compiler: $GCC_VERSION"
+elif command -v clang &> /dev/null; then
+    CLANG_VERSION=$(clang --version | head -n1)
+    echo -e "  $CHECK C compiler: $CLANG_VERSION"
 else
     echo -e "  $CROSS C compiler: Not found"
     ERRORS=$((ERRORS + 1))
@@ -81,28 +106,74 @@ fi
 echo ""
 
 #=====================================
-# System Libraries
+# System Libraries (Full Check)
 #=====================================
 echo -e "${MAGENTA}System Libraries:${NC}"
 echo ""
 
-# Check common libraries
-declare -a LIBS=(
-    "openssl:OpenSSL"
-    "udev:udev (Linux device management)"
-)
-
-for lib_info in "${LIBS[@]}"; do
-    IFS=':' read -r lib desc <<< "$lib_info"
-
-    if pkg-config --exists "$lib" 2>/dev/null; then
-        VERSION=$(pkg-config --modversion "$lib" 2>/dev/null || echo "installed")
-        echo -e "  $CHECK $desc: $VERSION"
-    else
-        echo -e "  $WARN $desc: Not found (optional for some features)"
-        WARNINGS=$((WARNINGS + 1))
+# Use shared deps.sh if available, otherwise fallback to basic checks
+if [ "$DEPS_SOURCED" = true ]; then
+    # Use comprehensive check from deps.sh
+    print_dep_status
+    DEP_FAILURES=$?
+    if [ $DEP_FAILURES -gt 0 ]; then
+        ERRORS=$((ERRORS + DEP_FAILURES))
     fi
-done
+else
+    # Fallback: Basic library checks
+    declare -a LIBS=(
+        "openssl:OpenSSL:required"
+        "libudev:udev (device management):linux"
+        "alsa:ALSA (audio):linux"
+        "wayland-client:Wayland client:linux"
+        "wayland-cursor:Wayland cursor:linux"
+        "xkbcommon:XKB common:linux"
+        "x11:X11:linux"
+        "xrandr:Xrandr:linux"
+        "xi:Xi (input):linux"
+        "xcursor:Xcursor:linux"
+        "xinerama:Xinerama:linux"
+    )
+
+    for lib_info in "${LIBS[@]}"; do
+        IFS=':' read -r lib desc req <<< "$lib_info"
+
+        # Skip linux-only on non-Linux
+        if [ "$req" = "linux" ] && [ "$OS_TYPE" != "linux" ]; then
+            continue
+        fi
+
+        if pkg-config --exists "$lib" 2>/dev/null; then
+            VERSION=$(pkg-config --modversion "$lib" 2>/dev/null || echo "installed")
+            echo -e "  $CHECK $desc: $VERSION"
+        else
+            if [ "$req" = "required" ]; then
+                echo -e "  $CROSS $desc: Not found (REQUIRED)"
+                ERRORS=$((ERRORS + 1))
+            else
+                echo -e "  $WARN $desc: Not found (may cause build issues)"
+                WARNINGS=$((WARNINGS + 1))
+            fi
+        fi
+    done
+
+    # Check for libclang specifically
+    if [ "$OS_TYPE" = "macos" ]; then
+        if xcode-select -p &>/dev/null; then
+            echo -e "  $CHECK libclang: Xcode tools installed"
+        else
+            echo -e "  $CROSS libclang: Xcode tools not found"
+            ERRORS=$((ERRORS + 1))
+        fi
+    else
+        if ldconfig -p 2>/dev/null | grep -q libclang || [ -f /usr/lib/llvm-*/lib/libclang.so ]; then
+            echo -e "  $CHECK libclang: installed"
+        else
+            echo -e "  $WARN libclang: Not found (required for some bindings)"
+            WARNINGS=$((WARNINGS + 1))
+        fi
+    fi
+fi
 
 echo ""
 
@@ -316,34 +387,56 @@ echo ""
 #=====================================
 # Summary
 #=====================================
-echo -e "${BLUE}${NC}"
+echo -e "${BLUE}========================================${NC}"
 echo -e "${CYAN}Summary:${NC}"
 echo ""
 
 if [ $ERRORS -eq 0 ] && [ $WARNINGS -eq 0 ]; then
-    echo -e "  ${GREEN} Perfect! Everything looks good.${NC}"
+    echo -e "  ${GREEN}Perfect! Everything looks good.${NC}"
     echo ""
     echo -e "  HORUS is properly installed and ready to use."
     EXIT_CODE=0
 elif [ $ERRORS -eq 0 ]; then
-    echo -e "  ${YELLOW}  $WARNINGS warning(s) found${NC}"
+    echo -e "  ${YELLOW}$WARNINGS warning(s) found${NC}"
     echo ""
     echo -e "  HORUS is installed but with minor issues."
     echo -e "  Review warnings above for optional improvements."
     EXIT_CODE=1
 else
-    echo -e "  ${RED} $ERRORS error(s), $WARNINGS warning(s) found${NC}"
+    echo -e "  ${RED}$ERRORS error(s), $WARNINGS warning(s) found${NC}"
     echo ""
     echo -e "  HORUS installation has problems."
     echo ""
     echo -e "  ${CYAN}Recommended actions:${NC}"
-    echo -e "    1. Review errors above"
-    echo -e "    2. Run: ${CYAN}./recovery_install.sh${NC} to fix"
-    echo -e "    3. Or reinstall: ${CYAN}./install.sh${NC}"
+
+    # Check if it's a system dependency issue
+    if [ "$DEPS_SOURCED" = true ]; then
+        MISSING_DEPS=$(check_all_deps)
+        if [ -n "$MISSING_DEPS" ]; then
+            echo -e "    1. Install missing system dependencies:"
+            echo -e "       ${CYAN}./install.sh${NC}  (will auto-install deps)"
+            echo ""
+            echo -e "    Or manually install:"
+            case "$OS_DISTRO" in
+                debian-based)
+                    echo -e "       ${CYAN}sudo apt-get install $(get_packages_for_os)${NC}"
+                    ;;
+                fedora-based)
+                    echo -e "       ${CYAN}sudo dnf install $(get_packages_for_os)${NC}"
+                    ;;
+                arch-based)
+                    echo -e "       ${CYAN}sudo pacman -S $(get_packages_for_os)${NC}"
+                    ;;
+            esac
+            echo ""
+        fi
+    fi
+
+    echo -e "    - Run: ${CYAN}cargo clean && rm -rf ~/.horus/cache && ./install.sh${NC}"
     EXIT_CODE=2
 fi
 
-echo -e "${BLUE}${NC}"
+echo -e "${BLUE}========================================${NC}"
 echo ""
 
 exit $EXIT_CODE

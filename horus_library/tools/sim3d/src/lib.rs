@@ -17,6 +17,7 @@ pub mod cli;
 pub mod editor;
 pub mod error;
 pub mod gpu;
+pub mod horus_bridge;
 pub mod multi_robot;
 pub mod physics;
 pub mod plugins;
@@ -30,6 +31,10 @@ pub mod sensors;
 pub mod systems;
 pub mod tf;
 pub mod utils;
+
+// UI module (conditional on visual feature due to other module errors)
+#[cfg(feature = "visual")]
+pub mod ui;
 
 // Re-export Python bindings when the python feature is enabled
 #[cfg(feature = "python")]

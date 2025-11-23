@@ -164,10 +164,53 @@ impl Scenario {
                 RobotState {
                     name: config.name.clone(),
                     position: config.position,
-                    heading: 0.0, // Would need to extract from physics
+                    heading: 0.0, // Use from_current_state_with_physics for actual values
                     velocity: [0.0, 0.0],
                     config_file: None,
                     config: Some(config.clone()),
+                }
+            })
+            .collect();
+
+        Self {
+            version: "1.0".to_string(),
+            name,
+            description,
+            world,
+            robots,
+            simulation: SimulationState {
+                time,
+                timestep: 0.016,
+                paused: false,
+            },
+            trajectory: None,
+        }
+    }
+
+    /// Create scenario from current simulation state with actual physics data
+    pub fn from_current_state_with_physics(
+        name: String,
+        description: String,
+        world_config: &WorldConfig,
+        robot_states: Vec<(RobotConfig, [f32; 2], f32, [f32; 2])>, // (config, position, heading, velocity)
+        time: f64,
+    ) -> Self {
+        let world = WorldState {
+            width: world_config.width,
+            height: world_config.height,
+            obstacles: world_config.obstacles.clone(),
+        };
+
+        let robots = robot_states
+            .into_iter()
+            .map(|(config, position, heading, velocity)| {
+                RobotState {
+                    name: config.name.clone(),
+                    position,
+                    heading,
+                    velocity,
+                    config_file: None,
+                    config: Some(config),
                 }
             })
             .collect();
@@ -431,7 +474,7 @@ simulation:
         assert_eq!(robot_configs[0].name, "test_robot");
         assert_eq!(robot_configs[0].position, [3.0, 4.0]);
 
-        println!("✓ Scenario save/load cycle test passed successfully!");
+        println!("Scenario save/load cycle test passed successfully!");
     }
 
     #[test]

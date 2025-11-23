@@ -1,5 +1,5 @@
 use horus_core::scheduling::Scheduler;
-use horus_core::{hub::*, link::*, Node, NodeInfo, Result as HorusResult};
+use horus_core::{Hub, Link, Node, NodeInfo, NodeInfoExt, HorusResult};
 use std::time::Duration;
 
 // Node that publishes telemetry data using Hub (multiple subscribers can consume)
@@ -45,8 +45,8 @@ pub struct ControlNode {
 impl ControlNode {
     pub fn new() -> HorusResult<Self> {
         Ok(Self {
-            command_link: Link::new("command")?,
-            response_link: Link::new("response")?,
+            command_link: Link::producer("command")?,
+            response_link: Link::consumer("response")?,
         })
     }
 }
@@ -85,8 +85,8 @@ pub struct ActuatorNode {
 impl ActuatorNode {
     pub fn new() -> HorusResult<Self> {
         Ok(Self {
-            command_link: Link::new("command")?,
-            response_link: Link::new("response")?,
+            command_link: Link::consumer("command")?,
+            response_link: Link::producer("response")?,
             processed: 0,
         })
     }
@@ -168,6 +168,10 @@ impl AnalyticsNode {
 }
 
 impl Node for AnalyticsNode {
+    fn name(&self) -> &'static str {
+        "AnalyticsNode"
+    }
+
     fn init(&mut self, _ctx: &mut NodeInfo) -> HorusResult<()> {
         println!("AnalyticsNode initialized - also subscribing to Hub");
         Ok(())
@@ -198,22 +202,18 @@ fn main() -> HorusResult<()> {
     let mut scheduler = Scheduler::new();
 
     // Add nodes using Link (for low-latency control)
-    scheduler.add(Box::new(ControlNode::new()?));
-    scheduler.add(Box::new(ActuatorNode::new()?));
+    scheduler.add(Box::new(ControlNode::new()?), 10, Some(true));
+    scheduler.add(Box::new(ActuatorNode::new()?), 10, Some(true));
 
     // Add nodes using Hub (for broadcast/multiple subscribers)
-    scheduler.add(Box::new(TelemetryNode::new()?));
-    scheduler.add(Box::new(LoggerNode::new()?));
-    scheduler.add(Box::new(AnalyticsNode::new()?));
+    scheduler.add(Box::new(TelemetryNode::new()?), 20, Some(true));
+    scheduler.add(Box::new(LoggerNode::new()?), 100, Some(true));
+    scheduler.add(Box::new(AnalyticsNode::new()?), 100, Some(true));
 
     println!("Running scheduler with 5 nodes (2 using Link, 3 using Hub)...\n");
 
     // Run for a short time
-    let start = std::time::Instant::now();
-    while start.elapsed() < Duration::from_secs(3) {
-        scheduler.tick();
-        std::thread::sleep(Duration::from_millis(1)); // Simulate 1kHz operation
-    }
+    scheduler.run_for(Duration::from_secs(3))?;
 
     println!("\n=== Demonstration Complete ===");
     println!(" Control nodes communicated via Link (lowest latency)");

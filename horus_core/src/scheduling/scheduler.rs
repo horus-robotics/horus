@@ -1,5 +1,6 @@
 use crate::core::{Node, NodeHeartbeat, NodeInfo};
 use crate::error::HorusResult;
+use crate::memory::platform::{shm_heartbeats_dir, shm_session_dir};
 use colored::Colorize;
 use std::collections::HashMap;
 use std::fs;
@@ -59,6 +60,22 @@ pub struct Scheduler {
 
     // Safety monitor for real-time critical systems
     safety_monitor: Option<SafetyMonitor>,
+
+    // === New runtime features ===
+    // Tick rate enforcement
+    tick_period: Duration,
+
+    // Checkpoint system
+    checkpoint_manager: Option<super::checkpoint::CheckpointManager>,
+
+    // Black box flight recorder
+    blackbox: Option<super::blackbox::BlackBox>,
+
+    // Telemetry
+    telemetry: Option<super::telemetry::TelemetryManager>,
+
+    // Redundancy manager
+    redundancy: Option<super::redundancy::RedundancyManager>,
 }
 
 impl Default for Scheduler {
@@ -99,6 +116,13 @@ impl Scheduler {
 
             // Safety monitor
             safety_monitor: None,
+
+            // New runtime features (disabled by default)
+            tick_period: Duration::from_micros(16667), // ~60Hz default
+            checkpoint_manager: None,
+            blackbox: None,
+            telemetry: None,
+            redundancy: None,
         }
     }
 
@@ -150,10 +174,28 @@ impl Scheduler {
         self.disable_learning().with_name("DeterministicScheduler")
     }
 
-    /// Disable learning phase for predictable startup (internal helper)
+    /// Disable the learning phase for predictable startup behavior
     ///
-    /// Prefer using `enable_determinism()` for full deterministic behavior.
-    fn disable_learning(mut self) -> Self {
+    /// When disabled:
+    /// - No ~100-tick profiling phase at startup
+    /// - No automatic tier classification of nodes
+    /// - No auto-JIT compilation of ultra-fast nodes after learning
+    /// - Nodes that declare `supports_jit()` still get compiled at add-time
+    ///
+    /// Use cases:
+    /// - Real-time systems that need immediate predictable execution
+    /// - Testing/debugging where profiling overhead is unwanted
+    /// - Short-lived schedulers where learning would never complete
+    ///
+    /// For full deterministic behavior (reproducible execution), use
+    /// `enable_determinism()` instead which also disables learning.
+    ///
+    /// # Example
+    /// ```
+    /// let scheduler = Scheduler::new()
+    ///     .disable_learning();  // Skip profiling, run immediately
+    /// ```
+    pub fn disable_learning(mut self) -> Self {
         self.learning_complete = true;
         self.classifier = None;
         self
@@ -429,28 +471,60 @@ impl Scheduler {
         let node_name = node.name().to_string();
         let logging_enabled = logging_enabled.unwrap_or(false);
 
-        // Check if this node implements DataflowNode for JIT compilation
-        // Try to detect if it's a JIT-capable node by name patterns
-        let is_jit_capable = node_name.contains("jit")
-            || node_name.contains("scaling")
-            || node_name.contains("dataflow")
-            || node_name.contains("arithmetic");
+        // Check if this node supports JIT compilation using trait methods
+        let is_jit_capable = node.supports_jit();
+        let jit_arithmetic_params = node.get_jit_arithmetic_params();
+        let jit_compute_fn = node.get_jit_compute();
 
-        let is_jit_compiled = if is_jit_capable {
-            // Check if not already wrapped
-            if !node_name.starts_with("jit_wrapper_") {
-                // Try to wrap it with JITCompiledNode
-                // Since we can't downcast trait objects in Rust easily, we use naming convention
+        // Track the compiled JIT function if available
+        let (is_jit_compiled, jit_compiled) = if is_jit_capable {
+            // Try to compile if the node provides arithmetic params
+            if let Some((factor, offset)) = jit_arithmetic_params {
+                match super::jit::JITCompiler::new() {
+                    Ok(mut compiler) => {
+                        let unique_name = format!("{}_{}", node_name, self.nodes.len());
+                        match compiler.compile_arithmetic_node(&unique_name, factor, offset) {
+                            Ok(func_ptr) => {
+                                println!(
+                                    "[JIT] Compiled node '{}' with factor={}, offset={}",
+                                    node_name, factor, offset
+                                );
+                                let compiled = CompiledDataflow {
+                                    name: node_name.clone(),
+                                    func_ptr,
+                                    exec_count: 0,
+                                    total_ns: 0,
+                                };
+                                (true, Some(compiled))
+                            }
+                            Err(e) => {
+                                eprintln!("[JIT] Failed to compile '{}': {}", node_name, e);
+                                (false, None)
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("[JIT] Compiler init failed for '{}': {}", node_name, e);
+                        (false, None)
+                    }
+                }
+            } else if jit_compute_fn.is_some() {
+                // Node provides a direct compute function
                 println!(
-                    "Detected JIT-capable node '{}', enabling JIT compilation",
+                    "[JIT] Node '{}' provides direct compute function",
                     node_name
                 );
-                true
+                (true, None) // Will use get_jit_compute() at runtime
             } else {
-                true // Already wrapped
+                // JIT capable but no compile params - track for stats only
+                println!(
+                    "[JIT] Node '{}' is JIT-capable (tracking stats)",
+                    node_name
+                );
+                (true, Some(CompiledDataflow::new(&node_name)))
             }
         } else {
-            false
+            (false, None)
         };
 
         let context = NodeInfo::new(node_name.clone(), logging_enabled);
@@ -474,6 +548,16 @@ impl Scheduler {
             (None, None)
         };
 
+        // Store JIT compiled function in the global map for fast lookup
+        if let Some(ref compiled) = jit_compiled {
+            self.jit_compiled_nodes.insert(node_name.clone(), CompiledDataflow {
+                name: compiled.name.clone(),
+                func_ptr: compiled.func_ptr,
+                exec_count: 0,
+                total_ns: 0,
+            });
+        }
+
         self.nodes.push(RegisteredNode {
             node,
             priority,
@@ -487,7 +571,7 @@ impl Scheduler {
             wcet_budget,
             deadline,
             is_jit_compiled,
-            jit_stats: None, // Will be populated during execution
+            jit_stats: jit_compiled, // JIT-compiled dataflow (if available)
         });
 
         println!(
@@ -687,6 +771,16 @@ impl Scheduler {
                 }
             }
 
+            // Suppress logging during learning phase for accurate profiling
+            // (I/O from logging would skew execution time measurements)
+            if !self.learning_complete {
+                for registered in self.nodes.iter_mut() {
+                    if let Some(ref mut ctx) = registered.context {
+                        ctx.set_logging_enabled(false);
+                    }
+                }
+            }
+
             // Create heartbeat directory
             Self::setup_heartbeat_directory();
 
@@ -761,6 +855,14 @@ impl Scheduler {
                     // Initialize async I/O executor and move I/O-heavy nodes
                     self.setup_async_executor().await;
 
+                    // Restore logging for all nodes (based on their original settings)
+                    // Tick counts will now start at 0 since logging was disabled during learning
+                    for registered in self.nodes.iter_mut() {
+                        if let Some(ref mut ctx) = registered.context {
+                            ctx.set_logging_enabled(registered.logging_enabled);
+                        }
+                    }
+
                     self.learning_complete = true;
                     println!("{}", "=== Optimization Complete ===\n".green());
                 }
@@ -786,6 +888,12 @@ impl Scheduler {
                     // Check if emergency stop was triggered
                     if monitor.is_emergency_stop() {
                         eprintln!(" Emergency stop activated - shutting down scheduler");
+                        // Record to blackbox
+                        if let Some(ref mut bb) = self.blackbox {
+                            bb.record(super::blackbox::BlackBoxEvent::EmergencyStop {
+                                reason: "Safety monitor triggered emergency stop".to_string(),
+                            });
+                        }
                         break;
                     }
                 }
@@ -837,13 +945,86 @@ impl Scheduler {
                     }
                 }
 
-                // Use configured tick rate or default to ~60 FPS
-                let tick_period_ms = if let Some(ref config) = self.config {
-                    (1000.0 / config.timing.global_rate_hz) as u64
-                } else {
-                    16 // Default ~60 FPS
-                };
-                tokio::time::sleep(Duration::from_millis(tick_period_ms)).await;
+                // === Runtime feature integrations ===
+
+                // Black box tick increment
+                if let Some(ref mut bb) = self.blackbox {
+                    bb.tick();
+                }
+
+                // Telemetry export (if interval elapsed)
+                if let Some(ref mut tm) = self.telemetry {
+                    if tm.should_export() {
+                        // Record scheduler metrics - use profiler's learning_ticks as tick count
+                        let total_ticks = self.profiler.node_stats.values()
+                            .map(|s| s.count)
+                            .max()
+                            .unwrap_or(0) as u64;
+                        tm.counter("scheduler_ticks", total_ticks);
+                        tm.gauge("scheduler_uptime_secs", start_time.elapsed().as_secs_f64());
+                        tm.gauge("nodes_active", self.nodes.len() as f64);
+
+                        // Record node stats from profiler
+                        for registered in &self.nodes {
+                            let node_name = registered.node.name();
+                            if let Some(stats) = self.profiler.get_stats(node_name) {
+                                let mut labels = std::collections::HashMap::new();
+                                labels.insert("node".to_string(), node_name.to_string());
+                                tm.gauge_with_labels("node_avg_duration_us", stats.avg_us, labels.clone());
+                                tm.counter_with_labels("node_tick_count", stats.count as u64, labels);
+                            }
+                        }
+
+                        let _ = tm.export();
+                    }
+                }
+
+                // Checkpoint creation (if interval elapsed)
+                if let Some(ref mut cm) = self.checkpoint_manager {
+                    if cm.should_checkpoint() {
+                        // Get tick count estimate
+                        let total_ticks = self.profiler.node_stats.values()
+                            .map(|s| s.count)
+                            .max()
+                            .unwrap_or(0) as u64;
+
+                        // Create checkpoint metadata
+                        let metadata = super::checkpoint::CheckpointMetadata {
+                            scheduler_name: self.scheduler_name.clone(),
+                            total_ticks,
+                            learning_complete: self.learning_complete,
+                            node_count: self.nodes.len(),
+                            uptime_secs: start_time.elapsed().as_secs_f64(),
+                        };
+
+                        // Create checkpoint
+                        if let Some(mut checkpoint) = cm.create_checkpoint(metadata) {
+                            // Add node states
+                            for registered in &self.nodes {
+                                let node_name = registered.node.name();
+                                let (tick_count, last_tick_us, error_count) = self.profiler.get_stats(node_name)
+                                    .map(|s| (s.count as u64, s.avg_us as u64, s.failure_count as u64))
+                                    .unwrap_or((0, 0, 0));
+
+                                let node_checkpoint = super::checkpoint::NodeCheckpoint {
+                                    name: node_name.to_string(),
+                                    tick_count,
+                                    last_tick_us,
+                                    error_count,
+                                    custom_state: None,
+                                };
+                                checkpoint.node_states.insert(node_name.to_string(), node_checkpoint);
+                            }
+
+                            if let Err(e) = cm.save_checkpoint(&checkpoint) {
+                                eprintln!("[CHECKPOINT] Failed to save: {}", e);
+                            }
+                        }
+                    }
+                }
+
+                // Use pre-computed tick period (from config or default ~60Hz)
+                tokio::time::sleep(self.tick_period).await;
             }
 
             // Shutdown async I/O nodes first
@@ -867,6 +1048,32 @@ impl Scheduler {
                         }
                     }
                 }
+            }
+
+            // === Shutdown runtime features ===
+
+            // Get total tick count from profiler stats
+            let total_ticks = self.profiler.node_stats.values()
+                .map(|s| s.count)
+                .max()
+                .unwrap_or(0) as u64;
+
+            // Record scheduler stop to blackbox and save
+            if let Some(ref mut bb) = self.blackbox {
+                bb.record(super::blackbox::BlackBoxEvent::SchedulerStop {
+                    reason: "Normal shutdown".to_string(),
+                    total_ticks,
+                });
+                if let Err(e) = bb.save() {
+                    eprintln!("[BLACKBOX] Failed to save: {}", e);
+                }
+            }
+
+            // Final telemetry export
+            if let Some(ref mut tm) = self.telemetry {
+                tm.counter("scheduler_ticks", total_ticks);
+                tm.gauge("scheduler_shutdown", 1.0);
+                let _ = tm.export();
             }
 
             // Clean up registry file and session (keep heartbeats for dashboards)
@@ -1005,7 +1212,7 @@ impl Scheduler {
     /// Create heartbeat directory
     fn setup_heartbeat_directory() {
         // Heartbeats are intentionally global (not session-isolated) so dashboard can monitor all nodes
-        let dir = PathBuf::from("/dev/shm/horus/heartbeats");
+        let dir = shm_heartbeats_dir();
         let _ = fs::create_dir_all(&dir);
     }
 
@@ -1014,7 +1221,7 @@ impl Scheduler {
     /// Note: Not called automatically during shutdown to allow dashboards
     /// to see final node states. Call explicitly if cleanup is needed.
     pub fn cleanup_heartbeats() {
-        let dir = PathBuf::from("/dev/shm/horus/heartbeats");
+        let dir = shm_heartbeats_dir();
         if dir.exists() {
             let _ = fs::remove_dir_all(&dir);
         }
@@ -1024,7 +1231,7 @@ impl Scheduler {
     fn cleanup_session() {
         // Get current session ID from environment
         if let Ok(session_id) = std::env::var("HORUS_SESSION_ID") {
-            let session_dir = PathBuf::from(format!("/dev/shm/horus/sessions/{}", session_id));
+            let session_dir = shm_session_dir(&session_id);
 
             if session_dir.exists() {
                 let _ = fs::remove_dir_all(&session_dir);
@@ -1411,14 +1618,63 @@ impl Scheduler {
 
         let tick_start = Instant::now();
 
-        let tick_result = {
+        // Check if this node should use JIT execution path
+        let use_jit_path = self.nodes[idx].is_jit_compiled && self.nodes[idx].jit_stats.is_some();
+
+        let (tick_result, jit_executed) = if use_jit_path {
+            // JIT EXECUTION PATH: Use compiled native code for ultra-fast execution
+            let registered = &mut self.nodes[idx];
+            if let Some(ref mut context) = registered.context {
+                context.start_tick();
+            }
+
+            // Try to execute via JIT-compiled function
+            let jit_result = if let Some(ref mut jit_stats) = registered.jit_stats {
+                if !jit_stats.func_ptr.is_null() {
+                    // Execute the JIT-compiled function
+                    // Use a simple incrementing input for demonstration
+                    // In real usage, nodes would provide their own input mechanism
+                    let input = jit_stats.exec_count as i64;
+                    let _result = jit_stats.execute(input);
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
+            };
+
+            if jit_result {
+                // JIT execution succeeded
+                (Ok(()), true)
+            } else {
+                // JIT failed, fall back to regular tick
+                let tick_res = if let Some(ref mut context) = registered.context {
+                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        registered.node.tick(Some(context));
+                    }))
+                } else {
+                    return;
+                };
+                (tick_res, false)
+            }
+        } else {
+            // REGULAR EXECUTION PATH: Standard node tick
             let registered = &mut self.nodes[idx];
             if let Some(ref mut context) = registered.context {
                 context.start_tick();
 
-                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                    registered.node.tick(Some(context));
-                }))
+                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    // Check if node provides a direct JIT compute function
+                    if let Some(compute_fn) = registered.node.get_jit_compute() {
+                        // Execute the function pointer directly
+                        let _result = compute_fn(0);
+                    } else {
+                        // Regular tick execution
+                        registered.node.tick(Some(context));
+                    }
+                }));
+                (result, false)
             } else {
                 return;
             }
@@ -1439,19 +1695,23 @@ impl Scheduler {
         if self.nodes[idx].is_jit_compiled {
             // Update JIT execution statistics
             if let Some(ref mut jit_stats) = self.nodes[idx].jit_stats {
-                // Track execution in the CompiledDataflow
-                jit_stats.exec_count += 1;
-                jit_stats.total_ns += tick_duration.as_nanos() as u64;
+                // Stats are already updated by execute() call if JIT path was used
+                if !jit_executed {
+                    // Only update manually if we didn't use JIT path
+                    jit_stats.exec_count += 1;
+                    jit_stats.total_ns += tick_duration.as_nanos() as u64;
+                }
 
                 // Log performance periodically
                 if jit_stats.exec_count % 1000 == 0 {
                     let avg_ns = jit_stats.avg_exec_ns();
                     let is_fast = jit_stats.is_fast_enough();
                     println!(
-                        "[JIT] Node '{}' - {} executions, avg: {:.0}ns (target: 20-50ns) {}",
+                        "[JIT] Node '{}' - {} executions, avg: {:.0}ns (target: 20-50ns) {} {}",
                         node_name,
                         jit_stats.exec_count,
                         avg_ns,
+                        if jit_executed { "[NATIVE]" } else { "[TICK]" },
                         if is_fast { "✓" } else { "SLOW" }
                     );
                 }
@@ -1553,6 +1813,7 @@ impl Scheduler {
         // Identify ultra-fast nodes from classifier
         if let Some(ref classifier) = self.classifier {
             let mut jit_compiled_count = 0;
+            let mut already_compiled_count = 0;
 
             // Automatically JIT-compile ultra-fast nodes
             for i in 0..self.nodes.len() {
@@ -1560,31 +1821,76 @@ impl Scheduler {
 
                 if let Some(tier) = classifier.get_tier(node_name) {
                     if tier == ExecutionTier::UltraFast {
-                        // Mark this node as JIT-compiled
-                        self.nodes[i].is_jit_compiled = true;
+                        // Skip if already JIT-compiled at add-time with proper params
+                        if self.nodes[i].is_jit_compiled && self.nodes[i].jit_stats.is_some() {
+                            already_compiled_count += 1;
+                            println!(
+                                "[JIT] Node '{}' already compiled at add-time (keeping original)",
+                                node_name
+                            );
+                            continue;
+                        }
 
-                        // Create a compiled dataflow for automatic JIT optimization
-                        // This represents the backend automatically optimizing the node
-                        let compiled = CompiledDataflow::new(node_name);
+                        // Try to compile using node's JIT params if available
+                        let compiled = if let Some((factor, offset)) =
+                            self.nodes[i].node.get_jit_arithmetic_params()
+                        {
+                            // Use node's actual parameters
+                            match super::jit::JITCompiler::new() {
+                                Ok(mut compiler) => {
+                                    let unique_name =
+                                        format!("{}_{}_learning", node_name, i);
+                                    match compiler.compile_arithmetic_node(&unique_name, factor, offset) {
+                                        Ok(func_ptr) => {
+                                            println!(
+                                                "[JIT] Learning phase compiled '{}' with factor={}, offset={}",
+                                                node_name, factor, offset
+                                            );
+                                            Some(CompiledDataflow {
+                                                name: node_name.to_string(),
+                                                func_ptr,
+                                                exec_count: 0,
+                                                total_ns: 0,
+                                            })
+                                        }
+                                        Err(_) => Some(CompiledDataflow::new(node_name)),
+                                    }
+                                }
+                                Err(_) => Some(CompiledDataflow::new(node_name)),
+                            }
+                        } else {
+                            // No JIT params - use generic function for stats tracking
+                            Some(CompiledDataflow::new(node_name))
+                        };
 
-                        // Store the compiled dataflow for tracking
-                        self.jit_compiled_nodes
-                            .insert(node_name.to_string(), compiled);
-                        self.nodes[i].jit_stats = Some(CompiledDataflow::new(node_name));
+                        if let Some(compiled) = compiled {
+                            // Mark this node as JIT-compiled
+                            self.nodes[i].is_jit_compiled = true;
 
-                        jit_compiled_count += 1;
-                        println!(
-                            "[JIT] Auto-compiled node '{}' for ultra-fast execution (target: 20-50ns)",
-                            node_name
-                        );
+                            // Store the compiled dataflow for tracking
+                            self.jit_compiled_nodes
+                                .insert(node_name.to_string(), CompiledDataflow {
+                                    name: compiled.name.clone(),
+                                    func_ptr: compiled.func_ptr,
+                                    exec_count: 0,
+                                    total_ns: 0,
+                                });
+                            self.nodes[i].jit_stats = Some(compiled);
+
+                            jit_compiled_count += 1;
+                            println!(
+                                "[JIT] Auto-compiled node '{}' for ultra-fast execution (target: 20-50ns)",
+                                node_name
+                            );
+                        }
                     }
                 }
             }
 
-            if jit_compiled_count > 0 {
+            if jit_compiled_count > 0 || already_compiled_count > 0 {
                 println!(
-                    "[JIT] {} nodes automatically JIT-compiled by scheduler",
-                    jit_compiled_count
+                    "[JIT] {} nodes auto-compiled, {} already compiled at add-time",
+                    jit_compiled_count, already_compiled_count
                 );
             }
         }
@@ -1848,6 +2154,97 @@ impl Scheduler {
             }
             _ => {
                 // Standard or other presets
+            }
+        }
+
+        // === Apply new runtime features ===
+
+        // 1. Global tick rate enforcement
+        self.tick_period =
+            std::time::Duration::from_micros((1_000_000.0 / config.timing.global_rate_hz) as u64);
+
+        // 2. Checkpoint system
+        if config.fault.checkpoint_interval_ms > 0 {
+            let checkpoint_dir = std::path::PathBuf::from("/tmp/horus_checkpoints");
+            let cm = super::checkpoint::CheckpointManager::new(
+                checkpoint_dir,
+                config.fault.checkpoint_interval_ms,
+            );
+            self.checkpoint_manager = Some(cm);
+            println!(
+                "[SCHEDULER] Checkpoint system enabled (interval: {}ms)",
+                config.fault.checkpoint_interval_ms
+            );
+        }
+
+        // 3. Black box flight recorder
+        if config.monitoring.black_box_enabled && config.monitoring.black_box_size_mb > 0 {
+            let mut bb = super::blackbox::BlackBox::new(config.monitoring.black_box_size_mb);
+            bb.record(super::blackbox::BlackBoxEvent::SchedulerStart {
+                name: self.scheduler_name.clone(),
+                node_count: self.nodes.len(),
+                config: format!("{:?}", config.preset),
+            });
+            self.blackbox = Some(bb);
+            println!(
+                "[SCHEDULER] Black box enabled ({}MB buffer)",
+                config.monitoring.black_box_size_mb
+            );
+        }
+
+        // 4. Telemetry endpoint
+        if let Some(ref endpoint_str) = config.monitoring.telemetry_endpoint {
+            let endpoint = super::telemetry::TelemetryEndpoint::from_string(endpoint_str);
+            let interval_ms = config.monitoring.metrics_interval_ms;
+            let mut tm = super::telemetry::TelemetryManager::new(endpoint, interval_ms);
+            tm.set_scheduler_name(&self.scheduler_name);
+            self.telemetry = Some(tm);
+            println!("[SCHEDULER] Telemetry enabled (endpoint: {})", endpoint_str);
+        }
+
+        // 5. Redundancy (TMR)
+        if config.fault.redundancy_factor > 1 {
+            // Default to majority voting strategy
+            let strategy = super::redundancy::VotingStrategy::Majority;
+            self.redundancy = Some(super::redundancy::RedundancyManager::new(
+                config.fault.redundancy_factor as usize,
+                strategy,
+            ));
+            println!(
+                "[SCHEDULER] Redundancy enabled (factor: {}, strategy: {:?})",
+                config.fault.redundancy_factor, strategy
+            );
+        }
+
+        // 6. Real-time optimizations (Linux-specific)
+        #[cfg(target_os = "linux")]
+        {
+            // Memory locking
+            if config.realtime.memory_locking && super::runtime::lock_all_memory().is_ok() {
+                println!("[SCHEDULER] Memory locked (mlockall)");
+            }
+
+            // RT scheduling class
+            if config.realtime.rt_scheduling_class {
+                let priority = 50; // Default RT priority
+                if super::runtime::set_realtime_priority(priority).is_ok() {
+                    println!("[SCHEDULER] RT scheduling enabled (SCHED_FIFO, priority {})", priority);
+                }
+            }
+
+            // CPU core affinity
+            if let Some(ref cores) = config.resources.cpu_cores {
+                if super::runtime::set_thread_affinity(cores).is_ok() {
+                    println!("[SCHEDULER] CPU affinity set to cores {:?}", cores);
+                }
+            }
+
+            // NUMA awareness
+            if config.resources.numa_aware {
+                let numa_nodes = super::runtime::get_numa_node_count();
+                if numa_nodes > 1 {
+                    println!("[SCHEDULER] NUMA-aware scheduling ({} nodes detected)", numa_nodes);
+                }
             }
         }
 

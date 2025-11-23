@@ -324,10 +324,94 @@ impl Maze {
         }
     }
 
-    /// Placeholder for Kruskal's algorithm
+    /// Generate maze using Kruskal's algorithm with union-find
     fn generate_kruskal(config: &MazeConfig) -> Self {
-        // Simplified - full implementation would use union-find
-        Self::generate_prim(config)
+        let mut maze = Maze::new(config.width, config.height);
+        let mut rng = fastrand::Rng::with_seed(config.seed as u64);
+
+        // Initialize union-find data structure
+        // Each cell at odd coordinates is a separate set
+        let num_cells = ((config.width / 2) * (config.height / 2)) as usize;
+        let mut parent: Vec<usize> = (0..num_cells).collect();
+        let mut rank = vec![0u32; num_cells];
+
+        // Convert 2D coordinates to cell index (only for cells at odd positions)
+        let cell_index = |x: u32, y: u32| -> usize {
+            ((y / 2) * (config.width / 2) + (x / 2)) as usize
+        };
+
+        // Mark all cells at odd coordinates as paths
+        for y in (1..config.height).step_by(2) {
+            for x in (1..config.width).step_by(2) {
+                maze.set(x, y, CellType::Path);
+            }
+        }
+
+        // Collect all possible walls between cells
+        let mut walls = Vec::new();
+        for y in (1..config.height - 1).step_by(2) {
+            for x in (1..config.width - 1).step_by(2) {
+                // Wall to the right
+                if x + 2 < config.width {
+                    walls.push((x, y, x + 2, y, x + 1, y));
+                }
+                // Wall below
+                if y + 2 < config.height {
+                    walls.push((x, y, x, y + 2, x, y + 1));
+                }
+            }
+        }
+
+        // Shuffle walls randomly using Fisher-Yates
+        for i in (1..walls.len()).rev() {
+            let j = rng.usize(0..=i);
+            walls.swap(i, j);
+        }
+
+        // Union-Find: find with path compression
+        fn find(parent: &mut [usize], mut i: usize) -> usize {
+            let mut root = i;
+            while parent[root] != root {
+                root = parent[root];
+            }
+            // Path compression
+            while parent[i] != root {
+                let next = parent[i];
+                parent[i] = root;
+                i = next;
+            }
+            root
+        }
+
+        // Process walls using Kruskal's algorithm
+        for (x1, y1, x2, y2, wx, wy) in walls {
+            let idx1 = cell_index(x1, y1);
+            let idx2 = cell_index(x2, y2);
+
+            let root1 = find(&mut parent, idx1);
+            let root2 = find(&mut parent, idx2);
+
+            if root1 != root2 {
+                // Union by rank
+                if rank[root1] < rank[root2] {
+                    parent[root1] = root2;
+                } else if rank[root1] > rank[root2] {
+                    parent[root2] = root1;
+                } else {
+                    parent[root2] = root1;
+                    rank[root1] += 1;
+                }
+
+                // Remove wall between the two cells
+                maze.set(wx, wy, CellType::Path);
+            }
+        }
+
+        // Mark start and goal
+        maze.set(maze.start.0, maze.start.1, CellType::Start);
+        maze.set(maze.goal.0, maze.goal.1, CellType::Goal);
+
+        maze
     }
 
     /// Solve maze using BFS

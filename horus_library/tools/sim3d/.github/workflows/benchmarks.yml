@@ -1,0 +1,301 @@
+name: Benchmarks
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - "horus_library/tools/sim3d/src/**"
+      - "horus_library/tools/sim3d/benches/**"
+      - "horus_library/tools/sim3d/Cargo.toml"
+  workflow_dispatch:
+    inputs:
+      baseline_update:
+        description: "Update baseline with current results"
+        type: boolean
+        default: false
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  CARGO_INCREMENTAL: 0
+
+defaults:
+  run:
+    working-directory: horus_library/tools/sim3d
+
+jobs:
+  benchmarks:
+    name: Run Benchmarks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libopencv-dev \
+            libclang-dev \
+            clang \
+            llvm \
+            pkg-config \
+            libssl-dev \
+            libudev-dev \
+            libxcb-render0-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev \
+            libxkbcommon-dev \
+            libgtk-3-dev \
+            libasound2-dev \
+            libwayland-dev \
+            libxrandr-dev \
+            jq
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-bench-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-bench-
+            ${{ runner.os }}-cargo-
+
+      - name: Build benchmarks
+        run: cargo build --release --no-default-features --features headless
+
+      - name: Run benchmark script
+        id: benchmarks
+        run: |
+          chmod +x ci/scripts/run_benchmarks.sh
+          ./ci/scripts/run_benchmarks.sh
+        env:
+          CI: true
+          BENCHMARK_OUTPUT_DIR: benchmark-results
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-${{ github.sha }}
+          path: |
+            horus_library/tools/sim3d/benchmark-results/
+            horus_library/tools/sim3d/target/criterion/
+          retention-days: 30
+
+      - name: Check for performance regression
+        id: regression
+        run: |
+          if [[ -f "benchmark-results/comparison.json" ]]; then
+            REGRESSION=$(jq -r '.has_regression' benchmark-results/comparison.json)
+            if [[ "$REGRESSION" == "true" ]]; then
+              echo "regression_detected=true" >> $GITHUB_OUTPUT
+              echo "Performance regression detected!"
+            else
+              echo "regression_detected=false" >> $GITHUB_OUTPUT
+              echo "No performance regression detected."
+            fi
+          else
+            echo "regression_detected=false" >> $GITHUB_OUTPUT
+            echo "No baseline comparison available."
+          fi
+
+      - name: Generate benchmark report
+        run: |
+          cat > benchmark-results/report.md << 'REPORT_EOF'
+          # Benchmark Report
+
+          **Commit:** ${{ github.sha }}
+          **Branch:** ${{ github.ref_name }}
+          **Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          ## Summary
+
+          $(if [[ -f "benchmark-results/summary.json" ]]; then
+            jq -r '.benchmarks[] | "- **\(.name)**: \(.mean_ns | . / 1000 | floor)us (std: \(.std_ns | . / 1000 | floor)us)"' benchmark-results/summary.json 2>/dev/null || echo "No summary available"
+          else
+            echo "No summary available"
+          fi)
+
+          ## Detailed Results
+
+          $(if [[ -f "benchmark-results/results.json" ]]; then
+            cat benchmark-results/results.json | jq -r '
+              .benchmarks | to_entries[] |
+              "### \(.key)\n" +
+              "- Mean: \(.value.mean_ns / 1000 | floor)us\n" +
+              "- Std Dev: \(.value.std_ns / 1000 | floor)us\n" +
+              "- Min: \(.value.min_ns / 1000 | floor)us\n" +
+              "- Max: \(.value.max_ns / 1000 | floor)us\n" +
+              "- Throughput: \(.value.throughput_per_sec | floor) ops/sec\n"
+            ' 2>/dev/null || echo "No detailed results available"
+          else
+            echo "No detailed results available"
+          fi)
+
+          ## Comparison with Baseline
+
+          $(if [[ -f "benchmark-results/comparison.json" ]]; then
+            jq -r '
+              if .comparisons then
+                .comparisons | to_entries[] |
+                "- **\(.key)**: " +
+                if .value.change_percent > 5 then
+                  ":warning: +\(.value.change_percent | . * 100 | round / 100)% slower"
+                elif .value.change_percent < -5 then
+                  ":rocket: \(.value.change_percent | . * 100 | round / 100 | fabs)% faster"
+                else
+                  ":white_check_mark: Within tolerance (\(.value.change_percent | . * 100 | round / 100)%)"
+                end
+              else
+                "No baseline available for comparison"
+              end
+            ' benchmark-results/comparison.json 2>/dev/null || echo "Comparison data unavailable"
+          else
+            echo "No baseline available for comparison"
+          fi)
+          REPORT_EOF
+
+      - name: Upload benchmark report
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-report-${{ github.sha }}
+          path: horus_library/tools/sim3d/benchmark-results/report.md
+          retention-days: 30
+
+      - name: Comment on PR with performance changes
+        if: github.event_name == 'pull_request' && steps.regression.outputs.regression_detected == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const reportPath = 'horus_library/tools/sim3d/benchmark-results/report.md';
+            let body = '## Performance Regression Detected\n\n';
+            body += 'The benchmark suite has detected a potential performance regression.\n\n';
+
+            try {
+              const report = fs.readFileSync(reportPath, 'utf8');
+              body += report;
+            } catch (e) {
+              body += 'Unable to load detailed report.';
+            }
+
+            body += '\n\n---\n';
+            body += '*Please review the benchmark results and ensure any performance changes are intentional.*';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      - name: Update baseline (manual trigger only)
+        if: github.event.inputs.baseline_update == 'true' && github.ref == 'refs/heads/main'
+        run: |
+          if [[ -f "benchmark-results/results.json" ]]; then
+            cp benchmark-results/results.json ci/baseline.json
+            echo "Baseline updated with current benchmark results"
+          fi
+
+      - name: Commit baseline update
+        if: github.event.inputs.baseline_update == 'true' && github.ref == 'refs/heads/main'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(sim3d): Update benchmark baseline"
+          file_pattern: "horus_library/tools/sim3d/ci/baseline.json"
+          branch: main
+
+      - name: Fail on regression
+        if: steps.regression.outputs.regression_detected == 'true' && github.event_name == 'pull_request'
+        run: |
+          echo "Performance regression detected. Please review benchmark results."
+          exit 1
+
+  benchmark-comparison:
+    name: Compare with Main Branch
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libopencv-dev \
+            libclang-dev \
+            clang \
+            llvm \
+            pkg-config \
+            libssl-dev \
+            libudev-dev \
+            libxcb-render0-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev \
+            libxkbcommon-dev \
+            libgtk-3-dev \
+            libasound2-dev \
+            libwayland-dev \
+            libxrandr-dev
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+
+      - name: Install critcmp
+        run: cargo install critcmp
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-critcmp-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-critcmp-
+
+      - name: Run benchmarks (PR branch)
+        working-directory: horus_library/tools/sim3d
+        run: |
+          cargo bench --no-default-features --features headless -- --save-baseline pr-${{ github.event.pull_request.number }}
+
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          clean: false
+
+      - name: Run benchmarks (main branch)
+        working-directory: horus_library/tools/sim3d
+        run: |
+          cargo bench --no-default-features --features headless -- --save-baseline main
+
+      - name: Compare benchmarks
+        working-directory: horus_library/tools/sim3d
+        run: |
+          critcmp main pr-${{ github.event.pull_request.number }} > benchmark-comparison.txt
+          cat benchmark-comparison.txt
+
+      - name: Upload comparison
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-comparison-pr-${{ github.event.pull_request.number }}
+          path: horus_library/tools/sim3d/benchmark-comparison.txt
+          retention-days: 14

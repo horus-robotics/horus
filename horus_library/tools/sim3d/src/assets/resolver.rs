@@ -224,7 +224,9 @@ mod tests {
     #[test]
     fn test_absolute_path() {
         let resolver = PathResolver::new();
-        let temp_file = std::env::temp_dir().join("test_file.txt");
+        // Use unique filename to avoid test collision when running in parallel
+        let unique_name = format!("test_abs_path_{}.txt", std::process::id());
+        let temp_file = std::env::temp_dir().join(&unique_name);
         std::fs::write(&temp_file, "test").unwrap();
 
         let resolved = resolver.resolve(temp_file.to_str().unwrap()).unwrap();
@@ -236,7 +238,9 @@ mod tests {
     #[test]
     fn test_file_uri() {
         let resolver = PathResolver::new();
-        let temp_file = std::env::temp_dir().join("test_file.txt");
+        // Use unique filename to avoid test collision when running in parallel
+        let unique_name = format!("test_file_uri_{}.txt", std::process::id());
+        let temp_file = std::env::temp_dir().join(&unique_name);
         std::fs::write(&temp_file, "test").unwrap();
 
         let uri = format!("file://{}", temp_file.display());

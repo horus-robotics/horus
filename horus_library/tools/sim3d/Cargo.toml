@@ -98,6 +98,7 @@ collada = "0.15"          # COLLADA loader
 
 # Validation
 jsonschema = "0.18"       # JSON Schema validation
+semver = "1.0"            # Semantic version parsing and validation
 schemars = "0.8"          # Schema generation
 
 # Asset Management
@@ -147,6 +148,7 @@ noise = "0.9"
 # Path utilities
 pathdiff = "0.2"
 shellexpand = "3.1"  # Tilde expansion in paths
+dirs = "5.0"        # Cross-platform directories
 
 # Bit flags
 bitflags = "2.6"
@@ -164,6 +166,7 @@ toml = "0.8"        # TOML configuration parsing
 criterion = "0.5"
 approx = "0.5"
 tempfile = "3.8"
+bevy_rapier3d = "0.28"  # For physics integration tests
 
 [build-dependencies]
 # None required unless adding shader compilation

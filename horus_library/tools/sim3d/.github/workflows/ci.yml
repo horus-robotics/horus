@@ -1,0 +1,375 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev, release/*]
+    paths:
+      - "horus_library/tools/sim3d/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - "horus_library/tools/sim3d/**"
+      - ".github/workflows/ci.yml"
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  RUSTUP_MAX_RETRIES: 10
+
+defaults:
+  run:
+    working-directory: horus_library/tools/sim3d
+
+jobs:
+  fmt:
+    name: Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+        with:
+          components: rustfmt
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+  clippy:
+    name: Clippy (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        rust: [stable]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libopencv-dev \
+            libclang-dev \
+            clang \
+            llvm \
+            pkg-config \
+            libssl-dev \
+            libudev-dev \
+            libxcb-render0-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev \
+            libxkbcommon-dev \
+            libgtk-3-dev \
+            libasound2-dev \
+            libwayland-dev \
+            libxrandr-dev
+
+      - name: Install system dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install opencv llvm pkg-config
+          echo "LIBCLANG_PATH=$(brew --prefix llvm)/lib" >> $GITHUB_ENV
+          echo "OPENCV_INCLUDE_PATHS=$(brew --prefix opencv)/include/opencv4" >> $GITHUB_ENV
+          echo "OPENCV_LINK_PATHS=$(brew --prefix opencv)/lib" >> $GITHUB_ENV
+          echo "OPENCV_LINK_LIBS=opencv_core,opencv_imgproc,opencv_imgcodecs,opencv_highgui" >> $GITHUB_ENV
+
+      - name: Install system dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          choco install llvm opencv -y
+          echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "OPENCV_INCLUDE_PATHS=C:\tools\opencv\build\include" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "OPENCV_LINK_PATHS=C:\tools\opencv\build\x64\vc16\lib" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@${{ matrix.rust }}
+        with:
+          components: clippy
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-clippy-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-clippy-
+            ${{ runner.os }}-cargo-
+
+      - name: Run Clippy (default features)
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Run Clippy (headless)
+        run: cargo clippy --no-default-features --features headless --all-targets -- -D warnings
+
+  test:
+    name: Test (${{ matrix.os }}, ${{ matrix.rust }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        rust: [stable, nightly]
+        exclude:
+          - os: windows-latest
+            rust: nightly
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libopencv-dev \
+            libclang-dev \
+            clang \
+            llvm \
+            pkg-config \
+            libssl-dev \
+            libudev-dev \
+            libxcb-render0-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev \
+            libxkbcommon-dev \
+            libgtk-3-dev \
+            libasound2-dev \
+            libwayland-dev \
+            libxrandr-dev \
+            xvfb
+
+      - name: Install system dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install opencv llvm pkg-config
+          echo "LIBCLANG_PATH=$(brew --prefix llvm)/lib" >> $GITHUB_ENV
+          echo "OPENCV_INCLUDE_PATHS=$(brew --prefix opencv)/include/opencv4" >> $GITHUB_ENV
+          echo "OPENCV_LINK_PATHS=$(brew --prefix opencv)/lib" >> $GITHUB_ENV
+          echo "OPENCV_LINK_LIBS=opencv_core,opencv_imgproc,opencv_imgcodecs,opencv_highgui" >> $GITHUB_ENV
+
+      - name: Install system dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          choco install llvm opencv -y
+          echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "OPENCV_INCLUDE_PATHS=C:\tools\opencv\build\include" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "OPENCV_LINK_PATHS=C:\tools\opencv\build\x64\vc16\lib" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@${{ matrix.rust }}
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ matrix.rust }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.rust }}-cargo-test-
+            ${{ runner.os }}-${{ matrix.rust }}-cargo-
+
+      - name: Build (headless mode for CI)
+        run: cargo build --no-default-features --features headless
+
+      - name: Run tests (Ubuntu with Xvfb)
+        if: matrix.os == 'ubuntu-latest'
+        run: xvfb-run -a cargo test --no-default-features --features headless --all-targets -- --nocapture
+        env:
+          RUST_LOG: debug
+
+      - name: Run tests (macOS/Windows)
+        if: matrix.os != 'ubuntu-latest'
+        run: cargo test --no-default-features --features headless --all-targets -- --nocapture
+        env:
+          RUST_LOG: debug
+
+      - name: Run doc tests
+        run: cargo test --doc --no-default-features --features headless
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}-${{ matrix.rust }}
+          path: |
+            target/debug/deps/*.d
+            target/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libopencv-dev \
+            libclang-dev \
+            clang \
+            llvm \
+            pkg-config \
+            libssl-dev \
+            libudev-dev \
+            libxcb-render0-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev \
+            libxkbcommon-dev \
+            libgtk-3-dev \
+            libasound2-dev \
+            libwayland-dev \
+            libxrandr-dev
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-docs-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-docs-
+            ${{ runner.os }}-cargo-
+
+      - name: Build documentation
+        run: cargo doc --no-deps --no-default-features --features headless
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+      - name: Upload documentation
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: target/doc/
+          retention-days: 14
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libopencv-dev \
+            libclang-dev \
+            clang \
+            llvm \
+            pkg-config \
+            libssl-dev \
+            libudev-dev \
+            libxcb-render0-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev \
+            libxkbcommon-dev \
+            libgtk-3-dev \
+            libasound2-dev \
+            libwayland-dev \
+            libxrandr-dev \
+            xvfb
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-coverage-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-coverage-
+            ${{ runner.os }}-cargo-
+
+      - name: Run coverage
+        run: |
+          xvfb-run -a cargo tarpaulin \
+            --no-default-features \
+            --features headless \
+            --out Xml \
+            --out Html \
+            --output-dir coverage \
+            --timeout 300 \
+            --skip-clean \
+            --ignore-tests \
+            --exclude-files "benches/*" "examples/*" "tests/*"
+        env:
+          RUST_LOG: warn
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 14
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage/cobertura.xml
+          flags: sim3d
+          name: sim3d-coverage
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run security audit
+        uses: rustsec/audit-check@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  ci-success:
+    name: CI Success
+    needs: [fmt, clippy, test, docs, coverage]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check all jobs passed
+        run: |
+          if [[ "${{ needs.fmt.result }}" != "success" ]] || \
+             [[ "${{ needs.clippy.result }}" != "success" ]] || \
+             [[ "${{ needs.test.result }}" != "success" ]] || \
+             [[ "${{ needs.docs.result }}" != "success" ]]; then
+            echo "One or more required jobs failed"
+            exit 1
+          fi
+          echo "All required CI jobs passed successfully"

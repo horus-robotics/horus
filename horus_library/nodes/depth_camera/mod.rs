@@ -119,6 +119,9 @@ pub struct DepthCameraNode {
 
     // Simulated data (for testing without hardware)
     simulation_mode: bool,
+
+    // Timing state (moved from static mut for thread safety)
+    info_counter: u32,
 }
 
 /// Depth backend type
@@ -215,6 +218,7 @@ impl DepthCameraNode {
             #[cfg(feature = "realsense")]
             config: None,
             simulation_mode: backend == DepthBackend::Simulation,
+            info_counter: 0,
         };
 
         // Apply model-specific defaults
@@ -703,7 +707,7 @@ impl DepthCameraNode {
         cloud.data = data;
         cloud.timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_nanos() as u64;
 
         cloud
@@ -775,7 +779,7 @@ impl DepthCameraNode {
             frame_id: [0; 32],
             timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_nanos() as u64,
         };
 
@@ -821,7 +825,7 @@ impl DepthCameraNode {
             frame_id: [0; 32],
             timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_nanos() as u64,
         };
 
@@ -884,7 +888,7 @@ impl DepthCameraNode {
 
         info.timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_nanos() as u64;
 
         if let Err(e) = self.camera_info_publisher.send(info, &mut None) {
@@ -927,7 +931,7 @@ impl Node for DepthCameraNode {
         // Capture and publish frames
         let current_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_nanos() as u64;
 
         // Throttle to frame rate
@@ -950,26 +954,23 @@ impl Node for DepthCameraNode {
         }
 
         // Publish camera info periodically
-        static mut INFO_COUNTER: u32 = 0;
-        unsafe {
-            INFO_COUNTER += 1;
-            if INFO_COUNTER % 30 == 0 {
-                self.publish_camera_info(ctx.as_deref_mut());
-            }
+        self.info_counter += 1;
+        if self.info_counter % 30 == 0 {
+            self.publish_camera_info(ctx.as_deref_mut());
+        }
 
-            // Periodic status logging
-            if INFO_COUNTER % 300 == 0 {
-                ctx.log_info(&format!(
-                    "DepthCamera: {}x{} @ {}fps | Frames: {} | Depth range: {:.2}-{:.2}m | PC: {}",
-                    self.resolution.0,
-                    self.resolution.1,
-                    self.frame_rate,
-                    self.frame_count,
-                    self.depth_range.0,
-                    self.depth_range.1,
-                    if self.enable_pointcloud { "ON" } else { "OFF" }
-                ));
-            }
+        // Periodic status logging
+        if self.info_counter % 300 == 0 {
+            ctx.log_info(&format!(
+                "DepthCamera: {}x{} @ {}fps | Frames: {} | Depth range: {:.2}-{:.2}m | PC: {}",
+                self.resolution.0,
+                self.resolution.1,
+                self.frame_rate,
+                self.frame_count,
+                self.depth_range.0,
+                self.depth_range.1,
+                if self.enable_pointcloud { "ON" } else { "OFF" }
+            ));
         }
 
         self.frame_count += 1;

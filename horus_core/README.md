@@ -119,7 +119,7 @@ impl<T> Hub<T> {
 **Hub Features:**
 - Lock-free atomic operations
 - Cache-line aligned (64 bytes)
-- POSIX shared memory via `/dev/shm/horus/`
+- Cross-platform shared memory (Linux: `/dev/shm/horus/`, macOS: `/tmp/horus/`, Windows: `%TEMP%\horus\`)
 - Default capacity: 1024 slots per topic
 
 **Performance (on modern x86_64 systems):**
@@ -154,7 +154,7 @@ impl Scheduler {
 - Per-node rate control: Set custom tick rates with `set_node_rate()`
 - Sorts nodes by priority each tick (0 = highest)
 - Built-in Ctrl+C handling
-- Writes heartbeats to `/dev/shm/horus/heartbeats/`
+- Writes heartbeats to platform-specific path (Linux: `/dev/shm/horus/heartbeats/`, macOS: `/tmp/horus/heartbeats/`, Windows: `%TEMP%\horus\heartbeats\`)
 
 **Usage Examples:**
 ```rust
@@ -324,17 +324,28 @@ The HORUS scheduler has been enhanced with intelligent runtime optimization that
 
 - Lock-free ring buffers
 - Cache-line aligned structures (64 bytes)
-- POSIX shared memory at `/dev/shm/horus/`
+- Cross-platform shared memory (auto-detected at compile time)
 - Zero-copy within shared memory
 
 ### Shared Memory Configuration
 
-```bash
-# View shared memory regions
-ls -lh /dev/shm/horus/
+**Platform-specific paths:**
+| Platform | Base Path | Notes |
+|----------|-----------|-------|
+| Linux | `/dev/shm/horus/` | Native POSIX shm, fastest |
+| macOS | `/tmp/horus/` | tmpfs-backed |
+| Windows | `%TEMP%\horus\` | Temp directory |
 
-# Check available space
+```bash
+# Linux: View shared memory regions
+ls -lh /dev/shm/horus/
 df -h /dev/shm
+
+# macOS: View shared memory regions
+ls -lh /tmp/horus/
+
+# Windows (PowerShell): View shared memory regions
+dir $env:TEMP\horus
 ```
 
 **Custom capacity:**

@@ -114,14 +114,15 @@ impl GPUIntegrationPipeline {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bevy::prelude::Vec3;
 
     #[test]
     fn test_euler_integration() {
         // Test basic Euler integration
         let position = Vec3::new(0.0, 0.0, 0.0);
         let velocity = Vec3::new(1.0, 0.0, 0.0);
-        let force = Vec3::new(0.0, 0.0, 0.0);
-        let mass = 1.0;
+        let _force = Vec3::new(0.0, 0.0, 0.0);
+        let _mass = 1.0;
         let dt = 0.01;
 
         let new_pos = position + velocity * dt;

@@ -25,7 +25,7 @@ impl Plugin for SensorUpdatePlugin {
             (SensorSystemSet::Update, SensorSystemSet::Visualization).chain(),
         );
 
-        // Add sensor update systems
+        // Add sensor update systems (these work in both visual and headless mode)
         app.add_systems(
             Update,
             (
@@ -42,7 +42,10 @@ impl Plugin for SensorUpdatePlugin {
                 .in_set(SensorSystemSet::Update),
         );
 
-        // Add visualization systems
+        // Visualization systems require GizmoConfigStore which is only available
+        // when DefaultPlugins (not MinimalPlugins) are used.
+        // Check if rendering is available before adding visualization systems.
+        // We use a run condition that checks for the GizmoConfigStore resource.
         app.add_systems(
             Update,
             (
@@ -54,7 +57,8 @@ impl Plugin for SensorUpdatePlugin {
                 camera::visualize_camera_system,
             )
                 .chain()
-                .in_set(SensorSystemSet::Visualization),
+                .in_set(SensorSystemSet::Visualization)
+                .run_if(resource_exists::<bevy::gizmos::config::GizmoConfigStore>),
         );
     }
 }

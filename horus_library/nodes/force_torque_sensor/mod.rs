@@ -121,6 +121,9 @@ pub struct ForceTorqueSensorNode {
 
     #[cfg(feature = "netft")]
     calibration_matrix: [[f32; 6]; 6],
+
+    // Timing state (moved from static mut for thread safety)
+    status_counter: u32,
 }
 
 /// Force/torque sensor models with predefined specifications
@@ -247,6 +250,7 @@ impl ForceTorqueSensorNode {
             socket: None,
             #[cfg(feature = "netft")]
             calibration_matrix: Self::identity_matrix_f32(),
+            status_counter: 0,
         })
     }
 
@@ -744,7 +748,7 @@ impl ForceTorqueSensorNode {
 
         wrench.timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_nanos() as u64;
 
         if let Err(e) = self.wrench_publisher.send(wrench, &mut None) {
@@ -768,7 +772,7 @@ impl ForceTorqueSensorNode {
             max_torque: self.max_recorded_torque,
             timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_nanos() as u64,
         };
 
@@ -812,27 +816,24 @@ impl Node for ForceTorqueSensorNode {
         self.process_measurement(ctx.as_deref_mut());
 
         // Publish status at lower rate
-        static mut STATUS_COUNTER: u32 = 0;
-        unsafe {
-            STATUS_COUNTER += 1;
-            if STATUS_COUNTER % 100 == 0 {
-                self.publish_status(ctx.as_deref_mut());
-            }
+        self.status_counter += 1;
+        if self.status_counter % 100 == 0 {
+            self.publish_status(ctx.as_deref_mut());
+        }
 
-            // Periodic logging at 1Hz
-            if STATUS_COUNTER % 1000 == 0 {
-                ctx.log_info(&format!(
-                    "F/T Sensor: F=[{:.2}, {:.2}, {:.2}]N T=[{:.2}, {:.2}, {:.2}]Nm (Fmax={:.1}N Tmax={:.1}Nm)",
-                    self.filtered_force[0],
-                    self.filtered_force[1],
-                    self.filtered_force[2],
-                    self.filtered_torque[0],
-                    self.filtered_torque[1],
-                    self.filtered_torque[2],
-                    self.max_recorded_force,
-                    self.max_recorded_torque
-                ));
-            }
+        // Periodic logging at 1Hz
+        if self.status_counter % 1000 == 0 {
+            ctx.log_info(&format!(
+                "F/T Sensor: F=[{:.2}, {:.2}, {:.2}]N T=[{:.2}, {:.2}, {:.2}]Nm (Fmax={:.1}N Tmax={:.1}Nm)",
+                self.filtered_force[0],
+                self.filtered_force[1],
+                self.filtered_force[2],
+                self.filtered_torque[0],
+                self.filtered_torque[1],
+                self.filtered_torque[2],
+                self.max_recorded_force,
+                self.max_recorded_torque
+            ));
         }
     }
 

@@ -312,7 +312,7 @@ fn test_different_message_types() {
     // Test with String
     let hub_string = Hub::<String>::new(&topic_string).expect("Failed to create String hub");
     hub_string
-        .send("Hello, HORUS!".to_string(), None)
+        .send("Hello, HORUS!".to_string(), &mut None)
         .expect("Failed to send String");
     assert_eq!(
         hub_string.recv(&mut None),
@@ -322,7 +322,7 @@ fn test_different_message_types() {
     // Test with Vec
     let hub_vec = Hub::<Vec<i32>>::new(&topic_vec).expect("Failed to create Vec hub");
     hub_vec
-        .send(vec![1, 2, 3, 4, 5], None)
+        .send(vec![1, 2, 3, 4, 5], &mut None)
         .expect("Failed to send Vec");
     assert_eq!(hub_vec.recv(&mut None), Some(vec![1, 2, 3, 4, 5]));
 }

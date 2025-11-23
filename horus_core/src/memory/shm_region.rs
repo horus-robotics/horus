@@ -1,10 +1,16 @@
-// HORUS Shared Memory Region - Using /dev/shm/horus for performance
+// HORUS Shared Memory Region - Cross-platform shared memory support
+//
+// Linux: /dev/shm/horus (tmpfs - RAM-backed, fastest)
+// macOS: /tmp/horus (regular filesystem)
+// Windows: %TEMP%\horus (system temp directory)
+
 use crate::error::HorusResult;
+use crate::memory::platform::{shm_global_dir, shm_session_topics_dir, shm_topics_dir};
 use memmap2::{MmapMut, MmapOptions};
 use std::fs::{File, OpenOptions};
 use std::path::PathBuf;
 
-/// Shared memory region using /dev/shm/horus for performance
+/// Cross-platform shared memory region for high-performance IPC
 #[derive(Debug)]
 pub struct ShmRegion {
     #[allow(dead_code)]
@@ -31,14 +37,14 @@ impl ShmRegion {
 
     /// Internal function to create shared memory region with optional global flag
     fn new_internal(name: &str, size: usize, global: bool) -> HorusResult<Self> {
-        // Create HORUS directory in /dev/shm if it doesn't exist
+        // Create HORUS directory if it doesn't exist (platform-specific path)
         // Use session-isolated path if HORUS_SESSION_ID is set and not global
         let horus_shm_dir = if global {
-            PathBuf::from("/dev/shm/horus/global")
+            shm_global_dir()
         } else if let Ok(session_id) = std::env::var("HORUS_SESSION_ID") {
-            PathBuf::from(format!("/dev/shm/horus/sessions/{}/topics", session_id))
+            shm_session_topics_dir(&session_id)
         } else {
-            PathBuf::from("/dev/shm/horus/topics")
+            shm_topics_dir()
         };
         std::fs::create_dir_all(&horus_shm_dir)?;
 
@@ -94,9 +100,9 @@ impl ShmRegion {
     /// Open existing shared memory region (no creation)
     pub fn open(name: &str) -> HorusResult<Self> {
         let horus_shm_dir = if let Ok(session_id) = std::env::var("HORUS_SESSION_ID") {
-            PathBuf::from(format!("/dev/shm/horus/sessions/{}/topics", session_id))
+            shm_session_topics_dir(&session_id)
         } else {
-            PathBuf::from("/dev/shm/horus/topics")
+            shm_topics_dir()
         };
         let safe_name = name.replace(['/', ':'], "_");
         let path = horus_shm_dir.join(format!("horus_{}", safe_name));

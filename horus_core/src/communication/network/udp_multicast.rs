@@ -271,6 +271,9 @@ mod tests {
     use super::*;
     use serde::{Deserialize, Serialize};
 
+    // These tests require exclusive network access to discovery port 9871
+    // Run with: cargo test -- --ignored --test-threads=1
+
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
     struct TestMessage {
         data: u64,
@@ -283,18 +286,21 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires exclusive network access to multicast port 9871"]
     fn test_multicast_backend_creation() {
         let backend = UdpMulticastBackend::<TestMessage>::new("test_multicast");
         assert!(backend.is_ok());
     }
 
     #[test]
+    #[ignore = "requires exclusive network access to multicast port 9871"]
     fn test_multicast_topic_name() {
         let backend = UdpMulticastBackend::<TestMessage>::new("test_topic").unwrap();
         assert_eq!(backend.topic_name(), "test_topic");
     }
 
     #[test]
+    #[ignore = "requires exclusive network access to multicast port 9871"]
     fn test_multicast_no_peers() {
         let backend = UdpMulticastBackend::<TestMessage>::new("isolated_topic").unwrap();
 

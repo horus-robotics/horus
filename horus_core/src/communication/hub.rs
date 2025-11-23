@@ -1,6 +1,7 @@
 use crate::communication::network::{parse_endpoint, Endpoint, NetworkBackend};
 use crate::core::node::NodeInfo;
 use crate::error::HorusResult;
+use crate::memory::platform::shm_pubsub_metadata_dir;
 use crate::memory::shm_topic::ShmTopic;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
@@ -31,7 +32,6 @@ fn get_metadata_channel() -> &'static Sender<MetadataRecord> {
             .spawn(move || {
                 use std::collections::HashMap;
                 use std::fs;
-                use std::path::PathBuf;
 
                 // Track last write time per file to rate-limit
                 let mut last_write: HashMap<String, u64> = HashMap::new();
@@ -49,7 +49,7 @@ fn get_metadata_channel() -> &'static Sender<MetadataRecord> {
                     }
 
                     // Perform the file I/O (off critical path)
-                    let metadata_dir = PathBuf::from("/dev/shm/horus/pubsub_metadata");
+                    let metadata_dir = shm_pubsub_metadata_dir();
                     let _ = fs::create_dir_all(&metadata_dir);
 
                     let safe_node_name = record.node_name.replace(['/', ' '], "_");
@@ -571,7 +571,7 @@ impl<
     }
 
     /// Record pub/sub activity for graph visualization discovery
-    /// Writes lightweight metadata asynchronously to /dev/shm/horus/pubsub_metadata/
+    /// Writes lightweight metadata asynchronously to platform-specific pubsub_metadata dir
     /// This is now non-blocking (~100ns) - file I/O happens on background thread
     #[inline(always)]
     fn record_pubsub_activity(&self, node_name: &str, direction: &str) {

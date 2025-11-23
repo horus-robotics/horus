@@ -470,6 +470,7 @@ pub struct AppConfig {
 }
 
 impl AppConfig {
+    #[allow(dead_code)] // May be used in future or for testing
     fn new(args: Args) -> Self {
         // Load robot config(s)
         let robots = if let Some(robot_file) = &args.robot {
@@ -1106,6 +1107,24 @@ pub fn physics_system(mut physics_world: ResMut<PhysicsWorld>, ui_state: Res<ui:
     );
 }
 
+/// Tick start system - marks the beginning of a simulation frame for metrics tracking
+pub fn tick_start_system(mut horus_comm: Option<ResMut<HorusComm>>) {
+    if let Some(ref mut comm) = horus_comm {
+        // Directly increment tick count at frame start so all messages
+        // within this frame use the new tick number
+        comm.node_info.increment_tick();
+        // Start the tick timer for duration tracking
+        comm.node_info.start_tick();
+    }
+}
+
+/// Tick end system - no-op since we record ticks at start of next frame
+/// This ensures all messages within a frame have the same tick number
+pub fn tick_end_system(_horus_comm: Option<ResMut<HorusComm>>) {
+    // Recording happens in tick_start_system to ensure tick number
+    // is incremented before any messages are logged in the frame
+}
+
 /// Visual sync system - updates Bevy transforms from physics
 pub fn visual_sync_system(
     mut robot_query: Query<(&Robot, &mut Transform, &mut Sprite)>,
@@ -1184,7 +1203,7 @@ pub fn odometry_publish_system(
                     // Get current timestamp
                     let timestamp = std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap()
+                        .unwrap_or_else(|_| std::time::Duration::from_secs(0))
                         .as_nanos() as u64;
 
                     // Create odometry message
@@ -1210,7 +1229,9 @@ pub fn odometry_publish_system(
                     odom.timestamp = timestamp;
 
                     // Publish to this robot's odom topic
-                    let _ = hubs.odom_pub.send(odom, &mut Some(node_info));
+                    if let Err(e) = hubs.odom_pub.send(odom, &mut Some(node_info)) {
+                        warn!("Failed to publish odometry for {}: {:?}", robot.name, e);
+                    }
                 }
             }
         }
@@ -1283,11 +1304,13 @@ pub fn imu_system(
                     // Set timestamp
                     imu.timestamp = std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap()
+                        .unwrap_or_else(|_| std::time::Duration::from_secs(0))
                         .as_nanos() as u64;
 
                     // Publish to this robot's IMU topic
-                    let _ = hubs.imu_pub.send(imu, &mut Some(node_info));
+                    if let Err(e) = hubs.imu_pub.send(imu, &mut Some(node_info)) {
+                        warn!("Failed to publish IMU for {}: {:?}", robot.name, e);
+                    }
                 }
             }
         }
@@ -1346,7 +1369,20 @@ pub fn lidar_system(
                     last_scan.robot_pos = (pos.x, pos.y);
                     last_scan.robot_angle = robot_angle;
 
-                    for i in 0..lidar_cfg.num_rays.min(360) {
+                    let actual_rays = lidar_cfg.num_rays.min(360);
+                    if lidar_cfg.num_rays > 360 {
+                        // Log warning once per robot (could use a flag for one-time warning)
+                        static WARNED: std::sync::atomic::AtomicBool =
+                            std::sync::atomic::AtomicBool::new(false);
+                        if !WARNED.swap(true, std::sync::atomic::Ordering::Relaxed) {
+                            warn!(
+                                "LiDAR ray count {} exceeds maximum of 360, clamping to 360",
+                                lidar_cfg.num_rays
+                            );
+                        }
+                    }
+
+                    for i in 0..actual_rays {
                         let angle = lidar_cfg.angle_min + i as f32 * step + robot_angle;
                         let ray_dir = vector![angle.cos(), angle.sin()];
                         let ray = Ray::new(point![pos.x, pos.y], ray_dir);
@@ -1372,11 +1408,13 @@ pub fn lidar_system(
                     // Set timestamp
                     scan.timestamp = std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
-                        .unwrap()
+                        .unwrap_or_else(|_| std::time::Duration::from_secs(0))
                         .as_nanos() as u64;
 
                     // Publish to this robot's LiDAR topic
-                    let _ = hubs.lidar_pub.send(scan, &mut Some(node_info));
+                    if let Err(e) = hubs.lidar_pub.send(scan, &mut Some(node_info)) {
+                        warn!("Failed to publish LiDAR for {}: {:?}", robot.name, e);
+                    }
                 }
             }
         }

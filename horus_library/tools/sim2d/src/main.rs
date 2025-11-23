@@ -1,7 +1,3 @@
-// Sim2D - in active development, allow common clippy warnings
-#![allow(clippy::all)]
-#![allow(deprecated)]
-
 //! sim2d binary entry point
 
 use anyhow::Result;
@@ -19,11 +15,11 @@ fn main() -> Result<()> {
     let headless = args.headless;
 
     if headless {
-        info!("🚀 Starting sim2d - Headless Mode");
-        info!("   Physics only, no visualization");
+        info!("Starting sim2d - Headless Mode");
+        info!("Physics only, no visualization");
     } else {
-        info!("🚀 Starting sim2d - Simple 2D Robotics Simulator");
-        info!("   One command, physics + visualization!");
+        info!("Starting sim2d - Simple 2D Robotics Simulator");
+        info!("One command, physics + visualization!");
     }
 
     info!("[>] Control the robot from another terminal:");

@@ -1,7 +1,3 @@
-// Sim2D - in active development, allow common clippy warnings
-#![allow(clippy::all)]
-#![allow(deprecated)]
-
 //! # sim2d - Simple 2D Robotics Simulator Library
 //!
 //! This crate provides both a binary executable and a library interface
@@ -45,9 +41,6 @@ pub mod editor;
 
 // Performance metrics
 pub mod metrics;
-
-// Tutorial system
-pub mod tutorial;
 
 // Robot kinematics
 pub mod kinematics;
@@ -167,16 +160,13 @@ impl Sim2DApp {
         topic_prefix: String,
         headless: bool,
     ) -> Result<Self> {
-        let mut app = create_app(
+        let app = create_app(
             robot_config.clone(),
             world_config.clone(),
             robot_name,
             topic_prefix,
             headless,
         )?;
-
-        // Run setup systems
-        app.update();
 
         let state = Arc::new(Mutex::new(SimState::Paused));
 
@@ -253,6 +243,9 @@ impl Sim2DApp {
     /// This is a blocking call that will run the Bevy app loop
     pub fn run_blocking(mut self) {
         *self.state.lock().unwrap() = SimState::Running;
+        // Ensure app is fully initialized before running
+        self.app.finish();
+        self.app.cleanup();
         self.app.run();
     }
 
@@ -315,11 +308,12 @@ fn create_app(
             .insert_resource(ui::RobotTelemetry::default())
             .insert_resource(editor::WorldEditor::new())
             .insert_resource(metrics::PerformanceMetrics::default())
-            .insert_resource(tutorial::TutorialState::default())
             .insert_resource(LastLidarScan::default())
             .insert_resource(PreviousVelocity::default())
             .insert_resource(ObstacleIdCounter::default())
             .add_systems(Startup, setup)
+            // Tick start - runs first to mark beginning of frame
+            .add_systems(Update, tick_start_system)
             .add_systems(
                 Update,
                 (
@@ -330,10 +324,12 @@ fn create_app(
                     imu_system,
                     lidar_system,
                     dynamic_obstacle_system,
-                ),
+                )
+                    .after(tick_start_system),
             );
     } else {
         // GUI mode - full visualization
+        // Disable pipelined rendering to avoid RenderAppChannels issues with bevy_egui
         app.add_plugins(
             DefaultPlugins
                 .set(WindowPlugin {
@@ -344,7 +340,8 @@ fn create_app(
                     }),
                     ..default()
                 })
-                .disable::<bevy::log::LogPlugin>(),
+                .disable::<bevy::log::LogPlugin>()
+                .disable::<bevy::render::pipelined_rendering::PipelinedRenderingPlugin>(),
         )
         .add_plugins(bevy_egui::EguiPlugin)
         .insert_resource({
@@ -361,13 +358,14 @@ fn create_app(
         .insert_resource(recorder::Recorder::default())
         .insert_resource(editor::WorldEditor::new())
         .insert_resource(metrics::PerformanceMetrics::default())
-        .insert_resource(tutorial::TutorialState::default())
         .insert_resource(TrajectoryHistory::default())
         .insert_resource(LastLidarScan::default())
         .insert_resource(PreviousVelocity::default())
         .insert_resource(CollisionState::default())
         .insert_resource(ObstacleIdCounter::default())
         .add_systems(Startup, setup)
+        // Tick start - runs first to mark beginning of frame
+        .add_systems(Update, tick_start_system)
         .add_systems(
             Update,
             (
@@ -376,9 +374,13 @@ fn create_app(
                 telemetry_system,
                 visual_sync_system,
                 visual_component_sync_system,
-            ),
+            )
+                .after(tick_start_system),
         )
-        .add_systems(Update, (odometry_publish_system, imu_system, lidar_system))
+        .add_systems(
+            Update,
+            (odometry_publish_system, imu_system, lidar_system).after(tick_start_system),
+        )
         .add_systems(
             Update,
             (
@@ -405,9 +407,12 @@ fn create_app(
             (visual_color_system, grid_system, lidar_rays_system),
         )
         .add_systems(Update, ui::ui_system)
-        .add_systems(Update, ui::file_dialog_system);
+        .add_systems(Update, ui::file_dialog_system)
+        // Tick end - runs last to record frame completion
+        .add_systems(Update, tick_end_system.after(ui::file_dialog_system));
 
         // Initialize GpuPreprocessingSupport in RenderApp to avoid panic
+        // This is needed because we disabled PipelinedRenderingPlugin
         if let Some(render_app) = app.get_sub_app_mut(RenderApp) {
             render_app.insert_resource(GpuPreprocessingSupport::None);
         }

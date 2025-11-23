@@ -306,7 +306,7 @@ pub async fn run(port: u16) -> anyhow::Result<()> {
 // ============================================================================
 
 #[derive(serde::Deserialize)]
-struct LoginRequest {
+pub struct LoginRequest {
     password: String,
 }
 
@@ -318,7 +318,7 @@ struct LoginResponse {
 }
 
 /// Login handler - validates password and creates session
-async fn login_handler(
+pub async fn login_handler(
     State(state): State<Arc<AppState>>,
     Json(login_req): Json<LoginRequest>,
 ) -> impl IntoResponse {
@@ -372,12 +372,12 @@ async fn login_handler(
 }
 
 #[derive(serde::Deserialize)]
-struct LogoutRequest {
-    session_token: String,
+pub struct LogoutRequest {
+    pub session_token: String,
 }
 
 /// Logout handler - invalidates session
-async fn logout_handler(
+pub async fn logout_handler(
     State(state): State<Arc<AppState>>,
     Json(logout_req): Json<LogoutRequest>,
 ) -> impl IntoResponse {
@@ -437,7 +437,7 @@ async fn index_handler(
     }
 }
 
-async fn status_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+pub async fn status_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse {
     use horus_core::core::HealthStatus;
 
     // Get all nodes and their health
@@ -541,7 +541,7 @@ async fn status_handler(State(state): State<Arc<AppState>>) -> impl IntoResponse
         .into_response()
 }
 
-async fn nodes_handler() -> impl IntoResponse {
+pub async fn nodes_handler() -> impl IntoResponse {
     // Use unified backend from monitor module
     let nodes = crate::commands::monitor::discover_nodes()
         .unwrap_or_default()
@@ -572,7 +572,7 @@ async fn nodes_handler() -> impl IntoResponse {
         .into_response()
 }
 
-async fn topics_handler() -> impl IntoResponse {
+pub async fn topics_handler() -> impl IntoResponse {
     // Use unified backend from monitor module
     let topics = crate::commands::monitor::discover_shared_memory()
         .unwrap_or_default()
@@ -604,7 +604,7 @@ async fn topics_handler() -> impl IntoResponse {
         .into_response()
 }
 
-async fn graph_handler() -> impl IntoResponse {
+pub async fn graph_handler() -> impl IntoResponse {
     // Use graph module to get nodes and edges
     let (nodes, edges) = crate::graph::discover_graph_data();
 
@@ -649,7 +649,7 @@ async fn graph_handler() -> impl IntoResponse {
         .into_response()
 }
 
-async fn logs_all_handler() -> impl IntoResponse {
+pub async fn logs_all_handler() -> impl IntoResponse {
     use horus_core::core::log_buffer::GLOBAL_LOG_BUFFER;
 
     let logs = GLOBAL_LOG_BUFFER.get_all();
@@ -663,7 +663,7 @@ async fn logs_all_handler() -> impl IntoResponse {
         .into_response()
 }
 
-async fn logs_node_handler(Path(node_name): Path<String>) -> impl IntoResponse {
+pub async fn logs_node_handler(Path(node_name): Path<String>) -> impl IntoResponse {
     use horus_core::core::log_buffer::GLOBAL_LOG_BUFFER;
 
     eprintln!(" API: Fetching logs for node '{}'", node_name);
@@ -680,7 +680,7 @@ async fn logs_node_handler(Path(node_name): Path<String>) -> impl IntoResponse {
         .into_response()
 }
 
-async fn logs_topic_handler(Path(topic_name): Path<String>) -> impl IntoResponse {
+pub async fn logs_topic_handler(Path(topic_name): Path<String>) -> impl IntoResponse {
     use horus_core::core::log_buffer::GLOBAL_LOG_BUFFER;
 
     // Convert IPC topic name back to original format
@@ -713,12 +713,12 @@ async fn logs_topic_handler(Path(topic_name): Path<String>) -> impl IntoResponse
 
 // Marketplace handlers
 #[derive(serde::Deserialize)]
-struct SearchQuery {
-    q: String,
+pub struct SearchQuery {
+    pub q: String,
 }
 
 // Registry: Search available packages from remote registry
-async fn packages_registry_handler(Query(query): Query<SearchQuery>) -> impl IntoResponse {
+pub async fn packages_registry_handler(Query(query): Query<SearchQuery>) -> impl IntoResponse {
     use crate::registry::RegistryClient;
 
     let result = tokio::task::spawn_blocking(move || {
@@ -759,7 +759,7 @@ async fn packages_registry_handler(Query(query): Query<SearchQuery>) -> impl Int
 }
 
 // Environments: Show global packages and local environments
-async fn packages_environments_handler() -> impl IntoResponse {
+pub async fn packages_environments_handler() -> impl IntoResponse {
     use std::collections::HashSet;
     use std::fs;
 
@@ -975,13 +975,13 @@ async fn packages_environments_handler() -> impl IntoResponse {
 }
 
 #[derive(serde::Deserialize)]
-struct InstallRequest {
-    package: String,
+pub struct InstallRequest {
+    pub package: String,
     #[serde(default)]
-    target: Option<String>,
+    pub target: Option<String>,
 }
 
-async fn packages_install_handler(Json(req): Json<InstallRequest>) -> impl IntoResponse {
+pub async fn packages_install_handler(Json(req): Json<InstallRequest>) -> impl IntoResponse {
     use crate::registry::RegistryClient;
     use std::path::PathBuf;
 
@@ -1083,12 +1083,12 @@ async fn packages_install_handler(Json(req): Json<InstallRequest>) -> impl IntoR
 }
 
 #[derive(serde::Deserialize)]
-struct UninstallRequest {
-    parent_package: String,
-    package: String,
+pub struct UninstallRequest {
+    pub parent_package: String,
+    pub package: String,
 }
 
-async fn packages_uninstall_handler(Json(req): Json<UninstallRequest>) -> impl IntoResponse {
+pub async fn packages_uninstall_handler(Json(req): Json<UninstallRequest>) -> impl IntoResponse {
     use std::fs;
     use std::path::PathBuf;
 
@@ -1178,7 +1178,7 @@ async fn packages_uninstall_handler(Json(req): Json<UninstallRequest>) -> impl I
     }
 }
 
-async fn packages_publish_handler() -> impl IntoResponse {
+pub async fn packages_publish_handler() -> impl IntoResponse {
     use crate::registry::RegistryClient;
 
     let result = tokio::task::spawn_blocking(move || {

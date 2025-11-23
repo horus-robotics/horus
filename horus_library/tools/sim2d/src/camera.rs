@@ -187,7 +187,8 @@ impl CameraSensor {
         }
 
         self.last_image = Some(image);
-        self.last_image.as_ref().unwrap()
+        // Safe to unwrap since we just set it above
+        self.last_image.as_ref().expect("Just set last_image to Some")
     }
 
     /// Cast a ray and return distance to nearest obstacle

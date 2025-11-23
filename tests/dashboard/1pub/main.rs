@@ -36,7 +36,7 @@ fn main() -> HorusResult<()> {
         0,          // priority (0 = highest)
         Some(true), // logging config
     );
-
+    
     // Run the scheduler
     scheduler.run()
 }

@@ -1,0 +1,387 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      publish_crates:
+        description: "Publish to crates.io"
+        type: boolean
+        default: false
+      dry_run:
+        description: "Dry run (build only, no release)"
+        type: boolean
+        default: false
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  CARGO_INCREMENTAL: 0
+
+defaults:
+  run:
+    working-directory: horus_library/tools/sim3d
+
+jobs:
+  validate:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          if [[ "$VERSION" == *"-"* ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+          echo "Version: $VERSION"
+
+      - name: Validate version in Cargo.toml
+        run: |
+          CARGO_VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          TAG_VERSION="${{ steps.version.outputs.version }}"
+          if [[ "$CARGO_VERSION" != "$TAG_VERSION" ]]; then
+            echo "Version mismatch: Cargo.toml has $CARGO_VERSION, tag is $TAG_VERSION"
+            exit 1
+          fi
+          echo "Version validated: $CARGO_VERSION"
+
+  build:
+    name: Build (${{ matrix.target }})
+    needs: validate
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            name: sim3d-linux-x86_64
+            cross: false
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            name: sim3d-linux-aarch64
+            cross: true
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            name: sim3d-macos-x86_64
+            cross: false
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            name: sim3d-macos-aarch64
+            cross: false
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            name: sim3d-windows-x86_64
+            cross: false
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest' && !matrix.cross
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libopencv-dev \
+            libclang-dev \
+            clang \
+            llvm \
+            pkg-config \
+            libssl-dev \
+            libudev-dev \
+            libxcb-render0-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev \
+            libxkbcommon-dev \
+            libgtk-3-dev \
+            libasound2-dev \
+            libwayland-dev \
+            libxrandr-dev
+
+      - name: Install system dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install opencv llvm pkg-config
+          echo "LIBCLANG_PATH=$(brew --prefix llvm)/lib" >> $GITHUB_ENV
+          echo "OPENCV_INCLUDE_PATHS=$(brew --prefix opencv)/include/opencv4" >> $GITHUB_ENV
+          echo "OPENCV_LINK_PATHS=$(brew --prefix opencv)/lib" >> $GITHUB_ENV
+          echo "OPENCV_LINK_LIBS=opencv_core,opencv_imgproc,opencv_imgcodecs,opencv_highgui" >> $GITHUB_ENV
+
+      - name: Install system dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          choco install llvm opencv -y
+          echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "OPENCV_INCLUDE_PATHS=C:\tools\opencv\build\include" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "OPENCV_LINK_PATHS=C:\tools\opencv\build\x64\vc16\lib" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross
+        if: matrix.cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.target }}-cargo-release-
+            ${{ runner.os }}-cargo-
+
+      - name: Build release binary (native)
+        if: "!matrix.cross"
+        run: cargo build --release --target ${{ matrix.target }} --no-default-features --features headless
+
+      - name: Build release binary (cross)
+        if: matrix.cross
+        run: cross build --release --target ${{ matrix.target }} --no-default-features --features headless
+
+      - name: Create release archive (Unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          mkdir -p dist
+          cp target/${{ matrix.target }}/release/sim3d dist/
+          cp README.md dist/
+          cp ../../../LICENSE-MIT dist/ 2>/dev/null || echo "MIT license not found"
+          cp ../../../LICENSE-APACHE dist/ 2>/dev/null || echo "Apache license not found"
+          cd dist
+          tar -czvf ../${{ matrix.name }}-${{ needs.validate.outputs.version }}.tar.gz *
+
+      - name: Create release archive (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist
+          Copy-Item target/${{ matrix.target }}/release/sim3d.exe dist/
+          Copy-Item README.md dist/
+          Copy-Item ../../../LICENSE-MIT dist/ -ErrorAction SilentlyContinue
+          Copy-Item ../../../LICENSE-APACHE dist/ -ErrorAction SilentlyContinue
+          Compress-Archive -Path dist/* -DestinationPath ${{ matrix.name }}-${{ needs.validate.outputs.version }}.zip
+
+      - name: Upload build artifact (Unix)
+        if: matrix.os != 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: horus_library/tools/sim3d/${{ matrix.name }}-${{ needs.validate.outputs.version }}.tar.gz
+          retention-days: 7
+
+      - name: Upload build artifact (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: horus_library/tools/sim3d/${{ matrix.name }}-${{ needs.validate.outputs.version }}.zip
+          retention-days: 7
+
+  changelog:
+    name: Generate Changelog
+    needs: validate
+    runs-on: ubuntu-latest
+    outputs:
+      changelog: ${{ steps.changelog.outputs.changelog }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREVIOUS_TAG=$(git tag --sort=-version:refname | grep '^v' | sed -n '2p')
+          CURRENT_TAG="v${{ needs.validate.outputs.version }}"
+
+          if [[ -z "$PREVIOUS_TAG" ]]; then
+            PREVIOUS_TAG=$(git rev-list --max-parents=0 HEAD)
+          fi
+
+          echo "Generating changelog from $PREVIOUS_TAG to $CURRENT_TAG"
+
+          CHANGELOG=$(cat << 'CHANGELOG_EOF'
+          ## What's Changed
+
+          ### Features
+          $(git log $PREVIOUS_TAG..$CURRENT_TAG --pretty=format:"- %s (%h)" --grep="^feat" -- horus_library/tools/sim3d/ | head -20)
+
+          ### Bug Fixes
+          $(git log $PREVIOUS_TAG..$CURRENT_TAG --pretty=format:"- %s (%h)" --grep="^fix" -- horus_library/tools/sim3d/ | head -20)
+
+          ### Performance Improvements
+          $(git log $PREVIOUS_TAG..$CURRENT_TAG --pretty=format:"- %s (%h)" --grep="^perf" -- horus_library/tools/sim3d/ | head -20)
+
+          ### Documentation
+          $(git log $PREVIOUS_TAG..$CURRENT_TAG --pretty=format:"- %s (%h)" --grep="^docs" -- horus_library/tools/sim3d/ | head -10)
+
+          ### Other Changes
+          $(git log $PREVIOUS_TAG..$CURRENT_TAG --pretty=format:"- %s (%h)" --invert-grep --grep="^feat" --grep="^fix" --grep="^perf" --grep="^docs" --grep="^chore" --grep="^ci" -- horus_library/tools/sim3d/ | head -10)
+
+          **Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREVIOUS_TAG...$CURRENT_TAG
+          CHANGELOG_EOF
+          )
+
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+  release:
+    name: Create GitHub Release
+    needs: [validate, build, changelog]
+    runs-on: ubuntu-latest
+    if: github.event.inputs.dry_run != 'true'
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List artifacts
+        run: find artifacts -type f
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.validate.outputs.version }}
+          name: sim3d v${{ needs.validate.outputs.version }}
+          body: |
+            # sim3d v${{ needs.validate.outputs.version }}
+
+            3D robotics simulator with reinforcement learning support.
+
+            ${{ needs.changelog.outputs.changelog }}
+
+            ## Installation
+
+            ### From Binary
+
+            Download the appropriate binary for your platform from the assets below.
+
+            **Linux (x86_64):**
+            ```bash
+            tar -xzf sim3d-linux-x86_64-${{ needs.validate.outputs.version }}.tar.gz
+            chmod +x sim3d
+            sudo mv sim3d /usr/local/bin/
+            ```
+
+            **macOS:**
+            ```bash
+            tar -xzf sim3d-macos-x86_64-${{ needs.validate.outputs.version }}.tar.gz
+            chmod +x sim3d
+            sudo mv sim3d /usr/local/bin/
+            ```
+
+            **Windows:**
+            Extract the zip file and add the executable to your PATH.
+
+            ### From Source
+
+            ```bash
+            cargo install sim3d
+            ```
+
+            ## Checksums
+
+            SHA256 checksums for all release assets are provided in `checksums.txt`.
+          prerelease: ${{ needs.validate.outputs.is_prerelease }}
+          draft: false
+          files: |
+            artifacts/**/*.tar.gz
+            artifacts/**/*.zip
+          fail_on_unmatched_files: false
+
+      - name: Generate checksums
+        run: |
+          cd artifacts
+          find . -type f \( -name "*.tar.gz" -o -name "*.zip" \) -exec sha256sum {} \; > checksums.txt
+          cat checksums.txt
+
+      - name: Upload checksums
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.validate.outputs.version }}
+          files: artifacts/checksums.txt
+          fail_on_unmatched_files: false
+
+  publish-crates:
+    name: Publish to crates.io
+    needs: [validate, release]
+    runs-on: ubuntu-latest
+    if: github.event.inputs.publish_crates == 'true' || (github.event_name == 'push' && !contains(needs.validate.outputs.version, '-'))
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libopencv-dev \
+            libclang-dev \
+            clang \
+            llvm \
+            pkg-config \
+            libssl-dev \
+            libudev-dev \
+            libxcb-render0-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev \
+            libxkbcommon-dev \
+            libgtk-3-dev \
+            libasound2-dev \
+            libwayland-dev \
+            libxrandr-dev
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+
+      - name: Verify package
+        working-directory: horus_library/tools/sim3d
+        run: cargo package --no-verify --allow-dirty
+
+      - name: Publish to crates.io
+        working-directory: horus_library/tools/sim3d
+        run: cargo publish --no-verify --allow-dirty
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  notify:
+    name: Notify Release
+    needs: [validate, release]
+    runs-on: ubuntu-latest
+    if: always() && needs.release.result == 'success'
+    steps:
+      - name: Send notification
+        run: |
+          echo "Release v${{ needs.validate.outputs.version }} completed successfully!"
+          echo "Release URL: https://github.com/${{ github.repository }}/releases/tag/v${{ needs.validate.outputs.version }}"

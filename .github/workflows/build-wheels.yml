@@ -127,7 +127,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && inputs.publish)
     environment:
       name: pypi
-      url: https://pypi.org/p/horus
+      url: https://pypi.org/p/horus-robotics
     permissions:
       id-token: write  # For trusted publishing
     steps:
@@ -175,7 +175,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           # Find and install the appropriate wheel for this platform
-          python -m pip install --find-links=dist --no-index horus
+          python -m pip install --find-links=dist --no-index horus-robotics
 
       - name: Test import
         run: python -c "import horus; print(f'Successfully imported horus {horus.__version__}')"

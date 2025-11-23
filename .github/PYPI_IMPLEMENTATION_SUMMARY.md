@@ -38,7 +38,7 @@ This document summarizes the complete implementation of automatic PyPI wheel bui
 - Handle build failures
 
 # New approach (implemented):
-pip install horus --user
+pip install horus-robotics --user
 # If not available: show helpful message (optional feature)
 ```
 
@@ -48,12 +48,6 @@ pip install horus --user
 - ✅ Fast installation (5-10 seconds vs 5-10 minutes)
 - ✅ No build failures on user machines
 - ✅ Works on all platforms (including ARM)
-
-#### update.sh
-**Changed from:** maturin develop for updates
-**Changed to:** `pip install --upgrade horus`
-
-Simpler, faster, more reliable updates.
 
 ### 3. Release Helper Script (`scripts/release.sh`)
 
@@ -135,10 +129,10 @@ git push origin main --tags
 # https://github.com/softmata/horus/actions
 
 # 5. Verify on PyPI (after ~15 mins)
-# https://pypi.org/project/horus/
+# https://pypi.org/project/horus-robotics/
 
 # 6. Test installation
-pip install horus==0.1.6
+pip install horus-robotics==0.1.6
 python -c "import horus; print(horus.__version__)"
 ```
 
@@ -146,7 +140,7 @@ python -c "import horus; print(horus.__version__)"
 
 **For End Users:**
 ```bash
-pip install horus
+pip install horus-robotics
 ```
 
 **For Developers:**
@@ -163,7 +157,7 @@ Before pushing the first release:
 - [ ] PyPI account created
 - [ ] API token generated
 - [ ] `PYPI_TOKEN` secret added to GitHub
-- [ ] Package name "horus" available on PyPI
+- [ ] Package name "horus-robotics" available on PyPI
 - [ ] Workflow file committed to repository
 - [ ] Release script tested locally
 - [ ] Version numbers are correct
@@ -204,7 +198,7 @@ python -c "import horus; print(horus.__version__)"
 |------|-----------|---------|
 | Release new version | As needed | `./scripts/release.sh X.Y.Z` |
 | Check CI status | After each release | GitHub Actions tab |
-| Monitor PyPI downloads | Monthly | https://pypistats.org/packages/horus |
+| Monitor PyPI downloads | Monthly | https://pypistats.org/packages/horus-robotics |
 
 ### Updating the Workflow
 
@@ -264,7 +258,7 @@ If you need to modify the build process:
 ```
 
 ```bash
-pip install horus  # Even simpler!
+pip install horus-robotics  # Even simpler!
 ```
 
 **Benefits:**
@@ -282,7 +276,6 @@ pip install horus  # Even simpler!
 .github/PYPI_IMPLEMENTATION_SUMMARY.md [NEW] - This file
 scripts/release.sh                    [NEW] - Release automation
 install.sh                            [MODIFIED] - Use pip instead of maturin
-update.sh                             [MODIFIED] - Use pip for updates
 README.md                             [MODIFIED] - Add pip instructions
 ```
 
@@ -296,7 +289,7 @@ The implementation is successful when:
 - [x] Release helper script created
 - [x] Documentation complete
 - [ ] First wheel published to PyPI (pending: setup + first release)
-- [ ] Users can install with `pip install horus`
+- [ ] Users can install with `pip install horus-robotics`
 - [ ] Installation takes seconds, not minutes
 - [ ] No build failures reported
 

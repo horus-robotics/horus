@@ -9,24 +9,19 @@
 // - Lock-step synchronization
 
 use bevy::prelude::*;
-use sim3d::{
-    multi_robot::{
-        self,
-        communication::CommunicationManager,
-        coordination::{FormationController, FormationType, SwarmAgent, TaskAllocation},
-        network::{NetworkConfig, NetworkSimulator},
-        registry::{RobotCapability, RobotMetadata, RobotRegistry},
-        sync::{SyncMode, SynchronizationManager},
-        MultiRobotPlugin, Robot, RobotId,
-    },
-    physics::PhysicsPlugin,
+use sim3d::multi_robot::{
+    communication::CommunicationManager,
+    coordination::{FormationController, FormationType, SwarmAgent},
+    network::{NetworkConfig, NetworkSimulator},
+    registry::{RobotCapability, RobotMetadata, RobotRegistry},
+    sync::{SyncMode, SynchronizationManager},
+    MultiRobotPlugin, Robot, RobotId,
 };
 
 fn main() {
     App::new()
         .add_plugins((
             DefaultPlugins,
-            PhysicsPlugin::default(),
             MultiRobotPlugin { max_robots: 20 },
         ))
         .add_systems(Startup, setup_multi_robot_scene)
@@ -115,16 +110,16 @@ fn setup_multi_robot_scene(
     }
 
     // Add camera
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 15.0, 15.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    });
+    commands.spawn((
+        Camera3d::default(),
+        Transform::from_xyz(0.0, 15.0, 15.0).looking_at(Vec3::ZERO, Vec3::Y),
+    ));
 
     // Add lighting
-    commands.spawn(DirectionalLightBundle {
-        transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, 0.5, 0.0)),
-        ..default()
-    });
+    commands.spawn((
+        DirectionalLight::default(),
+        Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, 0.5, 0.0)),
+    ));
 }
 
 fn robot_communication_example(

@@ -8,7 +8,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 // Serial hardware support
 #[cfg(feature = "serial-hardware")]
-use serialport::{SerialPort, SerialPortBuilder};
+use serialport::SerialPort;
 #[cfg(feature = "serial-hardware")]
 use std::time::Duration;
 
@@ -83,6 +83,10 @@ pub struct DynamixelNode {
     last_packet_time: u64,
     packet_errors: u32,
     successful_packets: u32,
+
+    // Timing state (moved from static mut for thread safety)
+    last_read_time: u64,
+    last_log_time: u64,
 }
 
 /// Dynamixel protocol version
@@ -174,8 +178,8 @@ impl DynamixelModel {
             Self::XM430W210 => 7.65,  // 73 RPM
             Self::XM430W350 => 4.82,  // 46 RPM
             Self::XM540W150 => 5.44,  // 52 RPM
-            Self::XM540W270 => 3.14,  // 30 RPM
-            _ => 6.28,                // ~60 RPM default
+            Self::XM540W270 => std::f32::consts::PI,  // 30 RPM
+            _ => std::f32::consts::TAU,                // ~60 RPM default
         }
     }
 
@@ -262,6 +266,8 @@ impl DynamixelNode {
             last_packet_time: 0,
             packet_errors: 0,
             successful_packets: 0,
+            last_read_time: 0,
+            last_log_time: 0,
         })
     }
 
@@ -361,9 +367,9 @@ impl DynamixelNode {
                     if let Err(e) = self.open_hardware(ctx.as_deref_mut()) {
                         // Provide detailed troubleshooting information (only log once)
                         if self.hardware_enabled || self.successful_packets == 0 {
-                            ctx.log_warning(&format!(
+                            ctx.log_warning(
                                 "DynamixelNode: Hardware unavailable - using SIMULATION mode"
-                            ));
+                            );
                             ctx.log_warning(&format!("  Tried: {}", self.port));
                             ctx.log_warning(&format!("  Error: {}", e));
                             ctx.log_warning("  Fix:");
@@ -482,7 +488,7 @@ impl DynamixelNode {
 
             servo.last_update = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_nanos() as u64;
         }
     }
@@ -734,59 +740,53 @@ impl Node for DynamixelNode {
         self.simulate_servos(dt);
 
         // Bulk read servo status
-        static mut LAST_READ_TIME: u64 = 0;
         let read_interval = 10_000_000; // 10ms = 100Hz
         let current_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_nanos() as u64;
 
-        unsafe {
-            if current_time - LAST_READ_TIME > read_interval {
-                self.bulk_read(ctx.as_deref_mut());
-                LAST_READ_TIME = current_time;
-            }
+        if current_time - self.last_read_time > read_interval {
+            self.bulk_read(ctx.as_deref_mut());
+            self.last_read_time = current_time;
         }
 
         // Publish feedback
         self.publish_feedback();
 
         // Periodic status logging
-        static mut LAST_LOG_TIME: u64 = 0;
         let log_interval = 10_000_000_000; // 10 seconds
-        unsafe {
-            if current_time - LAST_LOG_TIME > log_interval {
-                let (success, errors, rate) = self.get_comm_stats();
-                ctx.log_info(&format!(
-                    "Dynamixel {}: {} servos active | Comm: {} ok, {} err ({:.1}% success)",
-                    self.port,
-                    self.servos.len(),
-                    success,
-                    errors,
-                    rate
-                ));
+        if current_time - self.last_log_time > log_interval {
+            let (success, errors, rate) = self.get_comm_stats();
+            ctx.log_info(&format!(
+                "Dynamixel {}: {} servos active | Comm: {} ok, {} err ({:.1}% success)",
+                self.port,
+                self.servos.len(),
+                success,
+                errors,
+                rate
+            ));
 
-                // Log servo states
-                for servo in self.servos.values() {
-                    if servo.torque_enabled {
-                        ctx.log_debug(&format!(
-                            "  Servo {}: pos={:.2}rad vel={:.2}rad/s I={:.0}mA T={}°C{}",
-                            servo.id,
-                            servo.position,
-                            servo.velocity,
-                            servo.current,
-                            servo.temperature,
-                            if servo.hardware_error != 0 {
-                                " ERROR"
-                            } else {
-                                ""
-                            }
-                        ));
-                    }
+            // Log servo states
+            for servo in self.servos.values() {
+                if servo.torque_enabled {
+                    ctx.log_debug(&format!(
+                        "  Servo {}: pos={:.2}rad vel={:.2}rad/s I={:.0}mA T={}°C{}",
+                        servo.id,
+                        servo.position,
+                        servo.velocity,
+                        servo.current,
+                        servo.temperature,
+                        if servo.hardware_error != 0 {
+                            " ERROR"
+                        } else {
+                            ""
+                        }
+                    ));
                 }
-
-                LAST_LOG_TIME = current_time;
             }
+
+            self.last_log_time = current_time;
         }
     }
 }

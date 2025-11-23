@@ -1,3 +1,5 @@
+pub mod core_integration;
+pub mod horus_transport;
 pub mod messages;
 pub mod publisher;
 pub mod subscriber;
@@ -5,6 +7,7 @@ pub mod subscriber;
 use bevy::prelude::*;
 use std::sync::{Arc, Mutex};
 
+pub use horus_transport::{HorusTransport, HorusTransportConfig, HorusTransportPlugin};
 pub use messages::*;
 pub use publisher::{
     publish_lidar2d_system, publish_lidar3d_system, publish_tf_system, HorusPublisher,

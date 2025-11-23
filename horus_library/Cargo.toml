@@ -50,7 +50,25 @@ imageproc = { version = "0.23", optional = true }  # Image processing algorithms
 reqwest = { version = "0.11", features = ["blocking", "json"], optional = true }  # HTTP client for LLM APIs
 
 [features]
-default = []
+# Enable common software nodes by default
+# Users can opt-out with: default-features = false
+default = ["standard-nodes"]
+
+# Standard nodes that work on any system (lightweight, no heavy deps)
+# These are enabled by default for best user experience
+standard-nodes = [
+    "gilrs",           # JoystickInputNode (needs libudev, installed by install.sh)
+    "crossterm",       # KeyboardInputNode (pure Rust)
+    "serial-hardware", # SerialNode, DynamixelNode, RoboclawMotorNode
+    "sysinfo",         # System monitoring (pure Rust)
+]
+
+# Vision nodes - requires OpenCV (heavy dependency, opt-in)
+# Enable with: horus = { features = ["vision"] }
+vision = [
+    "opencv-backend",
+    "v4l2-backend",
+]
 
 # Hardware backend features
 opencv-backend = ["opencv"]

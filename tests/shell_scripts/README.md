@@ -6,10 +6,8 @@ Automated testing for HORUS installation and maintenance scripts on clean system
 
 This framework tests all HORUS shell scripts on **completely fresh** systems with no dependencies:
 
-- `install.sh` - Fresh installation
-- `update.sh` - Update from previous version
+- `install.sh` - Fresh installation or update
 - `verify.sh` - Installation verification
-- `recovery_install.sh` - Recovery from broken state
 - `uninstall.sh` - Clean removal
 
 ## Supported Platforms
@@ -65,9 +63,7 @@ tests/shell_scripts/
 │   └── fedora-39.Dockerfile
 ├── test_scenarios/           # Test cases
 │   ├── test_install.sh
-│   ├── test_update.sh
 │   ├── test_verify.sh
-│   ├── test_recovery.sh
 │   └── test_uninstall.sh
 └── helpers/                  # Shared utilities
     └── common.sh
@@ -177,18 +173,6 @@ docker images | grep horus-shell-test | awk '{print $3}' | xargs docker rmi -f
 - Validates installation
 - Tests functionality
 - Reports accurate status
-
-### update.sh
-- Updates from git
-- Rebuilds if needed
-- Preserves user config
-- Migrates versions correctly
-
-### recovery_install.sh
-- Diagnoses issues
-- Cleans corrupted state
-- Fresh reinstall works
-- Verification passes
 
 ### uninstall.sh
 - Removes all binaries

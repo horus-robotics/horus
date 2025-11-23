@@ -44,7 +44,7 @@ HORUS is a modern robotics framework built on **Rust**, **shared memory IPC**, a
   ┌──────────────────────────▼──────────────────────────────────┐
   │         Shared Memory Communication Layer                   │
   ├─────────────────────────────────────────────────────────────┤
-  │  /dev/shm/horus_*         (POSIX Shared Memory)             │
+  │  Cross-platform shared memory (auto-detected)               │
   │  - Message channels                                         │
   │  - Log ring buffer (5000 entries × 512B)                    │
   │  - Node registry                                            │
@@ -63,7 +63,8 @@ HORUS is a modern robotics framework built on **Rust**, **shared memory IPC**, a
     └────────────┘  └────────────┘
 
 ┌─────────────────────────────────────────────────────────────────┐
-│                    /dev/shm/horus/ (POSIX SHM)                  │
+│ Platform Shared Memory Paths:                                   │
+│ Linux: /dev/shm/horus/  macOS: /tmp/horus/  Win: %TEMP%\horus\  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -114,11 +115,12 @@ The heart of the HORUS framework. Implements all core functionality including co
 - **log_buffer.rs**: SharedLogBuffer - ring buffer for cross-process logging
   - 5000 entries × 512B
   - Lock-free writes with atomic counters
-  - Stored in `/dev/shm/horus_logs`
+  - Stored in platform-specific path (Linux: `/dev/shm/`, macOS: `/tmp/`, Windows: `%TEMP%`)
 - **registry.rs**: Node registry for monitoring and discovery
 
 #### `memory/`
-- **shm.rs**: POSIX shared memory (`/dev/shm/horus_*`)
+- **shm.rs**: Cross-platform shared memory abstraction
+- **platform.rs**: Platform-specific path detection (Linux, macOS, Windows)
 - **alignment.rs**: Safe cross-process memory alignment
 
 #### Other:
@@ -331,17 +333,24 @@ void tick(NodeContext* ctx) {
 
 ### Shared Memory IPC
 
-HORUS uses **POSIX shared memory** (`/dev/shm/`) for ultra-low latency inter-process communication.
+HORUS uses **cross-platform shared memory** for ultra-low latency inter-process communication.
 
-**Memory Layout:**
+**Platform Paths:**
+| Platform | Base Path | Notes |
+|----------|-----------|-------|
+| Linux | `/dev/shm/horus/` | Native POSIX shm, fastest |
+| macOS | `/tmp/horus/` | tmpfs-backed |
+| Windows | `%TEMP%\horus\` | Temp directory |
+
+**Memory Layout (example on Linux):**
 
 ```
-/dev/shm/
-── horus_logs                 # 5000 × 512B = 2.5MB ring buffer
-── horus_cmd_vel              # Message channel (per topic)
-── horus_laser_scan           # Message channel
-── horus_registry             # Node registry
-── horus_params_*             # Parameter storage
+/dev/shm/horus/
+── logs/horus_logs            # 5000 × 512B = 2.5MB ring buffer
+── topics/horus_cmd_vel       # Message channel (per topic)
+── topics/horus_laser_scan    # Message channel
+── registry/horus_registry    # Node registry
+── params/horus_params_*      # Parameter storage
 ```
 
 **Message Channel Structure:**
@@ -479,7 +488,7 @@ const MAX_LOG_ENTRIES: usize = 5000;  // Ring buffer capacity
 - 2.5MB total size (5000 × 512B)
 - No heap allocation
 
-**Location:** `/dev/shm/horus_logs`
+**Location:** Platform-specific (Linux: `/dev/shm/horus/logs/`, macOS: `/tmp/horus/logs/`, Windows: `%TEMP%\horus\logs\`)
 
 ---
 
@@ -707,7 +716,7 @@ See [CLI Reference - horus run](/cli-reference#horus-run---build-and-run) for us
                                        ▼
                               ──────────────────
                                Shared Memory
-                               /dev/shm/         248ns-437ns
+                               (cross-platform)  248ns-437ns
                                horus_sensors
                               ─────────────────
                                         3. try_recv()

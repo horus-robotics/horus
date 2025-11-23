@@ -93,6 +93,9 @@ pub struct StepperMotorNode {
     hardware_enabled: bool,
     gpio_pin_numbers: [(u64, u64, u64); 8], // (step_pin, dir_pin, enable_pin) per motor
     step_pulse_duration_us: u64,            // Duration of step pulse in microseconds
+
+    // Timing state (moved from static mut for thread safety)
+    last_feedback_time_tick: u64,
 }
 
 /// Motion state for trapezoidal motion profile
@@ -155,6 +158,7 @@ impl StepperMotorNode {
             hardware_enabled: false,
             gpio_pin_numbers: [(0, 0, 0); 8],
             step_pulse_duration_us: 5, // 5μs default step pulse
+            last_feedback_time_tick: 0,
         })
     }
 
@@ -431,7 +435,7 @@ impl StepperMotorNode {
         // Update last command time
         self.last_command_time[idx] = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_millis() as u64;
 
         // Handle enable/disable
@@ -738,7 +742,7 @@ impl StepperMotorNode {
 
         let current_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_millis() as u64;
 
         for motor_id in 0..self.num_motors {
@@ -780,7 +784,7 @@ impl StepperMotorNode {
                     enable: self.motor_enabled[idx],
                     timestamp: SystemTime::now()
                         .duration_since(UNIX_EPOCH)
-                        .unwrap()
+                        .unwrap_or_default()
                         .as_nanos() as u64,
                 };
                 let _ = self.feedback_publisher.send(feedback, &mut None);
@@ -808,7 +812,7 @@ impl Node for StepperMotorNode {
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let current_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_nanos() as u64;
 
         // Process all pending commands
@@ -827,13 +831,10 @@ impl Node for StepperMotorNode {
         self.check_timeouts(ctx.as_deref_mut());
 
         // Publish feedback (throttled to ~10Hz)
-        static mut LAST_FEEDBACK_TIME: u64 = 0;
         let feedback_interval = 100_000_000; // 100ms
-        unsafe {
-            if current_time - LAST_FEEDBACK_TIME > feedback_interval {
-                self.publish_feedback();
-                LAST_FEEDBACK_TIME = current_time;
-            }
+        if current_time - self.last_feedback_time_tick > feedback_interval {
+            self.publish_feedback();
+            self.last_feedback_time_tick = current_time;
         }
     }
 }

@@ -76,24 +76,23 @@ pub mod prelude {
     pub use horus_library::messages::*;
 
     // Re-export commonly used node types from horus_library
-    // Hardware-independent nodes (always available)
+    // These are all available by default (standard-nodes feature)
     pub use horus_library::nodes::{
+        // Algorithm nodes (always available)
         DifferentialDriveNode, EmergencyStopNode, LocalizationNode, PathPlannerNode,
         PidControllerNode,
+        // Input nodes (default: standard-nodes)
+        JoystickInputNode, KeyboardInputNode,
+        // Serial nodes (default: standard-nodes)
+        SerialNode,
     };
 
-    // Feature-gated hardware nodes
+    // Hardware-specific nodes (require explicit feature flags)
     #[cfg(feature = "gpio-hardware")]
     pub use horus_library::nodes::{DigitalIONode, EncoderNode, ServoControllerNode};
 
     #[cfg(any(feature = "bno055-imu", feature = "mpu6050-imu"))]
     pub use horus_library::nodes::ImuNode;
-
-    #[cfg(feature = "gilrs")]
-    pub use horus_library::nodes::JoystickInputNode;
-
-    #[cfg(feature = "crossterm")]
-    pub use horus_library::nodes::KeyboardInputNode;
 
     #[cfg(feature = "rplidar")]
     pub use horus_library::nodes::LidarNode;

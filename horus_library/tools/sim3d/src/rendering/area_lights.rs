@@ -293,7 +293,7 @@ mod tests {
         assert_eq!(rect.surface_area(), 6.0);
 
         let disk = AreaLight::disk(1.0, 10.0);
-        assert!((rect.surface_area() - std::f32::consts::PI).abs() < 0.1);
+        assert!((disk.surface_area() - std::f32::consts::PI).abs() < 0.1);
 
         let sphere = AreaLight::sphere(1.0, 10.0);
         let expected = 4.0 * std::f32::consts::PI;

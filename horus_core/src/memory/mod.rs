@@ -17,9 +17,11 @@
 //! All memory operations maintain Rust's safety guarantees through careful
 //! use of lifetime management and atomic operations.
 
+pub mod platform;
 pub mod shm_region;
 pub mod shm_topic;
 
+pub use platform::*;
 pub use shm_region::ShmRegion;
 pub use shm_topic::ShmTopic;
 

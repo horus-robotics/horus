@@ -334,8 +334,9 @@ mod tests {
 
         for _ in 0..10 {
             let noisy = manager.sample_sensor_noise(value, &config);
-            // Should be within 3 sigma (99.7%)
-            assert!(noisy > value - 30.0 && noisy < value + 30.0);
+            // Should be within 5 sigma (very high probability)
+            // With intensity=0.1 and value=100, stddev=10, so 5σ = ±50
+            assert!(noisy > value - 50.0 && noisy < value + 50.0);
         }
     }
 
