@@ -241,13 +241,18 @@ impl Drop for DiscoveryService {
 mod tests {
     use super::*;
 
+    // These tests require exclusive network access to port 9871
+    // Run with: cargo test -- --ignored --test-threads=1
+
     #[test]
+    #[ignore = "requires exclusive network access to multicast port 9871"]
     fn test_discovery_service_creation() {
         let service = DiscoveryService::new().unwrap();
         assert_eq!(service.multicast_addr.port(), MULTICAST_PORT);
     }
 
     #[test]
+    #[ignore = "requires exclusive network access to multicast port 9871"]
     fn test_discovery_announce() {
         let service = DiscoveryService::new().unwrap();
         let result = service.announce("test_topic", 9870);
@@ -255,6 +260,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires exclusive network access to multicast port 9871"]
     fn test_discovery_request() {
         let service = DiscoveryService::new().unwrap();
 
@@ -264,6 +270,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires exclusive network access to multicast port 9871"]
     fn test_peer_cleanup() {
         let service = DiscoveryService::new().unwrap();
 

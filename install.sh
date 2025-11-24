@@ -1,12 +1,16 @@
 #!/bin/bash
 # HORUS Installation Script
 # Universal installer that works across all major operating systems
+# Uses shared deps.sh for consistent dependency management
 
 set -e  # Exit on error
 set -o pipefail  # Fail on pipe errors
 
 # Script version
-SCRIPT_VERSION="2.0.0"
+SCRIPT_VERSION="2.1.0"
+
+# Get script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Colors for output
 RED='\033[0;31m'
@@ -14,13 +18,21 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
+
+# Source shared dependency functions (if available)
+DEPS_SHARED=false
+if [ -f "$SCRIPT_DIR/scripts/deps.sh" ]; then
+    source "$SCRIPT_DIR/scripts/deps.sh"
+    DEPS_SHARED=true
+fi
 
 # Log file for debugging
 LOG_FILE="/tmp/horus_install_$(date +%Y%m%d_%H%M%S).log"
 exec 2> >(tee -a "$LOG_FILE" >&2)
 
-echo -e "${CYAN} HORUS Installation Script v${SCRIPT_VERSION}${NC}"
+echo -e "${CYAN}HORUS Installation Script v${SCRIPT_VERSION}${NC}"
 echo ""
 
 # Detect operating system
@@ -80,9 +92,15 @@ detect_os() {
     echo "$os_type:$os_distro"
 }
 
-OS_INFO=$(detect_os)
-IFS=':' read -r OS_TYPE OS_DISTRO <<< "$OS_INFO"
-echo -e "${CYAN}${NC} Detected OS: $OS_TYPE ($OS_DISTRO)"
+# Use shared OS detection if available, otherwise use local function
+if [ "$DEPS_SHARED" = true ] && [ -n "$OS_TYPE" ]; then
+    # OS already detected by deps.sh
+    echo -e "${CYAN}[i]${NC} Detected OS: $OS_TYPE ($OS_DISTRO)"
+else
+    OS_INFO=$(detect_os)
+    IFS=':' read -r OS_TYPE OS_DISTRO <<< "$OS_INFO"
+    echo -e "${CYAN}[i]${NC} Detected OS: $OS_TYPE ($OS_DISTRO)"
+fi
 
 # Auto-install Rust if not present
 install_rust() {
@@ -232,7 +250,19 @@ install_system_deps() {
 }
 
 # Check and install system dependencies
-install_system_deps
+# Use shared deps.sh function if available for consistency
+if [ "$DEPS_SHARED" = true ]; then
+    echo -e "${CYAN}[*]${NC} Checking system dependencies (using shared deps.sh)..."
+    MISSING=$(check_all_deps)
+    if [ -n "$MISSING" ]; then
+        echo -e "${YELLOW}[!]${NC} Missing: $(get_missing_deps_readable)"
+        install_system_deps
+    else
+        echo -e "${GREEN}[+]${NC} All system dependencies found"
+    fi
+else
+    install_system_deps
+fi
 
 echo -e "${CYAN}${NC} Detected C compiler: $(cc --version 2>/dev/null | head -n1 || gcc --version 2>/dev/null | head -n1 || clang --version 2>/dev/null | head -n1)"
 echo -e "${CYAN}${NC} Detected pkg-config: $(pkg-config --version)"
@@ -459,9 +489,29 @@ build_with_recovery() {
     local max_retries=3
     local retry=0
 
+    # Define packages to build (excludes dev-only: benchmarks, tests, horus_py)
+    # horus_py is installed separately from PyPI, not built from source
+    local BUILD_PACKAGES=(
+        "horus"
+        "horus_core"
+        "horus_macros"
+        "horus_manager"
+        "horus_library"
+        "sim2d"
+        "sim3d"
+    )
+
+    # Build command with explicit package selection (faster, skips benchmarks/tests)
+    local BUILD_CMD="cargo build --release"
+    for pkg in "${BUILD_PACKAGES[@]}"; do
+        BUILD_CMD="$BUILD_CMD -p $pkg"
+    done
+
     while [ $retry -lt $max_retries ]; do
         echo ""
         echo -e "${CYAN} Building HORUS packages (attempt $((retry + 1))/$max_retries)...${NC}"
+        echo -e "${CYAN}   Packages: ${BUILD_PACKAGES[*]}${NC}"
+        echo -e "${CYAN}   Skipping: benchmarks, horus_py (installed from PyPI), tanksim, horus_router${NC}"
 
         # Clean build on retry
         if [ $retry -gt 0 ]; then
@@ -469,8 +519,8 @@ build_with_recovery() {
             cargo clean
         fi
 
-        # Try building
-        if cargo build --release 2>&1 | tee -a "$LOG_FILE"; then
+        # Try building only required packages
+        if $BUILD_CMD 2>&1 | tee -a "$LOG_FILE"; then
             echo -e "${GREEN} Build completed successfully${NC}"
             return 0
         else
@@ -506,7 +556,7 @@ build_with_recovery() {
     echo -e "${YELLOW} Check the log file for details: $LOG_FILE${NC}"
     echo ""
     echo "Troubleshooting steps:"
-    echo "  1. Try running: ./recovery_install.sh"
+    echo "  1. Try: cargo clean && rm -rf ~/.horus/cache && ./install.sh"
     echo "  2. Check if you have enough disk space: df -h"
     echo "  3. Try updating Rust: rustup update stable"
     echo "  4. Report issue: https://github.com/softmata/horus/issues"

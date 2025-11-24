@@ -262,6 +262,24 @@ impl RegistryClient {
                 self.install_from_path(&spec.name, path, target, base_dir)
                     .map(|_| ()) // Ignore version for dependency spec
             }
+            DependencySource::Git { url, branch, tag, rev } => {
+                // Git dependencies are handled by horus run - skip for pkg install
+                // They are cloned to ~/.horus/cache/git_* and used as path deps
+                eprintln!(
+                    "  {} Git dependency '{}' from {} - use 'horus run' to clone automatically",
+                    "ℹ".cyan(),
+                    spec.name,
+                    url
+                );
+                if let Some(b) = branch {
+                    eprintln!("      Branch: {}", b);
+                } else if let Some(t) = tag {
+                    eprintln!("      Tag: {}", t);
+                } else if let Some(r) = rev {
+                    eprintln!("      Rev: {}", r);
+                }
+                Ok(())
+            }
         }
     }
 

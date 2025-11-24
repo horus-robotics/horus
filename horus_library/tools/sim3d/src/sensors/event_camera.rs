@@ -3,7 +3,9 @@
 //! Event cameras respond to changes in log intensity, producing asynchronous events
 //! with microsecond temporal resolution.
 
+use crate::physics::world::PhysicsWorld;
 use bevy::prelude::*;
+use rapier3d::prelude::*;
 use std::collections::VecDeque;
 
 /// Single event from event camera
@@ -216,22 +218,161 @@ pub fn events_to_frame(events: &[Event], width: u32, height: u32, time_window_us
     frame
 }
 
-/// System to update event cameras (placeholder)
+/// System to update event cameras
 pub fn event_camera_update_system(
     time: Res<Time>,
+    mut physics_world: ResMut<PhysicsWorld>,
     mut cameras: Query<(&EventCamera, &mut EventStream, &GlobalTransform)>,
+    lights: Query<(&PointLight, &GlobalTransform), Without<EventCamera>>,
 ) {
     let current_time_us = (time.elapsed_secs_f64() * 1_000_000.0) as u64;
 
-    for (_camera, mut _stream, _transform) in cameras.iter_mut() {
-        // TODO: Implement actual intensity image generation and event processing
-        // This would require:
-        // 1. Render grayscale intensity image
-        // 2. Call stream.process_frame() with intensities
-        // 3. Update based on scene changes
+    for (camera, mut stream, camera_transform) in cameras.iter_mut() {
+        // Generate intensity image
+        let intensities = generate_intensity_image(
+            camera,
+            camera_transform,
+            &mut physics_world,
+            &lights,
+        );
 
-        // Placeholder: events would be generated here
+        // Process the intensity frame to generate events
+        stream.process_frame(&intensities, current_time_us, camera);
     }
+}
+
+/// Generate an intensity image from the camera's perspective
+fn generate_intensity_image(
+    camera: &EventCamera,
+    camera_transform: &GlobalTransform,
+    physics_world: &mut PhysicsWorld,
+    lights: &Query<(&PointLight, &GlobalTransform), Without<EventCamera>>,
+) -> Vec<f32> {
+    let width = camera.resolution.0;
+    let height = camera.resolution.1;
+    let mut intensities = vec![0.0; camera.pixel_count()];
+
+    // Get camera pose
+    let camera_pos = camera_transform.translation();
+    let camera_rot = camera_transform.to_scale_rotation_translation().1;
+
+    // Convert to nalgebra types
+    let ray_origin = point![camera_pos.x, camera_pos.y, camera_pos.z];
+    let rotation = nalgebra::UnitQuaternion::new_normalize(nalgebra::Quaternion::new(
+        camera_rot.w,
+        camera_rot.x,
+        camera_rot.y,
+        camera_rot.z,
+    ));
+
+    // Calculate field of view parameters
+    let fov_rad = camera.fov.to_radians();
+    let aspect_ratio = width as f32 / height as f32;
+    let half_fov_tan = (fov_rad / 2.0).tan();
+
+    // Collect light sources for shading
+    let light_sources: Vec<(Vec3, f32)> = lights
+        .iter()
+        .map(|(light, transform)| (transform.translation(), light.intensity))
+        .collect();
+
+    // Cast rays for each pixel to determine intensity
+    for y in 0..height {
+        for x in 0..width {
+            // Calculate normalized device coordinates (-1 to 1)
+            let ndc_x = (2.0 * x as f32 / width as f32) - 1.0;
+            let ndc_y = 1.0 - (2.0 * y as f32 / height as f32); // Flip Y
+
+            // Calculate ray direction in camera space
+            let camera_dir = nalgebra::Vector3::new(
+                ndc_x * half_fov_tan * aspect_ratio,
+                ndc_y * half_fov_tan,
+                -1.0, // Looking down negative Z in camera space
+            );
+
+            // Transform to world space
+            let world_dir = rotation * camera_dir;
+            let ray_dir = nalgebra::Unit::new_normalize(world_dir);
+
+            // Create ray
+            let ray = Ray::new(ray_origin, ray_dir.into_inner());
+
+            // Cast ray to find what we hit
+            let intensity = if let Some((handle, toi)) = physics_world.query_pipeline.cast_ray(
+                &physics_world.rigid_body_set,
+                &physics_world.collider_set,
+                &ray,
+                camera.far,
+                true,
+                QueryFilter::default().exclude_sensors(),
+            ) {
+                // We hit something - calculate intensity based on lighting
+                let hit_point = ray.point_at(toi);
+                let hit_pos = Vec3::new(hit_point.x, hit_point.y, hit_point.z);
+
+                // Get surface normal at hit point (approximation)
+                let normal = if let Some(collider) = physics_world.collider_set.get(handle) {
+                    // Cast ray with normal to get surface normal
+                    if let Some(intersection) = collider.shape().cast_ray_and_get_normal(
+                        &nalgebra::Isometry3::identity(),
+                        &ray,
+                        camera.far,
+                        true,
+                    ) {
+                        Vec3::new(intersection.normal.x, intersection.normal.y, intersection.normal.z)
+                    } else {
+                        // Fallback: use ray direction inverted as rough approximation
+                        Vec3::new(-ray_dir.x, -ray_dir.y, -ray_dir.z)
+                    }
+                } else {
+                    Vec3::new(-ray_dir.x, -ray_dir.y, -ray_dir.z)
+                };
+
+                // Calculate lighting intensity using Lambertian shading
+                let mut total_intensity = 0.1; // Ambient light
+
+                for (light_pos, light_intensity) in &light_sources {
+                    // Direction from hit point to light
+                    let to_light = (*light_pos - hit_pos).normalize();
+
+                    // Check if light is visible (shadow ray)
+                    let shadow_ray_origin = point![hit_pos.x, hit_pos.y, hit_pos.z];
+                    let shadow_ray_dir = nalgebra::Vector3::new(to_light.x, to_light.y, to_light.z);
+                    let shadow_ray = Ray::new(shadow_ray_origin, shadow_ray_dir);
+
+                    let light_distance = (*light_pos - hit_pos).length();
+
+                    // Check for occlusion
+                    let occluded = physics_world.query_pipeline.cast_ray(
+                        &physics_world.rigid_body_set,
+                        &physics_world.collider_set,
+                        &shadow_ray,
+                        light_distance * 0.99, // Slightly less to avoid self-intersection
+                        true,
+                        QueryFilter::default().exclude_sensors(),
+                    ).is_some();
+
+                    if !occluded {
+                        // Lambertian shading
+                        let dot_product = normal.dot(to_light).max(0.0);
+                        let distance_falloff = 1.0 / (1.0 + light_distance * light_distance);
+                        total_intensity += dot_product * light_intensity * distance_falloff;
+                    }
+                }
+
+                // Clamp intensity to [0, 1]
+                total_intensity.min(1.0)
+            } else {
+                // No hit - background intensity
+                0.05
+            };
+
+            let idx = (y * width + x) as usize;
+            intensities[idx] = intensity;
+        }
+    }
+
+    intensities
 }
 
 #[cfg(test)]

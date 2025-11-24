@@ -34,13 +34,18 @@ impl NoiseModel {
             return value;
         }
 
-        // If std_dev is 0, only apply bias/mean
-        if self.std_dev == 0.0 {
+        // If std_dev is 0 or negative, only apply bias/mean
+        if self.std_dev <= 0.0 {
             return value + self.mean;
         }
 
         let mut rng = rand::thread_rng();
-        let normal = Normal::new(self.mean, self.std_dev).unwrap();
+        // Normal::new returns an error if std_dev is not finite or is negative
+        // We already check for <= 0 above, so this should be safe, but handle error anyway
+        let normal = match Normal::new(self.mean, self.std_dev) {
+            Ok(n) => n,
+            Err(_) => return value + self.mean,  // Fall back to just applying mean
+        };
         value + normal.sample(&mut rng)
     }
 

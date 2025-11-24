@@ -3476,3 +3476,564 @@ fn get_active_topics() -> Result<Vec<TopicInfo>> {
             .collect())
     }
 }
+
+// ============================================================================
+// TUI Dashboard Unit Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ========================================================================
+    // Tab Navigation Tests
+    // ========================================================================
+
+    #[test]
+    fn test_tab_as_str() {
+        assert_eq!(Tab::Overview.as_str(), "Overview");
+        assert_eq!(Tab::Nodes.as_str(), "Nodes");
+        assert_eq!(Tab::Topics.as_str(), "Topics");
+        assert_eq!(Tab::Graph.as_str(), "Graph");
+        assert_eq!(Tab::Packages.as_str(), "Packages");
+        assert_eq!(Tab::Parameters.as_str(), "Params");
+    }
+
+    #[test]
+    fn test_tab_all_returns_all_tabs() {
+        let tabs = Tab::all();
+        assert_eq!(tabs.len(), 6);
+        assert!(tabs.contains(&Tab::Overview));
+        assert!(tabs.contains(&Tab::Nodes));
+        assert!(tabs.contains(&Tab::Topics));
+        assert!(tabs.contains(&Tab::Graph));
+        assert!(tabs.contains(&Tab::Packages));
+        assert!(tabs.contains(&Tab::Parameters));
+    }
+
+    // ========================================================================
+    // TuiDashboard State Tests
+    // ========================================================================
+
+    #[test]
+    fn test_tui_dashboard_new_defaults() {
+        let dashboard = TuiDashboard::new();
+
+        // Check initial state
+        assert_eq!(dashboard.active_tab, Tab::Overview);
+        assert_eq!(dashboard.selected_index, 0);
+        assert_eq!(dashboard.scroll_offset, 0);
+        assert!(!dashboard.paused);
+        assert!(!dashboard.show_help);
+        assert!(!dashboard.show_log_panel);
+        assert!(dashboard.panel_target.is_none());
+        assert_eq!(dashboard.param_edit_mode, ParamEditMode::None);
+        assert_eq!(dashboard.package_view_mode, PackageViewMode::List);
+        assert_eq!(dashboard.package_panel_focus, PackagePanelFocus::LocalWorkspaces);
+        assert_eq!(dashboard.overview_panel_focus, OverviewPanelFocus::Nodes);
+        assert_eq!(dashboard.graph_zoom, 1.0);
+        assert_eq!(dashboard.graph_offset_x, 0);
+        assert_eq!(dashboard.graph_offset_y, 0);
+    }
+
+    #[test]
+    fn test_tui_dashboard_default_impl() {
+        let dashboard1 = TuiDashboard::new();
+        let dashboard2 = TuiDashboard::default();
+
+        // Both should have same initial state
+        assert_eq!(dashboard1.active_tab, dashboard2.active_tab);
+        assert_eq!(dashboard1.selected_index, dashboard2.selected_index);
+        assert_eq!(dashboard1.paused, dashboard2.paused);
+    }
+
+    // ========================================================================
+    // Tab Navigation Logic Tests
+    // ========================================================================
+
+    #[test]
+    fn test_next_tab_cycles_through_all() {
+        let mut dashboard = TuiDashboard::new();
+        assert_eq!(dashboard.active_tab, Tab::Overview);
+
+        dashboard.next_tab();
+        assert_eq!(dashboard.active_tab, Tab::Nodes);
+
+        dashboard.next_tab();
+        assert_eq!(dashboard.active_tab, Tab::Topics);
+
+        dashboard.next_tab();
+        assert_eq!(dashboard.active_tab, Tab::Graph);
+
+        dashboard.next_tab();
+        assert_eq!(dashboard.active_tab, Tab::Packages);
+
+        dashboard.next_tab();
+        assert_eq!(dashboard.active_tab, Tab::Parameters);
+
+        // Should wrap around
+        dashboard.next_tab();
+        assert_eq!(dashboard.active_tab, Tab::Overview);
+    }
+
+    #[test]
+    fn test_prev_tab_cycles_backwards() {
+        let mut dashboard = TuiDashboard::new();
+        assert_eq!(dashboard.active_tab, Tab::Overview);
+
+        // Should wrap to Parameters
+        dashboard.prev_tab();
+        assert_eq!(dashboard.active_tab, Tab::Parameters);
+
+        dashboard.prev_tab();
+        assert_eq!(dashboard.active_tab, Tab::Packages);
+
+        dashboard.prev_tab();
+        assert_eq!(dashboard.active_tab, Tab::Graph);
+    }
+
+    // ========================================================================
+    // Selection Navigation Tests
+    // ========================================================================
+
+    #[test]
+    fn test_select_next_increments_index() {
+        let mut dashboard = TuiDashboard::new();
+        dashboard.nodes = vec![
+            NodeStatus {
+                name: "node1".to_string(),
+                status: "running".to_string(),
+                priority: 1,
+                process_id: 1234,
+                cpu_usage: 10.0,
+                memory_usage: 1024,
+                publishers: vec![],
+                subscribers: vec![],
+            },
+            NodeStatus {
+                name: "node2".to_string(),
+                status: "running".to_string(),
+                priority: 2,
+                process_id: 5678,
+                cpu_usage: 20.0,
+                memory_usage: 2048,
+                publishers: vec![],
+                subscribers: vec![],
+            },
+        ];
+
+        assert_eq!(dashboard.selected_index, 0);
+        dashboard.select_next();
+        assert_eq!(dashboard.selected_index, 1);
+    }
+
+    #[test]
+    fn test_select_prev_decrements_index() {
+        let mut dashboard = TuiDashboard::new();
+        dashboard.selected_index = 2;
+        dashboard.nodes = vec![
+            NodeStatus {
+                name: "node1".to_string(),
+                status: "running".to_string(),
+                priority: 1,
+                process_id: 1234,
+                cpu_usage: 10.0,
+                memory_usage: 1024,
+                publishers: vec![],
+                subscribers: vec![],
+            },
+            NodeStatus {
+                name: "node2".to_string(),
+                status: "running".to_string(),
+                priority: 2,
+                process_id: 5678,
+                cpu_usage: 20.0,
+                memory_usage: 2048,
+                publishers: vec![],
+                subscribers: vec![],
+            },
+            NodeStatus {
+                name: "node3".to_string(),
+                status: "running".to_string(),
+                priority: 3,
+                process_id: 9999,
+                cpu_usage: 30.0,
+                memory_usage: 3072,
+                publishers: vec![],
+                subscribers: vec![],
+            },
+        ];
+
+        dashboard.select_prev();
+        assert_eq!(dashboard.selected_index, 1);
+        dashboard.select_prev();
+        assert_eq!(dashboard.selected_index, 0);
+    }
+
+    // ========================================================================
+    // Pause Toggle Tests
+    // ========================================================================
+
+    #[test]
+    fn test_pause_toggle() {
+        let mut dashboard = TuiDashboard::new();
+        assert!(!dashboard.paused);
+
+        dashboard.paused = !dashboard.paused;
+        assert!(dashboard.paused);
+
+        dashboard.paused = !dashboard.paused;
+        assert!(!dashboard.paused);
+    }
+
+    // ========================================================================
+    // Log Panel Tests
+    // ========================================================================
+
+    #[test]
+    fn test_log_panel_toggle() {
+        let mut dashboard = TuiDashboard::new();
+        assert!(!dashboard.show_log_panel);
+        assert!(dashboard.panel_target.is_none());
+
+        // Simulate opening log panel
+        dashboard.show_log_panel = true;
+        dashboard.panel_target = Some(LogPanelTarget::Node("test_node".to_string()));
+
+        assert!(dashboard.show_log_panel);
+        assert!(dashboard.panel_target.is_some());
+
+        // Check target type
+        match &dashboard.panel_target {
+            Some(LogPanelTarget::Node(name)) => assert_eq!(name, "test_node"),
+            _ => panic!("Expected Node target"),
+        }
+    }
+
+    #[test]
+    fn test_log_panel_target_topic() {
+        let mut dashboard = TuiDashboard::new();
+        dashboard.show_log_panel = true;
+        dashboard.panel_target = Some(LogPanelTarget::Topic("sensors/lidar".to_string()));
+
+        match &dashboard.panel_target {
+            Some(LogPanelTarget::Topic(name)) => assert_eq!(name, "sensors/lidar"),
+            _ => panic!("Expected Topic target"),
+        }
+    }
+
+    // ========================================================================
+    // Parameter Edit Mode Tests
+    // ========================================================================
+
+    #[test]
+    fn test_param_edit_modes() {
+        let mut dashboard = TuiDashboard::new();
+        assert_eq!(dashboard.param_edit_mode, ParamEditMode::None);
+
+        // Test Add mode
+        dashboard.param_edit_mode = ParamEditMode::Add;
+        assert_eq!(dashboard.param_edit_mode, ParamEditMode::Add);
+
+        // Test Edit mode
+        dashboard.param_edit_mode = ParamEditMode::Edit("my_key".to_string());
+        match &dashboard.param_edit_mode {
+            ParamEditMode::Edit(key) => assert_eq!(key, "my_key"),
+            _ => panic!("Expected Edit mode"),
+        }
+
+        // Test Delete mode
+        dashboard.param_edit_mode = ParamEditMode::Delete("delete_key".to_string());
+        match &dashboard.param_edit_mode {
+            ParamEditMode::Delete(key) => assert_eq!(key, "delete_key"),
+            _ => panic!("Expected Delete mode"),
+        }
+    }
+
+    #[test]
+    fn test_param_input_focus() {
+        let mut dashboard = TuiDashboard::new();
+        assert_eq!(dashboard.param_input_focus, ParamInputFocus::Key);
+
+        dashboard.param_input_focus = ParamInputFocus::Value;
+        assert_eq!(dashboard.param_input_focus, ParamInputFocus::Value);
+    }
+
+    // ========================================================================
+    // Package View Mode Tests
+    // ========================================================================
+
+    #[test]
+    fn test_package_view_modes() {
+        let mut dashboard = TuiDashboard::new();
+        assert_eq!(dashboard.package_view_mode, PackageViewMode::List);
+
+        dashboard.package_view_mode = PackageViewMode::WorkspaceDetails;
+        assert_eq!(dashboard.package_view_mode, PackageViewMode::WorkspaceDetails);
+    }
+
+    #[test]
+    fn test_package_panel_focus() {
+        let mut dashboard = TuiDashboard::new();
+        assert_eq!(dashboard.package_panel_focus, PackagePanelFocus::LocalWorkspaces);
+
+        dashboard.package_panel_focus = PackagePanelFocus::GlobalPackages;
+        assert_eq!(dashboard.package_panel_focus, PackagePanelFocus::GlobalPackages);
+    }
+
+    // ========================================================================
+    // Overview Panel Focus Tests
+    // ========================================================================
+
+    #[test]
+    fn test_overview_panel_focus() {
+        let mut dashboard = TuiDashboard::new();
+        assert_eq!(dashboard.overview_panel_focus, OverviewPanelFocus::Nodes);
+
+        dashboard.overview_panel_focus = OverviewPanelFocus::Topics;
+        assert_eq!(dashboard.overview_panel_focus, OverviewPanelFocus::Topics);
+    }
+
+    // ========================================================================
+    // Graph State Tests
+    // ========================================================================
+
+    #[test]
+    fn test_graph_zoom_bounds() {
+        let mut dashboard = TuiDashboard::new();
+        assert_eq!(dashboard.graph_zoom, 1.0);
+
+        // Simulate zoom in
+        dashboard.graph_zoom = 2.0;
+        assert_eq!(dashboard.graph_zoom, 2.0);
+
+        // Simulate zoom out
+        dashboard.graph_zoom = 0.5;
+        assert_eq!(dashboard.graph_zoom, 0.5);
+    }
+
+    #[test]
+    fn test_graph_offset() {
+        let mut dashboard = TuiDashboard::new();
+        assert_eq!(dashboard.graph_offset_x, 0);
+        assert_eq!(dashboard.graph_offset_y, 0);
+
+        // Simulate panning
+        dashboard.graph_offset_x = 10;
+        dashboard.graph_offset_y = -5;
+
+        assert_eq!(dashboard.graph_offset_x, 10);
+        assert_eq!(dashboard.graph_offset_y, -5);
+    }
+
+    #[test]
+    fn test_graph_layout_default() {
+        let dashboard = TuiDashboard::new();
+        assert_eq!(dashboard.graph_layout, GraphLayout::Hierarchical);
+    }
+
+    // ========================================================================
+    // Data Model Tests
+    // ========================================================================
+
+    #[test]
+    fn test_node_status_creation() {
+        let node = NodeStatus {
+            name: "test_node".to_string(),
+            status: "running".to_string(),
+            priority: 1,
+            process_id: 12345,
+            cpu_usage: 25.5,
+            memory_usage: 1024 * 1024,
+            publishers: vec!["topic1".to_string(), "topic2".to_string()],
+            subscribers: vec!["topic3".to_string()],
+        };
+
+        assert_eq!(node.name, "test_node");
+        assert_eq!(node.status, "running");
+        assert_eq!(node.priority, 1);
+        assert_eq!(node.process_id, 12345);
+        assert!((node.cpu_usage - 25.5).abs() < 0.001);
+        assert_eq!(node.memory_usage, 1024 * 1024);
+        assert_eq!(node.publishers.len(), 2);
+        assert_eq!(node.subscribers.len(), 1);
+    }
+
+    #[test]
+    fn test_topic_info_creation() {
+        let topic = TopicInfo {
+            name: "sensors/lidar".to_string(),
+            msg_type: "LidarScan".to_string(),
+            publishers: 2,
+            subscribers: 3,
+            rate: 10.0,
+            publisher_nodes: vec!["node1".to_string(), "node2".to_string()],
+            subscriber_nodes: vec!["node3".to_string(), "node4".to_string(), "node5".to_string()],
+        };
+
+        assert_eq!(topic.name, "sensors/lidar");
+        assert_eq!(topic.msg_type, "LidarScan");
+        assert_eq!(topic.publishers, 2);
+        assert_eq!(topic.subscribers, 3);
+        assert!((topic.rate - 10.0).abs() < 0.001);
+        assert_eq!(topic.publisher_nodes.len(), 2);
+        assert_eq!(topic.subscriber_nodes.len(), 3);
+    }
+
+    #[test]
+    fn test_workspace_data_creation() {
+        let workspace = WorkspaceData {
+            name: "my_robot".to_string(),
+            path: "/home/user/my_robot".to_string(),
+            packages: vec![PackageData {
+                name: "controller".to_string(),
+                version: "1.0.0".to_string(),
+                installed_packages: vec![("lidar_driver".to_string(), "0.5.0".to_string())],
+            }],
+            dependencies: vec![DependencyData {
+                name: "slam".to_string(),
+                declared_version: "2.0.0".to_string(),
+                status: DependencyStatus::Missing,
+            }],
+            is_current: true,
+        };
+
+        assert_eq!(workspace.name, "my_robot");
+        assert!(workspace.is_current);
+        assert_eq!(workspace.packages.len(), 1);
+        assert_eq!(workspace.dependencies.len(), 1);
+    }
+
+    #[test]
+    fn test_dependency_status() {
+        assert_ne!(DependencyStatus::Missing, DependencyStatus::Installed);
+
+        let dep = DependencyData {
+            name: "test_dep".to_string(),
+            declared_version: "1.0.0".to_string(),
+            status: DependencyStatus::Missing,
+        };
+        assert_eq!(dep.status, DependencyStatus::Missing);
+    }
+
+    // ========================================================================
+    // Workspace Cache Tests
+    // ========================================================================
+
+    #[test]
+    fn test_workspace_cache_initialization() {
+        let dashboard = TuiDashboard::new();
+
+        // Cache should be empty initially
+        assert!(dashboard.workspace_cache.is_empty());
+
+        // Cache time should be set to force initial load
+        assert!(dashboard.workspace_cache_time.elapsed().as_secs() >= 5);
+    }
+
+    // ========================================================================
+    // Graph Node and Edge Tests
+    // ========================================================================
+
+    #[test]
+    fn test_tui_graph_node_creation() {
+        let node = TuiGraphNode {
+            id: "node1".to_string(),
+            label: "Node 1".to_string(),
+            node_type: TuiNodeType::Process,
+            x: 100,
+            y: 200,
+            pid: Some(1234),
+            active: true,
+        };
+
+        assert_eq!(node.id, "node1");
+        assert_eq!(node.label, "Node 1");
+        assert_eq!(node.node_type, TuiNodeType::Process);
+        assert_eq!(node.x, 100);
+        assert_eq!(node.y, 200);
+        assert_eq!(node.pid, Some(1234));
+        assert!(node.active);
+    }
+
+    #[test]
+    fn test_tui_graph_edge_creation() {
+        let edge = TuiGraphEdge {
+            from: "node1".to_string(),
+            to: "topic1".to_string(),
+            edge_type: TuiEdgeType::Publish,
+            active: true,
+        };
+
+        assert_eq!(edge.from, "node1");
+        assert_eq!(edge.to, "topic1");
+        assert_eq!(edge.edge_type, TuiEdgeType::Publish);
+        assert!(edge.active);
+    }
+
+    #[test]
+    fn test_tui_node_types() {
+        assert_ne!(TuiNodeType::Process, TuiNodeType::Topic);
+
+        let process_node = TuiGraphNode {
+            id: "p1".to_string(),
+            label: "Process".to_string(),
+            node_type: TuiNodeType::Process,
+            x: 0,
+            y: 0,
+            pid: Some(1000),
+            active: true,
+        };
+
+        let topic_node = TuiGraphNode {
+            id: "t1".to_string(),
+            label: "Topic".to_string(),
+            node_type: TuiNodeType::Topic,
+            x: 0,
+            y: 0,
+            pid: None,
+            active: true,
+        };
+
+        assert_eq!(process_node.node_type, TuiNodeType::Process);
+        assert_eq!(topic_node.node_type, TuiNodeType::Topic);
+    }
+
+    #[test]
+    fn test_tui_edge_types() {
+        assert_ne!(TuiEdgeType::Publish, TuiEdgeType::Subscribe);
+
+        let pub_edge = TuiGraphEdge {
+            from: "a".to_string(),
+            to: "b".to_string(),
+            edge_type: TuiEdgeType::Publish,
+            active: true,
+        };
+
+        let sub_edge = TuiGraphEdge {
+            from: "c".to_string(),
+            to: "d".to_string(),
+            edge_type: TuiEdgeType::Subscribe,
+            active: false,
+        };
+
+        assert_eq!(pub_edge.edge_type, TuiEdgeType::Publish);
+        assert_eq!(sub_edge.edge_type, TuiEdgeType::Subscribe);
+    }
+
+    #[test]
+    fn test_graph_node_inactive() {
+        let inactive_node = TuiGraphNode {
+            id: "inactive".to_string(),
+            label: "Inactive Node".to_string(),
+            node_type: TuiNodeType::Process,
+            x: 50,
+            y: 50,
+            pid: None,
+            active: false,
+        };
+
+        assert!(!inactive_node.active);
+        assert!(inactive_node.pid.is_none());
+    }
+}

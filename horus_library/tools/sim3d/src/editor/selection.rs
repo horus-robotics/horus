@@ -1,6 +1,9 @@
 //! Entity selection system for the editor
 
+use crate::physics::world::PhysicsWorld;
 use bevy::prelude::*;
+use bevy::window::{PrimaryWindow, Window};
+use rapier3d::prelude::*;
 use std::collections::HashSet;
 
 /// Marker component for selectable entities
@@ -115,9 +118,11 @@ pub fn selection_system(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut selection: ResMut<Selection>,
     mut commands: Commands,
+    mut physics_world: ResMut<PhysicsWorld>,
+    windows: Query<&Window, With<PrimaryWindow>>,
+    camera_query: Query<(&Camera, &GlobalTransform)>,
     selectable_query: Query<Entity, With<Selectable>>,
     selected_query: Query<Entity, With<Selected>>,
-    // TODO: Add raycasting for mouse picking
 ) {
     // Update Selected components to match Selection resource
     for entity in selected_query.iter() {
@@ -144,12 +149,123 @@ pub fn selection_system(
         }
     }
 
-    // TODO: Implement mouse picking with raycasting
-    // This would require:
-    // 1. Camera and viewport info
-    // 2. Raycast into scene
-    // 3. Find hit entity
-    // 4. Handle Shift/Ctrl for multi-select
+    // Implement mouse picking with raycasting
+    if mouse_button.just_pressed(MouseButton::Left) {
+        if let Some(picked_entity) = perform_mouse_picking(
+            &windows,
+            &camera_query,
+            &mut physics_world,
+            &selectable_query,
+        ) {
+            // Handle selection modifiers
+            if keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight) {
+                // Add to selection
+                selection.add(picked_entity);
+            } else if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
+                // Toggle selection
+                selection.toggle(picked_entity);
+            } else {
+                // Replace selection
+                selection.select(picked_entity);
+            }
+        } else if !keyboard.pressed(KeyCode::ShiftLeft) && !keyboard.pressed(KeyCode::ControlLeft) {
+            // Clear selection if clicking on empty space (and not holding modifiers)
+            selection.clear();
+        }
+    }
+}
+
+/// Perform raycasting from mouse position to find selectable entity
+fn perform_mouse_picking(
+    windows: &Query<&Window, With<PrimaryWindow>>,
+    camera_query: &Query<(&Camera, &GlobalTransform)>,
+    physics_world: &mut PhysicsWorld,
+    selectable_query: &Query<Entity, With<Selectable>>,
+) -> Option<Entity> {
+    // Get the primary window
+    let window = windows.get_single().ok()?;
+
+    // Get mouse position
+    let cursor_position = window.cursor_position()?;
+
+    // Find the primary camera
+    let (camera, camera_transform) = camera_query.iter().next()?;
+
+    // Convert screen coordinates to world ray
+    let ray = screen_to_world_ray(
+        cursor_position,
+        camera,
+        camera_transform,
+        window.resolution.width(),
+        window.resolution.height(),
+    )?;
+
+    // Perform raycast
+    if let Some((handle, _toi)) = physics_world.query_pipeline.cast_ray(
+        &physics_world.rigid_body_set,
+        &physics_world.collider_set,
+        &ray,
+        1000.0, // Max distance
+        true,
+        QueryFilter::default().exclude_sensors(),
+    ) {
+        // Get the collider that was hit
+        if let Some(collider) = physics_world.collider_set.get(handle) {
+            // Get the rigid body associated with this collider
+            if let Some(parent_handle) = collider.parent() {
+                // Get the entity from the rigid body
+                if let Some(entity) = physics_world.get_entity_from_handle(parent_handle) {
+                    // Check if entity is selectable
+                    if selectable_query.contains(entity) {
+                        return Some(entity);
+                    }
+                }
+            }
+        }
+    }
+
+    None
+}
+
+/// Convert screen coordinates to a world space ray
+fn screen_to_world_ray(
+    cursor_position: Vec2,
+    camera: &Camera,
+    camera_transform: &GlobalTransform,
+    window_width: f32,
+    window_height: f32,
+) -> Option<Ray> {
+    // Get the camera's projection matrix inverse
+    let projection_matrix = camera.clip_from_view();
+    let inverse_projection = projection_matrix.inverse();
+
+    // Convert screen coordinates to normalized device coordinates (-1 to 1)
+    let ndc_x = (2.0 * cursor_position.x / window_width) - 1.0;
+    let ndc_y = 1.0 - (2.0 * cursor_position.y / window_height); // Flip Y
+
+    // Convert NDC to view space
+    let ndc_near = Vec4::new(ndc_x, ndc_y, -1.0, 1.0);
+    let ndc_far = Vec4::new(ndc_x, ndc_y, 1.0, 1.0);
+
+    let view_near = inverse_projection * ndc_near;
+    let view_far = inverse_projection * ndc_far;
+
+    // Perspective divide
+    let view_near = view_near.truncate() / view_near.w;
+    let view_far = view_far.truncate() / view_far.w;
+
+    // Convert view space to world space
+    let world_near = camera_transform.transform_point(view_near);
+    let world_far = camera_transform.transform_point(view_far);
+
+    // Create ray from camera position to far point
+    let ray_origin = point![world_near.x, world_near.y, world_near.z];
+    let ray_direction = (world_far - world_near).normalize();
+
+    Some(Ray::new(
+        ray_origin,
+        vector![ray_direction.x, ray_direction.y, ray_direction.z],
+    ))
 }
 
 #[cfg(test)]

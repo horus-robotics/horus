@@ -33,6 +33,7 @@ wheels/
 *.whl
 .pytest_cache/
 .mypy_cache/
+.coverage
 .dmypy.json
 dmypy.json
 

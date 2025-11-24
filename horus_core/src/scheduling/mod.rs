@@ -34,6 +34,15 @@ mod fault_tolerance;
 mod intelligence;
 pub mod jit;
 
+// Runtime OS-level features
+pub mod runtime;
+
+// Fault tolerance and monitoring
+pub mod blackbox;
+pub mod checkpoint;
+pub mod redundancy;
+pub mod telemetry;
+
 // Expose async_io module for AsyncNode
 pub mod async_io {
     pub use super::executors::async_io::AsyncNode;
@@ -42,3 +51,15 @@ pub mod async_io {
 pub use config::{ConfigValue, ExecutionMode, RobotPreset, SchedulerConfig};
 pub use safety_monitor::{SafetyMonitor, SafetyState, SafetyStats, WCETEnforcer, Watchdog};
 pub use scheduler::Scheduler;
+
+// Re-export runtime features
+pub use runtime::{
+    apply_rt_optimizations, get_core_count, get_max_rt_priority, get_numa_node_count,
+    lock_all_memory, set_realtime_priority, set_thread_affinity,
+};
+
+// Re-export fault tolerance
+pub use blackbox::{BlackBox, BlackBoxEvent};
+pub use checkpoint::{Checkpoint, CheckpointManager};
+pub use redundancy::{RedundancyManager, VoteResult, VotingStrategy};
+pub use telemetry::{TelemetryEndpoint, TelemetryManager};

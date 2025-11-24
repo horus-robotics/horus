@@ -93,6 +93,9 @@ pub struct CanBusNode {
     bus_load_percent: f32,
     last_stats_time: u64,
     frame_count_window: u64,
+
+    // Timing state (moved from static mut for thread safety)
+    last_status_log: u64,
 }
 
 /// CAN ID filter configuration
@@ -169,6 +172,7 @@ impl CanBusNode {
             bus_load_percent: 0.0,
             last_stats_time: 0,
             frame_count_window: 0,
+            last_status_log: 0,
         })
     }
 
@@ -584,7 +588,7 @@ impl CanBusNode {
         self.bus_state = BusState::ErrorActive;
         self.last_stats_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_nanos() as u64;
     }
 
@@ -656,7 +660,7 @@ impl CanBusNode {
     fn raw_to_horus_frame(&self, raw: &[u8; 16]) -> CanFrame {
         let current_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_nanos() as u64;
 
         // Parse CAN ID from bytes 0-3
@@ -730,7 +734,7 @@ impl CanBusNode {
                     // Convert inline to avoid borrow checker issues
                     let current_time = SystemTime::now()
                         .duration_since(UNIX_EPOCH)
-                        .unwrap()
+                        .unwrap_or_default()
                         .as_nanos() as u64;
 
                     let id_with_flags = u32::from_ne_bytes([
@@ -791,7 +795,7 @@ impl Node for CanBusNode {
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let current_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_nanos() as u64;
 
         // Start interface if not started
@@ -839,20 +843,17 @@ impl Node for CanBusNode {
         self.update_statistics(current_time);
 
         // Periodic status logging
-        static mut LAST_STATUS_LOG: u64 = 0;
         let status_interval = 10_000_000_000; // 10 seconds
-        unsafe {
-            if current_time - LAST_STATUS_LOG > status_interval {
-                let (tx, rx, err, fps, load) = self.get_statistics();
-                let (tx_err, rx_err) = self.get_error_counters();
-                ctx.log_info(&format!(
-                    "CAN {}{}: TX={} RX={} ERR={} | {:.1} fps, {:.1}% load | State={:?} TxErr={} RxErr={}",
-                    self.interface_name,
-                    if self.hardware_enabled { " (HW)" } else { " (SIM)" },
-                    tx, rx, err, fps, load, self.bus_state, tx_err, rx_err
-                ));
-                LAST_STATUS_LOG = current_time;
-            }
+        if current_time - self.last_status_log > status_interval {
+            let (tx, rx, err, fps, load) = self.get_statistics();
+            let (tx_err, rx_err) = self.get_error_counters();
+            ctx.log_info(&format!(
+                "CAN {}{}: TX={} RX={} ERR={} | {:.1} fps, {:.1}% load | State={:?} TxErr={} RxErr={}",
+                self.interface_name,
+                if self.hardware_enabled { " (HW)" } else { " (SIM)" },
+                tx, rx, err, fps, load, self.bus_state, tx_err, rx_err
+            ));
+            self.last_status_log = current_time;
         }
     }
 }

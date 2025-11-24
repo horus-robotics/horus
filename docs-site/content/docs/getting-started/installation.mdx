@@ -10,26 +10,27 @@ Get HORUS up and running in 5 minutes. We'll install Rust, build HORUS, and veri
 
 ## Platform Support
 
-HORUS requires Linux with `/dev/shm` support:
+HORUS has **native cross-platform support**:
 
-| Platform | Status | Notes |
-|----------|--------|-------|
-| **Ubuntu 20.04+** | -Fully Supported | Recommended for production |
-| **Ubuntu 22.04+** | -Fully Supported | Best performance |
-| **Debian 11+** | -Supported | Tested and working |
-| **Fedora 36+** | -Supported | Use dnf for packages |
-| **Arch Linux** | -Supported | Community maintained |
-| **Raspberry Pi** | -Supported | ARM64 tested on Ubuntu |
-| **Windows** | -Via WSL 2 | Full Linux compatibility |
-| **macOS** | -Via Docker/VM | Use Docker or Linux VM |
-| **Other OS** | -Via Docker/VM | Any OS that runs Linux containers |
+| Platform | Status | Shared Memory Path | Notes |
+|----------|--------|-------------------|-------|
+| **Ubuntu 20.04+** | ✅ Native | `/dev/shm/horus/` | Recommended for production |
+| **Ubuntu 22.04+** | ✅ Native | `/dev/shm/horus/` | Best performance |
+| **Debian 11+** | ✅ Native | `/dev/shm/horus/` | Tested and working |
+| **Fedora 36+** | ✅ Native | `/dev/shm/horus/` | Use dnf for packages |
+| **Arch Linux** | ✅ Native | `/dev/shm/horus/` | Community maintained |
+| **Raspberry Pi** | ✅ Native | `/dev/shm/horus/` | ARM64 tested on Ubuntu |
+| **macOS** | ✅ Native | `/tmp/horus/` | tmpfs-backed, full support |
+| **Windows** | ✅ Native | `%TEMP%\horus\` | Native Windows support |
+| **WSL 2** | ✅ Native | `/dev/shm/horus/` | Linux mode in WSL |
 
 ## Prerequisites
 
 **Required:**
-- **Operating System**: Linux (Ubuntu 20.04+ recommended)
-  - For **Windows**: Use WSL 2 (see instructions below)
-  - For **macOS**: Use Docker or Linux VM (see instructions below)
+- **Operating System**: Linux, macOS, or Windows
+  - **Linux**: Ubuntu 20.04+ recommended (fastest shared memory)
+  - **macOS**: Native support using `/tmp/horus/`
+  - **Windows**: Native support using `%TEMP%\horus\`
 - **Rust 1.70+**: We'll install this in Step 1
 - **Build Tools & System Libraries**: C compiler, pkg-config, and all required development libraries
   ```bash
@@ -239,10 +240,10 @@ Summary:
 
 **If there are issues:**
 - [!] **Warnings** - Minor issues, HORUS will work but review suggestions
-- [x] **Errors** - Critical problems, run `./recovery_install.sh` to fix
+- [x] **Errors** - Critical problems, see [Manual Recovery](/troubleshooting#manual-recovery)
 
 **Pro tip:** Run `./verify.sh` anytime you:
-- Update HORUS (`./update.sh`)
+- Update HORUS (`git pull && ./install.sh`)
 - Suspect installation problems
 - Want to check system health before deployment
 - Contribute to HORUS (ensures no warnings)
@@ -504,59 +505,92 @@ cargo build --release --features="gpio-hardware,i2c-hardware"
 
 See the [Hardware Nodes](/nodes/hardware) documentation for detailed usage examples.
 
-### Windows (WSL 2)
+### Windows (Native)
 
-HORUS requires Linux's `/dev/shm/`. Use WSL 2 for full compatibility:
+HORUS has **native Windows support** using `%TEMP%\horus\` for shared memory:
 
+```powershell
+# 1. Install Rust (using rustup-init.exe from rustup.rs)
+# Download and run: https://win.rustup.rs/x86_64
+
+# 2. Clone HORUS (in PowerShell or Git Bash)
+git clone https://github.com/softmata/horus.git
+cd horus
+
+# 3. Build HORUS
+cargo build --release
+
+# 4. Install CLI
+cargo install --path horus_cli
+```
+
+**Windows shared memory:**
+- Uses `%TEMP%\horus\` (typically `C:\Users\<user>\AppData\Local\Temp\horus\`)
+- Automatically created on first run
+- Cross-process communication works natively
+
+**Alternative: WSL 2** (if you prefer Linux environment)
 1. Open PowerShell as Administrator
 2. Run: `wsl --install`
 3. Restart your computer
-4. Follow the Linux installation steps inside WSL
+4. Follow Linux installation steps inside WSL
 
-**WSL gives you:**
-- Full Linux environment on Windows
-- Native `/dev/shm/` support
-- Same performance as native Linux
+### macOS (Native)
 
-### macOS (Docker or VM)
+HORUS has **native macOS support** using `/tmp/horus/` for shared memory:
 
-HORUS requires Linux's `/dev/shm/`. Choose one option:
+```bash
+# 1. Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
 
-**Option 1: Docker**
-- Install Docker Desktop for Mac
-- Run HORUS in any Linux container (Ubuntu, Debian, Fedora, etc.)
-- Ensure `/dev/shm/` is accessible inside the container
-- Follow Linux installation steps inside container
+# 2. Install Xcode Command Line Tools (if not already installed)
+xcode-select --install
 
-**Option 2: VMware/VirtualBox**
-- Install VMware Fusion, Parallels, or VirtualBox
-- Create a Linux VM (Ubuntu 22.04 recommended)
-- Follow Linux installation steps inside VM
+# 3. Clone and build HORUS
+git clone https://github.com/softmata/horus.git
+cd horus
+./install.sh
 
-**Option 3: Cloud Linux Instance**
-- Use AWS EC2, DigitalOcean, Linode, or any cloud provider
-- SSH into Linux instance
-- Follow Linux installation steps
+# 4. Verify installation
+horus --help
+```
 
-### Other Operating Systems
+**macOS shared memory:**
+- Uses `/tmp/horus/` (tmpfs-backed, fast)
+- Automatically created on first run
+- Same API as Linux - no code changes needed
 
-Any OS can run HORUS via Linux containers or VMs:
-- **Docker** - Lightweight, fast, works on any OS
-- **VMware/VirtualBox** - Full VM, traditional approach
-- **Cloud Linux** - Remote development, always accessible
+**Alternative options** (if native doesn't work for your use case):
+- **Docker** - Run HORUS in a Linux container
+- **VMware/Parallels** - Full Linux VM
+- **Cloud Linux** - Remote development on AWS/DigitalOcean
 
 ## Understanding Shared Memory
 
-HORUS uses `/dev/shm` for ultra-fast communication between components.
+HORUS uses platform-specific shared memory for ultra-fast communication between components:
+
+| Platform | Shared Memory Path | Notes |
+|----------|-------------------|-------|
+| Linux | `/dev/shm/horus/` | Native POSIX shm, fastest |
+| macOS | `/tmp/horus/` | tmpfs-backed |
+| Windows | `%TEMP%\horus\` | Temp directory |
 
 **Check available space:**
 ```bash
+# Linux
 df -h /dev/shm
+
+# macOS
+df -h /tmp
+
+# Windows (PowerShell)
+Get-PSDrive -Name $env:TEMP.Substring(0,1)
 ```
 
 You should have at least 256MB. Most systems have 1-2GB.
 
-**If you need more space (advanced):**
+**If you need more space (Linux only):**
 ```bash
 # Temporarily increase to 2GB
 sudo mount -o remount,size=2G /dev/shm
@@ -567,25 +601,21 @@ sudo mount -o remount,size=2G /dev/shm
 
 ## Updating HORUS
 
-To update to the latest version, use the smart update script:
+To update to the latest version:
 
 ```bash
 # Navigate to HORUS directory
 cd horus
 
-# Run the update script (handles git pull automatically)
-./update.sh
+# Pull latest changes and reinstall
+git pull
+./install.sh
 ```
 
-**The update script will:**
-- Check for uncommitted changes (offers to stash)
-- Fetch and show what's new from the repository
-- Ask permission before pulling
-- Only rebuild what changed (much faster than reinstalling)
-- Verify the update succeeded
-
-**Alternative: Full reinstall** (if update.sh has issues):
+**To preview changes before updating:**
 ```bash
+git fetch
+git log HEAD..@{u}  # See what's new
 git pull
 ./install.sh
 ```
@@ -606,13 +636,12 @@ cd horus
 1. Remove the `horus` CLI binary (`~/.cargo/bin/horus`)
 2. Remove all cached libraries (`~/.horus/cache/`)
 3. Ask if you want to remove `~/.horus/` (contains auth, config, registry data)
-4. Clean up shared memory files:
-   - `/dev/shm/horus/topics/` (Link communication)
-   - `/dev/shm/horus/heartbeats/` (Node monitoring)
-   - `/dev/shm/horus_logs` (Log buffer)
+4. Clean up shared memory files (platform-specific paths)
 5. Leave project-local `.horus/` directories untouched
 
 **Manual uninstall (if needed):**
+
+**Linux/macOS:**
 ```bash
 # Remove CLI tool
 cargo uninstall horus
@@ -624,35 +653,53 @@ rm -rf ~/.horus/
 rm -rf ~/horus/  # or wherever you cloned it
 
 # Clean up shared memory (optional - HORUS auto-cleans sessions)
+# Linux:
 rm -rf /dev/shm/horus/
-rm -f /dev/shm/horus_logs
+# macOS:
+rm -rf /tmp/horus/
+```
+
+**Windows (PowerShell):**
+```powershell
+# Remove CLI tool
+cargo uninstall horus
+
+# Remove global cache and config
+Remove-Item -Recurse -Force "$env:USERPROFILE\.horus"
+
+# Remove source code
+Remove-Item -Recurse -Force "$env:USERPROFILE\horus"  # or wherever you cloned it
+
+# Clean up shared memory (optional - HORUS auto-cleans sessions)
+Remove-Item -Recurse -Force "$env:TEMP\horus"
 ```
 
 ## Troubleshooting
 
-Having installation issues? Try the recovery installer first:
+Having installation issues? Try manual recovery:
 
 ```bash
-./recovery_install.sh
+# Navigate to HORUS source directory
+cd /path/to/HORUS
+
+# Clean and reinstall
+cargo clean
+rm -rf ~/.horus/cache
+./install.sh
+
+# Verify installation
+./verify.sh
 ```
 
-**The recovery installer will:**
-- [OK] Detect all missing system packages (now checks 15+ libraries!)
-- [OK] Show platform-specific install commands (auto-detects Raspberry Pi/Jetson)
-- [OK] Stop immediately with clear errors if packages are missing
-- [OK] Clean all build artifacts and caches
-- [OK] Fresh installation from scratch
-- [OK] Comprehensive verification
-
 **Common issues:**
-- **Missing packages**: The script now detects ALL required packages including X11, Wayland, graphics libraries
-- **Raspberry Pi**: Auto-detects and suggests GPIO/I2C packages
-- **Jetson Nano**: Auto-detects and suggests CUDA/JetPack packages
+- **Missing packages**: Install all required system dependencies (see above)
+- **Raspberry Pi**: Ensure GPIO/I2C packages are installed
+- **Jetson Nano**: Ensure CUDA/JetPack packages are installed
 
 See the **[Troubleshooting & Maintenance Guide](/troubleshooting)** for:
 - Common installation errors and detailed fixes
 - System dependency issues
-- Update and recovery scripts (`update.sh`, `verify.sh`, `recovery_install.sh`)
+- Verify script (`verify.sh`)
 - Platform-specific problems
 - 15+ solved issues with step-by-step solutions
 

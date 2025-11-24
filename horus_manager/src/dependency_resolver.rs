@@ -17,8 +17,14 @@ pub struct ResolvedDependency {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DependencySource {
-    Registry,                 // HORUS registry (default)
-    Path(std::path::PathBuf), // Local filesystem path
+    Registry,                    // HORUS registry (default)
+    Path(std::path::PathBuf),    // Local filesystem path
+    Git {                        // Git repository
+        url: String,
+        branch: Option<String>,
+        tag: Option<String>,
+        rev: Option<String>,
+    },
 }
 
 impl Default for DependencySource {
@@ -100,20 +106,28 @@ impl DependencySpec {
                         source: DependencySource::Path(path),
                     })
                 }
-                // Check for git dependency (not supported - provide helpful error)
-                else if map.get(Value::String("git".to_string())).is_some() {
-                    Err(anyhow!(
-                        "Git dependencies are not supported in horus.yaml.\n\
-                         Instead, clone the repository and use a path dependency:\n\
-                         \n\
-                         1. Clone: git clone <url> ./libs/{}\n\
-                         2. Use path dependency:\n\
-                         {}:\n\
-                           path: \"./libs/{}\"",
+                // Check for git dependency
+                else if let Some(Value::String(git_url)) = map.get(Value::String("git".to_string())) {
+                    let branch = map
+                        .get(Value::String("branch".to_string()))
+                        .and_then(|v| v.as_str().map(String::from));
+                    let tag = map
+                        .get(Value::String("tag".to_string()))
+                        .and_then(|v| v.as_str().map(String::from));
+                    let rev = map
+                        .get(Value::String("rev".to_string()))
+                        .and_then(|v| v.as_str().map(String::from));
+
+                    Ok(Self {
                         name,
-                        name,
-                        name
-                    ))
+                        requirement: VersionReq::STAR, // Git deps don't use versions
+                        source: DependencySource::Git {
+                            url: git_url.clone(),
+                            branch,
+                            tag,
+                            rev,
+                        },
+                    })
                 }
                 // Registry with explicit version
                 else if let Some(Value::String(version_str)) =

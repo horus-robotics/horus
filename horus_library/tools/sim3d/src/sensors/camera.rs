@@ -319,9 +319,14 @@ pub fn update_camera_timestamps_system(
 }
 
 pub fn extract_camera_images_system(
-    images: Res<Assets<Image>>,
+    images: Option<Res<Assets<Image>>>,
     query: Query<(&CameraImage, &Name)>,
 ) {
+    // Skip if assets are not available (headless mode without AssetPlugin)
+    let Some(images) = images else {
+        return;
+    };
+
     for (camera_image, _name) in query.iter() {
         if let Some(_image) = images.get(&camera_image.image_handle) {
             // Image data is now available for processing

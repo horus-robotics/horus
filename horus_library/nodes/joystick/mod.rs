@@ -217,36 +217,19 @@ impl JoystickInputNode {
     /// Get battery level (0.0 to 1.0) if supported
     #[cfg(feature = "gilrs")]
     pub fn get_battery_level(&self) -> Option<f32> {
-        use gilrs::{BatteryLevel, PowerInfo};
+        use gilrs::PowerInfo;
 
         // Try to get the connected gamepad
         if let Some((_id, gamepad)) = self.gilrs.gamepads().find(|(_, gp)| gp.is_connected()) {
-            // Get power info from gamepad
-            if let Some(power) = gamepad.power_info() {
-                return match power {
-                    PowerInfo::Unknown => None,
-                    PowerInfo::Wired => Some(1.0), // Wired controllers at full power
-                    PowerInfo::Discharging(level) => {
-                        // Convert BatteryLevel enum to float
-                        Some(match level {
-                            BatteryLevel::Empty => 0.0,
-                            BatteryLevel::Low => 0.25,
-                            BatteryLevel::Medium => 0.50,
-                            BatteryLevel::Full => 1.0,
-                        })
-                    }
-                    PowerInfo::Charging(level) => {
-                        // Convert BatteryLevel enum to float
-                        Some(match level {
-                            BatteryLevel::Empty => 0.0,
-                            BatteryLevel::Low => 0.25,
-                            BatteryLevel::Medium => 0.50,
-                            BatteryLevel::Full => 1.0,
-                        })
-                    }
-                    PowerInfo::Charged => Some(1.0),
-                };
-            }
+            // Get power info from gamepad (returns PowerInfo directly in gilrs 0.10+)
+            let power = gamepad.power_info();
+            return match power {
+                PowerInfo::Unknown => None,
+                PowerInfo::Wired => Some(1.0), // Wired controllers at full power
+                PowerInfo::Discharging(level) => Some(level as f32 / 100.0),
+                PowerInfo::Charging(level) => Some(level as f32 / 100.0),
+                PowerInfo::Charged => Some(1.0),
+            };
         }
         None
     }

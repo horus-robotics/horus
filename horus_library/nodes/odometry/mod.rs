@@ -72,6 +72,10 @@ pub struct OdometryNode {
     use_velocity_input: bool,
     frame_id: String,
     child_frame_id: String,
+
+    // Timing state (moved from static mut for thread safety)
+    last_publish_time: u64,
+    log_counter: u32,
 }
 
 /// Kinematic model type
@@ -106,7 +110,7 @@ impl OdometryNode {
             prev_right_ticks: 0,
             prev_time: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_nanos() as u64,
             position_variance: 0.01,     // 1cm std dev
             orientation_variance: 0.001, // ~1.8 degree std dev
@@ -115,6 +119,8 @@ impl OdometryNode {
             use_velocity_input: false,
             frame_id: "odom".to_string(),
             child_frame_id: "base_link".to_string(),
+            last_publish_time: 0,
+            log_counter: 0,
         })
     }
 
@@ -378,7 +384,7 @@ impl Node for OdometryNode {
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let current_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_nanos() as u64;
 
         // Process encoder inputs
@@ -399,29 +405,25 @@ impl Node for OdometryNode {
         }
 
         // Publish odometry at configured rate
-        static mut LAST_PUBLISH_TIME: u64 = 0;
         let publish_interval = (1_000_000_000.0 / self.update_rate) as u64;
 
-        unsafe {
-            if current_time - LAST_PUBLISH_TIME >= publish_interval {
-                self.publish_odometry(ctx.as_deref_mut());
-                LAST_PUBLISH_TIME = current_time;
+        if current_time - self.last_publish_time >= publish_interval {
+            self.publish_odometry(ctx.as_deref_mut());
+            self.last_publish_time = current_time;
 
-                // Periodic detailed logging
-                static mut LOG_COUNTER: u32 = 0;
-                LOG_COUNTER += 1;
-                if LOG_COUNTER % 100 == 0 {
-                    // Log every 100 publishes (2 sec at 50Hz)
-                    ctx.log_debug(&format!(
-                        "Odom: pos=({:.3}, {:.3})m theta={:.2}° vel=({:.2}, {:.2})m/s omega={:.2}rad/s",
-                        self.x,
-                        self.y,
-                        self.theta.to_degrees(),
-                        self.vx,
-                        self.vy,
-                        self.vtheta
-                    ));
-                }
+            // Periodic detailed logging
+            self.log_counter += 1;
+            if self.log_counter % 100 == 0 {
+                // Log every 100 publishes (2 sec at 50Hz)
+                ctx.log_debug(&format!(
+                    "Odom: pos=({:.3}, {:.3})m theta={:.2}° vel=({:.2}, {:.2})m/s omega={:.2}rad/s",
+                    self.x,
+                    self.y,
+                    self.theta.to_degrees(),
+                    self.vx,
+                    self.vy,
+                    self.vtheta
+                ));
             }
         }
     }

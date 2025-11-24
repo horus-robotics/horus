@@ -111,6 +111,9 @@ pub struct RoboclawMotorNode {
     command_count: u64,
     error_count: u64,
     last_feedback_time: [u64; 2],
+
+    // Timing state (moved from static mut for thread safety)
+    feedback_counter: u32,
 }
 
 /// Motor state tracker
@@ -218,8 +221,8 @@ impl Default for RoboclawDiagnostics {
 impl RoboclawMotorNode {
     /// Create a new Roboclaw motor controller node
     pub fn new(serial_port: &str, address: u8) -> Result<Self> {
-        if address < 0x80 || address > 0x87 {
-            return Err(horus_core::error::HorusError::config(&format!(
+        if !(0x80..=0x87).contains(&address) {
+            return Err(horus_core::error::HorusError::config(format!(
                 "Invalid Roboclaw address: 0x{:02X}. Must be 0x80-0x87",
                 address
             )));
@@ -258,6 +261,7 @@ impl RoboclawMotorNode {
             command_count: 0,
             error_count: 0,
             last_feedback_time: [0, 0],
+            feedback_counter: 0,
         })
     }
 
@@ -268,28 +272,28 @@ impl RoboclawMotorNode {
 
     /// Set encoder resolution (pulses per revolution)
     pub fn set_encoder_resolution(&mut self, motor_id: u8, ppr: u32) {
-        if motor_id >= 1 && motor_id <= 2 {
+        if (1..=2).contains(&motor_id) {
             self.encoder_resolution[(motor_id - 1) as usize] = ppr;
         }
     }
 
     /// Set gear ratio
     pub fn set_gear_ratio(&mut self, motor_id: u8, ratio: f64) {
-        if motor_id >= 1 && motor_id <= 2 {
+        if (1..=2).contains(&motor_id) {
             self.gear_ratio[(motor_id - 1) as usize] = ratio;
         }
     }
 
     /// Set wheel radius for linear velocity calculation
     pub fn set_wheel_radius(&mut self, motor_id: u8, radius: f64) {
-        if motor_id >= 1 && motor_id <= 2 {
+        if (1..=2).contains(&motor_id) {
             self.wheel_radius[(motor_id - 1) as usize] = radius;
         }
     }
 
     /// Set velocity PID parameters
     pub fn set_velocity_pid(&mut self, motor_id: u8, p: f64, i: f64, d: f64, qpps: u32) {
-        if motor_id >= 1 && motor_id <= 2 {
+        if (1..=2).contains(&motor_id) {
             let idx = (motor_id - 1) as usize;
             self.velocity_pid[idx] = PidParams { p, i, d, qpps };
         }
@@ -297,7 +301,7 @@ impl RoboclawMotorNode {
 
     /// Set position PID parameters
     pub fn set_position_pid(&mut self, motor_id: u8, p: f64, i: f64, d: f64, qpps: u32) {
-        if motor_id >= 1 && motor_id <= 2 {
+        if (1..=2).contains(&motor_id) {
             let idx = (motor_id - 1) as usize;
             self.position_pid[idx] = PidParams { p, i, d, qpps };
         }
@@ -310,21 +314,21 @@ impl RoboclawMotorNode {
 
     /// Set maximum velocity for a motor
     pub fn set_max_velocity(&mut self, motor_id: u8, qpps: i32) {
-        if motor_id >= 1 && motor_id <= 2 {
+        if (1..=2).contains(&motor_id) {
             self.max_velocity[(motor_id - 1) as usize] = qpps;
         }
     }
 
     /// Set maximum acceleration
     pub fn set_max_acceleration(&mut self, motor_id: u8, qpps_per_sec: u32) {
-        if motor_id >= 1 && motor_id <= 2 {
+        if (1..=2).contains(&motor_id) {
             self.max_acceleration[(motor_id - 1) as usize] = qpps_per_sec;
         }
     }
 
     /// Get encoder count
     pub fn get_encoder(&self, motor_id: u8) -> Option<i32> {
-        if motor_id >= 1 && motor_id <= 2 {
+        if (1..=2).contains(&motor_id) {
             Some(self.motor_states[(motor_id - 1) as usize].encoder_count)
         } else {
             None
@@ -333,7 +337,7 @@ impl RoboclawMotorNode {
 
     /// Get velocity in QPPS
     pub fn get_velocity(&self, motor_id: u8) -> Option<i32> {
-        if motor_id >= 1 && motor_id <= 2 {
+        if (1..=2).contains(&motor_id) {
             Some(self.motor_states[(motor_id - 1) as usize].velocity)
         } else {
             None
@@ -347,7 +351,7 @@ impl RoboclawMotorNode {
 
     /// Get motor current
     pub fn get_motor_current(&self, motor_id: u8) -> Option<f64> {
-        if motor_id >= 1 && motor_id <= 2 {
+        if (1..=2).contains(&motor_id) {
             Some(self.motor_currents[(motor_id - 1) as usize])
         } else {
             None
@@ -356,7 +360,7 @@ impl RoboclawMotorNode {
 
     /// Reset encoder count
     pub fn reset_encoder(&mut self, motor_id: u8) {
-        if motor_id >= 1 && motor_id <= 2 {
+        if (1..=2).contains(&motor_id) {
             self.motor_states[(motor_id - 1) as usize].encoder_count = 0;
         }
     }
@@ -392,9 +396,9 @@ impl RoboclawMotorNode {
                         || (self.motor_states[0].encoder_count == 0
                             && self.motor_states[1].encoder_count == 0)
                     {
-                        ctx.log_warning(&format!(
+                        ctx.log_warning(
                             "RoboclawMotorNode: Hardware unavailable - using SIMULATION mode"
-                        ));
+                        );
                         ctx.log_warning(&format!("  Tried: {}", self.serial_port));
                         ctx.log_warning(&format!("  Error: {}", e));
                         ctx.log_warning("  Fix:");
@@ -431,7 +435,7 @@ impl RoboclawMotorNode {
                         self.command_count += 1;
                         self.last_command_time = SystemTime::now()
                             .duration_since(UNIX_EPOCH)
-                            .unwrap()
+                            .unwrap_or_default()
                             .as_nanos() as u64;
                         return;
                     }
@@ -463,7 +467,7 @@ impl RoboclawMotorNode {
         self.command_count += 1;
         self.last_command_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_nanos() as u64;
     }
 
@@ -483,9 +487,9 @@ impl RoboclawMotorNode {
                         || (self.motor_states[0].encoder_count == 0
                             && self.motor_states[1].encoder_count == 0)
                     {
-                        ctx.log_warning(&format!(
+                        ctx.log_warning(
                             "RoboclawMotorNode: Hardware unavailable - using SIMULATION mode"
-                        ));
+                        );
                         ctx.log_warning(&format!("  Tried: {}", self.serial_port));
                         ctx.log_warning(&format!("  Error: {}", e));
                         ctx.log_warning("  Fix:");
@@ -522,7 +526,7 @@ impl RoboclawMotorNode {
                         self.command_count += 1;
                         self.last_command_time = SystemTime::now()
                             .duration_since(UNIX_EPOCH)
-                            .unwrap()
+                            .unwrap_or_default()
                             .as_nanos() as u64;
                         return;
                     }
@@ -554,7 +558,7 @@ impl RoboclawMotorNode {
         self.command_count += 1;
         self.last_command_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_nanos() as u64;
     }
 
@@ -633,7 +637,7 @@ impl RoboclawMotorNode {
             linear_velocity: self.qpps_to_velocity(motor_id, state.velocity),
             timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_nanos() as u64,
         };
 
@@ -666,7 +670,7 @@ impl RoboclawMotorNode {
             warning_flags: 0,
             timestamp: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_nanos() as u64,
         };
 
@@ -740,24 +744,18 @@ impl RoboclawMotorNode {
     fn send_duty_hardware(&mut self, motor_id: u8, duty: i16) -> std::io::Result<()> {
         // Roboclaw duty cycle range is 0-32767
         // Convert from -10000..10000 to direction + magnitude
-        let abs_duty = duty.abs() as u16;
+        let abs_duty = duty.unsigned_abs();
         let magnitude = ((abs_duty as u32 * 32767) / 10000) as u16;
 
         // Command IDs:
         // M1 Forward: 0, M1 Backward: 1
         // M2 Forward: 4, M2 Backward: 5
         let command = if motor_id == 1 {
-            if duty >= 0 {
-                0
-            } else {
-                1
-            }
+            if duty >= 0 { 0 } else { 1 }
+        } else if duty >= 0 {
+            4
         } else {
-            if duty >= 0 {
-                4
-            } else {
-                5
-            }
+            5
         };
 
         // Data: 2 bytes (magnitude, big-endian)
@@ -775,7 +773,7 @@ impl RoboclawMotorNode {
         let command = if motor_id == 1 { 35 } else { 36 };
 
         // Data: 4 bytes (signed QPPS, big-endian)
-        let qpps_abs = qpps.abs() as u32;
+        let qpps_abs = qpps.unsigned_abs();
         let sign = if qpps >= 0 { 0u8 } else { 0x80 };
 
         let data = [
@@ -837,31 +835,27 @@ impl Node for RoboclawMotorNode {
         self.simulate_battery(dt);
 
         // Publish feedback at 50Hz
-        static mut FEEDBACK_COUNTER: u32 = 0;
-        unsafe {
-            FEEDBACK_COUNTER += 1;
-            if FEEDBACK_COUNTER % 1 == 0 {
-                self.publish_feedback(1, ctx.as_deref_mut());
-                self.publish_feedback(2, ctx.as_deref_mut());
-            }
+        self.feedback_counter += 1;
+        // Publish motor feedback every tick
+        self.publish_feedback(1, ctx.as_deref_mut());
+        self.publish_feedback(2, ctx.as_deref_mut());
 
-            // Publish diagnostics at 10Hz
-            if FEEDBACK_COUNTER % 5 == 0 {
-                self.publish_diagnostics(ctx.as_deref_mut());
-            }
+        // Publish diagnostics at 10Hz
+        if self.feedback_counter % 5 == 0 {
+            self.publish_diagnostics(ctx.as_deref_mut());
+        }
 
-            // Periodic status logging at 1Hz
-            if FEEDBACK_COUNTER % 50 == 0 {
-                ctx.log_info(&format!(
-                    "Roboclaw 0x{:02X}: M1={} QPPS ({:.2}A), M2={} QPPS ({:.2}A), Bat={:.1}V",
-                    self.device_address,
-                    self.motor_states[0].velocity,
-                    self.motor_currents[0],
-                    self.motor_states[1].velocity,
-                    self.motor_currents[1],
-                    self.battery_voltage
-                ));
-            }
+        // Periodic status logging at 1Hz
+        if self.feedback_counter % 50 == 0 {
+            ctx.log_info(&format!(
+                "Roboclaw 0x{:02X}: M1={} QPPS ({:.2}A), M2={} QPPS ({:.2}A), Bat={:.1}V",
+                self.device_address,
+                self.motor_states[0].velocity,
+                self.motor_currents[0],
+                self.motor_states[1].velocity,
+                self.motor_currents[1],
+                self.battery_voltage
+            ));
         }
     }
 }

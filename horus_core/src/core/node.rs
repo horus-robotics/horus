@@ -1,3 +1,4 @@
+use crate::memory::platform::{shm_heartbeats_dir, shm_pubsub_metadata_dir};
 use crate::params::RuntimeParams;
 use std::collections::HashMap;
 use std::fmt;
@@ -151,7 +152,7 @@ impl NodeHeartbeat {
     /// Write heartbeat to file
     pub fn write_to_file(&self, node_name: &str) -> crate::error::HorusResult<()> {
         // Heartbeats are intentionally global (not session-isolated) so dashboard can monitor all nodes
-        let dir = std::path::PathBuf::from("/dev/shm/horus/heartbeats");
+        let dir = shm_heartbeats_dir();
         std::fs::create_dir_all(&dir)?;
 
         let path = dir.join(node_name);
@@ -172,7 +173,7 @@ impl NodeHeartbeat {
 
     /// Read heartbeat from file
     pub fn read_from_file(node_name: &str) -> Option<Self> {
-        let path = std::path::PathBuf::from(format!("/dev/shm/horus/heartbeats/{}", node_name));
+        let path = shm_heartbeats_dir().join(node_name);
         let content = std::fs::read_to_string(&path).ok()?;
         let json: serde_json::Value = serde_json::from_str(&content).ok()?;
 
@@ -426,6 +427,20 @@ impl NodeInfo {
         }
     }
 
+    /// Increment tick counter without recording duration metrics
+    /// Useful for tools like sim2d that manage their own timing
+    /// Only increments when logging is enabled (so ticks start at 0 after learning phase)
+    pub fn increment_tick(&mut self) {
+        if !self.config.enable_logging {
+            return;
+        }
+        let _guard = self
+            .metrics_lock
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        self.metrics.total_ticks += 1;
+    }
+
     pub fn record_tick(&mut self) {
         let _guard = self
             .metrics_lock
@@ -436,7 +451,10 @@ impl NodeInfo {
             let duration = start_time.elapsed();
             let duration_ms = duration.as_millis() as f64;
 
-            self.metrics.total_ticks += 1;
+            // Only count ticks when logging is enabled (so display starts at 0 after learning)
+            if self.config.enable_logging {
+                self.metrics.total_ticks += 1;
+            }
             self.metrics.successful_ticks += 1;
             self.metrics.last_tick_duration_ms = duration_ms;
 
@@ -485,9 +503,8 @@ impl NodeInfo {
     /// Remove pubsub metadata files for this node
     fn cleanup_pubsub_metadata(&self) {
         use std::fs;
-        use std::path::Path;
 
-        let metadata_dir = Path::new("/dev/shm/horus/pubsub_metadata");
+        let metadata_dir = shm_pubsub_metadata_dir();
         if !metadata_dir.exists() {
             return;
         }
@@ -511,7 +528,10 @@ impl NodeInfo {
                 .metrics_lock
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
-            self.metrics.total_ticks += 1;
+            // Only count ticks when logging is enabled (so display starts at 0 after learning)
+            if self.config.enable_logging {
+                self.metrics.total_ticks += 1;
+            }
             self.metrics.failed_ticks += 1;
 
             if let Some(start_time) = self.tick_start_time {
@@ -598,6 +618,9 @@ impl NodeInfo {
             0
         };
 
+        // Display tick count
+        let display_tick = self.metrics.total_ticks;
+
         if self.config.enable_logging {
             // Color-coded logging for readability
             // Cyan timestamp | Green metrics | Blue tick# | Yellow node | Bold Blue SUB arrow | Magenta topic | White data
@@ -605,7 +628,7 @@ impl NodeInfo {
                    now.format("%H:%M:%S%.3f"),
                    ipc_ns,
                    current_tick_us,
-                   self.metrics.total_ticks,
+                   display_tick,
                    self.name, topic, summary);
             use std::io::{self, Write};
             let _ = io::stdout().flush();
@@ -615,7 +638,7 @@ impl NodeInfo {
         use crate::core::log_buffer::{publish_log, LogEntry, LogType};
         publish_log(LogEntry {
             timestamp: now.format("%H:%M:%S%.3f").to_string(),
-            tick_number: self.metrics.total_ticks,
+            tick_number: display_tick,
             node_name: self.name.clone(),
             log_type: LogType::Subscribe,
             topic: Some(topic.to_string()),
@@ -832,6 +855,12 @@ impl NodeInfo {
     pub fn set_config(&mut self, config: NodeConfig) {
         self.config = config;
     }
+    pub fn set_logging_enabled(&mut self, enabled: bool) {
+        self.config.enable_logging = enabled;
+    }
+    pub fn is_logging_enabled(&self) -> bool {
+        self.config.enable_logging
+    }
 
     // Custom data management
     pub fn set_custom_data(&mut self, key: String, value: String) {
@@ -912,6 +941,57 @@ pub trait Node: Send {
     /// Health check (optional override)
     fn is_healthy(&self) -> bool {
         true
+    }
+
+    // ==================== JIT Compilation Support ====================
+    // These methods enable nodes to be JIT-compiled for ultra-fast execution.
+    // Override these in nodes that perform simple, deterministic computations.
+
+    /// Returns true if this node supports JIT compilation.
+    /// JIT-compiled nodes can execute in 20-50ns instead of microseconds.
+    ///
+    /// Override this to return `true` for nodes that:
+    /// - Perform simple arithmetic/logic operations
+    /// - Are deterministic (same input = same output)
+    /// - Have no side effects (pure functions)
+    fn supports_jit(&self) -> bool {
+        false
+    }
+
+    /// Returns true if this node is deterministic (same inputs always produce same outputs).
+    /// Required for JIT compilation.
+    fn is_jit_deterministic(&self) -> bool {
+        false
+    }
+
+    /// Returns true if this node is pure (no side effects).
+    /// Required for JIT compilation.
+    fn is_jit_pure(&self) -> bool {
+        false
+    }
+
+    /// Get the JIT compute function for this node.
+    /// Returns a function pointer that takes an i64 input and returns i64 output.
+    ///
+    /// This is a simplified interface for JIT compilation. For complex nodes,
+    /// implement the full DataflowNode trait in the scheduling module.
+    ///
+    /// # Example
+    /// ```ignore
+    /// fn get_jit_compute(&self) -> Option<fn(i64) -> i64> {
+    ///     Some(|x| x * self.scale + self.offset)
+    /// }
+    /// ```
+    fn get_jit_compute(&self) -> Option<fn(i64) -> i64> {
+        None
+    }
+
+    /// Get JIT parameters for arithmetic nodes: (multiply_factor, offset)
+    /// Used by the Cranelift JIT compiler to generate: output = input * factor + offset
+    ///
+    /// Returns None if this node doesn't support simple arithmetic JIT.
+    fn get_jit_arithmetic_params(&self) -> Option<(i64, i64)> {
+        None
     }
 }
 

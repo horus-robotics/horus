@@ -1,10 +1,5 @@
 //! Benchmark suite for performance tracking
 
-use bevy::prelude::*;
-use sim3d::{
-    physics::PhysicsPlugin,
-    sensors::{camera::CameraPlugin, lidar::LidarPlugin},
-};
 use std::time::{Duration, Instant};
 
 /// Benchmark result

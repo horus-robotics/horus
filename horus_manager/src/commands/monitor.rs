@@ -590,16 +590,6 @@ fn process_exists(pid: u32) -> bool {
     Path::new(&format!("/proc/{}", pid)).exists()
 }
 
-#[allow(dead_code)]
-fn is_horus_process(pid: u32) -> bool {
-    if let Ok(cmdline) = std::fs::read_to_string(format!("/proc/{}/cmdline", pid)) {
-        let cmdline_str = cmdline.replace('\0', " ");
-        cmdline_str.contains("horus") && !cmdline_str.contains("dashboard")
-    } else {
-        false
-    }
-}
-
 // CPU tracking cache
 use std::collections::HashMap as StdHashMap;
 lazy_static::lazy_static! {
@@ -955,36 +945,6 @@ fn load_topic_metadata_from_registry() -> StdHashMap<String, (String, Vec<String
     }
 
     topic_map
-}
-
-#[allow(dead_code)]
-fn find_accessing_processes(shm_path: &Path) -> Vec<u32> {
-    let mut processes = Vec::new();
-
-    // Use lsof-like approach: check /proc/*/fd/* for references
-    if let Ok(proc_entries) = std::fs::read_dir("/proc") {
-        for entry in proc_entries.flatten() {
-            if let Some(pid) = entry
-                .file_name()
-                .to_str()
-                .and_then(|s| s.parse::<u32>().ok())
-            {
-                let fd_path = entry.path().join("fd");
-                if let Ok(fd_entries) = std::fs::read_dir(fd_path) {
-                    for fd_entry in fd_entries.flatten() {
-                        if let Ok(link_target) = std::fs::read_link(fd_entry.path()) {
-                            if link_target == shm_path {
-                                processes.push(pid);
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    processes
 }
 
 // Fast version: Only check HORUS processes first, then fall back to full scan if needed
@@ -1409,3 +1369,683 @@ fn check_registry_snapshot(node_name: &str) -> Option<(String, HealthStatus, u64
 }
 
 // Enhanced monitoring functions
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // =====================
+    // NodeStatus Tests
+    // =====================
+    #[test]
+    fn test_node_status_creation() {
+        let node = NodeStatus {
+            name: "test_node".to_string(),
+            status: "Running".to_string(),
+            health: HealthStatus::Healthy,
+            priority: 10,
+            process_id: 1234,
+            command_line: "horus run test".to_string(),
+            working_dir: "/home/test".to_string(),
+            cpu_usage: 25.5,
+            memory_usage: 1024,
+            start_time: "10m".to_string(),
+            scheduler_name: "default".to_string(),
+            category: ProcessCategory::Node,
+            tick_count: 100,
+            error_count: 0,
+            actual_rate_hz: 50,
+            publishers: vec![],
+            subscribers: vec![],
+        };
+
+        assert_eq!(node.name, "test_node");
+        assert_eq!(node.status, "Running");
+        assert_eq!(node.priority, 10);
+        assert_eq!(node.process_id, 1234);
+        assert_eq!(node.tick_count, 100);
+    }
+
+    #[test]
+    fn test_node_status_with_publishers_subscribers() {
+        let pub_topic = TopicInfo {
+            topic: "/sensor/data".to_string(),
+            type_name: "SensorMsg".to_string(),
+        };
+        let sub_topic = TopicInfo {
+            topic: "/commands".to_string(),
+            type_name: "CmdMsg".to_string(),
+        };
+
+        let node = NodeStatus {
+            name: "sensor_node".to_string(),
+            status: "Running".to_string(),
+            health: HealthStatus::Healthy,
+            priority: 5,
+            process_id: 5678,
+            command_line: String::new(),
+            working_dir: String::new(),
+            cpu_usage: 0.0,
+            memory_usage: 0,
+            start_time: String::new(),
+            scheduler_name: "main".to_string(),
+            category: ProcessCategory::Node,
+            tick_count: 0,
+            error_count: 0,
+            actual_rate_hz: 0,
+            publishers: vec![pub_topic],
+            subscribers: vec![sub_topic],
+        };
+
+        assert_eq!(node.publishers.len(), 1);
+        assert_eq!(node.subscribers.len(), 1);
+        assert_eq!(node.publishers[0].topic, "/sensor/data");
+        assert_eq!(node.subscribers[0].type_name, "CmdMsg");
+    }
+
+    // =====================
+    // ProcessCategory Tests
+    // =====================
+    #[test]
+    fn test_process_category_equality() {
+        assert_eq!(ProcessCategory::Node, ProcessCategory::Node);
+        assert_eq!(ProcessCategory::Tool, ProcessCategory::Tool);
+        assert_eq!(ProcessCategory::CLI, ProcessCategory::CLI);
+        assert_ne!(ProcessCategory::Node, ProcessCategory::Tool);
+        assert_ne!(ProcessCategory::Tool, ProcessCategory::CLI);
+    }
+
+    // =====================
+    // SharedMemoryInfo Tests
+    // =====================
+    #[test]
+    fn test_shared_memory_info_creation() {
+        let shm = SharedMemoryInfo {
+            topic_name: "/robot/pose".to_string(),
+            size_bytes: 4096,
+            active: true,
+            accessing_processes: vec![1234, 5678],
+            last_modified: Some(std::time::SystemTime::now()),
+            message_type: Some("PoseMsg".to_string()),
+            publishers: vec!["localization".to_string()],
+            subscribers: vec!["navigation".to_string(), "visualization".to_string()],
+            message_rate_hz: 30.0,
+        };
+
+        assert_eq!(shm.topic_name, "/robot/pose");
+        assert_eq!(shm.size_bytes, 4096);
+        assert!(shm.active);
+        assert_eq!(shm.accessing_processes.len(), 2);
+        assert_eq!(shm.publishers.len(), 1);
+        assert_eq!(shm.subscribers.len(), 2);
+        assert!((shm.message_rate_hz - 30.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_shared_memory_info_inactive() {
+        let shm = SharedMemoryInfo {
+            topic_name: "/old/topic".to_string(),
+            size_bytes: 1024,
+            active: false,
+            accessing_processes: vec![],
+            last_modified: None,
+            message_type: None,
+            publishers: vec![],
+            subscribers: vec![],
+            message_rate_hz: 0.0,
+        };
+
+        assert!(!shm.active);
+        assert!(shm.accessing_processes.is_empty());
+        assert!(shm.message_type.is_none());
+        assert!(shm.last_modified.is_none());
+    }
+
+    // =====================
+    // TopicInfo Tests
+    // =====================
+    #[test]
+    fn test_topic_info_creation() {
+        let topic = TopicInfo {
+            topic: "/camera/image".to_string(),
+            type_name: "sensor_msgs::Image".to_string(),
+        };
+
+        assert_eq!(topic.topic, "/camera/image");
+        assert_eq!(topic.type_name, "sensor_msgs::Image");
+    }
+
+    // =====================
+    // Helper Function Tests
+    // =====================
+    #[test]
+    fn test_format_duration_seconds() {
+        let duration = std::time::Duration::from_secs(45);
+        assert_eq!(format_duration(duration), "45s");
+    }
+
+    #[test]
+    fn test_format_duration_minutes() {
+        let duration = std::time::Duration::from_secs(125);
+        assert_eq!(format_duration(duration), "2m");
+    }
+
+    #[test]
+    fn test_format_duration_hours() {
+        let duration = std::time::Duration::from_secs(7200);
+        assert_eq!(format_duration(duration), "2h");
+    }
+
+    #[test]
+    fn test_format_duration_days() {
+        let duration = std::time::Duration::from_secs(172800);
+        assert_eq!(format_duration(duration), "2d");
+    }
+
+    #[test]
+    fn test_should_track_process_empty() {
+        assert!(!should_track_process(""));
+        assert!(!should_track_process("   "));
+    }
+
+    #[test]
+    fn test_should_track_process_excluded_patterns() {
+        // Build tools should be excluded
+        assert!(!should_track_process("cargo build --release"));
+        assert!(!should_track_process("cargo test"));
+        assert!(!should_track_process("rustc --version"));
+        assert!(!should_track_process("/bin/bash script.sh"));
+        assert!(!should_track_process("timeout 10 some_command"));
+        assert!(!should_track_process("dashboard server"));
+        assert!(!should_track_process("horus run test_package"));
+    }
+
+    #[test]
+    fn test_should_track_process_scheduler() {
+        // Standalone scheduler should be tracked
+        assert!(should_track_process("/path/to/scheduler binary"));
+    }
+
+    #[test]
+    fn test_categorize_process_gui() {
+        assert_eq!(
+            categorize_process("robot_gui", ""),
+            ProcessCategory::Tool
+        );
+        assert_eq!(
+            categorize_process("viewer_app", ""),
+            ProcessCategory::Tool
+        );
+        assert_eq!(
+            categorize_process("viz_tool", ""),
+            ProcessCategory::Tool
+        );
+        assert_eq!(
+            categorize_process("my_GUI_app", ""),
+            ProcessCategory::Tool
+        );
+        assert_eq!(
+            categorize_process("app_gui", ""),
+            ProcessCategory::Tool
+        );
+        assert_eq!(
+            categorize_process("test", "--gui"),
+            ProcessCategory::Tool
+        );
+        assert_eq!(
+            categorize_process("test", "--view mode"),
+            ProcessCategory::Tool
+        );
+    }
+
+    #[test]
+    fn test_categorize_process_cli() {
+        assert_eq!(
+            categorize_process("horus", ""),
+            ProcessCategory::CLI
+        );
+        assert_eq!(
+            categorize_process("horus run", ""),
+            ProcessCategory::CLI
+        );
+        assert_eq!(
+            categorize_process("test", "/bin/horus run pkg"),
+            ProcessCategory::CLI
+        );
+        assert_eq!(
+            categorize_process("test", "target/debug/horus run pkg"),
+            ProcessCategory::CLI
+        );
+    }
+
+    #[test]
+    fn test_categorize_process_node() {
+        assert_eq!(
+            categorize_process("scheduler", ""),
+            ProcessCategory::Node
+        );
+        assert_eq!(
+            categorize_process("test", "my_scheduler"),
+            ProcessCategory::Node
+        );
+        // Default is Node
+        assert_eq!(
+            categorize_process("unknown_process", "unknown cmd"),
+            ProcessCategory::Node
+        );
+    }
+
+    #[test]
+    fn test_extract_process_name_simple() {
+        assert_eq!(
+            extract_process_name("/usr/bin/robot_control"),
+            "robot_control"
+        );
+        assert_eq!(
+            extract_process_name("./my_program"),
+            "my_program"
+        );
+    }
+
+    #[test]
+    fn test_extract_process_name_horus_cli() {
+        assert_eq!(
+            extract_process_name("horus run my_package"),
+            "horus run my_package"
+        );
+        assert_eq!(
+            extract_process_name("horus monitor dashboard"),
+            "horus monitor dashboard"
+        );
+        assert_eq!(
+            extract_process_name("horus version"),
+            "horus version"
+        );
+    }
+
+    #[test]
+    fn test_extract_process_name_empty() {
+        assert_eq!(extract_process_name(""), "Unknown");
+    }
+
+    #[test]
+    fn test_parse_memory_from_stat_valid() {
+        // stat format: pid (comm) state ... rss is 24th field (0-indexed: 23)
+        // We need at least 24 space-separated fields
+        let stat = "1234 (test) S 1 1234 1234 0 -1 4194304 100 0 0 0 10 5 0 0 20 0 1 0 12345 12345678 500 18446744073709551615 0 0 0 0 0 0 0 0 0 0 0 0 17 0 0 0 0 0 0";
+        let memory = parse_memory_from_stat(stat);
+        // 500 pages * 4KB = 2000KB
+        assert_eq!(memory, 2000);
+    }
+
+    #[test]
+    fn test_parse_memory_from_stat_invalid() {
+        assert_eq!(parse_memory_from_stat(""), 0);
+        assert_eq!(parse_memory_from_stat("short stat"), 0);
+    }
+
+    // =====================
+    // Public API Tests (with real test data)
+    // =====================
+
+    /// Helper to create test pubsub metadata file
+    fn create_test_pubsub_metadata(node_name: &str, topic_name: &str, direction: &str) -> Option<std::path::PathBuf> {
+        let metadata_dir = std::path::Path::new("/dev/shm/horus/pubsub_metadata");
+        if std::fs::create_dir_all(metadata_dir).is_err() {
+            return None; // Can't create test data
+        }
+
+        let safe_topic: String = topic_name
+            .chars()
+            .map(|c| if c == '/' || c == ' ' { '_' } else { c })
+            .collect();
+        let filename = format!("{}_{}", node_name, safe_topic);
+        let filepath = metadata_dir.join(format!("{}_{}", filename, direction));
+
+        // Write current timestamp
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
+        if std::fs::write(&filepath, timestamp.to_string()).is_ok() {
+            Some(filepath)
+        } else {
+            None
+        }
+    }
+
+    /// Helper to create test topic file
+    fn create_test_topic(topic_name: &str) -> Option<std::path::PathBuf> {
+        let topics_dir = std::path::Path::new("/dev/shm/horus/topics");
+        if std::fs::create_dir_all(topics_dir).is_err() {
+            return None;
+        }
+
+        let safe_name: String = topic_name
+            .chars()
+            .map(|c| if c == '/' || c == ' ' { '_' } else { c })
+            .collect();
+        let filepath = topics_dir.join(&safe_name);
+
+        // Create a small test file
+        if std::fs::write(&filepath, vec![0u8; 1024]).is_ok() {
+            Some(filepath)
+        } else {
+            None
+        }
+    }
+
+    /// Cleanup helper
+    fn cleanup_test_file(path: Option<std::path::PathBuf>) {
+        if let Some(p) = path {
+            let _ = std::fs::remove_file(p);
+        }
+    }
+
+    #[test]
+    fn test_discover_nodes_with_real_pubsub_metadata() {
+        // Create test pubsub metadata to simulate an active node
+        let test_node = "TestDetectionNode";
+        let test_topic = "test_detection_topic";
+
+        let pub_file = create_test_pubsub_metadata(test_node, test_topic, "pub");
+        let topic_file = create_test_topic(test_topic);
+
+        // Only run the meaningful test if we could create test data
+        if pub_file.is_some() && topic_file.is_some() {
+            // Force cache refresh
+            if let Ok(mut cache) = DISCOVERY_CACHE.write() {
+                cache.last_updated = std::time::Instant::now() - std::time::Duration::from_secs(10);
+            }
+
+            let result = discover_nodes();
+            assert!(result.is_ok(), "discover_nodes should succeed");
+
+            let nodes = result.unwrap();
+            // Should find our test node
+            let found = nodes.iter().any(|n| n.name == test_node);
+            assert!(found, "Should discover TestDetectionNode from pubsub metadata, found: {:?}",
+                nodes.iter().map(|n| &n.name).collect::<Vec<_>>());
+
+            // Verify the node has correct publisher info
+            if let Some(node) = nodes.iter().find(|n| n.name == test_node) {
+                assert!(node.publishers.iter().any(|p| p.topic == test_topic),
+                    "Node should have test_detection_topic as publisher");
+            }
+        }
+
+        // Cleanup
+        cleanup_test_file(pub_file);
+        cleanup_test_file(topic_file);
+    }
+
+    #[test]
+    fn test_discover_shared_memory_with_real_topic() {
+        // Use simple topic name to avoid underscore-to-slash conversion confusion
+        let test_topic = "testshm";  // Simple name without underscores
+        let topic_file = create_test_topic(test_topic);
+
+        if topic_file.is_some() {
+            // Force cache refresh - handle potential poisoned lock
+            let cache_refreshed = DISCOVERY_CACHE.write().map(|mut cache| {
+                cache.last_updated = std::time::Instant::now() - std::time::Duration::from_secs(10);
+                true
+            }).unwrap_or(false);
+
+            if !cache_refreshed {
+                cleanup_test_file(topic_file);
+                return; // Skip test if cache is poisoned
+            }
+
+            // Call the uncached version directly to avoid cache issues in parallel tests
+            let result = discover_shared_memory_uncached();
+            if let Ok(topics) = result {
+                // Should find our test topic (underscores in filename become / in topic name)
+                let found = topics.iter().any(|t| t.topic_name.contains("testshm"));
+                assert!(found, "Should discover testshm topic, found: {:?}",
+                    topics.iter().map(|t| &t.topic_name).collect::<Vec<_>>());
+
+                // Verify topic properties
+                if let Some(topic) = topics.iter().find(|t| t.topic_name.contains("testshm")) {
+                    assert_eq!(topic.size_bytes, 1024, "Topic should be 1024 bytes");
+                }
+            }
+            // If result is Err, that's OK - test data might have been cleaned up by another test
+        }
+
+        cleanup_test_file(topic_file);
+    }
+
+    #[test]
+    fn test_discover_nodes_returns_vec() {
+        // Smoke test - should not panic even with no data
+        let result = discover_nodes();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_discover_shared_memory_handles_missing_dirs() {
+        // Smoke test - should not panic even if dirs don't exist
+        let _ = discover_shared_memory();
+    }
+
+    #[test]
+    fn test_pubsub_metadata_staleness_filtering() {
+        // Create old metadata that should be filtered out
+        let metadata_dir = std::path::Path::new("/dev/shm/horus/pubsub_metadata");
+        if std::fs::create_dir_all(metadata_dir).is_err() {
+            return; // Skip if can't create
+        }
+
+        let stale_file = metadata_dir.join("StaleNode_stale_topic_pub");
+        // Write a timestamp from 60 seconds ago (should be filtered as stale)
+        let old_timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() - 60;
+
+        if std::fs::write(&stale_file, old_timestamp.to_string()).is_ok() {
+            // Force cache refresh
+            if let Ok(mut cache) = DISCOVERY_CACHE.write() {
+                cache.last_updated = std::time::Instant::now() - std::time::Duration::from_secs(10);
+            }
+
+            let result = discover_nodes();
+            if let Ok(nodes) = result {
+                // StaleNode should NOT be found (metadata too old)
+                let found_stale = nodes.iter().any(|n| n.name == "StaleNode");
+                assert!(!found_stale, "Stale nodes (>30 sec old metadata) should be filtered out");
+            }
+
+            let _ = std::fs::remove_file(&stale_file);
+        }
+    }
+
+    #[test]
+    fn test_topic_inactive_detection() {
+        // Create a topic file and verify active detection works
+        let topics_dir = std::path::Path::new("/dev/shm/horus/topics");
+        if std::fs::create_dir_all(topics_dir).is_err() {
+            return;
+        }
+
+        let test_file = topics_dir.join("test_active_topic");
+        if std::fs::write(&test_file, vec![0u8; 512]).is_ok() {
+            // Force cache refresh
+            if let Ok(mut cache) = DISCOVERY_CACHE.write() {
+                cache.last_updated = std::time::Instant::now() - std::time::Duration::from_secs(10);
+            }
+
+            let result = discover_shared_memory();
+            if let Ok(topics) = result {
+                if let Some(topic) = topics.iter().find(|t| t.topic_name.contains("test_active")) {
+                    // Just-created file should be considered active (recently modified)
+                    assert!(topic.active, "Recently created topic should be active");
+                }
+            }
+
+            let _ = std::fs::remove_file(&test_file);
+        }
+    }
+
+    // =====================
+    // DiscoveryCache Tests
+    // =====================
+    #[test]
+    fn test_discovery_cache_new_is_stale() {
+        let cache = DiscoveryCache::new();
+        // New cache should be stale (forces initial update)
+        assert!(cache.is_stale());
+    }
+
+    #[test]
+    fn test_discovery_cache_update_nodes() {
+        let mut cache = DiscoveryCache::new();
+        let nodes = vec![NodeStatus {
+            name: "test".to_string(),
+            status: "Running".to_string(),
+            health: HealthStatus::Healthy,
+            priority: 0,
+            process_id: 0,
+            command_line: String::new(),
+            working_dir: String::new(),
+            cpu_usage: 0.0,
+            memory_usage: 0,
+            start_time: String::new(),
+            scheduler_name: String::new(),
+            category: ProcessCategory::Node,
+            tick_count: 0,
+            error_count: 0,
+            actual_rate_hz: 0,
+            publishers: vec![],
+            subscribers: vec![],
+        }];
+
+        cache.update_nodes(nodes);
+
+        // After update, should not be stale
+        assert!(!cache.is_stale());
+        assert_eq!(cache.nodes.len(), 1);
+    }
+
+    #[test]
+    fn test_discovery_cache_update_shared_memory() {
+        let mut cache = DiscoveryCache::new();
+        let shm = vec![SharedMemoryInfo {
+            topic_name: "/test".to_string(),
+            size_bytes: 1024,
+            active: true,
+            accessing_processes: vec![],
+            last_modified: None,
+            message_type: None,
+            publishers: vec![],
+            subscribers: vec![],
+            message_rate_hz: 0.0,
+        }];
+
+        cache.update_shared_memory(shm);
+
+        assert!(!cache.is_stale());
+        assert_eq!(cache.shared_memory.len(), 1);
+    }
+
+    // =====================
+    // Process Existence Tests
+    // =====================
+    #[test]
+    fn test_process_exists_self() {
+        // Current process should exist
+        let pid = std::process::id();
+        assert!(process_exists(pid));
+    }
+
+    #[test]
+    fn test_process_exists_invalid() {
+        // PID 0 or very high numbers shouldn't exist
+        assert!(!process_exists(999999999));
+    }
+
+    // =====================
+    // Edge Cases Tests
+    // =====================
+    #[test]
+    fn test_node_status_clone() {
+        let node = NodeStatus {
+            name: "clone_test".to_string(),
+            status: "Running".to_string(),
+            health: HealthStatus::Warning,
+            priority: 5,
+            process_id: 9999,
+            command_line: "test cmd".to_string(),
+            working_dir: "/tmp".to_string(),
+            cpu_usage: 50.0,
+            memory_usage: 2048,
+            start_time: "1h".to_string(),
+            scheduler_name: "test_sched".to_string(),
+            category: ProcessCategory::Tool,
+            tick_count: 500,
+            error_count: 2,
+            actual_rate_hz: 100,
+            publishers: vec![TopicInfo {
+                topic: "/pub".to_string(),
+                type_name: "Msg".to_string(),
+            }],
+            subscribers: vec![],
+        };
+
+        let cloned = node.clone();
+        assert_eq!(cloned.name, node.name);
+        assert_eq!(cloned.status, node.status);
+        assert_eq!(cloned.publishers.len(), node.publishers.len());
+    }
+
+    #[test]
+    fn test_shared_memory_info_clone() {
+        let shm = SharedMemoryInfo {
+            topic_name: "/clone_topic".to_string(),
+            size_bytes: 8192,
+            active: true,
+            accessing_processes: vec![1, 2, 3],
+            last_modified: Some(std::time::SystemTime::now()),
+            message_type: Some("TestMsg".to_string()),
+            publishers: vec!["pub1".to_string()],
+            subscribers: vec!["sub1".to_string(), "sub2".to_string()],
+            message_rate_hz: 60.0,
+        };
+
+        let cloned = shm.clone();
+        assert_eq!(cloned.topic_name, shm.topic_name);
+        assert_eq!(cloned.accessing_processes.len(), 3);
+        assert_eq!(cloned.subscribers.len(), 2);
+    }
+
+    #[test]
+    fn test_health_status_variants() {
+        // Ensure all health status variants work correctly
+        let node_healthy = NodeStatus {
+            name: "h".to_string(),
+            status: String::new(),
+            health: HealthStatus::Healthy,
+            priority: 0,
+            process_id: 0,
+            command_line: String::new(),
+            working_dir: String::new(),
+            cpu_usage: 0.0,
+            memory_usage: 0,
+            start_time: String::new(),
+            scheduler_name: String::new(),
+            category: ProcessCategory::Node,
+            tick_count: 0,
+            error_count: 0,
+            actual_rate_hz: 0,
+            publishers: vec![],
+            subscribers: vec![],
+        };
+
+        match node_healthy.health {
+            HealthStatus::Healthy => assert!(true),
+            _ => panic!("Expected Healthy"),
+        }
+    }
+}

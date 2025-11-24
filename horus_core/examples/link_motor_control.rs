@@ -16,11 +16,12 @@
 //! ```
 
 use horus_core::{Link, Node, NodeInfo, Scheduler};
+use serde::{Deserialize, Serialize};
 use std::thread;
 use std::time::{Duration, Instant};
 
 /// Motor encoder reading (sent from motor driver to controller)
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 struct EncoderReading {
     timestamp_us: u64,
     position: f64, // radians
@@ -38,7 +39,7 @@ impl horus_core::core::LogSummary for EncoderReading {
 }
 
 /// Motor command (sent from controller to motor driver)
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 struct MotorCommand {
     timestamp_us: u64,
     voltage: f32, // volts (-24.0 to +24.0)

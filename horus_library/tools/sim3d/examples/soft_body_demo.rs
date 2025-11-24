@@ -7,39 +7,30 @@
 //! - Different soft body materials
 
 use bevy::prelude::*;
-use sim3d::physics::{
-    soft_body::{
-        cloth::Cloth, material::SoftBodyMaterial, particle::ParticleSystem, rope::Rope,
-        spring::SpringSystem, SoftBodyPlugin,
-    },
-    PhysicsPlugin,
+use sim3d::physics::soft_body::{
+    cloth::Cloth, material::SoftBodyMaterial, particle::ParticleSystem, rope::Rope,
+    spring::SpringSystem, SoftBodyPlugin,
 };
 
 fn main() {
     App::new()
-        .add_plugins((DefaultPlugins, PhysicsPlugin::default(), SoftBodyPlugin))
+        .add_plugins((DefaultPlugins, SoftBodyPlugin))
         .add_systems(Startup, setup_soft_body_scene)
         .run();
 }
 
 fn setup_soft_body_scene(mut commands: Commands) {
     // Camera
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 3.0, 8.0).looking_at(Vec3::new(0.0, 2.0, 0.0), Vec3::Y),
-        ..default()
-    });
+    commands.spawn((
+        Camera3d::default(),
+        Transform::from_xyz(0.0, 3.0, 8.0).looking_at(Vec3::new(0.0, 2.0, 0.0), Vec3::Y),
+    ));
 
     // Lighting
-    commands.spawn(DirectionalLightBundle {
-        transform: Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, 0.5, 0.0)),
-        ..default()
-    });
-
-    // Ground plane
-    commands.spawn(PbrBundle {
-        mesh: commands.spawn_empty().id().into(), // Placeholder
-        ..default()
-    });
+    commands.spawn((
+        DirectionalLight::default(),
+        Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, 0.5, 0.0)),
+    ));
 
     // Example 1: Hanging cloth (flag)
     let cloth = Cloth::new(20, 15, 2.0, 1.5)

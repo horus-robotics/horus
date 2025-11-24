@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 #[cfg(feature = "sysinfo")]
-use sysinfo::{ProcessorExt, System, SystemExt};
+use sysinfo::System;
 
 /// Safety Monitor Node - Monitors critical safety systems and conditions
 ///
@@ -171,7 +171,7 @@ impl SafetyMonitorNode {
             self.system.refresh_all();
 
             // Check CPU usage
-            let cpu_usage = self.system.global_processor_info().cpu_usage();
+            let cpu_usage = self.system.global_cpu_info().cpu_usage();
             if cpu_usage > self.cpu_threshold {
                 return StatusLevel::Fatal;
             } else if cpu_usage > self.cpu_threshold * 0.8 {

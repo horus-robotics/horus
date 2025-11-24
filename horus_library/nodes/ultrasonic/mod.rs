@@ -87,6 +87,9 @@ pub struct UltrasonicNode {
     echo_pins: [Option<Pin>; 16],
     hardware_enabled: bool,
     gpio_pin_numbers: [(u64, u64); 16], // (trigger_pin, echo_pin) numbers per sensor
+
+    // Timing state (moved from static mut for thread safety)
+    last_health_check: u64,
 }
 
 impl UltrasonicNode {
@@ -130,6 +133,7 @@ impl UltrasonicNode {
             echo_pins: [NONE_PIN; 16],
             hardware_enabled: false,
             gpio_pin_numbers: [(0, 0); 16],
+            last_health_check: 0,
         };
 
         // Set default sensor names
@@ -556,7 +560,7 @@ impl Node for UltrasonicNode {
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let current_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_nanos() as u64;
 
         // Process measurements for all sensors
@@ -570,27 +574,24 @@ impl Node for UltrasonicNode {
         }
 
         // Periodic health check logging
-        static mut LAST_HEALTH_CHECK: u64 = 0;
         let health_check_interval = 10_000_000_000; // 10 seconds
-        unsafe {
-            if current_time - LAST_HEALTH_CHECK > health_check_interval {
-                for sensor_id in 0..self.num_sensors {
-                    if let Some((total, errors, error_rate)) = self.get_statistics(sensor_id) {
-                        if total > 0 {
-                            let health = if self.is_healthy(sensor_id) {
-                                "HEALTHY"
-                            } else {
-                                "DEGRADED"
-                            };
-                            ctx.log_info(&format!(
-                                "Sensor {}: {} measurements, {} errors ({:.1}%) - {}",
-                                sensor_id, total, errors, error_rate, health
-                            ));
-                        }
+        if current_time - self.last_health_check > health_check_interval {
+            for sensor_id in 0..self.num_sensors {
+                if let Some((total, errors, error_rate)) = self.get_statistics(sensor_id) {
+                    if total > 0 {
+                        let health = if self.is_healthy(sensor_id) {
+                            "HEALTHY"
+                        } else {
+                            "DEGRADED"
+                        };
+                        ctx.log_info(&format!(
+                            "Sensor {}: {} measurements, {} errors ({:.1}%) - {}",
+                            sensor_id, total, errors, error_rate, health
+                        ));
                     }
                 }
-                LAST_HEALTH_CHECK = current_time;
             }
+            self.last_health_check = current_time;
         }
     }
 }

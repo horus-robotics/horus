@@ -18,7 +18,7 @@ NC='\033[0m'
 # Default settings
 DEFAULT_DISTRO="ubuntu-22.04"
 AVAILABLE_DISTROS=("ubuntu-22.04" "ubuntu-24.04" "debian-12" "fedora-39")
-AVAILABLE_TESTS=("install" "verify" "update" "uninstall" "full-flow")
+AVAILABLE_TESTS=("install" "verify" "uninstall" "full-flow")
 
 # Usage
 usage() {
@@ -27,7 +27,6 @@ usage() {
     echo "Tests:"
     echo "  install       - Test install.sh"
     echo "  verify        - Test verify.sh"
-    echo "  update        - Test update.sh"
     echo "  uninstall     - Test uninstall.sh"
     echo "  full-flow     - Test complete installation flow"
     echo "  all           - Run all tests (default)"
@@ -154,7 +153,7 @@ run_full_flow() {
 
     log_section "Running Full Installation Flow on $distro"
 
-    local tests=("install" "verify" "update" "uninstall")
+    local tests=("install" "verify" "uninstall")
     local container_name="horus-test-full-flow-${distro}-$$"
 
     log_info "Starting persistent container: $container_name"

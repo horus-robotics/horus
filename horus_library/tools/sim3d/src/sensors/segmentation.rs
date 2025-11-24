@@ -1,6 +1,8 @@
 //! Semantic segmentation camera for object detection and scene understanding
 
+use crate::physics::world::PhysicsWorld;
 use bevy::prelude::*;
+use rapier3d::prelude::*;
 use std::collections::HashMap;
 
 /// Semantic class ID for entity labeling
@@ -213,14 +215,21 @@ impl SegmentationImage {
 /// System to update segmentation cameras
 pub fn segmentation_camera_update_system(
     time: Res<Time>,
+    mut physics_world: ResMut<PhysicsWorld>,
     mut cameras: Query<(
         &mut SegmentationCamera,
         &mut SegmentationImage,
         &GlobalTransform,
     )>,
-    objects: Query<(&SemanticClass, &GlobalTransform)>,
+    objects: Query<(Entity, &SemanticClass)>,
 ) {
     let current_time = time.elapsed_secs();
+
+    // Build entity to class mapping
+    let mut entity_to_class: HashMap<Entity, ClassId> = HashMap::new();
+    for (entity, class) in objects.iter() {
+        entity_to_class.insert(entity, class.class_id);
+    }
 
     for (mut camera, mut image, camera_transform) in cameras.iter_mut() {
         if !camera.should_update(current_time) {
@@ -230,21 +239,95 @@ pub fn segmentation_camera_update_system(
         camera.last_update = current_time;
         image.timestamp = current_time;
 
-        // TODO: Implement actual raycasting for segmentation
-        // For now, this is a placeholder that would need GPU rendering
-        // or CPU raycasting to populate the segmentation image
+        // Perform segmentation raycasting
+        perform_segmentation_raycasting(
+            &camera,
+            &mut image,
+            camera_transform,
+            &mut physics_world,
+            &entity_to_class,
+        );
+    }
+}
 
-        // Reset image
-        for pixel in image.class_ids.iter_mut() {
-            *pixel = 0; // Background
-        }
+/// Perform raycasting to generate segmentation image
+fn perform_segmentation_raycasting(
+    camera: &SegmentationCamera,
+    image: &mut SegmentationImage,
+    transform: &GlobalTransform,
+    physics_world: &mut PhysicsWorld,
+    entity_to_class: &HashMap<Entity, ClassId>,
+) {
+    let width = camera.resolution.0;
+    let height = camera.resolution.1;
 
-        // Simple placeholder: mark center pixel with first visible object's class
-        let center_x = image.dimensions.0 / 2;
-        let center_y = image.dimensions.1 / 2;
+    // Get camera pose
+    let camera_pos = transform.translation();
+    let camera_rot = transform.to_scale_rotation_translation().1;
 
-        if let Some((class, _)) = objects.iter().next() {
-            image.set_pixel(center_x, center_y, class.class_id);
+    // Convert to nalgebra types
+    let ray_origin = point![camera_pos.x, camera_pos.y, camera_pos.z];
+    let rotation = nalgebra::UnitQuaternion::new_normalize(nalgebra::Quaternion::new(
+        camera_rot.w,
+        camera_rot.x,
+        camera_rot.y,
+        camera_rot.z,
+    ));
+
+    // Calculate field of view parameters
+    let fov_rad = camera.fov.to_radians();
+    let aspect_ratio = width as f32 / height as f32;
+    let half_fov_tan = (fov_rad / 2.0).tan();
+
+    // Cast rays for each pixel
+    for y in 0..height {
+        for x in 0..width {
+            // Calculate normalized device coordinates (-1 to 1)
+            let ndc_x = (2.0 * x as f32 / width as f32) - 1.0;
+            let ndc_y = 1.0 - (2.0 * y as f32 / height as f32); // Flip Y
+
+            // Calculate ray direction in camera space
+            let camera_dir = nalgebra::Vector3::new(
+                ndc_x * half_fov_tan * aspect_ratio,
+                ndc_y * half_fov_tan,
+                -1.0, // Looking down negative Z in camera space
+            );
+
+            // Transform to world space
+            let world_dir = rotation * camera_dir;
+            let ray_dir = nalgebra::Unit::new_normalize(world_dir);
+
+            // Create ray
+            let ray = Ray::new(ray_origin, ray_dir.into_inner());
+
+            // Cast ray and get hit information
+            let mut class_id = 0; // Default to background
+
+            if let Some((handle, _toi)) = physics_world.query_pipeline.cast_ray(
+                &physics_world.rigid_body_set,
+                &physics_world.collider_set,
+                &ray,
+                camera.far,
+                true,
+                QueryFilter::default().exclude_sensors(),
+            ) {
+                // Get the collider that was hit
+                if let Some(collider) = physics_world.collider_set.get(handle) {
+                    // Get the rigid body associated with this collider
+                    if let Some(parent_handle) = collider.parent() {
+                        // Get the entity from the rigid body
+                        if let Some(entity) = physics_world.get_entity_from_handle(parent_handle) {
+                            // Look up the semantic class for this entity
+                            if let Some(&entity_class) = entity_to_class.get(&entity) {
+                                class_id = entity_class;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Set the pixel value
+            image.set_pixel(x, y, class_id);
         }
     }
 }

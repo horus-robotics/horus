@@ -1,6 +1,7 @@
 //! Main integration test suite entry point
 
 mod integration_suite;
+mod physics_runtime;
 
 use integration_suite::*;
 

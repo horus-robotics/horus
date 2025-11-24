@@ -13,7 +13,7 @@ categories = ["science::robotics", "embedded", "network-programming"]
 # Core HORUS components
 horus_core = { path = "../horus_core" }
 horus_macros = { path = "../horus_macros", optional = true }
-horus_library = { path = "../horus_library" }
+horus_library = { path = "../horus_library" }  # Uses default features (standard-nodes)
 
 # Re-export commonly used dependencies
 serde = { workspace = true }
@@ -25,14 +25,36 @@ thiserror = { workspace = true }
 default = ["macros"]
 macros = ["dep:horus_macros"]
 
-# Hardware feature flags (compile-time)
-gpio-hardware = []
-bno055-imu = []
-mpu6050-imu = []
-gilrs = []
-crossterm = []
-rplidar = []
-modbus-hardware = []
+# Minimal build without standard nodes (for embedded/constrained systems)
+minimal = ["horus_library/default"]  # Explicitly disable standard-nodes
+
+# Hardware feature flags - propagate to horus_library
+# These are for hardware that requires physical devices
+gpio-hardware = ["horus_library/gpio-hardware"]
+i2c-hardware = ["horus_library/i2c-hardware"]
+spi-hardware = ["horus_library/spi-hardware"]
+can-hardware = ["horus_library/can-hardware"]
+modbus-hardware = ["horus_library/modbus-hardware"]
+
+# Sensor-specific features
+bno055-imu = ["horus_library/bno055-imu"]
+mpu6050-imu = ["horus_library/mpu6050-imu"]
+rplidar = ["horus_library/rplidar"]
+nmea-gps = ["horus_library/nmea-gps"]
+
+# Vision nodes (requires OpenCV - heavy dependency)
+vision = ["horus_library/vision"]
+
+# Convenience bundles
+full-hardware = ["horus_library/full-hardware"]
+all-sensors = ["horus_library/all-sensors"]
+
+# Legacy aliases (for backwards compatibility)
+gilrs = ["horus_library/gilrs"]
+crossterm = ["horus_library/crossterm"]
+serial-hardware = ["horus_library/serial-hardware"]
+opencv-backend = ["horus_library/opencv-backend"]
+input-nodes = ["gilrs", "crossterm"]
 
 [lib]
 name = "horus"

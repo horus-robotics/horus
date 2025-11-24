@@ -2,6 +2,7 @@
 
 use super::traits::{PluginConfig, PluginMetadata, PluginState, Sim3dPlugin};
 use bevy::prelude::*;
+use semver::{Version, VersionReq};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
@@ -155,6 +156,7 @@ impl PluginRegistry {
     /// Validate plugin dependencies
     fn validate_dependencies(&self, metadata: &PluginMetadata) -> Result<(), String> {
         for dep in &metadata.dependencies {
+            // Check if dependency exists
             if !self.plugins.contains_key(&dep.name) {
                 return Err(format!(
                     "Missing dependency: {} (required by {})",
@@ -162,7 +164,39 @@ impl PluginRegistry {
                 ));
             }
 
-            // TODO: Validate version requirements
+            // Get the cached metadata for the dependency
+            let dep_metadata = self.metadata.get(&dep.name).ok_or_else(|| {
+                format!(
+                    "Metadata not found for dependency: {} (required by {})",
+                    dep.name, metadata.name
+                )
+            })?;
+
+            // Parse the dependency version requirement
+            let version_req = VersionReq::parse(&dep.version_requirement)
+                .map_err(|e| {
+                    format!(
+                        "Invalid version requirement '{}' for dependency {}: {}",
+                        dep.version_requirement, dep.name, e
+                    )
+                })?;
+
+            // Parse the actual plugin version
+            let actual_version = Version::parse(&dep_metadata.version)
+                .map_err(|e| {
+                    format!(
+                        "Invalid version '{}' for plugin {}: {}",
+                        dep_metadata.version, dep.name, e
+                    )
+                })?;
+
+            // Check if the actual version satisfies the requirement
+            if !version_req.matches(&actual_version) {
+                return Err(format!(
+                    "Version mismatch for dependency {}: required {}, found {}",
+                    dep.name, dep.version_requirement, dep_metadata.version
+                ));
+            }
         }
 
         Ok(())

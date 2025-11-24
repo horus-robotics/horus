@@ -50,6 +50,27 @@ impl Node for ScalingNode {
     fn get_subscribers(&self) -> Vec<crate::core::TopicMetadata> {
         Vec::new()
     }
+
+    // ==================== JIT Compilation Support ====================
+    /// This node supports JIT compilation
+    fn supports_jit(&self) -> bool {
+        true
+    }
+
+    /// This node is deterministic (same input always produces same output)
+    fn is_jit_deterministic(&self) -> bool {
+        true
+    }
+
+    /// This node is pure (no side effects)
+    fn is_jit_pure(&self) -> bool {
+        true
+    }
+
+    /// Get JIT parameters for Cranelift compilation: output = input * factor + offset
+    fn get_jit_arithmetic_params(&self) -> Option<(i64, i64)> {
+        Some((self.scale, self.offset))
+    }
 }
 
 impl DataflowNode for ScalingNode {

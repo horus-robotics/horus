@@ -273,8 +273,8 @@ pub fn execute_build_only(files: Vec<PathBuf>, release: bool, clean: bool) -> Re
                 HashSet::new()
             };
 
-            // Split dependencies into HORUS packages, pip packages, cargo packages, and path dependencies
-            let (horus_deps, _pip_packages, cargo_packages, path_deps) =
+            // Split dependencies into HORUS packages, pip packages, cargo packages, path and git dependencies
+            let (horus_deps, _pip_packages, cargo_packages, path_deps, git_deps) =
                 split_dependencies_with_path_context(dependencies.clone(), Some("rust"));
 
             // Generate Cargo.toml in .horus/ that references source files in parent directory
@@ -333,8 +333,8 @@ path = "{}"
                 let dep_path = horus_source.join(dep_name);
 
                 if dep_path.exists() && dep_path.join("Cargo.toml").exists() {
-                    // Auto-inject features for horus_library
-                    if dep_name == "horus_library" && !auto_features.is_empty() {
+                    // Auto-inject features for horus or horus_library
+                    if (dep_name == "horus" || dep_name == "horus_library") && !auto_features.is_empty() {
                         cargo_toml.push_str(&format!(
                             "{} = {{ path = \"{}\", features = [{}] }}\n",
                             dep_name,
@@ -443,10 +443,29 @@ path = "{}"
                 ));
                 println!(
                     "  {} Added path dependency: {} -> {}",
-                    "".cyan(),
+                    "✓".cyan(),
                     pkg_name,
                     pkg_path
                 );
+            }
+
+            // Add git dependencies (clone to cache, then use as path dependencies)
+            if !git_deps.is_empty() {
+                println!("{} Resolving git dependencies...", "📦".cyan());
+                let resolved_git_deps = resolve_git_dependencies(&git_deps)?;
+                for (pkg_name, pkg_path) in &resolved_git_deps {
+                    cargo_toml.push_str(&format!(
+                        "{} = {{ path = \"{}\" }}\n",
+                        pkg_name,
+                        pkg_path.display()
+                    ));
+                    println!(
+                        "  {} Added git dependency: {} -> {}",
+                        "✓".green(),
+                        pkg_name,
+                        pkg_path.display()
+                    );
+                }
             }
 
             // Also add dependencies directly from horus.yaml (in case some weren't parsed by resolve_dependencies)
@@ -2193,12 +2212,24 @@ fn parse_dependency_map_entry(
             // Check for git dependency
             if let Some(git_value) = map.get("git") {
                 if let Some(git_str) = git_value.as_str() {
-                    eprintln!(
-                        "    Warning: Git dependency '{}' (git: {}) is not supported in horus run",
-                        pkg_name, git_str
-                    );
-                    eprintln!("     Consider using 'cargo run' or 'horus build' for projects with git dependencies");
-                    return Ok(None);
+                    // Extract optional branch, tag, or rev
+                    let branch = map.get("branch").and_then(|v| v.as_str());
+                    let tag = map.get("tag").and_then(|v| v.as_str());
+                    let rev = map.get("rev").and_then(|v| v.as_str());
+
+                    // Build git reference string
+                    let ref_str = if let Some(b) = branch {
+                        format!(":branch={}", b)
+                    } else if let Some(t) = tag {
+                        format!(":tag={}", t)
+                    } else if let Some(r) = rev {
+                        format!(":rev={}", r)
+                    } else {
+                        String::new()
+                    };
+
+                    // Return format: git:pkg_name:git_url[:branch=X|tag=X|rev=X]
+                    return Ok(Some(format!("git:{}:{}{}", pkg_name, git_str, ref_str)));
                 }
             }
 
@@ -2727,14 +2758,90 @@ fn split_dependencies(deps: HashSet<String>) -> (Vec<String>, Vec<PipPackage>, V
     split_dependencies_with_context(deps, None)
 }
 
-/// Split dependencies including path dependencies
-/// Returns: (horus_packages, pip_packages, cargo_packages, path_packages)
+/// Git dependency reference type
+#[derive(Debug, Clone)]
+enum GitRef {
+    Branch(String),
+    Tag(String),
+    Rev(String),
+    Default,
+}
+
+/// Git package dependency
+#[derive(Debug, Clone)]
+struct GitPackage {
+    name: String,
+    url: String,
+    git_ref: GitRef,
+}
+
+impl GitPackage {
+    /// Parse from string format: git:pkg_name:url[:branch=X|tag=X|rev=X]
+    fn from_string(s: &str) -> Option<Self> {
+        let s = s.strip_prefix("git:")?;
+        let parts: Vec<&str> = s.splitn(3, ':').collect();
+        if parts.len() < 2 {
+            return None;
+        }
+
+        let name = parts[0].to_string();
+        let url_and_ref = if parts.len() == 3 {
+            format!("{}:{}", parts[1], parts[2])
+        } else {
+            parts[1].to_string()
+        };
+
+        // Parse URL and optional ref
+        let (url, git_ref) = if let Some(idx) = url_and_ref.find(":branch=") {
+            let (url, rest) = url_and_ref.split_at(idx);
+            let branch = rest.strip_prefix(":branch=").unwrap();
+            (url.to_string(), GitRef::Branch(branch.to_string()))
+        } else if let Some(idx) = url_and_ref.find(":tag=") {
+            let (url, rest) = url_and_ref.split_at(idx);
+            let tag = rest.strip_prefix(":tag=").unwrap();
+            (url.to_string(), GitRef::Tag(tag.to_string()))
+        } else if let Some(idx) = url_and_ref.find(":rev=") {
+            let (url, rest) = url_and_ref.split_at(idx);
+            let rev = rest.strip_prefix(":rev=").unwrap();
+            (url.to_string(), GitRef::Rev(rev.to_string()))
+        } else {
+            (url_and_ref, GitRef::Default)
+        };
+
+        Some(GitPackage { name, url, git_ref })
+    }
+
+    /// Get the cache directory name for this git package
+    fn cache_dir_name(&self) -> String {
+        // Create a unique cache directory based on URL and ref
+        let url_hash = {
+            use std::collections::hash_map::DefaultHasher;
+            use std::hash::{Hash, Hasher};
+            let mut hasher = DefaultHasher::new();
+            self.url.hash(&mut hasher);
+            format!("{:x}", hasher.finish())[..8].to_string()
+        };
+
+        let ref_suffix = match &self.git_ref {
+            GitRef::Branch(b) => format!("_branch_{}", b),
+            GitRef::Tag(t) => format!("_tag_{}", t),
+            GitRef::Rev(r) => format!("_rev_{}", &r[..8.min(r.len())]),
+            GitRef::Default => String::new(),
+        };
+
+        format!("git_{}_{}{}", self.name, url_hash, ref_suffix)
+    }
+}
+
+/// Split dependencies including path and git dependencies
+/// Returns: (horus_packages, pip_packages, cargo_packages, path_packages, git_packages)
 /// path_packages is Vec<(name, path)>
 type SplitDependencies = (
     Vec<String>,
     Vec<PipPackage>,
     Vec<CargoPackage>,
     Vec<(String, String)>,
+    Vec<GitPackage>,
 );
 
 fn split_dependencies_with_path_context(
@@ -2745,6 +2852,7 @@ fn split_dependencies_with_path_context(
     let mut pip_packages = Vec::new();
     let mut cargo_packages = Vec::new();
     let mut path_packages = Vec::new();
+    let mut git_packages = Vec::new();
 
     for dep in deps {
         let dep = dep.trim();
@@ -2757,6 +2865,20 @@ fn split_dependencies_with_path_context(
                 let pkg_path = parts[2].to_string();
                 path_packages.push((pkg_name, pkg_path));
                 continue;
+            }
+        }
+
+        // Handle git dependencies: git:pkg_name:url[:branch=X|tag=X|rev=X]
+        if dep.starts_with("git:") {
+            if let Some(git_pkg) = GitPackage::from_string(dep) {
+                git_packages.push(git_pkg);
+                continue;
+            } else {
+                eprintln!(
+                    "  {} Failed to parse git dependency '{}'",
+                    "⚠".yellow(),
+                    dep
+                );
             }
         }
 
@@ -2825,7 +2947,124 @@ fn split_dependencies_with_path_context(
         }
     }
 
-    (horus_packages, pip_packages, cargo_packages, path_packages)
+    (horus_packages, pip_packages, cargo_packages, path_packages, git_packages)
+}
+
+/// Clone a git dependency to the global cache and return the path
+/// Returns: (pkg_name, cached_path)
+fn clone_git_dependency(git_pkg: &GitPackage) -> Result<(String, PathBuf)> {
+    let global_cache = home_dir().join(".horus/cache");
+    let cache_dir_name = git_pkg.cache_dir_name();
+    let cache_path = global_cache.join(&cache_dir_name);
+
+    // Check if already cached
+    if cache_path.exists() && cache_path.join("Cargo.toml").exists() {
+        println!(
+            "  {} Git dependency '{}' cached at: {}",
+            "✓".green(),
+            git_pkg.name,
+            cache_path.display()
+        );
+        return Ok((git_pkg.name.clone(), cache_path));
+    }
+
+    // Create cache directory
+    fs::create_dir_all(&global_cache)?;
+
+    // Clone the repository
+    println!(
+        "  {} Cloning git dependency: {} from {}",
+        "↓".cyan(),
+        git_pkg.name,
+        git_pkg.url
+    );
+
+    // Remove stale directory if exists
+    if cache_path.exists() {
+        fs::remove_dir_all(&cache_path)?;
+    }
+
+    // Build git clone command
+    let mut clone_cmd = Command::new("git");
+    clone_cmd.args(["clone", "--depth", "1"]);
+
+    // Add branch/tag/rev options
+    match &git_pkg.git_ref {
+        GitRef::Branch(branch) => {
+            clone_cmd.args(["--branch", branch]);
+        }
+        GitRef::Tag(tag) => {
+            clone_cmd.args(["--branch", tag]);
+        }
+        GitRef::Rev(_) => {
+            // For specific rev, we need full clone (can't use --depth 1)
+            clone_cmd.args(["--no-single-branch"]);
+        }
+        GitRef::Default => {}
+    }
+
+    clone_cmd.args([&git_pkg.url, cache_path.to_str().unwrap()]);
+
+    let output = clone_cmd
+        .output()
+        .context("Failed to run git clone")?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(anyhow!("Git clone failed: {}", stderr));
+    }
+
+    // Checkout specific rev if specified
+    if let GitRef::Rev(rev) = &git_pkg.git_ref {
+        let checkout_output = Command::new("git")
+            .args(["checkout", rev])
+            .current_dir(&cache_path)
+            .output()
+            .context("Failed to checkout git revision")?;
+
+        if !checkout_output.status.success() {
+            let stderr = String::from_utf8_lossy(&checkout_output.stderr);
+            return Err(anyhow!("Git checkout failed: {}", stderr));
+        }
+    }
+
+    // Verify it's a valid Rust crate
+    if !cache_path.join("Cargo.toml").exists() {
+        return Err(anyhow!(
+            "Git dependency '{}' doesn't contain a Cargo.toml file",
+            git_pkg.name
+        ));
+    }
+
+    println!(
+        "  {} Cloned git dependency: {}",
+        "✓".green(),
+        git_pkg.name
+    );
+
+    Ok((git_pkg.name.clone(), cache_path))
+}
+
+/// Clone all git dependencies and return them as path dependencies
+fn resolve_git_dependencies(git_deps: &[GitPackage]) -> Result<Vec<(String, PathBuf)>> {
+    let mut resolved = Vec::new();
+
+    for git_pkg in git_deps {
+        match clone_git_dependency(git_pkg) {
+            Ok((name, path)) => resolved.push((name, path)),
+            Err(e) => {
+                eprintln!(
+                    "  {} Failed to clone git dependency '{}': {}",
+                    "✗".red(),
+                    git_pkg.name,
+                    e
+                );
+                // Continue with other dependencies
+            }
+        }
+    }
+
+    Ok(resolved)
 }
 
 /// Install pip packages using global cache (HORUS philosophy)
@@ -3725,13 +3964,13 @@ fn execute_with_scheduler(
             println!("{} Setting up Cargo workspace...", "".cyan());
 
             // Parse horus.yaml to get dependencies
-            let (horus_deps, cargo_packages, path_deps) = if Path::new("horus.yaml").exists() {
+            let (horus_deps, cargo_packages, path_deps, git_deps) = if Path::new("horus.yaml").exists() {
                 let deps = parse_horus_yaml_dependencies("horus.yaml")?;
-                let (horus_pkgs, _pip_pkgs, cargo_pkgs, path_pkgs) =
+                let (horus_pkgs, _pip_pkgs, cargo_pkgs, path_pkgs, git_pkgs) =
                     split_dependencies_with_path_context(deps, Some("rust"));
-                (horus_pkgs, cargo_pkgs, path_pkgs)
+                (horus_pkgs, cargo_pkgs, path_pkgs, git_pkgs)
             } else {
-                (Vec::new(), Vec::new(), Vec::new())
+                (Vec::new(), Vec::new(), Vec::new(), Vec::new())
             };
 
             // Find HORUS source directory
@@ -3766,6 +4005,18 @@ path = "{}"
                 source_relative_path
             );
 
+            // Auto-detect nodes and required features
+            use crate::node_detector;
+            let auto_features =
+                node_detector::detect_features_from_file(&file).unwrap_or_default();
+            if !auto_features.is_empty() {
+                eprintln!(
+                    "  {} Auto-detected hardware nodes (features: {})",
+                    "".cyan(),
+                    auto_features.join(", ").yellow()
+                );
+            }
+
             // Add HORUS dependencies from horus.yaml or defaults
             let horus_packages_to_add = if !horus_deps.is_empty() {
                 horus_deps
@@ -3784,17 +4035,38 @@ path = "{}"
 
                 let dep_path = horus_source.join(dep_name);
                 if dep_path.exists() && dep_path.join("Cargo.toml").exists() {
-                    cargo_toml.push_str(&format!(
-                        "{} = {{ path = \"{}\" }}\n",
-                        dep_name,
-                        dep_path.display()
-                    ));
-                    println!(
-                        "  {} Added dependency: {} -> {}",
-                        "".cyan(),
-                        dep,
-                        dep_path.display()
-                    );
+                    // Auto-inject features for horus or horus_library
+                    if (dep_name == "horus" || dep_name == "horus_library") && !auto_features.is_empty() {
+                        cargo_toml.push_str(&format!(
+                            "{} = {{ path = \"{}\", features = [{}] }}\n",
+                            dep_name,
+                            dep_path.display(),
+                            auto_features
+                                .iter()
+                                .map(|f| format!("\"{}\"", f))
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        ));
+                        println!(
+                            "  {} Added dependency: {} -> {} (auto-features: {})",
+                            "".cyan(),
+                            dep,
+                            dep_path.display(),
+                            auto_features.join(", ").yellow()
+                        );
+                    } else {
+                        cargo_toml.push_str(&format!(
+                            "{} = {{ path = \"{}\" }}\n",
+                            dep_name,
+                            dep_path.display()
+                        ));
+                        println!(
+                            "  {} Added dependency: {} -> {}",
+                            "".cyan(),
+                            dep,
+                            dep_path.display()
+                        );
+                    }
                 } else {
                     eprintln!(
                         "  {} Warning: dependency {} not found at {}",
@@ -3873,10 +4145,29 @@ path = "{}"
                 ));
                 println!(
                     "  {} Added path dependency: {} -> {}",
-                    "".cyan(),
+                    "✓".cyan(),
                     pkg_name,
                     pkg_path
                 );
+            }
+
+            // Add git dependencies (clone to cache, then use as path dependencies)
+            if !git_deps.is_empty() {
+                println!("{} Resolving git dependencies...", "📦".cyan());
+                let resolved_git_deps = resolve_git_dependencies(&git_deps)?;
+                for (pkg_name, pkg_path) in &resolved_git_deps {
+                    cargo_toml.push_str(&format!(
+                        "{} = {{ path = \"{}\" }}\n",
+                        pkg_name,
+                        pkg_path.display()
+                    ));
+                    println!(
+                        "  {} Added git dependency: {} -> {}",
+                        "✓".green(),
+                        pkg_name,
+                        pkg_path.display()
+                    );
+                }
             }
 
             // Also add dependencies directly from horus.yaml (in case some weren't parsed by resolve_dependencies)

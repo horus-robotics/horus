@@ -1,6 +1,8 @@
 //! Tactile and touch sensor simulation for robotic manipulation
 
+use crate::physics::world::PhysicsWorld;
 use bevy::prelude::*;
+use rapier3d::prelude::*;
 
 /// Tactile sensor array component
 #[derive(Component, Reflect)]
@@ -295,13 +297,12 @@ pub struct ContactPoint {
 /// System to update tactile sensors from physics contacts
 pub fn tactile_sensor_update_system(
     time: Res<Time>,
-    mut sensors: Query<(&mut TactileSensor, &mut TactileData, &GlobalTransform)>,
-    // In production, this would query physics contact points from Rapier
-    // For now, we'll use a placeholder
+    physics_world: Res<PhysicsWorld>,
+    mut sensors: Query<(Entity, &mut TactileSensor, &mut TactileData, &GlobalTransform)>,
 ) {
     let current_time = time.elapsed_secs();
 
-    for (mut sensor, mut data, transform) in sensors.iter_mut() {
+    for (entity, mut sensor, mut data, transform) in sensors.iter_mut() {
         if !sensor.should_update(current_time) {
             continue;
         }
@@ -310,16 +311,14 @@ pub fn tactile_sensor_update_system(
         data.timestamp = current_time;
         data.clear();
 
-        // TODO: Query physics contacts from Rapier
-        // This would involve:
-        // 1. Get all contact points on the sensor surface
-        // 2. Project contacts onto sensor grid
-        // 3. Map contact forces to taxels
-        // 4. Apply sensor characteristics (resolution, noise, etc.)
-
-        // Placeholder: In production, contacts would come from physics engine
-        let _sensor_pos = transform.translation();
-        let _sensor_rot = transform.rotation();
+        // Query physics contacts from Rapier
+        process_tactile_contacts(
+            entity,
+            &sensor,
+            &mut data,
+            transform,
+            &physics_world,
+        );
 
         // Calculate aggregate values
         let total_normal: f32 = data.readings.iter().map(|r| r.force_normal).sum();
@@ -328,6 +327,123 @@ pub fn tactile_sensor_update_system(
 
         data.total_force = Vec3::new(total_shear_x, total_normal, total_shear_y);
         data.calculate_center_of_pressure();
+    }
+}
+
+/// Process physics contacts and map them to tactile sensor taxels
+fn process_tactile_contacts(
+    sensor_entity: Entity,
+    sensor: &TactileSensor,
+    data: &mut TactileData,
+    transform: &GlobalTransform,
+    physics_world: &PhysicsWorld,
+) {
+    let sensor_pos = transform.translation();
+    let sensor_rot = transform.to_scale_rotation_translation().1;
+
+    // Get the sensor's local coordinate system
+    let sensor_normal = sensor_rot * Vec3::Y; // Assuming Y is up/normal
+    let sensor_tangent_x = sensor_rot * Vec3::X;
+    let sensor_tangent_z = sensor_rot * Vec3::Z;
+
+    // Physical dimensions of each taxel
+    let (taxel_width, taxel_height) = sensor.taxel_size();
+
+    // Find all colliders associated with this entity
+    for (collider_handle, collider) in physics_world.collider_set.iter() {
+        // Check if this collider belongs to our sensor entity
+        if let Some(parent_handle) = collider.parent() {
+            if let Some(entity) = physics_world.get_entity_from_handle(parent_handle) {
+                if entity != sensor_entity {
+                    continue;
+                }
+
+                // Get all contact pairs involving this collider
+                for contact_pair in physics_world.narrow_phase.contact_pairs() {
+                    // Check if our collider is involved in this contact
+                    let involves_sensor = contact_pair.collider1 == collider_handle
+                        || contact_pair.collider2 == collider_handle;
+
+                    if !involves_sensor {
+                        continue;
+                    }
+
+                    // Process each contact manifold
+                    for manifold in &contact_pair.manifolds {
+                        // Process each contact point in the manifold
+                        for contact in manifold.points.iter() {
+                            // Get contact point in world space
+                            let contact_point = if contact_pair.collider1 == collider_handle {
+                                point![
+                                    manifold.local_n1.x + contact.local_p1.x,
+                                    manifold.local_n1.y + contact.local_p1.y,
+                                    manifold.local_n1.z + contact.local_p1.z
+                                ]
+                            } else {
+                                point![
+                                    manifold.local_n2.x + contact.local_p2.x,
+                                    manifold.local_n2.y + contact.local_p2.y,
+                                    manifold.local_n2.z + contact.local_p2.z
+                                ]
+                            };
+
+                            // Transform contact point to sensor local space
+                            let local_point = Vec3::new(
+                                contact_point.x - sensor_pos.x,
+                                contact_point.y - sensor_pos.y,
+                                contact_point.z - sensor_pos.z,
+                            );
+
+                            // Project onto sensor surface
+                            let x_proj = local_point.dot(sensor_tangent_x);
+                            let z_proj = local_point.dot(sensor_tangent_z);
+
+                            // Convert to taxel coordinates
+                            let taxel_x = ((x_proj + sensor.physical_size.0 / 2.0) / taxel_width) as usize;
+                            let taxel_y = ((z_proj + sensor.physical_size.1 / 2.0) / taxel_height) as usize;
+
+                            // Check if within sensor bounds
+                            if taxel_x < sensor.array_size.0 && taxel_y < sensor.array_size.1 {
+                                // Calculate contact force components from contact data
+                                // Normal impulse is stored in the contact data
+                                let impulse = contact.data.impulse;
+                                let force_magnitude = impulse.abs() / physics_world.integration_parameters.dt;
+
+                                // Decompose force into normal and shear components
+                                let normal_dir = Vec3::new(manifold.local_n1.x, manifold.local_n1.y, manifold.local_n1.z);
+                                let force_normal = force_magnitude * normal_dir.dot(sensor_normal).abs();
+
+                                // Calculate shear forces (tangential to surface)
+                                let force_vector = normal_dir * force_magnitude;
+                                let force_shear_x = force_vector.dot(sensor_tangent_x);
+                                let force_shear_y = force_vector.dot(sensor_tangent_z);
+
+                                // Apply force to taxel (with sensor characteristics)
+                                let quantized_normal = (force_normal / sensor.force_resolution).round()
+                                    * sensor.force_resolution;
+                                let quantized_normal = quantized_normal.min(sensor.max_force);
+
+                                let quantized_shear_x = (force_shear_x / sensor.force_resolution).round()
+                                    * sensor.force_resolution;
+                                let quantized_shear_y = (force_shear_y / sensor.force_resolution).round()
+                                    * sensor.force_resolution;
+
+                                // Update taxel reading
+                                let reading = TaxelReading {
+                                    force_normal: quantized_normal,
+                                    force_shear_x: quantized_shear_x,
+                                    force_shear_y: quantized_shear_y,
+                                    contact_area: 1.0, // Full taxel contact assumed
+                                    vibration: 0.0, // Static contact, no vibration
+                                };
+
+                                data.set_taxel(taxel_x, taxel_y, reading);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

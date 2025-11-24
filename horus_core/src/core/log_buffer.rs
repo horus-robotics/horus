@@ -1,3 +1,4 @@
+use crate::memory::platform::shm_logs_path;
 use memmap2::MmapMut;
 use serde::{Deserialize, Serialize};
 use std::fs::{self, OpenOptions};
@@ -54,7 +55,7 @@ pub struct SharedLogBuffer {
 impl SharedLogBuffer {
     pub fn new() -> crate::error::HorusResult<Self> {
         // Logs are intentionally global (not session-isolated) so dashboard can see all logs
-        let path = PathBuf::from("/dev/shm/horus_logs");
+        let path = shm_logs_path();
 
         // Ensure parent directory exists
         if let Some(parent) = path.parent() {

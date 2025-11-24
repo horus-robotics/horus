@@ -94,6 +94,9 @@ pub struct BldcMotorNode {
     hardware_enabled: bool,
     pwm_gpio_pins: [u8; 8], // GPIO pin numbers for PWM output (12, 13, 18, 19 for RPi)
     pwm_frequency_hz: f64,  // PWM frequency (50 Hz for standard ESC, higher for digital protocols)
+
+    // Timing state (moved from static mut for thread safety)
+    last_telemetry_time: u64,
 }
 
 use serde::{Deserialize, Serialize};
@@ -178,6 +181,7 @@ impl BldcMotorNode {
             hardware_enabled: false,
             pwm_gpio_pins: [0; 8],  // Will be configured via set_pwm_pin()
             pwm_frequency_hz: 50.0, // Default 50Hz for standard PWM ESCs
+            last_telemetry_time: 0,
         })
     }
 
@@ -662,22 +666,19 @@ impl Node for BldcMotorNode {
 
         // Simulate and publish telemetry
         if self.enable_telemetry {
-            static mut LAST_TELEMETRY_TIME: u64 = 0;
             let telemetry_interval = 100_000_000; // 100ms = 10Hz
             let current_time = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
-                .unwrap()
+                .unwrap_or_default()
                 .as_nanos() as u64;
 
-            unsafe {
-                if current_time - LAST_TELEMETRY_TIME > telemetry_interval {
-                    for motor_id in 0..self.num_motors {
-                        self.simulate_telemetry(motor_id);
-                        // Telemetry is simulated and stored in the node
-                        // In real implementation, would publish via Hub
-                    }
-                    LAST_TELEMETRY_TIME = current_time;
+            if current_time - self.last_telemetry_time > telemetry_interval {
+                for motor_id in 0..self.num_motors {
+                    self.simulate_telemetry(motor_id);
+                    // Telemetry is simulated and stored in the node
+                    // In real implementation, would publish via Hub
                 }
+                self.last_telemetry_time = current_time;
             }
         }
     }

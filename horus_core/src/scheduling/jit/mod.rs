@@ -4,4 +4,6 @@ mod compiler;
 mod dataflow;
 mod example_nodes;
 
+pub use compiler::JITCompiler;
 pub use dataflow::CompiledDataflow;
+pub use example_nodes::ScalingNode;

@@ -94,6 +94,7 @@ impl Plugin for EditorPlugin {
             .init_resource::<EditorState>()
             .init_resource::<selection::Selection>()
             .init_resource::<undo::UndoStack>()
+            .init_resource::<hierarchy::HierarchyCollapseState>()
             .add_systems(
                 Update,
                 (

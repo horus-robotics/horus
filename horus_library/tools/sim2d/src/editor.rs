@@ -140,10 +140,12 @@ impl WorldEditor {
                 });
             }
             EditorTool::Select => {
-                // Selection handled separately
+                // Select mode: store click position for hit testing
+                self.mouse_world_pos = snapped_pos;
             }
             EditorTool::Delete => {
-                // Deletion handled separately
+                // Delete mode: store click position for hit testing
+                self.mouse_world_pos = snapped_pos;
             }
         }
     }
@@ -225,6 +227,54 @@ impl WorldEditor {
         } else {
             None
         }
+    }
+
+    /// Check if a point is inside an obstacle
+    pub fn point_in_obstacle(pos: Vec2, obstacle: &Obstacle) -> bool {
+        match obstacle.shape {
+            ObstacleShape::Rectangle => {
+                let half_w = obstacle.size[0] / 2.0;
+                let half_h = obstacle.size[1] / 2.0;
+                pos.x >= obstacle.pos[0] - half_w
+                    && pos.x <= obstacle.pos[0] + half_w
+                    && pos.y >= obstacle.pos[1] - half_h
+                    && pos.y <= obstacle.pos[1] + half_h
+            }
+            ObstacleShape::Circle => {
+                let dx = pos.x - obstacle.pos[0];
+                let dy = pos.y - obstacle.pos[1];
+                let radius = obstacle.size[0] / 2.0;
+                (dx * dx + dy * dy) <= radius * radius
+            }
+        }
+    }
+
+    /// Find obstacle index at a position
+    pub fn find_obstacle_at(&self, pos: Vec2, obstacles: &[Obstacle]) -> Option<usize> {
+        obstacles
+            .iter()
+            .enumerate()
+            .find(|(_, obs)| Self::point_in_obstacle(pos, obs))
+            .map(|(idx, _)| idx)
+    }
+
+    /// Handle select action at current mouse position
+    pub fn try_select_at(&mut self, pos: Vec2, obstacles: &[Obstacle], entities: &[Entity]) -> Option<Entity> {
+        if let Some(idx) = self.find_obstacle_at(pos, obstacles) {
+            if idx < entities.len() {
+                let entity = entities[idx];
+                self.clear_selection();
+                self.select_obstacle(entity);
+                return Some(entity);
+            }
+        }
+        self.clear_selection();
+        None
+    }
+
+    /// Handle delete action at current mouse position, returns index of deleted obstacle
+    pub fn try_delete_at(&mut self, pos: Vec2, obstacles: &[Obstacle]) -> Option<usize> {
+        self.find_obstacle_at(pos, obstacles)
     }
 
     /// Push action to undo stack

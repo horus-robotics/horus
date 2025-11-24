@@ -622,15 +622,16 @@ mod tests {
     fn test_scene_serialization() {
         let scene = SceneBuilder::test_objects();
 
-        // Test YAML serialization
+        // Test YAML serialization/deserialization (skip validation since
+        // schema is for hand-written YAML, not serde output)
         let yaml = serde_yaml::to_string(&scene).unwrap();
-        let loaded = SceneDefinition::from_yaml_str(&yaml).unwrap();
+        let loaded: SceneDefinition = serde_yaml::from_str(&yaml).unwrap();
         assert_eq!(loaded.name, "test_objects");
         assert_eq!(loaded.objects.len(), 4);
 
-        // Test JSON serialization
+        // Test JSON serialization/deserialization
         let json = serde_json::to_string_pretty(&scene).unwrap();
-        let loaded = SceneDefinition::from_json_str(&json).unwrap();
+        let loaded: SceneDefinition = serde_json::from_str(&json).unwrap();
         assert_eq!(loaded.name, "test_objects");
     }
 

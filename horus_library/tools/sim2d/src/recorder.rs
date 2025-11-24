@@ -166,9 +166,28 @@ impl Recording {
         Ok(())
     }
 
+    /// Check if ffmpeg is available
+    pub fn check_ffmpeg() -> Result<()> {
+        use std::process::Command;
+
+        let output = Command::new("ffmpeg").arg("-version").output();
+
+        match output {
+            Ok(o) if o.status.success() => Ok(()),
+            Ok(_) => anyhow::bail!("ffmpeg is installed but returned an error"),
+            Err(e) => anyhow::bail!(
+                "ffmpeg is not installed or not in PATH. Please install ffmpeg to export videos. Error: {}",
+                e
+            ),
+        }
+    }
+
     /// Export to video using ffmpeg (requires ffmpeg to be installed)
     pub fn export_to_video(&self, output_path: &Path, temp_dir: &Path) -> Result<()> {
         use std::process::Command;
+
+        // Check ffmpeg availability first
+        Self::check_ffmpeg().context("Video export requires ffmpeg")?;
 
         // Ensure temp directory exists
         std::fs::create_dir_all(temp_dir)
@@ -246,6 +265,115 @@ impl Recording {
     }
 }
 
+/// Playback state for replaying recordings
+#[derive(Debug, Clone, Default)]
+pub struct PlaybackState {
+    /// Recording being played back
+    pub recording: Option<Recording>,
+    /// Current frame index
+    pub current_frame: u64,
+    /// Is playback active
+    pub is_playing: bool,
+    /// Playback speed multiplier
+    pub speed: f32,
+    /// Loop playback when finished
+    pub loop_playback: bool,
+    /// Accumulated time for frame advancement
+    accumulated_time: f64,
+}
+
+impl PlaybackState {
+    /// Start playback of a recording
+    pub fn start(&mut self, recording: Recording) {
+        self.recording = Some(recording);
+        self.current_frame = 0;
+        self.is_playing = true;
+        self.accumulated_time = 0.0;
+    }
+
+    /// Stop playback
+    pub fn stop(&mut self) {
+        self.is_playing = false;
+    }
+
+    /// Pause playback
+    pub fn pause(&mut self) {
+        self.is_playing = false;
+    }
+
+    /// Resume playback
+    pub fn resume(&mut self) {
+        self.is_playing = true;
+    }
+
+    /// Get current frame data
+    pub fn get_current_frame(&self) -> Option<&RecordedFrame> {
+        self.recording
+            .as_ref()
+            .and_then(|r| r.get_frame(self.current_frame))
+    }
+
+    /// Advance playback by delta time, returns true if frame changed
+    pub fn advance(&mut self, delta_seconds: f64) -> bool {
+        if !self.is_playing {
+            return false;
+        }
+
+        let Some(recording) = &self.recording else {
+            return false;
+        };
+
+        if recording.frames.is_empty() {
+            return false;
+        }
+
+        let frame_duration = 1.0 / recording.metadata.framerate as f64;
+        self.accumulated_time += delta_seconds * self.speed as f64;
+
+        if self.accumulated_time >= frame_duration {
+            self.accumulated_time -= frame_duration;
+            self.current_frame += 1;
+
+            if self.current_frame >= recording.metadata.frame_count {
+                if self.loop_playback {
+                    self.current_frame = 0;
+                } else {
+                    self.current_frame = recording.metadata.frame_count.saturating_sub(1);
+                    self.is_playing = false;
+                }
+            }
+            return true;
+        }
+        false
+    }
+
+    /// Seek to specific frame
+    pub fn seek(&mut self, frame: u64) {
+        if let Some(recording) = &self.recording {
+            self.current_frame = frame.min(recording.metadata.frame_count.saturating_sub(1));
+            self.accumulated_time = 0.0;
+        }
+    }
+
+    /// Get total frame count
+    pub fn total_frames(&self) -> u64 {
+        self.recording
+            .as_ref()
+            .map(|r| r.metadata.frame_count)
+            .unwrap_or(0)
+    }
+
+    /// Get playback progress (0.0 to 1.0)
+    pub fn progress(&self) -> f32 {
+        let total = self.total_frames();
+        if total == 0 {
+            0.0
+        } else {
+            self.current_frame as f32 / total as f32
+        }
+    }
+}
+
 /// Recorder for capturing simulation frames
 #[derive(bevy::prelude::Resource)]
 pub struct Recorder {
@@ -263,6 +391,9 @@ pub struct Recorder {
 
     /// Frame counter
     frame_counter: u64,
+
+    /// Playback state
+    pub playback: PlaybackState,
 }
 
 impl Recorder {
@@ -274,7 +405,21 @@ impl Recorder {
             framerate,
             capture_screenshots: false,
             frame_counter: 0,
+            playback: PlaybackState {
+                speed: 1.0,
+                ..Default::default()
+            },
         }
+    }
+
+    /// Load and start playback of a recording
+    pub fn start_playback(&mut self, recording: Recording) {
+        self.playback.start(recording);
+    }
+
+    /// Check if playback is active
+    pub fn is_playing(&self) -> bool {
+        self.playback.is_playing
     }
 
     /// Start recording

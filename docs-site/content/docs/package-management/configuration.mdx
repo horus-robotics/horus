@@ -264,6 +264,57 @@ dependencies:
       - rt-multi-thread
 ```
 
+### Prefixed Dependencies (Custom Drivers)
+
+For explicit control over where packages come from, use prefixes:
+
+**Cargo (crates.io):**
+```yaml
+dependencies:
+  - cargo:rppal@0.14                    # Raspberry Pi GPIO
+  - cargo:tokio-serial@5.4              # Serial port
+  - cargo:serde@1.0:features=derive     # With features
+  - cargo:tokio@1:features=full,macros  # Multiple features
+```
+
+**Pip (PyPI):**
+```yaml
+dependencies:
+  - pip:numpy@1.24                      # NumPy
+  - pip:opencv-python@4.8               # OpenCV
+  - pip:pyserial@3.5                    # Serial port
+```
+
+**Local path (custom driver):**
+```yaml
+dependencies:
+  - path:my_driver:../drivers/my_custom_driver
+  - path:sensor_lib:./libs/sensor_lib
+```
+
+**Git repository:**
+```yaml
+dependencies:
+  # Basic git dependency
+  - name: my_package
+    git: https://github.com/user/repo.git
+
+  # With specific branch
+  - name: my_driver
+    git: https://github.com/user/driver.git
+    branch: develop
+
+  # With specific tag
+  - name: sensors
+    git: https://github.com/robotics/sensors.git
+    tag: v1.2.0
+
+  # With specific commit
+  - name: utils
+    git: https://github.com/user/utils.git
+    rev: a1b2c3d4
+```
+
 ### Dependency Fields
 
 **`name`** (required in object format):
@@ -276,6 +327,26 @@ dependencies:
 **`features`** (optional):
 - Array of feature flags to enable
 - Rust-specific (Cargo features)
+
+**`path`** (optional):
+- Local filesystem path to a crate/package
+
+**`git`** (optional):
+- Git repository URL for the package
+- Must be a valid git URL (HTTPS or SSH)
+- Cloned to `~/.horus/cache/git_*` on first use
+
+**`branch`** (optional, with git):
+- Specific branch to checkout
+- Example: `branch: develop`
+
+**`tag`** (optional, with git):
+- Specific tag to checkout
+- Example: `tag: v1.0.0`
+
+**`rev`** (optional, with git):
+- Specific commit SHA to checkout
+- Example: `rev: a1b2c3d4`
 
 **Resolution Order:**
 1. HORUS registry (`https://marketplace.horus-registry.dev`)

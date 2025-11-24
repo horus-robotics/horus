@@ -53,11 +53,21 @@ impl ValidationReport {
 pub fn run_full_validation_suite() -> Vec<ValidationReport> {
     let mut reports = Vec::new();
 
-    // TODO: Integrate with actual test results
-    reports.push(ValidationReport::new("Free Fall", true, 0.5));
-    reports.push(ValidationReport::new("Pendulum", true, 1.2));
-    reports.push(ValidationReport::new("Collision", true, 0.8));
-    reports.push(ValidationReport::new("Friction", true, 2.1));
+    // Run Free Fall validation tests
+    let free_fall_result = free_fall::run_validation();
+    reports.push(free_fall_result);
+
+    // Run Pendulum validation tests
+    let pendulum_result = pendulum::run_validation();
+    reports.push(pendulum_result);
+
+    // Run Collision validation tests
+    let collision_result = collision::run_validation();
+    reports.push(collision_result);
+
+    // Run Friction validation tests
+    let friction_result = friction::run_validation();
+    reports.push(friction_result);
 
     reports
 }

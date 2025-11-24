@@ -288,6 +288,7 @@ pub fn network_simulation_system(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::multi_robot::RobotId;
 
     #[test]
     fn test_network_config_presets() {

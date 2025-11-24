@@ -98,6 +98,9 @@ pub struct BatteryMonitorNode {
     i2c_address: u16,           // I2C address (0x40 default for INA219)
     i2c_bus: u8,                // I2C bus number (default 1)
     shunt_resistance_mohm: f32, // Shunt resistor value in milliohms (100mΩ default)
+
+    // Timing state (moved from static mut for thread safety)
+    last_log_time: u64,
 }
 
 /// Battery chemistry type
@@ -166,6 +169,7 @@ impl BatteryMonitorNode {
             i2c_address: 0x40,            // Default INA219 address
             i2c_bus: 1,                   // Default I2C bus
             shunt_resistance_mohm: 100.0, // 100mΩ default shunt
+            last_log_time: 0,
         };
 
         node.update_voltage_thresholds();
@@ -636,30 +640,27 @@ impl Node for BatteryMonitorNode {
         self.publish_state(ctx.as_deref_mut());
 
         // Periodic status logging
-        static mut LAST_LOG_TIME: u64 = 0;
         let log_interval = 10_000_000_000; // 10 seconds
-        unsafe {
-            if current_time - LAST_LOG_TIME > log_interval {
-                let status = match self.power_supply_status {
-                    BatteryState::STATUS_CHARGING => "CHARGING",
-                    BatteryState::STATUS_DISCHARGING => "DISCHARGING",
-                    BatteryState::STATUS_FULL => "FULL",
-                    _ => "UNKNOWN",
-                };
+        if current_time - self.last_log_time > log_interval {
+            let status = match self.power_supply_status {
+                BatteryState::STATUS_CHARGING => "CHARGING",
+                BatteryState::STATUS_DISCHARGING => "DISCHARGING",
+                BatteryState::STATUS_FULL => "FULL",
+                _ => "UNKNOWN",
+            };
 
-                let time_str = if let Some(time) = self.time_remaining() {
-                    format!("{:.0}min remaining", time / 60.0)
-                } else {
-                    String::from("N/A")
-                };
+            let time_str = if let Some(time) = self.time_remaining() {
+                format!("{:.0}min remaining", time / 60.0)
+            } else {
+                String::from("N/A")
+            };
 
-                ctx.log_info(&format!(
-                    "Battery: {:.2}V ({:.0}%) {:.1}A {:.1}°C {} | {}",
-                    self.voltage, self.percentage, self.current, self.temperature, status, time_str
-                ));
+            ctx.log_info(&format!(
+                "Battery: {:.2}V ({:.0}%) {:.1}A {:.1}°C {} | {}",
+                self.voltage, self.percentage, self.current, self.temperature, status, time_str
+            ));
 
-                LAST_LOG_TIME = current_time;
-            }
+            self.last_log_time = current_time;
         }
     }
 }

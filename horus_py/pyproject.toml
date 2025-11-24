@@ -3,7 +3,7 @@ requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "horus"
+name = "horus-robotics"
 version = "0.1.5"
 description = "Simple & intuitive Python API for HORUS robotics framework - ultra-low latency IPC and real-time scheduling"
 readme = "README.md"

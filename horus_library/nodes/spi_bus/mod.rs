@@ -83,6 +83,9 @@ pub struct SpiBusNode {
     bytes_transmitted: u64,
     bytes_received: u64,
     last_transaction_time: u64,
+
+    // Timing state (moved from static mut for thread safety)
+    last_log_time: u64,
 }
 
 /// Configuration for an SPI device
@@ -130,6 +133,7 @@ impl SpiBusNode {
             bytes_transmitted: 0,
             bytes_received: 0,
             last_transaction_time: 0,
+            last_log_time: 0,
         })
     }
 
@@ -296,7 +300,7 @@ impl SpiBusNode {
         }
         msg.timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_nanos() as u64;
 
         // Update statistics
@@ -467,25 +471,22 @@ impl Node for SpiBusNode {
         }
 
         // Periodic status logging
-        static mut LAST_LOG_TIME: u64 = 0;
         let log_interval = 30_000_000_000; // 30 seconds
         let current_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .unwrap_or_default()
             .as_nanos() as u64;
 
-        unsafe {
-            if current_time - LAST_LOG_TIME > log_interval && self.transaction_count > 0 {
-                ctx.log_info(&format!(
-                    "SPI{}: {} transactions, {} errors, {} KB TX, {} KB RX",
-                    self.bus_number,
-                    self.transaction_count,
-                    self.error_count,
-                    self.bytes_transmitted / 1024,
-                    self.bytes_received / 1024
-                ));
-                LAST_LOG_TIME = current_time;
-            }
+        if current_time - self.last_log_time > log_interval && self.transaction_count > 0 {
+            ctx.log_info(&format!(
+                "SPI{}: {} transactions, {} errors, {} KB TX, {} KB RX",
+                self.bus_number,
+                self.transaction_count,
+                self.error_count,
+                self.bytes_transmitted / 1024,
+                self.bytes_received / 1024
+            ));
+            self.last_log_time = current_time;
         }
     }
 }
