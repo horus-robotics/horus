@@ -3,10 +3,12 @@ use crate::version;
 use anyhow::{anyhow, bail, Context, Result};
 use colored::*;
 use glob::glob;
+use horus_core::memory::shm_session_dir;
 use std::collections::HashSet;
 use std::env;
 use std::fs;
 use std::io::{self, Write};
+#[cfg(unix)]
 use std::os::unix::fs::symlink;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -166,14 +168,6 @@ impl CargoPackage {
             features,
         })
     }
-
-    #[allow(dead_code)]
-    fn crate_spec(&self) -> String {
-        match &self.version {
-            Some(v) => format!("{}@{}", self.name, v),
-            None => self.name.clone(),
-        }
-    }
 }
 
 pub fn execute_build_only(files: Vec<PathBuf>, release: bool, clean: bool) -> Result<()> {
@@ -232,34 +226,6 @@ pub fn execute_build_only(files: Vec<PathBuf>, release: bool, clean: bool) -> Re
                 "  {} File is ready to run: {}",
                 "".cyan(),
                 target_file.display()
-            );
-        }
-        "c" => {
-            setup_c_environment()?;
-
-            // Determine output path
-            let file_stem = target_file
-                .file_stem()
-                .context("Invalid file name")?
-                .to_string_lossy();
-            let suffix = if release { "_release" } else { "_debug" };
-            let output_path = PathBuf::from(format!(".horus/cache/{}{}", file_stem, suffix));
-
-            // Detect compiler
-            let compiler = if Command::new("gcc").arg("--version").output().is_ok() {
-                "gcc"
-            } else if Command::new("clang").arg("--version").output().is_ok() {
-                "clang"
-            } else {
-                bail!("No C compiler found. Please install gcc or clang.");
-            };
-
-            println!("{} Compiling with {}...", "".cyan(), compiler);
-            compile_c_file(target_file, &output_path, compiler, release)?;
-            println!(
-                "{} Successfully built: {}",
-                "".green(),
-                output_path.display().to_string().green()
             );
         }
         "rust" => {
@@ -740,15 +706,7 @@ fn execute_from_horus_yaml(
     env::set_current_dir(project_dir)?;
 
     let result = (|| -> Result<()> {
-        // Check if this is a C project with build system
-        if Path::new("Makefile").exists() || Path::new("makefile").exists() {
-            return execute_makefile_project(args, release, clean);
-        }
-        if Path::new("CMakeLists.txt").exists() {
-            return execute_cmake_project(args, release, clean);
-        }
-
-        // Otherwise, auto-detect and run main file
+        // Auto-detect and run main file (Rust or Python)
         let main_file =
             auto_detect_main_file().context("No main file found in project directory")?;
         execute_single_file(main_file, args, release, clean)
@@ -829,166 +787,6 @@ fn execute_from_cargo_toml(
 
     env::set_current_dir(original_dir)?;
     result
-}
-
-fn execute_makefile_project(args: Vec<String>, release: bool, clean: bool) -> Result<()> {
-    println!("{} Detected Makefile project", "".cyan());
-
-    // Ensure .horus directory exists
-    ensure_horus_directory()?;
-
-    // Setup environment with .horus libraries
-    setup_environment()?;
-
-    // Clean if requested
-    if clean {
-        println!("{} Cleaning Makefile project...", "".cyan());
-        Command::new("make").arg("clean").status().ok();
-    }
-
-    // Build the project
-    let build_target = if release { "release" } else { "all" };
-    println!(
-        "{} Building Makefile project (target: {})...",
-        "".cyan(),
-        build_target
-    );
-
-    let mut cmd = Command::new("make");
-    cmd.arg(build_target);
-
-    let status = cmd.status()?;
-    if !status.success() {
-        bail!("Make build failed");
-    }
-
-    // Try to find and run the executable
-    // Common patterns: ./bin/main, ./build/main, ./main
-    let possible_executables = vec!["bin/main", "build/main", "main", "a.out"];
-
-    for exe in &possible_executables {
-        if Path::new(exe).exists() {
-            println!("{} Running executable: {}\n", "".cyan(), exe.green());
-            let mut cmd = Command::new(format!("./{}", exe));
-            cmd.args(args);
-            let status = cmd.status()?;
-            if !status.success() {
-                bail!("Execution failed");
-            }
-            return Ok(());
-        }
-    }
-
-    println!(
-        "{} Build succeeded but could not find executable",
-        "".yellow()
-    );
-    println!("  {} Looked for: {:?}", "".dimmed(), possible_executables);
-    Ok(())
-}
-
-fn execute_cmake_project(args: Vec<String>, release: bool, clean: bool) -> Result<()> {
-    println!("{} Detected CMake project", "".cyan());
-
-    // Ensure .horus directory exists
-    ensure_horus_directory()?;
-
-    // Setup environment with .horus libraries
-    setup_environment()?;
-
-    let build_dir = PathBuf::from("build");
-
-    // Clean if requested
-    if clean && build_dir.exists() {
-        println!("{} Cleaning CMake build directory...", "".cyan());
-        fs::remove_dir_all(&build_dir)?;
-    }
-
-    // Create build directory
-    fs::create_dir_all(&build_dir)?;
-
-    // Configure with CMake
-    let build_type = if release { "Release" } else { "Debug" };
-    println!("{} Configuring CMake ({} mode)...", "".cyan(), build_type);
-
-    let mut cmd = Command::new("cmake");
-    cmd.arg("..")
-        .arg(format!("-DCMAKE_BUILD_TYPE={}", build_type))
-        .current_dir(&build_dir);
-
-    let status = cmd.status()?;
-    if !status.success() {
-        bail!("CMake configuration failed");
-    }
-
-    // Build
-    println!("{} Building CMake project...", "".cyan());
-    let mut cmd = Command::new("cmake");
-    cmd.arg("--build").arg(".").current_dir(&build_dir);
-
-    let status = cmd.status()?;
-    if !status.success() {
-        bail!("CMake build failed");
-    }
-
-    // Try to find and run the executable
-    let possible_executables = vec![
-        format!("build/{}", get_cmake_target_name()?),
-        "build/main".to_string(),
-        "build/app".to_string(),
-    ];
-
-    for exe in &possible_executables {
-        if Path::new(exe).exists() {
-            println!("{} Running executable: {}\n", "".cyan(), exe.green());
-            let mut cmd = Command::new(format!("./{}", exe));
-            cmd.args(args);
-            let status = cmd.status()?;
-            if !status.success() {
-                bail!("Execution failed");
-            }
-            return Ok(());
-        }
-    }
-
-    println!(
-        "{} Build succeeded but could not find executable",
-        "".yellow()
-    );
-    println!("  {} Looked for: {:?}", "".dimmed(), possible_executables);
-    Ok(())
-}
-
-fn get_cmake_target_name() -> Result<String> {
-    // Try to parse CMakeLists.txt for project name
-    if let Ok(content) = fs::read_to_string("CMakeLists.txt") {
-        for line in content.lines() {
-            if line.trim().starts_with("project(") {
-                if let Some(name_start) = line.find('(') {
-                    if let Some(name_end) = line[name_start..].find(')') {
-                        let name = line[name_start + 1..name_start + name_end]
-                            .split_whitespace()
-                            .next()
-                            .unwrap_or("main");
-                        return Ok(name.to_string());
-                    }
-                }
-            }
-            if line.trim().starts_with("add_executable(") {
-                if let Some(name_start) = line.find('(') {
-                    if let Some(name_end) = line[name_start..].find(')') {
-                        let parts: Vec<&str> = line[name_start + 1..name_start + name_end]
-                            .split_whitespace()
-                            .collect();
-                        if !parts.is_empty() {
-                            return Ok(parts[0].to_string());
-                        }
-                    }
-                }
-            }
-        }
-    }
-    Ok("main".to_string())
 }
 
 fn execute_multiple_files(
@@ -1213,7 +1011,7 @@ fn execute_multiple_files(
 
 /// Clean up session-isolated shared memory directories
 fn cleanup_session(session_id: &str) -> Result<()> {
-    let session_dir = PathBuf::from(format!("/dev/shm/horus/sessions/{}", session_id));
+    let session_dir = shm_session_dir(session_id);
 
     if session_dir.exists() {
         fs::remove_dir_all(&session_dir).with_context(|| {
@@ -1555,22 +1353,6 @@ path = "{}"
                 args_override: vec![file_path.to_string_lossy().to_string()],
             })
         }
-        "c" => {
-            // Compile C file
-            let compiler = detect_c_compiler()?;
-            let binary_name = generate_c_binary_name(&file_path, release)?;
-            let cache_dir = PathBuf::from(".horus/cache");
-            fs::create_dir_all(&cache_dir)?;
-            let binary_path = cache_dir.join(&binary_name);
-
-            compile_c_file(&file_path, &binary_path, &compiler, release)?;
-
-            Ok(ExecutableInfo {
-                name,
-                command: binary_path.to_string_lossy().to_string(),
-                args_override: Vec::new(),
-            })
-        }
         _ => bail!("Unsupported language: {}", language),
     }
 }
@@ -1626,7 +1408,7 @@ fn resolve_glob_pattern(pattern: &str) -> Result<Vec<ExecutionTarget>> {
                 if path.is_file() && !ignore.should_ignore_file(&path) {
                     // Only include executable file types
                     if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
-                        if matches!(ext, "rs" | "py" | "c" | "cc" | "cpp" | "horus") {
+                        if matches!(ext, "rs" | "py" | "horus") {
                             files.push(path);
                         }
                     }
@@ -1640,7 +1422,7 @@ fn resolve_glob_pattern(pattern: &str) -> Result<Vec<ExecutionTarget>> {
         bail!("No executable files found matching pattern: {}\n\n{}\n  {} Supported extensions: {}\n  {} Check pattern: {}",
             pattern.green(),
             "No matches found:".yellow(),
-            "•".cyan(), ".rs, .py, .c, .horus".green(),
+            "•".cyan(), ".rs, .py, .horus".green(),
             "•".cyan(), "Use quotes around patterns like \"nodes/*.py\"".dimmed()
         );
     }
@@ -1662,14 +1444,12 @@ fn auto_detect_main_file() -> Result<PathBuf> {
         IgnorePatterns::default()
     };
 
-    // Check for main files in priority order
+    // Check for main files in priority order (Rust and Python only)
     let candidates = [
         "main.rs",
         "main.py",
-        "main.c",
         "src/main.rs",
         "src/main.py",
-        "src/main.c",
     ];
 
     for candidate in &candidates {
@@ -1690,7 +1470,7 @@ fn auto_detect_main_file() -> Result<PathBuf> {
         .filter(|e| {
             let path = e.path();
             if let Some(ext) = path.extension() {
-                matches!(ext.to_str(), Some("rs") | Some("py") | Some("c"))
+                matches!(ext.to_str(), Some("rs") | Some("py"))
                     && !ignore.should_ignore_file(&path)
             } else {
                 false
@@ -1704,7 +1484,7 @@ fn auto_detect_main_file() -> Result<PathBuf> {
 
     bail!("No main file detected.\n\n{}\n  {} Create a main file: {}\n  {} Or specify a file: {}\n  {} Or run from directory: {}",
         "Solutions:".yellow(),
-        "•".cyan(), "main.rs, main.py, or main.c".green(),
+        "•".cyan(), "main.rs or main.py".green(),
         "•".cyan(), "horus run myfile.rs".green(),
         "•".cyan(), "horus run src/".green()
     )
@@ -1714,13 +1494,12 @@ fn detect_language(file: &Path) -> Result<String> {
     match file.extension().and_then(|s| s.to_str()) {
         Some("rs") => Ok("rust".to_string()),
         Some("py") => Ok("python".to_string()),
-        Some("c") | Some("cc") | Some("cpp") => Ok("c".to_string()),
         _ => bail!(
             "Unsupported file type: {}\n\n{}\n  {} Supported: {}\n  {} Got: {}",
             file.display(),
             "Supported file types:".yellow(),
             "•".cyan(),
-            ".rs (Rust), .py (Python), .c (C drivers)".green(),
+            ".rs (Rust), .py (Python)".green(),
             "•".cyan(),
             file.extension()
                 .and_then(|s| s.to_str())
@@ -1743,11 +1522,7 @@ fn ensure_horus_directory() -> Result<()> {
     fs::create_dir_all(horus_dir.join("packages"))?;
     fs::create_dir_all(horus_dir.join("bin"))?;
     fs::create_dir_all(horus_dir.join("lib"))?;
-    fs::create_dir_all(horus_dir.join("include"))?;
     fs::create_dir_all(horus_dir.join("cache"))?;
-
-    // Setup C environment if needed
-    setup_c_environment()?;
 
     Ok(())
 }
@@ -1788,14 +1563,6 @@ fn scan_imports(file: &Path, language: &str, ignore: &IgnorePatterns) -> Result<
                     }
                 }
             }
-            "c" => {
-                // Scan for: #include <horus/*.h>
-                for line in content.lines() {
-                    if let Some(dep) = parse_c_include(line) {
-                        dependencies.insert(dep);
-                    }
-                }
-            }
             _ => {}
         }
     }
@@ -1830,32 +1597,6 @@ fn parse_rust_import(line: &str) -> Option<String> {
         let package = rest.trim_end_matches(';').trim();
         if package.starts_with("horus") {
             return Some(package.to_string());
-        }
-    }
-
-    None
-}
-
-#[allow(dead_code)]
-fn parse_python_import(line: &str) -> Option<String> {
-    let line = line.trim();
-
-    // import horus
-    if let Some(rest) = line.strip_prefix("import ") {
-        let package = rest.split_whitespace().next()?;
-        if package.starts_with("horus") {
-            return Some(package.split('.').next()?.to_string());
-        }
-    }
-
-    // from horus_library import
-    if let Some(rest) = line.strip_prefix("from ") {
-        let parts: Vec<&str> = rest.split(" import ").collect();
-        if !parts.is_empty() {
-            let package = parts[0].trim();
-            if package.starts_with("horus") {
-                return Some(package.split('.').next()?.to_string());
-            }
         }
     }
 
@@ -1941,23 +1682,7 @@ fn is_stdlib_package(name: &str) -> bool {
     stdlib.contains(&name)
 }
 
-fn parse_c_include(line: &str) -> Option<String> {
-    let line = line.trim();
-
-    // #include <horus/node.h>
-    if line.starts_with("#include") {
-        if let Some(start) = line.find('<') {
-            if let Some(end) = line.find('>') {
-                let include = &line[start + 1..end];
-                if include.starts_with("horus") {
-                    return Some("horus_c".to_string());
-                }
-            }
-        }
-    }
-
-    None
-}
+// Removed: parse_c_include() - C support no longer provided
 
 /// Parse a single YAML dependency and convert to Cargo.toml format
 /// Handles: - horus, - name: serde with version: "1" features: [derive]
@@ -3633,7 +3358,11 @@ fn find_cached_versions(cache_dir: &Path, package: &str) -> Result<Vec<PathBuf>>
 }
 
 fn home_dir() -> PathBuf {
-    PathBuf::from(env::var("HOME").unwrap_or_else(|_| "/tmp".to_string()))
+    // Cross-platform home directory detection
+    dirs::home_dir().unwrap_or_else(|| {
+        // Fallback to temp directory if home not found
+        std::env::temp_dir()
+    })
 }
 
 fn setup_environment() -> Result<()> {
@@ -4246,10 +3975,7 @@ path = "{}"
         "python" => {
             execute_python_node(file, args, release)?;
         }
-        "c" => {
-            execute_c_node(file, args, release)?;
-        }
-        _ => bail!("Unsupported language: {}", language),
+        _ => bail!("Unsupported language: {}. HORUS supports Rust and Python only.", language),
     }
 
     Ok(())
@@ -4276,345 +4002,9 @@ fn get_project_name() -> Result<String> {
         .to_string())
 }
 
-#[allow(dead_code)]
-fn create_minimal_cargo_toml(file: &Path) -> Result<()> {
-    let project_name = env::current_dir()?
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("horus_project")
-        .to_string();
-
-    let _file_name = file.file_stem().and_then(|n| n.to_str()).unwrap_or("main");
-
-    let content = format!(
-        r#"[package]
-name = "{}"
-version = "0.1.5"
-edition = "2021"
-
-[[bin]]
-name = "{}"
-path = "{}"
-
-[dependencies]
-# HORUS dependencies will be auto-detected and added
-horus = "0.1.5"
-"#,
-        project_name.replace("-", "_"),
-        project_name.replace("-", "_"),
-        file.display()
-    );
-
-    fs::write("Cargo.toml", content)?;
-    println!("  {} Created Cargo.toml for {}", "".green(), project_name);
-
-    Ok(())
-}
-
-#[allow(dead_code)]
-fn setup_rust_environment(_source: &Path) -> Result<()> {
-    // Rust compilation uses .horus/target/ via Cargo
-    // No additional setup needed
-    Ok(())
-}
-
-fn setup_c_environment() -> Result<()> {
-    let horus_dir = PathBuf::from(".horus");
-    let include_dir = horus_dir.join("include");
-    let _lib_dir = horus_dir.join("lib");
-
-    // Copy horus.h header file to .horus/include/
-    let header_path = include_dir.join("horus.h");
-    if !header_path.exists() {
-        // Create embedded horus.h content for C driver integration
-        {
-            // Embedded horus.h content
-            let header_content = r#"// HORUS C API - Hardware driver integration interface
-#ifndef HORUS_H
-#define HORUS_H
-
-#include <stdint.h>
-#include <stdbool.h>
-#include <stddef.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-// Opaque handle types - users never see internals
-typedef uint32_t Node;
-typedef uint32_t Pub;
-typedef uint32_t Sub;
-typedef uint32_t Scheduler;
-
-// Message type identifiers
-typedef enum {
-    MSG_CUSTOM = 0,
-    MSG_TWIST,
-    MSG_POSE,
-    MSG_LASER_SCAN,
-    MSG_IMAGE,
-    MSG_IMU,
-    MSG_JOINT_STATE,
-    MSG_POINT_CLOUD,
-} MessageType;
-
-// Core API - Simple and safe
-bool init(const char* node_name);
-void shutdown(void);
-bool ok(void);
-
-// Publisher/Subscriber
-Pub publisher(const char* topic, MessageType type);
-Pub publisher_custom(const char* topic, size_t msg_size);
-Sub subscriber(const char* topic, MessageType type);
-Sub subscriber_custom(const char* topic, size_t msg_size);
-
-// Send/Receive
-bool send(Pub pub, const void* data);
-bool recv(Sub sub, void* data);
-bool try_recv(Sub sub, void* data);
-
-// Timing
-void sleep_ms(uint32_t ms);
-uint64_t time_now_ms(void);
-void spin_once(void);
-void spin(void);
-
-// Logging
-void log_info(const char* msg);
-void log_warn(const char* msg);
-void log_error(const char* msg);
-void log_debug(const char* msg);
-
-// Common message structs
-typedef struct {
-    float x, y, z;
-} Vector3;
-
-typedef struct {
-    float x, y, z, w;
-} Quaternion;
-
-typedef struct {
-    Vector3 linear;
-    Vector3 angular;
-} Twist;
-
-typedef struct {
-    Vector3 position;
-    Quaternion orientation;
-} Pose;
-
-typedef struct {
-    Vector3 linear_acceleration;
-    Vector3 angular_velocity;
-    Quaternion orientation;
-    float covariance[9];
-} IMU;
-
-typedef struct {
-    float* ranges;
-    float* intensities;
-    uint32_t count;
-    float angle_min;
-    float angle_max;
-    float angle_increment;
-    float range_min;
-    float range_max;
-    float scan_time;
-} LaserScan;
-
-typedef struct {
-    uint8_t* data;
-    uint32_t width;
-    uint32_t height;
-    uint32_t step;
-    uint8_t channels;
-} Image;
-
-typedef struct {
-    float* positions;
-    float* velocities;
-    float* efforts;
-    char** names;
-    uint32_t count;
-} JointState;
-
-typedef struct {
-    float* points;  // x,y,z packed array
-    uint32_t count;
-    uint32_t stride;  // bytes between points
-} PointCloud;
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif // HORUS_H"#;
-            fs::write(&header_path, header_content)?;
-            println!("  {} Installed horus.h (embedded fallback)", "".green());
-        }
-    }
-
-    // C++ bindings removed - HORUS now supports Rust and Python only
-    // For C driver integration, use multi-process pattern with shared memory
-
-    Ok(())
-}
-
+// Removed: setup_c_environment() - C support no longer provided
 // Removed: find_horus_cpp_library() - C++ bindings no longer supported
-
-fn execute_c_node(file: PathBuf, args: Vec<String>, release: bool) -> Result<()> {
-    eprintln!("{} Setting up C environment...", "".cyan());
-
-    // Detect C compiler
-    let compiler = detect_c_compiler()?;
-    eprintln!("  {} Using {} compiler", "".green(), compiler);
-
-    // Generate cache-friendly binary name
-    let binary_name = generate_c_binary_name(&file, release)?;
-    let cache_dir = PathBuf::from(".horus/cache");
-    fs::create_dir_all(&cache_dir)?;
-    let binary_path = cache_dir.join(&binary_name);
-
-    // Check if we need to compile
-    let needs_compile = should_recompile(&file, &binary_path)?;
-
-    if needs_compile {
-        eprintln!(
-            "{} Compiling C program ({} mode)...",
-            "".cyan(),
-            if release { "release" } else { "debug" }
-        );
-
-        compile_c_file(&file, &binary_path, &compiler, release)?;
-        eprintln!("  {} Compiled to {}", "".green(), binary_path.display());
-    } else {
-        eprintln!("  {} Using cached binary", "".green());
-    }
-
-    // Execute the binary
-    eprintln!("{} Executing C program...", "".cyan());
-    let mut cmd = Command::new(&binary_path);
-    cmd.args(args);
-
-    let status = cmd.status()?;
-
-    // Exit with the same code as the program
-    if !status.success() {
-        std::process::exit(status.code().unwrap_or(1));
-    }
-
-    Ok(())
-}
-
-fn detect_c_compiler() -> Result<String> {
-    // Try compilers in order of preference
-    let compilers = ["gcc", "clang", "cc"];
-
-    for compiler in &compilers {
-        if Command::new(compiler).arg("--version").output().is_ok() {
-            return Ok(compiler.to_string());
-        }
-    }
-
-    bail!("No C compiler found. Please install gcc, clang, or another C compiler and ensure it's in PATH.")
-}
-
-fn generate_c_binary_name(file: &Path, release: bool) -> Result<String> {
-    let file_stem = file
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("program");
-
-    let mode = if release { "release" } else { "debug" };
-    let binary_name = format!("{}_{}", file_stem, mode);
-
-    Ok(binary_name)
-}
-
-fn should_recompile(source: &Path, binary: &Path) -> Result<bool> {
-    if !binary.exists() {
-        return Ok(true);
-    }
-
-    // Check if source is newer than binary
-    let source_modified = fs::metadata(source)?.modified()?;
-    let binary_modified = fs::metadata(binary)?.modified()?;
-
-    Ok(source_modified > binary_modified)
-}
-
-fn compile_c_file(source: &Path, output: &Path, compiler: &str, release: bool) -> Result<()> {
-    // C++ support removed - C only for hardware drivers
-    let mut cmd = Command::new(compiler);
-
-    // Basic arguments
-    cmd.arg(source);
-    cmd.arg("-o");
-    cmd.arg(output);
-
-    // Check if source uses HORUS C API
-    let content = fs::read_to_string(source).unwrap_or_default();
-    let uses_horus_h = content.contains("#include <horus.h>")
-        || content.contains("#include \"horus.h\"")
-        || content.contains("horus.h\"");
-
-    if uses_horus_h {
-        // Include path for horus C headers
-        cmd.arg("-I.horus/include");
-        // Note: C drivers should communicate via shared memory
-        // No linking required - use horus_shm_* functions from horus.h
-    }
-
-    // Standard libraries
-    cmd.arg("-lpthread");
-    cmd.arg("-ldl");
-    cmd.arg("-lm");
-
-    // Optimization flags
-    if release {
-        cmd.arg("-O2");
-        cmd.arg("-DNDEBUG");
-    } else {
-        cmd.arg("-g");
-        cmd.arg("-O0");
-        cmd.arg("-DDEBUG");
-    }
-
-    // Warning flags
-    cmd.arg("-Wall");
-    cmd.arg("-Wextra");
-
-    // Runtime library path
-    #[cfg(target_os = "linux")]
-    cmd.arg("-Wl,-rpath,.horus/lib");
-
-    #[cfg(target_os = "macos")]
-    cmd.arg("-Wl,-rpath,@loader_path/../lib");
-
-    // Execute compilation
-    let output_result = cmd.output()?;
-
-    if !output_result.status.success() {
-        let stderr = String::from_utf8_lossy(&output_result.stderr);
-        eprintln!("{} Compilation failed:", "".red());
-        eprintln!("{}", stderr);
-        bail!("C compilation failed");
-    }
-
-    // Make binary executable
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mut perms = fs::metadata(output)?.permissions();
-        perms.set_mode(0o755);
-        fs::set_permissions(output, perms)?;
-    }
-
-    Ok(())
-}
+// Removed: execute_c_node() - C support no longer provided
 
 /// Find the HORUS source directory by checking common locations
 fn find_horus_source_dir() -> Result<PathBuf> {
@@ -4747,7 +4137,7 @@ fn create_system_reference_cargo_run(package_name: &str, system_version: &str) -
 
     fs::write(&metadata_file, serde_json::to_string_pretty(&metadata)?)?;
 
-    // Create symlink in .horus/bin to system binary
+    // Create symlink in .horus/bin to system binary (Unix) or copy on Windows
     let bin_dir = PathBuf::from(".horus/bin");
     fs::create_dir_all(&bin_dir)?;
 
@@ -4755,7 +4145,17 @@ fn create_system_reference_cargo_run(package_name: &str, system_version: &str) -
     if bin_link.exists() {
         fs::remove_file(&bin_link)?;
     }
-    std::os::unix::fs::symlink(&cargo_bin, &bin_link)?;
+
+    #[cfg(unix)]
+    {
+        symlink(&cargo_bin, &bin_link)?;
+    }
+    #[cfg(windows)]
+    {
+        // On Windows, create a .cmd wrapper instead of symlink
+        let cmd_link = bin_dir.join(format!("{}.cmd", package_name));
+        fs::write(&cmd_link, format!("@\"{}\"\r\n", cargo_bin.display()))?;
+    }
 
     println!(
         "  {} Using system binary at {}",
@@ -4911,7 +4311,6 @@ fn create_horus_yaml(
             match language {
                 "python" => pip_deps.push(format!("pip:{}", dep)),
                 "rust" => cargo_deps.push(format!("cargo:{}", dep)),
-                "c" => {} // C deps are handled differently
                 _ => pip_deps.push(format!("pip:{}", dep)), // Default to pip
             }
         }
@@ -5090,7 +4489,8 @@ pub fn check_hardware_requirements(file_path: &Path, language: &str) -> Result<(
 
     let content = fs::read_to_string(file_path)?;
 
-    // Detect hardware nodes being used
+    // Detect hardware nodes being used (platform-specific device paths)
+    #[cfg(target_os = "linux")]
     let hardware_nodes = vec![
         (
             "I2cBusNode",
@@ -5147,6 +4547,41 @@ pub fn check_hardware_requirements(file_path: &Path, language: &str) -> Result<(
             "sudo apt install i2c-tools",
         ),
     ];
+
+    #[cfg(target_os = "macos")]
+    let hardware_nodes = vec![
+        (
+            "DynamixelNode",
+            "serial-hardware",
+            "/dev/tty.usb*",
+            "Serial port access",
+        ),
+        (
+            "RoboclawMotorNode",
+            "serial-hardware",
+            "/dev/tty.usb*",
+            "Serial port access",
+        ),
+    ];
+
+    #[cfg(target_os = "windows")]
+    let hardware_nodes: Vec<(&str, &str, &str, &str)> = vec![
+        (
+            "DynamixelNode",
+            "serial-hardware",
+            "COM*",
+            "Serial port access",
+        ),
+        (
+            "RoboclawMotorNode",
+            "serial-hardware",
+            "COM*",
+            "Serial port access",
+        ),
+    ];
+
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+    let hardware_nodes: Vec<(&str, &str, &str, &str)> = vec![];
 
     let mut detected_nodes = Vec::new();
     let mut missing_features = Vec::new();

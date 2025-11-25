@@ -142,7 +142,7 @@ pub fn register_robots_system(
 pub fn unregister_robots_system(
     mut manager: ResMut<MultiRobotManager>,
     mut removed: RemovedComponents<Robot>,
-    robots: Query<&Robot>,
+    _robots: Query<&Robot>,
 ) {
     for entity in removed.read() {
         // Find robot ID by entity (since component is removed, we need to search)

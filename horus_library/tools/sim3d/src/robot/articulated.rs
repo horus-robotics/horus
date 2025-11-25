@@ -442,7 +442,7 @@ impl IKSolver {
     /// * `None` - If solution could not be found
     pub fn solve(
         &self,
-        target_position: Vec3,
+        _target_position: Vec3,
         _target_rotation: Quat,
         current_joint_positions: &[f32],
     ) -> Option<Vec<f32>> {

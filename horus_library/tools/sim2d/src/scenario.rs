@@ -492,7 +492,7 @@ simulation:
 
         let robot_configs = vec![RobotConfig {
             name: "robot1".to_string(),
-            topic_prefix: "/robot1".to_string(),
+            topic_prefix: "robot1".to_string(),
             position: [5.0, 5.0],
             width: 0.5,
             length: 0.8,

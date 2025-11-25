@@ -274,7 +274,7 @@ impl<T> ShmTopic<T> {
             if !existing_capacity.is_power_of_two() {
                 return Err(format!(
                     "Topic '{}' has non-power-of-2 capacity {} (created with old version). \
-                     Please delete /dev/shm/horus/* and recreate topics.",
+                     Please delete shared memory files in the horus directory and recreate topics.",
                     name, existing_capacity
                 )
                 .into());

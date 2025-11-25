@@ -62,12 +62,11 @@ print(pose)  # Pose2D(x=1.500, y=2.500, theta=0.785)
 - `theta` (float): Orientation in radians
 - `timestamp` (int, read-only): Microsecond timestamp
 
-**Use with Typed Hub:**
+**Use with Hub:**
 ```python
-from horus._horus import PyPose2DHub
-from horus import Pose2D
+from horus import Hub, Pose2D
 
-hub = PyPose2DHub("robot_pose")
+hub = Hub(Pose2D)  # Typed hub
 hub.send(Pose2D(x=1.0, y=2.0, theta=0.5))
 pose = hub.recv()  # Returns Pose2D or None
 ```
@@ -205,12 +204,11 @@ print(cmd)  # CmdVel(linear=1.50, angular=0.30)
 - `angular` (float): Angular velocity in rad/s (positive = counter-clockwise)
 - `timestamp` (int, read-only): Microsecond timestamp
 
-**Use with Typed Hub:**
+**Use with Hub:**
 ```python
-from horus._horus import PyCmdVelHub
-from horus import CmdVel
+from horus import Hub, CmdVel
 
-hub = PyCmdVelHub("cmd_vel")
+hub = Hub(CmdVel)  # Typed hub
 hub.send(CmdVel(linear=1.0, angular=0.5))
 cmd = hub.recv()  # Returns CmdVel or None
 ```
@@ -266,12 +264,11 @@ print(scan)  # LaserScan(ranges=360, valid=342, min=0.15m)
 - `angle_increment` (float): Angular resolution in radians
 - `timestamp` (int, read-only): Microsecond timestamp
 
-**Use with Typed Hub:**
+**Use with Hub:**
 ```python
-from horus._horus import PyLaserScanHub
-from horus import LaserScan
+from horus import Hub, LaserScan
 
-hub = PyLaserScanHub("lidar")
+hub = Hub("lidar")  # Generic hub for LaserScan
 
 # Send
 scan = LaserScan()
@@ -305,10 +302,9 @@ All `horus.library` messages are **binary-compatible with Rust**:
 
 ```python
 # Python sender
-from horus._horus import PyCmdVelHub
-from horus import CmdVel
+from horus import Hub, CmdVel
 
-hub = PyCmdVelHub("cmd_vel")
+hub = Hub(CmdVel)  # Typed hub
 hub.send(CmdVel(linear=1.0, angular=0.5))
 ```
 
@@ -330,14 +326,13 @@ if let Some(cmd) = hub.recv(None) {
 ### Robot Controller with Multiple Sensors
 
 ```python
-from horus import Node, run
-from horus._horus import PyLaserScanHub, PyCmdVelHub
-from horus import LaserScan, CmdVel
+from horus import Node, run, Hub, CmdVel, LaserScan
+
+# Create hubs outside tick function
+scan_hub = Hub("lidar")
+cmd_hub = Hub(CmdVel)
 
 def controller_tick(node):
-    scan_hub = PyLaserScanHub("lidar")
-    cmd_hub = PyCmdVelHub("cmd_vel")
-
     scan = scan_hub.recv()
     if scan:
         # Simple obstacle avoidance
@@ -356,11 +351,10 @@ run(node)
 ### Pose Tracking
 
 ```python
-from horus._horus import PyPose2DHub
-from horus import Pose2D
+from horus import Hub, Pose2D
 
 # Track robot pose
-pose_hub = PyPose2DHub("robot_pose")
+pose_hub = Hub(Pose2D)
 
 current_pose = Pose2D.origin()
 
@@ -381,4 +375,4 @@ def update_pose(delta_x, delta_y, delta_theta):
 
 - [Python Bindings](/multi-language/python-bindings) - Full Python API guide
 - [Multi-Language Support](/multi-language/multi-language) - Cross-language communication
-- [Message Types](/message-types) - Rust message type documentation
+- [Message Types](/core-concepts/message-types) - Rust message type documentation

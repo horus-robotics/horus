@@ -46,6 +46,7 @@ impl Default for CCDConfig {
 
 impl CCDConfig {
     /// Create a high-precision CCD config for fast-moving objects
+    #[allow(dead_code)]
     pub fn high_precision() -> Self {
         Self {
             sweep_tolerance: 0.0001,
@@ -57,6 +58,7 @@ impl CCDConfig {
     }
 
     /// Create a performance-optimized CCD config
+    #[allow(dead_code)]
     pub fn performance() -> Self {
         Self {
             sweep_tolerance: 0.01,
@@ -122,6 +124,7 @@ impl Default for CCDSolverAdvanced {
 
 impl CCDSolverAdvanced {
     /// Create a new CCD solver with custom configuration
+    #[allow(dead_code)]
     pub fn new(config: CCDConfig) -> Self {
         Self {
             config,
@@ -131,11 +134,13 @@ impl CCDSolverAdvanced {
     }
 
     /// Enable CCD for a specific entity
+    #[allow(dead_code)]
     pub fn enable_ccd(&mut self, entity: Entity, settings: CCDEnabled) {
         self.object_settings.insert(entity.to_bits(), settings);
     }
 
     /// Disable CCD for a specific entity
+    #[allow(dead_code)]
     pub fn disable_ccd(&mut self, entity: Entity) {
         if let Some(settings) = self.object_settings.get_mut(&entity.to_bits()) {
             settings.enabled = false;
@@ -143,11 +148,13 @@ impl CCDSolverAdvanced {
     }
 
     /// Remove CCD settings for an entity
+    #[allow(dead_code)]
     pub fn remove_ccd(&mut self, entity: Entity) {
         self.object_settings.remove(&entity.to_bits());
     }
 
     /// Check if CCD is enabled for an entity
+    #[allow(dead_code)]
     pub fn is_ccd_enabled(&self, entity: Entity) -> bool {
         self.object_settings
             .get(&entity.to_bits())
@@ -156,6 +163,7 @@ impl CCDSolverAdvanced {
     }
 
     /// Get sweep tolerance for an entity
+    #[allow(dead_code)]
     pub fn get_sweep_tolerance(&self, entity: Entity) -> f32 {
         self.object_settings
             .get(&entity.to_bits())
@@ -164,6 +172,7 @@ impl CCDSolverAdvanced {
     }
 
     /// Check if an object needs CCD based on velocity
+    #[allow(dead_code)]
     pub fn needs_ccd(&self, linear_velocity: Vec3, angular_velocity: Vec3, radius: f32) -> bool {
         if !self.config.enabled {
             return false;
@@ -177,6 +186,7 @@ impl CCDSolverAdvanced {
     }
 
     /// Perform a sweep test between two positions using Rapier's shape casting
+    #[allow(dead_code)]
     pub fn sweep_test(
         &mut self,
         shape: &dyn Shape,
@@ -231,6 +241,7 @@ impl CCDSolverAdvanced {
     }
 
     /// Reset statistics for a new frame
+    #[allow(dead_code)]
     pub fn reset_stats(&mut self) {
         self.stats = CCDStats::default();
         self.stats.ccd_enabled_objects =
@@ -238,6 +249,7 @@ impl CCDSolverAdvanced {
     }
 
     /// Configure a Rapier rigid body for CCD
+    #[allow(dead_code)]
     pub fn configure_rapier_ccd(rigid_body: &mut RigidBody, enabled: bool) {
         rigid_body.enable_ccd(enabled);
     }
@@ -289,6 +301,7 @@ impl Default for CoulombFriction {
 
 impl CoulombFriction {
     /// Create a new Coulomb friction model
+    #[allow(dead_code)]
     pub fn new(static_coeff: f32, kinetic_coeff: f32) -> Self {
         Self {
             static_coefficient: static_coeff,
@@ -298,6 +311,7 @@ impl CoulombFriction {
     }
 
     /// Create friction for rubber on concrete
+    #[allow(dead_code)]
     pub fn rubber_concrete() -> Self {
         Self {
             static_coefficient: 1.0,
@@ -309,6 +323,7 @@ impl CoulombFriction {
     }
 
     /// Create friction for steel on steel
+    #[allow(dead_code)]
     pub fn steel_steel() -> Self {
         Self {
             static_coefficient: 0.74,
@@ -320,6 +335,7 @@ impl CoulombFriction {
     }
 
     /// Create friction for ice
+    #[allow(dead_code)]
     pub fn ice() -> Self {
         Self {
             static_coefficient: 0.1,
@@ -331,6 +347,7 @@ impl CoulombFriction {
     }
 
     /// Calculate effective friction coefficient based on relative velocity
+    #[allow(dead_code)]
     pub fn effective_coefficient(&self, relative_velocity: f32) -> f32 {
         if relative_velocity.abs() < self.velocity_threshold {
             self.static_coefficient
@@ -340,17 +357,20 @@ impl CoulombFriction {
     }
 
     /// Calculate friction force magnitude given normal force
+    #[allow(dead_code)]
     pub fn friction_force(&self, normal_force: f32, relative_velocity: f32) -> f32 {
         let mu = self.effective_coefficient(relative_velocity);
         mu * normal_force.abs()
     }
 
     /// Calculate rolling resistance torque
+    #[allow(dead_code)]
     pub fn rolling_torque(&self, normal_force: f32, radius: f32) -> f32 {
         self.rolling_resistance * normal_force.abs() * radius
     }
 
     /// Calculate spinning resistance torque
+    #[allow(dead_code)]
     pub fn spinning_torque(&self, normal_force: f32, contact_radius: f32) -> f32 {
         self.spinning_resistance * normal_force.abs() * contact_radius
     }
@@ -375,6 +395,7 @@ impl Default for FrictionPyramid {
 
 impl FrictionPyramid {
     /// Create an isotropic friction pyramid (same friction in all directions)
+    #[allow(dead_code)]
     pub fn new_isotropic(num_sides: u32, coefficient: f32) -> Self {
         let mut directions = Vec::with_capacity(num_sides as usize);
         let mut coefficients = Vec::with_capacity(num_sides as usize);
@@ -393,6 +414,7 @@ impl FrictionPyramid {
     }
 
     /// Create an anisotropic friction pyramid
+    #[allow(dead_code)]
     pub fn new_anisotropic(forward_coeff: f32, lateral_coeff: f32, forward_dir: Vec3) -> Self {
         let forward = forward_dir.normalize();
         let up = Vec3::Y;
@@ -406,6 +428,7 @@ impl FrictionPyramid {
     }
 
     /// Get friction coefficient in a specific direction
+    #[allow(dead_code)]
     pub fn coefficient_in_direction(&self, direction: Vec3) -> f32 {
         let dir_normalized = direction.normalize();
         let mut total_weight: f32 = 0.0;
@@ -425,6 +448,7 @@ impl FrictionPyramid {
     }
 
     /// Calculate friction force vector given normal force and relative velocity
+    #[allow(dead_code)]
     pub fn friction_force(&self, normal_force: f32, relative_velocity: Vec3) -> Vec3 {
         let speed = relative_velocity.length();
         if speed < 1e-6 {
@@ -463,6 +487,7 @@ impl Default for AnisotropicFrictionComponent {
 
 impl AnisotropicFrictionComponent {
     /// Create anisotropic friction with specified coefficients
+    #[allow(dead_code)]
     pub fn new(primary: f32, secondary: f32, direction: Vec3) -> Self {
         Self {
             primary_coefficient: primary,
@@ -473,6 +498,7 @@ impl AnisotropicFrictionComponent {
     }
 
     /// Get friction coefficient in a world-space direction given local-to-world transform
+    #[allow(dead_code)]
     pub fn coefficient_in_direction(&self, world_direction: Vec3, local_to_world: &Transform) -> f32 {
         if !self.enabled {
             return (self.primary_coefficient + self.secondary_coefficient) / 2.0;
@@ -497,6 +523,7 @@ pub struct FrictionMaterialPairs {
 
 impl FrictionMaterialPairs {
     /// Create a new friction material pairs database
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             pairs: HashMap::new(),
@@ -505,6 +532,7 @@ impl FrictionMaterialPairs {
     }
 
     /// Set friction for a specific material pair
+    #[allow(dead_code)]
     pub fn set_friction(&mut self, material_a: u32, material_b: u32, friction: CoulombFriction) {
         // Store both orderings for symmetric lookup
         let key1 = (material_a.min(material_b), material_a.max(material_b));
@@ -512,12 +540,14 @@ impl FrictionMaterialPairs {
     }
 
     /// Get friction for a material pair
+    #[allow(dead_code)]
     pub fn get_friction(&self, material_a: u32, material_b: u32) -> &CoulombFriction {
         let key = (material_a.min(material_b), material_a.max(material_b));
         self.pairs.get(&key).unwrap_or(&self.default_friction)
     }
 
     /// Remove friction settings for a material pair
+    #[allow(dead_code)]
     pub fn remove_friction(&mut self, material_a: u32, material_b: u32) {
         let key = (material_a.min(material_b), material_a.max(material_b));
         self.pairs.remove(&key);
@@ -586,6 +616,7 @@ impl Default for ContactConfig {
 
 impl ContactConfig {
     /// Create a soft contact configuration
+    #[allow(dead_code)]
     pub fn soft(stiffness: f32, damping: f32) -> Self {
         Self {
             model: ContactModel::Soft,
@@ -596,6 +627,7 @@ impl ContactConfig {
     }
 
     /// Create a patch contact configuration
+    #[allow(dead_code)]
     pub fn patch(points: u32, radius: f32) -> Self {
         Self {
             model: ContactModel::Patch,
@@ -606,6 +638,7 @@ impl ContactConfig {
     }
 
     /// Calculate contact force for soft contacts
+    #[allow(dead_code)]
     pub fn soft_contact_force(&self, penetration: f32, relative_velocity: f32) -> f32 {
         if penetration <= 0.0 {
             return 0.0;
@@ -680,6 +713,7 @@ pub struct ContactEventCallbacks {
 
 impl ContactEventCallbacks {
     /// Register a callback for contact started events
+    #[allow(dead_code)]
     pub fn on_contact_started<F>(&mut self, callback: F)
     where
         F: Fn(&ContactEventData) + Send + Sync + 'static,
@@ -688,6 +722,7 @@ impl ContactEventCallbacks {
     }
 
     /// Register a callback for ongoing contact events
+    #[allow(dead_code)]
     pub fn on_contact_ongoing<F>(&mut self, callback: F)
     where
         F: Fn(&ContactEventData) + Send + Sync + 'static,
@@ -696,6 +731,7 @@ impl ContactEventCallbacks {
     }
 
     /// Register a callback for contact ended events
+    #[allow(dead_code)]
     pub fn on_contact_ended<F>(&mut self, callback: F)
     where
         F: Fn(&ContactEventData) + Send + Sync + 'static,
@@ -730,6 +766,7 @@ impl ContactEventCallbacks {
     }
 
     /// Process a contact event
+    #[allow(dead_code)]
     pub fn process_event(&self, event: &ContactEventData) {
         Self::process_single_event(
             event,
@@ -740,11 +777,13 @@ impl ContactEventCallbacks {
     }
 
     /// Add an event to pending queue
+    #[allow(dead_code)]
     pub fn queue_event(&mut self, event: ContactEventData) {
         self.pending_events.push(event);
     }
 
     /// Process all pending events
+    #[allow(dead_code)]
     pub fn process_pending(&mut self) {
         // Drain events into a temporary vec to avoid borrow issues
         let events: Vec<_> = self.pending_events.drain(..).collect();
@@ -788,6 +827,7 @@ impl Default for ContactForceVisualizer {
 
 impl ContactForceVisualizer {
     /// Calculate arrow endpoint for force visualization
+    #[allow(dead_code)]
     pub fn force_arrow(&self, origin: Vec3, force: Vec3) -> Option<(Vec3, Vec3)> {
         let magnitude = force.length();
         if magnitude < self.min_force {
@@ -828,6 +868,7 @@ impl Default for PenetrationLimiter {
 
 impl PenetrationLimiter {
     /// Calculate position correction for a given penetration
+    #[allow(dead_code)]
     pub fn position_correction(&self, penetration: f32, normal: Vec3) -> Vec3 {
         let effective_penetration = (penetration - self.slop).max(0.0);
         let correction_magnitude = self.bias_factor * effective_penetration.min(self.max_depth);
@@ -835,6 +876,7 @@ impl PenetrationLimiter {
     }
 
     /// Calculate velocity bias for penetration resolution
+    #[allow(dead_code)]
     pub fn velocity_bias(&self, penetration: f32) -> f32 {
         let effective_penetration = (penetration - self.slop).max(0.0);
         self.correction_velocity * (effective_penetration / self.max_depth).min(1.0)
@@ -870,6 +912,7 @@ pub struct BreakableJoint {
 
 impl BreakableJoint {
     /// Create a new breakable joint
+    #[allow(dead_code)]
     pub fn new(joint_handle: ImpulseJointHandle, max_force: f32, max_torque: f32) -> Self {
         Self {
             joint_handle,
@@ -885,6 +928,7 @@ impl BreakableJoint {
     }
 
     /// Create with force/torque averaging enabled
+    #[allow(dead_code)]
     pub fn with_averaging(mut self, frames: u32) -> Self {
         self.use_averaging = true;
         self.averaging_frames = frames;
@@ -892,6 +936,7 @@ impl BreakableJoint {
     }
 
     /// Update with current joint forces and check if broken
+    #[allow(dead_code)]
     pub fn update(&mut self, force: Vec3, torque: Vec3) -> bool {
         if self.is_broken {
             return true;
@@ -922,6 +967,7 @@ impl BreakableJoint {
     }
 
     /// Reset the joint (mark as unbroken)
+    #[allow(dead_code)]
     pub fn reset(&mut self) {
         self.is_broken = false;
         self.accumulated_force = Vec3::ZERO;
@@ -958,12 +1004,14 @@ pub struct BreakableJointManager {
 
 impl BreakableJointManager {
     /// Queue a joint for removal
+    #[allow(dead_code)]
     pub fn queue_break(&mut self, handle: ImpulseJointHandle) {
         self.broken_joints.push(handle);
         self.total_breaks += 1;
     }
 
     /// Remove all broken joints from the physics world
+    #[allow(dead_code)]
     pub fn remove_broken_joints(&mut self, impulse_joint_set: &mut ImpulseJointSet) {
         for handle in self.broken_joints.drain(..) {
             impulse_joint_set.remove(handle, true);
@@ -972,6 +1020,7 @@ impl BreakableJointManager {
 }
 
 /// Helper functions for creating breakable joints
+#[allow(dead_code)]
 pub fn create_breakable_revolute_joint(
     anchor1: Vec3,
     anchor2: Vec3,
@@ -994,6 +1043,7 @@ pub fn create_breakable_revolute_joint(
 }
 
 /// Create a breakable fixed joint
+#[allow(dead_code)]
 pub fn create_breakable_fixed_joint(
     anchor1: Vec3,
     anchor2: Vec3,
@@ -1012,6 +1062,7 @@ pub fn create_breakable_fixed_joint(
 }
 
 /// Create a breakable spherical joint
+#[allow(dead_code)]
 pub fn create_breakable_spherical_joint(
     anchor1: Vec3,
     anchor2: Vec3,
@@ -1030,6 +1081,7 @@ pub fn create_breakable_spherical_joint(
 }
 
 /// Create a breakable prismatic joint
+#[allow(dead_code)]
 pub fn create_breakable_prismatic_joint(
     anchor1: Vec3,
     anchor2: Vec3,
@@ -1113,6 +1165,7 @@ impl Default for SpringDamperConstraint {
 
 impl SpringDamperConstraint {
     /// Create a linear spring-damper
+    #[allow(dead_code)]
     pub fn linear(stiffness: f32, damping: f32, rest_length: f32) -> Self {
         Self {
             spring_type: SpringType::Linear,
@@ -1124,6 +1177,7 @@ impl SpringDamperConstraint {
     }
 
     /// Create an angular spring-damper
+    #[allow(dead_code)]
     pub fn angular(stiffness: f32, damping: f32, rest_angle: f32) -> Self {
         Self {
             spring_type: SpringType::Angular,
@@ -1153,6 +1207,7 @@ impl SpringDamperConstraint {
     }
 
     /// Set anchor points
+    #[allow(dead_code)]
     pub fn with_anchors(mut self, anchor_a: Vec3, anchor_b: Vec3) -> Self {
         self.anchor_a = anchor_a;
         self.anchor_b = anchor_b;
@@ -1160,24 +1215,28 @@ impl SpringDamperConstraint {
     }
 
     /// Set connected entity
+    #[allow(dead_code)]
     pub fn with_connected(mut self, entity: Entity) -> Self {
         self.connected_entity = Some(entity);
         self
     }
 
     /// Set maximum force
+    #[allow(dead_code)]
     pub fn with_max_force(mut self, max_force: f32) -> Self {
         self.max_force = max_force;
         self
     }
 
     /// Set spring axis for angular springs
+    #[allow(dead_code)]
     pub fn with_axis(mut self, axis: Vec3) -> Self {
         self.axis = axis.normalize();
         self
     }
 
     /// Calculate linear spring force
+    #[allow(dead_code)]
     pub fn calculate_linear_force(
         &self,
         world_anchor_a: Vec3,
@@ -1214,6 +1273,7 @@ impl SpringDamperConstraint {
     }
 
     /// Calculate angular spring torque
+    #[allow(dead_code)]
     pub fn calculate_angular_torque(
         &self,
         rotation_a: Quat,
@@ -1257,6 +1317,7 @@ pub struct SpringDamperBuilder {
 
 impl SpringDamperBuilder {
     /// Create a new builder for a linear spring
+    #[allow(dead_code)]
     pub fn linear() -> Self {
         Self {
             constraint: SpringDamperConstraint {
@@ -1267,6 +1328,7 @@ impl SpringDamperBuilder {
     }
 
     /// Create a new builder for an angular spring
+    #[allow(dead_code)]
     pub fn angular() -> Self {
         Self {
             constraint: SpringDamperConstraint {
@@ -1277,30 +1339,35 @@ impl SpringDamperBuilder {
     }
 
     /// Set stiffness
+    #[allow(dead_code)]
     pub fn stiffness(mut self, stiffness: f32) -> Self {
         self.constraint.stiffness = stiffness;
         self
     }
 
     /// Set damping
+    #[allow(dead_code)]
     pub fn damping(mut self, damping: f32) -> Self {
         self.constraint.damping = damping;
         self
     }
 
     /// Set rest length (for linear springs)
+    #[allow(dead_code)]
     pub fn rest_length(mut self, length: f32) -> Self {
         self.constraint.rest_length = length;
         self
     }
 
     /// Set rest angle (for angular springs)
+    #[allow(dead_code)]
     pub fn rest_angle(mut self, angle: f32) -> Self {
         self.constraint.rest_angle = angle;
         self
     }
 
     /// Set anchor points
+    #[allow(dead_code)]
     pub fn anchors(mut self, anchor_a: Vec3, anchor_b: Vec3) -> Self {
         self.constraint.anchor_a = anchor_a;
         self.constraint.anchor_b = anchor_b;
@@ -1308,30 +1375,35 @@ impl SpringDamperBuilder {
     }
 
     /// Set connected entity
+    #[allow(dead_code)]
     pub fn connected(mut self, entity: Entity) -> Self {
         self.constraint.connected_entity = Some(entity);
         self
     }
 
     /// Set maximum force
+    #[allow(dead_code)]
     pub fn max_force(mut self, force: f32) -> Self {
         self.constraint.max_force = force;
         self
     }
 
     /// Set spring axis
+    #[allow(dead_code)]
     pub fn axis(mut self, axis: Vec3) -> Self {
         self.constraint.axis = axis.normalize();
         self
     }
 
     /// Build the constraint
+    #[allow(dead_code)]
     pub fn build(self) -> SpringDamperConstraint {
         self.constraint
     }
 }
 
 /// Configure a Rapier joint with spring-damper behavior
+#[allow(dead_code)]
 pub fn configure_joint_spring_damper(
     joint: &mut GenericJoint,
     axis: JointAxis,
@@ -1344,6 +1416,7 @@ pub fn configure_joint_spring_damper(
 }
 
 /// Add spring-damper to all translational axes of a joint
+#[allow(dead_code)]
 pub fn configure_joint_linear_spring(joint: &mut GenericJoint, stiffness: f32, damping: f32) {
     configure_joint_spring_damper(joint, JointAxis::LinX, stiffness, damping, 0.0);
     configure_joint_spring_damper(joint, JointAxis::LinY, stiffness, damping, 0.0);
@@ -1351,6 +1424,7 @@ pub fn configure_joint_linear_spring(joint: &mut GenericJoint, stiffness: f32, d
 }
 
 /// Add spring-damper to all rotational axes of a joint
+#[allow(dead_code)]
 pub fn configure_joint_angular_spring(joint: &mut GenericJoint, stiffness: f32, damping: f32) {
     configure_joint_spring_damper(joint, JointAxis::AngX, stiffness, damping, 0.0);
     configure_joint_spring_damper(joint, JointAxis::AngY, stiffness, damping, 0.0);
@@ -1514,6 +1588,50 @@ pub fn cleanup_broken_joints_system(
     mut physics_world: ResMut<crate::physics::world::PhysicsWorld>,
 ) {
     joint_manager.remove_broken_joints(&mut physics_world.impulse_joint_set);
+}
+
+// ============================================================================
+// Plugin
+// ============================================================================
+
+/// Advanced physics plugin for CCD, friction models, breakable joints, etc.
+pub struct AdvancedPhysicsPlugin;
+
+impl Plugin for AdvancedPhysicsPlugin {
+    fn build(&self, app: &mut App) {
+        // CCD resources
+        app.init_resource::<CCDSolverAdvanced>();
+
+        // Friction resources
+        app.init_resource::<FrictionMaterialPairs>();
+
+        // Contact event handling
+        app.init_resource::<ContactEventCallbacks>();
+
+        // Breakable joint management
+        app.init_resource::<BreakableJointManager>();
+
+        // Register events
+        app.add_event::<JointBreakEvent>();
+
+        // Add systems for advanced physics features
+        app.add_systems(
+            Update,
+            (
+                update_breakable_joints_system,
+                apply_spring_damper_system,
+                process_contact_events_system,
+                cleanup_broken_joints_system,
+            )
+                .chain(),
+        );
+
+        // Note: Component types (CCDEnabled, AnisotropicFrictionComponent, etc.)
+        // are not registered with Bevy reflection since they don't derive Reflect.
+        // They are still usable as components but won't appear in inspector UI.
+
+        tracing::info!("Advanced physics plugin loaded with CCD, friction models, breakable joints, and spring-damper systems");
+    }
 }
 
 // ============================================================================

@@ -224,6 +224,8 @@ YAML_FILES=(
     "horus_library/apps/snakesim/horus.yaml"
     "horus_library/apps/snakesim/snakesim_gui/horus.yaml"
     "horus_library/apps/wallesim/horus.yaml"
+    "tests/sim2d/sim2d_driver/horus.yaml"
+    "tests/sim3d/figure8_racer/horus.yaml"
 )
 
 for file in "${YAML_FILES[@]}"; do

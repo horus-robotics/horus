@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::pbr::StandardMaterial;
 use rapier3d::prelude::*;
 
 use crate::physics::diff_drive::{CmdVel, DifferentialDrive};
@@ -19,6 +20,67 @@ pub fn sync_physics_to_visual_system(
 
             transform.translation = Vec3::new(position.x, position.y, position.z);
             transform.rotation = Quat::from_xyzw(rotation.i, rotation.j, rotation.k, rotation.w);
+        }
+    }
+}
+
+/// Debug system to check mesh components on physics entities
+pub fn debug_mesh_components_system(
+    physics_query: Query<(Entity, &Name, Option<&Mesh3d>, Option<&MeshMaterial3d<StandardMaterial>>, Option<&Visibility>, Option<&ViewVisibility>, Option<&GlobalTransform>, &Transform, Option<&bevy::render::primitives::Aabb>), With<RigidBodyComponent>>,
+    all_mesh_query: Query<(Entity, &Name, &Mesh3d, Option<&MeshMaterial3d<StandardMaterial>>, Option<&Visibility>, Option<&ViewVisibility>, Option<&GlobalTransform>, &Transform, Option<&bevy::render::primitives::Aabb>), Without<RigidBodyComponent>>,
+    mesh_assets: Res<Assets<Mesh>>,
+    material_assets: Res<Assets<StandardMaterial>>,
+    mut frame_count: Local<u32>,
+) {
+    *frame_count += 1;
+    // Log on frames 1, 10, 50, and 100 to see if things change over time
+    if *frame_count == 1 || *frame_count == 10 || *frame_count == 50 {
+        info!("DEBUG_MESH Frame {}: Checking {} physics entities, {} non-physics mesh entities", *frame_count, physics_query.iter().count(), all_mesh_query.iter().count());
+
+        // Check non-physics entities (like debug cube) that DO render
+        for (entity, name, mesh, material, visibility, view_vis, global_transform, transform, aabb) in all_mesh_query.iter() {
+            let vis_str = visibility.map(|v| format!("{:?}", v)).unwrap_or("None".to_string());
+            let view_vis_str = view_vis.map(|v| format!("{}", v.get())).unwrap_or("None".to_string());
+            let gt_str = global_transform.map(|gt| format!("{:?}", gt.translation())).unwrap_or("None".to_string());
+            let mesh_valid = mesh_assets.contains(&mesh.0);
+            let mat_valid = material.as_ref().map(|m| material_assets.contains(&m.0)).unwrap_or(false);
+            let aabb_str = aabb.map(|a| format!("min={:?} max={:?}", a.min(), a.max())).unwrap_or("NO_AABB".to_string());
+
+            // Get the actual mesh to check its attributes
+            let mesh_info = mesh_assets.get(&mesh.0).map(|m| {
+                let vertex_count = m.count_vertices();
+                let has_positions = m.attribute(bevy::render::mesh::Mesh::ATTRIBUTE_POSITION).is_some();
+                let has_normals = m.attribute(bevy::render::mesh::Mesh::ATTRIBUTE_NORMAL).is_some();
+                format!("verts={} has_pos={} has_norm={}", vertex_count, has_positions, has_normals)
+            }).unwrap_or("NO_MESH".to_string());
+
+            info!("DEBUG_NON_PHYSICS: '{}' entity={:?} pos={:?} global={} vis={} view_vis={} mesh_valid={} mat_valid={} mesh_info={} aabb={}",
+                  name.as_str(), entity, transform.translation, gt_str, vis_str, view_vis_str,
+                  mesh_valid, mat_valid, mesh_info, aabb_str);
+        }
+
+        // Check physics entities that DON'T render
+        for (entity, name, mesh, material, visibility, view_vis, global_transform, transform, aabb) in physics_query.iter() {
+            let vis_str = visibility.map(|v| format!("{:?}", v)).unwrap_or("None".to_string());
+            let view_vis_str = view_vis.map(|v| format!("{}", v.get())).unwrap_or("None".to_string());
+            let gt_str = global_transform.map(|gt| format!("{:?}", gt.translation())).unwrap_or("None".to_string());
+            let aabb_str = aabb.map(|a| format!("min={:?} max={:?}", a.min(), a.max())).unwrap_or("NO_AABB".to_string());
+
+            // Check if mesh asset actually exists
+            let mesh_valid = mesh.as_ref().map(|m| mesh_assets.contains(&m.0)).unwrap_or(false);
+            let mat_valid = material.as_ref().map(|m| material_assets.contains(&m.0)).unwrap_or(false);
+
+            // Get the actual mesh to check its attributes
+            let mesh_info = mesh.as_ref().and_then(|m| mesh_assets.get(&m.0)).map(|m| {
+                let vertex_count = m.count_vertices();
+                let has_positions = m.attribute(bevy::render::mesh::Mesh::ATTRIBUTE_POSITION).is_some();
+                let has_normals = m.attribute(bevy::render::mesh::Mesh::ATTRIBUTE_NORMAL).is_some();
+                format!("verts={} has_pos={} has_norm={}", vertex_count, has_positions, has_normals)
+            }).unwrap_or("NO_MESH".to_string());
+
+            info!("DEBUG_PHYSICS: '{}' entity={:?} pos={:?} global={} vis={} view_vis={} mesh={} (valid={}) mat={} (valid={}) mesh_info={} aabb={}",
+                  name.as_str(), entity, transform.translation, gt_str, vis_str, view_vis_str,
+                  mesh.is_some(), mesh_valid, material.is_some(), mat_valid, mesh_info, aabb_str);
         }
     }
 }

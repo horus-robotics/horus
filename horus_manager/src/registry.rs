@@ -590,11 +590,21 @@ impl RegistryClient {
                             fs::remove_dir_all(&local_link)?;
                         }
                     }
+                    #[cfg(windows)]
+                    {
+                        if local_link.is_dir() {
+                            fs::remove_dir_all(&local_link)?;
+                        } else {
+                            fs::remove_file(&local_link)?;
+                        }
+                    }
                 }
 
                 // Create symlink
                 #[cfg(unix)]
                 std::os::unix::fs::symlink(&pkg_dir, &local_link)?;
+                #[cfg(windows)]
+                std::os::windows::fs::symlink_dir(&pkg_dir, &local_link)?;
 
                 println!(
                     " Installed {} v{} to global cache",
@@ -739,11 +749,21 @@ impl RegistryClient {
                             fs::remove_dir_all(&local_link)?;
                         }
                     }
+                    #[cfg(windows)]
+                    {
+                        if local_link.is_dir() {
+                            fs::remove_dir_all(&local_link)?;
+                        } else {
+                            fs::remove_file(&local_link)?;
+                        }
+                    }
                 }
 
                 // Create symlink
                 #[cfg(unix)]
                 std::os::unix::fs::symlink(&pkg_dir, &local_link)?;
+                #[cfg(windows)]
+                std::os::windows::fs::symlink_dir(&pkg_dir, &local_link)?;
 
                 println!(
                     " Installed {} v{} to global cache",
@@ -2692,7 +2712,15 @@ impl RegistryClient {
         if bin_link.exists() {
             fs::remove_file(&bin_link)?;
         }
+        #[cfg(unix)]
         std::os::unix::fs::symlink(&cargo_bin, &bin_link)?;
+        #[cfg(windows)]
+        {
+            // On Windows, create a .cmd wrapper for executables
+            let cmd_link = bin_dir.join(format!("{}.cmd", package_name));
+            let cmd_content = format!("@echo off\n\"{}\" %*\n", cargo_bin.display());
+            fs::write(&cmd_link, cmd_content)?;
+        }
 
         println!(
             "  {} Using system binary at {}",

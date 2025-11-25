@@ -81,6 +81,7 @@ pub fn collect_stats_system(
     gps: Query<&GPS>,
     encoders: Query<&Encoder>,
     force_torque: Query<&ForceTorqueSensor>,
+    physics_world: Option<Res<crate::physics::PhysicsWorld>>,
 ) {
     stats.total_entities = entities.iter().count();
     stats.robot_count = robots.iter().count();
@@ -95,9 +96,14 @@ pub fn collect_stats_system(
     stats.simulation_time = time.elapsed_secs();
     stats.real_time = time.elapsed_secs(); // Real time tracking would need separate timer
 
-    // Note: Physics stats (rigid_body_count, collider_count, etc.) would need
-    // access to Rapier's physics world, which would be added when integrating
-    // with the actual physics plugin
+    // Get physics stats from PhysicsWorld
+    if let Some(physics) = physics_world {
+        stats.rigid_body_count = physics.rigid_body_set.len();
+        stats.collider_count = physics.collider_set.len();
+        stats.joint_count = physics.impulse_joint_set.len();
+        // Count active contacts from narrow phase
+        stats.contact_count = physics.narrow_phase.contact_pairs().count();
+    }
 }
 
 #[cfg(feature = "visual")]

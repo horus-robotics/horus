@@ -118,6 +118,7 @@ impl CameraNode {
 
     #[cfg(feature = "opencv-backend")]
     fn initialize_opencv(&mut self) -> bool {
+        use opencv::prelude::{VideoCaptureTrait, VideoCaptureTraitConst};
         use opencv::videoio::VideoCaptureProperties::{
             CAP_PROP_FPS, CAP_PROP_FRAME_HEIGHT, CAP_PROP_FRAME_WIDTH,
         };
@@ -126,9 +127,9 @@ impl CameraNode {
         match VideoCapture::new(self.device_id as i32, CAP_ANY) {
             Ok(mut cap) => {
                 // Set camera properties
-                let _ = cap.set(CAP_PROP_FRAME_WIDTH, self.width as f64);
-                let _ = cap.set(CAP_PROP_FRAME_HEIGHT, self.height as f64);
-                let _ = cap.set(CAP_PROP_FPS, self.fps as f64);
+                let _ = cap.set(CAP_PROP_FRAME_WIDTH.into(), self.width as f64);
+                let _ = cap.set(CAP_PROP_FRAME_HEIGHT.into(), self.height as f64);
+                let _ = cap.set(CAP_PROP_FPS.into(), self.fps as f64);
 
                 if cap.is_opened().unwrap_or(false) {
                     self.capture = Some(cap);
@@ -184,12 +185,13 @@ impl CameraNode {
     #[cfg(feature = "opencv-backend")]
     fn capture_opencv_frame(&mut self) -> Option<Vec<u8>> {
         use opencv::core::Mat;
+        use opencv::prelude::{MatTraitConst, MatTraitConstManual, VideoCaptureTrait};
 
         if let Some(ref mut cap) = self.capture {
             let mut frame = Mat::default();
             if cap.read(&mut frame).unwrap_or(false) && !frame.empty() {
                 // Convert Mat to Vec<u8>
-                if let Some(bytes) = frame.data_bytes() {
+                if let Ok(bytes) = frame.data_bytes() {
                     return Some(bytes.to_vec());
                 }
             }

@@ -4,6 +4,9 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 
+#[cfg(feature = "visual")]
+use bevy_egui::egui;
+
 /// Plugin metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PluginMetadata {
@@ -158,6 +161,81 @@ pub trait RLPlugin: Sim3dPlugin {
 
     /// Reset environment for new episode
     fn reset(&mut self, app: &mut App);
+}
+
+/// UI plugin trait for plugins that provide inspector/settings UI
+///
+/// This trait enables plugins to contribute UI elements to the unified
+/// inspector panel, following patterns from Gazebo and Isaac Sim.
+///
+/// # Example
+/// ```ignore
+/// impl UiPlugin for MySensorPlugin {
+///     fn has_inspector_ui(&self) -> bool { true }
+///
+///     fn inspector_ui(&self, ui: &mut egui::Ui, world: &World, entity: Entity) {
+///         if let Some(sensor) = world.get::<MySensor>(entity) {
+///             ui.label(format!("Reading: {:.2}", sensor.value));
+///         }
+///     }
+///
+///     fn settings_ui(&mut self, ui: &mut egui::Ui) {
+///         ui.checkbox(&mut self.enabled, "Enable sensor");
+///     }
+/// }
+/// ```
+#[cfg(feature = "visual")]
+pub trait UiPlugin: Sim3dPlugin {
+    /// Whether this plugin provides inspector UI for entities
+    fn has_inspector_ui(&self) -> bool {
+        false
+    }
+
+    /// Whether this plugin provides global settings UI
+    fn has_settings_ui(&self) -> bool {
+        false
+    }
+
+    /// Display inspector UI for a selected entity
+    /// Called when an entity with this plugin's components is selected
+    fn inspector_ui(&self, _ui: &mut egui::Ui, _world: &World, _entity: Entity) {}
+
+    /// Display global plugin settings UI
+    /// Shown in the unified settings panel under a collapsible section
+    fn settings_ui(&mut self, _ui: &mut egui::Ui) {}
+
+    /// Get the display name for the settings section
+    fn settings_section_name(&self) -> &str {
+        self.metadata().name.as_str()
+    }
+
+    /// Get icon for the settings section (optional, Unicode or emoji)
+    fn settings_icon(&self) -> Option<&str> {
+        None
+    }
+
+    /// Priority for ordering in the settings panel (lower = higher priority)
+    fn settings_priority(&self) -> i32 {
+        100
+    }
+}
+
+/// UI panel registration info for the unified panel system
+#[cfg(feature = "visual")]
+#[derive(Debug, Clone)]
+pub struct PluginPanelInfo {
+    /// Plugin name
+    pub plugin_name: String,
+    /// Display name for the panel section
+    pub display_name: String,
+    /// Icon (optional)
+    pub icon: Option<String>,
+    /// Priority for ordering (lower = higher)
+    pub priority: i32,
+    /// Whether plugin provides inspector UI
+    pub has_inspector: bool,
+    /// Whether plugin provides settings UI
+    pub has_settings: bool,
 }
 
 /// Plugin configuration (loaded from YAML/TOML)

@@ -7,7 +7,7 @@ use horus_core::{Hub, Node, NodeInfo, NodeInfoExt};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[cfg(feature = "nmea-gps")]
-use serialport::{SerialPort, SerialPortBuilder};
+use serialport::SerialPort;
 
 #[cfg(feature = "nmea-gps")]
 use nmea::Nmea;
@@ -194,8 +194,9 @@ impl GpsNode {
                     }
                 }
             }
-            _ => {
-                eprintln!("Unsupported GPS backend: {:?}", self.backend);
+            #[cfg(not(feature = "nmea-gps"))]
+            GpsBackend::NmeaSerial => {
+                eprintln!("NMEA GPS backend requires 'nmea-gps' feature to be enabled");
                 false
             }
         }
@@ -263,7 +264,7 @@ impl GpsNode {
                                     let mut fix = NavSatFix::from_coordinates(
                                         lat,
                                         lon,
-                                        nmea.altitude.unwrap_or(0.0),
+                                        nmea.altitude.unwrap_or(0.0) as f64,
                                     );
 
                                     fix.satellites_visible =
@@ -307,7 +308,11 @@ impl GpsNode {
                     None
                 }
             }
-            _ => None,
+            #[cfg(not(feature = "nmea-gps"))]
+            GpsBackend::NmeaSerial => {
+                ctx.log_warning("NMEA GPS backend requires 'nmea-gps' feature");
+                None
+            }
         }
     }
 

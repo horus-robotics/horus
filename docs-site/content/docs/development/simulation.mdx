@@ -15,7 +15,7 @@ Test and validate your robot algorithms in virtual environments before deploying
 | Simulator | Status | Dimensions | Use Case | Performance |
 |-----------|--------|------------|----------|-------------|
 | **sim2d** |  **Active Development** | 2D Top-Down | Fast prototyping, navigation | 1000+ Hz headless |
-| **sim3d** |  **Planned** | Full 3D | Realistic testing, RL training | 60 FPS visual, 100K+ steps/sec RL |
+| **sim3d** |  **Available** | Full 3D | Realistic testing, RL training | 60 FPS visual, 100K+ steps/sec RL |
 
 **Key Benefits:**
 -  **Same code works in sim and reality** - Write once, deploy anywhere
@@ -62,11 +62,11 @@ export PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1
 
 ```bash
 # Launch simulator
-horus sim
+horus sim2d
 
 # Or with specific options
-horus sim --scenario warehouse
-horus sim --headless  # No GUI (for testing)
+horus sim2d --world warehouse.yaml
+horus sim2d --headless  # No GUI (for testing)
 ```
 
 ### Features
@@ -141,7 +141,7 @@ impl Node for NavigationNode {
 
 ```bash
 # Terminal 1: Launch simulator with maze
-horus sim --scenario maze
+horus sim2d --world maze.yaml
 
 # Terminal 2: Run your navigation code
 horus run navigation.rs --release
@@ -157,7 +157,7 @@ horus dashboard
 # Automated test script
 
 # Start simulator in headless mode
-horus sim --headless &
+horus sim2d --headless &
 SIM_PID=$!
 
 # Wait for simulator to initialize
@@ -199,7 +199,7 @@ robots:
 
 Load it:
 ```bash
-horus sim --scenario warehouse.yaml
+horus sim2d --world warehouse.yaml
 ```
 
 ### Configuration
@@ -233,15 +233,18 @@ sensors:
 ### Command Reference
 
 ```bash
-horus sim [OPTIONS]
+horus sim2d [OPTIONS]
 
 Options:
-  -s, --scenario <NAME>     Load scenario file or preset
-  --headless                Run without GUI (for CI/CD)
-  -p, --port <PORT>         Web UI port (default: 3001)
-  -r, --realtime            Lock to real-time physics
-  --rate <HZ>               Physics rate (default: 240)
-  -h, --help                Show help
+  --headless                 Run without GUI (for CI/CD)
+  --world <FILE>             World configuration file
+  --world-image <FILE>       World image file (PNG, JPG, PGM)
+  --resolution <FLOAT>       Resolution in meters per pixel
+  --threshold <0-255>        Obstacle threshold (darker = obstacle)
+  --robot <FILE>             Robot configuration file
+  --topic <PREFIX>           HORUS topic prefix (default: /robot)
+  --name <NAME>              Robot name for logging (default: robot)
+  -h, --help                 Show help
 ```
 
 ### Performance
@@ -273,13 +276,13 @@ For production use, we recommend:
 
 ## sim3d - 3D Robotics Simulator with RL Support
 
->  **Status:** Planned - Detailed specification complete, implementation upcoming
+>  **Status:** Available - Core features implemented, advanced features in development
 
-### Vision
+### Overview
 
 A **production-grade 3D simulator** built with Bevy and Rapier3D, designed as the evolution of sim2d with first-class reinforcement learning support.
 
-### Planned Features
+### Features
 
 #### Dual-Mode Operation
 
@@ -362,7 +365,7 @@ Built on **Rapier3D** with:
 let transform = tf_tree.get_transform("base_link", "camera_link")?;
 
 // Visualize TF tree
-horus sim --tf-view
+horus sim3d --tf-view
 ```
 
 #### Reinforcement Learning
@@ -401,7 +404,7 @@ for step in range(1_000_000):
 **Gazebo SDF Import:**
 ```bash
 # Import Gazebo world
-horus sim --import-sdf warehouse.world
+horus sim3d --import-sdf warehouse.world
 ```
 
 **Runtime Spawning:**
@@ -414,10 +417,10 @@ scene.spawn_urdf("turtlebot3.urdf", pose);
 **Save/Load Scenes:**
 ```bash
 # Save current scene
-horus sim --save-scene my_world.yaml
+horus sim3d --save-scene my_world.yaml
 
 # Load scene
-horus sim --scene my_world.yaml
+horus sim3d --scene my_world.yaml
 ```
 
 ### Architecture
@@ -427,7 +430,7 @@ horus sim --scene my_world.yaml
 │                  User Interface                      │
 ├──────────────┬──────────────┬───────────────────────┤
 │ CLI          │ GUI (egui)   │ Python (Gym)          │
-│ horus sim    │ Debug panels │ RL training           │
+│ horus sim3d  │ Debug panels │ RL training           │
 └──────┬───────┴──────┬───────┴──────┬────────────────┘
        │              │              │
 ┌──────▼──────────────▼──────────────▼────────────────┐

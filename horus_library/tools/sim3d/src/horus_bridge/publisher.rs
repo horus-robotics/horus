@@ -263,7 +263,7 @@ fn convert_pointcloud_to_msg(
 
 pub fn publish_tf_system(
     time: Res<Time>,
-    tf_tree: Res<TFTree>,
+    _tf_tree: Res<TFTree>,
     publisher: Res<HorusPublisher>,
     query: Query<(&GlobalTransform, &Name)>,
 ) {
@@ -308,7 +308,7 @@ pub fn publish_lidar2d_system(
     let current_time = time.elapsed_secs_f64();
 
     for (_, scan, name) in query.iter() {
-        let topic = format!("{}/scan", name.as_str());
+        let topic = format!("{}.scan", name.as_str());
         publisher.publish_laserscan(&topic, scan, name.as_str(), current_time);
     }
 }

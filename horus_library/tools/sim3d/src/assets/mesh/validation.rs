@@ -219,8 +219,8 @@ fn check_degenerate_triangles(mesh: &Mesh, report: &mut ValidationReport) {
 
     let indices = match mesh.indices() {
         Some(Indices::U32(idx)) => idx.as_slice(),
-        Some(Indices::U16(idx)) => {
-            // Convert u16 to u32 for easier processing
+        Some(Indices::U16(_)) => {
+            // U16 indices not supported for degenerate check, skip
             return;
         }
         None => return,

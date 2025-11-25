@@ -15,6 +15,15 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Cross-platform shared memory path detection
+get_shm_base() {
+    case "$(uname -s)" in
+        Linux*)  echo "/dev/shm" ;;
+        Darwin*) echo "/tmp" ;;
+        *)       echo "/tmp" ;;
+    esac
+}
+
 echo -e "${BLUE} HORUS Complete Benchmark Suite${NC}"
 echo "======================================"
 echo ""
@@ -76,9 +85,10 @@ echo -e "${YELLOW}[BUILD] Building benchmarks...${NC}"
 cd "$BENCH_DIR"
 cargo build --release --benches
 
-# Clear any existing shared memory
+# Clear any existing shared memory (cross-platform)
 echo -e "${YELLOW}[CLEAN] Cleaning shared memory...${NC}"
-rm -rf /dev/shm/horus_* 2>/dev/null || true
+SHM_BASE="$(get_shm_base)"
+rm -rf "$SHM_BASE/horus_"* "$SHM_BASE/horus" 2>/dev/null || true
 
 # Run benchmarks
 echo -e "${BLUE}[RUN] Running benchmark suite...${NC}"

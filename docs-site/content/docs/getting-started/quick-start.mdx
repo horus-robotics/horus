@@ -327,12 +327,12 @@ impl Node for TemperatureMonitor {
 Now that you've built your first app, learn the details:
 
 **Core Concepts:**
-- **[Nodes](/core-concepts-nodes)** - Deep dive into the Node pattern
-- **[Hub](/core-concepts-hub)** - How ultra-fast communication works
-- **[Scheduler](/core-concepts-scheduler)** - Priority-based execution
+- **[Nodes](/core-concepts/core-concepts-nodes)** - Deep dive into the Node pattern
+- **[Hub](/core-concepts/core-concepts-hub)** - How ultra-fast communication works
+- **[Scheduler](/core-concepts/core-concepts-scheduler)** - Priority-based execution
 
 **Make Development Easier:**
-- **[node! Macro](/node-macro)** - Eliminate boilerplate code
+- **[node! Macro](/core-concepts/node-macro)** - Eliminate boilerplate code
 - **[CLI Reference](/development/cli-reference)** - All the `horus` commands
 - **[Dashboard](/development/dashboard)** - Monitor your application visually
 
@@ -365,8 +365,12 @@ Press **Ctrl+C**. The scheduler handles graceful shutdown automatically.
 
 ### Where does the data go?
 
-Data is stored in shared memory at `/dev/shm/horus/`. Check it out:
+Data is stored in platform-specific shared memory:
+- **Linux:** `/dev/shm/horus/`
+- **macOS:** `/tmp/horus/`
+- **Windows:** `%TEMP%\horus\`
 
+Check it out (Linux):
 ```bash
 ls -lh /dev/shm/horus/
 ```
@@ -386,7 +390,10 @@ Hub::new("temperature_sensor_1")?
 The shared memory file exists from a previous run. Remove it:
 
 ```bash
+# Linux
 rm -f /dev/shm/horus/topic_temperature
+# macOS
+rm -f /tmp/horus/topic_temperature
 ```
 
 Or use a different topic name.
@@ -412,7 +419,7 @@ Sending and receiving messages
 
 Your next steps:
 
-1. **[Use the node! macro](/node-macro)** to eliminate boilerplate
+1. **[Use the node! macro](/core-concepts/node-macro)** to eliminate boilerplate
 2. **[Run the examples](/examples)** to see real applications
 3. **[Open the dashboard](/development/dashboard)** to monitor your system
 

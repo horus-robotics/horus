@@ -15,7 +15,7 @@ pub fn load_stl(path: &Path, options: &MeshLoadOptions) -> Result<LoadedMesh> {
     tracing::debug!("Loading STL file: {}", path.display());
 
     // Read STL file (stl_io handles both ASCII and binary automatically)
-    let mut file = std::fs::File::open(path).map_err(|e| EnhancedError::file_not_found(path))?;
+    let mut file = std::fs::File::open(path).map_err(|_| EnhancedError::file_not_found(path))?;
 
     let stl = stl_io::read_stl(&mut file)
         .map_err(|e| EnhancedError::mesh_load_failed(

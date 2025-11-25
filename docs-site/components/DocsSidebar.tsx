@@ -28,8 +28,7 @@ const sections: SidebarSection[] = [
       { title: "Quick Start", href: "/getting-started/quick-start", order: 5 },
       { title: "Second Application", href: "/second-application", order: 6 },
       { title: "Architecture", href: "/architecture", order: 7 },
-      { title: "Migration Guide (ctx API)", href: "/migration-guide-ctx-api", order: 7.5 },
-      { title: "Troubleshooting", href: "/troubleshooting", order: 8 },
+            { title: "Troubleshooting", href: "/troubleshooting", order: 8 },
       { title: "Runtime Errors", href: "/troubleshooting-runtime", order: 9 },
       { title: "Examples Overview", href: "/examples", order: 10 },
       { title: "Basic Examples", href: "/basic-examples", order: 11 },
@@ -82,38 +81,100 @@ const sections: SidebarSection[] = [
     title: "Built-in Nodes/Drivers",
     links: [
       { title: "Overview", href: "/built-in-nodes", order: 0 },
-      { title: "Battery Monitor", href: "/built-in-nodes/battery-monitor", order: 1 },
-      { title: "BLDC Motor", href: "/built-in-nodes/bldc-motor", order: 2 },
-      { title: "Camera", href: "/built-in-nodes/camera", order: 3 },
-      { title: "CAN Bus", href: "/built-in-nodes/can-bus", order: 4 },
-      { title: "Collision Detector", href: "/built-in-nodes/collision-detector", order: 5 },
-      { title: "DC Motor", href: "/built-in-nodes/dc-motor", order: 6 },
-      { title: "Depth Camera", href: "/built-in-nodes/depth-camera", order: 7 },
-      { title: "Differential Drive", href: "/built-in-nodes/differential-drive", order: 8 },
-      { title: "Digital I/O", href: "/built-in-nodes/digital-io", order: 9 },
-      { title: "Dynamixel", href: "/built-in-nodes/dynamixel", order: 10 },
-      { title: "Emergency Stop", href: "/built-in-nodes/emergency-stop", order: 11 },
-      { title: "Encoder", href: "/built-in-nodes/encoder", order: 12 },
-      { title: "Force/Torque Sensor", href: "/built-in-nodes/force-torque", order: 13 },
-      { title: "GPS", href: "/built-in-nodes/gps", order: 14 },
-      { title: "I2C Bus", href: "/built-in-nodes/i2c-bus", order: 15 },
-      { title: "Image Processor", href: "/built-in-nodes/image-processor", order: 16 },
-      { title: "IMU", href: "/built-in-nodes/imu", order: 17 },
-      { title: "Joystick", href: "/built-in-nodes/joystick", order: 18 },
-      { title: "Keyboard Input", href: "/built-in-nodes/keyboard-input", order: 19 },
-      { title: "LiDAR", href: "/built-in-nodes/lidar", order: 20 },
-      { title: "Localization", href: "/built-in-nodes/localization", order: 21 },
-      { title: "Modbus", href: "/built-in-nodes/modbus", order: 22 },
-      { title: "Odometry", href: "/built-in-nodes/odometry", order: 23 },
-      { title: "Path Planner", href: "/built-in-nodes/path-planner", order: 24 },
-      { title: "PID Controller", href: "/built-in-nodes/pid-controller", order: 25 },
-      { title: "RoboClaw Motor", href: "/built-in-nodes/roboclaw-motor", order: 26 },
-      { title: "Safety Monitor", href: "/built-in-nodes/safety-monitor", order: 27 },
-      { title: "Serial", href: "/built-in-nodes/serial", order: 28 },
-      { title: "Servo Controller", href: "/built-in-nodes/servo-controller", order: 29 },
-      { title: "SPI Bus", href: "/built-in-nodes/spi-bus", order: 30 },
-      { title: "Stepper Motor", href: "/built-in-nodes/stepper-motor", order: 31 },
-      { title: "Ultrasonic", href: "/built-in-nodes/ultrasonic", order: 32 },
+      {
+        title: "Communication",
+        href: "/built-in-nodes/i2c-bus",
+        order: 1,
+        children: [
+          { title: "I2C Bus", href: "/built-in-nodes/i2c-bus", order: 1 },
+          { title: "SPI Bus", href: "/built-in-nodes/spi-bus", order: 2 },
+          { title: "CAN Bus", href: "/built-in-nodes/can-bus", order: 3 },
+          { title: "Serial", href: "/built-in-nodes/serial", order: 4 },
+          { title: "Modbus", href: "/built-in-nodes/modbus", order: 5 },
+        ]
+      },
+      {
+        title: "Motors",
+        href: "/built-in-nodes/dc-motor",
+        order: 2,
+        children: [
+          { title: "DC Motor", href: "/built-in-nodes/dc-motor", order: 1 },
+          { title: "BLDC Motor", href: "/built-in-nodes/bldc-motor", order: 2 },
+          { title: "Stepper Motor", href: "/built-in-nodes/stepper-motor", order: 3 },
+          { title: "Servo Controller", href: "/built-in-nodes/servo-controller", order: 4 },
+          { title: "Dynamixel", href: "/built-in-nodes/dynamixel", order: 5 },
+          { title: "RoboClaw Motor", href: "/built-in-nodes/roboclaw-motor", order: 6 },
+        ]
+      },
+      {
+        title: "Sensors",
+        href: "/built-in-nodes/camera",
+        order: 3,
+        children: [
+          { title: "Camera", href: "/built-in-nodes/camera", order: 1 },
+          { title: "Depth Camera", href: "/built-in-nodes/depth-camera", order: 2 },
+          { title: "LiDAR", href: "/built-in-nodes/lidar", order: 3 },
+          { title: "IMU", href: "/built-in-nodes/imu", order: 4 },
+          { title: "GPS", href: "/built-in-nodes/gps", order: 5 },
+          { title: "Encoder", href: "/built-in-nodes/encoder", order: 6 },
+          { title: "Ultrasonic", href: "/built-in-nodes/ultrasonic", order: 7 },
+          { title: "Battery Monitor", href: "/built-in-nodes/battery-monitor", order: 8 },
+          { title: "Force/Torque", href: "/built-in-nodes/force-torque", order: 9 },
+        ]
+      },
+      {
+        title: "Control & Navigation",
+        href: "/built-in-nodes/pid-controller",
+        order: 4,
+        children: [
+          { title: "PID Controller", href: "/built-in-nodes/pid-controller", order: 1 },
+          { title: "Differential Drive", href: "/built-in-nodes/differential-drive", order: 2 },
+          { title: "Odometry", href: "/built-in-nodes/odometry", order: 3 },
+          { title: "Path Planner", href: "/built-in-nodes/path-planner", order: 4 },
+          { title: "Localization", href: "/built-in-nodes/localization", order: 5 },
+        ]
+      },
+      {
+        title: "Safety & I/O",
+        href: "/built-in-nodes/emergency-stop",
+        order: 5,
+        children: [
+          { title: "Emergency Stop", href: "/built-in-nodes/emergency-stop", order: 1 },
+          { title: "Safety Monitor", href: "/built-in-nodes/safety-monitor", order: 2 },
+          { title: "Collision Detector", href: "/built-in-nodes/collision-detector", order: 3 },
+          { title: "Digital I/O", href: "/built-in-nodes/digital-io", order: 4 },
+        ]
+      },
+      {
+        title: "User Interfaces",
+        href: "/built-in-nodes/joystick",
+        order: 6,
+        children: [
+          { title: "Joystick", href: "/built-in-nodes/joystick", order: 1 },
+          { title: "Keyboard Input", href: "/built-in-nodes/keyboard-input", order: 2 },
+          { title: "Image Processor", href: "/built-in-nodes/image-processor", order: 3 },
+        ]
+      },
+      {
+        title: "Computer Vision",
+        href: "/built-in-nodes/yolo-detector",
+        order: 7,
+        children: [
+          { title: "YOLO Detector", href: "/built-in-nodes/yolo-detector", order: 1 },
+          { title: "Pose Estimation", href: "/built-in-nodes/pose-estimation", order: 2 },
+          { title: "Segmentation", href: "/built-in-nodes/semantic-segmentation", order: 3 },
+        ]
+      },
+      {
+        title: "ML & AI",
+        href: "/built-in-nodes/onnx-inference",
+        order: 8,
+        children: [
+          { title: "ONNX Inference", href: "/built-in-nodes/onnx-inference", order: 1 },
+          { title: "TFLite Inference", href: "/built-in-nodes/tflite-inference", order: 2 },
+          { title: "Cloud LLM", href: "/built-in-nodes/cloud-llm", order: 3 },
+        ]
+      },
     ],
   },
   {
@@ -131,8 +192,7 @@ const sections: SidebarSection[] = [
       { title: "Overview", href: "/multi-language/multi-language", order: 1 },
       { title: "Python Bindings", href: "/multi-language/python-bindings", order: 2 },
       { title: "Python Message Library", href: "/multi-language/python-message-library", order: 3 },
-      { title: "C++ Bindings", href: "/multi-language/cpp-bindings", order: 4 },
-      { title: "AI API Integration", href: "/multi-language/ai-integration", order: 5 },
+            { title: "AI API Integration", href: "/multi-language/ai-integration", order: 5 },
     ],
   },
   {
@@ -151,11 +211,10 @@ const sections: SidebarSection[] = [
   {
     title: "API Reference",
     links: [
-      { title: "Overview", href: "/api/api", order: 0 },
-      { title: "Node", href: "/api/api-node", order: 1 },
-      { title: "Hub", href: "/api/api-hub", order: 2 },
-      { title: "Link", href: "/api/api-link", order: 3 },
-      { title: "Scheduler", href: "/api/api-scheduler", order: 4 },
+      { title: "Overview", href: "/api", order: 0 },
+      { title: "horus_core", href: "/api/core", order: 1 },
+      { title: "horus_messages", href: "/api/messages", order: 2 },
+      { title: "horus_macros", href: "/api/macros", order: 3 },
     ],
   },
 ];

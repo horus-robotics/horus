@@ -6,6 +6,7 @@
 //! - Asset caching
 //! - Path resolution
 //! - YCB object dataset loading
+//! - Asset validation (URDF, robot packages)
 
 pub mod asset_validator;
 pub mod cache;
@@ -19,3 +20,14 @@ pub use ycb_loader::{
     YCBMeshObjectConfig, YCBPrimitiveConfig,
     spawn_ycb_object_at, spawn_ycb_object_with_transform, create_ycb_clutter,
 };
+
+// Re-export asset validation
+pub use asset_validator::{
+    AssetValidationReport, AssetType, validate_urdf, validate_robot_package,
+};
+
+// Re-export cache types
+pub use cache::{AssetCache, CacheStats};
+
+// Re-export resolver
+pub use resolver::PathResolver;

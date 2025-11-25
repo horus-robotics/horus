@@ -388,8 +388,8 @@ horus run node1.py node2.py node3.py
 # Mix Python and Rust nodes
 horus run sensor.rs controller.py visualizer.py
 
-# Mix all languages
-horus run lidar_driver.c planner.py motor_control.rs
+# Mix Rust and Python
+horus run lidar_driver.rs planner.py motor_control.rs
 ```
 
 All nodes in the same `horus run` session automatically communicate via shared memory!
@@ -434,7 +434,7 @@ horus run sensor_node.py controller_node.py
 
 **Benefits:**
 - **Process isolation**: One crash doesn't kill everything
-- **Multi-language**: Mix Python, Rust, and C nodes seamlessly
+- **Multi-language**: Mix Python and Rust nodes seamlessly
 - **Parallel execution**: True multicore utilization
 - **Zero configuration**: Shared memory IPC automatically set up
 
@@ -833,16 +833,15 @@ print(f"Message age: {age*1000:.1f}ms")
 
 ### With Rust Nodes
 
-**Important**: For cross-language communication, use typed hubs. The generic `Hub` class uses pickle serialization which Rust cannot deserialize.
+**Important**: For cross-language communication, use typed hubs by passing a message type to `Hub()`.
 
 #### Cross-Language with Typed Hubs
 
 ```python
 # Python node with typed hub
-from horus._horus import PyCmdVelHub
-from horus import CmdVel
+from horus import Hub, CmdVel
 
-cmd_hub = PyCmdVelHub("cmd_vel")
+cmd_hub = Hub(CmdVel)  # Typed hub
 cmd_hub.send(CmdVel(linear=1.0, angular=0.5))
 ```
 
@@ -851,41 +850,24 @@ cmd_hub.send(CmdVel(linear=1.0, angular=0.5))
 use horus::prelude::*;
 use horus_library::messages::cmd_vel::CmdVel;
 
-let hub = Hub::<CmdVel>::new("cmd_vel")?;
+let hub = Hub::<CmdVel>::new("cmdvel")?;
 if let Some(cmd) = hub.recv(None) {
     println!("Got: linear={}, angular={}", cmd.linear, cmd.angular);
 }
 ```
 
-#### Python-Only (Generic Hub)  Not Compatible with Rust
+#### Generic Hub (String Topics)
 
 ```python
-# Generic Hub - Python objects only
+# Generic Hub - for custom topics
 from horus import Hub
 
-hub = Hub("my_topic")
-hub.send({"linear": 1.0, "angular": 0.5})  #  Rust cannot read this!
-# This uses pickle serialization - only works Python ↔ Python
+hub = Hub("my_topic")  # Pass string for generic hub
+hub.send({"linear": 1.0, "angular": 0.5})  # Uses JSON serialization
 ```
 
-**Available typed hubs:** `PyPose2DHub`, `PyCmdVelHub`, `PyLaserScanHub`
+**Typed hubs:** Use `Hub(CmdVel)`, `Hub(Pose2D)` for cross-language communication.
 See [Python Message Library](/multi-language/python-message-library) for details.
-
-### With C Drivers
-
-```python
-# Python processing node
-def process_lidar(node):
-    if node.has_msg("laser_scan"):
-        scan = node.get("laser_scan")  # From C driver
-        processed = process_scan(scan)
-        node.send("obstacles", processed)
-```
-
-```c
-// C hardware driver
-send(scan_pub, &laser_scan);  // Python receives this
-```
 
 ---
 
@@ -1071,12 +1053,11 @@ Dashboard integration for Python nodes is planned for a future release. This wil
 ## See Also
 
 - [Examples](/examples) - More code examples
-- [Core Concepts](/core-concepts-nodes) - Understanding HORUS architecture
+- [Core Concepts](/core-concepts/core-concepts-nodes) - Understanding HORUS architecture
 - [Dashboard](/development/dashboard) - Real-time monitoring and visualization
 - [Python Message Library](/multi-language/python-message-library) - Typed message classes
 - [Multi-Language Support](/multi-language/multi-language) - Cross-language communication
 - [Performance](/performance/performance) - Optimization guide
-- [C++ Bindings](/multi-language/cpp-bindings) - C++ API documentation
 
 ---
 

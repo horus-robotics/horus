@@ -14,6 +14,7 @@
 // Re-export main modules
 pub mod assets;
 pub mod cli;
+pub mod config;
 pub mod editor;
 pub mod error;
 pub mod gpu;
@@ -31,6 +32,7 @@ pub mod sensors;
 pub mod systems;
 pub mod tf;
 pub mod utils;
+pub mod view_modes;
 
 // UI module (conditional on visual feature due to other module errors)
 #[cfg(feature = "visual")]

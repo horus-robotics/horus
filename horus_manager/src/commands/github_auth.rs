@@ -14,15 +14,6 @@ struct AuthConfig {
     github_username: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
-#[allow(dead_code)]
-struct ApiKeyResponse {
-    key: String,
-    name: String,
-    prefix: String,
-    environment: Option<String>,
-}
-
 /// Get the path to the auth config file
 fn auth_config_path() -> Result<PathBuf> {
     let home = home_dir().ok_or_else(|| anyhow!("Could not find home directory"))?;

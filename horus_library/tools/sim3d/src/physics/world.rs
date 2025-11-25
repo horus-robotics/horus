@@ -90,6 +90,12 @@ impl PhysicsWorld {
             .get(handle)
             .map(|rb| Entity::from_bits(rb.user_data as u64))
     }
+
+    pub fn update_rigid_body_entity(&mut self, handle: RigidBodyHandle, entity: Entity) {
+        if let Some(rb) = self.rigid_body_set.get_mut(handle) {
+            rb.user_data = entity.to_bits() as u128;
+        }
+    }
 }
 
 /// System to extract contact forces from Rapier3D and populate ContactForce components

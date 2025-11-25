@@ -74,7 +74,7 @@ pub struct BatteryMonitorNode {
     temperature: f32,         // °C
     cell_voltages: [f32; 16], // Individual cell voltages
     power_supply_status: u8,
-    cycle_count: u32,
+    _cycle_count: u32,  // Reserved for battery health tracking
 
     // Monitoring
     sampling_rate: f32, // Hz
@@ -151,7 +151,7 @@ impl BatteryMonitorNode {
             temperature: 25.0,
             cell_voltages: [0.0; 16],
             power_supply_status: BatteryState::STATUS_DISCHARGING,
-            cycle_count: 0,
+            _cycle_count: 0,
             sampling_rate: 1.0, // 1 Hz default
             enable_cell_monitoring: false,
             last_sample_time: 0,
@@ -283,8 +283,8 @@ impl BatteryMonitorNode {
         }
     }
 
-    /// Estimate state of charge from voltage
-    fn estimate_soc_from_voltage(&self, voltage: f32) -> f32 {
+    /// Estimate state of charge from voltage (reserved for alternative SOC method)
+    fn _estimate_soc_from_voltage(&self, voltage: f32) -> f32 {
         // Simple linear interpolation between full and empty
         let range = self.full_voltage - self.critical_voltage;
         if range <= 0.0 {
@@ -402,7 +402,7 @@ impl BatteryMonitorNode {
     }
 
     /// Simulate battery measurements
-    fn simulate_measurement(&mut self, dt: f32) {
+    fn simulate_measurement(&mut self, _dt: f32) {
         // Simulate voltage drop based on load
         let load_factor = (self.current.abs() / 50.0).min(1.0); // Assume 50A nominal
         let voltage_drop = load_factor * 0.5; // Up to 0.5V drop under load
@@ -571,7 +571,7 @@ impl Node for BatteryMonitorNode {
         {
             // Initialize I2C if needed
             if self.i2c_device.is_none() && self.i2c_address != 0 {
-                if let Err(e) = self.init_i2c_hardware(&mut ctx) {
+                if let Err(e) = self.init_i2c_hardware(ctx.as_deref_mut()) {
                     // Provide detailed troubleshooting information (only log once)
                     if self.hardware_enabled || self.last_sample_time == 0 {
                         let device_path = format!("/dev/i2c-{}", self.i2c_bus);

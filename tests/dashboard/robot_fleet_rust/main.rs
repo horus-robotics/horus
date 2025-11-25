@@ -57,7 +57,7 @@ node! {
 node! {
     LidarNode {
         pub {
-            lidar: LaserScan -> "sensors/lidar",
+            lidar: LaserScan -> "sensors.lidar",
         }
 
         sub {}
@@ -123,7 +123,7 @@ node! {
 node! {
     GpsNode {
         pub {
-            gps: GpsCoordinates -> "sensors/gps",
+            gps: GpsCoordinates -> "sensors.gps",
         }
 
         sub {}
@@ -155,12 +155,12 @@ node! {
 node! {
     NavigationNode {
         pub {
-            cmd: CmdVel -> "control/cmd_vel",
+            cmd: CmdVel -> "control.cmd_vel",
         }
 
         sub {
-            gps: GpsCoordinates -> "sensors/gps",
-            lidar: LaserScan -> "sensors/lidar",
+            gps: GpsCoordinates -> "sensors.gps",
+            lidar: LaserScan -> "sensors.lidar",
         }
 
         data {
@@ -190,12 +190,12 @@ node! {
 node! {
     ObstacleAvoidanceNode {
         pub {
-            alert: ObstacleAlert -> "safety/obstacle_alert",
-            override_cmd: CmdVel -> "control/cmd_vel_override",
+            alert: ObstacleAlert -> "safety.obstacle_alert",
+            override_cmd: CmdVel -> "control.cmd_vel_override",
         }
 
         sub {
-            lidar: LaserScan -> "sensors/lidar",
+            lidar: LaserScan -> "sensors.lidar",
         }
 
         tick(ctx) {
@@ -235,12 +235,12 @@ node! {
 node! {
     MotorControllerNode {
         pub {
-            odometry: Odometry -> "sensors/odometry",
+            odometry: Odometry -> "sensors.odometry",
         }
 
         sub {
-            cmd: CmdVel -> "control/cmd_vel",
-            override_cmd: CmdVel -> "control/cmd_vel_override",
+            cmd: CmdVel -> "control.cmd_vel",
+            override_cmd: CmdVel -> "control.cmd_vel_override",
         }
 
         data {

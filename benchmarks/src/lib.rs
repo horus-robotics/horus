@@ -9,6 +9,9 @@
 #![allow(unused_imports)]
 #![allow(unused_assignments)]
 #![allow(unreachable_patterns)]
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unused_mut)]
 
 use serde::{Deserialize, Serialize};
 use std::time::Duration;

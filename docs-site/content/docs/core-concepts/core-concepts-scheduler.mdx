@@ -13,7 +13,7 @@ After reading this guide, you will understand:
 - Why priority-based execution ensures safety-critical nodes run first every tick cycle
 - The default 60 FPS tick rate and how nodes execute in sorted priority order
 - Graceful shutdown via Ctrl+C signal handling without losing data
-- When to use different priority levels (0=Critical for emergency stops, 4=Background for logging)
+- When to use different priority levels (0=Critical for emergency stops, 100=Background for logging)
 
 The Scheduler is the **execution orchestrator** in HORUS. It manages the node lifecycle, coordinates priority-based execution, and handles graceful shutdown.
 
@@ -715,7 +715,7 @@ fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
 
 ## Next Steps
 
-- Understand [Shared Memory](/core-concepts-shared-memory) internals
-- Learn about [Message Types](/message-types) for communication
+- Understand [Shared Memory](/core-concepts/core-concepts-shared-memory) internals
+- Learn about [Message Types](/core-concepts/message-types) for communication
 - Explore [Examples](/examples) for complete applications
-- Read the [API Reference](/api-scheduler) for detailed documentation
+- Read the [API Reference](/api) for detailed documentation

@@ -85,6 +85,119 @@ session_id: "my-shared-session"
 - Topics accessible across ALL sessions
 - Useful for system-wide services
 
+## Session Design Philosophy
+
+### The Problem Sessions Solve
+
+Without sessions, all HORUS applications on the same machine would share a single topic namespace. This creates serious problems:
+
+```
+# Project A: Robot Arm Controller
+Hub::new("/robot/cmd_vel")  → writes to /dev/shm/horus/topics/robot_cmd_vel
+
+# Project B: Mobile Robot (running simultaneously)
+Hub::new("/robot/cmd_vel")  → SAME file! Collision!
+```
+
+**Result**: Project B's velocity commands would control Project A's robot arm. This is dangerous and confusing.
+
+### The Solution: Namespace Isolation
+
+Sessions provide **automatic namespace isolation**. Each project gets its own sandbox:
+
+```
+# Project A (session: "arm-controller-abc123")
+/dev/shm/horus/sessions/arm-controller-abc123/topics/robot_cmd_vel
+
+# Project B (session: "mobile-robot-xyz789")
+/dev/shm/horus/sessions/mobile-robot-xyz789/topics/robot_cmd_vel
+```
+
+**Result**: Complete isolation. No interference. Safe by default.
+
+### Design Tradeoffs
+
+HORUS sessions are designed around three principles:
+
+| Principle | Implementation | Benefit |
+|-----------|---------------|---------|
+| **Safe by default** | Auto-generated unique session IDs | No accidental cross-talk between unrelated projects |
+| **Explicit sharing** | Configurable `session_id` in horus.yaml | Multi-process apps (backend + GUI) can communicate |
+| **Escape hatch** | `Hub::new_global()` | System-wide services transcend all sessions |
+
+### Why Not Just Use Topic Prefixes?
+
+Some frameworks rely on manual topic prefixes (e.g., `/project_a/robot/cmd_vel`). HORUS rejected this approach:
+
+| Approach | Problem |
+|----------|---------|
+| Manual prefixes | Error-prone, easy to forget, no enforcement |
+| ROS-style roscore | Single point of failure, extra process to manage |
+| HORUS sessions | Automatic, enforced isolation with opt-in sharing |
+
+### Why File-Based Session Directories?
+
+Sessions use filesystem directories (`/dev/shm/horus/sessions/{id}/`) rather than in-memory registries:
+
+**Debugging**: `ls /dev/shm/horus/sessions/` shows all active sessions
+
+**Cleanup**: Delete a directory to clean up a crashed session
+
+**Persistence**: Sessions survive process restarts (for multi-process apps)
+
+**No daemon**: No background process needed to track sessions
+
+### The Three-Tier Model
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     GLOBAL TOPICS                            │
+│  /dev/shm/horus/global/                                      │
+│  - System-wide services (monitoring, logging)                │
+│  - Accessible from ANY session                               │
+│  - Use: Hub::new_global("topic")                            │
+└─────────────────────────────────────────────────────────────┘
+                              ▲
+                              │ opt-in
+┌─────────────────────────────────────────────────────────────┐
+│                   SESSION TOPICS (Shared)                    │
+│  /dev/shm/horus/sessions/{explicit-id}/                     │
+│  - Multi-process apps sharing session_id                    │
+│  - Backend + GUI, distributed systems                       │
+│  - Configure: session_id: "my-app" in horus.yaml           │
+└─────────────────────────────────────────────────────────────┘
+                              ▲
+                              │ opt-in
+┌─────────────────────────────────────────────────────────────┐
+│                SESSION TOPICS (Isolated) - DEFAULT          │
+│  /dev/shm/horus/sessions/{auto-generated-uuid}/             │
+│  - Single-process or single horus run                       │
+│  - Complete isolation from other projects                   │
+│  - No configuration needed                                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### When to Use Each Tier
+
+**Default (Isolated Sessions)** - Most common:
+```bash
+horus run main.rs  # Auto-generates unique session
+```
+Use for: Development, testing, standalone applications
+
+**Shared Sessions** - Multi-process apps:
+```yaml
+# horus.yaml
+session_id: "robot-system-v1"
+```
+Use for: Backend + GUI, microservices, distributed robotics
+
+**Global Topics** - System services:
+```rust
+Hub::new_global("system/diagnostics")?;
+```
+Use for: Monitoring dashboards, logging aggregators, fleet management
+
 ### File Naming Convention
 
 Shared memory topics follow this naming:
@@ -369,8 +482,11 @@ sample.write(data);          // Writes directly to shared memory
 ### Viewing Active Topics
 
 ```bash
-# List all HORUS shared memory topics
+# Linux
 ls -lh /dev/shm/horus/topics/
+
+# macOS
+ls -lh /tmp/horus/topics/
 
 # Example output:
 # -rw-r--r-- 1 user user 4.0K Oct 5 12:34 horus_cmd_vel
@@ -380,9 +496,13 @@ ls -lh /dev/shm/horus/topics/
 ### Checking Available Space
 
 ```bash
+# Linux
 df -h /dev/shm
 
-# Example output:
+# macOS (check temp space)
+df -h /tmp
+
+# Example output (Linux):
 # Filesystem      Size  Used Avail Use% Mounted on
 # tmpfs           7.8G  128M  7.7G   2% /dev/shm
 ```
@@ -392,8 +512,10 @@ df -h /dev/shm
 **HORUS automatically manages shared memory using session isolation:**
 
 Each `horus run` command gets a unique session ID and stores data in:
-```
-/dev/shm/horus/sessions/{session_id}/topics/
+```bash
+# Linux:  /dev/shm/horus/sessions/{session_id}/topics/
+# macOS:  /tmp/horus/sessions/{session_id}/topics/
+# Windows: %TEMP%\horus\sessions\{session_id}\topics\
 ```
 
 **Benefits:**
@@ -851,7 +973,7 @@ Both share `session_id: "snakesim-session"` in their `horus.yaml` files, enablin
 
 ## Next Steps
 
-- Learn about [Message Types](/message-types) for standard robotics data
+- Learn about [Message Types](/core-concepts/message-types) for standard robotics data
 - Read the [Performance Guide](/performance/performance) for optimization tips
 - Explore [Examples](/examples) showing shared memory usage
-- Check the [API Reference](/api/api) for detailed documentation
+- Check the [API Reference](/api) for detailed documentation

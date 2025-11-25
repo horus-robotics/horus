@@ -492,6 +492,17 @@ impl GripperForceSensor {
     }
 }
 
+/// Plugin for tactile sensor support
+pub struct TactileSensorPlugin;
+
+impl Plugin for TactileSensorPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Update, tactile_sensor_update_system);
+
+        tracing::info!("Tactile sensor plugin loaded with high-resolution pressure sensing");
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -4,6 +4,9 @@
 #![allow(unreachable_patterns)]
 #![allow(clippy::all)]
 #![allow(deprecated)]
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unused_mut)]
 
 /// API Compatibility Test Suite
 /// Verifies that core APIs remain functional after structural changes

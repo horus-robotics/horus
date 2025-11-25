@@ -211,7 +211,7 @@ impl Default for ShadowDebug {
 
 /// System to apply shadow configuration to directional lights
 pub fn apply_directional_shadows_system(
-    shadow_config: Res<ShadowConfig>,
+    _shadow_config: Res<ShadowConfig>,
     mut lights: Query<&mut DirectionalLight, Added<DirectionalLight>>,
 ) {
     for mut light in lights.iter_mut() {

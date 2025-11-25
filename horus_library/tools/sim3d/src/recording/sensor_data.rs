@@ -392,7 +392,7 @@ mod tests {
         let mut bag = SensorBag::new("test".to_string());
         bag.add_message(SensorMessage {
             timestamp: 1.0,
-            topic: "/camera".to_string(),
+            topic: "camera".to_string(),
             data: SensorData::Image {
                 width: 640,
                 height: 480,
@@ -403,7 +403,7 @@ mod tests {
 
         assert_eq!(bag.messages.len(), 1);
         assert_eq!(bag.metadata.message_count, 1);
-        assert!(bag.metadata.topics.contains_key("/camera"));
+        assert!(bag.metadata.topics.contains_key("camera"));
     }
 
     #[test]
@@ -411,7 +411,7 @@ mod tests {
         let mut bag = SensorBag::new("test".to_string());
         bag.add_message(SensorMessage {
             timestamp: 1.0,
-            topic: "/camera".to_string(),
+            topic: "camera".to_string(),
             data: SensorData::Image {
                 width: 640,
                 height: 480,
@@ -421,7 +421,7 @@ mod tests {
         });
         bag.add_message(SensorMessage {
             timestamp: 2.0,
-            topic: "/imu".to_string(),
+            topic: "imu".to_string(),
             data: SensorData::IMU {
                 orientation: [0.0, 0.0, 0.0, 1.0],
                 angular_velocity: [0.0, 0.0, 0.0],
@@ -429,10 +429,10 @@ mod tests {
             },
         });
 
-        let camera_msgs = bag.get_messages("/camera");
+        let camera_msgs = bag.get_messages("camera");
         assert_eq!(camera_msgs.len(), 1);
 
-        let imu_msgs = bag.get_messages("/imu");
+        let imu_msgs = bag.get_messages("imu");
         assert_eq!(imu_msgs.len(), 1);
     }
 
@@ -442,7 +442,7 @@ mod tests {
         for i in 0..10 {
             bag.add_message(SensorMessage {
                 timestamp: i as f64,
-                topic: "/test".to_string(),
+                topic: "test".to_string(),
                 data: SensorData::GPS {
                     latitude: 0.0,
                     longitude: 0.0,
@@ -461,7 +461,7 @@ mod tests {
         for i in 0..10 {
             bag.add_message(SensorMessage {
                 timestamp: i as f64 * 0.1, // 0.0, 0.1, 0.2, ...
-                topic: "/test".to_string(),
+                topic: "test".to_string(),
                 data: SensorData::GPS {
                     latitude: 0.0,
                     longitude: 0.0,
@@ -471,14 +471,14 @@ mod tests {
         }
 
         bag.calculate_frequencies();
-        let topic_info = bag.metadata.topics.get("/test").unwrap();
+        let topic_info = bag.metadata.topics.get("test").unwrap();
         // Frequency should be messages / duration = 10 / 0.9 = 11.11 Hz
         assert!(topic_info.frequency > 8.0 && topic_info.frequency < 13.0);
     }
 
     #[test]
     fn test_record_sensor() {
-        let mut sensor = RecordSensor::new("/camera".to_string(), 30.0);
+        let mut sensor = RecordSensor::new("camera".to_string(), 30.0);
         assert!(sensor.should_record(0.0));
         assert!(!sensor.should_record(0.01)); // Too soon for 30 Hz
         assert!(sensor.should_record(0.04)); // >1/30 seconds passed
@@ -490,7 +490,7 @@ mod tests {
         for i in 0..5 {
             bag.add_message(SensorMessage {
                 timestamp: i as f64 * 0.1,
-                topic: "/test".to_string(),
+                topic: "test".to_string(),
                 data: SensorData::GPS {
                     latitude: i as f64,
                     longitude: 0.0,
@@ -512,7 +512,7 @@ mod tests {
         for i in 0..100 {
             bag.add_message(SensorMessage {
                 timestamp: i as f64 * 0.01,
-                topic: "/test".to_string(),
+                topic: "test".to_string(),
                 data: SensorData::GPS {
                     latitude: 0.0,
                     longitude: 0.0,

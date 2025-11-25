@@ -22,6 +22,7 @@ default = ["visual"]
 visual = [
     "bevy/default",
     "bevy_egui",
+    "egui_dock",
 ]
 
 # Headless mode - no rendering
@@ -82,6 +83,7 @@ bevy = { version = "0.15", default-features = false, features = [
 # GUI & Editor (only with "visual" feature)
 bevy_egui = { version = "0.31", optional = true }
 bevy_editor_pls = { version = "0.9", optional = true }
+egui_dock = { version = "0.15", optional = true }
 
 # URDF Support
 urdf-rs = "0.8"

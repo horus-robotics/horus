@@ -7,6 +7,8 @@
 //! - Serialization/deserialization for config files
 //! - Event-driven input handling with Bevy integration
 
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;

@@ -643,16 +643,12 @@ impl ThemeConfig {
 
     /// Get the default config file path
     pub fn default_config_path() -> Option<PathBuf> {
-        // Try XDG_CONFIG_HOME first (Linux), then HOME/.config, then APPDATA (Windows)
+        // Cross-platform config directory detection
+        // Try XDG_CONFIG_HOME first (Linux), then platform-specific config dir
         std::env::var("XDG_CONFIG_HOME")
             .ok()
             .map(PathBuf::from)
-            .or_else(|| {
-                std::env::var("HOME")
-                    .ok()
-                    .map(|h| PathBuf::from(h).join(".config"))
-            })
-            .or_else(|| std::env::var("APPDATA").ok().map(PathBuf::from))
+            .or_else(|| dirs::config_dir())
             .map(|p| p.join("sim3d").join("theme.json"))
     }
 

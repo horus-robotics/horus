@@ -122,19 +122,9 @@ sensor = horus.Node(
 horus.run(sensor)
 ```
 
-**C++** - Integrate existing hardware drivers (Alpha):
-```cpp
-#include "horus.hpp"
-
-horus::System system("sensor");
-horus::Publisher<float> temp_pub("temperature");
-
-temp_pub.publish(25.0);
-```
-
 **Rust** - Full framework power for performance-critical code.
 
-Mix and match languages in the same application!
+Mix Python and Rust in the same application!
 
 ## Core Concepts
 
@@ -271,8 +261,8 @@ scheduler.run()?;
 - Development/testing of distributed architectures
 
 **Hardware integration** - Combining multiple devices/languages:
-- Mix Rust (performance) + Python (ease) + C (drivers)
-- Integrate legacy C code with modern Rust
+- Mix Rust (performance) + Python (ease of use)
+- Integrate Python prototypes with production Rust
 - Rapid prototyping with Python, production with Rust
 
 ### Not Ideal For
@@ -292,8 +282,8 @@ scheduler.run()?;
 - Use web frameworks (Axum, Actix, Django, Flask)
 - HORUS is designed for real-time systems, not request/response
 
-**Tiny embedded systems** - Microcontrollers without Linux:
-- HORUS requires `/dev/shm` (Linux shared memory)
+**Tiny embedded systems** - Microcontrollers without an OS:
+- HORUS requires shared memory (Linux `/dev/shm`, macOS/Windows use temp directories)
 - For bare-metal embedded, use RTIC or Embassy
 
 ## How HORUS is Different
@@ -393,11 +383,11 @@ struct DisplayNode { data_sub: Hub<f32> }
 │  • Dashboard (Real-time Monitoring)     │
 └─────────────────────────────────────────┘
          ▲
-         │ Uses Linux /dev/shm
+         │ Uses platform shared memory
          ▼
 ┌─────────────────────────────────────────┐
 │         Operating System                │
-│      (Linux with /dev/shm)              │
+│  (Linux/macOS/Windows supported)        │
 └─────────────────────────────────────────┘
 ```
 
@@ -411,14 +401,19 @@ struct DisplayNode { data_sub: Hub<f32> }
 
 ### Shared Memory Implementation
 
-HORUS uses Linux's `/dev/shm` for inter-process communication:
+HORUS uses platform-specific shared memory for inter-process communication:
 
-- **Location:** `/dev/shm/horus/topics/`
+| Platform | Location | Notes |
+|----------|----------|-------|
+| Linux | `/dev/shm/horus/` | Native POSIX shm, fastest |
+| macOS | `/tmp/horus/` | Uses temp directory |
+| Windows | `%TEMP%\horus\` | Uses temp directory |
+
 - **Format:** Memory-mapped files
 - **Speed:** Direct memory access (no kernel copies)
 - **Size:** Configurable per topic
 
-**Check your shared memory:**
+**Check your shared memory (Linux):**
 ```bash
 df -h /dev/shm           # Available space
 ls -lh /dev/shm/horus/   # Active topics
@@ -467,13 +462,13 @@ HORUS leverages Rust for:
 3. [First Application](/getting-started/first-application) - Detailed walkthrough
 
 **Core concepts:**
-4. [Nodes](/core-concepts-nodes) - Build components
-5. [Hub](/core-concepts-hub) - Pub/sub communication
-6. [Scheduler](/core-concepts-scheduler) - Run your application
+4. [Nodes](/core-concepts/core-concepts-nodes) - Build components
+5. [Hub](/core-concepts/core-concepts-hub) - Pub/sub communication
+6. [Scheduler](/core-concepts/core-concepts-scheduler) - Run your application
 
 **Practical features:**
-7. [node! Macro](/node-macro) - Reduce boilerplate
-8. [message! Macro](/message-macro) - Custom message types
+7. [node! Macro](/core-concepts/node-macro) - Reduce boilerplate
+8. [message! Macro](/core-concepts/message-macro) - Custom message types
 9. [Dashboard](/development/dashboard) - Monitor and debug
 
 **Advanced:**

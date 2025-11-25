@@ -31,9 +31,10 @@ use horus_library::prelude::*;
 fn main() -> Result<()> {
     let mut scheduler = Scheduler::new();
 
-    let mut lidar = LidarNode::new("/dev/ttyUSB0")?;
-    lidar.set_sensor_type(LidarType::RPLidarA2);
-    lidar.set_scan_rate(10);  // 10 Hz
+    // Create LiDAR node with specific backend
+    let mut lidar = LidarNode::new_with_backend("scan", LidarBackend::RplidarA2)?;
+    lidar.set_serial_port("/dev/ttyUSB0");
+    lidar.set_scan_frequency(10.0);  // 10 Hz
 
     scheduler.add(Box::new(lidar), 1, Some(true));
     scheduler.run()?;
@@ -41,20 +42,51 @@ fn main() -> Result<()> {
 }
 ```
 
-## Usage
+## Configuration
 
 ```rust
-let hub = Hub::<LidarScan>::new("lidar/scan")?;
+// Set LiDAR backend (RplidarA1, RplidarA2, RplidarA3, YdlidarX2, YdlidarX4, YdlidarTMiniPro, Simulation)
+lidar.set_backend(LidarBackend::RplidarA2);
 
-if let Some(scan) = hub.recv(None) {
-    for point in &scan.points {
-        if point.distance < 0.5 {  // Obstacle within 0.5m
-            println!("Obstacle at {:.2}m, angle {}°",
-                point.distance, point.angle);
+// Set serial port for hardware LiDAR
+lidar.set_serial_port("/dev/ttyUSB0");
+
+// Set frame ID for coordinate system
+lidar.set_frame_id("laser_frame");
+
+// Set scan frequency (Hz)
+lidar.set_scan_frequency(10.0);
+
+// Set range limits (meters)
+lidar.set_range_limits(0.1, 16.0);
+
+// Set angular resolution (radians)
+lidar.set_angle_increment(std::f32::consts::PI / 180.0);  // 1 degree
+```
+
+## Usage
+
+The LidarNode publishes to the following topic (configurable via `new_with_topic` or `new_with_backend`):
+- Publishes to `"scan"` - laser scan data (LaserScan)
+
+```rust
+let hub = Hub::<LaserScan>::new("scan")?;
+
+if let Some(scan) = hub.recv(&mut None) {
+    // Iterate over ranges (360 measurements)
+    for (i, &range) in scan.ranges.iter().enumerate() {
+        if range < 0.5 {  // Obstacle within 0.5m
+            let angle_deg = i as f32 * scan.angle_increment.to_degrees();
+            println!("Obstacle at {:.2}m, angle {:.0}°", range, angle_deg);
         }
     }
 }
+
+// Get actual scan rate
+let rate = lidar.get_actual_scan_rate();
 ```
+
+**Note**: RPLidar and YDLIDAR hardware support is temporarily limited due to upstream driver issues. When hardware is unavailable, the node automatically falls back to simulation mode.
 
 ## See Also
 

@@ -16,6 +16,7 @@ pub struct AssetValidationReport {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)]
 pub enum AssetType {
     URDF,
     Mesh,

@@ -18,7 +18,7 @@ pub fn load_collada(path: &Path, options: &MeshLoadOptions) -> Result<LoadedMesh
     // A full implementation would require deep integration with the collada crate
 
     // Read and parse COLLADA file
-    let content = std::fs::read_to_string(path).map_err(|e| EnhancedError::file_not_found(path))?;
+    let content = std::fs::read_to_string(path).map_err(|_| EnhancedError::file_not_found(path))?;
 
     let document = collada::document::ColladaDocument::from_str(&content)
         .map_err(|e| EnhancedError::mesh_load_failed(

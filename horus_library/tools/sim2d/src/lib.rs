@@ -48,6 +48,9 @@ pub mod kinematics;
 // Advanced sensors
 pub mod sensors;
 
+// 2D Joint system for articulated robots
+pub mod joint;
+
 // Python API module (optional, enabled with "python" feature)
 #[cfg(feature = "python")]
 pub mod python_api;
@@ -76,7 +79,7 @@ impl Sim2DBuilder {
             robot_config: None,
             world_config: None,
             robot_name: "robot".to_string(),
-            topic_prefix: "/robot".to_string(),
+            topic_prefix: "robot".to_string(),
             headless: false,
         }
     }
@@ -285,15 +288,19 @@ fn create_app(
         world_image: None,
         resolution: 0.05,
         threshold: 128,
-        topic: format!("{}/cmd_vel", topic_prefix),
+        topic: format!("{}.cmd_vel", topic_prefix),
         name: robot_name,
         headless,
+        articulated: None,
+        preset: None,
+        gravity: false,
     };
 
     let app_config = AppConfig {
         args,
         robots: vec![robot_cfg],
         world_config,
+        articulated_robots: vec![],
     };
 
     let mut app = App::new();
@@ -309,6 +316,10 @@ fn create_app(
             .insert_resource(editor::WorldEditor::new())
             .insert_resource(metrics::PerformanceMetrics::default())
             .insert_resource(LastLidarScan::default())
+            .insert_resource(CameraSensors::default())
+            .insert_resource(GpsSensors::default())
+            .insert_resource(UltrasonicSensors::default())
+            .insert_resource(ContactSensors::default())
             .insert_resource(PreviousVelocity::default())
             .insert_resource(ObstacleIdCounter::default())
             .add_systems(Startup, setup)
@@ -323,6 +334,10 @@ fn create_app(
                     odometry_publish_system,
                     imu_system,
                     lidar_system,
+                    camera_system,
+                    gps_system,
+                    ultrasonic_system,
+                    contact_system,
                     dynamic_obstacle_system,
                 )
                     .after(tick_start_system),
@@ -354,12 +369,16 @@ fn create_app(
         .insert_resource(ui::VisualPreferences::default())
         .insert_resource(ui::CameraController::default())
         .insert_resource(ui::RobotTelemetry::default())
-        .insert_resource(ui::PerformanceMetrics::default())
+        .insert_resource(ui::FrameMetrics::default())
         .insert_resource(recorder::Recorder::default())
         .insert_resource(editor::WorldEditor::new())
         .insert_resource(metrics::PerformanceMetrics::default())
         .insert_resource(TrajectoryHistory::default())
         .insert_resource(LastLidarScan::default())
+        .insert_resource(CameraSensors::default())
+        .insert_resource(GpsSensors::default())
+        .insert_resource(UltrasonicSensors::default())
+        .insert_resource(ContactSensors::default())
         .insert_resource(PreviousVelocity::default())
         .insert_resource(CollisionState::default())
         .insert_resource(ObstacleIdCounter::default())
@@ -379,7 +398,7 @@ fn create_app(
         )
         .add_systems(
             Update,
-            (odometry_publish_system, imu_system, lidar_system).after(tick_start_system),
+            (odometry_publish_system, imu_system, lidar_system, camera_system, gps_system, ultrasonic_system, contact_system).after(tick_start_system),
         )
         .add_systems(
             Update,
@@ -405,6 +424,19 @@ fn create_app(
         .add_systems(
             Update,
             (visual_color_system, grid_system, lidar_rays_system),
+        )
+        .add_systems(
+            Update,
+            (editor_input_system, editor_preview_system),
+        )
+        // Articulated robot systems
+        .add_systems(
+            Update,
+            (
+                joint::articulated_visual_sync_system,
+                joint::joint_marker_sync_system,
+                joint::joint_state_update_system,
+            ),
         )
         .add_systems(Update, ui::ui_system)
         .add_systems(Update, ui::file_dialog_system)

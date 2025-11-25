@@ -72,7 +72,7 @@ node.send("robot/pose", Pose2D(x=1.0, y=2.0, theta=0.5))
 - **Clear logging**: Custom `LogSummary` shows meaningful content
 - **Type safety**: Compile-time checks prevent type mismatches
 - **IDE support**: Autocomplete, type hints, inline documentation
-- **Cross-language**: Rust, Python, C++ all see the same typed data
+- **Cross-language**: Rust and Python see the same typed data
 
 **Performance characteristics:**
 - **IPC latency:** 0.248-0.481µs (message passing)
@@ -877,8 +877,8 @@ impl RobotStatus {
 
 // Use with Hub
 use horus::prelude::*;
-let status_pub: Hub<RobotStatus> = Hub::new("robot_status");
-status_pub.send(RobotStatus::new(75.0, 42.0), None).ok();
+let status_pub: Hub<RobotStatus> = Hub::new("robot_status")?;
+status_pub.send(RobotStatus::new(75.0, 42.0), &mut None).ok();
 ```
 
 ### Best Practices for Custom Messages
@@ -1100,6 +1100,6 @@ For complete, runnable examples, see [Basic Examples](/basic-examples) and [Adva
 - **[Basic Examples](/basic-examples)** - Learn fundamental patterns
 - **[Advanced Examples](/advanced-examples)** - State machines, multi-process systems
 - **[Second Application](/second-application)** - Build a 3-node pipeline
-- **[API Reference](/api/api)** - Detailed message type documentation
+- **[API Reference](/api)** - Detailed message type documentation
 - **[Performance Optimization](/performance/performance)** - Optimize for large messages
-- **[Python Bindings](/multi-language/python-bindings)** and **[C Bindings](/c-bindings)** - Multi-language support
+- **[Python Bindings](/multi-language/python-bindings)** - Multi-language support

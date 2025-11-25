@@ -9,7 +9,7 @@ struct Controller {
 impl Controller {
     fn new() -> HorusResult<Self> {
         Ok(Self {
-            cmd_vel: Hub::new("motors/cmd_vel")?,
+            cmd_vel: Hub::new("motors.cmd_vel")?,
         })
     }
 }

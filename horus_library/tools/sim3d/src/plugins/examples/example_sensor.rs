@@ -4,6 +4,9 @@ use crate::plugins::traits::*;
 use bevy::prelude::*;
 use std::any::Any;
 
+#[cfg(feature = "visual")]
+use bevy_egui::egui;
+
 /// Example proximity sensor component
 #[derive(Component, Reflect)]
 #[reflect(Component)]
@@ -90,6 +93,83 @@ impl SensorPlugin for ExampleSensorPlugin {
 
     fn data_format(&self) -> String {
         "detected: bool, distance: f32".to_string()
+    }
+}
+
+#[cfg(feature = "visual")]
+impl UiPlugin for ExampleSensorPlugin {
+    fn has_inspector_ui(&self) -> bool {
+        true
+    }
+
+    fn has_settings_ui(&self) -> bool {
+        true
+    }
+
+    fn inspector_ui(&self, ui: &mut egui::Ui, world: &World, entity: Entity) {
+        // Check if entity has a ProximitySensor component
+        if let Some(sensor) = world.get::<ProximitySensor>(entity) {
+            egui::CollapsingHeader::new("Proximity Sensor")
+                .default_open(true)
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label("Range:");
+                        ui.label(format!("{:.2} m", sensor.range));
+                    });
+
+                    ui.horizontal(|ui| {
+                        ui.label("Status:");
+                        if sensor.detected {
+                            ui.colored_label(egui::Color32::GREEN, "DETECTED");
+                        } else {
+                            ui.colored_label(egui::Color32::GRAY, "Clear");
+                        }
+                    });
+
+                    if sensor.detected {
+                        ui.horizontal(|ui| {
+                            ui.label("Distance:");
+                            ui.label(format!("{:.2} m", sensor.distance));
+                        });
+
+                        // Visual indicator bar
+                        let progress = 1.0 - (sensor.distance / sensor.range).clamp(0.0, 1.0);
+                        ui.add(egui::ProgressBar::new(progress).text("Proximity"));
+                    }
+                });
+        }
+    }
+
+    fn settings_ui(&mut self, ui: &mut egui::Ui) {
+        ui.label("Proximity Sensor Settings");
+        ui.separator();
+
+        ui.horizontal(|ui| {
+            ui.label("Update Rate:");
+            ui.label(format!("{} Hz", self.update_rate()));
+        });
+
+        ui.horizontal(|ui| {
+            ui.label("Data Format:");
+            ui.label(self.data_format());
+        });
+
+        ui.add_space(8.0);
+        ui.label("Plugin Info:");
+        ui.label(format!("Version: {}", self.metadata.version));
+        ui.label(format!("Author: {}", self.metadata.author));
+    }
+
+    fn settings_section_name(&self) -> &str {
+        "Proximity Sensor"
+    }
+
+    fn settings_icon(&self) -> Option<&str> {
+        Some("S") // Simple icon for sensor
+    }
+
+    fn settings_priority(&self) -> i32 {
+        10 // Higher priority (lower number = higher)
     }
 }
 

@@ -13,6 +13,15 @@ pub mod raycasting;
 pub use collision::GPUCollisionPipeline;
 pub use raycasting::GPURaycastPipeline;
 
+// Re-export profiling types
+pub use profiling::{
+    BufferDescriptor, BufferUsage, GPUBufferPool, GPUProfilingSession, GPUTimer,
+    report_gpu_profiling_system, update_gpu_profiling_system,
+};
+
+// Re-export benchmarks
+pub use benchmarks::{BenchmarkResult, run_all_benchmarks};
+
 use bevy::prelude::*;
 use std::sync::Arc;
 
@@ -139,10 +148,16 @@ pub struct GPUAccelerationPlugin;
 impl Plugin for GPUAccelerationPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<GPUAccelerationConfig>()
-            .init_resource::<GPUMetrics>();
+            .init_resource::<GPUMetrics>()
+            .init_resource::<GPUProfilingSession>();
 
-        // Initialize GPU context (async)
-        // Note: This happens during app startup
+        // Add profiling systems
+        app.add_systems(
+            Update,
+            (update_gpu_profiling_system, report_gpu_profiling_system).chain(),
+        );
+
+        tracing::info!("GPU acceleration plugin loaded with profiling support");
     }
 }
 

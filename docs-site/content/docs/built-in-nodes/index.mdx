@@ -6,7 +6,7 @@ order: 18
 
 # Built-in Nodes/Drivers
 
-The `horus_library` includes a comprehensive collection of **32 production-ready nodes** and **hardware drivers** for building robotics applications. All hardware nodes support automatic **simulation fallback** when hardware is unavailable.
+The `horus_library` includes a comprehensive collection of **38 production-ready nodes** and **hardware drivers** for building robotics applications. All hardware nodes support automatic **simulation fallback** when hardware is unavailable.
 
 > **Don't see your hardware or driver?**
 >
@@ -252,6 +252,22 @@ Human-robot interaction:
 - **[KeyboardInputNode](./keyboard-input)** - Keyboard control
 - **[ImageProcessorNode](./image-processor)** - Image processing utilities
 
+### Computer Vision
+
+Deep learning-based visual perception:
+
+- **[YOLOv8DetectorNode](./yolo-detector)** - Real-time object detection (YOLOv8)
+- **[PoseEstimationNode](./pose-estimation)** - Human pose and skeleton detection
+- **[SemanticSegmentationNode](./semantic-segmentation)** - Pixel-wise scene segmentation
+
+### Machine Learning & AI
+
+ML inference and language models:
+
+- **[ONNXInferenceNode](./onnx-inference)** - Generic ONNX model inference
+- **[TFLiteInferenceNode](./tflite-inference)** - TensorFlow Lite for edge devices
+- **[CloudLLMNode](./cloud-llm)** - OpenAI/Anthropic LLM integration
+
 ---
 
 ## Hardware Support
@@ -420,3 +436,9 @@ fn main() -> Result<()> {
 
 ### Interfaces
 - [Joystick](./joystick) | [Keyboard](./keyboard-input) | [Image Processor](./image-processor)
+
+### Computer Vision
+- [YOLO Detector](./yolo-detector) | [Pose Estimation](./pose-estimation) | [Segmentation](./semantic-segmentation)
+
+### ML & AI
+- [ONNX Inference](./onnx-inference) | [TFLite Inference](./tflite-inference) | [Cloud LLM](./cloud-llm)

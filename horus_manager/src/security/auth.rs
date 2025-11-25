@@ -22,6 +22,7 @@ pub struct AuthService {
 
 /// Session information
 #[derive(Clone)]
+#[allow(dead_code)] // Fields stored for future session audit logging and IP-based tracking
 struct SessionInfo {
     created_at: Instant,
     last_used: Instant,

@@ -22,19 +22,24 @@ fn main() -> Result<()> {
         info!("One command, physics + visualization!");
     }
 
+    // Show articulated robot info if using presets
+    if let Some(preset) = &args.preset {
+        info!("[>] Using articulated robot preset: {}", preset);
+        info!("   Available presets: arm_2dof, arm_6dof, humanoid");
+    }
+
+    if let Some(articulated_file) = &args.articulated {
+        info!("[>] Loading articulated robot from: {}", articulated_file);
+    }
+
+    if args.gravity {
+        info!("[>] Gravity enabled (side-view simulation)");
+    }
+
     info!("[>] Control the robot from another terminal:");
     info!("   cargo run -p simple_driver");
     info!("   (publishes to: {})", args.topic);
 
-    // Build simulation using library API
-    let sim = Sim2DBuilder::new()
-        .robot_name(args.name.clone())
-        .topic_prefix(args.topic.trim_end_matches("/cmd_vel").to_string())
-        .headless(headless)
-        .build()?;
-
-    // Run blocking
-    sim.run_blocking();
-
-    Ok(())
+    // Run the simulation using main_impl directly for full CLI support
+    run_simulation(args)
 }

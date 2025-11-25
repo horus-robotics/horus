@@ -265,3 +265,15 @@ pub fn visualize_imu_system(mut gizmos: Gizmos, query: Query<(&IMU, &IMUData, &G
         }
     }
 }
+
+/// Plugin for IMU sensor support
+pub struct IMUPlugin;
+
+impl Plugin for IMUPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<Gravity>()
+            .add_systems(Update, imu_update_system);
+
+        tracing::info!("IMU plugin loaded with accelerometer, gyroscope, and magnetometer support");
+    }
+}

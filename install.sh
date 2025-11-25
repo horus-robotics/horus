@@ -7,7 +7,7 @@ set -e  # Exit on error
 set -o pipefail  # Fail on pipe errors
 
 # Script version
-SCRIPT_VERSION="2.1.0"
+SCRIPT_VERSION="2.2.0"
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -179,31 +179,34 @@ install_system_deps() {
             case "$OS_DISTRO" in
                 debian-based)
                     sudo apt-get update
-                    sudo apt-get install -y build-essential pkg-config libssl-dev libudev-dev libasound2-dev \
+                    # Note: gcc is sufficient, g++/build-essential not needed for Rust
+                    sudo apt-get install -y gcc libc6-dev pkg-config libssl-dev libudev-dev libasound2-dev \
                         libclang-dev libopencv-dev libx11-dev libxrandr-dev libxi-dev libxcursor-dev \
                         libxinerama-dev libwayland-dev wayland-protocols libxkbcommon-dev
                     ;;
                 fedora-based)
-                    sudo dnf groupinstall -y "Development Tools"
-                    sudo dnf install -y pkg-config openssl-devel systemd-devel alsa-lib-devel \
+                    # Note: gcc is sufficient, Development Tools group includes C++ which is not needed
+                    sudo dnf install -y gcc glibc-devel pkg-config openssl-devel systemd-devel alsa-lib-devel \
                         clang-devel opencv-devel libX11-devel libXrandr-devel libXi-devel \
                         libXcursor-devel libXinerama-devel wayland-devel wayland-protocols-devel \
                         libxkbcommon-devel
                     ;;
                 arch-based)
-                    sudo pacman -Sy --noconfirm base-devel pkg-config openssl systemd alsa-lib \
+                    # Note: gcc is sufficient, base-devel includes C++ which is not needed
+                    sudo pacman -Sy --noconfirm gcc pkg-config openssl systemd alsa-lib \
                         clang opencv libx11 libxrandr libxi libxcursor libxinerama \
                         wayland wayland-protocols libxkbcommon
                     ;;
                 opensuse)
-                    sudo zypper install -y -t pattern devel_basis
-                    sudo zypper install -y pkg-config libopenssl-devel libudev-devel alsa-devel \
+                    # Note: gcc is sufficient, devel_basis includes C++ which is not needed
+                    sudo zypper install -y gcc glibc-devel pkg-config libopenssl-devel libudev-devel alsa-devel \
                         clang-devel opencv-devel libX11-devel libXrandr-devel libXi-devel \
                         libXcursor-devel libXinerama-devel wayland-devel wayland-protocols-devel \
                         libxkbcommon-devel
                     ;;
                 alpine)
-                    sudo apk add --no-cache build-base pkgconfig openssl-dev eudev-dev alsa-lib-dev \
+                    # Note: gcc and musl-dev are sufficient for Rust
+                    sudo apk add --no-cache gcc musl-dev pkgconfig openssl-dev eudev-dev alsa-lib-dev \
                         clang-dev opencv-dev libx11-dev libxrandr-dev libxi-dev libxcursor-dev \
                         libxinerama-dev wayland-dev wayland-protocols libxkbcommon-dev
                     ;;
@@ -227,7 +230,7 @@ install_system_deps() {
                     echo -e "${YELLOW} Cannot auto-install for $OS_DISTRO${NC}"
                     echo ""
                     echo "Please install manually:"
-                    echo "  - C/C++ compiler (gcc, clang, or cc)"
+                    echo "  - C compiler (gcc or clang) - C++ is NOT required"
                     echo "  - pkg-config"
                     echo "  - OpenSSL development headers"
                     echo "  - libudev development headers (Linux)"
@@ -358,7 +361,7 @@ if [ ! -z "$MISSING_LIBS" ]; then
     echo ""
     echo -e "${CYAN}Ubuntu/Debian/Raspberry Pi OS:${NC}"
     echo "  sudo apt update"
-    echo "  sudo apt install -y build-essential pkg-config \\"
+    echo "  sudo apt install -y gcc libc6-dev pkg-config \\"
     echo "    libssl-dev libudev-dev libasound2-dev \\"
     echo "    libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev \\"
     echo "    libwayland-dev wayland-protocols libxkbcommon-dev \\"
@@ -366,15 +369,14 @@ if [ ! -z "$MISSING_LIBS" ]; then
     echo "    libv4l-dev"
     echo ""
     echo -e "${CYAN}Fedora/RHEL/CentOS:${NC}"
-    echo "  sudo dnf groupinstall \"Development Tools\""
-    echo "  sudo dnf install -y pkg-config openssl-devel systemd-devel alsa-lib-devel \\"
+    echo "  sudo dnf install -y gcc glibc-devel pkg-config openssl-devel systemd-devel alsa-lib-devel \\"
     echo "    libX11-devel libXrandr-devel libXi-devel libXcursor-devel libXinerama-devel \\"
     echo "    wayland-devel wayland-protocols-devel libxkbcommon-devel \\"
     echo "    vulkan-devel fontconfig-devel freetype-devel \\"
     echo "    libv4l-devel"
     echo ""
     echo -e "${CYAN}Arch Linux:${NC}"
-    echo "  sudo pacman -S base-devel pkg-config openssl systemd alsa-lib \\"
+    echo "  sudo pacman -S gcc pkg-config openssl systemd alsa-lib \\"
     echo "    libx11 libxrandr libxi libxcursor libxinerama \\"
     echo "    wayland wayland-protocols libxkbcommon \\"
     echo "    vulkan-icd-loader fontconfig freetype2 \\"
@@ -484,13 +486,69 @@ if [[ ! $REPLY =~ ^[Yy]$ ]] && [[ ! -z $REPLY ]]; then
     exit 0
 fi
 
+# =============================================================================
+# STEP 0: COMPLETE CLEAN - Remove ALL stale artifacts
+# =============================================================================
+echo ""
+echo -e "${CYAN}${NC} Performing complete clean installation..."
+echo -e "${CYAN}   ${NC} This ensures a fresh build with no stale artifacts"
+echo ""
+
+# Clean target directory (compiled artifacts)
+if [ -d "target" ]; then
+    echo -e "${CYAN}  ${NC} Removing target/ directory..."
+    rm -rf target/
+    echo -e "${GREEN}  ${NC} Removed target/"
+fi
+
+# Clean HORUS cache directory
+if [ -d "$HOME/.horus/cache" ]; then
+    echo -e "${CYAN}  ${NC} Removing ~/.horus/cache/..."
+    rm -rf "$HOME/.horus/cache"
+    echo -e "${GREEN}  ${NC} Removed ~/.horus/cache/"
+fi
+
+# Clean installed binaries
+BINARIES_TO_CLEAN=("horus" "sim2d" "sim3d" "horus_router")
+for binary in "${BINARIES_TO_CLEAN[@]}"; do
+    if [ -f "$HOME/.cargo/bin/$binary" ]; then
+        echo -e "${CYAN}  ${NC} Removing ~/.cargo/bin/$binary..."
+        rm -f "$HOME/.cargo/bin/$binary"
+        echo -e "${GREEN}  ${NC} Removed $binary"
+    fi
+done
+
+# Clean stale shared memory sessions
+if [ -d "/dev/shm/horus" ]; then
+    echo -e "${CYAN}  ${NC} Removing stale shared memory sessions..."
+    rm -rf /dev/shm/horus/
+    echo -e "${GREEN}  ${NC} Removed /dev/shm/horus/"
+elif [ -d "/tmp/horus" ]; then
+    # macOS
+    echo -e "${CYAN}  ${NC} Removing stale shared memory sessions..."
+    rm -rf /tmp/horus/
+    echo -e "${GREEN}  ${NC} Removed /tmp/horus/"
+fi
+
+# Clean Cargo incremental build cache (can cause issues)
+if [ -d "$HOME/.cargo/registry/cache" ]; then
+    echo -e "${CYAN}  ${NC} Cleaning Cargo registry cache..."
+    # Only remove horus-related cached crates, not all crates
+    find "$HOME/.cargo/registry/cache" -name "horus*" -exec rm -rf {} + 2>/dev/null || true
+    echo -e "${GREEN}  ${NC} Cleaned horus-related Cargo cache"
+fi
+
+echo ""
+echo -e "${GREEN}${NC} Clean complete - starting fresh build"
+echo ""
+
 # Build with automatic retry and error recovery
 build_with_recovery() {
     local max_retries=3
     local retry=0
 
-    # Define packages to build (excludes dev-only: benchmarks, tests, horus_py)
-    # horus_py is installed separately from PyPI, not built from source
+    # Define ALL packages to build - pre-compile everything so users don't wait
+    # This includes all core libraries that user projects depend on
     local BUILD_PACKAGES=(
         "horus"
         "horus_core"
@@ -500,6 +558,9 @@ build_with_recovery() {
         "sim2d"
         "sim3d"
     )
+
+    # Note: horus_py is installed from PyPI, not built from source
+    # Note: horus_router is part of horus_library (not a separate binary)
 
     # Build command with explicit package selection (faster, skips benchmarks/tests)
     local BUILD_CMD="cargo build --release"
@@ -588,6 +649,13 @@ if [ -f "target/release/sim2d" ]; then
     echo -e "${GREEN}${NC} sim2d binary installed to $INSTALL_DIR/sim2d"
 fi
 
+# Install sim3d binary
+if [ -f "target/release/sim3d" ]; then
+    cp target/release/sim3d "$INSTALL_DIR/sim3d"
+    chmod +x "$INSTALL_DIR/sim3d"
+    echo -e "${GREEN}${NC} sim3d binary installed to $INSTALL_DIR/sim3d"
+fi
+
 echo ""
 
 # Step 3: Create cache directory structure
@@ -666,10 +734,24 @@ cp -r target/release/libhorus*.rlib "$HORUS_DIR/target/release/" 2>/dev/null || 
 cp -r target/release/deps/libhorus_core*.rlib "$HORUS_DIR/target/release/" 2>/dev/null || true
 
 # CRITICAL: Copy ALL transitive dependencies for Cargo compilation
+# This ensures user projects don't need to recompile HORUS dependencies
 mkdir -p "$HORUS_DIR/target/release/deps"
-echo -e "${CYAN}  ${NC} Bundling transitive dependencies for user projects..."
+echo -e "${CYAN}  ${NC} Bundling pre-compiled dependencies for instant user builds..."
+
+# Copy all compiled artifacts
 cp target/release/deps/*.rlib "$HORUS_DIR/target/release/deps/" 2>/dev/null || true
-echo -e "${GREEN}${NC} Bundled $(ls target/release/deps/*.rlib 2>/dev/null | wc -l) dependency libraries"
+cp target/release/deps/*.rmeta "$HORUS_DIR/target/release/deps/" 2>/dev/null || true
+cp target/release/deps/*.d "$HORUS_DIR/target/release/deps/" 2>/dev/null || true
+
+# Copy fingerprints so Cargo knows these are already built
+if [ -d "target/release/.fingerprint" ]; then
+    mkdir -p "$HORUS_DIR/target/release/.fingerprint"
+    cp -r target/release/.fingerprint/horus* "$HORUS_DIR/target/release/.fingerprint/" 2>/dev/null || true
+fi
+
+RLIB_COUNT=$(ls target/release/deps/*.rlib 2>/dev/null | wc -l)
+echo -e "${GREEN}${NC} Bundled $RLIB_COUNT pre-compiled dependency libraries"
+echo -e "${CYAN}     ${NC} Users won't need to recompile these!"
 
 # Copy source Cargo.toml and src for `horus run` Cargo compilation
 echo -e "${CYAN}  ${NC} Copying source files for horus run compatibility..."
@@ -700,6 +782,21 @@ cp -r horus_library/nodes "$HORUS_DIR/horus_library/" 2>/dev/null || true
 cp -r horus_library/messages "$HORUS_DIR/horus_library/" 2>/dev/null || true
 cp -r horus_library/traits "$HORUS_DIR/horus_library/" 2>/dev/null || true
 cp -r horus_library/algorithms "$HORUS_DIR/horus_library/" 2>/dev/null || true
+
+# Copy horus_manager crate (CLI binary source)
+mkdir -p "$HORUS_DIR/horus_manager"
+cp horus_manager/Cargo.toml "$HORUS_DIR/horus_manager/" 2>/dev/null || true
+cp -r horus_manager/src "$HORUS_DIR/horus_manager/" 2>/dev/null || true
+
+# Copy horus_router crate
+mkdir -p "$HORUS_DIR/horus_router"
+cp horus_router/Cargo.toml "$HORUS_DIR/horus_router/" 2>/dev/null || true
+cp -r horus_router/src "$HORUS_DIR/horus_router/" 2>/dev/null || true
+
+# Copy horus_py crate (Python bindings source - for reference)
+mkdir -p "$HORUS_DIR/horus_py"
+cp horus_py/Cargo.toml "$HORUS_DIR/horus_py/" 2>/dev/null || true
+cp -r horus_py/src "$HORUS_DIR/horus_py/" 2>/dev/null || true
 
 # Create metadata
 cat > "$HORUS_DIR/metadata.json" << EOF
@@ -874,9 +971,21 @@ fi
 echo -e "${CYAN} Verifying installation...${NC}"
 
 if [ -x "$INSTALL_DIR/horus" ]; then
-    echo -e "${GREEN}${NC} CLI binary: OK"
+    echo -e "${GREEN}${NC} CLI binary (horus): OK"
 else
-    echo -e "${RED}${NC} CLI binary: Missing"
+    echo -e "${RED}${NC} CLI binary (horus): Missing"
+fi
+
+if [ -x "$INSTALL_DIR/sim2d" ]; then
+    echo -e "${GREEN}${NC} sim2d binary: OK"
+else
+    echo -e "${YELLOW}⊘${NC} sim2d binary: Not installed"
+fi
+
+if [ -x "$INSTALL_DIR/sim3d" ]; then
+    echo -e "${GREEN}${NC} sim3d binary: OK"
+else
+    echo -e "${YELLOW}⊘${NC} sim3d binary: Not installed"
 fi
 
 if [ -d "$HORUS_DIR" ]; then

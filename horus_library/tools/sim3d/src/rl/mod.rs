@@ -11,6 +11,22 @@ pub mod tasks;
 #[cfg(feature = "python")]
 pub mod python;
 
+// Re-export curriculum learning
+pub use curriculum::{
+    CurriculumStage, CurriculumManager, CurriculumBuilder, CurriculumStats,
+};
+
+// Re-export domain randomization
+pub use domain_randomization::{
+    DomainRandomizationConfig, PhysicsRandomization, VisualRandomization,
+    EnvironmentRandomization, DomainRandomizer,
+};
+
+// Re-export reward shaping
+pub use reward_shaping::{
+    RewardFunctions, CompositeReward, RewardComponent, RewardManager, RewardStats,
+};
+
 /// Observation space for RL tasks
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Observation {

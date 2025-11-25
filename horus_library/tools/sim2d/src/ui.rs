@@ -41,6 +41,12 @@ pub struct UiState {
     pub editor_selected_color: [f32; 3],
     pub show_metrics_section: bool,
     pub metrics_export_path: Option<PathBuf>,
+    // Articulated robot UI state
+    pub show_articulated_section: bool,
+    pub show_joint_markers: bool,
+    pub selected_articulated_robot: Option<String>,
+    pub joint_control_mode: crate::joint::JointControlMode,
+    pub joint_sliders: std::collections::HashMap<String, f32>,
 }
 
 /// Visual preferences for the simulator
@@ -102,9 +108,9 @@ pub struct RobotTelemetry {
     pub angular_velocity: f32,
 }
 
-/// Performance metrics
+/// Frame timing metrics for UI display
 #[derive(Resource)]
-pub struct PerformanceMetrics {
+pub struct FrameMetrics {
     pub fps: f32,
     pub frame_time: f32,
     pub physics_time: f32,
@@ -112,7 +118,7 @@ pub struct PerformanceMetrics {
     frame_count: u32,
 }
 
-impl Default for PerformanceMetrics {
+impl Default for FrameMetrics {
     fn default() -> Self {
         Self {
             fps: 0.0,
@@ -124,7 +130,7 @@ impl Default for PerformanceMetrics {
     }
 }
 
-impl PerformanceMetrics {
+impl FrameMetrics {
     pub fn update(&mut self) {
         self.frame_count += 1;
         let elapsed = self.last_update.elapsed();
@@ -179,6 +185,12 @@ impl Default for UiState {
             editor_selected_color: [0.6, 0.6, 0.6],
             show_metrics_section: false,
             metrics_export_path: None,
+            // Articulated robot defaults
+            show_articulated_section: false,
+            show_joint_markers: true,
+            selected_articulated_robot: None,
+            joint_control_mode: crate::joint::JointControlMode::Position,
+            joint_sliders: std::collections::HashMap::new(),
         }
     }
 }
@@ -191,10 +203,12 @@ pub fn ui_system(
     mut camera_controller: ResMut<CameraController>,
     mut visual_prefs: ResMut<VisualPreferences>,
     telemetry: Option<Res<RobotTelemetry>>,
-    mut metrics: ResMut<PerformanceMetrics>,
+    mut metrics: ResMut<FrameMetrics>,
     mut recorder: ResMut<Recorder>,
     mut editor: ResMut<crate::editor::WorldEditor>,
     mut perf_metrics: ResMut<crate::metrics::PerformanceMetrics>,
+    articulated_robots: Query<&crate::joint::ArticulatedRobot>,
+    mut physics_world: ResMut<crate::PhysicsWorld>,
 ) {
     // Update performance metrics
     metrics.update();
@@ -704,7 +718,7 @@ pub fn ui_system(
                         }
 
                         ui.add_space(5.0);
-                        ui.label(egui::RichText::new("Live Parameters").strong());
+                        ui.label(egui::RichText::new("Robot Parameters").strong());
 
                         // Edit first robot's parameters (if any robots exist)
                         if let Some(robot_config) = app_config.robots.get_mut(0) {
@@ -718,7 +732,8 @@ pub fn ui_system(
                                     .changed()
                                 {
                                     ui_state.status_message =
-                                        format!("Max speed: {:.1} m/s", robot_config.max_speed);
+                                        format!("Max speed: {:.1} m/s (applied)", robot_config.max_speed);
+                                    // Max speed applies live through kinematics, no restart needed
                                 }
                             });
 
@@ -731,7 +746,8 @@ pub fn ui_system(
                                     )
                                     .changed()
                                 {
-                                    ui_state.status_message = "Robot size updated".to_string();
+                                    ui_state.reset_simulation = true;
+                                    ui_state.status_message = "Robot size changed - restarting...".to_string();
                                 }
                             });
 
@@ -744,7 +760,8 @@ pub fn ui_system(
                                     )
                                     .changed()
                                 {
-                                    ui_state.status_message = "Robot size updated".to_string();
+                                    ui_state.reset_simulation = true;
+                                    ui_state.status_message = "Robot size changed - restarting...".to_string();
                                 }
                             });
 
@@ -761,6 +778,8 @@ pub fn ui_system(
                                         color.g() as f32 / 255.0,
                                         color.b() as f32 / 255.0,
                                     ];
+                                    ui_state.reset_simulation = true;
+                                    ui_state.status_message = "Robot color changed - restarting...".to_string();
                                 }
                             });
                         } else {
@@ -775,17 +794,38 @@ pub fn ui_system(
                         ui_state.show_topics_section = true;
 
                         ui.horizontal(|ui| {
-                            ui.label("Subscribe:");
+                            ui.label("Prefix:");
                             if ui_state.topic_input.is_empty() {
                                 ui_state.topic_input = app_config.args.topic.clone();
                             }
-                            ui.text_edit_singleline(&mut ui_state.topic_input);
+                            let response = ui.text_edit_singleline(&mut ui_state.topic_input);
+
+                            // Check if topic changed from current
+                            let topic_changed = ui_state.topic_input != app_config.args.topic;
+
+                            if topic_changed {
+                                if ui.button("Apply").clicked() || response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                                    // Update the topic and restart
+                                    app_config.args.topic = ui_state.topic_input.clone();
+                                    // Update robot topic prefixes too
+                                    if let Some(robot) = app_config.robots.get_mut(0) {
+                                        robot.topic_prefix = ui_state.topic_input.clone();
+                                    }
+                                    ui_state.active_topics = vec![ui_state.topic_input.clone()];
+                                    ui_state.reset_simulation = true;
+                                    ui_state.status_message = format!("Topic changed to {} - restarting...", ui_state.topic_input);
+                                }
+                            }
                         });
-                        ui.label(
-                            egui::RichText::new("Note: Changing topic requires restart")
-                                .color(egui::Color32::YELLOW)
-                                .size(10.0),
-                        );
+
+                        // Show hint if topic is different
+                        if ui_state.topic_input != app_config.args.topic {
+                            ui.label(
+                                egui::RichText::new("Press Apply or Enter to change topic")
+                                    .color(egui::Color32::YELLOW)
+                                    .size(10.0),
+                            );
+                        }
 
                         ui.add_space(5.0);
                         ui.label(egui::RichText::new("Active Topics:").strong());
@@ -793,7 +833,9 @@ pub fn ui_system(
                             ui_state.active_topics.push(app_config.args.topic.clone());
                         }
                         for topic in &ui_state.active_topics {
-                            ui.label(format!("  - {}", topic));
+                            ui.label(format!("  - {}.cmd_vel", topic));
+                            ui.label(format!("  - {}.odom", topic));
+                            ui.label(format!("  - {}.scan", topic));
                         }
                     });
 
@@ -1352,6 +1394,172 @@ pub fn ui_system(
                         ui_state.status_message = "Metrics reset".to_string();
                     }
                 });
+
+                // ==================== ARTICULATED ROBOTS ====================
+                // Only show if there are articulated robots
+                let has_articulated = !articulated_robots.is_empty();
+                if has_articulated {
+                    ui.add_space(10.0);
+                    egui::CollapsingHeader::new(
+                        egui::RichText::new("Articulated Robots").size(14.0),
+                    )
+                    .default_open(ui_state.show_articulated_section)
+                    .show(ui, |ui| {
+                        ui_state.show_articulated_section = true;
+
+                        // Visual options
+                        ui.horizontal(|ui| {
+                            ui.checkbox(&mut ui_state.show_joint_markers, "Show Joint Markers");
+                        });
+
+                        ui.add_space(5.0);
+                        ui.separator();
+
+                        // List each articulated robot
+                        for robot in articulated_robots.iter() {
+                            ui.add_space(5.0);
+                            ui.label(
+                                egui::RichText::new(&robot.name)
+                                    .strong()
+                                    .color(egui::Color32::from_rgb(100, 180, 255)),
+                            );
+                            ui.label(
+                                egui::RichText::new(format!(
+                                    "{} links, {} joints",
+                                    robot.config.links.len(),
+                                    robot.config.joints.len()
+                                ))
+                                .size(11.0)
+                                .color(egui::Color32::from_rgb(150, 150, 150)),
+                            );
+
+                            // Joint sliders
+                            for joint_cfg in &robot.config.joints {
+                                let joint_name = &joint_cfg.name;
+                                let current_pos = robot
+                                    .joint_positions
+                                    .get(joint_name)
+                                    .copied()
+                                    .unwrap_or(0.0);
+
+                                // Get limits from joint config
+                                let [min, max] = match &joint_cfg.joint_type {
+                                    crate::joint::Joint2DType::Revolute { limits, .. } => {
+                                        limits.unwrap_or([-std::f32::consts::PI, std::f32::consts::PI])
+                                    }
+                                    crate::joint::Joint2DType::Prismatic { limits, .. } => {
+                                        limits.unwrap_or([-1.0, 1.0])
+                                    }
+                                    crate::joint::Joint2DType::Fixed => [0.0, 0.0],
+                                };
+
+                                // Only show slider for non-fixed joints
+                                if !matches!(joint_cfg.joint_type, crate::joint::Joint2DType::Fixed) {
+                                    ui.horizontal(|ui| {
+                                        ui.label(
+                                            egui::RichText::new(joint_name)
+                                                .size(11.0)
+                                                .color(egui::Color32::from_rgb(180, 180, 180)),
+                                        );
+
+                                        // Get or initialize slider value
+                                        let slider_val = ui_state
+                                            .joint_sliders
+                                            .entry(format!("{}:{}", robot.name, joint_name))
+                                            .or_insert(current_pos);
+
+                                        let response = ui.add(
+                                            egui::Slider::new(slider_val, min..=max)
+                                                .text("rad")
+                                                .step_by(0.01),
+                                        );
+
+                                        // If slider changed, update motor target
+                                        if response.changed() {
+                                            if let Some(joint_handle) = robot.joint_handles.get(joint_name) {
+                                                if let Some(joint) = physics_world.impulse_joint_set.get_mut(*joint_handle) {
+                                                    // Update motor target position
+                                                    joint.data.set_motor_position(
+                                                        rapier2d::dynamics::JointAxis::AngX,
+                                                        *slider_val,
+                                                        100.0,  // stiffness
+                                                        10.0,   // damping
+                                                    );
+                                                }
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+
+                            // Joint state display
+                            ui.add_space(3.0);
+                            egui::CollapsingHeader::new(
+                                egui::RichText::new("Joint States").size(11.0),
+                            )
+                            .default_open(false)
+                            .show(ui, |ui| {
+                                for (joint_name, pos) in &robot.joint_positions {
+                                    let vel = robot
+                                        .joint_velocities
+                                        .get(joint_name)
+                                        .copied()
+                                        .unwrap_or(0.0);
+                                    ui.label(
+                                        egui::RichText::new(format!(
+                                            "{}: {:.2} rad ({:.2} rad/s)",
+                                            joint_name, pos, vel
+                                        ))
+                                        .size(10.0)
+                                        .color(egui::Color32::from_rgb(140, 140, 140)),
+                                    );
+                                }
+                            });
+
+                            ui.separator();
+                        }
+
+                        // Control buttons
+                        ui.add_space(5.0);
+                        ui.horizontal(|ui| {
+                            if ui.button("Zero All").clicked() {
+                                // Reset all slider values to 0
+                                for key in ui_state.joint_sliders.keys().cloned().collect::<Vec<_>>() {
+                                    ui_state.joint_sliders.insert(key, 0.0);
+                                }
+                                // Apply to physics
+                                for robot in articulated_robots.iter() {
+                                    for (_, joint_handle) in &robot.joint_handles {
+                                        if let Some(joint) = physics_world.impulse_joint_set.get_mut(*joint_handle) {
+                                            joint.data.set_motor_position(
+                                                rapier2d::dynamics::JointAxis::AngX,
+                                                0.0,
+                                                100.0,
+                                                10.0,
+                                            );
+                                        }
+                                    }
+                                }
+                                ui_state.status_message = "All joints zeroed".to_string();
+                            }
+
+                            if ui.button("Limp").clicked() {
+                                // Set all motor forces to 0 (disable motors)
+                                for robot in articulated_robots.iter() {
+                                    for (_, joint_handle) in &robot.joint_handles {
+                                        if let Some(joint) = physics_world.impulse_joint_set.get_mut(*joint_handle) {
+                                            joint.data.set_motor_max_force(
+                                                rapier2d::dynamics::JointAxis::AngX,
+                                                0.0,
+                                            );
+                                        }
+                                    }
+                                }
+                                ui_state.status_message = "Motors disabled (limp mode)".to_string();
+                            }
+                        });
+                    });
+                }
 
             });
 

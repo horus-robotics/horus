@@ -181,6 +181,8 @@ impl Plugin for HorusSyncPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<HorusSyncConfig>()
             .init_resource::<HorusSyncStats>()
+            .init_resource::<HorusPublisher>()  // Register stub resource
+            .init_resource::<HorusSubscriber>() // Register stub resource
             .add_event::<HorusSyncEvent>()
             .add_systems(
                 Update,

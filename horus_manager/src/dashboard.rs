@@ -10,6 +10,7 @@ use axum::{
     Json, Router,
 };
 use futures::{sink::SinkExt, stream::StreamExt};
+use horus_core::memory::shm_logs_path;
 use qrcode::{render::unicode, QrCode};
 use std::net::UdpSocket;
 use std::sync::{Arc, RwLock};
@@ -118,7 +119,7 @@ async fn dashboard_session_middleware(
 
 /// Run the web dashboard server
 pub async fn run(port: u16) -> anyhow::Result<()> {
-    eprintln!("Dashboard will read logs from shared memory ring buffer at /dev/shm/horus_logs");
+    eprintln!("Dashboard will read logs from shared memory ring buffer at {}", shm_logs_path().display());
 
     // Check if password is configured, if not prompt for setup
     let password_hash = if !crate::security::auth::is_password_configured() {
@@ -579,12 +580,12 @@ pub async fn topics_handler() -> impl IntoResponse {
         .into_iter()
         .map(|t| {
             // Convert IPC name to original format for display
-            // horus_sensors_lidar -> sensors/lidar
+            // Topic names use dot notation - just strip horus_ prefix
             let display_name = t
                 .topic_name
                 .strip_prefix("horus_")
                 .unwrap_or(&t.topic_name)
-                .replace("_", "/");
+                .to_string();
 
             serde_json::json!({
                 "name": display_name,
@@ -683,12 +684,11 @@ pub async fn logs_node_handler(Path(node_name): Path<String>) -> impl IntoRespon
 pub async fn logs_topic_handler(Path(topic_name): Path<String>) -> impl IntoResponse {
     use horus_core::core::log_buffer::GLOBAL_LOG_BUFFER;
 
-    // Convert IPC topic name back to original format
-    // horus_sensors_lidar -> sensors/lidar
+    // Topic names use dot notation - just strip horus_ prefix
     let original_topic = topic_name
         .strip_prefix("horus_")
         .unwrap_or(&topic_name)
-        .replace("_", "/");
+        .to_string();
 
     eprintln!(
         " API: Fetching logs for topic '{}' (original: '{}')",
@@ -4026,7 +4026,8 @@ fn generate_html(port: u16) -> String {
                     ctx.fill();
                 }} else {{
                     // TOPICS: Draw as rectangles (RQT style, no glow, no shadows)
-                    const topicName = node.label.replace(/_/g, '/');
+                    // Topic names use dot notation - no conversion needed
+                    const topicName = node.label;
 
                     // Dynamically size rectangle based on text length
                     ctx.font = '10px JetBrains Mono, monospace';

@@ -199,7 +199,7 @@ impl EventStream {
 }
 
 /// Convert event stream to frame representation (event frame)
-pub fn events_to_frame(events: &[Event], width: u32, height: u32, time_window_us: u64) -> Vec<i32> {
+pub fn events_to_frame(events: &[Event], width: u32, height: u32, _time_window_us: u64) -> Vec<i32> {
     let mut frame = vec![0i32; (width * height) as usize];
 
     for event in events {

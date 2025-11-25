@@ -238,7 +238,7 @@ impl URDFLoader {
         commands: &mut Commands,
         physics_world: &mut PhysicsWorld,
     ) -> Result<()> {
-        let parent_entity = link_entities
+        let _parent_entity = link_entities
             .get(&joint.parent.link)
             .context(format!("Parent link '{}' not found", joint.parent.link))?;
 
@@ -378,13 +378,9 @@ impl URDFLoader {
                 let radius = *radius as f32;
                 Some(ColliderBuilder::new(ColliderShape::Sphere { radius }).build())
             }
-            Geometry::Mesh { filename, scale } => {
+            Geometry::Mesh { filename, scale: _ } => {
                 // Load mesh file and create trimesh collider
                 let mesh_path = self.resolve_mesh_path(filename);
-                let scale = scale
-                    .as_ref()
-                    .map(|s| Vec3::new(s[0] as f32, s[1] as f32, s[2] as f32))
-                    .unwrap_or(Vec3::ONE);
 
                 // For now, we'll skip mesh colliders and let them be implemented later
                 // with proper mesh loading infrastructure

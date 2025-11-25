@@ -23,7 +23,7 @@ pub struct TankControllerNode {
 impl TankControllerNode {
     /// Create new tank controller with default topics
     pub fn new() -> std::result::Result<Self, String> {
-        Self::new_with_topics("keyboard_input", "/tank/tank_1/cmd_vel", "tank_1")
+        Self::new_with_topics("keyboard_input", "tank.tank_1.cmd_vel", "tank_1")
     }
 
     /// Create with custom topic names

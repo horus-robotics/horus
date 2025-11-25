@@ -219,22 +219,29 @@ Programming language for the project.
 **Type**: String
 **Required**: No
 **Default**: Auto-detected from file extensions
-**Values**: `rust`, `python`, `cpp`, `c`
+**Values**: `rust`, `python`
 
 **Examples:**
 ```yaml
 language: rust
 language: python
-language: cpp
 ```
 
 **Auto-detection:**
 - `main.rs`  Rust
 - `main.py`  Python
-- `main.cpp`  C++
-- `main.c`  C
 
 ## Dependencies
+
+HORUS supports multiple package sources in `horus.yaml`:
+
+| Source | Syntax | Example | Installed via |
+|--------|--------|---------|---------------|
+| **HORUS Registry** | `name` or `name@version` | `pid-controller` | `horus pkg install` or `horus run` |
+| **crates.io** | `name` or `cargo:name@version` | `serde`, `cargo:tokio@1` | Auto-detected or explicit |
+| **PyPI** | `name` or `pip:name@version` | `numpy`, `pip:opencv-python@4.8` | Auto-detected or explicit |
+| **Git** | Object with `git:` field | See below | `horus run` (clones automatically) |
+| **Local Path** | `path:name:./path` | `path:my_driver:../driver` | `horus run` |
 
 ### Basic Dependencies
 
@@ -245,8 +252,8 @@ language: cpp
 ```yaml
 dependencies:
   - horus           # Latest from HORUS registry
-  - serde           # Latest from crates.io/PyPI
-  - numpy           # External package
+  - serde           # Auto-detected: crates.io (Rust) or PyPI (Python)
+  - numpy           # Auto-detected: PyPI
 ```
 
 **Object format (with version and features):**

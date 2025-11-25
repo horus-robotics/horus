@@ -306,7 +306,7 @@ use horus_macros::node;
 node! {
     Controller {
         pub {
-            cmd_vel: CmdVel -> "motors/cmd_vel",
+            cmd_vel: CmdVel -> "motors.cmd_vel",
         }
 
         tick(ctx) {
@@ -345,7 +345,7 @@ struct Controller {
 impl Controller {
     fn new() -> HorusResult<Self> {
         Ok(Self {
-            cmd_vel: Hub::new("motors/cmd_vel")?,
+            cmd_vel: Hub::new("motors.cmd_vel")?,
         })
     }
 }
@@ -392,19 +392,19 @@ def controller(node):
     """Main control logic - called repeatedly at the specified rate."""
     # Your control logic here
     # Check for incoming messages
-    if node.has_msg("sensors/data"):
-        sensor_data = node.get("sensors/data")
+    if node.has_msg("sensors.data"):
+        sensor_data = node.get("sensors.data")
         # Process sensor data...
 
     # Send control commands
     cmd_vel = {"linear": 1.0, "angular": 0.0}
-    node.send("motors/cmd_vel", cmd_vel)
+    node.send("motors.cmd_vel", cmd_vel)
 
 # Create the node
 node = horus.Node(
     name="controller",
-    pubs="motors/cmd_vel",    # Topics to publish to
-    subs="sensors/data",      # Topics to subscribe from
+    pubs="motors.cmd_vel",    # Topics to publish to
+    subs="sensors.data",      # Topics to subscribe from
     tick=controller,          # Function to call repeatedly
     rate=30                   # Hz (30 times per second)
 )

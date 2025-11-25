@@ -4,6 +4,9 @@
 #![allow(unreachable_patterns)]
 #![allow(clippy::all)]
 #![allow(deprecated)]
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unused_mut)]
 
 //! # HORUS IPC Latency Benchmark - RDTSC-Based
 //!

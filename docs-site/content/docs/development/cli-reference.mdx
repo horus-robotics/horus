@@ -6,20 +6,70 @@ order: 40
 
 # CLI Reference
 
-The `horus` command gives you everything you need to build, run, and manage your applications. This page covers all 8 commands.
+The `horus` command gives you everything you need to build, run, and manage your applications. This page covers all 10 commands.
 
 ## Quick Reference
 
 ```bash
+horus init                 # Initialize workspace in current directory
 horus new <name>           # Create a new project
 horus run [file]           # Build and run your app
 horus check                # Validate dependencies and environment
 horus dashboard [port]     # Monitor your system
-horus sim                  # Launch 2D simulator
+horus sim2d                # Launch 2D simulator
+horus sim3d                # Launch 3D simulator
 horus pkg <command>        # Manage packages (install, publish, etc.)
 horus env <command>        # Save/restore environments
 horus auth <command>       # Login to registry
 ```
+
+---
+
+## `horus init` - Initialize Workspace
+
+**What it does**: Initializes a HORUS workspace in the current directory, creating the necessary configuration files.
+
+**Why it's useful**: Quickly set up an existing directory as a HORUS project without creating new files from templates.
+
+### Basic Usage
+
+```bash
+# Initialize in current directory (uses directory name)
+horus init
+
+# Initialize with custom name
+horus init --name my_robot
+```
+
+### All Options
+
+```bash
+horus init [OPTIONS]
+
+Options:
+  -n, --name <NAME>    Workspace name (defaults to directory name)
+```
+
+### Examples
+
+**Initialize existing code as HORUS project**:
+```bash
+cd ~/my-robot-code
+horus init
+# Creates horus.yaml with project configuration
+```
+
+**Initialize with specific name**:
+```bash
+horus init --name sensor_array
+```
+
+### What Gets Created
+
+Running `horus init` creates:
+- `horus.yaml` - Project manifest with name and version
+
+This is useful when you have existing code and want to add HORUS support, or when setting up a workspace that will contain multiple HORUS projects.
 
 ---
 
@@ -40,12 +90,7 @@ horus new my_project --macro
 
 # Python project
 horus new my_project --python
-
-# C project ( under development)
-horus new my_project --c
 ```
-
-**Note**: C++ bindings are in alpha. Use Rust or Python for production.
 
 ### All Options
 
@@ -87,12 +132,12 @@ horus new robot_controller --output ~/projects/robots
 
 **What it does**: Compiles your code and runs it. Handles all the build tools for you.
 
-**Why it's useful**: One command works for Rust, Python, and C. For Rust, it auto-generates `Cargo.toml` from `horus.yaml` and uses Cargo for compilation. For Python and C, it handles the appropriate tooling.
+**Why it's useful**: One command works for Rust and Python. For Rust, it auto-generates `Cargo.toml` from `horus.yaml` and uses Cargo for compilation. For Python, it handles the appropriate tooling.
 
 ### Basic Usage
 
 ```bash
-# Run current directory (finds main.rs, main.py, or main.c)
+# Run current directory (finds main.rs or main.py)
 horus run
 
 # Run specific file
@@ -227,12 +272,11 @@ horus run -- --config robot.yaml --verbose
 
 ### Important: Single-File Projects Only
 
-`horus run` is designed for **single-file HORUS projects** (main.rs, main.py, or main.c). It creates a temporary workspace in `.horus/` and automatically handles dependencies.
+`horus run` is designed for **single-file HORUS projects** (main.rs or main.py). It creates a temporary workspace in `.horus/` and automatically handles dependencies.
 
 **What works with `horus run`:**
 - Single main.rs with all nodes defined in one file
 - Simple Python scripts (main.py)
-- Single C files (main.c)
 
 **What doesn't work:**
 - Multi-crate Cargo workspaces
@@ -273,7 +317,6 @@ HORUS supports running multiple node files concurrently as separate processes us
 ```bash
 horus run "nodes/*.py"          # Run all Python nodes concurrently
 horus run "src/*.rs"            # Run all Rust nodes concurrently
-horus run "nodes/*.c"           # Run all C nodes concurrently
 ```
 
 **How it works:**
@@ -407,7 +450,7 @@ horus run --release
 
 ---
 
-## `horus sim` - Launch 2D Simulator
+## `horus sim2d` - Launch 2D Simulator
 
 **What it does**: Launches the HORUS 2D simulator for testing robot behavior in a virtual environment.
 
@@ -417,42 +460,46 @@ horus run --release
 
 ```bash
 # Launch default simulation
-horus sim
+horus sim2d
 
-# Launch with specific scenario
-horus sim --scenario warehouse
+# Launch with world configuration
+horus sim2d --world warehouse.yaml
 
 # Headless mode (for testing)
-horus sim --headless
+horus sim2d --headless
 ```
 
 ### All Options
 
 ```bash
-horus sim [OPTIONS]
+horus sim2d [OPTIONS]
 
 Options:
-  -s, --scenario <NAME>    Load predefined scenario (warehouse, maze, etc.)
-  --headless               Run without GUI (for CI/CD)
-  -p, --port <PORT>        Web UI port (default: 3001)
-  -r, --realtime           Lock to real-time physics (default: as-fast-as-possible)
+  --headless                 Run without GUI (for CI/CD)
+  --world <FILE>             World configuration file
+  --world-image <FILE>       World image file (PNG, JPG, PGM) - occupancy grid
+  --resolution <FLOAT>       Resolution in meters per pixel for world image
+  --threshold <0-255>        Obstacle threshold (darker = obstacle)
+  --robot <FILE>             Robot configuration file
+  --topic <PREFIX>           HORUS topic prefix (default: /robot)
+  --name <NAME>              Robot name for logging (default: robot)
 ```
 
 ### What You Get
 
 The simulator provides:
 - **2D physics** - Realistic robot movement and collisions
-- **Sensor simulation** - Virtual LiDAR, cameras, IMU
+- **Sensor simulation** - Virtual LiDAR, odometry, IMU
 - **Visual debugging** - See robot state and sensor readings
-- **Web interface** - Control simulation from browser
+- **Occupancy grid support** - Load world images directly
 - **HORUS integration** - Nodes communicate normally via shared memory
 
 ### Examples
 
 **Test navigation algorithm**:
 ```bash
-# Terminal 1: Launch simulator
-horus sim --scenario maze
+# Terminal 1: Launch simulator with world
+horus sim2d --world maze.yaml
 
 # Terminal 2: Run your navigation code
 horus run navigation.rs --release
@@ -463,17 +510,16 @@ horus dashboard
 
 **Headless testing (CI/CD)**:
 ```bash
-horus sim --headless &
+horus sim2d --headless &
 SIM_PID=$!
 horus run test_behavior.rs --release
 kill $SIM_PID
 ```
 
-**Custom scenario**:
+**Load occupancy grid image**:
 ```bash
-# Create scenario file: warehouse.yaml
-# Then load it:
-horus sim --scenario warehouse
+# Load a PGM/PNG map as world
+horus sim2d --world-image map.pgm --resolution 0.05 --threshold 128
 ```
 
 ### Integration with Your Code
@@ -514,7 +560,67 @@ impl Node for RobotController {
 }
 ```
 
-**Simulator vs Reality**: The same HORUS topics (`cmd_vel`, `laser_scan`, etc.) work in both. No code changes needed!
+**Simulator vs Reality**: The same HORUS topics (`cmd_vel`, `scan`, `odom`, etc.) work in both. No code changes needed!
+
+---
+
+## `horus sim3d` - Launch 3D Simulator
+
+**What it does**: Launches the HORUS 3D simulator with full physics, URDF robot support, and advanced sensor simulation.
+
+**Why it's useful**: Realistic 3D testing environment for complex robots, manipulators, and scenarios requiring depth perception or 3D physics.
+
+### Basic Usage
+
+```bash
+# Launch default 3D simulation
+horus sim3d
+
+# Launch with URDF robot
+horus sim3d --robot turtlebot3.urdf
+
+# Headless mode for RL training
+horus sim3d --headless --seed 42
+```
+
+### All Options
+
+```bash
+horus sim3d [OPTIONS]
+
+Options:
+  --headless         Run without GUI (for RL training, CI/CD)
+  --seed <U64>       Random seed for deterministic simulation
+  --robot <FILE>     Robot URDF file to load
+  --world <FILE>     World/scene configuration file
+```
+
+### Features
+
+The 3D simulator provides:
+- **Full 3D physics** - Rapier3D physics engine with realistic dynamics
+- **URDF support** - Load standard robot description files
+- **3D sensors** - LiDAR 3D, RGB-D cameras, IMU
+- **Deterministic mode** - Use `--seed` for reproducible simulations
+- **RL training ready** - Headless mode for high-speed training
+
+### Examples
+
+**Visual simulation with robot**:
+```bash
+horus sim3d --robot my_robot.urdf --world warehouse.yaml
+```
+
+**Deterministic RL training**:
+```bash
+# Same seed = same simulation
+horus sim3d --headless --seed 12345
+```
+
+**Test with custom world**:
+```bash
+horus sim3d --world obstacle_course.yaml --robot quadruped.urdf
+```
 
 See [Simulation Guide](/development/simulation) for advanced features, custom scenarios, and RL integration.
 
@@ -537,6 +643,9 @@ horus dashboard 8080
 
 # Text-based (for SSH)
 horus dashboard --tui
+
+# Reset dashboard password before starting
+horus dashboard --reset-password
 ```
 
 ### What You See
@@ -609,7 +718,7 @@ horus pkg install pid-controller
 
 **Install specific version**:
 ```bash
-horus pkg install pid-controller -v 1.2.0
+horus pkg install pid-controller --ver 1.2.0
 ```
 
 **Install globally** (share across projects):
@@ -867,7 +976,7 @@ See **[Troubleshooting & Maintenance](/troubleshooting)** for complete details.
 Now that you know the commands:
 
 1. **[Quick Start](/getting-started/quick-start)** - Build your first app
-2. **[node! Macro](/node-macro)** - Write less code
+2. **[node! Macro](/core-concepts/node-macro)** - Write less code
 3. **[Dashboard Guide](/development/dashboard)** - Master monitoring
 4. **[Examples](/examples)** - See real applications
 

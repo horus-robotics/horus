@@ -1,4 +1,4 @@
-use crate::{MotorCommand, SerialData};
+use crate::MotorCommand;
 use horus_core::core::LogSummary;
 use horus_core::error::HorusResult;
 
@@ -58,10 +58,6 @@ use std::time::Duration;
 /// roboclaw.set_max_current(30.0); // 30A current limit
 /// ```
 pub struct RoboclawMotorNode {
-    // Serial communication
-    serial_tx: Hub<SerialData>,
-    serial_rx: Hub<SerialData>,
-
     // Motor command subscribers
     motor1_cmd_sub: Hub<MotorCommand>,
     motor2_cmd_sub: Hub<MotorCommand>,
@@ -109,7 +105,6 @@ pub struct RoboclawMotorNode {
 
     // Statistics
     command_count: u64,
-    error_count: u64,
     last_feedback_time: [u64; 2],
 
     // Timing state (moved from static mut for thread safety)
@@ -229,8 +224,6 @@ impl RoboclawMotorNode {
         }
 
         Ok(Self {
-            serial_tx: Hub::new(&format!("{}/tx", serial_port))?,
-            serial_rx: Hub::new(&format!("{}/rx", serial_port))?,
             motor1_cmd_sub: Hub::new("roboclaw/motor1/cmd")?,
             motor2_cmd_sub: Hub::new("roboclaw/motor2/cmd")?,
             motor1_feedback_pub: Hub::new("roboclaw/motor1/feedback")?,
@@ -259,7 +252,6 @@ impl RoboclawMotorNode {
             error_status: 0,
             last_command_time: 0,
             command_count: 0,
-            error_count: 0,
             last_feedback_time: [0, 0],
             feedback_counter: 0,
         })
@@ -865,7 +857,6 @@ impl RoboclawMotorNode {
     /// Configure for differential drive robot
     pub fn configure_differential_drive(
         &mut self,
-        wheel_base: f64,
         wheel_radius: f64,
         encoder_ppr: u32,
         gear_ratio: f64,

@@ -1015,10 +1015,10 @@ pub fn handle_scene_saved_system(
 
 /// System for periodic auto-save
 pub fn auto_save_timer_system(
-    mut manager: ResMut<CrashRecoveryManager>,
+    _manager: ResMut<CrashRecoveryManager>,
     mut state: ResMut<AutoSaveState>,
     config: Res<AutoSaveConfig>,
-    mut completed_events: EventWriter<AutoSaveCompletedEvent>,
+    _completed_events: EventWriter<AutoSaveCompletedEvent>,
 ) {
     if !state.should_auto_save(&config) {
         return;
@@ -1074,8 +1074,8 @@ pub fn init_auto_save_schedule_system(
 
 /// System to save on exit
 pub fn on_exit_auto_save_system(
-    mut manager: ResMut<CrashRecoveryManager>,
-    mut state: ResMut<AutoSaveState>,
+    _manager: ResMut<CrashRecoveryManager>,
+    state: ResMut<AutoSaveState>,
     config: Res<AutoSaveConfig>,
 ) {
     if config.save_on_exit && state.has_unsaved_changes {

@@ -4,6 +4,9 @@
 #![allow(unreachable_patterns)]
 #![allow(clippy::all)]
 #![allow(deprecated)]
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unused_mut)]
 
 /// IPC Functionality Test Suite
 /// Verifies that IPC mechanisms work correctly in various scenarios

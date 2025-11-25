@@ -1,10 +1,11 @@
 use super::compiler::JITCompiler;
-use crate::core::{Node, NodeInfo};
-use crate::error::HorusResult;
+use crate::core::Node;
 use std::time::Instant;
 
 /// Trait for nodes that can be compiled to dataflow
 /// These must be pure functions with no side effects
+/// Used by example_nodes.rs for JIT demonstration
+#[allow(dead_code)]
 pub trait DataflowNode: Node {
     /// Get the dataflow computation as a simple expression
     /// Returns None if too complex for JIT
@@ -173,102 +174,3 @@ impl CompiledDataflow {
     }
 }
 
-/// Wrapper to make any DataflowNode JIT-compiled
-pub struct JITCompiledNode {
-    /// Original node for fallback and metadata
-    original: Box<dyn DataflowNode>,
-
-    /// Compiled version (if successful)
-    compiled: Option<CompiledDataflow>,
-
-    /// Whether compilation was attempted
-    compilation_attempted: bool,
-
-    /// Current input value (simplified for demo)
-    current_input: i64,
-
-    /// Current output value
-    current_output: i64,
-}
-
-impl JITCompiledNode {
-    /// Wrap a dataflow node for JIT compilation
-    pub fn new(node: Box<dyn DataflowNode>) -> Self {
-        Self {
-            original: node,
-            compiled: None,
-            compilation_attempted: false,
-            current_input: 0,
-            current_output: 0,
-        }
-    }
-
-    /// Attempt to compile the node
-    fn try_compile(&mut self) {
-        if self.compilation_attempted {
-            return;
-        }
-        self.compilation_attempted = true;
-
-        // Check if node can be compiled
-        if !self.original.is_deterministic() || !self.original.is_pure() {
-            return;
-        }
-
-        // Get expression
-        if let Some(expr) = self.original.get_dataflow_expr() {
-            // Try to compile
-            match CompiledDataflow::compile(self.original.name().to_string(), expr) {
-                Ok(compiled) => {
-                    self.compiled = Some(compiled);
-                }
-                Err(_) => {
-                    // Compilation failed, will use fallback
-                }
-            }
-        }
-    }
-}
-
-impl Node for JITCompiledNode {
-    fn name(&self) -> &'static str {
-        self.original.name()
-    }
-
-    fn init(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
-        // Initialize original
-        self.original.init(ctx)?;
-
-        // Try to compile after init
-        self.try_compile();
-
-        Ok(())
-    }
-
-    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
-        // If we have compiled version and it's fast, use it
-        if let Some(ref mut compiled) = self.compiled {
-            if compiled.is_fast_enough() {
-                // Execute compiled version
-                self.current_output = compiled.execute(self.current_input);
-                self.current_input += 1; // Simple increment for demo
-                return;
-            }
-        }
-
-        // Fallback to original
-        self.original.tick(ctx);
-    }
-
-    fn shutdown(&mut self, ctx: &mut NodeInfo) -> HorusResult<()> {
-        self.original.shutdown(ctx)
-    }
-
-    fn get_publishers(&self) -> Vec<crate::core::TopicMetadata> {
-        self.original.get_publishers()
-    }
-
-    fn get_subscribers(&self) -> Vec<crate::core::TopicMetadata> {
-        self.original.get_subscribers()
-    }
-}

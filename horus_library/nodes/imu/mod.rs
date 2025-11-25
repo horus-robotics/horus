@@ -7,13 +7,13 @@ use horus_core::{Hub, Node, NodeInfo};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[cfg(any(feature = "mpu6050-imu", feature = "bno055-imu"))]
-use linux_embedded_hal::I2cdev;
+use linux_embedded_hal::{Delay, I2cdev};
 
 #[cfg(feature = "mpu6050-imu")]
 use mpu6050::Mpu6050;
 
 #[cfg(feature = "bno055-imu")]
-use bno055::{BNO055OperationMode, BNO055PowerMode, Bno055};
+use bno055::{BNO055OperationMode, Bno055};
 
 /// IMU backend type
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -184,25 +184,20 @@ impl ImuNode {
 
                 match I2cdev::new(&self.i2c_bus) {
                     Ok(i2c) => {
-                        match Bno055::new(i2c) {
-                            Ok(mut bno) => {
-                                // Initialize BNO055 in NDOF mode (full sensor fusion)
-                                if bno.init().is_ok()
-                                    && bno.set_mode(BNO055OperationMode::NDOF).is_ok()
-                                {
-                                    thread::sleep(Duration::from_millis(100));
-                                    self.bno055 = Some(bno);
-                                    self.is_initialized = true;
-                                    true
-                                } else {
-                                    eprintln!("Failed to initialize BNO055");
-                                    false
-                                }
-                            }
-                            Err(e) => {
-                                eprintln!("Failed to create BNO055: {:?}", e);
-                                false
-                            }
+                        // Bno055::new returns Bno055 directly (not a Result)
+                        let mut bno = Bno055::new(i2c);
+                        let mut delay = Delay;
+                        // Initialize BNO055 in NDOF mode (full sensor fusion)
+                        if bno.init(&mut delay).is_ok()
+                            && bno.set_mode(BNO055OperationMode::NDOF, &mut delay).is_ok()
+                        {
+                            thread::sleep(Duration::from_millis(100));
+                            self.bno055 = Some(bno);
+                            self.is_initialized = true;
+                            true
+                        } else {
+                            eprintln!("Failed to initialize BNO055");
+                            false
                         }
                     }
                     Err(e) => {
@@ -285,15 +280,16 @@ impl ImuNode {
                     let mut imu = Imu::new();
 
                     if let Ok(quat) = bno.quaternion() {
-                        imu.orientation = [quat.x, quat.y, quat.z, quat.w];
+                        // mint::Quaternion has v (Vector3 for x,y,z) and s (scalar for w)
+                        imu.orientation = [quat.v.x as f64, quat.v.y as f64, quat.v.z as f64, quat.s as f64];
                     }
 
-                    if let Ok(gyro) = bno.gyro() {
-                        imu.angular_velocity = [gyro.x, gyro.y, gyro.z];
+                    if let Ok(gyro) = bno.gyro_data() {
+                        imu.angular_velocity = [gyro.x as f64, gyro.y as f64, gyro.z as f64];
                     }
 
-                    if let Ok(accel) = bno.accel() {
-                        imu.linear_acceleration = [accel.x, accel.y, accel.z];
+                    if let Ok(accel) = bno.accel_data() {
+                        imu.linear_acceleration = [accel.x as f64, accel.y as f64, accel.z as f64];
                     }
 
                     imu.timestamp = current_time;

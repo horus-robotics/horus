@@ -98,12 +98,11 @@ If the help command works and verify.sh shows green checkmarks, you're all set! 
 
 **What the installer does:**
 - Builds the `horus` CLI tool
-- Installs six core libraries to `~/.horus/cache/`:
+- Installs five core libraries to `~/.horus/cache/`:
   - `horus_core` - Core runtime and scheduler
   - `horus` - Main framework library
   - `horus_macros` - Procedural macros for simplified syntax
   - `horus_library` - Standard message types and nodes
-  - `horus_c` - C bindings with headers
   - `horus_py` - Python bindings (auto-installed if Python 3.9+ detected)
 - Tracks the installed version for automatic updates
 - Verifies installation with built-in tests
@@ -208,7 +207,7 @@ Run the comprehensive verification script to ensure everything is working:
 - [+] All subcommands (`new`, `run`, `dashboard`, `pkg`, `env`, `auth`, `sim`)
 - [+] Build verification (`cargo check` with 0 warnings)
 - [+] Debug binary functionality
-- [+] Optional features (Python/C bindings, camera support)
+- [+] Optional features (Python bindings, camera support)
 - [+] Platform-specific packages (Raspberry Pi GPIO, Jetson CUDA)
 - [+] Disk usage stats
 
@@ -270,19 +269,6 @@ maturin develop --release
 ```
 
 See [Python Bindings](/multi-language/python-bindings) for complete API documentation and examples.
-
-## Optional: C Support
-
-Want to integrate C code? Build the C bindings:
-
-```bash
-cd horus_c
-cargo build --release
-```
-
-The shared library will be in `target/release/libhorus_c.so`
-
-See [Multi-Language](/multi-language/multi-language) for C examples.
 
 ## Platform-Specific Notes
 
@@ -521,7 +507,7 @@ cd horus
 cargo build --release
 
 # 4. Install CLI
-cargo install --path horus_cli
+cargo install --path horus_manager
 ```
 
 **Windows shared memory:**

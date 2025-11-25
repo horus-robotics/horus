@@ -1,5 +1,6 @@
 use horus_core::core::{HealthStatus, NodeHeartbeat, NodeState};
 use horus_core::error::HorusResult;
+use horus_core::memory::{shm_base_dir, shm_topics_dir, is_session_alive};
 use std::path::Path;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
@@ -51,32 +52,40 @@ pub struct SharedMemoryInfo {
 struct DiscoveryCache {
     nodes: Vec<NodeStatus>,
     shared_memory: Vec<SharedMemoryInfo>,
-    last_updated: Instant,
+    // Separate timestamps for nodes and shared_memory to prevent cross-contamination
+    nodes_last_updated: Instant,
+    shared_memory_last_updated: Instant,
     cache_duration: Duration,
 }
 
 impl DiscoveryCache {
     fn new() -> Self {
+        let initial_time = Instant::now() - Duration::from_secs(10); // Force initial update
         Self {
             nodes: Vec::new(),
             shared_memory: Vec::new(),
-            last_updated: Instant::now() - Duration::from_secs(10), // Force initial update
+            nodes_last_updated: initial_time,
+            shared_memory_last_updated: initial_time,
             cache_duration: Duration::from_millis(250), // Cache for 250ms (real-time updates)
         }
     }
 
-    fn is_stale(&self) -> bool {
-        self.last_updated.elapsed() > self.cache_duration
+    fn is_nodes_stale(&self) -> bool {
+        self.nodes_last_updated.elapsed() > self.cache_duration
+    }
+
+    fn is_shared_memory_stale(&self) -> bool {
+        self.shared_memory_last_updated.elapsed() > self.cache_duration
     }
 
     fn update_nodes(&mut self, nodes: Vec<NodeStatus>) {
         self.nodes = nodes;
-        self.last_updated = Instant::now();
+        self.nodes_last_updated = Instant::now();
     }
 
     fn update_shared_memory(&mut self, shm: Vec<SharedMemoryInfo>) {
         self.shared_memory = shm;
-        self.last_updated = Instant::now();
+        self.shared_memory_last_updated = Instant::now();
     }
 }
 
@@ -100,7 +109,7 @@ struct ProcessInfo {
 pub fn discover_nodes() -> HorusResult<Vec<NodeStatus>> {
     // Check cache first
     if let Ok(cache) = DISCOVERY_CACHE.read() {
-        if !cache.is_stale() {
+        if !cache.is_nodes_stale() {
             return Ok(cache.nodes.clone());
         }
     }
@@ -117,24 +126,12 @@ pub fn discover_nodes() -> HorusResult<Vec<NodeStatus>> {
 }
 
 fn discover_nodes_uncached() -> HorusResult<Vec<NodeStatus>> {
-    // PRIMARY SOURCE: /dev/shm/horus/pubsub_metadata/ - discover nodes from active pub/sub activity
-    let mut nodes = discover_nodes_from_pubsub_activity().unwrap_or_default();
+    // PRIMARY SOURCE: registry.json - discover nodes from scheduler registry
+    // This is session-based: registry file is cleaned when scheduler PID dies
+    let mut nodes = discover_nodes_from_registry().unwrap_or_default();
 
     // SUPPLEMENT: Add heartbeat data if available (extra metadata like tick counts)
     enrich_nodes_with_heartbeats(&mut nodes);
-
-    // SUPPLEMENT: Add registry metadata if available (command_line, working_dir, etc.)
-    let registry_metadata = load_registry_metadata();
-    for node in &mut nodes {
-        if let Some(metadata) = registry_metadata.get(&node.name) {
-            node.command_line = metadata.command_line.clone();
-            node.working_dir = metadata.working_dir.clone();
-            node.priority = metadata.priority;
-            node.scheduler_name = metadata.scheduler_name.clone();
-            node.publishers = metadata.publishers.clone();
-            node.subscribers = metadata.subscribers.clone();
-        }
-    }
 
     // SUPPLEMENT: Add process info (CPU, memory) if we have a PID
     for node in &mut nodes {
@@ -187,109 +184,29 @@ pub struct TopicInfo {
     pub type_name: String,
 }
 
-fn read_registry_file() -> anyhow::Result<Vec<NodeStatus>> {
-    let home_dir =
-        std::env::var("HOME").map_err(|_| anyhow::anyhow!("Could not determine home directory"))?;
-    let registry_path = format!("{}/.horus_registry.json", home_dir);
-
-    if !std::path::Path::new(&registry_path).exists() {
-        return Ok(Vec::new());
-    }
-
-    let registry_content = std::fs::read_to_string(&registry_path)?;
-    let registry: serde_json::Value = serde_json::from_str(&registry_content)?;
-
-    let mut nodes = Vec::new();
-
-    if let Some(scheduler_nodes) = registry["nodes"].as_array() {
-        let scheduler_pid = registry["pid"].as_u64().unwrap_or(0) as u32;
-        let scheduler_name = registry["scheduler_name"]
-            .as_str()
-            .unwrap_or("Unknown")
-            .to_string();
-        let working_dir = registry["working_dir"].as_str().unwrap_or("/").to_string();
-
-        // Smart filter: Only include if scheduler process actually exists
-        if process_exists(scheduler_pid) {
-            // Double-check the process is actually running
-            if let Ok(proc_info) = get_process_info(scheduler_pid) {
-                for node in scheduler_nodes {
-                    let name = node["name"].as_str().unwrap_or("Unknown").to_string();
-                    let priority = node["priority"].as_u64().unwrap_or(0) as u32;
-
-                    // Parse publishers and subscribers
-                    let mut publishers = Vec::new();
-                    if let Some(pubs) = node["publishers"].as_array() {
-                        for pub_info in pubs {
-                            if let (Some(topic), Some(type_name)) =
-                                (pub_info["topic"].as_str(), pub_info["type"].as_str())
-                            {
-                                publishers.push(TopicInfo {
-                                    topic: topic.to_string(),
-                                    type_name: type_name.to_string(),
-                                });
-                            }
-                        }
-                    }
-
-                    let mut subscribers = Vec::new();
-                    if let Some(subs) = node["subscribers"].as_array() {
-                        for sub_info in subs {
-                            if let (Some(topic), Some(type_name)) =
-                                (sub_info["topic"].as_str(), sub_info["type"].as_str())
-                            {
-                                subscribers.push(TopicInfo {
-                                    topic: topic.to_string(),
-                                    type_name: type_name.to_string(),
-                                });
-                            }
-                        }
-                    }
-
-                    // Check heartbeat for real status and health
-                    let (status, health, tick_count, error_count, actual_rate) =
-                        check_node_heartbeat(&name);
-
-                    nodes.push(NodeStatus {
-                        name: name.clone(),
-                        status,
-                        health,
-                        priority,
-                        process_id: scheduler_pid,
-                        command_line: proc_info.cmdline.clone(),
-                        working_dir: working_dir.clone(),
-                        cpu_usage: proc_info.cpu_percent,
-                        memory_usage: proc_info.memory_kb,
-                        start_time: proc_info.start_time.clone(),
-                        scheduler_name: scheduler_name.clone(),
-                        category: ProcessCategory::Node,
-                        tick_count,
-                        error_count,
-                        actual_rate_hz: actual_rate,
-                        publishers: publishers.clone(),
-                        subscribers: subscribers.clone(),
-                    });
-                }
-            }
-        }
-    }
-
-    Ok(nodes)
-}
-
-/// Discover all scheduler registry files in home directory
+/// Discover all scheduler registry files in home directory (cross-platform)
 fn discover_registry_files() -> Vec<std::path::PathBuf> {
     let mut registry_files = Vec::new();
 
-    let home_dir = match std::env::var("HOME") {
-        Ok(dir) => dir,
-        Err(_) => return registry_files,
+    // Cross-platform home directory detection
+    let home_path = if cfg!(target_os = "windows") {
+        // Windows: use USERPROFILE or HOMEPATH
+        std::env::var("USERPROFILE")
+            .or_else(|_| std::env::var("HOMEPATH"))
+            .ok()
+            .map(std::path::PathBuf::from)
+    } else {
+        // Linux/macOS: use HOME
+        std::env::var("HOME").ok().map(std::path::PathBuf::from)
     };
 
-    let home_path = std::path::Path::new(&home_dir);
+    let home_path = match home_path {
+        Some(path) => path,
+        None => return registry_files,
+    };
 
     // Look for all .horus_registry*.json files
-    if let Ok(entries) = std::fs::read_dir(home_path) {
+    if let Ok(entries) = std::fs::read_dir(&home_path) {
         for entry in entries.flatten() {
             let path = entry.path();
             if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
@@ -389,6 +306,103 @@ fn load_registry_metadata() -> std::collections::HashMap<String, NodeMetadata> {
     }
 
     metadata
+}
+
+/// Discover nodes from registry.json files (primary discovery method)
+/// Registry has PID-based liveness check built in for reliable node detection
+fn discover_nodes_from_registry() -> anyhow::Result<Vec<NodeStatus>> {
+    let mut nodes = Vec::new();
+
+    // Discover all registry files from all schedulers
+    let registry_files = discover_registry_files();
+
+    // Process each registry file (supports multiple schedulers)
+    for registry_path in registry_files {
+        let registry_content = match std::fs::read_to_string(&registry_path) {
+            Ok(content) => content,
+            Err(_) => continue, // Skip invalid files
+        };
+
+        let registry: serde_json::Value = match serde_json::from_str(&registry_content) {
+            Ok(reg) => reg,
+            Err(_) => continue, // Skip invalid JSON
+        };
+
+        // Only use registry if scheduler is still running (built-in liveness check)
+        let scheduler_pid = registry["pid"].as_u64().unwrap_or(0) as u32;
+        if !process_exists(scheduler_pid) {
+            // Clean up stale registry file
+            let _ = std::fs::remove_file(&registry_path);
+            continue;
+        }
+
+        if let Some(scheduler_nodes) = registry["nodes"].as_array() {
+            let scheduler_name = registry["scheduler_name"]
+                .as_str()
+                .unwrap_or("Unknown")
+                .to_string();
+            let working_dir = registry["working_dir"].as_str().unwrap_or("/").to_string();
+
+            let proc_info = get_process_info(scheduler_pid).unwrap_or_default();
+
+            for node in scheduler_nodes {
+                let name = node["name"].as_str().unwrap_or("Unknown").to_string();
+                let priority = node["priority"].as_u64().unwrap_or(0) as u32;
+                let rate_hz = node["rate_hz"].as_f64().unwrap_or(0.0) as u32;
+
+                // Parse publishers and subscribers
+                let mut publishers = Vec::new();
+                if let Some(pubs) = node["publishers"].as_array() {
+                    for pub_info in pubs {
+                        if let (Some(topic), Some(type_name)) =
+                            (pub_info["topic"].as_str(), pub_info["type"].as_str())
+                        {
+                            publishers.push(TopicInfo {
+                                topic: topic.to_string(),
+                                type_name: type_name.to_string(),
+                            });
+                        }
+                    }
+                }
+
+                let mut subscribers = Vec::new();
+                if let Some(subs) = node["subscribers"].as_array() {
+                    for sub_info in subs {
+                        if let (Some(topic), Some(type_name)) =
+                            (sub_info["topic"].as_str(), sub_info["type"].as_str())
+                        {
+                            subscribers.push(TopicInfo {
+                                topic: topic.to_string(),
+                                type_name: type_name.to_string(),
+                            });
+                        }
+                    }
+                }
+
+                nodes.push(NodeStatus {
+                    name,
+                    status: "Running".to_string(),
+                    health: HealthStatus::Healthy,
+                    priority,
+                    process_id: scheduler_pid, // Use scheduler PID as approximation
+                    command_line: proc_info.cmdline.clone(),
+                    working_dir: working_dir.clone(),
+                    cpu_usage: 0.0,
+                    memory_usage: 0,
+                    start_time: String::new(),
+                    tick_count: 0,
+                    error_count: 0,
+                    actual_rate_hz: rate_hz,
+                    scheduler_name: scheduler_name.clone(),
+                    category: ProcessCategory::Node,
+                    publishers,
+                    subscribers,
+                });
+            }
+        }
+    }
+
+    Ok(nodes)
 }
 
 /// Find PID for a node by name (scans /proc for matching heartbeat-writing process)
@@ -587,7 +601,39 @@ fn extract_process_name(cmdline: &str) -> String {
 }
 
 fn process_exists(pid: u32) -> bool {
-    Path::new(&format!("/proc/{}", pid)).exists()
+    #[cfg(target_os = "linux")]
+    {
+        Path::new(&format!("/proc/{}", pid)).exists()
+    }
+    #[cfg(target_os = "macos")]
+    {
+        // macOS: use kill(0) to check if process exists
+        unsafe { libc::kill(pid as i32, 0) == 0 }
+    }
+    #[cfg(target_os = "windows")]
+    {
+        // Windows: use OpenProcess to check if process exists
+        use std::ptr::null_mut;
+        const PROCESS_QUERY_LIMITED_INFORMATION: u32 = 0x1000;
+        extern "system" {
+            fn OpenProcess(dwDesiredAccess: u32, bInheritHandle: i32, dwProcessId: u32) -> *mut std::ffi::c_void;
+            fn CloseHandle(hObject: *mut std::ffi::c_void) -> i32;
+        }
+        unsafe {
+            let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
+            if handle != null_mut() {
+                CloseHandle(handle);
+                true
+            } else {
+                false
+            }
+        }
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+    {
+        // Fallback for other Unix-like systems
+        unsafe { libc::kill(pid as i32, 0) == 0 }
+    }
 }
 
 // CPU tracking cache
@@ -598,44 +644,62 @@ lazy_static::lazy_static! {
 }
 
 fn get_process_info(pid: u32) -> anyhow::Result<ProcessInfo> {
-    let proc_path = format!("/proc/{}", pid);
+    #[cfg(target_os = "linux")]
+    {
+        let proc_path = format!("/proc/{}", pid);
 
-    // Read command line
-    let cmdline = std::fs::read_to_string(format!("{}/cmdline", proc_path))
-        .unwrap_or_default()
-        .replace('\0', " ")
-        .trim()
-        .to_string();
+        // Read command line
+        let cmdline = std::fs::read_to_string(format!("{}/cmdline", proc_path))
+            .unwrap_or_default()
+            .replace('\0', " ")
+            .trim()
+            .to_string();
 
-    // Extract process name
-    let name = extract_process_name(&cmdline);
+        // Extract process name
+        let name = extract_process_name(&cmdline);
 
-    // Read working directory
-    let working_dir = std::fs::read_link(format!("{}/cwd", proc_path))
-        .map(|p| p.to_string_lossy().to_string())
-        .unwrap_or_else(|_| "/".to_string());
+        // Read working directory
+        let working_dir = std::fs::read_link(format!("{}/cwd", proc_path))
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|_| "/".to_string());
 
-    // Read stat for memory and CPU info
-    let stat_content = std::fs::read_to_string(format!("{}/stat", proc_path))?;
-    let memory_kb = parse_memory_from_stat(&stat_content);
+        // Read stat for memory and CPU info
+        let stat_content = std::fs::read_to_string(format!("{}/stat", proc_path))?;
+        let memory_kb = parse_memory_from_stat(&stat_content);
 
-    // Calculate CPU usage with sampling
-    let cpu_percent = calculate_cpu_usage(pid, &stat_content);
+        // Calculate CPU usage with sampling
+        let cpu_percent = calculate_cpu_usage(pid, &stat_content);
 
-    // Get start time
-    let start_time = get_process_start_time(pid);
+        // Get start time
+        let start_time = get_process_start_time(pid);
 
-    Ok(ProcessInfo {
-        pid,
-        name,
-        cmdline,
-        working_dir,
-        cpu_percent,
-        memory_kb,
-        start_time,
-    })
+        Ok(ProcessInfo {
+            pid,
+            name,
+            cmdline,
+            working_dir,
+            cpu_percent,
+            memory_kb,
+            start_time,
+        })
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        // Fallback for non-Linux platforms - basic info only
+        Ok(ProcessInfo {
+            pid,
+            name: format!("pid_{}", pid),
+            cmdline: String::new(),
+            working_dir: String::new(),
+            cpu_percent: 0.0,
+            memory_kb: 0,
+            start_time: "Unknown".to_string(),
+        })
+    }
 }
 
+#[cfg(target_os = "linux")]
 fn calculate_cpu_usage(pid: u32, stat_content: &str) -> f32 {
     // Parse utime + stime from /proc/[pid]/stat
     let fields: Vec<&str> = stat_content.split_whitespace().collect();
@@ -673,6 +737,7 @@ fn calculate_cpu_usage(pid: u32, stat_content: &str) -> f32 {
     0.0 // Return 0 for first sample
 }
 
+#[cfg(target_os = "linux")]
 fn parse_memory_from_stat(stat: &str) -> u64 {
     // Parse RSS (Resident Set Size) from /proc/[pid]/stat
     // RSS is the 24th field (0-indexed: 23)
@@ -688,8 +753,9 @@ fn parse_memory_from_stat(stat: &str) -> u64 {
     0
 }
 
+#[cfg(target_os = "linux")]
 fn get_process_start_time(pid: u32) -> String {
-    // Read process start time from stat
+    // Read process start time from stat (Linux only)
     if let Ok(stat) = std::fs::read_to_string(format!("/proc/{}/stat", pid)) {
         // Start time is the 22nd field (0-indexed: 21) in jiffies since boot
         let fields: Vec<&str> = stat.split_whitespace().collect();
@@ -721,7 +787,7 @@ fn format_duration(duration: std::time::Duration) -> String {
 pub fn discover_shared_memory() -> HorusResult<Vec<SharedMemoryInfo>> {
     // Check cache first
     if let Ok(cache) = DISCOVERY_CACHE.read() {
-        if !cache.is_stale() {
+        if !cache.is_shared_memory_stale() {
             return Ok(cache.shared_memory.clone());
         }
     }
@@ -746,23 +812,32 @@ lazy_static::lazy_static! {
 fn discover_shared_memory_uncached() -> HorusResult<Vec<SharedMemoryInfo>> {
     let mut topics = Vec::new();
 
-    // Scan all active sessions for session-isolated topics
-    let sessions_dir = Path::new("/dev/shm/horus/sessions");
+    // Scan all LIVE sessions for session-isolated topics (session-based like rqt)
+    let sessions_dir = shm_base_dir().join("sessions");
     if sessions_dir.exists() {
-        if let Ok(session_entries) = std::fs::read_dir(sessions_dir) {
+        if let Ok(session_entries) = std::fs::read_dir(&sessions_dir) {
             for session_entry in session_entries.flatten() {
-                let session_topics_path = session_entry.path().join("topics");
-                if session_topics_path.exists() {
-                    topics.extend(scan_topics_directory(&session_topics_path)?);
+                let session_path = session_entry.path();
+                if let Some(session_id) = session_path.file_name().and_then(|s| s.to_str()) {
+                    // SESSION-BASED LIVENESS: Only include topics from live sessions
+                    if is_session_alive(session_id) {
+                        let session_topics_path = session_path.join("topics");
+                        if session_topics_path.exists() {
+                            topics.extend(scan_topics_directory(&session_topics_path)?);
+                        }
+                    } else {
+                        // Auto-cleanup dead session directories (instant cleanup like rqt)
+                        let _ = std::fs::remove_dir_all(&session_path);
+                    }
                 }
             }
         }
     }
 
     // Also scan global/legacy path for backward compatibility
-    let global_shm_path = Path::new("/dev/shm/horus/topics");
+    let global_shm_path = shm_topics_dir();
     if global_shm_path.exists() {
-        topics.extend(scan_topics_directory(global_shm_path)?);
+        topics.extend(scan_topics_directory(&global_shm_path)?);
     }
 
     Ok(topics)
@@ -791,13 +866,12 @@ fn scan_topics_directory(shm_path: &Path) -> HorusResult<Vec<SharedMemoryInfo>> 
                 let accessing_procs = find_accessing_processes_fast(&path, name);
 
                 // All files in HORUS directory are valid topics
-                // Extract topic name from filename (remove "horus_" prefix and convert underscores)
+                // Extract topic name from filename (remove "horus_" prefix)
+                // Topic names use dot notation (e.g., "motors.cmd_vel") - no conversion needed
                 let topic_name = if name.starts_with("horus_") {
-                    name.strip_prefix("horus_")
-                        .unwrap_or(name)
-                        .replace('_', "/")
+                    name.strip_prefix("horus_").unwrap_or(name).to_string()
                 } else {
-                    name.replace('_', "/")
+                    name.to_string()
                 };
 
                 let is_recent = if let Some(mod_time) = modified {
@@ -811,20 +885,9 @@ fn scan_topics_directory(shm_path: &Path) -> HorusResult<Vec<SharedMemoryInfo>> 
                 let has_valid_processes = accessing_procs.iter().any(|pid| process_exists(*pid));
 
                 // Include all topics in HORUS directory
+                // Topics persist for the lifetime of the session - cleanup happens when
+                // the session ends (via Scheduler::cleanup_session), not based on time
                 let active = has_valid_processes || is_recent;
-
-                // Auto-cleanup: Remove inactive topics older than 60 seconds
-                // This gives time for slow publishers to wake up
-                if !active {
-                    if let Some(mod_time) = modified {
-                        if mod_time.elapsed().unwrap_or(Duration::from_secs(0))
-                            > Duration::from_secs(60)
-                        {
-                            let _ = std::fs::remove_file(&path);
-                            continue; // Skip adding to topics list
-                        }
-                    }
-                }
 
                 // Calculate message rate from modification times
                 let message_rate = calculate_topic_rate(&topic_name, modified);
@@ -1076,167 +1139,6 @@ fn check_node_heartbeat(node_name: &str) -> (String, HealthStatus, u64, u32, u32
         .unwrap_or_else(|| ("Unknown".to_string(), HealthStatus::Unknown, 0, 0, 0))
 }
 
-/// Discover active nodes from pub/sub metadata (primary discovery method)
-/// This works regardless of whether scheduler writes heartbeats or not
-fn discover_nodes_from_pubsub_activity() -> anyhow::Result<Vec<NodeStatus>> {
-    use std::collections::{HashMap, HashSet};
-
-    let mut node_map: HashMap<String, NodeStatus> = HashMap::new();
-    let metadata_dir = std::path::Path::new("/dev/shm/horus/pubsub_metadata");
-
-    if !metadata_dir.exists() {
-        return Ok(Vec::new());
-    }
-
-    // First, discover all known topics to properly extract node names
-    let mut known_topics = HashSet::new();
-    let topics_dir = std::path::Path::new("/dev/shm/horus/topics");
-    if topics_dir.exists() {
-        if let Ok(entries) = std::fs::read_dir(topics_dir) {
-            for entry in entries.flatten() {
-                if let Some(topic_name) = entry.file_name().to_str() {
-                    // Normalize topic name (same as metadata files)
-                    let safe_topic: String = topic_name
-                        .chars()
-                        .map(|c| if c == '/' || c == ' ' { '_' } else { c })
-                        .collect();
-                    known_topics.insert(safe_topic);
-                }
-            }
-        }
-    }
-
-    // Scan all pub/sub metadata files
-    for entry in std::fs::read_dir(metadata_dir)? {
-        let entry = entry?;
-        let path = entry.path();
-
-        if !path.is_file() {
-            continue;
-        }
-
-        let filename = match path.file_name().and_then(|n| n.to_str()) {
-            Some(name) => name,
-            None => continue,
-        };
-
-        // File format: {node_name}_{topic_name}_{pub|sub}
-        // Extract direction (last part after final underscore)
-        let direction = if filename.ends_with("_pub") {
-            "pub"
-        } else if filename.ends_with("_sub") {
-            "sub"
-        } else {
-            continue;
-        };
-
-        // Remove the direction suffix to get: {node_name}_{topic_name}
-        let without_direction = if direction == "pub" {
-            filename.strip_suffix("_pub").unwrap()
-        } else {
-            filename.strip_suffix("_sub").unwrap()
-        };
-
-        // Try to match against known topics to extract node name and topic name correctly
-        let (node_name, topic_name) = if let Some(topic) = known_topics
-            .iter()
-            .find(|t| without_direction.ends_with(&format!("_{}", t)))
-        {
-            // Found matching topic - strip it to get the node name
-            let node = without_direction
-                .strip_suffix(&format!("_{}", topic))
-                .unwrap_or(without_direction)
-                .to_string();
-            (node, topic.clone())
-        } else {
-            // Fallback: assume topic is the last underscore-separated segment
-            // This handles cases where topic discovery failed
-            let parts: Vec<&str> = without_direction.split('_').collect();
-            if parts.len() >= 2 {
-                let node = parts[..parts.len() - 1].join("_");
-                let topic = parts[parts.len() - 1].to_string();
-                (node, topic)
-            } else {
-                (without_direction.to_string(), "unknown".to_string())
-            }
-        };
-
-        // Check if file was modified recently (node is active)
-        let metadata = match path.metadata() {
-            Ok(m) => m,
-            Err(_) => continue,
-        };
-
-        let modified = match metadata.modified() {
-            Ok(t) => t,
-            Err(_) => continue,
-        };
-
-        let age = modified.elapsed().unwrap_or(Duration::from_secs(9999));
-        if age > Duration::from_secs(30) {
-            // Auto-cleanup: Remove very stale metadata files (>60 seconds old)
-            if age > Duration::from_secs(60) {
-                let _ = std::fs::remove_file(&path);
-            }
-            continue; // Stale metadata, skip
-        }
-
-        // Get or create node entry
-        let node = node_map.entry(node_name.clone()).or_insert_with(|| {
-            NodeStatus {
-                name: node_name.clone(),
-                status: "Running".to_string(), // Active if we see recent pub/sub activity
-                health: HealthStatus::Healthy,
-                priority: 0,
-                process_id: 0, // Will be filled later
-                command_line: String::new(),
-                working_dir: String::new(),
-                cpu_usage: 0.0,
-                memory_usage: 0,
-                start_time: String::new(),
-                scheduler_name: "Unknown".to_string(),
-                category: ProcessCategory::Node,
-                tick_count: 0,
-                error_count: 0,
-                actual_rate_hz: 0,
-                publishers: Vec::new(),
-                subscribers: Vec::new(),
-            }
-        });
-
-        // Add topic to publishers or subscribers based on direction
-        let topic_info = TopicInfo {
-            topic: topic_name.clone(),
-            type_name: "unknown".to_string(), // Type name not available from metadata filename
-        };
-
-        if direction == "pub" {
-            // Add to publishers if not already present
-            if !node.publishers.iter().any(|t| t.topic == topic_name) {
-                node.publishers.push(topic_info);
-            }
-        } else {
-            // Add to subscribers if not already present
-            if !node.subscribers.iter().any(|t| t.topic == topic_name) {
-                node.subscribers.push(topic_info);
-            }
-        }
-
-        // Try to find PID for this node
-        if node.process_id == 0 {
-            if let Some(pid) = find_node_pid(&node_name) {
-                node.process_id = pid;
-
-                // Check if process is still alive
-                if !process_exists(pid) {
-                    continue; // Dead process, skip
-                }
-            }
-        }
-    }
-
-    Ok(node_map.into_values().collect())
-}
 
 /// Enrich nodes with heartbeat data if available (optional metadata)
 fn enrich_nodes_with_heartbeats(nodes: &mut [NodeStatus]) {
@@ -1253,69 +1155,6 @@ fn enrich_nodes_with_heartbeats(nodes: &mut [NodeStatus]) {
             node.actual_rate_hz = actual_rate;
         }
     }
-}
-
-/// Discover nodes from heartbeat directory (fallback method)
-fn discover_nodes_from_heartbeats() -> anyhow::Result<Vec<NodeStatus>> {
-    let mut nodes = Vec::new();
-    let heartbeat_dir = std::path::PathBuf::from("/dev/shm/horus/heartbeats");
-
-    if !heartbeat_dir.exists() {
-        return Ok(nodes);
-    }
-
-    // Read all heartbeat files
-    if let Ok(entries) = std::fs::read_dir(&heartbeat_dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.is_file() {
-                if let Some(node_name) = path.file_name().and_then(|n| n.to_str()) {
-                    // Clean up very old heartbeat files (older than 60 seconds)
-                    // This is 2x the freshness threshold to avoid race conditions
-                    if let Ok(metadata) = path.metadata() {
-                        if let Ok(modified) = metadata.modified() {
-                            if let Ok(elapsed) = modified.elapsed() {
-                                if elapsed > std::time::Duration::from_secs(60) {
-                                    let _ = std::fs::remove_file(&path);
-                                    continue;
-                                }
-                            }
-                        }
-                    }
-
-                    // Read heartbeat data
-                    let (status, health, tick_count, error_count, actual_rate) =
-                        check_node_heartbeat(node_name);
-
-                    // Only show nodes that are actually running
-                    // Skip Stopped, Frozen, and Unknown nodes from heartbeat-only discovery
-                    if status == "Running" || status == "Initializing" {
-                        nodes.push(NodeStatus {
-                            name: node_name.to_string(),
-                            status,
-                            health,
-                            priority: 0,
-                            process_id: 0, // Unknown from heartbeat alone
-                            command_line: String::new(),
-                            working_dir: String::new(),
-                            cpu_usage: 0.0,
-                            memory_usage: 0,
-                            start_time: String::new(),
-                            scheduler_name: String::from("Unknown"),
-                            category: ProcessCategory::Node,
-                            tick_count,
-                            error_count,
-                            actual_rate_hz: actual_rate,
-                            publishers: vec![],
-                            subscribers: vec![],
-                        });
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(nodes)
 }
 
 /// Check registry snapshot for last known state (fallback when heartbeat unavailable)
@@ -1461,7 +1300,7 @@ mod tests {
     #[test]
     fn test_shared_memory_info_creation() {
         let shm = SharedMemoryInfo {
-            topic_name: "/robot/pose".to_string(),
+            topic_name: "robot.pose".to_string(),
             size_bytes: 4096,
             active: true,
             accessing_processes: vec![1234, 5678],
@@ -1472,7 +1311,7 @@ mod tests {
             message_rate_hz: 30.0,
         };
 
-        assert_eq!(shm.topic_name, "/robot/pose");
+        assert_eq!(shm.topic_name, "robot.pose");
         assert_eq!(shm.size_bytes, 4096);
         assert!(shm.active);
         assert_eq!(shm.accessing_processes.len(), 2);
@@ -1688,37 +1527,10 @@ mod tests {
     // Public API Tests (with real test data)
     // =====================
 
-    /// Helper to create test pubsub metadata file
-    fn create_test_pubsub_metadata(node_name: &str, topic_name: &str, direction: &str) -> Option<std::path::PathBuf> {
-        let metadata_dir = std::path::Path::new("/dev/shm/horus/pubsub_metadata");
-        if std::fs::create_dir_all(metadata_dir).is_err() {
-            return None; // Can't create test data
-        }
-
-        let safe_topic: String = topic_name
-            .chars()
-            .map(|c| if c == '/' || c == ' ' { '_' } else { c })
-            .collect();
-        let filename = format!("{}_{}", node_name, safe_topic);
-        let filepath = metadata_dir.join(format!("{}_{}", filename, direction));
-
-        // Write current timestamp
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-
-        if std::fs::write(&filepath, timestamp.to_string()).is_ok() {
-            Some(filepath)
-        } else {
-            None
-        }
-    }
-
     /// Helper to create test topic file
     fn create_test_topic(topic_name: &str) -> Option<std::path::PathBuf> {
-        let topics_dir = std::path::Path::new("/dev/shm/horus/topics");
-        if std::fs::create_dir_all(topics_dir).is_err() {
+        let topics_dir = shm_topics_dir();
+        if std::fs::create_dir_all(&topics_dir).is_err() {
             return None;
         }
 
@@ -1741,43 +1553,6 @@ mod tests {
         if let Some(p) = path {
             let _ = std::fs::remove_file(p);
         }
-    }
-
-    #[test]
-    fn test_discover_nodes_with_real_pubsub_metadata() {
-        // Create test pubsub metadata to simulate an active node
-        let test_node = "TestDetectionNode";
-        let test_topic = "test_detection_topic";
-
-        let pub_file = create_test_pubsub_metadata(test_node, test_topic, "pub");
-        let topic_file = create_test_topic(test_topic);
-
-        // Only run the meaningful test if we could create test data
-        if pub_file.is_some() && topic_file.is_some() {
-            // Force cache refresh
-            if let Ok(mut cache) = DISCOVERY_CACHE.write() {
-                cache.last_updated = std::time::Instant::now() - std::time::Duration::from_secs(10);
-            }
-
-            let result = discover_nodes();
-            assert!(result.is_ok(), "discover_nodes should succeed");
-
-            let nodes = result.unwrap();
-            // Should find our test node
-            let found = nodes.iter().any(|n| n.name == test_node);
-            assert!(found, "Should discover TestDetectionNode from pubsub metadata, found: {:?}",
-                nodes.iter().map(|n| &n.name).collect::<Vec<_>>());
-
-            // Verify the node has correct publisher info
-            if let Some(node) = nodes.iter().find(|n| n.name == test_node) {
-                assert!(node.publishers.iter().any(|p| p.topic == test_topic),
-                    "Node should have test_detection_topic as publisher");
-            }
-        }
-
-        // Cleanup
-        cleanup_test_file(pub_file);
-        cleanup_test_file(topic_file);
     }
 
     #[test]
@@ -1831,42 +1606,10 @@ mod tests {
     }
 
     #[test]
-    fn test_pubsub_metadata_staleness_filtering() {
-        // Create old metadata that should be filtered out
-        let metadata_dir = std::path::Path::new("/dev/shm/horus/pubsub_metadata");
-        if std::fs::create_dir_all(metadata_dir).is_err() {
-            return; // Skip if can't create
-        }
-
-        let stale_file = metadata_dir.join("StaleNode_stale_topic_pub");
-        // Write a timestamp from 60 seconds ago (should be filtered as stale)
-        let old_timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs() - 60;
-
-        if std::fs::write(&stale_file, old_timestamp.to_string()).is_ok() {
-            // Force cache refresh
-            if let Ok(mut cache) = DISCOVERY_CACHE.write() {
-                cache.last_updated = std::time::Instant::now() - std::time::Duration::from_secs(10);
-            }
-
-            let result = discover_nodes();
-            if let Ok(nodes) = result {
-                // StaleNode should NOT be found (metadata too old)
-                let found_stale = nodes.iter().any(|n| n.name == "StaleNode");
-                assert!(!found_stale, "Stale nodes (>30 sec old metadata) should be filtered out");
-            }
-
-            let _ = std::fs::remove_file(&stale_file);
-        }
-    }
-
-    #[test]
     fn test_topic_inactive_detection() {
         // Create a topic file and verify active detection works
-        let topics_dir = std::path::Path::new("/dev/shm/horus/topics");
-        if std::fs::create_dir_all(topics_dir).is_err() {
+        let topics_dir = shm_topics_dir();
+        if std::fs::create_dir_all(&topics_dir).is_err() {
             return;
         }
 
@@ -2046,6 +1789,55 @@ mod tests {
         match node_healthy.health {
             HealthStatus::Healthy => assert!(true),
             _ => panic!("Expected Healthy"),
+        }
+    }
+
+    #[test]
+    #[ignore] // Run with: cargo test test_live_discovery -- --ignored --nocapture
+    fn test_live_discovery() {
+        println!("\n=== LIVE DISCOVERY TEST ===");
+
+        let discovered = discover_shared_memory().unwrap_or_default();
+
+        println!("Discovered {} topics:", discovered.len());
+        for topic in &discovered {
+            println!("  - Topic: {}", topic.topic_name);
+            println!("    Active: {}", topic.active);
+            println!("    Size: {} bytes", topic.size_bytes);
+            println!("    Processes: {:?}", topic.accessing_processes);
+            println!("    Publishers: {:?}", topic.publishers);
+            println!("    Subscribers: {:?}", topic.subscribers);
+            println!();
+        }
+
+        // Check what's on disk (cross-platform)
+        println!("=== DISK CHECK ===");
+        let sessions_dir = shm_base_dir().join("sessions");
+        if sessions_dir.exists() {
+            println!("Sessions directory exists");
+            if let Ok(entries) = std::fs::read_dir(&sessions_dir) {
+                for entry in entries.flatten() {
+                    let session_path = entry.path();
+                    if let Some(session_id) = session_path.file_name().and_then(|s| s.to_str()) {
+                        println!("  Session: {}", session_id);
+
+                        // Check if alive
+                        let alive = is_session_alive(session_id);
+                        println!("    Alive: {}", alive);
+
+                        let topics_dir = session_path.join("topics");
+                        if topics_dir.exists() {
+                            if let Ok(topic_entries) = std::fs::read_dir(&topics_dir) {
+                                for t in topic_entries.flatten() {
+                                    println!("      Topic file: {:?}", t.file_name());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            println!("Sessions directory DOES NOT EXIST");
         }
     }
 }

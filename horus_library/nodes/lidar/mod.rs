@@ -6,8 +6,11 @@ type Result<T> = HorusResult<T>;
 use horus_core::{Hub, Node, NodeInfo};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[cfg(feature = "rplidar")]
-use rplidar_drv::{RplidarDevice, RplidarHostProtocol, ScanOptions};
+// Hardware LiDAR support status:
+// - RPLidar: Disabled due to rplidar_drv crate upstream compilation bug
+//   (unaligned packed struct reference in ultra_capsuled_parser.rs)
+// - YDLIDAR: Not implemented - requires ydlidar_driver crate
+// Both backends fall back to simulation mode when selected.
 
 /// LiDAR backend type
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -44,10 +47,6 @@ pub struct LidarNode {
     is_initialized: bool,
     scan_count: u64,
     last_scan_time: u64,
-
-    // Hardware drivers
-    #[cfg(feature = "rplidar")]
-    rplidar: Option<RplidarDevice<RplidarHostProtocol>>,
 }
 
 impl LidarNode {
@@ -83,8 +82,6 @@ impl LidarNode {
             is_initialized: false,
             scan_count: 0,
             last_scan_time: 0,
-            #[cfg(feature = "rplidar")]
-            rplidar: None,
         })
     }
 
@@ -150,81 +147,22 @@ impl LidarNode {
                 self.is_initialized = true;
                 true
             }
-            #[cfg(feature = "rplidar")]
             LidarBackend::RplidarA1 | LidarBackend::RplidarA2 | LidarBackend::RplidarA3 => {
-                match RplidarDevice::open_port(&self.serial_port) {
-                    Ok(mut device) => {
-                        // Get device info
-                        match device.get_device_info() {
-                            Ok(info) => {
-                                eprintln!(
-                                    "RPLidar connected: model={}, firmware={}.{}, hardware={}",
-                                    info.model,
-                                    info.firmware_version.0,
-                                    info.firmware_version.1,
-                                    info.hardware_version
-                                );
-                            }
-                            Err(e) => {
-                                eprintln!("Failed to get RPLidar info: {:?}", e);
-                            }
-                        }
-
-                        // Check health
-                        match device.check_health() {
-                            Ok(health) => {
-                                if !health.is_healthy() {
-                                    eprintln!("RPLidar health warning: {:?}", health);
-                                }
-                            }
-                            Err(e) => {
-                                eprintln!("Failed to check RPLidar health: {:?}", e);
-                            }
-                        }
-
-                        // Start motor
-                        if let Err(e) = device.start_motor() {
-                            eprintln!("Failed to start RPLidar motor: {:?}", e);
-                            return false;
-                        }
-
-                        self.rplidar = Some(device);
-                        self.is_initialized = true;
-                        true
-                    }
-                    Err(e) => {
-                        eprintln!("Failed to open RPLidar on {}: {:?}", self.serial_port, e);
-                        false
-                    }
-                }
+                eprintln!("RPLidar hardware support is temporarily disabled (upstream crate bug)");
+                eprintln!("Falling back to simulation mode");
+                self.backend = LidarBackend::Simulation;
+                self.is_initialized = true;
+                true
             }
             LidarBackend::YdlidarX2 | LidarBackend::YdlidarX4 | LidarBackend::YdlidarTMiniPro => {
-                // YDLIDAR support requires the ydlidar_driver crate
-                // To enable: Add `ydlidar_driver = "0.1"` to Cargo.toml dependencies
-                // and implement connection logic similar to RPLidar above
-                //
-                // Basic implementation would look like:
-                // #[cfg(feature = "ydlidar")]
-                // {
-                //     use ydlidar_driver::run_driver;
-                //     match run_driver(&self.serial_port) {
-                //         Ok(driver_threads) => {
-                //             self.ydlidar = Some(driver_threads);
-                //             self.is_initialized = true;
-                //             true
-                //         }
-                //         Err(e) => {
-                //             eprintln!("Failed to initialize YDLIDAR: {:?}", e);
-                //             false
-                //         }
-                //     }
-                // }
                 eprintln!(
-                    "YDLIDAR support ({:?}) is not yet fully implemented",
+                    "YDLIDAR support ({:?}) is not yet implemented",
                     self.backend
                 );
-                eprintln!("To add support, enable the 'ydlidar' feature and add ydlidar_driver dependency");
-                false
+                eprintln!("Falling back to simulation mode");
+                self.backend = LidarBackend::Simulation;
+                self.is_initialized = true;
+                true
             }
             _ => {
                 eprintln!("Unsupported LiDAR backend: {:?}", self.backend);
@@ -257,72 +195,14 @@ impl LidarNode {
 
                 Some(ranges)
             }
-            #[cfg(feature = "rplidar")]
+            // Note: RPLidar hardware support temporarily disabled (rplidar_drv crate has upstream bug)
+            // The backend will have been switched to Simulation in initialize_lidar()
             LidarBackend::RplidarA1 | LidarBackend::RplidarA2 | LidarBackend::RplidarA3 => {
-                if let Some(ref mut device) = self.rplidar {
-                    // Start scan
-                    match device.start_scan() {
-                        Ok(mut scan) => {
-                            let mut ranges = vec![0.0; 360];
-
-                            // Collect one full rotation of scan data
-                            let mut got_full_scan = false;
-                            for _ in 0..400 {
-                                // Read up to 400 points (more than 360 degrees)
-                                match scan.next() {
-                                    Ok(Some(measurement)) => {
-                                        let angle_deg = measurement.angle();
-                                        let distance_m = measurement.distance() / 1000.0; // mm to meters
-                                        let quality = measurement.quality();
-
-                                        // Only use high-quality measurements
-                                        if quality > 10
-                                            && distance_m >= self.min_range
-                                            && distance_m <= self.max_range
-                                        {
-                                            let idx = angle_deg as usize % 360;
-                                            ranges[idx] = distance_m;
-                                        }
-
-                                        // Check if we completed a rotation
-                                        if measurement.is_sync() && got_full_scan {
-                                            break;
-                                        }
-                                        if !got_full_scan && angle_deg > 180.0 {
-                                            got_full_scan = true;
-                                        }
-                                    }
-                                    Ok(None) => break,
-                                    Err(e) => {
-                                        eprintln!("RPLidar scan error: {:?}", e);
-                                        break;
-                                    }
-                                }
-                            }
-
-                            Some(ranges)
-                        }
-                        Err(e) => {
-                            eprintln!("Failed to start RPLidar scan: {:?}", e);
-                            None
-                        }
-                    }
-                } else {
-                    None
-                }
+                // Fallback to simulation - this branch shouldn't be reached if initialize_lidar ran
+                None
             }
             LidarBackend::YdlidarX2 | LidarBackend::YdlidarX4 | LidarBackend::YdlidarTMiniPro => {
-                // YDLIDAR scan data acquisition would be implemented here
-                // when the ydlidar_driver feature is enabled
-                //
-                // Example implementation:
-                // #[cfg(feature = "ydlidar")]
-                // {
-                //     if let Some(ref driver) = self.ydlidar {
-                //         // Get scan from ydlidar_driver
-                //         // Process and return scan data
-                //     }
-                // }
+                // YDLIDAR backends fall back to simulation in initialize_lidar()
                 None
             }
             _ => None,
@@ -381,11 +261,7 @@ impl Node for LidarNode {
 
 impl Drop for LidarNode {
     fn drop(&mut self) {
-        // Stop motor when node is dropped
-        #[cfg(feature = "rplidar")]
-        if let Some(ref mut device) = self.rplidar {
-            let _ = device.stop_motor();
-        }
+        // Hardware cleanup would go here when LiDAR drivers are enabled
     }
 }
 

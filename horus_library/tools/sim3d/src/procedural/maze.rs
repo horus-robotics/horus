@@ -26,7 +26,7 @@ pub enum CellType {
 }
 
 /// Maze configuration
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Resource)]
 pub struct MazeConfig {
     pub width: u32,
     pub height: u32,
@@ -183,7 +183,6 @@ impl Maze {
             let (wx, wy) = walls.remove(idx);
 
             let mut adjacent_cells = 0;
-            let mut last_adj = (0, 0);
 
             for (dx, dy) in [(0, -1), (1, 0), (0, 1), (-1, 0)] {
                 let cx = (wx as i32 + dx) as u32;
@@ -194,7 +193,6 @@ impl Maze {
                     && in_maze[(cy * config.width + cx) as usize]
                 {
                     adjacent_cells += 1;
-                    last_adj = (cx, cy);
                 }
             }
 

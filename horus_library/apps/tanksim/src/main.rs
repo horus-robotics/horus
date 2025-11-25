@@ -9,7 +9,7 @@
 //!   1. Run this scheduler: cargo run -p tanksim
 //!   2. In another terminal, run sim2d:
 //!      cd horus_library/tools/sim2d
-//!      cargo run -- --topic /tank/tank_1/cmd_vel
+//!      cargo run -- --topic tank.tank_1.cmd_vel
 //!
 //! Controls:
 //!   WASD/Arrows - Control tank
@@ -33,8 +33,8 @@ fn main() -> AnyResult<()> {
     println!("   ESC               - Stop keyboard capture\n");
 
     println!(" HORUS Topics:");
-    println!("   keyboard_input       - Keyboard events");
-    println!("   /tank/tank_1/cmd_vel - Tank control\n");
+    println!("   keyboard_input         - Keyboard events");
+    println!("   tank.tank_1.cmd_vel    - Tank control\n");
 
     println!(" Starting scheduler...\n");
 
@@ -56,7 +56,7 @@ fn main() -> AnyResult<()> {
     println!("\n");
     println!(" TIP: Run sim2d in another terminal to visualize:");
     println!("   cd horus_library/tools/sim2d");
-    println!("   cargo run -- --topic /tank/tank_1/cmd_vel\n");
+    println!("   cargo run -- --topic tank.tank_1.cmd_vel\n");
     println!("\n");
     println!(" Starting simulation... (Press Ctrl+C to stop)\n");
 

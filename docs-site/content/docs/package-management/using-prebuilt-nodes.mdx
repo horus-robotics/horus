@@ -95,7 +95,7 @@ EmergencyStopNode, SafetyMonitorNode
 
 ## Installation Patterns
 
-### Installing from Marketplace
+### Installing from HORUS Marketplace
 
 ```bash
 # Latest version
@@ -106,6 +106,22 @@ horus pkg install sensor-fusion -v 2.1.0
 
 # Multiple packages
 horus pkg install pid-controller motion-planner sensor-drivers
+```
+
+### Installing from crates.io
+
+```bash
+# Rust packages are auto-detected
+horus pkg install serde
+horus pkg install tokio -v 1.35.0
+```
+
+### Installing from PyPI
+
+```bash
+# Python packages are auto-detected
+horus pkg install numpy
+horus pkg install opencv-python
 ```
 
 ### Using Standard Library
@@ -518,5 +534,5 @@ fn main() -> Result<()> {
 
 - **[Library Reference](/development/library-reference)** - Browse all standard library nodes
 - **[Package Management](/package-management/package-management)** - Discover and manage packages
-- **[node! Macro](/node-macro)** - When you need custom functionality
+- **[node! Macro](/core-concepts/node-macro)** - When you need custom functionality
 - **[Examples](/examples)** - See complete working systems

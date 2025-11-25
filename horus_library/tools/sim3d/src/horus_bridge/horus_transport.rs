@@ -186,12 +186,12 @@ impl HorusTransport {
 
     fn init_hubs(&mut self) {
         // Create local shared memory hubs
-        let cmd_vel_topic = format!("{}/cmd_vel", self.robot_name);
-        let tf_topic = format!("{}/tf", self.robot_name);
-        let pointcloud_topic = format!("{}/pointcloud", self.robot_name);
-        let laserscan_topic = format!("{}/scan", self.robot_name);
-        let odom_topic = format!("{}/odom", self.robot_name);
-        let joint_state_topic = format!("{}/joint_states", self.robot_name);
+        let cmd_vel_topic = format!("{}.cmd_vel", self.robot_name);
+        let tf_topic = format!("{}.tf", self.robot_name);
+        let pointcloud_topic = format!("{}.pointcloud", self.robot_name);
+        let laserscan_topic = format!("{}.scan", self.robot_name);
+        let odom_topic = format!("{}.odom", self.robot_name);
+        let joint_state_topic = format!("{}.joint_states", self.robot_name);
 
         if let Ok(hub) = Hub::<Twist>::new(&cmd_vel_topic) {
             self.cmd_vel_hub = Some(Arc::new(Mutex::new(hub)));
@@ -215,12 +215,12 @@ impl HorusTransport {
 
     fn init_network_hubs(&mut self, endpoint: &str) {
         // Create network hubs with endpoint
-        let cmd_vel_topic = format!("{}/cmd_vel@{}", self.robot_name, endpoint);
-        let tf_topic = format!("{}/tf@{}", self.robot_name, endpoint);
-        let pointcloud_topic = format!("{}/pointcloud@{}", self.robot_name, endpoint);
-        let laserscan_topic = format!("{}/scan@{}", self.robot_name, endpoint);
-        let odom_topic = format!("{}/odom@{}", self.robot_name, endpoint);
-        let joint_state_topic = format!("{}/joint_states@{}", self.robot_name, endpoint);
+        let cmd_vel_topic = format!("{}.cmd_vel@{}", self.robot_name, endpoint);
+        let tf_topic = format!("{}.tf@{}", self.robot_name, endpoint);
+        let pointcloud_topic = format!("{}.pointcloud@{}", self.robot_name, endpoint);
+        let laserscan_topic = format!("{}.scan@{}", self.robot_name, endpoint);
+        let odom_topic = format!("{}.odom@{}", self.robot_name, endpoint);
+        let joint_state_topic = format!("{}.joint_states@{}", self.robot_name, endpoint);
 
         if let Ok(hub) = Hub::<Twist>::new(&cmd_vel_topic) {
             self.cmd_vel_hub = Some(Arc::new(Mutex::new(hub)));

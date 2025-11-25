@@ -205,31 +205,44 @@ impl ObjectSpawner {
             ..default()
         });
 
-        // Spawn rigid body in physics world
-        let entity = commands
-            .spawn((
-                Name::new(config.name),
-                Transform::from_translation(config.position).with_rotation(config.rotation),
-                Visibility::default(),
-            ))
-            .id();
-
-        let rb_handle = physics_world.spawn_rigid_body(rigid_body, entity);
+        // First, create the physics objects with a placeholder entity
+        // We need the rb_handle before spawning the Bevy entity
+        let placeholder = Entity::PLACEHOLDER;
+        let rb_handle = physics_world.spawn_rigid_body(rigid_body, placeholder);
         physics_world.spawn_collider(collider, rb_handle);
 
-        // Add physics components
-        let mut entity_commands = commands.entity(entity);
-        entity_commands.insert((
-            RigidBodyComponent::new(rb_handle),
-            Velocity::zero(),
-            Mass::new(config.mass),
-            Mesh3d(mesh),
-            MeshMaterial3d(material),
-        ));
+        // Spawn Bevy entity with ALL components in a SINGLE spawn call
+        // This is critical - Bevy 0.15's rendering pipeline may not properly initialize
+        // entities when components are added via deferred insert after spawn
+        let entity = if let Some((linear, angular)) = config.damping {
+            commands
+                .spawn((
+                    Name::new(config.name.clone()),
+                    Mesh3d(mesh),
+                    MeshMaterial3d(material),
+                    Transform::from_translation(config.position).with_rotation(config.rotation),
+                    RigidBodyComponent::new(rb_handle),
+                    Velocity::zero(),
+                    Mass::new(config.mass),
+                    Damping::new(linear, angular),
+                ))
+                .id()
+        } else {
+            commands
+                .spawn((
+                    Name::new(config.name.clone()),
+                    Mesh3d(mesh),
+                    MeshMaterial3d(material),
+                    Transform::from_translation(config.position).with_rotation(config.rotation),
+                    RigidBodyComponent::new(rb_handle),
+                    Velocity::zero(),
+                    Mass::new(config.mass),
+                ))
+                .id()
+        };
 
-        if let Some((linear, angular)) = config.damping {
-            entity_commands.insert(Damping::new(linear, angular));
-        }
+        // Update the physics world with the actual entity
+        physics_world.update_rigid_body_entity(rb_handle, entity);
 
         entity
     }

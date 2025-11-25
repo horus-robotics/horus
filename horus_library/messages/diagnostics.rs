@@ -576,7 +576,8 @@ impl HealthStatus {
 
 /// Node status heartbeat with health information
 ///
-/// Written to /dev/shm/horus/heartbeats/{node_name} for monitoring.
+/// Written to the shared memory heartbeats directory for monitoring.
+/// Path is platform-specific (Linux: /dev/shm/horus/heartbeats, macOS: /tmp/horus/heartbeats).
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct NodeHeartbeat {
     /// Node execution state

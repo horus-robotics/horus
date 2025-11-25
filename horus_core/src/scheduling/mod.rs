@@ -43,6 +43,9 @@ pub mod checkpoint;
 pub mod redundancy;
 pub mod telemetry;
 
+// Record/Replay system
+pub mod record_replay;
+
 // Expose async_io module for AsyncNode
 pub mod async_io {
     pub use super::executors::async_io::AsyncNode;
@@ -63,3 +66,9 @@ pub use blackbox::{BlackBox, BlackBoxEvent};
 pub use checkpoint::{Checkpoint, CheckpointManager};
 pub use redundancy::{RedundancyManager, VoteResult, VotingStrategy};
 pub use telemetry::{TelemetryEndpoint, TelemetryManager};
+
+// Re-export record/replay
+pub use record_replay::{
+    NodeRecorder, NodeRecording, NodeReplayer, NodeTickSnapshot, RecordingConfig,
+    RecordingManager, SchedulerRecording,
+};

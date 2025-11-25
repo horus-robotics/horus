@@ -29,7 +29,7 @@ impl Sim2D {
     ///
     /// Args:
     ///     robot_name (str, optional): Name of the robot. Defaults to "robot".
-    ///     topic_prefix (str, optional): Topic prefix for HORUS communication. Defaults to "/robot".
+    ///     topic_prefix (str, optional): Topic prefix for HORUS communication. Defaults to "robot".
     ///     headless (bool, optional): Run without GUI. Defaults to True.
     ///     robot_width (float, optional): Robot width in meters. Defaults to 0.5.
     ///     robot_length (float, optional): Robot length in meters. Defaults to 0.8.
@@ -37,7 +37,7 @@ impl Sim2D {
     ///     world_width (float, optional): World width in meters. Defaults to 20.0.
     ///     world_height (float, optional): World height in meters. Defaults to 15.0.
     #[new]
-    #[pyo3(signature = (robot_name="robot", topic_prefix="/robot", headless=true, robot_width=0.5, robot_length=0.8, robot_max_speed=2.0, world_width=20.0, world_height=15.0))]
+    #[pyo3(signature = (robot_name="robot", topic_prefix="robot", headless=true, robot_width=0.5, robot_length=0.8, robot_max_speed=2.0, world_width=20.0, world_height=15.0))]
     fn new(
         robot_name: &str,
         topic_prefix: &str,

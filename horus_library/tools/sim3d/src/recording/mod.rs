@@ -7,17 +7,41 @@ pub mod video_export;
 
 use bevy::prelude::*;
 
+// Re-export key types
+pub use video_export::{VideoRecorder, VideoRecordingConfig, VideoFormat, VideoFrame, ImageDataFormat};
+pub use trajectory::{RecordingSession, Trajectory, TrajectoryPoint};
+pub use time_control::TimeControl;
+pub use sensor_data::{SensorBagRecorder, SensorBagPlayback, SensorData, SensorMessage};
+pub use dataset_export::{DatasetRecorder, DatasetFormat, Experience};
+
+// Re-export recording manager and presets
+pub use manager::{RecordingManager, RecordingPresets, RecordingStats, RecordingCommands};
+
 /// Recording and playback plugin
 pub struct RecordingPlugin;
 
 impl Plugin for RecordingPlugin {
     fn build(&self, app: &mut App) {
+        // Trajectory recording
         app.init_resource::<trajectory::RecordingSession>()
-            .init_resource::<time_control::TimeControl>()
             .add_systems(Update, trajectory::record_trajectories_system)
-            .add_systems(Update, trajectory::playback_trajectories_system)
+            .add_systems(Update, trajectory::playback_trajectories_system);
+
+        // Time control
+        app.init_resource::<time_control::TimeControl>()
             .add_systems(Update, time_control::apply_time_control_system);
 
-        info!("Recording plugin loaded");
+        // Video recording
+        app.insert_resource(video_export::VideoRecorder::new(
+            video_export::VideoRecordingConfig::default(),
+        ));
+
+        // Sensor data recording - initialized lazily when user starts recording
+        app.insert_resource(sensor_data::SensorBagRecorder::new("sim3d_recording".to_string()));
+
+        // Note: SensorBagPlayback and DatasetRecorder are initialized on-demand
+        // when the user loads a bag file or starts RL training
+
+        info!("Recording plugin loaded with video, trajectory, and sensor recording");
     }
 }

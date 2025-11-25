@@ -50,7 +50,7 @@ async fn benchmark_collision_detection(num_objects: usize) -> BenchmarkResult {
 
     // CPU benchmark
     let cpu_start = Instant::now();
-    let cpu_pairs = cpu_broad_phase(&aabbs);
+    let _cpu_pairs = cpu_broad_phase(&aabbs);
     let cpu_time = cpu_start.elapsed().as_micros() as f64;
 
     // GPU benchmark (skip if small - initialization overhead dominates)

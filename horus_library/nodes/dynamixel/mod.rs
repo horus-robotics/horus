@@ -80,7 +80,7 @@ pub struct DynamixelNode {
     enable_bulk_operations: bool,
 
     // Communication state
-    last_packet_time: u64,
+    _last_packet_time: u64, // Reserved for future packet timing diagnostics
     packet_errors: u32,
     successful_packets: u32,
 
@@ -183,8 +183,8 @@ impl DynamixelModel {
         }
     }
 
-    /// Get stall torque in Nm
-    fn stall_torque_nm(&self) -> f32 {
+    /// Get stall torque in Nm (reserved for future torque limiting)
+    fn _stall_torque_nm(&self) -> f32 {
         match self {
             Self::AX12A => 0.15,
             Self::AX18A => 0.18,
@@ -217,11 +217,11 @@ struct DynamixelServo {
     velocity: f32,   // rad/s
     current: f32,    // mA
     temperature: u8, // °C
-    voltage: f32,    // V
+    _voltage: f32,   // V (reserved for voltage monitoring)
     torque_enabled: bool,
     goal_position: f32,
     goal_velocity: f32,
-    goal_current: f32,
+    _goal_current: f32, // Reserved for current control mode
     moving: bool,
     hardware_error: u8,
     last_update: u64,
@@ -236,11 +236,11 @@ impl DynamixelServo {
             velocity: 0.0,
             current: 0.0,
             temperature: 25,
-            voltage: 12.0,
+            _voltage: 12.0,
             torque_enabled: false,
             goal_position: 0.0,
             goal_velocity: 0.0,
-            goal_current: 0.0,
+            _goal_current: 0.0,
             moving: false,
             hardware_error: 0,
             last_update: 0,
@@ -263,7 +263,7 @@ impl DynamixelNode {
             baud_rate: 1_000_000, // 1 Mbps default
             servos: HashMap::new(),
             enable_bulk_operations: true,
-            last_packet_time: 0,
+            _last_packet_time: 0,
             packet_errors: 0,
             successful_packets: 0,
             last_read_time: 0,
