@@ -14,32 +14,86 @@ HORUS provides a comprehensive package management system for sharing and discove
 
 The package system allows you to:
 
-- **Install packages** from the registry
+- **Install packages** from multiple sources (HORUS registry, crates.io, PyPI)
 - **Publish your work** for others to use
 - **Manage dependencies** automatically
 - **Version control** with semantic versioning
 - **Search and discover** community packages
+
+## Package Sources
+
+HORUS supports installing packages from multiple sources:
+
+| Source | Description | Example |
+|--------|-------------|---------|
+| **HORUS Registry** | Curated robotics packages | `horus pkg install pid-controller` |
+| **crates.io** | Rust ecosystem packages | `horus pkg install serde` |
+| **PyPI** | Python ecosystem packages | `horus pkg install numpy` |
+| **Git** | Git repositories (via `horus.yaml`) | See [Configuration](/package-management/configuration) |
+| **Local Path** | Local filesystem (via `horus.yaml`) | See [Configuration](/package-management/configuration) |
 
 ## Quick Start
 
 ### Installing a Package
 
 ```bash
-# Install latest version
+# Install from HORUS registry
 horus pkg install pid-controller
 
+# Install from crates.io (auto-detected)
+horus pkg install serde
+horus pkg install tokio
+
+# Install from PyPI (auto-detected)
+horus pkg install numpy
+horus pkg install opencv-python
+
 # Install specific version
-horus pkg install pid-controller -v 1.2.0
+horus pkg install serde -v 1.0.200
 
 # Install globally (share across all projects)
 horus pkg install sensor-drivers -g
 ```
 
+### Automatic Source Detection
+
+HORUS automatically detects the package source:
+
+1. First checks HORUS registry
+2. Then checks both PyPI and crates.io
+3. If found in multiple sources, prompts you to choose:
+
+```
+Package 'package_name' found in BOTH PyPI and crates.io
+
+Which package source do you want to use?
+  [1] [PYTHON] PyPI (Python package)
+  [2] [RUST] crates.io (Rust binary)
+  [3] [FAIL] Cancel installation
+
+Choice [1-3]:
+```
+
+### System Package Detection
+
+If a package is already installed system-wide, HORUS offers to reuse it:
+
+```
+Package 'ripgrep' v14.0.0 already installed system-wide
+
+  [1] Use system package (no download)
+  [2] Install fresh copy to HORUS
+  [3] Cancel
+
+Choice [1-3]:
+```
+
 **What happens during installation:**
-1. Downloads package from registry
-2. Resolves dependencies automatically
-3. Caches locally in `~/.horus/cache/` or `.horus/packages/`
-4. Makes package available via `use` statements
+1. Detects package source (HORUS registry, crates.io, or PyPI)
+2. Downloads package from the appropriate source
+3. Resolves dependencies automatically
+4. Caches locally in `~/.horus/cache/` or `.horus/packages/`
+5. Makes package available for use
 
 ### Using an Installed Package
 
@@ -81,8 +135,9 @@ horus pkg publish
 my_project/
 ── .horus/
    ── packages/
-       ── pid-controller@1.0.0/
-       ── sensor-drivers@2.1.3/
+       ── pid-controller@1.0.0/      # HORUS registry
+       ── serde@1.0.200/             # crates.io
+       ── pypi_numpy@1.24.0/         # PyPI (prefixed with pypi_)
 ── src/
     ── main.rs
 ```
@@ -98,10 +153,19 @@ my_project/
 ```
 ~/.horus/
 ── cache/
-    ── pid-controller@1.0.0/
-    ── pid-controller@1.2.0/
-    ── sensor-drivers@2.1.3/
+    ── pid-controller@1.0.0/         # HORUS registry
+    ── serde@1.0.200/                # crates.io
+    ── pypi_numpy@1.24.0/            # PyPI packages
+    ── git_abc123/                   # Git dependencies (via horus.yaml)
 ```
+
+**Naming conventions by source:**
+| Source | Directory Format | Example |
+|--------|------------------|---------|
+| HORUS Registry | `<name>@<version>/` | `pid-controller@1.0.0/` |
+| crates.io | `<name>@<version>/` | `serde@1.0.200/` |
+| PyPI | `pypi_<name>@<version>/` | `pypi_numpy@1.24.0/` |
+| Git | `git_<hash>/` | `git_abc123def/` |
 
 **Why use global:**
 - Share common packages across all projects
@@ -173,7 +237,7 @@ See [Environment Management](/environment-management#solving-dependency-hell) fo
 
 ### `horus pkg install`
 
-Install packages from the registry.
+Install packages from multiple sources (HORUS registry, crates.io, PyPI).
 
 **Usage:**
 ```bash
@@ -188,20 +252,87 @@ horus pkg install <package> [OPTIONS]
 **Examples:**
 
 ```bash
-# Latest version
-horus pkg install motion-planner
-
-# Specific version
+# From HORUS registry
+horus pkg install pid-controller
 horus pkg install motion-planner -v 2.0.1
 
+# From crates.io (auto-detected)
+horus pkg install serde
+horus pkg install tokio -v 1.35.0
+horus pkg install clap
+
+# From PyPI (auto-detected)
+horus pkg install numpy
+horus pkg install opencv-python -v 4.8.0
+horus pkg install torch
+
 # Global installation
-horus pkg install common-utils -g
+horus pkg install serde -g
 
 # Install to specific workspace
 horus pkg install pid-controller -t my-project
 ```
 
+#### Installing from crates.io
+
+When installing Rust packages from crates.io, HORUS uses `cargo install` under the hood:
+
+```bash
+horus pkg install ripgrep
+```
+
 **Output:**
+```
+Installing ripgrep from crates.io...
+  Compiling ripgrep...
+  Installing with cargo...
+
+Package installed: ripgrep@14.0.0
+Location: ~/.horus/cache/ripgrep@14.0.0/
+```
+
+**Requirements:**
+- Rust toolchain must be installed (`rustup`)
+- `cargo` must be available in PATH
+
+#### Installing from PyPI
+
+When installing Python packages from PyPI, HORUS uses `pip install --target` to isolate packages:
+
+```bash
+horus pkg install numpy
+```
+
+**Output:**
+```
+Installing numpy from PyPI...
+  Downloading numpy-1.24.0...
+  Installing to .horus/packages/pypi_numpy@1.24.0/
+
+Package installed: numpy@1.24.0
+Location: .horus/packages/pypi_numpy@1.24.0/
+```
+
+**Requirements:**
+- Python 3.x must be installed
+- `pip` must be available in PATH
+
+#### Using Python Packages
+
+After installing a PyPI package, use it in your Python nodes:
+
+```python
+# In your Python node
+import sys
+sys.path.insert(0, '.horus/packages/pypi_numpy@1.24.0')
+
+import numpy as np
+# Or HORUS automatically adds package paths when using horus run
+```
+
+When using `horus run`, Python package paths are automatically configured.
+
+**HORUS Registry Output:**
 ```
 Installing pid-controller@1.2.0...
  Downloaded (245 KB)

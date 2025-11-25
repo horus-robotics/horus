@@ -40,7 +40,7 @@ impl Default for CameraConfig {
             width: 320,
             height: 240,
             max_distance: 20.0,
-            topic: "/camera/image".to_string(),
+            topic: "camera.image".to_string(),
         }
     }
 }

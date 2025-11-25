@@ -2,6 +2,7 @@ use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::generate;
 use colored::*;
 use horus_core::error::{HorusError, HorusResult};
+use horus_core::memory::{has_native_shm, shm_base_dir};
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -36,16 +37,13 @@ enum Commands {
         #[arg(short = 'o', long = "output")]
         path: Option<PathBuf>,
         /// Use Python
-        #[arg(short = 'p', long = "python", conflicts_with_all = ["rust", "c"])]
+        #[arg(short = 'p', long = "python", conflicts_with = "rust")]
         python: bool,
         /// Use Rust
-        #[arg(short = 'r', long = "rust", conflicts_with_all = ["python", "c"])]
+        #[arg(short = 'r', long = "rust", conflicts_with = "python")]
         rust: bool,
-        /// Use C
-        #[arg(short = 'c', long = "c", conflicts_with_all = ["python", "rust"])]
-        c: bool,
         /// Use Rust with macros
-        #[arg(short = 'm', long = "macro", conflicts_with_all = ["python", "c"])]
+        #[arg(short = 'm', long = "macro", conflicts_with = "python")]
         use_macro: bool,
     },
 
@@ -72,11 +70,11 @@ enum Commands {
         args: Vec<String>,
     },
 
-    /// Validate horus.yaml and check for issues
+    /// Validate horus.yaml, source files, or entire workspace
     Check {
-        /// Path to horus.yaml (default: ./horus.yaml)
-        #[arg(value_name = "FILE")]
-        file: Option<PathBuf>,
+        /// Path to file, directory, or workspace (default: current directory)
+        #[arg(value_name = "PATH")]
+        path: Option<PathBuf>,
 
         /// Only show errors, suppress warnings
         #[arg(short = 'q', long = "quiet")]
@@ -142,13 +140,25 @@ enum Commands {
         #[arg(long)]
         robot: Option<PathBuf>,
 
-        /// HORUS topic for velocity commands
-        #[arg(long, default_value = "cmd_vel")]
+        /// HORUS topic prefix for robot topics (e.g. robot -> robot.cmd_vel, robot.odom)
+        #[arg(long, default_value = "robot")]
         topic: String,
 
         /// Robot name for logging
         #[arg(long, default_value = "robot")]
         name: String,
+
+        /// Articulated robot configuration file (YAML) for multi-link robots
+        #[arg(long)]
+        articulated: Option<PathBuf>,
+
+        /// Use a preset articulated robot (arm_2dof, arm_6dof, humanoid)
+        #[arg(long)]
+        preset: Option<String>,
+
+        /// Enable gravity (for side-view humanoid simulation)
+        #[arg(long)]
+        gravity: bool,
     },
 
     /// Run 3D simulator
@@ -160,10 +170,6 @@ enum Commands {
         /// Random seed for deterministic simulation
         #[arg(long)]
         seed: Option<u64>,
-
-        /// Visual mode (default)
-        #[arg(long)]
-        visual: bool,
 
         /// Robot URDF file
         #[arg(long)]
@@ -304,17 +310,12 @@ fn run_command(command: Commands) -> HorusResult<()> {
             path,
             python,
             rust,
-            c,
             use_macro,
         } => {
             let language = if python {
                 "python"
-            } else if rust {
+            } else if rust || use_macro {
                 "rust"
-            } else if c {
-                "c"
-            } else if use_macro {
-                "rust" // -m implies Rust with macros
             } else {
                 "" // Will use interactive prompt
             };
@@ -341,23 +342,321 @@ fn run_command(command: Commands) -> HorusResult<()> {
             }
         }
 
-        Commands::Check { file, quiet } => {
+        Commands::Check { path, quiet } => {
             use horus_manager::commands::run::parse_horus_yaml_dependencies_v2;
             use horus_manager::dependency_resolver::DependencySource;
             use std::collections::HashSet;
+            use walkdir::WalkDir;
 
-            let horus_yaml_path = file.unwrap_or_else(|| PathBuf::from("horus.yaml"));
+            let target_path = path.unwrap_or_else(|| PathBuf::from("."));
 
-            if !horus_yaml_path.exists() {
+            if !target_path.exists() {
                 println!(
-                    "{} File not found at: {}",
+                    "{} Path not found: {}",
                     "[FAIL]".red(),
-                    horus_yaml_path.display()
+                    target_path.display()
                 );
-                return Err(HorusError::Config("File not found".to_string()));
+                return Err(HorusError::Config("Path not found".to_string()));
             }
 
-            // Check if it's a source file (.rs, .py, .c) or horus.yaml
+            // Check if it's a directory (workspace scan) or single file
+            if target_path.is_dir() {
+                println!(
+                    "{} Scanning workspace: {}\n",
+                    "".cyan().bold(),
+                    target_path.canonicalize().unwrap_or(target_path.clone()).display()
+                );
+
+                let mut total_errors = 0;
+                let mut total_warnings = 0;
+                let mut files_checked = 0;
+                let mut horus_yamls: Vec<PathBuf> = Vec::new();
+                let mut rust_files: Vec<PathBuf> = Vec::new();
+                let mut python_files: Vec<PathBuf> = Vec::new();
+
+                // Collect all files to check
+                for entry in WalkDir::new(&target_path)
+                    .into_iter()
+                    .filter_entry(|e| {
+                        let name = e.file_name().to_string_lossy();
+                        // Skip hidden dirs, target, node_modules, __pycache__, .horus
+                        !name.starts_with('.') &&
+                        name != "target" &&
+                        name != "node_modules" &&
+                        name != "__pycache__" &&
+                        name != ".horus"
+                    })
+                    .filter_map(|e| e.ok())
+                {
+                    let path = entry.path();
+                    if path.is_file() {
+                        let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                        let ext = path.extension().and_then(|e| e.to_str());
+
+                        if filename == "horus.yaml" {
+                            horus_yamls.push(path.to_path_buf());
+                        } else if ext == Some("rs") && filename != "build.rs" {
+                            rust_files.push(path.to_path_buf());
+                        } else if ext == Some("py") {
+                            python_files.push(path.to_path_buf());
+                        }
+                    }
+                }
+
+                println!("  Found {} horus.yaml file(s)", horus_yamls.len());
+                println!("  Found {} Rust file(s)", rust_files.len());
+                println!("  Found {} Python file(s)\n", python_files.len());
+
+                // Find Cargo.toml directories for deep Rust checking
+                let mut cargo_dirs: HashSet<PathBuf> = HashSet::new();
+                for entry in WalkDir::new(&target_path)
+                    .into_iter()
+                    .filter_entry(|e| {
+                        let name = e.file_name().to_string_lossy();
+                        !name.starts_with('.') && name != "target" && name != "node_modules"
+                    })
+                    .filter_map(|e| e.ok())
+                {
+                    if entry.file_name() == "Cargo.toml" {
+                        if let Some(parent) = entry.path().parent() {
+                            cargo_dirs.insert(parent.to_path_buf());
+                        }
+                    }
+                }
+
+                // ═══════════════════════════════════════════════════════════
+                // PHASE 1: Validate horus.yaml manifests
+                // ═══════════════════════════════════════════════════════════
+                if !horus_yamls.is_empty() {
+                    println!("{}", "━".repeat(60).dimmed());
+                    println!("{} Phase 1: Validating horus.yaml manifests...\n", "".cyan().bold());
+
+                    for yaml_path in &horus_yamls {
+                        let rel_path = yaml_path.strip_prefix(&target_path).unwrap_or(yaml_path);
+                        println!("  {} {}", "".cyan(), rel_path.display());
+
+                        match fs::read_to_string(yaml_path) {
+                            Ok(content) => {
+                                match serde_yaml::from_str::<serde_yaml::Value>(&content) {
+                                    Ok(yaml) => {
+                                        let mut file_errors: Vec<String> = Vec::new();
+                                        let base_dir = yaml_path.parent().unwrap_or(Path::new("."));
+
+                                        // Required fields
+                                        if yaml.get("name").is_none() {
+                                            file_errors.push("missing 'name' field".to_string());
+                                        }
+                                        let language = yaml.get("language").and_then(|l| l.as_str());
+                                        if language.is_none() {
+                                            file_errors.push("missing 'language' field".to_string());
+                                        }
+
+                                        // Check main file exists
+                                        if let Some(lang) = language {
+                                            let main_exists = match lang {
+                                                "rust" => base_dir.join("main.rs").exists() ||
+                                                          base_dir.join("src/main.rs").exists() ||
+                                                          base_dir.join("Cargo.toml").exists(),
+                                                "python" => base_dir.join("main.py").exists(),
+                                                _ => true
+                                            };
+                                            if !main_exists {
+                                                file_errors.push(format!("main file not found for '{}'", lang));
+                                            }
+                                        }
+
+                                        // Validate path dependencies exist
+                                        if let Ok(deps) = parse_horus_yaml_dependencies_v2(yaml_path.to_str().unwrap_or("")) {
+                                            for dep in &deps {
+                                                if let DependencySource::Path(path_str) = &dep.source {
+                                                    let dep_path = if Path::new(path_str).is_absolute() {
+                                                        PathBuf::from(path_str)
+                                                    } else {
+                                                        base_dir.join(path_str)
+                                                    };
+                                                    if !dep_path.exists() {
+                                                        file_errors.push(format!("dependency '{}' path not found: {}", dep.name, dep_path.display()));
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        if file_errors.is_empty() {
+                                            println!("      {} manifest valid", "".green());
+                                        } else {
+                                            for err in &file_errors {
+                                                println!("      {} {}", "".red(), err);
+                                            }
+                                            total_errors += file_errors.len();
+                                        }
+                                    }
+                                    Err(e) => {
+                                        println!("      {} YAML parse error: {}", "".red(), e);
+                                        total_errors += 1;
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                println!("      {} Read error: {}", "".red(), e);
+                                total_errors += 1;
+                            }
+                        }
+                        files_checked += 1;
+                    }
+                }
+
+                // ═══════════════════════════════════════════════════════════
+                // PHASE 2: Deep Rust compilation check (cargo check)
+                // ═══════════════════════════════════════════════════════════
+                if !cargo_dirs.is_empty() {
+                    println!("\n{}", "━".repeat(60).dimmed());
+                    println!("{} Phase 2: Deep Rust check (cargo check)...\n", "".cyan().bold());
+
+                    for cargo_dir in &cargo_dirs {
+                        let rel_path = cargo_dir.strip_prefix(&target_path).unwrap_or(cargo_dir);
+                        let display_path = if rel_path.as_os_str().is_empty() { "." } else { rel_path.to_str().unwrap_or(".") };
+                        print!("  {} {} ... ", "".cyan(), display_path);
+                        std::io::Write::flush(&mut std::io::stdout()).ok();
+
+                        let output = std::process::Command::new("cargo")
+                            .arg("check")
+                            .arg("--message-format=short")
+                            .current_dir(cargo_dir)
+                            .output();
+
+                        match output {
+                            Ok(result) if result.status.success() => {
+                                println!("{}", "".green());
+                            }
+                            Ok(result) => {
+                                println!("{}", "".red());
+                                let stderr = String::from_utf8_lossy(&result.stderr);
+                                for line in stderr.lines().take(5) {
+                                    if line.contains("error") {
+                                        println!("      {} {}", "".red(), line.trim());
+                                    }
+                                }
+                                total_errors += 1;
+                            }
+                            Err(e) => {
+                                println!("{} cargo error: {}", "".yellow(), e);
+                                total_warnings += 1;
+                            }
+                        }
+                        files_checked += 1;
+                    }
+                }
+
+                // ═══════════════════════════════════════════════════════════
+                // PHASE 3: Python validation (syntax + imports)
+                // ═══════════════════════════════════════════════════════════
+                if !python_files.is_empty() {
+                    println!("\n{}", "━".repeat(60).dimmed());
+                    println!("{} Phase 3: Python validation (syntax + imports)...\n", "".cyan().bold());
+
+                    for py_path in &python_files {
+                        print!("  {} {} ", "".cyan(), py_path.strip_prefix(&target_path).unwrap_or(py_path).display());
+
+                        // Syntax check
+                        let syntax_check = std::process::Command::new("python3")
+                            .arg("-m")
+                            .arg("py_compile")
+                            .arg(py_path)
+                            .output();
+
+                        match syntax_check {
+                            Ok(result) if result.status.success() => {
+                                // Syntax OK - now check imports
+                                let import_script = format!(
+                                    r#"
+import ast, sys
+try:
+    with open('{}') as f:
+        tree = ast.parse(f.read())
+    imports = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                imports.add(alias.name.split('.')[0])
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            imports.add(node.module.split('.')[0])
+    for imp in imports:
+        if imp not in ('__future__',):
+            __import__(imp)
+except ModuleNotFoundError as e:
+    print(f'ModuleNotFoundError: {{e.name}}', file=sys.stderr)
+    sys.exit(1)
+except ImportError as e:
+    print(f'ImportError: {{e}}', file=sys.stderr)
+    sys.exit(1)
+"#,
+                                    py_path.display()
+                                );
+
+                                let import_check = std::process::Command::new("python3")
+                                    .arg("-c")
+                                    .arg(&import_script)
+                                    .output();
+
+                                match import_check {
+                                    Ok(r) if r.status.success() => {
+                                        println!("{}", "".green());
+                                    }
+                                    Ok(r) => {
+                                        println!("{}", "".yellow());
+                                        let err = String::from_utf8_lossy(&r.stderr);
+                                        if !err.is_empty() {
+                                            println!("      {} {}", "".yellow(), err.lines().next().unwrap_or("").trim());
+                                        }
+                                        total_warnings += 1;
+                                    }
+                                    Err(_) => println!("{}", "".green()),
+                                }
+                            }
+                            Ok(result) => {
+                                println!("{}", "".red());
+                                let error = String::from_utf8_lossy(&result.stderr);
+                                if !error.is_empty() {
+                                    println!("      {} {}", "".red(), error.lines().next().unwrap_or("").trim());
+                                }
+                                total_errors += 1;
+                            }
+                            Err(_) => {
+                                println!("{}", "⊘".dimmed());
+                                if !quiet { total_warnings += 1; }
+                            }
+                        }
+                        files_checked += 1;
+                    }
+                }
+
+                // Summary
+                println!("\n{}", "━".repeat(60).dimmed());
+                println!("{} Workspace Check Summary\n", "".cyan().bold());
+                println!("  Files checked: {}", files_checked);
+
+                if total_errors == 0 && total_warnings == 0 {
+                    println!("  Status: {} All checks passed!", "".green());
+                } else {
+                    if total_errors > 0 {
+                        println!("  Errors: {} {}", "".red(), total_errors);
+                    }
+                    if total_warnings > 0 && !quiet {
+                        println!("  Warnings: {} {}", "".yellow(), total_warnings);
+                    }
+                }
+                println!();
+
+                if total_errors > 0 {
+                    return Err(HorusError::Config(format!("{} error(s) found", total_errors)));
+                }
+                return Ok(());
+            }
+
+            // Single file check (existing logic)
+            let horus_yaml_path = target_path;
+
+            // Check if it's a source file (.rs, .py) or horus.yaml
             let extension = horus_yaml_path.extension().and_then(|s| s.to_str());
 
             match extension {
@@ -430,45 +729,6 @@ fn run_command(command: Commands) -> HorusResult<()> {
                             println!("{}", "[WARNING]".yellow());
                             println!(
                                 "\n{} Could not check Python syntax (python3 not found): {}",
-                                "[WARNING]".yellow(),
-                                e
-                            );
-                        }
-                    }
-                    return Ok(());
-                }
-                Some("c") => {
-                    // Check C file (for hardware drivers)
-                    println!(
-                        "{} Checking C file: {}\n",
-                        "".cyan(),
-                        horus_yaml_path.display()
-                    );
-
-                    print!("  {} Parsing C syntax... ", "".cyan());
-
-                    // Use gcc to check syntax only
-                    let output = std::process::Command::new("gcc")
-                        .arg("-fsyntax-only")
-                        .arg(&horus_yaml_path)
-                        .output();
-
-                    match output {
-                        Ok(result) if result.status.success() => {
-                            println!("{}", "".green());
-                            println!("\n{} Syntax check passed!", "".green().bold());
-                        }
-                        Ok(result) => {
-                            println!("{}", "".red());
-                            let error = String::from_utf8_lossy(&result.stderr);
-                            println!("\n{} Syntax error:", "[FAIL]".red().bold());
-                            println!("  {}", error);
-                            return Err(HorusError::Config(format!("C syntax error: {}", error)));
-                        }
-                        Err(e) => {
-                            println!("{}", "[WARNING]".yellow());
-                            println!(
-                                "\n{} Could not check C syntax (gcc not found): {}",
                                 "[WARNING]".yellow(),
                                 e
                             );
@@ -1027,18 +1287,30 @@ fn run_command(command: Commands) -> HorusResult<()> {
             print!("  {} Checking system requirements... ", "".cyan());
             let mut sys_issues = Vec::new();
 
-            // Check /dev/shm for shared memory
-            #[cfg(target_os = "linux")]
-            {
-                let shm_path = std::path::Path::new("/dev/shm");
-                if !shm_path.exists() {
-                    sys_issues.push("/dev/shm not available");
-                } else if let Ok(metadata) = std::fs::metadata(shm_path) {
-                    use std::os::unix::fs::PermissionsExt;
-                    let mode = metadata.permissions().mode();
-                    if mode & 0o777 != 0o777 {
-                        sys_issues.push("/dev/shm permissions restrictive");
+            // Check shared memory directory availability (cross-platform)
+            #[allow(unused_variables)] // Used in non-Linux cfg block
+            let shm_path = shm_base_dir();
+            // On Linux, check /dev/shm permissions; on other platforms, just check the base dir
+            if has_native_shm() {
+                #[cfg(target_os = "linux")]
+                {
+                    let dev_shm = std::path::Path::new("/dev/shm");
+                    if !dev_shm.exists() {
+                        sys_issues.push("/dev/shm not available");
+                    } else if let Ok(metadata) = std::fs::metadata(dev_shm) {
+                        use std::os::unix::fs::PermissionsExt;
+                        let mode = metadata.permissions().mode();
+                        if mode & 0o777 != 0o777 {
+                            sys_issues.push("/dev/shm permissions restrictive");
+                        }
                     }
+                }
+            }
+            // For non-Linux platforms, ensure the shared memory directory can be created
+            #[cfg(not(target_os = "linux"))]
+            {
+                if let Err(_) = std::fs::create_dir_all(&shm_path) {
+                    sys_issues.push("Cannot create shared memory directory");
                 }
             }
 
@@ -2400,6 +2672,9 @@ fn run_command(command: Commands) -> HorusResult<()> {
             robot,
             topic,
             name,
+            articulated,
+            preset,
+            gravity,
         } => {
             use std::env;
             use std::process::Command;
@@ -2410,6 +2685,15 @@ fn run_command(command: Commands) -> HorusResult<()> {
             }
             println!("  Topic: {}", topic);
             println!("  Robot name: {}", name);
+            if let Some(ref preset_name) = preset {
+                println!("  Articulated preset: {}", preset_name);
+            }
+            if let Some(ref articulated_path) = articulated {
+                println!("  Articulated config: {}", articulated_path.display());
+            }
+            if gravity {
+                println!("  Gravity: enabled");
+            }
             if let Some(ref world_path) = world {
                 println!("  World: {}", world_path.display());
             }
@@ -2418,17 +2702,18 @@ fn run_command(command: Commands) -> HorusResult<()> {
             }
             println!();
 
-            // Find sim2d path relative to HORUS repo
+            // Find sim2d path relative to HORUS repo (cross-platform)
             let horus_source = env::var("HORUS_SOURCE")
-                .or_else(|_| env::var("HOME").map(|h| format!("{}/.horus/cache/HORUS", h)))
-                .unwrap_or_else(|_| ".".to_string());
+                .ok()
+                .or_else(|| dirs::home_dir().map(|h| h.join(".horus/cache/HORUS").to_string_lossy().to_string()))
+                .unwrap_or_else(|| ".".to_string());
 
             let sim2d_path = format!("{}/horus_library/tools/sim2d", horus_source);
 
-            // Try to run pre-built binary first (fast path)
-            let sim2d_binary = env::var("HOME")
-                .map(|h| format!("{}/.cargo/bin/sim2d", h))
-                .unwrap_or_else(|_| "sim2d".to_string());
+            // Try to run pre-built binary first (fast path) - cross-platform
+            let sim2d_binary = dirs::home_dir()
+                .map(|h| h.join(".cargo/bin/sim2d").to_string_lossy().to_string())
+                .unwrap_or_else(|| "sim2d".to_string());
 
             let status = if std::path::Path::new(&sim2d_binary).exists() {
                 // Run pre-built binary directly (instant launch!)
@@ -2455,6 +2740,15 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 binary_cmd.arg("--name").arg(&name);
                 if headless {
                     binary_cmd.arg("--headless");
+                }
+                if let Some(ref a) = articulated {
+                    binary_cmd.arg("--articulated").arg(a);
+                }
+                if let Some(ref p) = preset {
+                    binary_cmd.arg("--preset").arg(p);
+                }
+                if gravity {
+                    binary_cmd.arg("--gravity");
                 }
 
                 binary_cmd
@@ -2493,6 +2787,15 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 if headless {
                     cmd.arg("--headless");
                 }
+                if let Some(ref a) = articulated {
+                    cmd.arg("--articulated").arg(a);
+                }
+                if let Some(ref p) = preset {
+                    cmd.arg("--preset").arg(p);
+                }
+                if gravity {
+                    cmd.arg("--gravity");
+                }
 
                 cmd.status()
                     .map_err(|e| HorusError::Config(format!("Failed to run sim2d: {}. Try running manually: cd {} && cargo run --release", e, sim2d_path)))?
@@ -2511,7 +2814,6 @@ fn run_command(command: Commands) -> HorusResult<()> {
         Commands::Sim3d {
             headless,
             seed,
-            visual,
             robot,
             world,
         } => {
@@ -2521,8 +2823,8 @@ fn run_command(command: Commands) -> HorusResult<()> {
             println!("{} Starting sim3d...", "".cyan());
             if headless {
                 println!("  Mode: Headless");
-            } else if visual {
-                println!("  Mode: Visual");
+            } else {
+                println!("  Mode: Visual (default)");
             }
             if let Some(s) = seed {
                 println!("  Seed: {}", s);
@@ -2546,26 +2848,26 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     .unwrap_or_else(|_| std::env::current_dir().unwrap().join(p))
             });
 
-            // Find sim3d path relative to HORUS repo
+            // Find sim3d path relative to HORUS repo (cross-platform)
             let horus_source = env::var("HORUS_SOURCE")
-                .or_else(|_| env::var("HOME").map(|h| format!("{}/.horus/cache/HORUS", h)))
-                .unwrap_or_else(|_| ".".to_string());
+                .ok()
+                .or_else(|| dirs::home_dir().map(|h| h.join(".horus/cache/HORUS").to_string_lossy().to_string()))
+                .unwrap_or_else(|| ".".to_string());
 
             let sim3d_path = format!("{}/horus_library/tools/sim3d", horus_source);
 
-            // Try to run pre-built binary first
-            let sim3d_binary = env::var("HOME")
-                .map(|h| format!("{}/.cargo/bin/sim3d", h))
-                .unwrap_or_else(|_| "sim3d".to_string());
+            // Try to run pre-built binary first (cross-platform)
+            let sim3d_binary = dirs::home_dir()
+                .map(|h| h.join(".cargo/bin/sim3d").to_string_lossy().to_string())
+                .unwrap_or_else(|| "sim3d".to_string());
 
             let status = if std::path::Path::new(&sim3d_binary).exists() {
                 println!("{} Launching sim3d...", "[RUN]".green());
                 let mut binary_cmd = Command::new(&sim3d_binary);
 
+                // Only pass --mode headless if needed (visual is default)
                 if headless {
                     binary_cmd.arg("--mode").arg("headless");
-                } else {
-                    binary_cmd.arg("--mode").arg("visual");
                 }
                 if let Some(s) = seed {
                     binary_cmd.arg("--seed").arg(s.to_string());
@@ -2597,10 +2899,9 @@ fn run_command(command: Commands) -> HorusResult<()> {
 
                 cmd.arg("--");
 
+                // Only pass --mode headless if needed (visual is default)
                 if headless {
                     cmd.arg("--mode").arg("headless");
-                } else {
-                    cmd.arg("--mode").arg("visual");
                 }
                 if let Some(s) = seed {
                     cmd.arg("--seed").arg(s.to_string());

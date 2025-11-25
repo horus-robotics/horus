@@ -281,7 +281,7 @@ impl LocalizationNode {
         }
     }
 
-    fn normalize_angle(&self, angle: f64) -> f64 {
+    fn _normalize_angle(&self, angle: f64) -> f64 {
         let mut normalized = angle;
         while normalized > std::f64::consts::PI {
             normalized -= 2.0 * std::f64::consts::PI;

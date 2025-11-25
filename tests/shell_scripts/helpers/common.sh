@@ -175,10 +175,20 @@ print_summary() {
     fi
 }
 
+# Cross-platform shared memory path
+get_shm_base() {
+    case "$(uname -s)" in
+        Linux*)  echo "/dev/shm" ;;
+        Darwin*) echo "/tmp" ;;
+        *)       echo "/tmp" ;;
+    esac
+}
+
 # Cleanup helpers
 cleanup_horus() {
     log_info "Cleaning up HORUS installation..."
-    rm -rf ~/.cargo/bin/horus ~/.horus /dev/shm/horus* 2>/dev/null || true
+    local shm_base="$(get_shm_base)"
+    rm -rf ~/.cargo/bin/horus ~/.horus "$shm_base/horus"* 2>/dev/null || true
 }
 
 # Wait for a condition with timeout

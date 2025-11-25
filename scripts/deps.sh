@@ -92,8 +92,8 @@ fi
 # All required system dependencies for HORUS
 # Format: "pkg-config-name:human-readable-name:required(yes/no)"
 HORUS_SYSTEM_DEPS=(
-    # Build essentials
-    "compiler:C/C++ Compiler:yes"
+    # Build essentials (C compiler only - Rust doesn't need C++)
+    "compiler:C Compiler:yes"
     "pkg-config:pkg-config:yes"
 
     # Core libraries
@@ -276,19 +276,24 @@ get_install_command() {
 get_packages_for_os() {
     case "$OS_DISTRO" in
         debian-based)
-            echo "build-essential pkg-config libssl-dev libudev-dev libasound2-dev libclang-dev libwayland-dev wayland-protocols libxkbcommon-dev libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev mesa-vulkan-drivers libvulkan1 libvulkan-dev"
+            # Note: gcc is sufficient, g++ not needed for Rust projects
+            echo "gcc libc6-dev pkg-config libssl-dev libudev-dev libasound2-dev libclang-dev libwayland-dev wayland-protocols libxkbcommon-dev libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev mesa-vulkan-drivers libvulkan1 libvulkan-dev"
             ;;
         fedora-based)
-            echo "gcc gcc-c++ pkg-config openssl-devel systemd-devel alsa-lib-devel clang-devel wayland-devel wayland-protocols-devel libxkbcommon-devel libX11-devel libXrandr-devel libXi-devel libXcursor-devel libXinerama-devel vulkan-loader-devel mesa-vulkan-drivers"
+            # Note: gcc is sufficient, gcc-c++ not needed for Rust projects
+            echo "gcc glibc-devel pkg-config openssl-devel systemd-devel alsa-lib-devel clang-devel wayland-devel wayland-protocols-devel libxkbcommon-devel libX11-devel libXrandr-devel libXi-devel libXcursor-devel libXinerama-devel vulkan-loader-devel mesa-vulkan-drivers"
             ;;
         arch-based)
-            echo "base-devel pkg-config openssl systemd alsa-lib clang wayland wayland-protocols libxkbcommon libx11 libxrandr libxi libxcursor libxinerama vulkan-icd-loader vulkan-headers"
+            # Note: gcc is sufficient, base-devel includes both but that's OK
+            echo "gcc pkg-config openssl systemd alsa-lib clang wayland wayland-protocols libxkbcommon libx11 libxrandr libxi libxcursor libxinerama vulkan-icd-loader vulkan-headers"
             ;;
         opensuse)
-            echo "gcc gcc-c++ pkg-config libopenssl-devel libudev-devel alsa-devel clang-devel wayland-devel wayland-protocols-devel libxkbcommon-devel libX11-devel libXrandr-devel libXi-devel libXcursor-devel libXinerama-devel libvulkan1 vulkan-devel"
+            # Note: gcc is sufficient, gcc-c++ not needed for Rust projects
+            echo "gcc glibc-devel pkg-config libopenssl-devel libudev-devel alsa-devel clang-devel wayland-devel wayland-protocols-devel libxkbcommon-devel libX11-devel libXrandr-devel libXi-devel libXcursor-devel libXinerama-devel libvulkan1 vulkan-devel"
             ;;
         alpine)
-            echo "build-base pkgconfig openssl-dev eudev-dev alsa-lib-dev clang-dev wayland-dev wayland-protocols libxkbcommon-dev libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev vulkan-loader-dev mesa-vulkan-swrast"
+            # Note: gcc and musl-dev are sufficient for Rust
+            echo "gcc musl-dev pkgconfig openssl-dev eudev-dev alsa-lib-dev clang-dev wayland-dev wayland-protocols libxkbcommon-dev libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxinerama-dev vulkan-loader-dev mesa-vulkan-swrast"
             ;;
         macos)
             # macOS handles most of this through Xcode Command Line Tools
@@ -325,7 +330,7 @@ install_system_deps() {
         echo -e "${RED}[x]${NC} Cannot auto-install for $OS_DISTRO"
         echo ""
         echo "Please install the following manually:"
-        echo "  - C/C++ compiler (gcc/clang)"
+        echo "  - C compiler (gcc or clang) - C++ is NOT required"
         echo "  - pkg-config"
         echo "  - OpenSSL development files"
         echo "  - Wayland development files"

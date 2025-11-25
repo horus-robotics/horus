@@ -6,7 +6,7 @@
 //!   sim2d                                    # Default robot + world
 //!   sim2d --robot my_robot.yaml              # Custom robot
 //!   sim2d --world my_world.yaml              # Custom world
-//!   sim2d --topic /robot/cmd_vel             # Custom control topic
+//!   sim2d --topic robot.cmd_vel              # Custom control topic
 //!
 //! Control from another terminal:
 //!   cargo run -p simple_driver
@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 
 /// CLI arguments
-#[derive(Parser)]
+#[derive(Parser, Clone)]
 #[command(name = "sim2d")]
 #[command(about = "Simple 2D robotics simulator with physics")]
 pub struct Args {
@@ -49,8 +49,8 @@ pub struct Args {
     #[arg(long, default_value = "128")]
     pub threshold: u8,
 
-    /// Control topic name
-    #[arg(long, default_value = "/robot/cmd_vel")]
+    /// Topic prefix for robot topics (e.g. robot -> robot.cmd_vel, robot.odom)
+    #[arg(long, default_value = "robot")]
     pub topic: String,
 
     /// Robot name
@@ -60,6 +60,18 @@ pub struct Args {
     /// Run in headless mode (no GUI)
     #[arg(long)]
     pub headless: bool,
+
+    /// Articulated robot configuration file (YAML) for multi-link robots
+    #[arg(long)]
+    pub articulated: Option<String>,
+
+    /// Use a preset articulated robot (arm_2dof, arm_6dof, humanoid)
+    #[arg(long)]
+    pub preset: Option<String>,
+
+    /// Enable gravity (for side-view humanoid simulation)
+    #[arg(long)]
+    pub gravity: bool,
 }
 
 /// Robot configuration
@@ -68,7 +80,7 @@ pub struct RobotConfig {
     #[serde(default = "default_robot_name")]
     pub name: String,
     #[serde(default = "default_robot_topic_prefix")]
-    pub topic_prefix: String, // Topic prefix (e.g., "/robot0", "/robot1")
+    pub topic_prefix: String, // Topic prefix (e.g., "robot0", "robot1")
     #[serde(default = "default_robot_position")]
     pub position: [f32; 2], // Initial position [x, y]
     pub width: f32,
@@ -83,6 +95,12 @@ pub struct RobotConfig {
     pub lidar: LidarConfig,
     #[serde(default)]
     pub camera: crate::camera::CameraConfig,
+    #[serde(default)]
+    pub gps: crate::sensors::GpsConfig,
+    #[serde(default)]
+    pub ultrasonic: crate::sensors::UltrasonicConfig,
+    #[serde(default)]
+    pub contact: crate::sensors::ContactConfig,
 }
 
 fn default_robot_name() -> String {
@@ -90,7 +108,7 @@ fn default_robot_name() -> String {
 }
 
 fn default_robot_topic_prefix() -> String {
-    "/robot".to_string()
+    "robot".to_string()
 }
 
 fn default_robot_position() -> [f32; 2] {
@@ -175,7 +193,7 @@ impl Default for RobotConfig {
     fn default() -> Self {
         Self {
             name: "robot".to_string(),
-            topic_prefix: "/robot".to_string(),
+            topic_prefix: "robot".to_string(),
             position: [0.0, 0.0],
             width: 0.5,             // 0.5m wide
             length: 0.8,            // 0.8m long
@@ -185,6 +203,9 @@ impl Default for RobotConfig {
             kinematics: crate::kinematics::KinematicsModel::default(),
             lidar: LidarConfig::default(),
             camera: crate::camera::CameraConfig::default(),
+            gps: crate::sensors::GpsConfig::default(),
+            ultrasonic: crate::sensors::UltrasonicConfig::default(),
+            contact: crate::sensors::ContactConfig::default(),
         }
     }
 }
@@ -254,7 +275,6 @@ impl Default for WorldConfig {
 /// Robot entity in Bevy
 #[derive(Component)]
 pub struct Robot {
-    #[allow(dead_code)]
     pub name: String,
     pub config: RobotConfig,
     pub rigid_body_handle: RigidBodyHandle,
@@ -299,10 +319,36 @@ impl Default for TrajectoryHistory {
 /// Last LIDAR scan for visualization
 #[derive(Resource, Default)]
 pub struct LastLidarScan {
-    ranges: Vec<f32>,
-    angles: Vec<f32>,
-    robot_pos: (f32, f32),
-    robot_angle: f32,
+    pub ranges: Vec<f32>,
+    pub angles: Vec<f32>,
+    pub robot_pos: (f32, f32),
+    pub robot_angle: f32,
+}
+
+/// Camera sensors resource - stores camera instances per robot
+#[derive(Resource, Default)]
+pub struct CameraSensors {
+    pub sensors: std::collections::HashMap<String, crate::camera::CameraSensor>,
+    pub last_images: std::collections::HashMap<String, crate::camera::GrayscaleImage>,
+}
+
+/// GPS sensor state for all robots
+#[derive(Resource, Default)]
+pub struct GpsSensors {
+    pub sensors: std::collections::HashMap<String, crate::sensors::GpsSensor>,
+    pub last_readings: std::collections::HashMap<String, crate::sensors::GpsData>,
+}
+
+/// Ultrasonic sensor state for all robots
+#[derive(Resource, Default)]
+pub struct UltrasonicSensors {
+    pub last_readings: std::collections::HashMap<String, Vec<f32>>,
+}
+
+/// Contact sensor state for all robots
+#[derive(Resource, Default)]
+pub struct ContactSensors {
+    pub last_readings: std::collections::HashMap<String, crate::sensors::ContactData>,
 }
 
 /// Previous velocity for IMU acceleration calculation
@@ -426,19 +472,19 @@ pub struct HorusComm {
 /// Physics world
 #[derive(Resource)]
 pub struct PhysicsWorld {
-    rigid_body_set: RigidBodySet,
-    collider_set: ColliderSet,
-    gravity: Vector<f32>,
-    integration_parameters: IntegrationParameters,
-    physics_pipeline: PhysicsPipeline,
-    island_manager: IslandManager,
-    broad_phase: DefaultBroadPhase,
-    narrow_phase: NarrowPhase,
-    impulse_joint_set: ImpulseJointSet,
-    multibody_joint_set: MultibodyJointSet,
-    ccd_solver: CCDSolver,
-    physics_hooks: (),
-    event_handler: (),
+    pub rigid_body_set: RigidBodySet,
+    pub collider_set: ColliderSet,
+    pub gravity: Vector<f32>,
+    pub integration_parameters: IntegrationParameters,
+    pub physics_pipeline: PhysicsPipeline,
+    pub island_manager: IslandManager,
+    pub broad_phase: DefaultBroadPhase,
+    pub narrow_phase: NarrowPhase,
+    pub impulse_joint_set: ImpulseJointSet,
+    pub multibody_joint_set: MultibodyJointSet,
+    pub ccd_solver: CCDSolver,
+    pub physics_hooks: (),
+    pub event_handler: (),
 }
 
 impl Default for PhysicsWorld {
@@ -467,6 +513,7 @@ pub struct AppConfig {
     pub args: Args,
     pub robots: Vec<RobotConfig>, // Support multiple robots
     pub world_config: WorldConfig,
+    pub articulated_robots: Vec<crate::joint::ArticulatedRobotConfig>, // Articulated robots
 }
 
 impl AppConfig {
@@ -481,7 +528,7 @@ impl AppConfig {
             robot.name = args.name.clone();
             robot.topic_prefix = args
                 .topic
-                .strip_suffix("/cmd_vel")
+                .strip_suffix(".cmd_vel")
                 .unwrap_or(&args.topic)
                 .to_string();
             vec![robot]
@@ -512,7 +559,7 @@ impl AppConfig {
                 " Robot: {:.1}m x {:.1}m, max speed: {:.1} m/s",
                 robots[0].length, robots[0].width, robots[0].max_speed
             );
-            info!(" Control topic: {}/cmd_vel", robots[0].topic_prefix);
+            info!(" Control topic: {}.cmd_vel", robots[0].topic_prefix);
         } else {
             info!(" {} robots configured", robots.len());
             for robot in &robots {
@@ -530,11 +577,69 @@ impl AppConfig {
             world_config.obstacles.len()
         );
 
+        // Load articulated robot configs
+        let articulated_robots = Self::load_articulated_robots(&args);
+        if !articulated_robots.is_empty() {
+            info!(
+                " {} articulated robot(s) configured",
+                articulated_robots.len()
+            );
+            for ar in &articulated_robots {
+                info!(
+                    "   - {}: {} links, {} joints",
+                    ar.name,
+                    ar.links.len(),
+                    ar.joints.len()
+                );
+            }
+        }
+
         Self {
             args,
             robots,
             world_config,
+            articulated_robots,
         }
+    }
+
+    /// Load articulated robots from CLI args
+    fn load_articulated_robots(args: &Args) -> Vec<crate::joint::ArticulatedRobotConfig> {
+        let mut configs = Vec::new();
+
+        // Load from preset
+        if let Some(preset_name) = &args.preset {
+            let mut config = match preset_name.as_str() {
+                "arm_2dof" | "arm2" => crate::joint::preset_arm_2dof(),
+                "arm_6dof" | "arm6" => crate::joint::preset_arm_6dof(),
+                "humanoid" | "human" => crate::joint::preset_humanoid_simple(),
+                _ => {
+                    warn!("Unknown preset '{}', available: arm_2dof, arm_6dof, humanoid", preset_name);
+                    return configs;
+                }
+            };
+            // Apply gravity flag
+            if args.gravity {
+                config.enable_gravity = true;
+            }
+            configs.push(config);
+        }
+
+        // Load from file
+        if let Some(file_path) = &args.articulated {
+            match crate::joint::ArticulatedRobotConfig::from_file(file_path) {
+                Ok(mut config) => {
+                    if args.gravity {
+                        config.enable_gravity = true;
+                    }
+                    configs.push(config);
+                }
+                Err(e) => {
+                    warn!("Failed to load articulated robot from '{}': {}", file_path, e);
+                }
+            }
+        }
+
+        configs
     }
 
     pub fn load_robots_config(path: &str) -> Result<Vec<RobotConfig>> {
@@ -771,10 +876,10 @@ pub fn setup(
     let mut horus_connected = true;
 
     for robot_config in &app_config.robots {
-        let cmd_vel_topic = format!("{}/cmd_vel", robot_config.topic_prefix);
-        let odom_topic = format!("{}/odom", robot_config.topic_prefix);
-        let scan_topic = format!("{}/scan", robot_config.topic_prefix);
-        let imu_topic = format!("{}/imu", robot_config.topic_prefix);
+        let cmd_vel_topic = format!("{}.cmd_vel", robot_config.topic_prefix);
+        let odom_topic = format!("{}.odom", robot_config.topic_prefix);
+        let scan_topic = format!("{}.scan", robot_config.topic_prefix);
+        let imu_topic = format!("{}.imu", robot_config.topic_prefix);
 
         match (
             Hub::new(&cmd_vel_topic),
@@ -809,7 +914,7 @@ pub fn setup(
     let has_robot_hubs = !robot_hubs.is_empty();
 
     // Create shared obstacle command hub
-    match Hub::new("/sim2d/obstacle_cmd") {
+    match Hub::new("sim2d.obstacle_cmd") {
         Ok(obstacle_cmd_sub) => {
             let node_info = NodeInfo::new("sim2d".to_string(), true);
             commands.insert_resource(HorusComm {
@@ -817,7 +922,7 @@ pub fn setup(
                 obstacle_cmd_sub,
                 node_info,
             });
-            info!(" Connected to obstacle command topic: /sim2d/obstacle_cmd");
+            info!(" Connected to obstacle command topic: sim2d.obstacle_cmd");
         }
         _ if !has_robot_hubs => {
             warn!(" Failed to connect to HORUS");
@@ -1011,12 +1116,33 @@ pub fn setup(
         spawn_robot_visual_components(&mut commands, robot_entity, robot_config, scale);
     }
 
+    // Spawn articulated robots
+    for articulated_config in &app_config.articulated_robots {
+        // Enable gravity if robot config requires it
+        if articulated_config.enable_gravity {
+            physics_world.gravity = vector![0.0, -9.81];
+        }
+
+        crate::joint::spawn_articulated_robot(
+            &mut commands,
+            &mut physics_world,
+            articulated_config,
+            scale,
+        );
+    }
+
     info!(" sim2d setup complete!");
     info!(
         "   [#] World: {}x{} meters",
         app_config.world_config.width, app_config.world_config.height
     );
     info!("    Robots: {} spawned", app_config.robots.len());
+    if !app_config.articulated_robots.is_empty() {
+        info!(
+            "    Articulated robots: {} spawned",
+            app_config.articulated_robots.len()
+        );
+    }
     info!(
         "   Obstacles: {} created",
         app_config.world_config.obstacles.len()
@@ -1118,11 +1244,48 @@ pub fn tick_start_system(mut horus_comm: Option<ResMut<HorusComm>>) {
     }
 }
 
-/// Tick end system - no-op since we record ticks at start of next frame
-/// This ensures all messages within a frame have the same tick number
-pub fn tick_end_system(_horus_comm: Option<ResMut<HorusComm>>) {
-    // Recording happens in tick_start_system to ensure tick number
-    // is incremented before any messages are logged in the frame
+/// Tick end system - captures recording frames
+pub fn tick_end_system(
+    robot_query: Query<&Robot>,
+    physics_world: Res<PhysicsWorld>,
+    mut recorder: Option<ResMut<crate::recorder::Recorder>>,
+    time: Res<Time>,
+    last_scan: Res<LastLidarScan>,
+) {
+    // Record frame if recording is active
+    if let Some(ref mut recorder) = recorder {
+        if recorder.is_recording() {
+            let mut robot_states = Vec::new();
+
+            for robot in robot_query.iter() {
+                if let Some(rigid_body) = physics_world.rigid_body_set.get(robot.rigid_body_handle) {
+                    let pos = rigid_body.translation();
+                    let linvel = rigid_body.linvel();
+                    let angvel = rigid_body.angvel();
+                    let heading = rigid_body.rotation().angle();
+
+                    robot_states.push(crate::recorder::RobotFrameState {
+                        name: robot.config.name.clone(),
+                        position: [pos.x, pos.y],
+                        heading,
+                        linear_velocity: (linvel.x * linvel.x + linvel.y * linvel.y).sqrt(),
+                        angular_velocity: angvel,
+                        lidar_scan: if !last_scan.ranges.is_empty() {
+                            Some(last_scan.ranges.clone())
+                        } else {
+                            None
+                        },
+                    });
+                }
+            }
+
+            recorder.record_frame(
+                time.elapsed_secs_f64(),
+                robot_states,
+                None, // No screenshots for now
+            );
+        }
+    }
 }
 
 /// Visual sync system - updates Bevy transforms from physics
@@ -1418,6 +1581,224 @@ pub fn lidar_system(
                 }
             }
         }
+    }
+}
+
+/// Camera sensor system - renders camera images from robot perspective
+pub fn camera_system(
+    robot_query: Query<&Robot>,
+    physics_world: Res<PhysicsWorld>,
+    app_config: Res<AppConfig>,
+    mut camera_sensors: ResMut<CameraSensors>,
+) {
+    // Collect robot data first
+    let robots_to_render: Vec<_> = robot_query
+        .iter()
+        .filter(|r| r.config.camera.enabled)
+        .filter_map(|robot| {
+            physics_world
+                .rigid_body_set
+                .get(robot.rigid_body_handle)
+                .map(|rb| {
+                    (
+                        robot.config.name.clone(),
+                        robot.config.camera.clone(),
+                        [rb.translation().x, rb.translation().y],
+                        rb.rotation().angle(),
+                    )
+                })
+        })
+        .collect();
+
+    // Collect obstacles once
+    let obstacles: Vec<Obstacle> = app_config
+        .world_config
+        .obstacles
+        .iter()
+        .map(|o| Obstacle {
+            pos: o.pos,
+            size: o.size,
+            shape: o.shape.clone(),
+            color: o.color,
+        })
+        .collect();
+
+    let world_width = app_config.world_config.width;
+    let world_height = app_config.world_config.height;
+
+    // Render each camera and collect results
+    let mut rendered_images = Vec::new();
+    for (name, camera_config, pos, heading) in robots_to_render {
+        // Get or create camera sensor
+        let sensor = camera_sensors
+            .sensors
+            .entry(name.clone())
+            .or_insert_with(|| crate::camera::CameraSensor::new(camera_config));
+
+        // Render camera image and clone it
+        let image = sensor.render(pos, heading, &obstacles, world_width, world_height).clone();
+        rendered_images.push((name, image));
+    }
+
+    // Store all rendered images
+    for (name, image) in rendered_images {
+        camera_sensors.last_images.insert(name, image);
+    }
+}
+
+/// GPS sensor system - provides simulated GPS readings
+pub fn gps_system(
+    robot_query: Query<&Robot>,
+    physics_world: Res<PhysicsWorld>,
+    time: Res<Time>,
+    mut gps_sensors: ResMut<GpsSensors>,
+) {
+    let elapsed = time.elapsed().as_secs_f64();
+
+    // Collect robot data first to avoid borrow issues
+    let robots_data: Vec<_> = robot_query
+        .iter()
+        .filter(|r| r.config.gps.enabled)
+        .filter_map(|robot| {
+            physics_world
+                .rigid_body_set
+                .get(robot.rigid_body_handle)
+                .map(|rb| {
+                    let pos = rb.translation();
+                    (robot.config.name.clone(), robot.config.gps.clone(), rapier2d::na::vector![pos.x, pos.y])
+                })
+        })
+        .collect();
+
+    // Process GPS readings
+    for (name, gps_config, position) in robots_data {
+        let sensor = gps_sensors
+            .sensors
+            .entry(name.clone())
+            .or_insert_with(|| crate::sensors::GpsSensor::new(gps_config));
+
+        if let Some(gps_data) = sensor.update(&position, elapsed) {
+            gps_sensors.last_readings.insert(name, gps_data);
+        }
+    }
+}
+
+/// Ultrasonic sensor system - provides range readings using raycasting
+pub fn ultrasonic_system(
+    robot_query: Query<&Robot>,
+    physics_world: Res<PhysicsWorld>,
+    mut ultrasonic_sensors: ResMut<UltrasonicSensors>,
+) {
+    let query_pipeline = QueryPipeline::new();
+
+    for robot in robot_query.iter() {
+        if !robot.config.ultrasonic.enabled {
+            continue;
+        }
+
+        if let Some(rb) = physics_world.rigid_body_set.get(robot.rigid_body_handle) {
+            let robot_pos = rb.translation();
+            let robot_heading = rb.rotation().angle();
+
+            let mut ranges = Vec::new();
+
+            for sensor_config in &robot.config.ultrasonic.sensors {
+                // Calculate sensor position in world frame
+                let cos_h = robot_heading.cos();
+                let sin_h = robot_heading.sin();
+                let sensor_x = robot_pos.x + sensor_config.offset[0] * cos_h - sensor_config.offset[1] * sin_h;
+                let sensor_y = robot_pos.y + sensor_config.offset[0] * sin_h + sensor_config.offset[1] * cos_h;
+
+                // Calculate ray direction
+                let ray_angle = robot_heading + sensor_config.angle;
+                let ray_dir = vector![ray_angle.cos(), ray_angle.sin()];
+
+                // Cast ray
+                let ray = Ray::new(
+                    point![sensor_x, sensor_y],
+                    ray_dir,
+                );
+
+                let hit = query_pipeline.cast_ray(
+                    &physics_world.rigid_body_set,
+                    &physics_world.collider_set,
+                    &ray,
+                    sensor_config.max_range,
+                    true,
+                    QueryFilter::default(),
+                );
+
+                let range = match hit {
+                    Some((_, toi)) if toi >= sensor_config.min_range => {
+                        sensor_config.noise.apply(toi)
+                    }
+                    Some((_, toi)) if toi < sensor_config.min_range => {
+                        // Below minimum range - report min range
+                        sensor_config.min_range
+                    }
+                    _ => {
+                        // No hit - return max range
+                        sensor_config.max_range
+                    }
+                };
+
+                ranges.push(range);
+            }
+
+            ultrasonic_sensors
+                .last_readings
+                .insert(robot.config.name.clone(), ranges);
+        }
+    }
+}
+
+/// Contact sensor system - detects collisions with obstacles
+pub fn contact_system(
+    robot_query: Query<&Robot>,
+    physics_world: Res<PhysicsWorld>,
+    mut contact_sensors: ResMut<ContactSensors>,
+) {
+    for robot in robot_query.iter() {
+        if !robot.config.contact.enabled {
+            continue;
+        }
+
+        let num_zones = robot.config.contact.num_zones;
+        let mut zones = vec![false; num_zones];
+        let mut total_force = 0.0_f32;
+
+        // Check collisions for this robot's collider
+        if let Some(collider_handle) = physics_world
+            .rigid_body_set
+            .get(robot.rigid_body_handle)
+            .and_then(|rb| rb.colliders().first().copied())
+        {
+            // Iterate through contact pairs involving this collider
+            for contact_pair in physics_world.narrow_phase.contact_pairs_with(collider_handle) {
+                if contact_pair.has_any_active_contact {
+                    // Get contact normal to determine which zone
+                    for manifold in contact_pair.manifolds.iter() {
+                        let normal = manifold.local_n1;
+                        let angle = normal.y.atan2(normal.x);
+
+                        // Map angle to zone (0 to num_zones-1)
+                        let normalized_angle = (angle + std::f32::consts::PI) / (2.0 * std::f32::consts::PI);
+                        let zone_idx = (normalized_angle * num_zones as f32) as usize % num_zones;
+                        zones[zone_idx] = true;
+
+                        // Sum up contact forces
+                        for point in manifold.points.iter() {
+                            total_force += point.data.impulse.abs();
+                        }
+                    }
+                }
+            }
+        }
+
+        contact_sensors.last_readings.insert(
+            robot.config.name.clone(),
+            crate::sensors::ContactData { zones, total_force },
+        );
     }
 }
 
@@ -2277,4 +2658,374 @@ pub fn world_reload_system(
     );
 }
 
-// Main function moved to src/main.rs - this module is now a library
+/// Editor input system - handles mouse input for world editing
+pub fn editor_input_system(
+    mut commands: Commands,
+    mut editor: ResMut<crate::editor::WorldEditor>,
+    mut app_config: ResMut<AppConfig>,
+    mut physics_world: ResMut<PhysicsWorld>,
+    camera_query: Query<(&Camera, &GlobalTransform)>,
+    windows: Query<&Window>,
+    mouse_button_input: Res<ButtonInput<MouseButton>>,
+    camera_controller: Res<ui::CameraController>,
+    visual_prefs: Res<ui::VisualPreferences>,
+    obstacle_query: Query<(Entity, &PhysicsHandle, &ObstacleElement)>,
+    mut obstacle_id_counter: ResMut<ObstacleIdCounter>,
+) {
+    // Only process if editor is enabled
+    if !editor.enabled {
+        return;
+    }
+
+    // Get window and camera
+    let Ok(window) = windows.get_single() else {
+        return;
+    };
+    let Ok((camera, camera_transform)) = camera_query.get_single() else {
+        return;
+    };
+
+    // Get cursor position in world coordinates
+    let Some(cursor_pos) = window.cursor_position() else {
+        return;
+    };
+
+    // Convert screen to world coordinates
+    let Ok(world_pos) = camera.viewport_to_world_2d(camera_transform, cursor_pos) else {
+        return;
+    };
+
+    // Apply camera controller transforms
+    let scale = 50.0; // Visual scale factor
+    let world_x = (world_pos.x - camera_controller.pan_x) / (scale * camera_controller.zoom);
+    let world_y = (world_pos.y - camera_controller.pan_y) / (scale * camera_controller.zoom);
+    let world_pos_adjusted = Vec2::new(world_x, world_y);
+
+    // Update editor with current mouse position
+    editor.mouse_world_pos = world_pos_adjusted;
+
+    // Handle mouse input
+    if mouse_button_input.just_pressed(MouseButton::Left) {
+        editor.handle_mouse_press(world_pos_adjusted);
+    }
+
+    if mouse_button_input.pressed(MouseButton::Left) {
+        editor.handle_mouse_drag(world_pos_adjusted);
+    }
+
+    if mouse_button_input.just_released(MouseButton::Left) {
+        match editor.active_tool {
+            crate::editor::EditorTool::Rectangle | crate::editor::EditorTool::Circle => {
+                if let Some(obstacle) = editor.handle_mouse_release() {
+                    // Add obstacle to world config
+                    app_config.world_config.obstacles.push(obstacle.clone());
+
+                    // Spawn physics and visual for new obstacle
+                    obstacle_id_counter.0 += 1;
+                    spawn_obstacle(&mut commands, &mut physics_world, &obstacle, &visual_prefs);
+
+                    // Record undo action
+                    editor.push_undo(crate::editor::EditorAction::AddObstacle {
+                        obstacle,
+                        entity: None,
+                    });
+                }
+            }
+            crate::editor::EditorTool::Select => {
+                editor.handle_mouse_release();
+
+                // Build obstacle list and entity list for hit testing
+                let obstacles: Vec<_> = app_config.world_config.obstacles.clone();
+                let entities: Vec<_> = obstacle_query.iter().map(|(e, _, _)| e).collect();
+
+                editor.try_select_at(world_pos_adjusted, &obstacles, &entities);
+            }
+            crate::editor::EditorTool::Delete => {
+                editor.handle_mouse_release();
+
+                // Find obstacle at click position
+                if let Some(idx) = editor.try_delete_at(world_pos_adjusted, &app_config.world_config.obstacles) {
+                    // Record undo action
+                    let removed = app_config.world_config.obstacles.remove(idx);
+
+                    // Find and remove corresponding entity
+                    let entity_list: Vec<_> = obstacle_query.iter().collect();
+                    if idx < entity_list.len() {
+                        let (entity, physics_handle, _) = entity_list[idx];
+
+                        // Destructure to avoid borrow checker issues
+                        let PhysicsWorld {
+                            ref mut rigid_body_set,
+                            ref mut collider_set,
+                            ref mut island_manager,
+                            ref mut impulse_joint_set,
+                            ref mut multibody_joint_set,
+                            ..
+                        } = *physics_world;
+
+                        // Remove from physics
+                        rigid_body_set.remove(
+                            physics_handle.rigid_body_handle,
+                            island_manager,
+                            collider_set,
+                            impulse_joint_set,
+                            multibody_joint_set,
+                            true,
+                        );
+
+                        // Despawn entity
+                        commands.entity(entity).despawn();
+
+                        editor.push_undo(crate::editor::EditorAction::RemoveObstacle {
+                            obstacle: removed,
+                            entity,
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Spawn a single obstacle with physics and visuals
+fn spawn_obstacle(
+    commands: &mut Commands,
+    physics_world: &mut PhysicsWorld,
+    obstacle: &Obstacle,
+    visual_prefs: &ui::VisualPreferences,
+) {
+    let scale = 50.0;
+    let color = obstacle.color.unwrap_or(visual_prefs.obstacle_color);
+
+    // Create physics body
+    let rigid_body = RigidBodyBuilder::fixed()
+        .translation(vector![obstacle.pos[0], obstacle.pos[1]])
+        .build();
+    let handle = physics_world.rigid_body_set.insert(rigid_body);
+
+    // Create collider based on shape
+    let collider = match obstacle.shape {
+        ObstacleShape::Rectangle => ColliderBuilder::cuboid(
+            obstacle.size[0] / 2.0,
+            obstacle.size[1] / 2.0,
+        )
+        .build(),
+        ObstacleShape::Circle => ColliderBuilder::ball(obstacle.size[0] / 2.0).build(),
+    };
+    physics_world.collider_set.insert_with_parent(collider, handle, &mut physics_world.rigid_body_set);
+
+    // Create visual
+    commands.spawn((
+        Sprite {
+            color: Color::srgb(color[0], color[1], color[2]),
+            custom_size: Some(Vec2::new(obstacle.size[0] * scale, obstacle.size[1] * scale)),
+            ..default()
+        },
+        Transform::from_xyz(obstacle.pos[0] * scale, obstacle.pos[1] * scale, 1.0),
+        ObstacleElement,
+        PhysicsHandle {
+            rigid_body_handle: handle,
+        },
+    ));
+}
+
+/// Editor preview system - renders obstacle being created
+pub fn editor_preview_system(
+    editor: Res<crate::editor::WorldEditor>,
+    mut gizmos: Gizmos,
+) {
+    if !editor.enabled {
+        return;
+    }
+
+    let scale = 50.0;
+
+    // Draw preview of obstacle being created
+    if let Some(preview) = editor.get_preview_obstacle() {
+        let pos = Vec2::new(preview.pos[0] * scale, preview.pos[1] * scale);
+        let color = Color::srgba(0.5, 0.8, 0.5, 0.5); // Semi-transparent green
+
+        match preview.shape {
+            ObstacleShape::Rectangle => {
+                let half_size = Vec2::new(preview.size[0] * scale / 2.0, preview.size[1] * scale / 2.0);
+                gizmos.rect_2d(
+                    Isometry2d::from_translation(pos),
+                    half_size * 2.0,
+                    color,
+                );
+            }
+            ObstacleShape::Circle => {
+                let radius = preview.size[0] * scale / 2.0;
+                gizmos.circle_2d(Isometry2d::from_translation(pos), radius, color);
+            }
+        }
+    }
+
+    // Draw selection highlights
+    // (This would require obstacle positions which we don't have access to here)
+}
+
+/// Run the simulation with full CLI argument support
+pub fn run_simulation(args: Args) -> Result<()> {
+    use bevy::render::batching::gpu_preprocessing::GpuPreprocessingSupport;
+    use bevy::render::view::window::screenshot::CapturedScreenshots;
+    use bevy::render::RenderApp;
+    use std::sync::mpsc::channel;
+    use std::sync::{Arc, Mutex};
+
+    let app_config = AppConfig::new(args.clone());
+    let headless = args.headless;
+
+    let mut app = bevy::prelude::App::new();
+
+    if headless {
+        // Headless mode - minimal plugins, no rendering
+        app.add_plugins(bevy::prelude::MinimalPlugins)
+            .insert_resource(app_config)
+            .insert_resource(PhysicsWorld::default())
+            .insert_resource(ui::UiState::default())
+            .insert_resource(ui::VisualPreferences::default())
+            .insert_resource(ui::RobotTelemetry::default())
+            .insert_resource(crate::editor::WorldEditor::new())
+            .insert_resource(crate::metrics::PerformanceMetrics::default())
+            .insert_resource(LastLidarScan::default())
+            .insert_resource(CameraSensors::default())
+            .insert_resource(GpsSensors::default())
+            .insert_resource(UltrasonicSensors::default())
+            .insert_resource(ContactSensors::default())
+            .insert_resource(PreviousVelocity::default())
+            .insert_resource(ObstacleIdCounter::default())
+            .add_systems(bevy::prelude::Startup, setup)
+            .add_systems(bevy::prelude::Update, tick_start_system)
+            .add_systems(
+                bevy::prelude::Update,
+                (
+                    horus_system,
+                    physics_system,
+                    telemetry_system,
+                    odometry_publish_system,
+                    imu_system,
+                    lidar_system,
+                    camera_system,
+                    gps_system,
+                    ultrasonic_system,
+                    contact_system,
+                    dynamic_obstacle_system,
+                )
+                    .after(tick_start_system),
+            )
+            // Articulated robot systems
+            .add_systems(
+                bevy::prelude::Update,
+                (
+                    crate::joint::articulated_visual_sync_system,
+                    crate::joint::joint_state_update_system,
+                ),
+            );
+    } else {
+        // GUI mode - full visualization
+        app.add_plugins(
+            bevy::prelude::DefaultPlugins
+                .set(bevy::window::WindowPlugin {
+                    primary_window: Some(bevy::window::Window {
+                        title: "sim2d - 2D Robotics Simulator".to_string(),
+                        resolution: (1600.0, 900.0).into(),
+                        ..bevy::prelude::default()
+                    }),
+                    ..bevy::prelude::default()
+                })
+                .disable::<bevy::log::LogPlugin>()
+                .disable::<bevy::render::pipelined_rendering::PipelinedRenderingPlugin>(),
+        )
+        .add_plugins(bevy_egui::EguiPlugin)
+        .insert_resource({
+            let (_, rx) = channel();
+            CapturedScreenshots(Arc::new(Mutex::new(rx)))
+        })
+        .insert_resource(app_config)
+        .insert_resource(PhysicsWorld::default())
+        .insert_resource(ui::UiState::default())
+        .insert_resource(ui::VisualPreferences::default())
+        .insert_resource(ui::CameraController::default())
+        .insert_resource(ui::RobotTelemetry::default())
+        .insert_resource(ui::FrameMetrics::default())
+        .insert_resource(crate::recorder::Recorder::default())
+        .insert_resource(crate::editor::WorldEditor::new())
+        .insert_resource(crate::metrics::PerformanceMetrics::default())
+        .insert_resource(TrajectoryHistory::default())
+        .insert_resource(LastLidarScan::default())
+        .insert_resource(CameraSensors::default())
+        .insert_resource(GpsSensors::default())
+        .insert_resource(UltrasonicSensors::default())
+        .insert_resource(ContactSensors::default())
+        .insert_resource(PreviousVelocity::default())
+        .insert_resource(CollisionState::default())
+        .insert_resource(ObstacleIdCounter::default())
+        .add_systems(bevy::prelude::Startup, setup)
+        .add_systems(bevy::prelude::Update, tick_start_system)
+        .add_systems(
+            bevy::prelude::Update,
+            (
+                horus_system,
+                physics_system,
+                telemetry_system,
+                visual_sync_system,
+                visual_component_sync_system,
+            )
+                .after(tick_start_system),
+        )
+        .add_systems(
+            bevy::prelude::Update,
+            (odometry_publish_system, imu_system, lidar_system, camera_system, gps_system, ultrasonic_system, contact_system).after(tick_start_system),
+        )
+        .add_systems(
+            bevy::prelude::Update,
+            (
+                trajectory_system,
+                velocity_arrow_system,
+                collision_detection_system,
+                collision_indicator_system,
+                dynamic_obstacle_system,
+            ),
+        )
+        .add_systems(
+            bevy::prelude::Update,
+            (
+                camera_control_system,
+                mouse_camera_system,
+                keyboard_input_system,
+                reset_system,
+                robot_visual_reload_system,
+                world_reload_system,
+            ),
+        )
+        .add_systems(
+            bevy::prelude::Update,
+            (visual_color_system, grid_system, lidar_rays_system),
+        )
+        .add_systems(
+            bevy::prelude::Update,
+            (editor_input_system, editor_preview_system),
+        )
+        // Articulated robot systems
+        .add_systems(
+            bevy::prelude::Update,
+            (
+                crate::joint::articulated_visual_sync_system,
+                crate::joint::joint_marker_sync_system,
+                crate::joint::joint_state_update_system,
+            ),
+        )
+        .add_systems(bevy::prelude::Update, ui::ui_system)
+        .add_systems(bevy::prelude::Update, ui::file_dialog_system)
+        .add_systems(bevy::prelude::Update, tick_end_system.after(ui::file_dialog_system));
+
+        // Initialize GpuPreprocessingSupport in RenderApp
+        if let Some(render_app) = app.get_sub_app_mut(RenderApp) {
+            render_app.insert_resource(GpuPreprocessingSupport::None);
+        }
+    }
+
+    app.run();
+    Ok(())
+}

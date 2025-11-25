@@ -1,0 +1,108 @@
+# Figure-8 Racing Track World
+# A track shaped like an infinity symbol (figure-8) for the robot to race on
+
+name: "Figure-8 Racing Track"
+description: "A figure-8 shaped racing track with markers and boundary walls"
+gravity: -9.81
+
+objects:
+  # Ground plane (green grass-like surface)
+  - name: "ground"
+    shape: {type: ground, size_x: 20.0, size_z: 20.0}
+    position: [0.0, 0.0, 0.0]
+    is_static: true
+    friction: 0.8
+    color: [0.3, 0.5, 0.3]
+
+  # === FIGURE-8 TRACK MARKERS ===
+  # The track is two loops connected at the center
+  # Right loop center: (3, 0, 0), Left loop center: (-3, 0, 0)
+  # Loop radius: ~2.5m
+
+  # Center crossover marker (yellow)
+  - name: "center_marker"
+    shape: {type: cylinder, radius: 0.3, height: 0.04}
+    position: [0.0, 0.02, 0.0]
+    is_static: true
+    color: [1.0, 1.0, 0.0]
+
+  # Right loop markers (red cones)
+  - name: "right_marker_1"
+    shape: {type: cylinder, radius: 0.1, height: 0.3}
+    position: [3.0, 0.15, 2.5]
+    is_static: true
+    color: [1.0, 0.2, 0.2]
+
+  - name: "right_marker_2"
+    shape: {type: cylinder, radius: 0.1, height: 0.3}
+    position: [5.5, 0.15, 0.0]
+    is_static: true
+    color: [1.0, 0.2, 0.2]
+
+  - name: "right_marker_3"
+    shape: {type: cylinder, radius: 0.1, height: 0.3}
+    position: [3.0, 0.15, -2.5]
+    is_static: true
+    color: [1.0, 0.2, 0.2]
+
+  # Left loop markers (blue cones)
+  - name: "left_marker_1"
+    shape: {type: cylinder, radius: 0.1, height: 0.3}
+    position: [-3.0, 0.15, 2.5]
+    is_static: true
+    color: [0.2, 0.2, 1.0]
+
+  - name: "left_marker_2"
+    shape: {type: cylinder, radius: 0.1, height: 0.3}
+    position: [-5.5, 0.15, 0.0]
+    is_static: true
+    color: [0.2, 0.2, 1.0]
+
+  - name: "left_marker_3"
+    shape: {type: cylinder, radius: 0.1, height: 0.3}
+    position: [-3.0, 0.15, -2.5]
+    is_static: true
+    color: [0.2, 0.2, 1.0]
+
+  # Outer boundary walls (to keep robot in area)
+  - name: "wall_north"
+    shape: {type: box, size: [16.0, 1.0, 0.2]}
+    position: [0.0, 0.5, 8.0]
+    is_static: true
+    friction: 0.5
+    color: [0.5, 0.5, 0.5]
+
+  - name: "wall_south"
+    shape: {type: box, size: [16.0, 1.0, 0.2]}
+    position: [0.0, 0.5, -8.0]
+    is_static: true
+    friction: 0.5
+    color: [0.5, 0.5, 0.5]
+
+  - name: "wall_east"
+    shape: {type: box, size: [0.2, 1.0, 16.0]}
+    position: [8.0, 0.5, 0.0]
+    is_static: true
+    friction: 0.5
+    color: [0.5, 0.5, 0.5]
+
+  - name: "wall_west"
+    shape: {type: box, size: [0.2, 1.0, 16.0]}
+    position: [-8.0, 0.5, 0.0]
+    is_static: true
+    friction: 0.5
+    color: [0.5, 0.5, 0.5]
+
+# Robot defined separately via --robot flag or in robots section
+robots:
+  - name: "racer"
+    urdf_path: "racer.urdf"
+    position: [0.0, 0.1, 0.0]
+    rotation_euler: [0.0, 0.0, 0.0]
+
+lighting:
+  ambient: [0.6, 0.7, 0.9]
+  directional:
+    direction: [-0.3, -1.0, -0.3]
+    color: [1.0, 0.95, 0.9]
+    illuminance: 10000.0

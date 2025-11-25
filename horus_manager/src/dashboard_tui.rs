@@ -6,6 +6,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use horus_core::core::{LogType, GLOBAL_LOG_BUFFER};
+use horus_core::memory::shm_topics_dir;
 use ratatui::{
     backend::{Backend, CrosstermBackend},
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -128,6 +129,7 @@ struct PackageData {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Fields used for future dependency tracking UI
 struct DependencyData {
     name: String,
     declared_version: String, // Version string from horus.yaml (e.g., "package@1.0.0" or just "package")
@@ -135,6 +137,7 @@ struct DependencyData {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)] // Variants for future dependency status display
 enum DependencyStatus {
     Missing,   // Declared but not installed
     Installed, // Both declared and installed (shown in packages list)
@@ -153,6 +156,7 @@ struct TopicInfo {
 
 // Graph data structures for TUI
 #[derive(Debug, Clone)]
+#[allow(dead_code)] // Fields for future graph visualization
 struct TuiGraphNode {
     id: String,
     label: String,
@@ -300,6 +304,7 @@ impl TuiDashboard {
     }
 
     /// Force refresh of workspace cache (e.g., on manual refresh)
+    #[allow(dead_code)] // Reserved for manual refresh keybinding
     fn force_refresh_workspace_cache(&mut self) {
         self.workspace_cache = get_local_workspaces(&self.current_workspace_path);
         self.workspace_cache_time = Instant::now();
@@ -1056,7 +1061,7 @@ impl TuiDashboard {
         // Create a block for the graph
         let block = Block::default()
             .title(format!(
-                "Graph - {} nodes, {} edges | ● Process → [Topic] → ● Subscriber | Layout: {:?} | [L]ayout [+/-] Zoom [←↑↓→] Pan",
+                "Graph - {} nodes, {} edges | Layout: {:?} | [L]ayout [+/-] Zoom [←↑↓→] Pan",
                 self.graph_nodes.len(),
                 self.graph_edges.len(),
                 self.graph_layout
@@ -1245,8 +1250,74 @@ impl TuiDashboard {
             }
         };
 
-        // Draw smooth Bézier curve (like rqt_graph)
-        self.draw_bezier_curve(canvas, x1, y1, x2, y2, edge_color, width, height);
+        // Draw clean orthogonal lines
+        self.draw_orthogonal_edge(canvas, x1, y1, x2, y2, edge_color, width, height);
+    }
+
+    // Draw orthogonal edge with horizontal and vertical segments
+    #[allow(clippy::too_many_arguments)]
+    fn draw_orthogonal_edge<T>(
+        &self,
+        canvas: &mut [Vec<T>],
+        x1: f32,
+        y1: f32,
+        x2: f32,
+        y2: f32,
+        color: Color,
+        width: usize,
+        height: usize,
+    ) where
+        T: Clone,
+        T: From<(String, Option<Color>)>,
+    {
+        let x1 = x1 as usize;
+        let y1 = y1 as usize;
+        let x2 = x2 as usize;
+        let y2 = y2 as usize;
+
+        // Calculate midpoint for the vertical segment
+        let mid_x = (x1 + x2) / 2;
+
+        // Draw horizontal line from source to midpoint
+        if y1 < height {
+            for x in x1.min(mid_x)..=x1.max(mid_x) {
+                if x < width {
+                    canvas[y1][x] = T::from(("─".to_string(), Some(color)));
+                }
+            }
+        }
+
+        // Draw vertical line at midpoint
+        let (min_y, max_y) = if y1 < y2 { (y1, y2) } else { (y2, y1) };
+        for y in min_y..=max_y {
+            if y < height && mid_x < width {
+                // Use corner characters at transitions
+                let ch = if y == y1 && y1 != y2 {
+                    if y1 < y2 { "┐" } else { "┘" }
+                } else if y == y2 && y1 != y2 {
+                    if y1 < y2 { "└" } else { "┌" }
+                } else if y1 == y2 {
+                    "─"
+                } else {
+                    "│"
+                };
+                canvas[y][mid_x] = T::from((ch.to_string(), Some(color)));
+            }
+        }
+
+        // Draw horizontal line from midpoint to target
+        if y2 < height {
+            for x in mid_x.min(x2)..x2 {
+                if x < width {
+                    canvas[y2][x] = T::from(("─".to_string(), Some(color)));
+                }
+            }
+        }
+
+        // Draw arrow at destination
+        if y2 < height && x2 > 0 && x2 - 1 < width {
+            canvas[y2][x2 - 1] = T::from(("→".to_string(), Some(color)));
+        }
     }
 
     // Draw a smooth Bézier curve between two points (like rqt_graph)
@@ -1338,15 +1409,13 @@ impl TuiDashboard {
 
         loop {
             if x >= 0 && (x as usize) < width && y >= 0 && (y as usize) < height {
-                // Choose character based on line direction for smooth appearance
+                // Use simple consistent character for clean Bezier curves
                 let ch = if dx > dy * 2 {
                     "─" // Mostly horizontal
                 } else if dy > dx * 2 {
                     "│" // Mostly vertical
-                } else if (x2 > x1 && y2 > y1) || (x2 < x1 && y2 < y1) {
-                    "╱" // Diagonal /
                 } else {
-                    "╲" // Diagonal \
+                    "·" // Diagonal/curve points - dot for cleaner transitions
                 };
 
                 canvas[y as usize][x as usize] = T::from((ch.to_string(), Some(color)));
@@ -2017,7 +2086,7 @@ impl TuiDashboard {
                 Span::raw("Real-time from HORUS detect backend"),
             ]),
             Line::from("  • Nodes from /proc scan + registry"),
-            Line::from("  • Topics from /dev/shm/horus/topics/"),
+            Line::from(format!("  • Topics from {}", shm_topics_dir().display())),
             Line::from("  • Packages from ~/.horus/cache + local .horus/ directories"),
             Line::from("  • Params from ~/.horus/params.yaml (RuntimeParams)"),
             Line::from(""),
@@ -2813,9 +2882,9 @@ impl TuiDashboard {
             process_order = process_barycenters.into_iter().map(|(id, _)| id).collect();
         }
 
-        // Calculate optimal spacing
-        let process_spacing = 4;
-        let topic_spacing = 4;
+        // Calculate optimal spacing - more space for cleaner graph
+        let process_spacing = 4; // Vertical space between processes
+        let topic_spacing = 4; // Vertical space between topics
 
         // Calculate label width for dynamic positioning
         let max_label_len = process_order
@@ -2826,7 +2895,7 @@ impl TuiDashboard {
             .unwrap_or(20);
 
         // Position processes on left, vertically distributed
-        let process_x = 3;
+        let process_x = 2;
         let process_start_y = 2;
 
         for (i, process_id) in process_order.iter().enumerate() {
@@ -2836,8 +2905,8 @@ impl TuiDashboard {
             }
         }
 
-        // Position topics on right, vertically distributed
-        let topic_x = process_x + max_label_len as i32 + 15;
+        // Position topics on right with good gap for edges
+        let topic_x = process_x + max_label_len as i32 + 25; // More space for edges
         let topic_start_y = 2;
 
         for (i, topic_id) in topic_order.iter().enumerate() {

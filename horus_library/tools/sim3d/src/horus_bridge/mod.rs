@@ -318,8 +318,8 @@ fn bridge_monitor_system(
 /// System to periodically clear old messages
 fn bridge_cleanup_system(
     config: Res<HorusBridgeConfig>,
-    publisher: Res<HorusPublisher>,
-    subscriber: Res<HorusSubscriber>,
+    _publisher: Res<HorusPublisher>,
+    _subscriber: Res<HorusSubscriber>,
 ) {
     if !config.is_active() {
         return;

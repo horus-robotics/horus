@@ -9,36 +9,7 @@ use horus_library::messages::cmd_vel::CmdVel;
 use horus_library::messages::geometry::Pose2D;
 use horus_library::messages::GenericMessage;
 use pyo3::prelude::*;
-use std::fs;
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-
-/// Helper function to record pub/sub metadata for dashboard discovery
-/// Writes metadata files to /dev/shm/horus/pubsub_metadata/
-fn record_pubsub_metadata(node_name: &str, topic_name: &str, direction: &str) {
-    let metadata_dir = PathBuf::from("/dev/shm/horus/pubsub_metadata");
-
-    // Create directory if it doesn't exist (best-effort, ignore errors)
-    let _ = fs::create_dir_all(&metadata_dir);
-
-    // Create metadata filename: {node_name}_{topic_name}_{direction}
-    let filename = format!(
-        "{}_{}_{}",
-        node_name.replace('/', "_"),
-        topic_name.replace('/', "_"),
-        direction
-    );
-
-    let file_path = metadata_dir.join(&filename);
-
-    // Write current timestamp (best-effort, ignore errors)
-    let timestamp = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
-
-    let _ = fs::write(&file_path, timestamp.to_string());
-}
 
 /// Internal enum tracking which Rust type the Hub wraps
 enum HubType {
@@ -157,7 +128,7 @@ impl PyHub {
                 // Extract fields from Python CmdVel object
                 let linear: f32 = message.getattr(py, "linear")?.extract(py)?;
                 let angular: f32 = message.getattr(py, "angular")?.extract(py)?;
-                let stamp_nanos: u64 = message.getattr(py, "stamp_nanos")?.extract(py)?;
+                let stamp_nanos: u64 = message.getattr(py, "timestamp")?.extract(py)?;
 
                 // Create Rust CmdVel - zero-copy!
                 let cmd = CmdVel::with_timestamp(linear, angular, stamp_nanos);
@@ -176,12 +147,6 @@ impl PyHub {
                             let _ =
                                 info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
 
-                            // Record metadata for dashboard discovery
-                            if let Ok(node_name) = info.getattr(py, "name") {
-                                if let Ok(name) = node_name.extract::<String>(py) {
-                                    record_pubsub_metadata(&name, &self.topic, "pub");
-                                }
-                            }
                         }
                     }
                 }
@@ -217,12 +182,6 @@ impl PyHub {
                             let _ =
                                 info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
 
-                            // Record metadata for dashboard discovery
-                            if let Ok(node_name) = info.getattr(py, "name") {
-                                if let Ok(name) = node_name.extract::<String>(py) {
-                                    record_pubsub_metadata(&name, &self.topic, "pub");
-                                }
-                            }
                         }
                     }
                 }
@@ -232,7 +191,7 @@ impl PyHub {
             HubType::Generic(hub) => {
                 // Convert Python object to MessagePack via pythonize
                 let bound = message.bind(py);
-                let value: serde_json::Value = pythonize::depythonize_bound(bound.clone())
+                let value: serde_json::Value = pythonize::depythonize(&bound)
                     .map_err(|e| {
                         pyo3::exceptions::PyTypeError::new_err(format!(
                             "Failed to convert Python object: {}",
@@ -266,12 +225,6 @@ impl PyHub {
                             let _ =
                                 info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
 
-                            // Record metadata for dashboard discovery
-                            if let Ok(node_name) = info.getattr(py, "name") {
-                                if let Ok(name) = node_name.extract::<String>(py) {
-                                    record_pubsub_metadata(&name, &self.topic, "pub");
-                                }
-                            }
                         }
                     }
                 }
@@ -317,12 +270,6 @@ impl PyHub {
                                     (&self.topic, log_msg, ipc_ns),
                                 );
 
-                                // Record metadata for dashboard discovery
-                                if let Ok(node_name) = info.getattr(py, "name") {
-                                    if let Ok(name) = node_name.extract::<String>(py) {
-                                        record_pubsub_metadata(&name, &self.topic, "sub");
-                                    }
-                                }
                             }
                         }
                     }
@@ -353,12 +300,6 @@ impl PyHub {
                                     (&self.topic, log_msg, ipc_ns),
                                 );
 
-                                // Record metadata for dashboard discovery
-                                if let Ok(node_name) = info.getattr(py, "name") {
-                                    if let Ok(name) = node_name.extract::<String>(py) {
-                                        record_pubsub_metadata(&name, &self.topic, "sub");
-                                    }
-                                }
                             }
                         }
                     }
@@ -390,12 +331,6 @@ impl PyHub {
                                     (&self.topic, log_msg, ipc_ns),
                                 );
 
-                                // Record metadata for dashboard discovery
-                                if let Ok(node_name) = info.getattr(py, "name") {
-                                    if let Ok(name) = node_name.extract::<String>(py) {
-                                        record_pubsub_metadata(&name, &self.topic, "sub");
-                                    }
-                                }
                             }
                         }
                     }
@@ -438,6 +373,7 @@ impl PyHub {
     ///
     /// Returns:
     ///     True if sent successfully
+    #[pyo3(signature = (data, node=None))]
     fn send_bytes(&self, py: Python, data: Vec<u8>, node: Option<PyObject>) -> PyResult<bool> {
         use std::time::Instant;
         let start = Instant::now();
@@ -460,12 +396,6 @@ impl PyHub {
                             let _ =
                                 info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
 
-                            // Record metadata for dashboard discovery
-                            if let Ok(node_name) = info.getattr(py, "name") {
-                                if let Ok(name) = node_name.extract::<String>(py) {
-                                    record_pubsub_metadata(&name, &self.topic, "pub");
-                                }
-                            }
                         }
                     }
                 }
@@ -520,12 +450,6 @@ impl PyHub {
                             let _ =
                                 info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
 
-                            // Record metadata for dashboard discovery
-                            if let Ok(node_name) = info.getattr(py, "name") {
-                                if let Ok(name) = node_name.extract::<String>(py) {
-                                    record_pubsub_metadata(&name, &self.topic, "pub");
-                                }
-                            }
                         }
                     }
                 }
@@ -546,6 +470,7 @@ impl PyHub {
     ///
     /// Returns:
     ///     True if sent successfully
+    #[pyo3(signature = (data, node=None))]
     fn send_numpy(&self, py: Python, data: PyObject, node: Option<PyObject>) -> PyResult<bool> {
         use std::time::Instant;
         let start = Instant::now();
@@ -576,12 +501,6 @@ impl PyHub {
                             let _ =
                                 info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
 
-                            // Record metadata for dashboard discovery
-                            if let Ok(node_name) = info.getattr(py, "name") {
-                                if let Ok(name) = node_name.extract::<String>(py) {
-                                    record_pubsub_metadata(&name, &self.topic, "pub");
-                                }
-                            }
                         }
                     }
                 }
@@ -601,6 +520,7 @@ impl PyHub {
     ///
     /// Returns:
     ///     Tuple of (bytes, metadata_str, timestamp) or None
+    #[pyo3(signature = (node=None))]
     fn recv_with_metadata(
         &self,
         py: Python,
@@ -627,12 +547,6 @@ impl PyHub {
                                     (&self.topic, log_msg, ipc_ns),
                                 );
 
-                                // Record metadata for dashboard discovery
-                                if let Ok(node_name) = info.getattr(py, "name") {
-                                    if let Ok(name) = node_name.extract::<String>(py) {
-                                        record_pubsub_metadata(&name, &self.topic, "sub");
-                                    }
-                                }
                             }
                         }
                     }

@@ -92,6 +92,8 @@ impl SceneValidator {
     }
 
     /// Get the JSON schema for scene definitions
+    ///
+    /// Matches the SceneDefinition struct with tagged enum shapes
     fn get_schema() -> Value {
         json!({
             "$schema": "http://json-schema.org/draft-07/schema#",
@@ -110,12 +112,9 @@ impl SceneValidator {
                     "description": "Human-readable scene description"
                 },
                 "gravity": {
-                    "type": "array",
-                    "description": "Gravity vector [x, y, z] in m/s²",
-                    "items": { "type": "number" },
-                    "minItems": 3,
-                    "maxItems": 3,
-                    "default": [0.0, -9.81, 0.0]
+                    "type": "number",
+                    "description": "Gravity magnitude in m/s² (negative for downward)",
+                    "default": -9.81
                 },
                 "robots": {
                     "type": "array",
@@ -139,8 +138,8 @@ impl SceneValidator {
                         "name": {
                             "type": "string",
                             "minLength": 1,
-                            "pattern": "^[a-zA-Z0-9_-]+$",
-                            "description": "Unique robot identifier"
+                            "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$",
+                            "description": "Unique robot identifier (alphanumeric and underscores, must start with letter or underscore)"
                         },
                         "urdf_path": {
                             "type": "string",
@@ -162,30 +161,15 @@ impl SceneValidator {
                 },
                 "Object": {
                     "type": "object",
-                    "required": ["name", "shape"],
+                    "required": ["name", "shape", "position"],
                     "properties": {
                         "name": {
                             "type": "string",
                             "minLength": 1
                         },
                         "shape": {
-                            "type": "string",
-                            "enum": ["box", "sphere", "cylinder", "capsule"],
-                            "description": "Object shape type"
-                        },
-                        "size": {
-                            "$ref": "#/definitions/Vec3",
-                            "description": "Size for box shape [width, height, depth]"
-                        },
-                        "radius": {
-                            "type": "number",
-                            "exclusiveMinimum": 0.0,
-                            "description": "Radius for sphere, cylinder, or capsule"
-                        },
-                        "height": {
-                            "type": "number",
-                            "exclusiveMinimum": 0.0,
-                            "description": "Height for cylinder or capsule"
+                            "$ref": "#/definitions/Shape",
+                            "description": "Object shape with type and dimensions"
                         },
                         "position": {
                             "$ref": "#/definitions/Vec3"
@@ -193,13 +177,17 @@ impl SceneValidator {
                         "rotation": {
                             "$ref": "#/definitions/Quaternion"
                         },
+                        "rotation_euler": {
+                            "$ref": "#/definitions/Vec3",
+                            "description": "Euler angles in degrees [x, y, z]"
+                        },
                         "is_static": {
                             "type": "boolean",
                             "default": false
                         },
                         "mass": {
                             "type": "number",
-                            "exclusiveMinimum": 0.0,
+                            "minimum": 0.0,
                             "default": 1.0
                         },
                         "friction": {
@@ -214,13 +202,47 @@ impl SceneValidator {
                             "maximum": 1.0,
                             "default": 0.0
                         },
-                        "material": {
-                            "type": "string",
-                            "description": "Material preset name"
-                        },
                         "color": {
                             "$ref": "#/definitions/Color",
                             "description": "RGB color [r, g, b]"
+                        },
+                        "damping": {
+                            "type": "array",
+                            "description": "[linear, angular] damping",
+                            "items": { "type": "number" },
+                            "minItems": 2,
+                            "maxItems": 2
+                        }
+                    }
+                },
+                "Shape": {
+                    "type": "object",
+                    "required": ["type"],
+                    "description": "Shape definition with type tag",
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": ["box", "sphere", "cylinder", "capsule", "ground"]
+                        },
+                        "size": {
+                            "$ref": "#/definitions/Vec3",
+                            "description": "Size for box [x, y, z]"
+                        },
+                        "size_x": {
+                            "type": "number",
+                            "description": "X size for ground"
+                        },
+                        "size_z": {
+                            "type": "number",
+                            "description": "Z size for ground"
+                        },
+                        "radius": {
+                            "type": "number",
+                            "description": "Radius for sphere, cylinder, capsule"
+                        },
+                        "height": {
+                            "type": "number",
+                            "description": "Height for cylinder, capsule"
                         }
                     }
                 },
@@ -240,11 +262,7 @@ impl SceneValidator {
                 "Color": {
                     "type": "array",
                     "description": "[r, g, b] in range 0.0-1.0",
-                    "items": {
-                        "type": "number",
-                        "minimum": 0.0,
-                        "maximum": 1.0
-                    },
+                    "items": { "type": "number" },
                     "minItems": 3,
                     "maxItems": 3
                 },
@@ -293,13 +311,13 @@ mod tests {
         let yaml = r#"
 name: test_scene
 description: A test scene
-gravity: [0.0, -9.81, 0.0]
+gravity: -9.81
 robots: []
 objects: []
 "#;
 
         let report = validator.validate_yaml(yaml).unwrap();
-        assert!(report.valid, "Scene should be valid");
+        assert!(report.valid, "Scene should be valid: {:?}", report.errors);
         assert!(report.errors.is_empty());
     }
 
@@ -316,17 +334,17 @@ description: A test scene
     }
 
     #[test]
-    fn test_invalid_gravity_wrong_size() {
+    fn test_invalid_gravity_wrong_type() {
         let validator = SceneValidator::new().unwrap();
         let yaml = r#"
 name: test_scene
-gravity: [0.0, -9.81]
+gravity: "not a number"
 "#;
 
         let report = validator.validate_yaml(yaml).unwrap();
         assert!(
             !report.valid,
-            "Scene should be invalid with wrong gravity size"
+            "Scene should be invalid with wrong gravity type"
         );
     }
 

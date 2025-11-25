@@ -79,7 +79,7 @@ impl Node for StateMachineNode {
                     self.cmd_pub.send(CmdVel::zero(), &mut ctx).ok();  // Stop
                     RobotState::ObstacleDetected
                 } else {
-                    self.cmd_pub.send(CmdVel::new(1.0, 0.0), ctx).ok();  // Forward
+                    self.cmd_pub.send(CmdVel::new(1.0, 0.0), &mut ctx).ok();  // Forward
                     RobotState::Moving
                 }
             }
@@ -90,7 +90,7 @@ impl Node for StateMachineNode {
             }
 
             RobotState::Rotating => {
-                self.cmd_pub.send(CmdVel::new(0.0, 0.5), ctx).ok();  // Rotate
+                self.cmd_pub.send(CmdVel::new(0.0, 0.5), &mut ctx).ok();  // Rotate
                 self.rotation_counter += 1;
 
                 if self.rotation_counter > 50 {
@@ -107,16 +107,18 @@ impl Node for StateMachineNode {
 
         // Log state transitions
         if self.state != prev_state {
-            ctx.log_info(&format!(
+            if let Some(ref mut c) = ctx {
+                c.log_info(&format!(
                     "State transition: {:?} -> {:?}",
                     prev_state, self.state
                 ));
+            }
         }
     }
 
     fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         // Ensure robot is stopped
-        self.cmd_pub.send(CmdVel::zero(), None).ok();
+        self.cmd_pub.send(CmdVel::zero(), &mut None).ok();
         ctx.log_info("State machine shutdown");
         Ok(())
     }
@@ -187,10 +189,12 @@ impl Node for EmergencyStopNode {
         if let Some(battery) = self.battery_sub.recv(&mut ctx) {
             if battery.is_critical() {  // Below 10%
                 should_stop = true;
-                ctx.log_error(&format!(
+                if let Some(ref mut c) = ctx {
+                    c.log_error(&format!(
                         " CRITICAL: Battery at {:.0}% - EMERGENCY STOP!",
                         battery.percentage
                     ));
+                }
             }
         }
 
@@ -198,10 +202,12 @@ impl Node for EmergencyStopNode {
         if let Some(min_dist) = self.lidar_sub.recv(&mut ctx) {
             if min_dist < 0.2 {  // 20cm
                 should_stop = true;
-                ctx.log_error(&format!(
+                if let Some(ref mut c) = ctx {
+                    c.log_error(&format!(
                         " CRITICAL: Obstacle at {:.2}m - EMERGENCY STOP!",
                         min_dist
                     ));
+                }
             }
         }
 
@@ -214,7 +220,7 @@ impl Node for EmergencyStopNode {
 
     fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         // Always activate estop on shutdown
-        self.estop_pub.send(true, None).ok();
+        self.estop_pub.send(true, &mut None).ok();
         ctx.log_warning("Emergency stop system offline");
         Ok(())
     }
@@ -272,16 +278,18 @@ impl Node for MotorController {
         if let Some(cmd) = self.cmd_sub.recv(&mut ctx) {
             self.motor_pub.send(cmd, &mut ctx).ok();
 
-            ctx.log_debug(&format!(
+            if let Some(ref mut c) = ctx {
+                c.log_debug(&format!(
                     "Motors: linear={:.2}, angular={:.2}",
                     cmd.linear, cmd.angular
                 ));
+            }
         }
     }
 
     fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         // Stop motors
-        self.motor_pub.send(CmdVel::zero(), None).ok();
+        self.motor_pub.send(CmdVel::zero(), &mut None).ok();
         ctx.log_info("Motor controller stopped");
         Ok(())
     }
@@ -313,18 +321,22 @@ impl Node for LoggerNode {
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Log velocity commands
         if let Some(cmd) = self.cmd_sub.recv(&mut ctx) {
-            ctx.log_debug(&format!(
+            if let Some(ref mut c) = ctx {
+                c.log_debug(&format!(
                     "LOG: cmd_vel({:.2}, {:.2})",
                     cmd.linear, cmd.angular
                 ));
+            }
         }
 
         // Log battery state
         if let Some(battery) = self.battery_sub.recv(&mut ctx) {
-            ctx.log_debug(&format!(
+            if let Some(ref mut c) = ctx {
+                c.log_debug(&format!(
                     "LOG: battery({:.1}V, {:.0}%)",
                     battery.voltage, battery.percentage
                 ));
+            }
         }
 
         // In production: write to file, database, etc.
@@ -550,7 +562,9 @@ impl Node for TempSensor {
         let temp = 20.0 + (self.counter.sin() * 5.0);
         self.temp_pub.send(temp, &mut ctx).ok();
 
-        ctx.log_debug(&format!("Rust: {:.2}°C", temp));
+        if let Some(ref mut c) = ctx {
+            c.log_debug(&format!("Rust: {:.2}°C", temp));
+        }
 
         self.counter += 0.1;
     }

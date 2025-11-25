@@ -34,10 +34,9 @@ use horus_library::prelude::*;
 fn main() -> Result<()> {
     let mut scheduler = Scheduler::new();
 
-    // Create IMU node
-    let mut imu = ImuNode::new()?;
-    imu.set_sensor_type(ImuType::MPU6050);
-    imu.set_i2c_address(0x68);  // Default address
+    // Create IMU node with specific backend
+    let mut imu = ImuNode::new_with_backend("imu", ImuBackend::Mpu6050)?;
+    imu.set_i2c_config("/dev/i2c-1", 0x68);  // Bus and address
 
     scheduler.add(Box::new(imu), 1, Some(true));
     scheduler.run()?;
@@ -81,31 +80,48 @@ horus_library = { version = "0.1", features = ["i2c-hardware"] }
 ```rust
 let mut imu = ImuNode::new()?;
 
-// Select IMU type
-imu.set_sensor_type(ImuType::MPU6050);
-imu.set_sensor_type(ImuType::BNO055);
+// Set hardware backend (Mpu6050, Bno055, Icm20948, Simulation)
+imu.set_backend(ImuBackend::Mpu6050);
 
-// Configure
-imu.set_sample_rate(100);  // 100 Hz
-imu.enable_fusion(true);   // Enable orientation fusion
-imu.calibrate()?;          // Run calibration
+// Set I2C bus and address for hardware IMU
+imu.set_i2c_config("/dev/i2c-1", 0x68);
+
+// Set frame ID for coordinate system
+imu.set_frame_id("imu_link");
+
+// Set IMU sample rate (Hz)
+imu.set_sample_rate(100.0);  // 100 Hz
 ```
 
 ## Usage Patterns
 
 ### Reading IMU Data
 
-```rust
-let hub = Hub::<ImuData>::new("imu/data")?;
+The ImuNode publishes to the following topic (configurable via `new_with_topic` or `new_with_backend`):
+- Publishes to `"imu"` - IMU sensor data (Imu)
 
-if let Some(data) = hub.recv(None) {
-    println!("Accel: [{:.2}, {:.2}, {:.2}] m/s²",
-        data.accel_x, data.accel_y, data.accel_z);
-    println!("Gyro: [{:.2}, {:.2}, {:.2}] °/s",
-        data.gyro_x, data.gyro_y, data.gyro_z);
-    println!("Roll: {:.1}°, Pitch: {:.1}°, Yaw: {:.1}°",
-        data.roll, data.pitch, data.yaw);
+```rust
+let hub = Hub::<Imu>::new("imu")?;
+
+if let Some(data) = hub.recv(&mut None) {
+    // Orientation as quaternion [x, y, z, w]
+    println!("Orientation: [{:.3}, {:.3}, {:.3}, {:.3}]",
+        data.orientation[0], data.orientation[1],
+        data.orientation[2], data.orientation[3]);
+
+    // Angular velocity [x, y, z] in rad/s
+    println!("Angular velocity: [{:.2}, {:.2}, {:.2}] rad/s",
+        data.angular_velocity[0], data.angular_velocity[1],
+        data.angular_velocity[2]);
+
+    // Linear acceleration [x, y, z] in m/s²
+    println!("Acceleration: [{:.2}, {:.2}, {:.2}] m/s²",
+        data.linear_acceleration[0], data.linear_acceleration[1],
+        data.linear_acceleration[2]);
 }
+
+// Get actual sample rate
+let rate = imu.get_actual_sample_rate();
 ```
 
 ## Best Practices

@@ -100,8 +100,276 @@ fn default_ambient() -> [f32; 3] {
     [0.3, 0.3, 0.3]
 }
 
+// ============================================================================
+// Alternative (Legacy) Format Support
+// ============================================================================
+// Supports world files with format:
+//   world:
+//     name: "..."
+//     gravity: [0, -9.81, 0]
+//   objects:
+//     - type: box
+//       size: [1, 1, 1]
+//       static: true
+
+/// Legacy world format with "world:" wrapper
+#[derive(Debug, Clone, Deserialize)]
+struct LegacyWorldFile {
+    world: Option<LegacyWorldConfig>,
+    #[serde(default)]
+    objects: Vec<LegacyObject>,
+    #[serde(default)]
+    robots: Vec<LegacyRobot>,
+    #[serde(default)]
+    lighting: Vec<LegacyLight>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct LegacyWorldConfig {
+    name: Option<String>,
+    #[serde(default)]
+    gravity: Option<serde_yaml::Value>, // Can be f32 or [f32; 3]
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct LegacyObject {
+    #[serde(rename = "type")]
+    obj_type: String,
+    name: Option<String>,
+    #[serde(default)]
+    position: [f32; 3],
+    #[serde(default)]
+    size: Option<[f32; 3]>,
+    #[serde(default)]
+    radius: Option<f32>,
+    #[serde(default)]
+    height: Option<f32>,
+    #[serde(default, rename = "static")]
+    is_static: bool,
+    #[serde(default)]
+    material: Option<LegacyMaterial>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct LegacyMaterial {
+    #[serde(default)]
+    color: Option<Vec<f32>>, // Can be RGB or RGBA
+    #[serde(default)]
+    friction: Option<f32>,
+    #[serde(default)]
+    restitution: Option<f32>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct LegacyRobot {
+    name: String,
+    #[serde(rename = "type")]
+    robot_type: Option<String>,
+    #[serde(default)]
+    position: [f32; 3],
+    #[serde(default)]
+    orientation: Option<[f32; 3]>,
+    #[serde(default)]
+    urdf_path: Option<String>,
+    #[serde(flatten)]
+    _extra: std::collections::HashMap<String, serde_yaml::Value>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct LegacyLight {
+    #[serde(rename = "type")]
+    light_type: String,
+    #[serde(default)]
+    direction: Option<[f32; 3]>,
+    #[serde(default)]
+    color: Option<[f32; 3]>,
+    #[serde(default)]
+    intensity: Option<f32>,
+    #[serde(default)]
+    shadows: Option<bool>,
+}
+
+impl LegacyWorldFile {
+    /// Convert legacy format to standard SceneDefinition
+    fn to_scene_definition(self) -> SceneDefinition {
+        let name = self.world
+            .as_ref()
+            .and_then(|w| w.name.clone())
+            .unwrap_or_else(|| "Unnamed Scene".to_string());
+
+        let gravity = self.world.as_ref().and_then(|w| {
+            w.gravity.as_ref().and_then(|g| {
+                // Handle both single float and array format
+                match g {
+                    serde_yaml::Value::Number(n) => n.as_f64().map(|v| v as f32),
+                    serde_yaml::Value::Sequence(seq) if seq.len() >= 2 => {
+                        // Use Y component for gravity
+                        seq.get(1).and_then(|v| v.as_f64()).map(|v| v as f32)
+                    }
+                    _ => None,
+                }
+            })
+        });
+
+        // Convert lighting before moving other fields
+        let lighting = self.convert_lighting();
+
+        let objects: Vec<SceneObject> = self.objects
+            .into_iter()
+            .enumerate()
+            .filter_map(|(i, obj)| obj.to_scene_object(i))
+            .collect();
+
+        let robots: Vec<SceneRobot> = self.robots
+            .into_iter()
+            .filter_map(|r| r.to_scene_robot())
+            .collect();
+
+        SceneDefinition {
+            name,
+            description: None,
+            gravity,
+            objects,
+            robots,
+            lighting,
+        }
+    }
+
+    fn convert_lighting(&self) -> Option<SceneLighting> {
+        if self.lighting.is_empty() {
+            return None;
+        }
+
+        let mut ambient = [0.3, 0.3, 0.3];
+        let mut directional = None;
+
+        for light in &self.lighting {
+            match light.light_type.as_str() {
+                "ambient" => {
+                    if let Some(color) = &light.color {
+                        ambient = *color;
+                    }
+                }
+                "directional" => {
+                    if let (Some(dir), Some(color)) = (&light.direction, &light.color) {
+                        directional = Some(DirectionalLightConfig {
+                            direction: *dir,
+                            color: *color,
+                            illuminance: light.intensity.unwrap_or(1.0) * 10000.0,
+                        });
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        Some(SceneLighting { ambient, directional })
+    }
+}
+
+impl LegacyObject {
+    fn to_scene_object(self, index: usize) -> Option<SceneObject> {
+        let name = self.name.unwrap_or_else(|| format!("object_{}", index));
+
+        let shape = match self.obj_type.to_lowercase().as_str() {
+            "box" => {
+                let size = self.size.unwrap_or([1.0, 1.0, 1.0]);
+                SceneShape::Box { size }
+            }
+            "sphere" => {
+                let radius = self.radius.unwrap_or(0.5);
+                SceneShape::Sphere { radius }
+            }
+            "cylinder" => {
+                let radius = self.radius.unwrap_or(0.5);
+                let height = self.height.unwrap_or(1.0);
+                SceneShape::Cylinder { radius, height }
+            }
+            "capsule" => {
+                let radius = self.radius.unwrap_or(0.5);
+                let height = self.height.unwrap_or(1.0);
+                SceneShape::Capsule { radius, height }
+            }
+            "ground" | "plane" => {
+                let size = self.size.unwrap_or([20.0, 0.1, 20.0]);
+                SceneShape::Ground { size_x: size[0], size_z: size[2] }
+            }
+            _ => {
+                warn!("Unknown object type '{}', defaulting to box", self.obj_type);
+                let size = self.size.unwrap_or([1.0, 1.0, 1.0]);
+                SceneShape::Box { size }
+            }
+        };
+
+        let (color, friction, restitution) = if let Some(mat) = &self.material {
+            let color = mat.color.as_ref().map(|c| {
+                if c.len() >= 3 { [c[0], c[1], c[2]] } else { [0.8, 0.8, 0.8] }
+            });
+            (color, mat.friction.unwrap_or(0.5), mat.restitution.unwrap_or(0.0))
+        } else {
+            (None, 0.5, 0.0)
+        };
+
+        Some(SceneObject {
+            name,
+            shape,
+            position: self.position,
+            rotation: [1.0, 0.0, 0.0, 0.0],
+            rotation_euler: None,
+            is_static: self.is_static,
+            mass: 1.0,
+            friction,
+            restitution,
+            color,
+            damping: None,
+        })
+    }
+}
+
+impl LegacyRobot {
+    fn to_scene_robot(self) -> Option<SceneRobot> {
+        // If there's a URDF path, use it; otherwise try to map built-in types
+        let urdf_path = if let Some(path) = self.urdf_path {
+            path
+        } else {
+            // For built-in types, map to default URDFs
+            match self.robot_type.as_deref() {
+                Some("differential_drive") => "builtin://diff_drive.urdf".to_string(),
+                _ => return None, // Skip robots without URDF path
+            }
+        };
+
+        Some(SceneRobot {
+            name: self.name,
+            urdf_path,
+            position: self.position,
+            rotation: [1.0, 0.0, 0.0, 0.0],
+            rotation_euler: self.orientation,
+        })
+    }
+}
+
+/// Try to parse as legacy format
+fn try_parse_legacy(content: &str) -> Option<SceneDefinition> {
+    // Check if it looks like legacy format (has "world:" or objects with "type:" at top level)
+    if content.contains("world:") ||
+       (content.contains("objects:") && content.contains("  - type:")) {
+        match serde_yaml::from_str::<LegacyWorldFile>(content) {
+            Ok(legacy) => {
+                info!("Detected legacy world format, converting...");
+                Some(legacy.to_scene_definition())
+            }
+            Err(_) => None,
+        }
+    } else {
+        None
+    }
+}
+
 impl SceneDefinition {
     /// Load scene from YAML file
+    ///
+    /// Supports both standard format and legacy format with "world:" wrapper
     pub fn from_yaml_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let path_buf = path.as_ref().to_path_buf();
 
@@ -117,7 +385,12 @@ impl SceneDefinition {
             }
         })?;
 
-        // Validate before parsing
+        // Try legacy format first (world: wrapper, type: at top level)
+        if let Some(scene) = try_parse_legacy(&content) {
+            return Ok(scene);
+        }
+
+        // Validate standard format before parsing
         let validator = SceneValidator::new().map_err(|e| {
             EnhancedError::new(format!("Failed to create validator: {}", e))
                 .with_category(ErrorCategory::ConfigError)
@@ -159,7 +432,7 @@ impl SceneDefinition {
                      - Field names match schema\n\
                      \nExample valid scene:\n  \
                      name: \"MyScene\"\n  \
-                     gravity: [0.0, -9.81, 0.0]\n  \
+                     gravity: -9.81\n  \
                      objects:\n  \
                        - name: \"box1\"\n  \
                          shape: {{type: box, size: [1.0, 1.0, 1.0]}}\n  \
@@ -185,8 +458,15 @@ impl SceneDefinition {
     }
 
     /// Load scene from YAML string
+    ///
+    /// Supports both standard format and legacy format with "world:" wrapper
     pub fn from_yaml_str(yaml: &str) -> Result<Self> {
-        // Validate before parsing
+        // Try legacy format first
+        if let Some(scene) = try_parse_legacy(yaml) {
+            return Ok(scene);
+        }
+
+        // Validate standard format before parsing
         let validator = SceneValidator::new()
             .map_err(|e| EnhancedError::new(format!("Failed to create validator: {}", e)))?;
 

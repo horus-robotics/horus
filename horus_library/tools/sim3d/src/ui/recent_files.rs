@@ -7,6 +7,8 @@
 //! - Filtering by file type
 //! - Automatic handling of missing files
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};

@@ -9,8 +9,9 @@
 //! ── messages/       # Shared memory-safe messages
 //! ── nodes/          # Reusable nodes
 //! ── algorithms/     # Common algorithms (future)
+//! ── tf/             # Transform frame system
 //! ── apps/           # Complete demo applications
-//! ── tools/          # Development utilities
+//! ── tools/          # Development utilities (sim2d, sim3d)
 //! ```
 //!
 //! ## Usage
@@ -35,11 +36,22 @@
 //! // Or import from specific modules
 //! use horus_library::messages::{Direction, SnakeState};
 //! use horus_library::nodes::{PidControllerNode, SafetyMonitorNode};
+//!
+//! // Use simulators (separate crates to avoid cyclic deps)
+//! use sim2d::{Sim2DBuilder, RobotConfig};
+//! use sim3d::rl::{RLTask, Action, Observation};
 //! ```
 
 pub mod algorithms;
 pub mod messages;
 pub mod nodes;
+pub mod tf;
+
+// Note: sim2d and sim3d are separate crates to avoid cyclic dependencies.
+// Access them directly via:
+//   - Rust: use sim2d::*; or use sim3d::*;
+//   - Python: from horus.library.sim2d import Sim2D
+//             from horus.library.sim3d import make_env
 
 // Re-export core traits needed for message types
 pub use horus_core::core::LogSummary;
@@ -74,3 +86,40 @@ pub use nodes::LidarNode;
 
 #[cfg(feature = "modbus-hardware")]
 pub use nodes::ModbusNode;
+
+/// Prelude module for convenient imports
+///
+/// # Usage
+/// ```rust,ignore
+/// use horus_library::prelude::*;
+///
+/// // For simulation, import sim2d/sim3d directly:
+/// use sim2d::{Sim2DBuilder, RobotConfig};
+/// use sim3d::rl::{RLTask, make_env};  // separate crate
+/// ```
+pub mod prelude {
+    // Core traits
+    pub use crate::LogSummary;
+
+    // Common message types
+    pub use crate::messages::{
+        cmd_vel::CmdVel,
+        geometry::{Pose2D, Transform, Twist, Vector3, Quaternion, Point3},
+        sensor::{LaserScan, Imu, BatteryState, NavSatFix, Odometry},
+    };
+
+    // TF (Transform Frame) types
+    pub use crate::tf::{
+        Transform as TFTransform, TFTree, TFBuffer, TFError,
+        TransformStamped, StaticTransformStamped, TFMessage,
+        CircularBuffer, FrameNode, timestamp_now,
+    };
+
+    // Common nodes
+    pub use crate::nodes::{
+        DifferentialDriveNode, EmergencyStopNode, PidControllerNode, SafetyMonitorNode,
+    };
+
+    // Note: sim2d and sim3d are separate crates to avoid cyclic dependencies.
+    // Import them directly: use sim2d::*; or use sim3d::*;
+}

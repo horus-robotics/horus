@@ -27,6 +27,7 @@ ctrlc = "3.4"
 colored = "2.0"
 crossterm = "0.27"  # Terminal styling
 parking_lot = "0.12"  # Faster mutexes for buffer pool
+dirs = "5.0"  # Cross-platform directory paths
 
 [build-dependencies]
 pyo3-build-config = "0.22"

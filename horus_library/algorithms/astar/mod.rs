@@ -41,9 +41,9 @@ use std::collections::{BinaryHeap, HashMap, HashSet};
 struct Node {
     x: i32,
     y: i32,
-    g_cost: f64, // Cost from start
-    h_cost: f64, // Heuristic cost to goal
-    f_cost: f64, // Total cost (g + h)
+    g_cost: f64,  // Cost from start
+    _h_cost: f64, // Heuristic cost to goal (stored for debugging, used to compute f_cost)
+    f_cost: f64,  // Total cost (g + h)
     parent: Option<(i32, i32)>,
 }
 
@@ -189,7 +189,7 @@ impl AStar {
             x: self.start.0,
             y: self.start.1,
             g_cost: 0.0,
-            h_cost: self.heuristic_cost(self.start.0, self.start.1),
+            _h_cost: self.heuristic_cost(self.start.0, self.start.1),
             f_cost: self.heuristic_cost(self.start.0, self.start.1),
             parent: None,
         };
@@ -237,13 +237,13 @@ impl AStar {
                 };
 
                 if should_update {
-                    let h_cost = self.heuristic_cost(nx, ny);
+                    let _h_cost = self.heuristic_cost(nx, ny);
                     let neighbor_node = Node {
                         x: nx,
                         y: ny,
                         g_cost: tentative_g,
-                        h_cost,
-                        f_cost: tentative_g + h_cost,
+                        _h_cost,
+                        f_cost: tentative_g + _h_cost,
                         parent: Some(current_pos),
                     };
 

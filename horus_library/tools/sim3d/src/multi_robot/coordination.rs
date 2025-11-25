@@ -251,7 +251,7 @@ pub fn formation_control_system(
 ) {
     let dt = time.delta_secs();
 
-    for (mut transform, formation, robot) in followers.iter_mut() {
+    for (mut transform, formation, _robot) in followers.iter_mut() {
         if let Some(leader_id) = &formation.leader {
             // Find leader transform
             if let Some((leader_transform, _)) = leaders.iter().find(|(_, r)| &r.id == leader_id) {

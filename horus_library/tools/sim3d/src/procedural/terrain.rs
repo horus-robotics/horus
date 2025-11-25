@@ -3,7 +3,7 @@ use bevy::render::mesh::{Indices, PrimitiveTopology};
 use noise::{NoiseFn, Perlin, Simplex};
 
 /// Terrain generation configuration
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Resource)]
 pub struct TerrainConfig {
     pub size: Vec2,
     pub resolution: UVec2,
@@ -322,7 +322,7 @@ impl TerrainMeshGenerator {
 }
 
 /// Vegetation placement configuration
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Resource)]
 pub struct VegetationConfig {
     pub density: f32,
     pub min_height: f32,
@@ -405,7 +405,7 @@ impl VegetationPlacer {
     }
 
     fn calculate_slope(heightmap: &Heightmap, x: u32, z: u32) -> f32 {
-        let h = heightmap.get(x, z);
+        let _h = heightmap.get(x, z);
         let h_l = heightmap.get(x.saturating_sub(1), z);
         let h_r = heightmap.get((x + 1).min(heightmap.width - 1), z);
         let h_d = heightmap.get(x, z.saturating_sub(1));

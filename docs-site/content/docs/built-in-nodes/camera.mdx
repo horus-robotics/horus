@@ -30,9 +30,10 @@ use horus_library::prelude::*;
 fn main() -> Result<()> {
     let mut scheduler = Scheduler::new();
 
-    let mut camera = CameraNode::new(0)?;  // Camera index 0
+    let mut camera = CameraNode::new()?;
+    camera.set_device_id(0);     // Camera index 0
     camera.set_resolution(640, 480);
-    camera.set_framerate(30);
+    camera.set_fps(30.0);
 
     scheduler.add(Box::new(camera), 1, Some(true));
     scheduler.run()?;
@@ -40,16 +41,45 @@ fn main() -> Result<()> {
 }
 ```
 
-## Usage
+## Configuration
 
 ```rust
-let hub = Hub::<CameraFrame>::new("camera/frame")?;
+// Set camera device ID (0 for default camera)
+camera.set_device_id(0);
 
-if let Some(frame) = hub.recv(None) {
+// Set image resolution
+camera.set_resolution(640, 480);
+
+// Set capture framerate
+camera.set_fps(30.0);
+
+// Set image encoding format
+camera.set_encoding(ImageEncoding::Bgr8);
+
+// Enable/disable image compression
+camera.set_compression(true, 90);  // enabled, quality (0-100)
+```
+
+## Usage
+
+The CameraNode publishes to the following topics (configurable via `new_with_topic`):
+- Publishes to `"camera/image"` - captured frames (Image)
+- Publishes to `"camera/camera_info"` - camera calibration info (CameraInfo)
+
+```rust
+let hub = Hub::<Image>::new("camera/image")?;
+
+if let Some(frame) = hub.recv(&mut None) {
     println!("Frame: {}x{}, {} bytes",
         frame.width, frame.height, frame.data.len());
     // Process image...
 }
+
+// Get actual FPS
+let fps = camera.get_actual_fps();
+
+// Get total frames captured
+let count = camera.get_frame_count();
 ```
 
 ## See Also

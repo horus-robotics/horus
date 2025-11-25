@@ -389,7 +389,7 @@ pub fn format_json(result: &ValidationResult) -> Result<String> {
 
 /// Format validation result as HTML
 pub fn format_html(result: &ValidationResult) -> String {
-    let status_class = if result.valid { "valid" } else { "invalid" };
+    let _status_class = if result.valid { "valid" } else { "invalid" };
     let status_text = if result.valid { "VALID" } else { "INVALID" };
 
     let mut html = format!(

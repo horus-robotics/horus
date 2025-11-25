@@ -46,16 +46,6 @@ horus new my-project
 
 **Learn more:** [Python Bindings](/multi-language/python-bindings)
 
-### C++ (Alpha)
-
-**Best for:** Hardware drivers, legacy system integration, embedded systems
-
-C++ bindings provide low-level access to HORUS with modern RAII-based memory management. Currently in alpha with basic pub/sub support.
-
-**Status:** Alpha - Basic functionality only
-
-**Learn more:** [C++ Bindings](/multi-language/cpp-bindings)
-
 ## Cross-Language Communication
 
 **All languages can communicate seamlessly** through HORUS's shared memory system.
@@ -77,19 +67,18 @@ if let Some(temp) = hub.recv(None) {
 }
 ```
 
-### Structured Messages - Typed Hubs for Cross-Language Communication
+### Structured Messages - Type-Safe Hubs for Cross-Language Communication
 
-**Important**: For cross-language communication with structured data, you MUST use typed hubs. Generic Python `Hub` uses pickle serialization which Rust cannot deserialize.
+**Important**: For cross-language communication with structured data, use typed Hubs. Pass a message type to the Hub constructor to enable automatic serialization that Rust can understand.
 
 #### Python ↔ Rust with Typed Hubs
 
 ```python
 # Python publisher (pose_publisher.py)
-from horus._horus import PyPose2DHub  # Typed hub from Rust bindings
-from horus import Pose2D       # Message class
+from horus import Hub, Pose2D
 
-# Create typed hub
-hub = PyPose2DHub("robot_pose")
+# Create typed hub - pass message type to constructor
+hub = Hub(Pose2D)
 
 while True:
     # Create and send Pose2D message
@@ -103,62 +92,51 @@ while True:
 use horus::prelude::*;
 use horus_library::messages::geometry::Pose2D;
 
-let hub = Hub::<Pose2D>::new("robot_pose")?;
+let hub = Hub::<Pose2D>::new("pose2d")?;
 if let Some(pose) = hub.recv(None) {
     println!("Received: x={}, y={}, theta={}", pose.x, pose.y, pose.theta);
 }
 ```
 
-#### Available Typed Hubs
+#### Supported Message Types
 
-HORUS provides three typed hubs for cross-language communication:
+Pass these types to `Hub()` for cross-language communication:
 
-| Python Hub Class | Message Class | Rust Type | Use Case |
-|-----------------|---------------|-----------|----------|
-| `PyPose2DHub` | `horus.library.Pose2D` | `geometry::Pose2D` | 2D robot position |
-| `PyCmdVelHub` | `horus.library.CmdVel` | `cmd_vel::CmdVel` | Velocity commands |
-| `PyLaserScanHub` | `horus.library.LaserScan` | `sensor::LaserScan` | 360° LIDAR scans |
+| Message Type | Description | Use Case |
+|-------------|-------------|----------|
+| `Pose2D` | 2D position (x, y, theta) | Robot localization |
+| `CmdVel` | Velocity command (linear, angular) | Motion control |
 
 **Usage Pattern:**
 
 ```python
-# Import typed hub from horus._horus
-from horus._horus import PyPose2DHub, PyCmdVelHub, PyLaserScanHub
+from horus import Hub, Pose2D, CmdVel
 
-# Import message classes from horus.library
-from horus import Pose2D, CmdVel, LaserScan
-
-# Create hub and send messages
-pose_hub = PyPose2DHub("robot_pose")
+# Create typed hubs - pass message type to constructor
+pose_hub = Hub(Pose2D)
 pose_hub.send(Pose2D(x=1.0, y=2.0, theta=0.5))
 
-cmd_hub = PyCmdVelHub("cmd_vel")
+cmd_hub = Hub(CmdVel)
 cmd_hub.send(CmdVel(linear=1.0, angular=0.5))
-
-scan_hub = PyLaserScanHub("lidar")
-scan = LaserScan()
-scan.ranges = [1.0] * 360  # Must be exactly 360 elements
-scan_hub.send(scan)
 ```
 
-#### Python-Only Communication (No Rust Interop)
+#### Generic Hubs (Python-Only or String Topics)
 
-For Python-to-Python communication, you can use the generic `Hub`:
+For Python-to-Python communication or custom topics, pass a string:
 
 ```python
-# Generic Hub - Python objects only (uses pickle)
 from horus import Hub
 
+# Generic Hub - pass topic name as string
 hub = Hub("my_topic")
 hub.send({"any": "python", "object": [1, 2, 3]})  # Dicts, lists, any Python type
-hub.send(MyCustomClass())  # Any Python class
 
-#  This will NOT work with Rust - Rust cannot deserialize pickle!
+# Note: Generic hubs use JSON serialization for simple types
 ```
 
 **When to use which:**
-- **Typed Hubs** (`PyPose2DHub`, etc.) - When communicating with Rust or C++ nodes
-- **Generic Hub** - For Python-only systems with any Python object type
+- **Typed Hubs** (`Hub(CmdVel)`, `Hub(Pose2D)`) - When communicating with Rust nodes
+- **Generic Hub** (`Hub("topic")`) - For Python-only systems or custom data
 
 ## Choosing a Language
 
@@ -166,7 +144,7 @@ hub.send(MyCustomClass())  # Any Python class
 |----------|---------------------|
 | **Control loops** | Rust (lowest latency) |
 | **AI/ML models** | Python (ecosystem) |
-| **Hardware drivers** | C++ or Rust |
+| **Hardware drivers** | Rust |
 | **Data processing** | Python or Rust |
 | **Real-time systems** | Rust |
 | **Prototyping** | Python (fastest development) |
@@ -178,7 +156,7 @@ You can build systems with nodes in different languages:
 **Example: Robot with mixed languages**
 - **Motor controller** (Rust) - 1kHz control loop
 - **Vision processing** (Python) - PyTorch object detection
-- **Hardware driver** (C++) - Legacy sensor integration
+- **Hardware driver** (Rust) - Sensor integration
 - **Dashboard** (Rust) - Real-time visualization
 
 All communicate through HORUS shared memory with **sub-microsecond latency**.
@@ -191,29 +169,27 @@ The `horus run` command automatically handles compilation and execution of mixed
 # Mix Python and Rust nodes
 horus run sensor.py controller.rs visualizer.py
 
-# Mix all three languages
-horus run lidar_driver.cpp planner.py motor_control.rs
+# Mix Rust and Python
+horus run lidar_driver.rs planner.py motor_control.rs
 ```
 
 **What happens:**
 1. **Rust files** (`.rs`) are automatically compiled with `cargo build` using HORUS dependencies
 2. **Python files** (`.py`) are executed directly with Python 3
-3. **C++ files** (`.cpp`) are compiled with `g++` linking to HORUS C++ bindings
-4. All processes communicate via shared memory at `/dev/shm/horus/`
-5. `horus run` manages the lifecycle (start, monitor, stop all together)
+3. All processes communicate via shared memory at `/dev/shm/horus/`
+4. `horus run` manages the lifecycle (start, monitor, stop all together)
 
 **Note:** For Rust files, `horus run` creates a temporary Cargo project in `.horus/` with proper dependencies, builds it with `cargo build`, and executes the resulting binary.
 
 **Example - Complete Mixed System:**
 
-```bash
+```python
 # sensor.py - Python sensor node
 import horus
-from horus._horus import PyLaserScanHub
-from horus import LaserScan
+from horus import Hub, LaserScan
 
 # Create Hub once outside tick function
-hub = PyLaserScanHub("lidar")
+hub = Hub("lidar")
 
 def tick(node):
     scan = LaserScan()
@@ -260,7 +236,6 @@ horus run sensor.py planner.rs
 
 **Choose your language:**
 - [Python Bindings](/multi-language/python-bindings) - Full guide with examples
-- [C++ Bindings](/multi-language/cpp-bindings) - Alpha status, basic usage
 - [Quick Start](/getting-started/quick-start) - Get started with Rust
 
 **Build something:**

@@ -1,76 +1,9 @@
 use crate::communication::network::{parse_endpoint, Endpoint, NetworkBackend};
 use crate::core::node::NodeInfo;
 use crate::error::HorusResult;
-use crate::memory::platform::shm_pubsub_metadata_dir;
 use crate::memory::shm_topic::ShmTopic;
-use std::sync::mpsc::{channel, Sender};
 use std::sync::Arc;
-use std::sync::OnceLock;
 use std::time::Instant;
-
-/// Metadata record for async pub/sub graph visualization
-#[derive(Debug, Clone)]
-struct MetadataRecord {
-    node_name: String,
-    topic_name: String,
-    direction: String,
-    timestamp: u64,
-}
-
-/// Lazy static channel for async metadata writing
-/// Background thread handles all file I/O off the critical path
-static METADATA_CHANNEL: OnceLock<Sender<MetadataRecord>> = OnceLock::new();
-
-/// Initialize the metadata background thread (called once)
-fn get_metadata_channel() -> &'static Sender<MetadataRecord> {
-    METADATA_CHANNEL.get_or_init(|| {
-        let (tx, rx) = channel::<MetadataRecord>();
-
-        // Spawn background thread to handle metadata writing
-        std::thread::Builder::new()
-            .name("horus-metadata-writer".to_string())
-            .spawn(move || {
-                use std::collections::HashMap;
-                use std::fs;
-
-                // Track last write time per file to rate-limit
-                let mut last_write: HashMap<String, u64> = HashMap::new();
-
-                while let Ok(record) = rx.recv() {
-                    // Rate limiting: only write once every 5 seconds per connection
-                    let key = format!(
-                        "{}_{}_{}",
-                        record.node_name, record.topic_name, record.direction
-                    );
-                    if let Some(&last_ts) = last_write.get(&key) {
-                        if record.timestamp - last_ts < 5 {
-                            continue; // Skip, written recently
-                        }
-                    }
-
-                    // Perform the file I/O (off critical path)
-                    let metadata_dir = shm_pubsub_metadata_dir();
-                    let _ = fs::create_dir_all(&metadata_dir);
-
-                    let safe_node_name = record.node_name.replace(['/', ' '], "_");
-                    let safe_topic_name = record.topic_name.replace(['/', ' '], "_");
-                    let filename = format!(
-                        "{}_{}_{}",
-                        safe_node_name, safe_topic_name, record.direction
-                    );
-                    let filepath = metadata_dir.join(filename);
-
-                    let _ = fs::write(&filepath, record.timestamp.to_string());
-
-                    // Update last write time
-                    last_write.insert(key, record.timestamp);
-                }
-            })
-            .expect("Failed to spawn metadata writer thread");
-
-        tx
-    })
-}
 
 /// Connection state for Hub connections
 #[derive(Debug, Clone, PartialEq)]
@@ -402,7 +335,6 @@ impl<
                         if let Some(ref mut ctx) = ctx {
                             let summary = msg.log_summary();
                             ctx.log_pub_summary(&self.topic_name, &summary, 0);
-                            self.record_pubsub_activity(ctx.name(), "pub");
                         }
 
                         return Ok(());
@@ -445,9 +377,6 @@ impl<
                         ConnectionState::Connected.into_u8(),
                         std::sync::atomic::Ordering::Relaxed,
                     );
-
-                    // Record pub/sub metadata (now async, ~100ns overhead)
-                    self.record_pubsub_activity(ctx.name(), "pub");
 
                     // Log with accurate IPC timing
                     ctx.log_pub_summary(&self.topic_name, &summary, ipc_ns);
@@ -503,7 +432,6 @@ impl<
                     if let Some(ref mut ctx) = ctx {
                         let summary = msg.log_summary();
                         ctx.log_sub_summary(&self.topic_name, &summary, 0);
-                        self.record_pubsub_activity(ctx.name(), "sub");
                     }
 
                     return Some(msg);
@@ -530,9 +458,6 @@ impl<
                     // Logging enabled: get summary from zero-copy reference
                     let summary = sample.get_ref().log_summary();
                     ctx.log_sub_summary(&self.topic_name, &summary, ipc_ns);
-
-                    // Record pub/sub metadata for graph visualization
-                    self.record_pubsub_activity(ctx.name(), "sub");
                 }
 
                 // Clone only when needed (after timing and logging)
@@ -568,27 +493,5 @@ impl<
     /// Get the topic name for this Hub
     pub fn get_topic_name(&self) -> &str {
         &self.topic_name
-    }
-
-    /// Record pub/sub activity for graph visualization discovery
-    /// Writes lightweight metadata asynchronously to platform-specific pubsub_metadata dir
-    /// This is now non-blocking (~100ns) - file I/O happens on background thread
-    #[inline(always)]
-    fn record_pubsub_activity(&self, node_name: &str, direction: &str) {
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("System clock is set before UNIX_EPOCH - invalid system time")
-            .as_secs();
-
-        let record = MetadataRecord {
-            node_name: node_name.to_string(),
-            topic_name: self.topic_name.clone(),
-            direction: direction.to_string(),
-            timestamp,
-        };
-
-        // Send to background thread (non-blocking, ~100ns)
-        // If channel is full or closed, silently drop (metadata is best-effort)
-        let _ = get_metadata_channel().send(record);
     }
 }

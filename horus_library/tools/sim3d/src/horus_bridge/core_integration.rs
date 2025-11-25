@@ -170,9 +170,9 @@ impl Default for HorusNetworkConfig {
     }
 }
 
-/// Create a topic name following HORUS conventions
+/// Create a topic name following HORUS conventions (dot notation)
 pub fn horus_topic(robot_name: &str, topic: &str) -> String {
-    format!("{}/{}", robot_name, topic)
+    format!("{}.{}", robot_name, topic)
 }
 
 #[cfg(test)]
@@ -209,6 +209,6 @@ mod tests {
     #[test]
     fn test_horus_topic() {
         let topic = horus_topic("robot1", "cmd_vel");
-        assert_eq!(topic, "robot1/cmd_vel");
+        assert_eq!(topic, "robot1.cmd_vel");
     }
 }

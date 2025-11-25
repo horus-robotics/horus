@@ -15,7 +15,7 @@ impl Default for OrbitCamera {
             focus: Vec3::ZERO,
             radius: 10.0,
             yaw: 0.0,
-            pitch: 0.3,
+            pitch: -0.5, // Negative pitch positions camera above, looking down
         }
     }
 }

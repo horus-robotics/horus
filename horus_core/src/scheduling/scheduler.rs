@@ -5,8 +5,22 @@ use colored::Colorize;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+
+// Global flag for SIGTERM handling
+static SIGTERM_RECEIVED: AtomicBool = AtomicBool::new(false);
+
+/// SIGTERM signal handler - cleans up session and exits
+///
+/// # Safety
+/// This is a signal handler and must only call async-signal-safe functions.
+/// We set a flag and let the main loop do the actual cleanup.
+#[cfg(unix)]
+extern "C" fn sigterm_handler(_signum: libc::c_int) {
+    SIGTERM_RECEIVED.store(true, Ordering::SeqCst);
+}
 
 // Import intelligence modules
 use super::executors::{AsyncIOExecutor, AsyncResult, ParallelExecutor};
@@ -743,11 +757,19 @@ impl Scheduler {
                 }
                 std::thread::spawn(|| {
                     std::thread::sleep(std::time::Duration::from_secs(2));
-                    eprintln!("{}", "Force terminating application...".red());
+                    eprintln!("{}", "Force terminating - cleaning up session...".red());
+                    // Clean up session before forced exit to prevent stale files
+                    Self::cleanup_session();
                     std::process::exit(0);
                 });
             }) {
                 eprintln!("Warning: Failed to set signal handler: {}", e);
+            }
+
+            // Set up SIGTERM handler for graceful termination (e.g., from `kill` or `timeout`)
+            #[cfg(unix)]
+            unsafe {
+                libc::signal(libc::SIGTERM, sigterm_handler as libc::sighandler_t);
             }
 
             // Initialize nodes
@@ -798,6 +820,15 @@ impl Scheduler {
                         println!("Scheduler reached time limit of {:?}", max_duration);
                         break;
                     }
+                }
+
+                // Check if SIGTERM was received (e.g., from `kill` or `timeout`)
+                if SIGTERM_RECEIVED.load(Ordering::SeqCst) {
+                    eprintln!(
+                        "{}",
+                        "\nSIGTERM received! Shutting down HORUS scheduler...".red()
+                    );
+                    break;
                 }
 
                 let now = Instant::now();
@@ -852,16 +883,18 @@ impl Scheduler {
                     // Setup JIT compiler for ultra-fast nodes
                     self.setup_jit_compiler();
 
-                    // Initialize async I/O executor and move I/O-heavy nodes
-                    self.setup_async_executor().await;
-
-                    // Restore logging for all nodes (based on their original settings)
+                    // Restore logging for all nodes BEFORE moving to async executor
+                    // This ensures nodes moved to async tier have correct logging state
                     // Tick counts will now start at 0 since logging was disabled during learning
                     for registered in self.nodes.iter_mut() {
                         if let Some(ref mut ctx) = registered.context {
                             ctx.set_logging_enabled(registered.logging_enabled);
                         }
                     }
+
+                    // Initialize async I/O executor and move I/O-heavy nodes
+                    // (after logging is restored so moved nodes retain their logging settings)
+                    self.setup_async_executor().await;
 
                     self.learning_complete = true;
                     println!("{}", "=== Optimization Complete ===\n".green());

@@ -1,9 +1,11 @@
 pub mod controls;
 pub mod crash_recovery;
 pub mod debug_panel;
+pub mod dock;
 pub mod keybindings;
 pub mod layouts;
 pub mod notifications;
+pub mod plugin_panel;
 pub mod recent_files;
 pub mod stats_panel;
 pub mod status_bar;
@@ -62,4 +64,16 @@ pub use crash_recovery::{
     CrashRecoveryManager, CrashRecoveryPlugin, RecoveryAction, RecoveryFile,
     RecoveryFilesDetectedEvent, RecoverySelectedEvent, RecoveryState, SceneChangedEvent,
     SceneSavedEvent, TriggerAutoSaveEvent,
+};
+
+// Re-export plugin panel components for convenience
+pub use plugin_panel::{
+    OpenPluginSettingsEvent, PluginPanelConfig, PluginPanelPlugin, PluginUiRegistry, SettingsTab,
+    ToggleSettingsPanelEvent,
+};
+
+// Re-export dock components for convenience
+pub use dock::{
+    AddPluginTabEvent, ChangeDockLayoutEvent, DockContext, DockLayoutPreset, DockPlugin, DockTab,
+    DockWorkspace, SimDockViewer,
 };

@@ -26,9 +26,14 @@ echo -e "${YELLOW}Building benchmarks...${NC}"
 cd "$BENCH_DIR"
 cargo build --release --benches
 
-# Clear shared memory
+# Clear shared memory (cross-platform)
 echo -e "${YELLOW}Cleaning shared memory...${NC}"
-rm -rf /dev/shm/horus_* 2>/dev/null || true
+case "$(uname -s)" in
+    Linux*)  SHM_BASE="/dev/shm" ;;
+    Darwin*) SHM_BASE="/tmp" ;;
+    *)       SHM_BASE="/tmp" ;;
+esac
+rm -rf "$SHM_BASE/horus_"* "$SHM_BASE/horus" 2>/dev/null || true
 
 echo ""
 echo -e "${BLUE}Running benchmarks...${NC}"

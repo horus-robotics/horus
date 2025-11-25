@@ -50,7 +50,7 @@ impl GizmoUtils {
         segments: usize,
     ) {
         let direction = (end - start).normalize();
-        let length = (end - start).length();
+        let _length = (end - start).length();
 
         // Create perpendicular vectors
         let up = if direction.dot(Vec3::Y).abs() < 0.99 {

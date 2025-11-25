@@ -80,6 +80,9 @@ pub use traits::{
     RLPlugin, RenderingPlugin, SensorPlugin, Sim3dPlugin, WorldPlugin,
 };
 
+#[cfg(feature = "visual")]
+pub use traits::{PluginPanelInfo, UiPlugin};
+
 pub use registry::{PluginConfigLoader, PluginRegistry, PluginStats};
 
 pub use loader::PluginLoader;
@@ -96,9 +99,33 @@ pub struct PluginSystemPlugin;
 
 impl bevy::app::Plugin for PluginSystemPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<PluginRegistry>();
+        // Initialize the plugin registry
+        let mut registry = PluginRegistry::new();
 
-        tracing::info!("Plugin system initialized");
+        // Register built-in example plugins
+        let sensor_plugin = Box::new(ExampleSensorPlugin::default());
+        let actuator_plugin = Box::new(ExampleActuatorPlugin::default());
+        let world_plugin = Box::new(ExampleWorldPlugin::default());
+
+        if let Err(e) = registry.register(sensor_plugin) {
+            tracing::warn!("Failed to register sensor plugin: {}", e);
+        }
+        if let Err(e) = registry.register(actuator_plugin) {
+            tracing::warn!("Failed to register actuator plugin: {}", e);
+        }
+        if let Err(e) = registry.register(world_plugin) {
+            tracing::warn!("Failed to register world plugin: {}", e);
+        }
+
+        // Initialize all registered plugins
+        if let Err(e) = registry.initialize_all(app) {
+            tracing::error!("Failed to initialize plugins: {}", e);
+        }
+
+        // Insert registry as resource
+        app.insert_resource(registry);
+
+        tracing::info!("Plugin system initialized with {} plugins", 3);
     }
 }
 

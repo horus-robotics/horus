@@ -19,5 +19,13 @@ serde_json = "1.0"
 # HORUS dependencies
 horus_library = { path = ".." }
 
+# Simulation tools
+sim2d = { path = "../tools/sim2d", features = ["python"] }
+sim3d = { path = "../tools/sim3d", features = ["python"], optional = true }
+
+[features]
+default = []
+sim3d = ["dep:sim3d"]
+
 [build-dependencies]
 pyo3-build-config = "0.22"

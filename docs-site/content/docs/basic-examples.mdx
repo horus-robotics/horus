@@ -60,7 +60,9 @@ impl Node for SensorNode {
 
         // Publish data
         self.data_pub.send(reading, &mut ctx).ok();
-        ctx.log_debug(&format!("Published: {:.2}", reading));
+        if let Some(ref mut c) = ctx {
+            c.log_debug(&format!("Published: {:.2}", reading));
+        }
 
         self.counter += 0.1;
     }
@@ -117,7 +119,9 @@ impl Node for ProcessorNode {
         if let Some(data) = self.data_sub.recv(&mut ctx) {
             // Process received data
             let processed = data * 2.0;
-            ctx.log_debug(&format!("Processed: {:.2}", processed));
+            if let Some(ref mut c) = ctx {
+                c.log_debug(&format!("Processed: {:.2}", processed));
+            }
         }
     }
 
@@ -214,7 +218,9 @@ impl Node for ProcessorNode {
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(data) = self.data_sub.recv(&mut ctx) {
             let processed = data * 2.0;
-            ctx.log_info(&format!("Received: {:.2} -> {:.2}", data, processed));
+            if let Some(ref mut c) = ctx {
+                c.log_info(&format!("Received: {:.2} -> {:.2}", data, processed));
+            }
         }
     }
 
@@ -297,7 +303,7 @@ impl Node for TeleopNode {
     fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         // Send stop command on shutdown
         let stop = CmdVel::zero();
-        self.cmd_pub.send(stop, None).ok();
+        self.cmd_pub.send(stop, &mut None).ok();
         ctx.log_info("Teleop stopped");
         Ok(())
     }
@@ -331,10 +337,12 @@ impl Node for MotorDriverNode {
             let right_speed = cmd.linear + cmd.angular;
 
             // Send to motors
-            ctx.log_debug(&format!(
-                "Motors: L={:.2} m/s, R={:.2} m/s",
-                left_speed, right_speed
-            ));
+            if let Some(ref mut c) = ctx {
+                c.log_debug(&format!(
+                    "Motors: L={:.2} m/s, R={:.2} m/s",
+                    left_speed, right_speed
+                ));
+            }
 
             // In real code: send to hardware
             // motor_driver.set_speeds(left_speed, right_speed)?;
@@ -462,13 +470,17 @@ impl Node for ObstacleDetector {
                     let stop = CmdVel::zero();
                     self.cmd_pub.send(stop, &mut ctx).ok();
 
-                    ctx.log_warning(&format!(
+                    if let Some(ref mut c) = ctx {
+                        c.log_warning(&format!(
                             "[WARNING] Obstacle detected at {:.2}m - STOPPING!",
                             min_dist
                         ));
+                    }
                 } else {
                     // Safe to move
-                    ctx.log_debug(&format!("Safe - closest obstacle: {:.2}m", min_dist));
+                    if let Some(ref mut c) = ctx {
+                        c.log_debug(&format!("Safe - closest obstacle: {:.2}m", min_dist));
+                    }
                 }
             }
         }
@@ -574,10 +586,12 @@ impl Node for PIDController {
         // Publish control output
         self.output_pub.send(output, &mut ctx).ok();
 
-        ctx.log_debug(&format!(
+        if let Some(ref mut c) = ctx {
+            c.log_debug(&format!(
                 "PID: setpoint={:.2}, feedback={:.2}, error={:.2}, output={:.2}",
                 setpoint, feedback, error, output
             ));
+        }
 
         // Update state
         self.last_error = error;
@@ -715,7 +729,9 @@ impl Node for SensorNode {
         let raw_data = 50.0 + (self.counter * 0.5).sin() * 20.0;
         self.raw_pub.send(raw_data, &mut ctx).ok();
 
-        ctx.log_debug(&format!("Raw: {:.2}", raw_data));
+        if let Some(ref mut c) = ctx {
+            c.log_debug(&format!("Raw: {:.2}", raw_data));
+        }
 
         self.counter += 0.1;
     }
@@ -761,7 +777,9 @@ impl Node for FilterNode {
 
             self.filtered_pub.send(self.filtered_value, &mut ctx).ok();
 
-            ctx.log_debug(&format!("Filtered: {:.2}", self.filtered_value));
+            if let Some(ref mut c) = ctx {
+                c.log_debug(&format!("Filtered: {:.2}", self.filtered_value));
+            }
         }
     }
 
@@ -801,10 +819,12 @@ impl Node for ControllerNode {
             let command = if value > self.threshold { 1.0 } else { 0.0 };
             self.cmd_pub.send(command, &mut ctx).ok();
 
-            ctx.log_info(&format!(
+            if let Some(ref mut c) = ctx {
+                c.log_info(&format!(
                     "Value: {:.2}, Threshold: {:.2}, Command: {:.0}",
                     value, self.threshold, command
                 ));
+            }
         }
     }
 
@@ -848,7 +868,7 @@ Now that you understand basic patterns, explore:
 - [Advanced Examples](/advanced-examples) - State machines, multi-process systems, Python integration
 - [Testing](/development/testing) - Write tests for your nodes
 - [Using Prebuilt Nodes](/package-management/using-prebuilt-nodes) - Leverage the standard library
-- [Message Types](/message-types) - Complete message reference
+- [Message Types](/core-concepts/message-types) - Complete message reference
 
 Stuck? Check:
 - [Troubleshooting Runtime Errors](/troubleshooting-runtime) - Fix common issues

@@ -164,10 +164,12 @@ The Hub uses a **cache-aligned structure** to prevent false sharing:
 #[repr(align(64))]
 pub struct Hub<T> {
     shm_topic: Arc<ShmTopic<T>>,
+    network: Option<Mutex<NetworkBackend<T>>>,
+    is_network: bool,
     topic_name: String,
     state: AtomicU8,
     metrics: Arc<AtomicHubMetrics>,
-    _padding: [u8; 15],
+    _padding: [u8; 14],
 }
 ```
 
@@ -201,7 +203,7 @@ Topics are stored in `/dev/shm` with naming convention:
 ### The send() Method
 
 ```rust
-pub fn send(&self, msg: T, ctx: Option<&mut NodeInfo>) -> Result<(), T>
+pub fn send(&self, msg: T, ctx: &mut Option<&mut NodeInfo>) -> Result<(), T>
 ```
 
 **Parameters**:
@@ -221,7 +223,7 @@ pub fn send(&self, msg: T, ctx: Option<&mut NodeInfo>) -> Result<(), T>
 ### The recv() Method
 
 ```rust
-pub fn recv(&self, ctx: Option<&mut NodeInfo>) -> Option<T>
+pub fn recv(&self, ctx: &mut Option<&mut NodeInfo>) -> Option<T>
 ```
 
 **Parameters**:
@@ -731,7 +733,7 @@ if let Err(data) = self.pub.send(data, &mut ctx) {
 
 ## Next Steps
 
-- Learn about the [Scheduler](/core-concepts-scheduler) for orchestrating nodes
-- Understand [Shared Memory](/core-concepts-shared-memory) internals
-- Explore [Message Types](/message-types) for standard robotics messages
-- Read the [API Reference](/api-hub) for complete Hub documentation
+- Learn about the [Scheduler](/core-concepts/core-concepts-scheduler) for orchestrating nodes
+- Understand [Shared Memory](/core-concepts/core-concepts-shared-memory) internals
+- Explore [Message Types](/core-concepts/message-types) for standard robotics messages
+- Read the [API Reference](/api) for complete Hub documentation

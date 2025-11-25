@@ -7,7 +7,7 @@ use horus_core::{Hub, Node, NodeInfo, NodeInfoExt};
 
 #[cfg(feature = "opencv")]
 use opencv::{
-    core::{Mat, Size, CV_8UC1, CV_8UC3},
+    core::{Mat, Size},
     imgproc,
     prelude::*,
 };
@@ -43,9 +43,9 @@ pub struct ImageProcessorNode {
     contrast_adjustment: f32,   // 0.5 to 2.0
     backend: ImageBackend,
 
-    // Hardware fields
+    // Hardware fields (reserved for caching processed images)
     #[cfg(feature = "opencv")]
-    opencv_mat: Option<Mat>,
+    _opencv_mat: Option<Mat>,
 
     // Statistics
     images_processed: u64,
@@ -82,7 +82,7 @@ impl ImageProcessorNode {
             contrast_adjustment: 1.0,
             backend,
             #[cfg(feature = "opencv")]
-            opencv_mat: None,
+            _opencv_mat: None,
             images_processed: 0,
             processing_time_us: 0,
         })
@@ -155,8 +155,8 @@ impl ImageProcessorNode {
     }
 
     /// Process an image through the pipeline
-    fn process_image(&mut self, image: Image, mut ctx: Option<&mut NodeInfo>) -> Option<Image> {
-        let start_time = std::time::Instant::now();
+    fn process_image(&mut self, image: Image, ctx: Option<&mut NodeInfo>) -> Option<Image> {
+        let _start_time = std::time::Instant::now();  // Reserved for timing statistics
 
         match self.backend {
             ImageBackend::Simulation => self.process_image_simulation(image, ctx),
@@ -251,18 +251,17 @@ impl ImageProcessorNode {
             ));
             return None;
         }
-        let mut mat = mat_result.unwrap();
+        let mat = mat_result.unwrap();
 
         // Reshape to image dimensions
         let rows = image.height as i32;
-        let cols = image.width as i32;
         let channels = match image.encoding {
             crate::vision::ImageEncoding::Rgb8 | crate::vision::ImageEncoding::Bgr8 => 3,
             crate::vision::ImageEncoding::Mono8 => 1,
             _ => 3,
         };
 
-        mat = match mat.reshape(channels, rows) {
+        let reshaped = match mat.reshape(channels, rows) {
             Ok(m) => m,
             Err(e) => {
                 ctx.log_error(&format!("Failed to reshape Mat: {:?}", e));
@@ -270,7 +269,13 @@ impl ImageProcessorNode {
             }
         };
 
-        let mut working_mat = mat.clone();
+        let mut working_mat = match reshaped.try_clone() {
+            Ok(m) => m,
+            Err(e) => {
+                ctx.log_error(&format!("Failed to clone Mat: {:?}", e));
+                return None;
+            }
+        };
 
         // 1. Resize if enabled
         if self.resize_enabled

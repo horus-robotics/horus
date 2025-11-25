@@ -262,8 +262,8 @@ impl SerialNode {
         }
     }
 
-    /// Close the serial port
-    fn close_port(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    /// Close the serial port (reserved for graceful shutdown)
+    fn _close_port(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if self.port_open {
             ctx.log_info(&format!("Closing serial port {}", self.port_path));
 

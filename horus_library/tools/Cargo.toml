@@ -5,3 +5,12 @@ edition = "2021"
 
 [dependencies]
 sim2d = { path = "sim2d" }
+sim3d = { path = "sim3d", optional = true }
+
+[features]
+default = []
+sim3d = ["dep:sim3d"]
+sim3d-python = ["sim3d", "sim3d/python"]
+sim3d-visual = ["sim3d", "sim3d/visual"]
+sim3d-headless = ["sim3d", "sim3d/headless"]
+sim3d-full = ["sim3d", "sim3d/full"]

@@ -93,9 +93,9 @@ pub struct UltrasonicNode {
 }
 
 impl UltrasonicNode {
-    /// Create a new ultrasonic sensor node with default topic "ultrasonic/range"
+    /// Create a new ultrasonic sensor node with default topic "ultrasonic.range"
     pub fn new() -> Result<Self> {
-        Self::new_with_topic("ultrasonic/range")
+        Self::new_with_topic("ultrasonic.range")
     }
 
     /// Create a new ultrasonic sensor node with custom topic

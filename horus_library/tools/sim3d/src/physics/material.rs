@@ -102,7 +102,7 @@ pub struct AnisotropicFriction {
 
 impl AdvancedMaterial {
     /// Create material with advanced properties
-    pub fn new(name: &str) -> Self {
+    pub fn new(_name: &str) -> Self {
         Self {
             friction: 0.5,
             restitution: 0.0,

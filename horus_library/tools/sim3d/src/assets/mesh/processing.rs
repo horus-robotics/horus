@@ -48,6 +48,7 @@ pub fn generate_normals(positions: &[[f32; 3]], indices: &[u32]) -> Vec<[f32; 3]
 }
 
 /// Generate flat normals (one per triangle, not smoothed)
+#[allow(dead_code)]
 pub fn generate_flat_normals(positions: &[[f32; 3]], indices: &[u32]) -> Vec<[f32; 3]> {
     let mut normals = Vec::with_capacity(positions.len());
 

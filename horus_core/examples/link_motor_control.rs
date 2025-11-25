@@ -15,6 +15,7 @@
 //! cargo run --example link_motor_control
 //! ```
 
+use horus_core::memory::shm_topics_dir;
 use horus_core::{Link, Node, NodeInfo, Scheduler};
 use serde::{Deserialize, Serialize};
 use std::thread;
@@ -235,8 +236,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("This demonstrates Link (SPSC) for ultra-low latency control loops.\n");
 
     // Clean up any previous shared memory
-    let _ = std::fs::remove_file("/dev/shm/horus/topics/horus_links_motor_cmd");
-    let _ = std::fs::remove_file("/dev/shm/horus/topics/horus_links_encoder_feedback");
+    let topics_dir = shm_topics_dir();
+    let _ = std::fs::remove_file(topics_dir.join("horus_links_motor_cmd"));
+    let _ = std::fs::remove_file(topics_dir.join("horus_links_encoder_feedback"));
 
     println!("Creating nodes...");
     let motor_driver = MotorDriverNode::new()?;

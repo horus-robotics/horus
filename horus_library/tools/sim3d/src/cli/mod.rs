@@ -3,16 +3,23 @@
 pub mod validation;
 
 // Re-export validation types for use by horus_manager
+pub use validation::{
+    validate_file, format_text, format_json, format_html, format_batch_report,
+    ValidationResult, BatchValidationReport, MeshReference, ValidationType, OutputFormat,
+};
 
 use bevy::prelude::Resource;
-use clap::{Parser, ValueEnum};
+use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
-/// Simple CLI for sim3d binary (just runs the simulator)
+/// HORUS 3D Robotics Simulator
 #[derive(Parser, Debug, Clone, Resource)]
 #[command(name = "sim3d")]
 #[command(about = "HORUS 3D Robotics Simulator", long_about = None)]
 pub struct Cli {
+    #[command(subcommand)]
+    pub command: Option<Command>,
+
     #[arg(short, long, value_enum, default_value_t = Mode::Visual)]
     pub mode: Mode,
 
@@ -35,6 +42,67 @@ pub struct Cli {
     pub speed: f32,
 }
 
+/// Subcommands for sim3d
+#[derive(Subcommand, Debug, Clone)]
+pub enum Command {
+    /// Validate scene or URDF files
+    Validate {
+        /// Files to validate
+        #[arg(required = true)]
+        files: Vec<PathBuf>,
+
+        /// Validation type (auto-detect if not specified)
+        #[arg(short = 't', long, value_enum)]
+        validation_type: Option<CliValidationType>,
+
+        /// Output format
+        #[arg(short, long, value_enum, default_value_t = CliOutputFormat::Text)]
+        format: CliOutputFormat,
+
+        /// Check mesh references exist
+        #[arg(long, default_value_t = true)]
+        check_meshes: bool,
+
+        /// Verbose output
+        #[arg(short, long, default_value_t = false)]
+        verbose: bool,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum CliValidationType {
+    Scene,
+    Urdf,
+    Auto,
+}
+
+impl From<CliValidationType> for ValidationType {
+    fn from(val: CliValidationType) -> Self {
+        match val {
+            CliValidationType::Scene => ValidationType::Scene,
+            CliValidationType::Urdf => ValidationType::Urdf,
+            CliValidationType::Auto => ValidationType::Auto,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum CliOutputFormat {
+    Text,
+    Json,
+    Html,
+}
+
+impl From<CliOutputFormat> for OutputFormat {
+    fn from(val: CliOutputFormat) -> Self {
+        match val {
+            CliOutputFormat::Text => OutputFormat::Text,
+            CliOutputFormat::Json => OutputFormat::Json,
+            CliOutputFormat::Html => OutputFormat::Html,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Resource)]
 pub enum Mode {
     Visual,
@@ -44,5 +112,10 @@ pub enum Mode {
 impl Cli {
     pub fn parse() -> Self {
         Parser::parse()
+    }
+
+    /// Check if a subcommand was provided (not the default run mode)
+    pub fn has_subcommand(&self) -> bool {
+        self.command.is_some()
     }
 }

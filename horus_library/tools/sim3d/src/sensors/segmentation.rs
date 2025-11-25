@@ -388,6 +388,24 @@ pub fn initialize_default_classes(registry: &mut SemanticClassRegistry) {
     registry.register_class(classes::PERSON, "person", Color::srgb(0.8, 0.0, 0.0));
 }
 
+/// Plugin for semantic segmentation camera support
+pub struct SegmentationCameraPlugin;
+
+impl Plugin for SegmentationCameraPlugin {
+    fn build(&self, app: &mut App) {
+        // Initialize registry with default classes
+        let mut registry = SemanticClassRegistry::new();
+        initialize_default_classes(&mut registry);
+
+        app.insert_resource(registry)
+            .register_type::<SegmentationCamera>()
+            .register_type::<SemanticClass>()
+            .add_systems(Update, segmentation_camera_update_system);
+
+        tracing::info!("Segmentation camera plugin loaded with {} default classes", 15);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

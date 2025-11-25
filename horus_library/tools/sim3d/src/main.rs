@@ -11,10 +11,15 @@ use bevy::prelude::*;
 mod assets;
 mod cli;
 mod config;
+mod editor;
 mod error;
 mod gpu;
 mod horus_bridge;
+mod multi_robot;
 mod physics;
+mod plugins;
+mod procedural;
+mod recording;
 mod rendering;
 mod robot;
 mod scene;
@@ -28,11 +33,43 @@ mod view_modes;
 #[cfg(feature = "python")]
 mod rl;
 
-use cli::{Cli, Mode};
+use cli::{Cli, Command, Mode};
 use physics::PhysicsWorld;
 use scene::spawner::SpawnedObjects;
 use systems::sensor_update::{SensorSystemSet, SensorUpdatePlugin};
 use tf::TFTree;
+
+// Import all plugins for integration
+use gpu::GPUAccelerationPlugin;
+use multi_robot::MultiRobotPlugin;
+use physics::soft_body::SoftBodyPlugin;
+use physics::AdvancedPhysicsPlugin;
+use procedural::ProceduralGenerationPlugin;
+use recording::RecordingPlugin;
+use rendering::{
+    ambient_occlusion::AmbientOcclusionPlugin,
+    area_lights::AreaLightsPlugin,
+    atmosphere::AtmospherePlugin,
+    environment::EnvironmentPlugin,
+    gizmos::GizmoPlugin,
+    materials::MaterialPlugin,
+    post_processing::PostProcessingPlugin,
+    shadows::ShadowsPlugin,
+};
+use robot::{articulated::ArticulatedRobotPlugin, state::JointStatePlugin};
+use sensors::{
+    depth::DepthCameraPlugin, imu::IMUPlugin, rgbd::RGBDCameraPlugin,
+    segmentation::SegmentationCameraPlugin, tactile::TactileSensorPlugin,
+    thermal::ThermalCameraPlugin,
+};
+use systems::{horus_sync::HorusSyncPlugin, tf_update::TFUpdatePlugin};
+use view_modes::{
+    collision_mode::CollisionVisualizationPlugin,
+    physics_mode::PhysicsVisualizationPlugin,
+    tf_mode::TFVisualizationPlugin,
+};
+use horus_bridge::{HorusBridgePlugin, core_integration::HorusCorePlugin, horus_transport::HorusTransportPlugin};
+use plugins::PluginSystemPlugin;
 
 /// System sets for organizing update order
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
@@ -53,12 +90,78 @@ fn main() {
         )
         .init();
 
+    // Handle subcommands first
+    if let Some(command) = &cli.command {
+        match command {
+            Command::Validate {
+                files,
+                validation_type,
+                format,
+                check_meshes,
+                verbose: _,
+            } => {
+                run_validate_command(files, *validation_type, *format, *check_meshes);
+                return;
+            }
+        }
+    }
+
     info!("Starting sim3d");
     info!("Mode: {:?}", cli.mode);
 
     match cli.mode {
         Mode::Visual => run_visual_mode(cli),
         Mode::Headless => run_headless_mode(cli),
+    }
+}
+
+fn run_validate_command(
+    files: &[std::path::PathBuf],
+    validation_type: Option<cli::CliValidationType>,
+    format: cli::CliOutputFormat,
+    check_meshes: bool,
+) {
+    use cli::{validate_file, format_text, format_json, format_html, format_batch_report};
+    use cli::{BatchValidationReport, OutputFormat};
+
+    let mut results = Vec::new();
+    let mut valid_count = 0;
+    let mut invalid_count = 0;
+
+    for file in files {
+        let vtype = validation_type.map(|v| v.into());
+        match validate_file(file, vtype, check_meshes) {
+            Ok(result) => {
+                if result.valid {
+                    valid_count += 1;
+                } else {
+                    invalid_count += 1;
+                }
+                results.push(result);
+            }
+            Err(e) => {
+                eprintln!("Error validating {}: {}", file.display(), e);
+                invalid_count += 1;
+            }
+        }
+    }
+
+    let report = BatchValidationReport {
+        total_files: files.len(),
+        valid_files: valid_count,
+        invalid_files: invalid_count,
+        results,
+    };
+
+    let output_format: OutputFormat = format.into();
+    match format_batch_report(&report, output_format) {
+        Ok(output) => println!("{}", output),
+        Err(e) => eprintln!("Error formatting output: {}", e),
+    }
+
+    // Exit with error code if any files failed validation
+    if invalid_count > 0 {
+        std::process::exit(1);
     }
 }
 
@@ -94,10 +197,60 @@ fn run_visual_mode(cli: Cli) {
     // Add sensor update plugin
     app.add_plugins(SensorUpdatePlugin);
 
+    // === INTEGRATED PLUGINS ===
+
+    // Core system plugins
+    app.add_plugins(HorusBridgePlugin::default());
+    app.add_plugins(HorusCorePlugin);
+    app.add_plugins(HorusTransportPlugin::default());
+    app.add_plugins(HorusSyncPlugin);
+    app.add_plugins(TFUpdatePlugin);
+
+    // Physics plugins
+    app.add_plugins(SoftBodyPlugin);
+    app.add_plugins(GPUAccelerationPlugin);
+    app.add_plugins(AdvancedPhysicsPlugin);
+
+    // Rendering plugins
+    app.add_plugins(MaterialPlugin);
+    app.add_plugins(GizmoPlugin);
+    app.add_plugins(EnvironmentPlugin);
+    app.add_plugins(ShadowsPlugin::default());
+    app.add_plugins(AmbientOcclusionPlugin::default());
+    app.add_plugins(AtmospherePlugin);
+    app.add_plugins(AreaLightsPlugin);
+    app.add_plugins(PostProcessingPlugin::default());
+
+    // Robot plugins
+    app.add_plugins(ArticulatedRobotPlugin);
+    app.add_plugins(JointStatePlugin);
+    app.add_plugins(MultiRobotPlugin::default());
+
+    // Sensor plugins
+    app.add_plugins(DepthCameraPlugin);
+    app.add_plugins(RGBDCameraPlugin);
+    app.add_plugins(SegmentationCameraPlugin);
+    app.add_plugins(ThermalCameraPlugin);
+    app.add_plugins(IMUPlugin);
+    app.add_plugins(TactileSensorPlugin);
+
+    // View mode plugins (debug visualization)
+    app.add_plugins(CollisionVisualizationPlugin);
+    app.add_plugins(PhysicsVisualizationPlugin);
+    app.add_plugins(TFVisualizationPlugin);
+
+    // Utility plugins
+    app.add_plugins(ProceduralGenerationPlugin);
+    app.add_plugins(RecordingPlugin);
+
+    // Plugin system (for dynamic plugin loading and example plugins)
+    app.add_plugins(PluginSystemPlugin);
+
     app.insert_resource(PhysicsWorld::default())
         .insert_resource(TFTree::new("world"))
         .insert_resource(SpawnedObjects::default())
-        .insert_resource(cli);
+        .insert_resource(cli)
+        .init_resource::<systems::physics_step::PhysicsAccumulator>();
 
     // Configure system set ordering: Physics -> Sensors -> TF
     app.configure_sets(
@@ -134,8 +287,30 @@ fn run_visual_mode(cli: Cli) {
         systems::tf_update::tf_update_system.in_set(SimSystemSet::TF),
     );
 
+    // Debug system to check mesh components
+    app.add_systems(Update, systems::sync_visual::debug_mesh_components_system);
+
     #[cfg(feature = "visual")]
     {
+        // UI plugins
+        app.add_plugins(ui::layouts::LayoutPlugin);
+        app.add_plugins(ui::keybindings::KeyBindingsPlugin::default());
+        app.add_plugins(ui::view_modes::ViewModePlugin);
+        app.add_plugins(ui::tf_panel::TFPanelPlugin);
+        app.add_plugins(ui::stats_panel::StatsPanelPlugin);
+        app.add_plugins(ui::status_bar::StatusBarPlugin);
+        app.add_plugins(ui::controls::ControlsPlugin);
+        app.add_plugins(ui::theme::ThemePlugin);
+        app.add_plugins(ui::tooltips::TooltipsPlugin);
+        app.add_plugins(ui::notifications::NotificationsPlugin);
+        app.add_plugins(ui::recent_files::RecentFilesPlugin::default());
+        app.add_plugins(ui::crash_recovery::CrashRecoveryPlugin::default());
+        app.add_plugins(ui::dock::DockPlugin);
+        app.add_plugins(ui::plugin_panel::PluginPanelPlugin);
+
+        // Editor plugins (EditorPlugin already includes undo internally)
+        app.add_plugins(editor::EditorPlugin);
+
         app.add_systems(Update, (ui::debug_panel::debug_panel_system,));
 
         app.add_systems(
@@ -159,11 +334,17 @@ fn run_headless_mode(cli: Cli) {
     // Use minimal plugins (no rendering, no input, no audio)
     app.add_plugins(MinimalPlugins);
 
+    // Add asset plugin for headless mode (needed for mesh/material assets even without rendering)
+    app.add_plugins(AssetPlugin::default());
+    app.init_resource::<Assets<Mesh>>();
+    app.init_resource::<Assets<StandardMaterial>>();
+
     // Add essential resources
     app.insert_resource(PhysicsWorld::default())
         .insert_resource(TFTree::new("world"))
         .insert_resource(SpawnedObjects::default())
-        .insert_resource(cli);
+        .insert_resource(cli)
+        .init_resource::<systems::physics_step::PhysicsAccumulator>();
 
     // Configure system set ordering: Physics -> Sensors -> TF
     app.configure_sets(
@@ -178,6 +359,38 @@ fn run_headless_mode(cli: Cli) {
 
     // Add sensor update plugin (without visualization)
     app.add_plugins(SensorUpdatePlugin);
+
+    // === HEADLESS MODE PLUGINS ===
+
+    // Core system plugins
+    app.add_plugins(HorusBridgePlugin::default());
+    app.add_plugins(HorusCorePlugin);
+    app.add_plugins(HorusTransportPlugin::default());
+    app.add_plugins(HorusSyncPlugin);
+    app.add_plugins(TFUpdatePlugin);
+
+    // Physics plugins
+    app.add_plugins(SoftBodyPlugin);
+    app.add_plugins(GPUAccelerationPlugin);
+    app.add_plugins(AdvancedPhysicsPlugin);
+
+    // Robot plugins
+    app.add_plugins(ArticulatedRobotPlugin);
+    app.add_plugins(JointStatePlugin);
+    app.add_plugins(MultiRobotPlugin::default());
+
+    // Sensor plugins (headless mode - for data processing)
+    app.add_plugins(SegmentationCameraPlugin);
+    app.add_plugins(ThermalCameraPlugin);
+    app.add_plugins(IMUPlugin);
+    app.add_plugins(TactileSensorPlugin);
+
+    // Utility plugins
+    app.add_plugins(ProceduralGenerationPlugin);
+    app.add_plugins(RecordingPlugin);
+
+    // Plugin system (for dynamic plugin loading)
+    app.add_plugins(PluginSystemPlugin);
 
     // Physics systems (same as visual mode)
     app.add_systems(
@@ -221,10 +434,51 @@ fn run_headless_mode(cli: Cli) {
 }
 
 /// Setup scene for headless mode (no rendering components)
-fn setup_headless_scene(_commands: Commands, mut physics_world: ResMut<PhysicsWorld>) {
+fn setup_headless_scene(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut physics_world: ResMut<PhysicsWorld>,
+    mut spawned_objects: ResMut<SpawnedObjects>,
+    mut tf_tree: ResMut<TFTree>,
+    cli: Res<Cli>,
+) {
     info!("Setting up headless scene");
 
-    // Create a simple ground plane for physics
+    // Load world file if provided, otherwise create default ground
+    if let Some(world_path) = &cli.world {
+        info!("Loading world from: {:?}", world_path);
+        match scene::loader::SceneLoader::load_scene(
+            world_path,
+            &mut commands,
+            &mut physics_world,
+            &mut meshes,
+            &mut materials,
+            &mut spawned_objects,
+            &mut tf_tree,
+        ) {
+            Ok(loaded_scene) => {
+                info!(
+                    "Successfully loaded scene: {}",
+                    loaded_scene.definition.name
+                );
+                commands.insert_resource(loaded_scene);
+            }
+            Err(e) => {
+                error!("Failed to load world file: {}", e);
+                warn!("Falling back to default ground plane");
+                create_default_ground(&mut physics_world);
+            }
+        }
+    } else {
+        info!("No world file specified, creating default ground plane");
+        create_default_ground(&mut physics_world);
+    }
+
+    info!("Headless scene setup complete");
+}
+
+fn create_default_ground(physics_world: &mut PhysicsWorld) {
     use physics::collider::{ColliderBuilder, ColliderShape};
     use rapier3d::prelude::*;
 
@@ -249,6 +503,4 @@ fn setup_headless_scene(_commands: Commands, mut physics_world: ResMut<PhysicsWo
     } = &mut *physics_world;
 
     collider_set.insert_with_parent(ground_collider, ground_handle, rigid_body_set);
-
-    info!("Headless scene setup complete");
 }

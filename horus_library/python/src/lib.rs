@@ -28,11 +28,13 @@ pub struct PyPose2D {
 #[pymethods]
 impl PyPose2D {
     #[new]
-    #[pyo3(signature = (x, y, theta))]
-    fn new(x: f64, y: f64, theta: f64) -> Self {
-        Self {
-            inner: geometry::Pose2D::new(x, y, theta),
+    #[pyo3(signature = (x, y, theta, timestamp=None))]
+    fn new(x: f64, y: f64, theta: f64, timestamp: Option<u64>) -> Self {
+        let mut pose = geometry::Pose2D::new(x, y, theta);
+        if let Some(ts) = timestamp {
+            pose.timestamp = ts;
         }
+        Self { inner: pose }
     }
 
     /// Create pose at origin
@@ -556,10 +558,13 @@ pub struct PyCmdVel {
 #[pymethods]
 impl PyCmdVel {
     #[new]
-    #[pyo3(signature = (linear, angular))]
-    fn new(linear: f32, angular: f32) -> Self {
+    #[pyo3(signature = (linear, angular, timestamp=None))]
+    fn new(linear: f32, angular: f32, timestamp: Option<u64>) -> Self {
         Self {
-            inner: cmd_vel::CmdVel::new(linear, angular),
+            inner: match timestamp {
+                Some(ts) => cmd_vel::CmdVel::with_timestamp(linear, angular, ts),
+                None => cmd_vel::CmdVel::new(linear, angular),
+            },
         }
     }
 
@@ -1325,9 +1330,35 @@ impl PyRange {
     }
 }
 
+/// Register sim2d submodule
+fn register_sim2d(py: Python, parent: &Bound<'_, PyModule>) -> PyResult<()> {
+    use sim2d::python_api::{Sim2D, RobotConfigPy, WorldConfigPy};
+
+    let sim2d_module = PyModule::new_bound(py, "sim2d")?;
+    sim2d_module.add_class::<Sim2D>()?;
+    sim2d_module.add_class::<RobotConfigPy>()?;
+    sim2d_module.add_class::<WorldConfigPy>()?;
+    parent.add_submodule(&sim2d_module)?;
+    Ok(())
+}
+
+/// Register sim3d submodule (feature-gated)
+#[cfg(feature = "sim3d")]
+fn register_sim3d(py: Python, parent: &Bound<'_, PyModule>) -> PyResult<()> {
+    use sim3d::rl::python::{PySim3DEnv, PyVecSim3DEnv, make_env, make_vec_env};
+
+    let sim3d_module = PyModule::new_bound(py, "sim3d")?;
+    sim3d_module.add_class::<PySim3DEnv>()?;
+    sim3d_module.add_class::<PyVecSim3DEnv>()?;
+    sim3d_module.add_function(wrap_pyfunction!(make_env, &sim3d_module)?)?;
+    sim3d_module.add_function(wrap_pyfunction!(make_vec_env, &sim3d_module)?)?;
+    parent.add_submodule(&sim3d_module)?;
+    Ok(())
+}
+
 /// HORUS Library Python Module
 #[pymodule]
-fn _library(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _library(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Geometry messages
     m.add_class::<PyPose2D>()?;
     m.add_class::<PyTwist>()?;
@@ -1366,6 +1397,12 @@ fn _library(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // I/O messages
     m.add_class::<PyDigitalIO>()?;
     m.add_class::<PyAnalogIO>()?;
+
+    // Register simulation submodules
+    register_sim2d(py, m)?;
+
+    #[cfg(feature = "sim3d")]
+    register_sim3d(py, m)?;
 
     Ok(())
 }

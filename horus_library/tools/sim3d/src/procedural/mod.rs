@@ -3,12 +3,25 @@ pub mod terrain;
 
 use bevy::prelude::*;
 
+// Re-export key types
+pub use maze::{Maze, MazeConfig, MazeAlgorithm, CellType};
+pub use terrain::{
+    Heightmap, NoiseConfig, TerrainConfig, TerrainMeshGenerator,
+    VegetationConfig, VegetationPlacer, VegetationPoint,
+};
+
 /// Procedural generation plugin
 pub struct ProceduralGenerationPlugin;
 
 impl Plugin for ProceduralGenerationPlugin {
     fn build(&self, app: &mut App) {
-        // Add procedural generation resources and systems
-        info!("Procedural generation plugin loaded");
+        // Register terrain generation resources
+        app.insert_resource(TerrainConfig::default());
+        app.insert_resource(VegetationConfig::default());
+
+        // Register maze generation resource
+        app.insert_resource(MazeConfig::default());
+
+        info!("Procedural generation plugin loaded with terrain and maze support");
     }
 }

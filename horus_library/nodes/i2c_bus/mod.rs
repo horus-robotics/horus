@@ -11,7 +11,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[cfg(feature = "i2c-hardware")]
 use i2cdev::core::I2CDevice;
 #[cfg(feature = "i2c-hardware")]
-use i2cdev::linux::{LinuxI2CDevice, LinuxI2CError};
+use i2cdev::linux::LinuxI2CDevice;
 
 /// I2C Bus Communication Node
 ///

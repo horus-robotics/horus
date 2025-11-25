@@ -108,16 +108,6 @@ impl NodeStats {
         self.is_cpu_bound = self.avg_us > 100.0 && cv < 0.20;
     }
 
-    /// Get 95th percentile estimate (mean + 2*stddev)
-    pub fn p95_us(&self) -> f64 {
-        self.avg_us + 2.0 * self.stddev_us
-    }
-
-    /// Get 99th percentile estimate (mean + 3*stddev)
-    pub fn p99_us(&self) -> f64 {
-        self.avg_us + 3.0 * self.stddev_us
-    }
-
     /// Record a failure for this node
     pub fn record_failure(&mut self) {
         self.failure_count += 1;

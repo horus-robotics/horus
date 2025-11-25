@@ -1,5 +1,6 @@
 use crate::config::PySchedulerConfig;
 use crate::node::PyNodeInfo;
+use horus::memory::{shm_heartbeats_dir, shm_session_dir};
 use horus::{NodeHeartbeat, NodeInfo as CoreNodeInfo};
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
@@ -1574,7 +1575,7 @@ impl PyScheduler {
 impl PyScheduler {
     /// Create heartbeat directory for dashboard monitoring
     fn setup_heartbeat_directory() {
-        let dir = PathBuf::from("/dev/shm/horus/heartbeats");
+        let dir = shm_heartbeats_dir();
         let _ = fs::create_dir_all(&dir);
     }
 
@@ -1591,7 +1592,7 @@ impl PyScheduler {
 
     /// Clean up all heartbeat files
     fn cleanup_heartbeats() {
-        let dir = PathBuf::from("/dev/shm/horus/heartbeats");
+        let dir = shm_heartbeats_dir();
         if dir.exists() {
             // Only remove files, not the directory (other processes may be using it)
             if let Ok(entries) = fs::read_dir(&dir) {
@@ -1606,7 +1607,7 @@ impl PyScheduler {
     fn cleanup_session() {
         // Get current session ID from environment
         if let Ok(session_id) = std::env::var("HORUS_SESSION_ID") {
-            let session_dir = PathBuf::from(format!("/dev/shm/horus/sessions/{}", session_id));
+            let session_dir = shm_session_dir(&session_id);
 
             if session_dir.exists() {
                 // Remove the entire session directory
@@ -1615,12 +1616,9 @@ impl PyScheduler {
         }
     }
 
-    /// Get path to registry file
+    /// Get path to registry file (cross-platform)
     fn get_registry_path() -> Result<PathBuf, std::io::Error> {
-        let mut path = std::env::var("HOME")
-            .ok()
-            .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("/tmp"));
+        let mut path = dirs::home_dir().unwrap_or_else(|| std::env::temp_dir());
         path.push(".horus_registry.json");
         Ok(path)
     }

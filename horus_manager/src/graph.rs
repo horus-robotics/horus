@@ -1,6 +1,6 @@
 use eframe::egui::{Pos2, Vec2};
 
-// Graph node representation
+// Graph node representation (nodes only, no topics)
 #[derive(Debug, Clone)]
 pub struct GraphNode {
     pub id: String,
@@ -18,14 +18,12 @@ pub enum NodeType {
     Topic,
 }
 
-// Edge type to distinguish publishers from subscribers
 #[derive(Debug, Clone, PartialEq)]
 pub enum EdgeType {
-    Publish,   // Process publishes to topic
-    Subscribe, // Process subscribes from topic
+    Publish,
+    Subscribe,
 }
 
-// Graph edge representation
 #[derive(Debug, Clone)]
 pub struct GraphEdge {
     pub from: String,
@@ -34,109 +32,16 @@ pub struct GraphEdge {
     pub active: bool,
 }
 
-/// Discover runtime pub/sub relationships from Hub activity metadata
-/// Returns (publishers, subscribers) for a given topic
-fn discover_runtime_pubsub(topic_name: &str) -> Result<(Vec<String>, Vec<String>), std::io::Error> {
-    use std::fs;
-    use std::path::Path;
-    use std::time::{SystemTime, UNIX_EPOCH};
-
-    let metadata_dir = Path::new("/dev/shm/horus/pubsub_metadata");
-    if !metadata_dir.exists() {
-        return Ok((Vec::new(), Vec::new()));
-    }
-
-    let mut publishers = Vec::new();
-    let mut subscribers = Vec::new();
-
-    // Staleness threshold: 30 seconds
-    let staleness_threshold_secs = 30;
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
-
-    // Normalize topic name for file matching
-    let safe_topic: String = topic_name
-        .chars()
-        .map(|c| if c == '/' || c == ' ' { '_' } else { c })
-        .collect();
-
-    // Scan metadata directory for files matching this topic
-    for entry in fs::read_dir(metadata_dir)? {
-        let entry = entry?;
-        let filename = entry.file_name();
-        let filename_str = filename.to_string_lossy();
-
-        // File format: {node_name}_{topic_name}_{direction}
-        // e.g., JoystickInputNode_joystick_input_pub
-        // Both node_name and topic_name can contain underscores!
-
-        // Extract direction (last part after final underscore)
-        let direction = if filename_str.ends_with("_pub") {
-            "pub"
-        } else if filename_str.ends_with("_sub") {
-            "sub"
-        } else {
-            continue;
-        };
-
-        // Remove the direction suffix to get: {node_name}_{topic_name}
-        let without_direction = if direction == "pub" {
-            filename_str.strip_suffix("_pub").unwrap()
-        } else {
-            filename_str.strip_suffix("_sub").unwrap()
-        };
-
-        // Check if this file matches our topic by checking if it ends with the topic name
-        // Format should be: {node_name}_{safe_topic}
-        if without_direction.ends_with(&format!("_{}", safe_topic)) {
-            // Check staleness: read timestamp from file
-            let is_active = if let Ok(contents) = fs::read_to_string(entry.path()) {
-                if let Ok(timestamp) = contents.trim().parse::<u64>() {
-                    let age_secs = now.saturating_sub(timestamp);
-                    age_secs < staleness_threshold_secs
-                } else {
-                    false // Invalid timestamp format
-                }
-            } else {
-                false // Couldn't read file
-            };
-
-            // Only include active nodes (updated within threshold)
-            if is_active {
-                // Extract node name by removing the topic suffix
-                let node_name = without_direction
-                    .strip_suffix(&format!("_{}", safe_topic))
-                    .unwrap()
-                    .to_string();
-
-                match direction {
-                    "pub" => {
-                        if !publishers.contains(&node_name) {
-                            publishers.push(node_name);
-                        }
-                    }
-                    "sub" => {
-                        if !subscribers.contains(&node_name) {
-                            subscribers.push(node_name);
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-    }
-
-    Ok((publishers, subscribers))
-}
-
 /// Discover graph data including nodes (processes) and topics (shared memory) with their relationships
+/// Uses registry.json for node discovery and pub/sub relationships
 pub fn discover_graph_data() -> (Vec<GraphNode>, Vec<GraphEdge>) {
+    use std::collections::HashSet;
+
     let mut graph_nodes = Vec::new();
     let mut graph_edges = Vec::new();
     let mut process_index = 0;
     let mut topic_index = 0;
+    let mut added_topics: HashSet<String> = HashSet::new();
 
     // Helper to generate initial position for nodes
     let get_position = |node_type: &NodeType, index: usize, node_id: &str| -> Pos2 {
@@ -170,9 +75,10 @@ pub fn discover_graph_data() -> (Vec<GraphNode>, Vec<GraphEdge>) {
         }
     };
 
-    // Discover processes
+    // Discover processes from registry.json (has built-in PID liveness check)
+    // Each node has publishers and subscribers lists populated from registry
     if let Ok(nodes) = super::commands::monitor::discover_nodes() {
-        for node in nodes {
+        for node in &nodes {
             let node_id = format!("process_{}_{}", node.process_id, node.name);
             graph_nodes.push(GraphNode {
                 id: node_id.clone(),
@@ -185,112 +91,86 @@ pub fn discover_graph_data() -> (Vec<GraphNode>, Vec<GraphEdge>) {
             });
             process_index += 1;
         }
+
+        // Build edges from node publishers/subscribers (from registry.json)
+        for node in &nodes {
+            let process_node_id = format!("process_{}_{}", node.process_id, node.name);
+
+            // Create publish edges: Process -> Topic
+            for pub_info in &node.publishers {
+                let topic_id = format!("topic_{}", pub_info.topic);
+
+                // Create topic node if it doesn't exist
+                if !added_topics.contains(&pub_info.topic) {
+                    graph_nodes.push(GraphNode {
+                        id: topic_id.clone(),
+                        label: pub_info.topic.clone(),
+                        node_type: NodeType::Topic,
+                        position: get_position(&NodeType::Topic, topic_index, &topic_id),
+                        velocity: Vec2::ZERO,
+                        pid: None,
+                        active: true, // Topic is active if it has publishers
+                    });
+                    topic_index += 1;
+                    added_topics.insert(pub_info.topic.clone());
+                }
+
+                graph_edges.push(GraphEdge {
+                    from: process_node_id.clone(),
+                    to: topic_id,
+                    edge_type: EdgeType::Publish,
+                    active: node.status == "Running",
+                });
+            }
+
+            // Create subscribe edges: Topic -> Process
+            for sub_info in &node.subscribers {
+                let topic_id = format!("topic_{}", sub_info.topic);
+
+                // Create topic node if it doesn't exist
+                if !added_topics.contains(&sub_info.topic) {
+                    graph_nodes.push(GraphNode {
+                        id: topic_id.clone(),
+                        label: sub_info.topic.clone(),
+                        node_type: NodeType::Topic,
+                        position: get_position(&NodeType::Topic, topic_index, &topic_id),
+                        velocity: Vec2::ZERO,
+                        pid: None,
+                        active: true, // Topic is active if it has subscribers
+                    });
+                    topic_index += 1;
+                    added_topics.insert(sub_info.topic.clone());
+                }
+
+                graph_edges.push(GraphEdge {
+                    from: topic_id,
+                    to: process_node_id.clone(),
+                    edge_type: EdgeType::Subscribe,
+                    active: node.status == "Running",
+                });
+            }
+        }
     }
 
-    // Discover topics
+    // Also discover topics from shared memory (for topics that may not be in registry yet)
     if let Ok(topics) = super::commands::monitor::discover_shared_memory() {
         for topic in topics {
-            let topic_id = format!("topic_{}", topic.topic_name);
-
-            graph_nodes.push(GraphNode {
-                id: topic_id.clone(),
-                label: topic.topic_name.clone(),
-                node_type: NodeType::Topic,
-                position: get_position(&NodeType::Topic, topic_index, &topic_id),
-                velocity: Vec2::ZERO,
-                pid: None,
-                active: topic.active,
-            });
-            topic_index += 1;
-
-            // Create edges based on runtime pub/sub activity
-            // Read from /dev/shm/horus/pubsub_metadata/ files created by Hub
-            if let Ok((publishers, subscribers)) = discover_runtime_pubsub(&topic.topic_name) {
-                // Publisher edges: Process -> Topic (processes that WRITE to this topic)
-                for publisher_name in publishers {
-                    // Find or create the process node by name
-                    let process_node_id = if let Some(process_node) = graph_nodes
-                        .iter()
-                        .find(|n| n.node_type == NodeType::Process && n.label == publisher_name)
-                    {
-                        process_node.id.clone()
-                    } else {
-                        // Create virtual node for Python/interpreted language nodes
-                        let node_id = format!("node_{}", publisher_name);
-                        graph_nodes.push(GraphNode {
-                            id: node_id.clone(),
-                            label: publisher_name.clone(),
-                            node_type: NodeType::Process,
-                            position: get_position(&NodeType::Process, process_index, &node_id),
-                            velocity: Vec2::ZERO,
-                            pid: None, // No PID for virtual nodes
-                            active: true,
-                        });
-                        process_index += 1;
-                        node_id
-                    };
-
-                    graph_edges.push(GraphEdge {
-                        from: process_node_id,
-                        to: topic_id.clone(),
-                        edge_type: EdgeType::Publish,
-                        active: topic.active,
-                    });
-                }
-
-                // Subscriber edges: Topic -> Process (processes that READ from this topic)
-                for subscriber_name in subscribers {
-                    // Find or create the process node by name
-                    let process_node_id = if let Some(process_node) = graph_nodes
-                        .iter()
-                        .find(|n| n.node_type == NodeType::Process && n.label == subscriber_name)
-                    {
-                        process_node.id.clone()
-                    } else {
-                        // Create virtual node for Python/interpreted language nodes
-                        let node_id = format!("node_{}", subscriber_name);
-                        graph_nodes.push(GraphNode {
-                            id: node_id.clone(),
-                            label: subscriber_name.clone(),
-                            node_type: NodeType::Process,
-                            position: get_position(&NodeType::Process, process_index, &node_id),
-                            velocity: Vec2::ZERO,
-                            pid: None, // No PID for virtual nodes
-                            active: true,
-                        });
-                        process_index += 1;
-                        node_id
-                    };
-
-                    graph_edges.push(GraphEdge {
-                        from: topic_id.clone(),
-                        to: process_node_id,
-                        edge_type: EdgeType::Subscribe,
-                        active: topic.active,
-                    });
-                }
+            if !added_topics.contains(&topic.topic_name) {
+                let topic_id = format!("topic_{}", topic.topic_name);
+                graph_nodes.push(GraphNode {
+                    id: topic_id,
+                    label: topic.topic_name.clone(),
+                    node_type: NodeType::Topic,
+                    position: get_position(&NodeType::Topic, topic_index, &format!("topic_{}", topic.topic_name)),
+                    velocity: Vec2::ZERO,
+                    pid: None,
+                    active: topic.active,
+                });
+                topic_index += 1;
+                added_topics.insert(topic.topic_name);
             }
         }
     }
-
-    // Update process node activity based on active publish edges
-    // A process is "active" if it's running AND has at least one active publish edge
-    for node in &mut graph_nodes {
-        if node.node_type == NodeType::Process {
-            // Check if this node has any active outgoing (publish) edges
-            let has_active_publish = graph_edges.iter().any(|edge| {
-                edge.from == node.id && edge.edge_type == EdgeType::Publish && edge.active
-            });
-
-            // Keep node.active if it was already active (process running)
-            // Only show as actively publishing if there's an active edge
-            if node.active {
-                node.active = has_active_publish;
-            }
-        }
-    }
-
-    // Only show real nodes and topics - no demo data
 
     (graph_nodes, graph_edges)
 }
@@ -358,8 +238,8 @@ mod tests {
     #[test]
     fn test_graph_node_topic_creation() {
         let node = GraphNode {
-            id: "topic_/robot/pose".to_string(),
-            label: "/robot/pose".to_string(),
+            id: "topic_robot.pose".to_string(),
+            label: "robot.pose".to_string(),
             node_type: NodeType::Topic,
             position: Pos2::new(300.0, 150.0),
             velocity: Vec2::new(0.1, 0.2),
@@ -369,7 +249,7 @@ mod tests {
 
         assert_eq!(node.node_type, NodeType::Topic);
         assert!(node.pid.is_none());
-        assert_eq!(node.label, "/robot/pose");
+        assert_eq!(node.label, "robot.pose");
     }
 
     #[test]

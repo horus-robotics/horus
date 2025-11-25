@@ -1,7 +1,0 @@
-[package]
-name = "test_deps"
-version = "0.1.5"
-edition = "2021"
-
-[dependencies]
-horus_core = { path = "/home/lord-patpak/horus/HORUS/horus_core" }

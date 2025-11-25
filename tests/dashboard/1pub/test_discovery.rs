@@ -1,9 +1,8 @@
-use std::path::Path;
+use horus::memory::shm_base_dir;
 
 fn main() {
-    println!("Checking /dev/shm/horus/sessions...");
-
-    let sessions_dir = Path::new("/dev/shm/horus/sessions");
+    let sessions_dir = shm_base_dir().join("sessions");
+    println!("Checking {}...", sessions_dir.display());
     if !sessions_dir.exists() {
         println!("Sessions directory does not exist!");
         return;

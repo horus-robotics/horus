@@ -556,6 +556,19 @@ fn calculate_wavelength_response(temperature: f32, wavelength_min: f32, waveleng
     }
 }
 
+/// Plugin for thermal camera support
+pub struct ThermalCameraPlugin;
+
+impl Plugin for ThermalCameraPlugin {
+    fn build(&self, app: &mut App) {
+        app.register_type::<ThermalCamera>()
+            .register_type::<Temperature>()
+            .register_type::<ThermalProperties>()
+            .add_systems(Update, thermal_camera_update_system);
+
+        tracing::info!("Thermal camera plugin loaded with LWIR/MWIR support");
+    }
+}
 
 #[cfg(test)]
 mod tests {

@@ -22,7 +22,7 @@ class QrScannerNode(Node):
     """Simulates QR code scanner for warehouse inventory"""
 
     def __init__(self):
-        super().__init__(name="QrScannerNode", pubs=["vision/qr_codes"])
+        super().__init__(name="QrScannerNode", pubs=["vision.qr_codes"])
         self.scan_count = 0
         self.known_codes = ["SHELF-A01", "SHELF-B12", "SHELF-C33", "DOCK-01"]
 
@@ -38,14 +38,14 @@ class QrScannerNode(Node):
                 "confidence": confidence,
                 "timestamp": time.time()
             }
-            self.send("vision/qr_codes", data)
+            self.send("vision.qr_codes", data)
 
 
 class ObjectDetectorNode(Node):
     """Simulates object detection for obstacle awareness"""
 
     def __init__(self):
-        super().__init__(name="ObjectDetectorNode", pubs=["vision/objects"])
+        super().__init__(name="ObjectDetectorNode", pubs=["vision.objects"])
         self.frame_count = 0
 
     def tick(self):
@@ -69,7 +69,7 @@ class ObjectDetectorNode(Node):
                 }
                 objects.append(obj)
 
-            self.send("vision/objects", {"objects": objects, "timestamp": time.time()})
+            self.send("vision.objects", {"objects": objects, "timestamp": time.time()})
 
 
 # ============================================================================
@@ -83,8 +83,8 @@ class SlamNode(Node):
         super().__init__(
             name="SlamNode",
             pubs={
-                "localization/map": {},  # Generic hub for map data
-                "localization/pose": {"type": Pose2D}  # Typed hub for pose
+                "localization.map": {},  # Generic hub for map data
+                "localization.pose": {"type": Pose2D}  # Typed hub for pose
             }
         )
         self.position = [0.0, 0.0, 0.0]  # x, y, theta
@@ -102,7 +102,7 @@ class SlamNode(Node):
             y=self.position[1],
             theta=self.position[2]
         )
-        self.send("localization/pose", pose)
+        self.send("localization.pose", pose)
 
         # Publish map updates less frequently (generic hub)
         self.map_size += random.randint(0, 5)
@@ -113,7 +113,7 @@ class SlamNode(Node):
                 "resolution": 0.05,
                 "occupied_cells": self.map_size
             }
-            self.send("localization/map", map_data)
+            self.send("localization.map", map_data)
 
 
 class PositionEstimatorNode(Node):
@@ -123,22 +123,22 @@ class PositionEstimatorNode(Node):
         super().__init__(
             name="PositionEstimatorNode",
             subs={
-                "localization/pose": {"type": Pose2D},  # Typed sub
-                "vision/qr_codes": {}  # Generic sub
+                "localization.pose": {"type": Pose2D},  # Typed sub
+                "vision.qr_codes": {}  # Generic sub
             },
-            pubs=["localization/position_estimate"]
+            pubs=["localization.position_estimate"]
         )
         self.last_slam_pose = None
         self.last_qr_correction = None
 
     def tick(self):
         # Get SLAM pose (now receives typed Pose2D object)
-        if self.has_msg("localization/pose"):
-            self.last_slam_pose = self.get("localization/pose")
+        if self.has_msg("localization.pose"):
+            self.last_slam_pose = self.get("localization.pose")
 
         # Get QR code corrections
-        if self.has_msg("vision/qr_codes"):
-            qr_data = self.get("vision/qr_codes")
+        if self.has_msg("vision.qr_codes"):
+            qr_data = self.get("vision.qr_codes")
             self.last_qr_correction = qr_data
 
         # Fuse data and publish estimate
@@ -149,7 +149,7 @@ class PositionEstimatorNode(Node):
                 "theta": self.last_slam_pose.theta,
                 "confidence": 0.9 if self.last_qr_correction else 0.7
             }
-            self.send("localization/position_estimate", estimate)
+            self.send("localization.position_estimate", estimate)
 
 
 # ============================================================================
@@ -162,7 +162,7 @@ class TaskSchedulerNode(Node):
     def __init__(self):
         super().__init__(
             name="TaskSchedulerNode",
-            pubs=["tasks/current_task", "tasks/status"]
+            pubs=["tasks.current_task", "tasks.status"]
         )
         self.task_id = 0
         self.tasks = ["PICK_A01", "MOVE_TO_DOCK", "PICK_B12", "DELIVER_C33"]
@@ -177,8 +177,8 @@ class TaskSchedulerNode(Node):
                 "priority": random.randint(1, 5),
                 "assigned_time": time.time()
             }
-            self.send("tasks/current_task", task)
-            self.send("tasks/status", {"active_tasks": self.task_id})
+            self.send("tasks.current_task", task)
+            self.send("tasks.status", {"active_tasks": self.task_id})
 
 
 class PathExecutorNode(Node):
@@ -187,20 +187,20 @@ class PathExecutorNode(Node):
     def __init__(self):
         super().__init__(
             name="PathExecutorNode",
-            subs=["tasks/current_task", "localization/position_estimate"],
-            pubs={"control/cmd_vel": {"type": CmdVel}}  # Typed pub
+            subs=["tasks.current_task", "localization.position_estimate"],
+            pubs={"control.cmd_vel": {"type": CmdVel}}  # Typed pub
         )
         self.current_task = None
         self.current_position = None
 
     def tick(self):
         # Get current task
-        if self.has_msg("tasks/current_task"):
-            self.current_task = self.get("tasks/current_task")
+        if self.has_msg("tasks.current_task"):
+            self.current_task = self.get("tasks.current_task")
 
         # Get current position
-        if self.has_msg("localization/position_estimate"):
-            self.current_position = self.get("localization/position_estimate")
+        if self.has_msg("localization.position_estimate"):
+            self.current_position = self.get("localization.position_estimate")
 
         # Execute task (simplified) - using typed CmdVel
         if self.current_task and self.current_position:
@@ -208,7 +208,7 @@ class PathExecutorNode(Node):
                 linear=random.uniform(0.0, 0.5),
                 angular=random.uniform(-0.3, 0.3)
             )
-            self.send("control/cmd_vel", cmd)
+            self.send("control.cmd_vel", cmd)
 
 
 # ============================================================================
@@ -221,13 +221,13 @@ class CollisionDetectorNode(Node):
     def __init__(self):
         super().__init__(
             name="CollisionDetectorNode",
-            subs=["vision/objects"],
-            pubs=["safety/collision_alert"]
+            subs=["vision.objects"],
+            pubs=["safety.collision_alert"]
         )
 
     def tick(self):
-        if self.has_msg("vision/objects"):
-            objects = self.get("vision/objects")
+        if self.has_msg("vision.objects"):
+            objects = self.get("vision.objects")
             
             # Check if any objects are too close
             for obj in objects.get("objects", []):
@@ -239,7 +239,7 @@ class CollisionDetectorNode(Node):
                             "object_type": obj["class"],
                             "timestamp": time.time()
                         }
-                        self.send("safety/collision_alert", alert)
+                        self.send("safety.collision_alert", alert)
 
 
 class EmergencyHandlerNode(Node):
@@ -249,27 +249,27 @@ class EmergencyHandlerNode(Node):
         super().__init__(
             name="EmergencyHandlerNode",
             subs={
-                "safety/collision_alert": {},  # Generic sub
-                "control/cmd_vel": {"type": CmdVel}  # Typed sub
+                "safety.collision_alert": {},  # Generic sub
+                "control.cmd_vel": {"type": CmdVel}  # Typed sub
             },
             pubs={
-                "control/cmd_vel_safe": {"type": CmdVel},  # Typed pub
-                "safety/status": {}  # Generic pub
+                "control.cmd_vel_safe": {"type": CmdVel},  # Typed pub
+                "safety.status": {}  # Generic pub
             }
         )
         self.emergency_stop = False
 
     def tick(self):
         # Check for collision alerts
-        if self.has_msg("safety/collision_alert"):
-            alert = self.get("safety/collision_alert")
+        if self.has_msg("safety.collision_alert"):
+            alert = self.get("safety.collision_alert")
             if alert["severity"] == "high":
                 self.emergency_stop = True
-                self.send("safety/status", {"emergency_stop": True})
+                self.send("safety.status", {"emergency_stop": True})
 
         # Monitor velocity commands (now receives typed CmdVel)
-        if self.has_msg("control/cmd_vel"):
-            cmd = self.get("control/cmd_vel")
+        if self.has_msg("control.cmd_vel"):
+            cmd = self.get("control.cmd_vel")
 
             if self.emergency_stop:
                 # Override with stop command (typed CmdVel)
@@ -278,7 +278,7 @@ class EmergencyHandlerNode(Node):
                 # Pass through the typed CmdVel
                 safe_cmd = cmd
 
-            self.send("control/cmd_vel_safe", safe_cmd)
+            self.send("control.cmd_vel_safe", safe_cmd)
 
         # Clear emergency stop after some time
         if self.emergency_stop and random.random() < 0.05:
@@ -295,7 +295,7 @@ class PerformanceMonitorNode(Node):
     def __init__(self):
         super().__init__(
             name="PerformanceMonitorNode",
-            pubs=["system/performance"]
+            pubs=["system.performance"]
         )
         self.tick_count = 0
 
@@ -308,7 +308,7 @@ class PerformanceMonitorNode(Node):
                 "uptime": time.time(),
                 "cpu_usage": random.uniform(10, 60)
             }
-            self.send("system/performance", stats)
+            self.send("system.performance", stats)
 
 
 # ============================================================================

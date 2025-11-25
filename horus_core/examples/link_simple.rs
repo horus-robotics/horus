@@ -8,6 +8,7 @@
 //! cargo run --example link_simple
 //! ```
 
+use horus_core::memory::shm_topics_dir;
 use horus_core::{Link, Node, NodeInfo, Scheduler};
 use std::thread;
 use std::time::Duration;
@@ -101,7 +102,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("This example demonstrates ultra-low latency point-to-point IPC.\n");
 
     // Clean up any previous shared memory
-    let _ = std::fs::remove_file("/dev/shm/horus/topics/horus_links_sensor_data");
+    let _ = std::fs::remove_file(shm_topics_dir().join("horus_links_sensor_data"));
 
     // Create nodes
     let sensor = SensorNode::new()?;

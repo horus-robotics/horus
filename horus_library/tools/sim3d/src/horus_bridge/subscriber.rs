@@ -79,7 +79,7 @@ pub fn apply_cmd_vel_system(
     }
 
     for (name, mut cmd_vel) in query.iter_mut() {
-        let topic = format!("{}/cmd_vel", name.as_str());
+        let topic = format!("{}.cmd_vel", name.as_str());
         if let Some(twist) = subscriber.get_cmd_vel(&topic) {
             cmd_vel.linear = twist.linear.x;
             cmd_vel.angular = twist.angular.z;
@@ -95,7 +95,7 @@ pub struct RobotCommandHandler {
 impl RobotCommandHandler {
     pub fn new(robot_name: impl Into<String>) -> Self {
         Self {
-            cmd_vel_topic: format!("{}/cmd_vel", robot_name.into()),
+            cmd_vel_topic: format!("{}.cmd_vel", robot_name.into()),
         }
     }
 }
