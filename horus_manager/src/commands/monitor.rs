@@ -2259,7 +2259,7 @@ mod tests {
         if topic_file.is_some() {
             // Force cache refresh - handle potential poisoned lock
             let cache_refreshed = DISCOVERY_CACHE.write().map(|mut cache| {
-                cache.last_updated = std::time::Instant::now() - std::time::Duration::from_secs(10);
+                cache.shared_memory_last_updated = std::time::Instant::now() - std::time::Duration::from_secs(10);
                 true
             }).unwrap_or(false);
 
@@ -2312,7 +2312,7 @@ mod tests {
         if std::fs::write(&test_file, vec![0u8; 512]).is_ok() {
             // Force cache refresh
             if let Ok(mut cache) = DISCOVERY_CACHE.write() {
-                cache.last_updated = std::time::Instant::now() - std::time::Duration::from_secs(10);
+                cache.shared_memory_last_updated = std::time::Instant::now() - std::time::Duration::from_secs(10);
             }
 
             let result = discover_shared_memory();
@@ -2334,7 +2334,8 @@ mod tests {
     fn test_discovery_cache_new_is_stale() {
         let cache = DiscoveryCache::new();
         // New cache should be stale (forces initial update)
-        assert!(cache.is_stale());
+        assert!(cache.is_nodes_stale());
+        assert!(cache.is_shared_memory_stale());
     }
 
     #[test]
@@ -2362,8 +2363,8 @@ mod tests {
 
         cache.update_nodes(nodes);
 
-        // After update, should not be stale
-        assert!(!cache.is_stale());
+        // After update, nodes should not be stale (but shared_memory still is)
+        assert!(!cache.is_nodes_stale());
         assert_eq!(cache.nodes.len(), 1);
     }
 
@@ -2384,7 +2385,8 @@ mod tests {
 
         cache.update_shared_memory(shm);
 
-        assert!(!cache.is_stale());
+        // After update, shared_memory should not be stale (but nodes still is)
+        assert!(!cache.is_shared_memory_stale());
         assert_eq!(cache.shared_memory.len(), 1);
     }
 

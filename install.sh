@@ -21,6 +21,80 @@ BLUE='\033[0;34m'
 MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
+# WALL-E Robot indicators (UTF-8)
+ROBOT="[□_□]"
+ROBOT_SUCCESS="[■_■]"
+ROBOT_ERROR="[×_×]"
+ROBOT_WARN="[□_□]!"
+ROBOT_BUILD="[□_□]"
+ROBOT_DOWNLOAD="[□_□]"
+ROBOT_CLEAN="[▣_▣]"
+ROBOT_CHECK="[□_□]?"
+
+# Spinner function - WALL-E compacting trash animation
+spin() {
+    local pid=$1
+    local msg="$2"
+    # WALL-E compacting trash: sees trash, eats it, compacts, ejects cube
+    local spin_chars=(
+        '[□_□]  ▮▮▮'
+        '[□_□] ▮▮▮ '
+        '[□_□]▮▮▮  '
+        '[□■□]▮▮   '
+        '[■_■]▮    '
+        '[▣_▣]     '
+        '[▪_▪]     '
+        '[□_□]▫    '
+        '[□_□] ▫▫  '
+        '[□_□]  ▫▫▫'
+    )
+    local i=0
+
+    # Hide cursor
+    tput civis 2>/dev/null || true
+
+    while kill -0 $pid 2>/dev/null; do
+        printf "\r  ${spin_chars[$i]} ${msg}"
+        i=$(( (i + 1) % ${#spin_chars[@]} ))
+        sleep 0.15
+    done
+
+    # Show cursor and clear line
+    tput cnorm 2>/dev/null || true
+    printf "\r\033[K"
+}
+
+# Build spinner - same WALL-E animation for builds
+spin_build() {
+    local pid=$1
+    local msg="$2"
+    # WALL-E compacting trash animation
+    local spin_chars=(
+        '[□_□]  ▮▮▮'
+        '[□_□] ▮▮▮ '
+        '[□_□]▮▮▮  '
+        '[□■□]▮▮   '
+        '[■_■]▮    '
+        '[▣_▣]     '
+        '[▪_▪]     '
+        '[□_□]▫    '
+        '[□_□] ▫▫  '
+        '[□_□]  ▫▫▫'
+    )
+    local i=0
+
+    tput civis 2>/dev/null || true
+
+    while kill -0 $pid 2>/dev/null; do
+        printf "\r  ${spin_chars[$i]} ${msg}"
+        i=$(( (i + 1) % ${#spin_chars[@]} ))
+        sleep 0.15
+    done
+
+    tput cnorm 2>/dev/null || true
+    printf "\r\033[K"
+}
+
 # Source shared dependency functions (if available)
 DEPS_SHARED=false
 if [ -f "$SCRIPT_DIR/scripts/deps.sh" ]; then
@@ -32,7 +106,8 @@ fi
 LOG_FILE="/tmp/horus_install_$(date +%Y%m%d_%H%M%S).log"
 exec 2> >(tee -a "$LOG_FILE" >&2)
 
-echo -e "${CYAN}HORUS Installation Script v${SCRIPT_VERSION}${NC}"
+echo ""
+echo -e "${CYAN}${ROBOT} HORUS Installation Script v${SCRIPT_VERSION}${NC}"
 echo ""
 
 # Detect operating system
@@ -570,19 +645,26 @@ build_with_recovery() {
 
     while [ $retry -lt $max_retries ]; do
         echo ""
-        echo -e "${CYAN} Building HORUS packages (attempt $((retry + 1))/$max_retries)...${NC}"
+        echo -e "${CYAN}   Building HORUS packages (attempt $((retry + 1))/$max_retries)...${NC}"
         echo -e "${CYAN}   Packages: ${BUILD_PACKAGES[*]}${NC}"
         echo -e "${CYAN}   Skipping: benchmarks, horus_py (installed from PyPI), tanksim, horus_router${NC}"
+        echo ""
 
         # Clean build on retry
         if [ $retry -gt 0 ]; then
-            echo -e "${CYAN} Cleaning previous build artifacts...${NC}"
+            echo -e "${CYAN}${ROBOT_CLEAN} Cleaning previous build artifacts...${NC}"
             cargo clean
         fi
 
-        # Try building only required packages
-        if $BUILD_CMD 2>&1 | tee -a "$LOG_FILE"; then
-            echo -e "${GREEN} Build completed successfully${NC}"
+        # Try building only required packages (with spinner for long builds)
+        $BUILD_CMD >> "$LOG_FILE" 2>&1 &
+        local build_pid=$!
+        spin_build $build_pid "Building HORUS (this may take a few minutes)..."
+        wait $build_pid
+        local build_status=$?
+
+        if [ $build_status -eq 0 ]; then
+            echo -e "  ${ROBOT_SUCCESS} Build completed successfully"
             return 0
         else
             ((retry++))
@@ -613,7 +695,7 @@ build_with_recovery() {
         fi
     done
 
-    echo -e "${RED} Build failed after $max_retries attempts${NC}"
+    echo -e "  ${ROBOT_ERROR} Build failed after $max_retries attempts"
     echo -e "${YELLOW} Check the log file for details: $LOG_FILE${NC}"
     echo ""
     echo "Troubleshooting steps:"
@@ -631,7 +713,7 @@ fi
 echo ""
 
 # Step 2: Install CLI binary
-echo -e "${CYAN}${NC} Installing CLI binary..."
+echo -e "${CYAN}${ROBOT_DOWNLOAD} Installing CLI binary...${NC}"
 
 if [ ! -d "$INSTALL_DIR" ]; then
     mkdir -p "$INSTALL_DIR"
@@ -659,7 +741,7 @@ fi
 echo ""
 
 # Step 3: Create cache directory structure
-echo -e "${CYAN}${NC} Setting up library cache..."
+echo -e "${CYAN}${ROBOT_DOWNLOAD} Setting up library cache...${NC}"
 
 mkdir -p "$CACHE_DIR"
 
@@ -877,11 +959,11 @@ if [ "$PYTHON_AVAILABLE" = true ]; then
             INSTALLED_VERSION=$(python3 -c "import horus; print(horus.__version__)" 2>/dev/null)
             echo -e "${GREEN}${NC} Python bindings working (version: $INSTALLED_VERSION)"
         else
-            echo -e "${YELLOW}⊘${NC} Python bindings installed but import failed"
+            echo -e "${YELLOW}[-]${NC} Python bindings installed but import failed"
         fi
     else
         # If pip install fails, it's optional - don't build from source
-        echo -e "${YELLOW}⊘${NC} Python bindings: Not available on PyPI yet (optional)"
+        echo -e "${YELLOW}[-]${NC} Python bindings: Not available on PyPI yet (optional)"
         echo ""
         echo -e "  ${CYAN}Python bindings will be available after the first release.${NC}"
         echo -e "  For now, you can:"
@@ -891,7 +973,7 @@ if [ "$PYTHON_AVAILABLE" = true ]; then
         echo ""
     fi
 else
-    echo -e "${YELLOW}⊘${NC} Skipping horus_py (Python not available)"
+    echo -e "${YELLOW}[-]${NC} Skipping horus_py (Python not available)"
 fi
 echo ""
 
@@ -979,13 +1061,13 @@ fi
 if [ -x "$INSTALL_DIR/sim2d" ]; then
     echo -e "${GREEN}${NC} sim2d binary: OK"
 else
-    echo -e "${YELLOW}⊘${NC} sim2d binary: Not installed"
+    echo -e "${YELLOW}[-]${NC} sim2d binary: Not installed"
 fi
 
 if [ -x "$INSTALL_DIR/sim3d" ]; then
     echo -e "${GREEN}${NC} sim3d binary: OK"
 else
-    echo -e "${YELLOW}⊘${NC} sim3d binary: Not installed"
+    echo -e "${YELLOW}[-]${NC} sim3d binary: Not installed"
 fi
 
 if [ -d "$HORUS_DIR" ]; then
@@ -1019,7 +1101,7 @@ if [ "$PYTHON_AVAILABLE" = true ]; then
         echo -e "${RED}${NC} horus_py: Missing"
     fi
 else
-    echo -e "${YELLOW}⊘${NC} horus_py: Skipped (Python not available)"
+    echo -e "${YELLOW}[-]${NC} horus_py: Skipped (Python not available)"
 fi
 
 echo ""
@@ -1096,12 +1178,12 @@ case "$SHELL_NAME" in
 esac
 
 if [ "$COMPLETION_INSTALLED" = true ]; then
-    echo -e "${CYAN}  ℹ${NC}  Shell completions will be active in new terminal sessions"
+    echo -e "${CYAN}  [i]${NC} Shell completions will be active in new terminal sessions"
     echo -e "  To use in this session: ${CYAN}source ~/.${SHELL_NAME}rc${NC} (bash/zsh)"
 fi
 
 echo ""
-echo -e "${GREEN} HORUS installation complete!${NC}"
+echo -e "${GREEN}${ROBOT_SUCCESS} HORUS installation complete!${NC}"
 echo ""
 echo -e "${CYAN}Next steps:${NC}"
 echo "  1. Create a new project:"

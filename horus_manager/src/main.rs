@@ -65,6 +65,10 @@ enum Commands {
         #[arg(short = 'c', long = "clean")]
         clean: bool,
 
+        /// Suppress progress indicators
+        #[arg(short = 'q', long = "quiet")]
+        quiet: bool,
+
         /// Additional arguments to pass to the program (use -- to separate)
         #[arg(last = true)]
         args: Vec<String>,
@@ -329,8 +333,12 @@ fn run_command(command: Commands) -> HorusResult<()> {
             build_only,
             release,
             clean,
+            quiet,
             args,
         } => {
+            // Set quiet mode for progress indicators
+            horus_manager::progress::set_quiet(quiet);
+
             if build_only {
                 // Build-only mode - compile but don't execute
                 commands::run::execute_build_only(files, release, clean)

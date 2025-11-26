@@ -1,5 +1,6 @@
 use super::endpoint::Endpoint;
 use super::router::RouterBackend;
+use super::smart_copy::{SmartCopyConfig, SmartCopySender, CopyStrategy};
 use super::smart_transport::{NetworkLocation, TransportSelector, TransportType};
 use super::udp_direct::UdpDirectBackend;
 use super::udp_multicast::UdpMulticastBackend;
@@ -11,6 +12,7 @@ use super::batch_udp::{BatchUdpConfig, BatchUdpReceiver, BatchUdpSender};
 
 use crate::error::HorusResult;
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 /// Network backend for Hub communication
 ///
@@ -43,11 +45,12 @@ pub enum NetworkBackend<T> {
     Router(RouterBackend<T>),
 }
 
-/// Wrapper for batch UDP sender/receiver pair
+/// Wrapper for batch UDP sender/receiver pair with smart copy support
 #[cfg(target_os = "linux")]
 pub struct BatchUdpBackendWrapper<T> {
     sender: std::sync::Mutex<BatchUdpSender>,
     receiver: std::sync::Mutex<BatchUdpReceiver>,
+    smart_copy: Arc<SmartCopySender>,
     topic: String,
     remote_addr: SocketAddr,
     _phantom: std::marker::PhantomData<T>,
@@ -65,6 +68,7 @@ impl<T> std::fmt::Debug for BatchUdpBackendWrapper<T> {
         f.debug_struct("BatchUdpBackendWrapper")
             .field("topic", &self.topic)
             .field("remote_addr", &self.remote_addr)
+            .field("smart_copy", &self.smart_copy)
             .finish()
     }
 }
@@ -240,7 +244,7 @@ where
         }
     }
 
-    /// Create batch UDP backend (Linux only)
+    /// Create batch UDP backend (Linux only) with smart copy support
     #[cfg(target_os = "linux")]
     fn create_batch_udp(topic: &str, addr: SocketAddr) -> HorusResult<Self> {
         let config = BatchUdpConfig::default();
@@ -267,9 +271,13 @@ where
             crate::error::HorusError::Communication(format!("Failed to create batch UDP receiver: {}", e))
         })?;
 
+        // Create smart copy sender for automatic zero-copy on large messages
+        let smart_copy = Arc::new(SmartCopySender::new(SmartCopyConfig::default()));
+
         Ok(NetworkBackend::BatchUdp(BatchUdpBackendWrapper {
             sender: std::sync::Mutex::new(sender),
             receiver: std::sync::Mutex::new(receiver),
+            smart_copy,
             topic: topic.to_string(),
             remote_addr: addr,
             _phantom: std::marker::PhantomData,
@@ -287,12 +295,33 @@ where
                 let data = bincode::serialize(msg).map_err(|e| {
                     crate::error::HorusError::Communication(format!("Serialization error: {}", e))
                 })?;
-                let mut sender = backend.sender.lock().map_err(|e| {
-                    crate::error::HorusError::Communication(format!("Sender lock error: {}", e))
-                })?;
-                sender.send(&data, backend.remote_addr).map_err(|e| {
-                    crate::error::HorusError::Communication(format!("Batch UDP send error: {}", e))
-                })
+
+                // Use smart copy - automatically selects zero-copy for large messages
+                let (strategy, buffer) = backend.smart_copy.prepare_send(&data);
+
+                let result = {
+                    let mut sender = backend.sender.lock().map_err(|e| {
+                        crate::error::HorusError::Communication(format!("Sender lock error: {}", e))
+                    })?;
+
+                    // Use the buffer if we got one (zero-copy path), otherwise use data directly
+                    let send_data = match &buffer {
+                        Some(buf) => buf.as_slice(),
+                        None => &data,
+                    };
+
+                    sender.send(send_data, backend.remote_addr).map_err(|e| {
+                        crate::error::HorusError::Communication(format!("Batch UDP send error: {}", e))
+                    })
+                };
+
+                // Release buffer back to pool after send completes
+                backend.smart_copy.complete_send(buffer);
+
+                // Log strategy for debugging (only in debug mode)
+                log::trace!("BatchUdp send: {} bytes via {:?}", data.len(), strategy);
+
+                result
             }
             NetworkBackend::Multicast(backend) => backend.send(msg),
             NetworkBackend::Router(backend) => backend.send(msg),
@@ -337,6 +366,26 @@ where
             NetworkBackend::BatchUdp(_) => "batch_udp",
             NetworkBackend::Multicast(_) => "multicast",
             NetworkBackend::Router(_) => "router",
+        }
+    }
+
+    /// Get smart copy statistics (BatchUdp only)
+    ///
+    /// Returns None for non-BatchUdp backends
+    #[cfg(target_os = "linux")]
+    pub fn smart_copy_stats(&self) -> Option<&super::smart_copy::SmartCopyStats> {
+        match self {
+            NetworkBackend::BatchUdp(backend) => Some(backend.smart_copy.stats()),
+            _ => None,
+        }
+    }
+
+    /// Get copy strategy that would be used for a message of given size
+    #[cfg(target_os = "linux")]
+    pub fn copy_strategy_for_size(&self, size: usize) -> Option<CopyStrategy> {
+        match self {
+            NetworkBackend::BatchUdp(backend) => Some(backend.smart_copy.select_strategy(size)),
+            _ => None,
         }
     }
 }

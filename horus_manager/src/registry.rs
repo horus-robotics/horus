@@ -2,6 +2,7 @@
 // Keeps complexity low - just HTTP calls to registry
 
 use crate::dependency_resolver::{DependencySpec, PackageProvider};
+use crate::progress::{self, finish_success, finish_error};
 use anyhow::{anyhow, bail, Result};
 use chrono::{DateTime, Utc};
 use colored::*;
@@ -289,7 +290,7 @@ impl RegistryClient {
         version: Option<&str>,
         target: crate::workspace::InstallTarget,
     ) -> Result<String> {
-        println!(" Downloading {} from HORUS registry...", package_name);
+        let spinner = progress::robot_download_spinner(&format!("Downloading {} from HORUS registry...", package_name));
 
         let version_str = version.unwrap_or("latest");
         let url = format!(
@@ -417,25 +418,20 @@ impl RegistryClient {
                 #[cfg(windows)]
                 std::os::windows::fs::symlink_dir(&package_dir, &local_link)?;
 
+                finish_success(&spinner, &format!("Installed {} v{}", package_name, actual_version));
                 println!(
-                    " Installed {} v{} to global cache",
-                    package_name, actual_version
-                );
-                println!(
-                    "   Linked: {} -> {}",
+                    "   {} Linked: {} -> {}",
+                    "".dimmed(),
                     local_link.display(),
                     package_dir.display()
                 );
             } else {
-                println!(
-                    " Installed {} v{} to global cache",
-                    package_name, actual_version
-                );
-                println!("   Location: {}", package_dir.display());
+                finish_success(&spinner, &format!("Installed {} v{}", package_name, actual_version));
+                println!("   {} Location: {}", "".dimmed(), package_dir.display());
             }
         } else {
-            println!(" Installed {} v{} locally", package_name, actual_version);
-            println!("   Location: {}", package_dir.display());
+            finish_success(&spinner, &format!("Installed {} v{} locally", package_name, actual_version));
+            println!("   {} Location: {}", "".dimmed(), package_dir.display());
         }
 
         // Pre-compile if installed to global cache and is Rust/C package
@@ -468,7 +464,7 @@ impl RegistryClient {
         target: crate::workspace::InstallTarget,
     ) -> Result<String> {
         use std::process::Command;
-        println!(" Installing {} from PyPI...", package_name);
+        let spinner = progress::robot_download_spinner(&format!("Installing {} from PyPI...", package_name));
 
         // Check if package exists in system first
         if let Ok(Some(system_version)) = self.detect_system_python_package(package_name) {
@@ -550,13 +546,14 @@ impl RegistryClient {
         }
         fs::create_dir_all(&pkg_dir)?;
 
-        println!("  {} Installing with pip...", "".cyan());
+        spinner.set_message(format!("Installing {} with pip...", package_name));
         let output = Command::new(&pip_path)
             .args(["install", "--target", pkg_dir.to_str().unwrap()])
             .arg(&requirement)
             .output()?;
 
         if !output.status.success() {
+            finish_error(&spinner, &format!("pip install failed for {}", package_name));
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(anyhow!("pip install failed:\n{}", stderr));
         }
@@ -606,19 +603,17 @@ impl RegistryClient {
                 #[cfg(windows)]
                 std::os::windows::fs::symlink_dir(&pkg_dir, &local_link)?;
 
+                finish_success(&spinner, &format!("Installed {} v{}", package_name, actual_version));
                 println!(
-                    " Installed {} v{} to global cache",
-                    package_name, actual_version
-                );
-                println!(
-                    "   Linked: {} -> {}",
+                    "   {} Linked: {} -> {}",
+                    "".dimmed(),
                     local_link.display(),
                     pkg_dir.display()
                 );
             }
         } else {
-            println!(" Installed {} v{} locally", package_name, actual_version);
-            println!("   Location: {}", pkg_dir.display());
+            finish_success(&spinner, &format!("Installed {} v{} locally", package_name, actual_version));
+            println!("   {} Location: {}", "".dimmed(), pkg_dir.display());
         }
 
         Ok(actual_version)
@@ -631,7 +626,7 @@ impl RegistryClient {
         target: crate::workspace::InstallTarget,
     ) -> Result<String> {
         use std::process::Command;
-        println!(" Installing {} from crates.io...", package_name);
+        let spinner = progress::robot_download_spinner(&format!("Installing {} from crates.io...", package_name));
 
         // Check if cargo is available
         if Command::new("cargo").arg("--version").output().is_err() {
@@ -704,7 +699,7 @@ impl RegistryClient {
         }
         fs::create_dir_all(&pkg_dir)?;
 
-        println!("  {} Installing with cargo...", "".cyan());
+        spinner.set_message(format!("Installing {} with cargo...", package_name));
 
         // Use cargo install with --root to install to specific directory
         let mut cmd = Command::new("cargo");
@@ -716,6 +711,7 @@ impl RegistryClient {
         let output = cmd.output()?;
 
         if !output.status.success() {
+            finish_error(&spinner, &format!("cargo install failed for {}", package_name));
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(anyhow!("cargo install failed:\n{}", stderr));
         }
@@ -765,21 +761,19 @@ impl RegistryClient {
                 #[cfg(windows)]
                 std::os::windows::fs::symlink_dir(&pkg_dir, &local_link)?;
 
+                finish_success(&spinner, &format!("Installed {} v{}", package_name, actual_version));
                 println!(
-                    " Installed {} v{} to global cache",
-                    package_name, actual_version
-                );
-                println!(
-                    "   Linked: {} -> {}",
+                    "   {} Linked: {} -> {}",
+                    "".dimmed(),
                     local_link.display(),
                     pkg_dir.display()
                 );
-                println!("   Binaries available in: {}/bin/", pkg_dir.display());
+                println!("   {} Binaries: {}/bin/", "".dimmed(), pkg_dir.display());
             }
         } else {
-            println!(" Installed {} v{} locally", package_name, actual_version);
-            println!("   Location: {}", pkg_dir.display());
-            println!("   Binaries available in: {}/bin/", pkg_dir.display());
+            finish_success(&spinner, &format!("Installed {} v{} locally", package_name, actual_version));
+            println!("   {} Location: {}", "".dimmed(), pkg_dir.display());
+            println!("   {} Binaries: {}/bin/", "".dimmed(), pkg_dir.display());
         }
 
         Ok(actual_version)

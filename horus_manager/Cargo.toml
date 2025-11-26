@@ -23,6 +23,8 @@ tokio = { version = "1.0", features = ["full"] }
 serde.workspace = true
 serde_json.workspace = true
 colored = "2.0"
+indicatif = "0.17"
+console = "0.15"
 chrono = { version = "0.4", features = ["serde"] }
 ctrlc = "3.4"
 dirs = "5.0"
