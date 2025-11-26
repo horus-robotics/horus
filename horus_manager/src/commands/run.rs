@@ -1,4 +1,5 @@
 use crate::dependency_resolver::DependencySpec;
+use crate::progress::{self, finish_success, finish_error};
 use crate::version;
 use anyhow::{anyhow, bail, Context, Result};
 use colored::*;
@@ -466,24 +467,33 @@ path = "{}"
             );
 
             // Run cargo build in .horus directory
-            println!("{} Building with cargo...", "".cyan());
+            let spinner = progress::robot_build_spinner("Building with cargo...");
             let mut cmd = Command::new("cargo");
             cmd.arg("build");
             cmd.current_dir(".horus");
+            // Capture output to avoid mixing with spinner
+            cmd.stdout(std::process::Stdio::piped());
+            cmd.stderr(std::process::Stdio::piped());
 
             if release {
                 cmd.arg("--release");
             }
 
-            let status = cmd.status()?;
-            if !status.success() {
+            let output = cmd.output()?;
+            if !output.status.success() {
+                finish_error(&spinner, "Cargo build failed");
+                // Print captured error output
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                if !stderr.is_empty() {
+                    eprintln!("{}", stderr);
+                }
                 bail!("Cargo build failed");
             }
 
             let profile = if release { "release" } else { "debug" };
             let binary_path = format!(".horus/target/{}/horus-project", profile);
 
-            println!("{} Successfully built: {}", "".green(), binary_path.green());
+            finish_success(&spinner, &format!("Built: {}", binary_path));
         }
         _ => bail!("Unsupported language: {}", language),
     }
@@ -756,21 +766,25 @@ fn execute_from_cargo_toml(
         let binary = format!("target/{}/{}", build_dir, project_name);
 
         if !Path::new(&binary).exists() || clean {
-            println!(
-                "{} Building Cargo project ({} mode)...",
-                "".cyan(),
-                build_dir
-            );
+            let spinner = progress::robot_build_spinner(&format!("Building Cargo project ({} mode)...", build_dir));
             let mut cmd = Command::new("cargo");
             cmd.arg("build");
+            cmd.stdout(std::process::Stdio::piped());
+            cmd.stderr(std::process::Stdio::piped());
             if release {
                 cmd.arg("--release");
             }
 
-            let status = cmd.status()?;
-            if !status.success() {
+            let output = cmd.output()?;
+            if !output.status.success() {
+                finish_error(&spinner, "Build failed");
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                if !stderr.is_empty() {
+                    eprintln!("{}", stderr);
+                }
                 bail!("Build failed");
             }
+            finish_success(&spinner, "Build complete");
         }
 
         // Run the binary with environment
@@ -840,40 +854,31 @@ fn execute_multiple_files(
 
     // Build all Rust files together in a single Cargo workspace (major optimization!)
     if !rust_files.is_empty() {
-        if rust_files.len() == 1 {
-            println!(
-                "  {} Building {}...",
-                "".cyan(),
-                rust_files[0].display().to_string().green()
-            );
+        let build_msg = if rust_files.len() == 1 {
+            format!("Building {}...", rust_files[0].display())
         } else {
-            println!(
-                "  {} Building {} Rust files together (optimized)...",
-                "".cyan(),
-                rust_files.len().to_string().yellow()
-            );
-        }
+            format!("Building {} Rust files together...", rust_files.len())
+        };
+        let spinner = progress::robot_build_spinner(&build_msg);
 
         let rust_executables = build_rust_files_batch(rust_files, release, clean)?;
         executables.extend(rust_executables);
+        finish_success(&spinner, "Rust files built");
     }
 
     // Build other languages individually
     for (file_path, language) in other_files {
-        println!(
-            "  {} Building {}...",
-            "".cyan(),
-            file_path.display().to_string().green()
-        );
+        let spinner = progress::robot_build_spinner(&format!("Building {}...", file_path.display()));
 
         let exec_info = build_file_for_concurrent_execution(
             file_path, language, release, false, // Don't clean - already done if needed
         )?;
 
         executables.push(exec_info);
+        finish_success(&spinner, "Built");
     }
 
-    println!("{} All files built successfully!\n", "".green());
+    println!("{} All files built successfully!\n", progress::ROBOT_SUCCESS);
 
     // Phase 2: Execute all binaries concurrently
     println!("{} Phase 2: Starting all processes...", "".cyan());

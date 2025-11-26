@@ -16,6 +16,42 @@ MAGENTA='\033[0;35m'
 WHITE='\033[1;37m'
 NC='\033[0m' # No Color
 
+# WALL-E Robot indicators (UTF-8)
+ROBOT="[□_□]"
+ROBOT_SUCCESS="[■_■]"
+ROBOT_ERROR="[×_×]"
+ROBOT_WARN="[□_□]!"
+ROBOT_CHECK="[□_□]?"
+ROBOT_HAPPY="[■_■]"
+
+# Spinner function - WALL-E compacting trash animation
+spin() {
+    local pid=$1
+    local msg="$2"
+    # WALL-E compacting trash: sees trash, eats it, compacts, ejects cube
+    local spin_chars=(
+        '[□_□]  ▮▮▮'
+        '[□_□] ▮▮▮ '
+        '[□_□]▮▮▮  '
+        '[□■□]▮▮   '
+        '[■_■]▮    '
+        '[▣_▣]     '
+        '[▪_▪]     '
+        '[□_□]▫    '
+        '[□_□] ▫▫  '
+        '[□_□]  ▫▫▫'
+    )
+    local i=0
+    tput civis 2>/dev/null || true
+    while kill -0 $pid 2>/dev/null; do
+        printf "\r  ${spin_chars[$i]} ${msg}"
+        i=$(( (i + 1) % ${#spin_chars[@]} ))
+        sleep 0.15
+    done
+    tput cnorm 2>/dev/null || true
+    printf "\r\033[K"
+}
+
 # Source shared dependency functions
 if [ -f "$SCRIPT_DIR/scripts/deps.sh" ]; then
     source "$SCRIPT_DIR/scripts/deps.sh"
@@ -90,7 +126,7 @@ fi
 
 echo ""
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║${NC}       ${WHITE}HORUS Installation Verification v2.0.0${NC}             ${BLUE}║${NC}"
+echo -e "${BLUE}║${NC}    ${ROBOT_CHECK} ${WHITE}HORUS Installation Verification v2.0.0${NC}          ${BLUE}║${NC}"
 echo -e "${BLUE}║${NC}       ${CYAN}Comprehensive • Systematic • Complete${NC}              ${BLUE}║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
 
@@ -716,21 +752,21 @@ echo ""
 
 if [ $ERRORS -eq 0 ] && [ $WARNINGS -eq 0 ]; then
     echo -e "  ${GREEN}════════════════════════════════════════${NC}"
-    echo -e "  ${GREEN}  ✓ HORUS installation is PERFECT!${NC}"
+    echo -e "  ${GREEN}  ${ROBOT_SUCCESS} HORUS installation is PERFECT!${NC}"
     echo -e "  ${GREEN}════════════════════════════════════════${NC}"
     echo ""
     echo -e "  Ready to use: ${CYAN}horus new my_project${NC}"
     EXIT_CODE=0
 elif [ $ERRORS -eq 0 ]; then
     echo -e "  ${YELLOW}════════════════════════════════════════${NC}"
-    echo -e "  ${YELLOW}  ! HORUS is functional with warnings${NC}"
+    echo -e "  ${YELLOW}  ${ROBOT_WARN} HORUS is functional with warnings${NC}"
     echo -e "  ${YELLOW}════════════════════════════════════════${NC}"
     echo ""
     echo -e "  Review warnings above for optional improvements."
     EXIT_CODE=1
 else
     echo -e "  ${RED}════════════════════════════════════════${NC}"
-    echo -e "  ${RED}  ✗ HORUS installation has ERRORS${NC}"
+    echo -e "  ${RED}  ${ROBOT_ERROR} HORUS installation has ERRORS${NC}"
     echo -e "  ${RED}════════════════════════════════════════${NC}"
     echo ""
     echo -e "  ${CYAN}Recommended fixes:${NC}"

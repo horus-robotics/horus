@@ -15,6 +15,41 @@ MAGENTA='\033[0;35m'
 WHITE='\033[1;37m'
 NC='\033[0m' # No Color
 
+# WALL-E Robot indicators (UTF-8)
+ROBOT="[□_□]"
+ROBOT_SUCCESS="[■_■]"
+ROBOT_BYE="[;_;]"
+ROBOT_CLEAN="[▣_▣]"
+ROBOT_CHECK="[□_□]?"
+
+# Spinner function - WALL-E compacting trash animation
+spin() {
+    local pid=$1
+    local msg="$2"
+    # WALL-E compacting trash: sees trash, eats it, compacts, ejects cube
+    local spin_chars=(
+        '[□_□]  ▮▮▮'
+        '[□_□] ▮▮▮ '
+        '[□_□]▮▮▮  '
+        '[□■□]▮▮   '
+        '[■_■]▮    '
+        '[▣_▣]     '
+        '[▪_▪]     '
+        '[□_□]▫    '
+        '[□_□] ▫▫  '
+        '[□_□]  ▫▫▫'
+    )
+    local i=0
+    tput civis 2>/dev/null || true
+    while kill -0 $pid 2>/dev/null; do
+        printf "\r  ${spin_chars[$i]} ${msg}"
+        i=$(( (i + 1) % ${#spin_chars[@]} ))
+        sleep 0.15
+    done
+    tput cnorm 2>/dev/null || true
+    printf "\r\033[K"
+}
+
 # Cross-platform shared memory path detection
 get_shm_base_dir() {
     case "$(uname -s)" in
@@ -81,7 +116,7 @@ FISH_COMPLETION_PATHS=(
 
 echo ""
 echo -e "${BLUE}============================================${NC}"
-echo -e "${WHITE}   HORUS Uninstallation Script v2.0.0${NC}"
+echo -e "${WHITE}   ${ROBOT_BYE} HORUS Uninstallation Script v2.0.0${NC}"
 echo -e "${BLUE}============================================${NC}"
 echo ""
 
@@ -206,7 +241,7 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 fi
 
 echo ""
-echo -e "${CYAN}Uninstalling HORUS...${NC}"
+echo -e "${CYAN}${ROBOT_CLEAN} Uninstalling HORUS...${NC}"
 echo ""
 
 REMOVED=0
@@ -362,7 +397,7 @@ if pgrep -x "horus" > /dev/null 2>&1 || pgrep -x "sim2d" > /dev/null 2>&1 || pgr
     echo ""
 fi
 
-echo -e "${GREEN}HORUS has been uninstalled.${NC}"
+echo -e "${GREEN}${ROBOT_BYE} HORUS has been uninstalled. Goodbye!${NC}"
 echo ""
 echo -e "${CYAN}Notes:${NC}"
 echo "  - Project-local .horus/ directories were NOT removed"

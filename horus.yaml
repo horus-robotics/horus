@@ -4,3 +4,4 @@ language: rust
 
 dependencies:
   - horus
+  - requests@latest

@@ -36,6 +36,7 @@ pub mod udp_multicast;
 
 // Network v2 high-performance modules
 pub mod batch_udp;
+pub mod smart_copy;
 pub mod smart_transport;
 
 // Unix domain sockets are only available on Unix-like systems
@@ -87,6 +88,10 @@ pub use batch_udp::{
 pub use smart_transport::{
     NetworkLocation, TransportBuilder, TransportPreferences,
     TransportSelector, TransportSelectorStats, TransportType,
+};
+pub use smart_copy::{
+    BufferPool, CopyStrategy, RegisteredBuffer, SmartCopyConfig,
+    SmartCopySender, SmartCopyStats,
 };
 
 // io_uring re-exports (real implementation)
