@@ -181,6 +181,19 @@ impl Node for DifferentialDriveNode {
         "DifferentialDriveNode"
     }
 
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info("DifferentialDriveNode shutting down - stopping drive motors");
+
+        // Set all velocities to zero
+        self.current_twist = Twist::default();
+
+        // Publish stop command to motors
+        self.publish_drive_command(0.0, 0.0);
+
+        ctx.log_info("Differential drive motors stopped safely");
+        Ok(())
+    }
+
     fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
         let current_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)

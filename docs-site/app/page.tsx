@@ -52,10 +52,10 @@ export default function HomePage() {
 
   // Topics inside shared memory (left side of panel)
   const topics = [
-    { y: 180, label: '/sensors/imu' },
-    { y: 250, label: '/cmd_vel' },
-    { y: 320, label: '/odom' },
-    { y: 390, label: '/laser_scan' }
+    { y: 180, label: 'sensors.imu' },
+    { y: 250, label: 'cmd_vel' },
+    { y: 320, label: 'odom' },
+    { y: 390, label: 'laser_scan' }
   ];
 
   // Log entries (right side of panel) - simulating real-time logs
@@ -70,21 +70,21 @@ export default function HomePage() {
 
   // Extended log entries for continuous scrolling
   const allLogEntries = [
-    { time: '12:39:28.039', ipc: '1112ns', tick: '218μs', node: 'SensorNode', type: 'PUB', topic: '/sensors/imu' },
-    { time: '12:39:28.039', ipc: '1927ns', tick: '10μs', node: 'ControlNode', type: 'SUB', topic: '/sensors/imu' },
-    { time: '12:39:28.156', ipc: '1136ns', tick: '31μs', node: 'SensorNode', type: 'PUB', topic: '/cmd_vel' },
-    { time: '12:39:28.207', ipc: '5462ns', tick: '41μs', node: 'ActuatorNode', type: 'SUB', topic: '/cmd_vel' },
-    { time: '12:39:28.208', ipc: '1612ns', tick: '241μs', node: 'ControlNode', type: 'PUB', topic: '/odom' },
-    { time: '12:39:28.219', ipc: '2836ns', tick: '25μs', node: 'ControlNode', type: 'SUB', topic: '/odom' },
-    { time: '12:39:28.358', ipc: '1047ns', tick: '29μs', node: 'SensorNode', type: 'PUB', topic: '/laser_scan' },
-    { time: '12:39:28.408', ipc: '2678ns', tick: '30μs', node: 'ActuatorNode', type: 'SUB', topic: '/laser_scan' },
-    { time: '12:39:28.558', ipc: '982ns', tick: '25μs', node: 'SensorNode', type: 'PUB', topic: '/sensors/imu' },
-    { time: '12:39:28.608', ipc: '3531ns', tick: '28μs', node: 'ControlNode', type: 'SUB', topic: '/sensors/imu' },
-    { time: '12:39:28.708', ipc: '1247ns', tick: '35μs', node: 'ActuatorNode', type: 'PUB', topic: '/cmd_vel' },
-    { time: '12:39:28.808', ipc: '2145ns', tick: '42μs', node: 'SensorNode', type: 'SUB', topic: '/laser_scan' },
-    { time: '12:39:28.908', ipc: '1089ns', tick: '19μs', node: 'ControlNode', type: 'PUB', topic: '/sensors/imu' },
-    { time: '12:39:29.008', ipc: '3421ns', tick: '51μs', node: 'ActuatorNode', type: 'SUB', topic: '/odom' },
-    { time: '12:39:29.108', ipc: '1534ns', tick: '27μs', node: 'SensorNode', type: 'PUB', topic: '/cmd_vel' }
+    { time: '12:39:28.039', ipc: '1112ns', tick: '218μs', node: 'SensorNode', type: 'PUB', topic: 'sensors.imu' },
+    { time: '12:39:28.039', ipc: '1927ns', tick: '10μs', node: 'ControlNode', type: 'SUB', topic: 'sensors.imu' },
+    { time: '12:39:28.156', ipc: '1136ns', tick: '31μs', node: 'SensorNode', type: 'PUB', topic: 'cmd_vel' },
+    { time: '12:39:28.207', ipc: '5462ns', tick: '41μs', node: 'ActuatorNode', type: 'SUB', topic: 'cmd_vel' },
+    { time: '12:39:28.208', ipc: '1612ns', tick: '241μs', node: 'ControlNode', type: 'PUB', topic: 'odom' },
+    { time: '12:39:28.219', ipc: '2836ns', tick: '25μs', node: 'ControlNode', type: 'SUB', topic: 'odom' },
+    { time: '12:39:28.358', ipc: '1047ns', tick: '29μs', node: 'SensorNode', type: 'PUB', topic: 'laser_scan' },
+    { time: '12:39:28.408', ipc: '2678ns', tick: '30μs', node: 'ActuatorNode', type: 'SUB', topic: 'laser_scan' },
+    { time: '12:39:28.558', ipc: '982ns', tick: '25μs', node: 'SensorNode', type: 'PUB', topic: 'sensors.imu' },
+    { time: '12:39:28.608', ipc: '3531ns', tick: '28μs', node: 'ControlNode', type: 'SUB', topic: 'sensors.imu' },
+    { time: '12:39:28.708', ipc: '1247ns', tick: '35μs', node: 'ActuatorNode', type: 'PUB', topic: 'cmd_vel' },
+    { time: '12:39:28.808', ipc: '2145ns', tick: '42μs', node: 'SensorNode', type: 'SUB', topic: 'laser_scan' },
+    { time: '12:39:28.908', ipc: '1089ns', tick: '19μs', node: 'ControlNode', type: 'PUB', topic: 'sensors.imu' },
+    { time: '12:39:29.008', ipc: '3421ns', tick: '51μs', node: 'ActuatorNode', type: 'SUB', topic: 'odom' },
+    { time: '12:39:29.108', ipc: '1534ns', tick: '27μs', node: 'SensorNode', type: 'PUB', topic: 'cmd_vel' }
   ];
 
   // Shared memory center position
@@ -436,7 +436,7 @@ export default function HomePage() {
         <div className="grid grid-cols-2 md:flex md:justify-center gap-6 md:gap-12 mt-8 px-4">
           <div className="text-center">
             <div className="text-xl md:text-2xl font-bold text-[var(--accent)] mb-1">Multi-Lang</div>
-            <div className="text-xs md:text-sm text-[var(--text-tertiary)]">Rust, Python, C</div>
+            <div className="text-xs md:text-sm text-[var(--text-tertiary)]">Rust, Python</div>
           </div>
           <div className="text-center">
             <div className="text-xl md:text-2xl font-bold text-[var(--success)] mb-1">.horus env</div>

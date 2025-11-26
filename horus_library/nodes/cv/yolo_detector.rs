@@ -215,7 +215,7 @@ impl YOLOv8DetectorNode {
             .to_string();
 
         let annotated_pub = if config.enable_visualization {
-            Some(Hub::new(&format!("{}/annotated", output_topic))?)
+            Some(Hub::new(&format!("{}.annotated", output_topic))?)
         } else {
             None
         };
@@ -224,7 +224,7 @@ impl YOLOv8DetectorNode {
             image_sub: Hub::new(input_topic)?,
             detections_pub: Hub::new(output_topic)?,
             annotated_pub,
-            metrics_pub: Hub::new(&format!("{}/metrics", output_topic))?,
+            metrics_pub: Hub::new(&format!("{}.metrics", output_topic))?,
             session,
             config,
             model_name,

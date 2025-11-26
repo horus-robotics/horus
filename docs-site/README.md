@@ -52,7 +52,7 @@ content/
    ── message-types.mdx
    ── examples.mdx
    ── performance.mdx
-   ── multi-language.mdx             # Python & C bindings
+   ── multi-language.mdx             # Python bindings
    ── architecture.mdx
 ── assets/         # Images and media
 ```

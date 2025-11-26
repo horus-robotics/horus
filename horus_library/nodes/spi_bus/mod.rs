@@ -118,8 +118,8 @@ impl SpiBusNode {
     /// Create a new SPI bus node
     pub fn new(bus: u8) -> Result<Self> {
         Ok(Self {
-            request_subscriber: Hub::new(&format!("spi{}/request", bus))?,
-            response_publisher: Hub::new(&format!("spi{}/response", bus))?,
+            request_subscriber: Hub::new(&format!("spi{}.request", bus))?,
+            response_publisher: Hub::new(&format!("spi{}.response", bus))?,
             #[cfg(feature = "spi-hardware")]
             spi_devices: HashMap::new(),
             hardware_enabled: false,
@@ -457,6 +457,23 @@ impl SpiBusNode {
 impl Node for SpiBusNode {
     fn name(&self) -> &'static str {
         "SpiBusNode"
+    }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info(&format!(
+            "SpiBusNode shutting down - closing SPI bus {}",
+            self.bus_number
+        ));
+
+        // Close all SPI hardware devices
+        #[cfg(feature = "spi-hardware")]
+        {
+            self.spi_devices.clear();
+        }
+        self.hardware_enabled = false;
+
+        ctx.log_info("SPI bus closed safely");
+        Ok(())
     }
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {

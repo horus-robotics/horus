@@ -684,9 +684,19 @@ fn get_process_info(pid: u32) -> anyhow::Result<ProcessInfo> {
         })
     }
 
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(target_os = "macos")]
     {
-        // Fallback for non-Linux platforms - basic info only
+        get_process_info_macos(pid)
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        get_process_info_windows(pid)
+    }
+
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+    {
+        // Fallback for other Unix platforms - basic info only
         Ok(ProcessInfo {
             pid,
             name: format!("pid_{}", pid),
@@ -782,6 +792,691 @@ fn format_duration(duration: std::time::Duration) -> String {
     } else {
         format!("{}d", total_secs / 86400)
     }
+}
+
+// ============================================================================
+// macOS Process Information
+// Uses sysctl and proc_pidinfo for process metrics
+// ============================================================================
+
+#[cfg(target_os = "macos")]
+fn get_process_info_macos(pid: u32) -> anyhow::Result<ProcessInfo> {
+    use std::ffi::CStr;
+    use std::mem::MaybeUninit;
+
+    // Get process name using proc_name
+    let name = get_process_name_macos(pid).unwrap_or_else(|| format!("pid_{}", pid));
+
+    // Get command line arguments
+    let cmdline = get_cmdline_macos(pid).unwrap_or_default();
+
+    // Get working directory
+    let working_dir = get_cwd_macos(pid).unwrap_or_default();
+
+    // Get memory usage (RSS in KB)
+    let memory_kb = get_memory_macos(pid).unwrap_or(0);
+
+    // Get CPU usage
+    let cpu_percent = calculate_cpu_usage_macos(pid);
+
+    // Get start time
+    let start_time = get_start_time_macos(pid).unwrap_or_else(|| "Unknown".to_string());
+
+    Ok(ProcessInfo {
+        pid,
+        name,
+        cmdline,
+        working_dir,
+        cpu_percent,
+        memory_kb,
+        start_time,
+    })
+}
+
+#[cfg(target_os = "macos")]
+fn get_process_name_macos(pid: u32) -> Option<String> {
+    use std::ffi::CStr;
+
+    const PROC_PIDPATHINFO_MAXSIZE: usize = 4096;
+    let mut buf = vec![0u8; PROC_PIDPATHINFO_MAXSIZE];
+
+    extern "C" {
+        fn proc_name(pid: i32, buffer: *mut u8, buffersize: u32) -> i32;
+    }
+
+    let result = unsafe { proc_name(pid as i32, buf.as_mut_ptr(), buf.len() as u32) };
+
+    if result > 0 {
+        let name = unsafe { CStr::from_ptr(buf.as_ptr() as *const i8) };
+        Some(name.to_string_lossy().into_owned())
+    } else {
+        None
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn get_cmdline_macos(pid: u32) -> Option<String> {
+    use std::ffi::CStr;
+
+    // Use sysctl to get process arguments
+    let mut mib: [i32; 3] = [
+        1,  // CTL_KERN
+        49, // KERN_PROCARGS2
+        pid as i32,
+    ];
+
+    let mut size: usize = 0;
+
+    // First call to get size
+    let result = unsafe {
+        libc::sysctl(
+            mib.as_mut_ptr(),
+            3,
+            std::ptr::null_mut(),
+            &mut size,
+            std::ptr::null_mut(),
+            0,
+        )
+    };
+
+    if result != 0 || size == 0 {
+        return None;
+    }
+
+    let mut buf = vec![0u8; size];
+
+    // Second call to get data
+    let result = unsafe {
+        libc::sysctl(
+            mib.as_mut_ptr(),
+            3,
+            buf.as_mut_ptr() as *mut _,
+            &mut size,
+            std::ptr::null_mut(),
+            0,
+        )
+    };
+
+    if result != 0 {
+        return None;
+    }
+
+    // Parse KERN_PROCARGS2 format: argc (4 bytes) + exec_path + NULLs + args
+    if buf.len() < 4 {
+        return None;
+    }
+
+    // Skip argc (4 bytes) and find the executable path
+    let argc = i32::from_ne_bytes([buf[0], buf[1], buf[2], buf[3]]) as usize;
+    let mut pos = 4;
+
+    // Skip executable path
+    while pos < buf.len() && buf[pos] != 0 {
+        pos += 1;
+    }
+
+    // Skip null terminators
+    while pos < buf.len() && buf[pos] == 0 {
+        pos += 1;
+    }
+
+    // Collect arguments
+    let mut args = Vec::new();
+    for _ in 0..argc {
+        if pos >= buf.len() {
+            break;
+        }
+        let start = pos;
+        while pos < buf.len() && buf[pos] != 0 {
+            pos += 1;
+        }
+        if start < pos {
+            if let Ok(arg) = std::str::from_utf8(&buf[start..pos]) {
+                args.push(arg.to_string());
+            }
+        }
+        pos += 1; // Skip null terminator
+    }
+
+    if args.is_empty() {
+        None
+    } else {
+        Some(args.join(" "))
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn get_cwd_macos(pid: u32) -> Option<String> {
+    // macOS doesn't have an easy API for cwd, use proc_pidinfo with PROC_PIDVNODEPATHINFO
+    const PROC_PIDVNODEPATHINFO: i32 = 9;
+    const MAXPATHLEN: usize = 1024;
+
+    #[repr(C)]
+    struct VnodePathInfo {
+        pvi_cdir: VnodeInfoPath,
+        pvi_rdir: VnodeInfoPath,
+    }
+
+    #[repr(C)]
+    struct VnodeInfoPath {
+        vip_vi: [u8; 152], // vnode_info struct (we don't need details)
+        vip_path: [u8; MAXPATHLEN],
+    }
+
+    extern "C" {
+        fn proc_pidinfo(
+            pid: i32,
+            flavor: i32,
+            arg: u64,
+            buffer: *mut libc::c_void,
+            buffersize: i32,
+        ) -> i32;
+    }
+
+    let mut info: VnodePathInfo = unsafe { std::mem::zeroed() };
+    let size = std::mem::size_of::<VnodePathInfo>() as i32;
+
+    let result = unsafe {
+        proc_pidinfo(
+            pid as i32,
+            PROC_PIDVNODEPATHINFO,
+            0,
+            &mut info as *mut _ as *mut libc::c_void,
+            size,
+        )
+    };
+
+    if result <= 0 {
+        return None;
+    }
+
+    // Extract current directory path
+    let path_bytes = &info.pvi_cdir.vip_path;
+    let end = path_bytes.iter().position(|&b| b == 0).unwrap_or(path_bytes.len());
+    std::str::from_utf8(&path_bytes[..end])
+        .ok()
+        .map(|s| s.to_string())
+}
+
+#[cfg(target_os = "macos")]
+fn get_memory_macos(pid: u32) -> Option<u64> {
+    const PROC_PIDTASKINFO: i32 = 4;
+
+    #[repr(C)]
+    struct TaskInfo {
+        pti_virtual_size: u64,
+        pti_resident_size: u64,
+        pti_total_user: u64,
+        pti_total_system: u64,
+        pti_threads_user: u64,
+        pti_threads_system: u64,
+        pti_policy: i32,
+        pti_faults: i32,
+        pti_pageins: i32,
+        pti_cow_faults: i32,
+        pti_messages_sent: i32,
+        pti_messages_received: i32,
+        pti_syscalls_mach: i32,
+        pti_syscalls_unix: i32,
+        pti_csw: i32,
+        pti_threadnum: i32,
+        pti_numrunning: i32,
+        pti_priority: i32,
+    }
+
+    extern "C" {
+        fn proc_pidinfo(
+            pid: i32,
+            flavor: i32,
+            arg: u64,
+            buffer: *mut libc::c_void,
+            buffersize: i32,
+        ) -> i32;
+    }
+
+    let mut info: TaskInfo = unsafe { std::mem::zeroed() };
+    let size = std::mem::size_of::<TaskInfo>() as i32;
+
+    let result = unsafe {
+        proc_pidinfo(
+            pid as i32,
+            PROC_PIDTASKINFO,
+            0,
+            &mut info as *mut _ as *mut libc::c_void,
+            size,
+        )
+    };
+
+    if result <= 0 {
+        return None;
+    }
+
+    // Convert bytes to KB
+    Some(info.pti_resident_size / 1024)
+}
+
+#[cfg(target_os = "macos")]
+lazy_static::lazy_static! {
+    static ref MACOS_CPU_CACHE: Arc<RwLock<StdHashMap<u32, (u64, u64, Instant)>>> =
+        Arc::new(RwLock::new(StdHashMap::new()));
+}
+
+#[cfg(target_os = "macos")]
+fn calculate_cpu_usage_macos(pid: u32) -> f32 {
+    const PROC_PIDTASKINFO: i32 = 4;
+
+    #[repr(C)]
+    struct TaskInfo {
+        pti_virtual_size: u64,
+        pti_resident_size: u64,
+        pti_total_user: u64,
+        pti_total_system: u64,
+        // ... rest of fields not needed
+        _padding: [u8; 64],
+    }
+
+    extern "C" {
+        fn proc_pidinfo(
+            pid: i32,
+            flavor: i32,
+            arg: u64,
+            buffer: *mut libc::c_void,
+            buffersize: i32,
+        ) -> i32;
+    }
+
+    let mut info: TaskInfo = unsafe { std::mem::zeroed() };
+    let size = std::mem::size_of::<TaskInfo>() as i32;
+
+    let result = unsafe {
+        proc_pidinfo(
+            pid as i32,
+            PROC_PIDTASKINFO,
+            0,
+            &mut info as *mut _ as *mut libc::c_void,
+            size,
+        )
+    };
+
+    if result <= 0 {
+        return 0.0;
+    }
+
+    // Total CPU time in nanoseconds
+    let total_time = info.pti_total_user + info.pti_total_system;
+
+    if let Ok(mut cache) = MACOS_CPU_CACHE.write() {
+        let now = Instant::now();
+
+        if let Some((prev_user, prev_system, prev_time)) = cache.get(&pid) {
+            let time_delta = now.duration_since(*prev_time).as_secs_f32();
+            if time_delta > 0.0 {
+                let prev_total = prev_user + prev_system;
+                let cpu_delta_ns = total_time.saturating_sub(prev_total) as f32;
+                // Convert nanoseconds to percentage
+                let cpu_percent = (cpu_delta_ns / 1_000_000_000.0 / time_delta) * 100.0;
+
+                cache.insert(pid, (info.pti_total_user, info.pti_total_system, now));
+                return cpu_percent.min(100.0 * num_cpus::get() as f32);
+            }
+        }
+
+        cache.insert(pid, (info.pti_total_user, info.pti_total_system, now));
+    }
+
+    0.0
+}
+
+#[cfg(target_os = "macos")]
+fn get_start_time_macos(pid: u32) -> Option<String> {
+    const PROC_PIDTBSDINFO: i32 = 3;
+
+    #[repr(C)]
+    struct BsdInfo {
+        pbi_flags: u32,
+        pbi_status: u32,
+        pbi_xstatus: u32,
+        pbi_pid: u32,
+        pbi_ppid: u32,
+        pbi_uid: u32,
+        pbi_gid: u32,
+        pbi_ruid: u32,
+        pbi_rgid: u32,
+        pbi_svuid: u32,
+        pbi_svgid: u32,
+        rfu_1: u32,
+        pbi_comm: [u8; 16],
+        pbi_name: [u8; 32],
+        pbi_nfiles: u32,
+        pbi_pgid: u32,
+        pbi_pjobc: u32,
+        e_tdev: u32,
+        e_tpgid: u32,
+        pbi_nice: i32,
+        pbi_start_tvsec: u64,
+        pbi_start_tvusec: u64,
+    }
+
+    extern "C" {
+        fn proc_pidinfo(
+            pid: i32,
+            flavor: i32,
+            arg: u64,
+            buffer: *mut libc::c_void,
+            buffersize: i32,
+        ) -> i32;
+    }
+
+    let mut info: BsdInfo = unsafe { std::mem::zeroed() };
+    let size = std::mem::size_of::<BsdInfo>() as i32;
+
+    let result = unsafe {
+        proc_pidinfo(
+            pid as i32,
+            PROC_PIDTBSDINFO,
+            0,
+            &mut info as *mut _ as *mut libc::c_void,
+            size,
+        )
+    };
+
+    if result <= 0 {
+        return None;
+    }
+
+    // Calculate uptime
+    let start = std::time::UNIX_EPOCH + std::time::Duration::from_secs(info.pbi_start_tvsec);
+    if let Ok(elapsed) = std::time::SystemTime::now().duration_since(start) {
+        Some(format_duration(elapsed))
+    } else {
+        None
+    }
+}
+
+// ============================================================================
+// Windows Process Information
+// Uses Win32 API for process metrics
+// ============================================================================
+
+#[cfg(target_os = "windows")]
+fn get_process_info_windows(pid: u32) -> anyhow::Result<ProcessInfo> {
+    use std::ffi::OsString;
+    use std::os::windows::ffi::OsStringExt;
+
+    // Windows API constants
+    const PROCESS_QUERY_INFORMATION: u32 = 0x0400;
+    const PROCESS_VM_READ: u32 = 0x0010;
+
+    extern "system" {
+        fn OpenProcess(dwDesiredAccess: u32, bInheritHandle: i32, dwProcessId: u32) -> *mut std::ffi::c_void;
+        fn CloseHandle(hObject: *mut std::ffi::c_void) -> i32;
+    }
+
+    // Open process with query access
+    let handle = unsafe { OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, 0, pid) };
+
+    if handle.is_null() {
+        return Ok(ProcessInfo {
+            pid,
+            name: format!("pid_{}", pid),
+            cmdline: String::new(),
+            working_dir: String::new(),
+            cpu_percent: 0.0,
+            memory_kb: 0,
+            start_time: "Unknown".to_string(),
+        });
+    }
+
+    // Get process name
+    let name = get_process_name_windows(handle).unwrap_or_else(|| format!("pid_{}", pid));
+
+    // Get command line
+    let cmdline = get_cmdline_windows(pid).unwrap_or_default();
+
+    // Get memory usage
+    let memory_kb = get_memory_windows(handle).unwrap_or(0);
+
+    // Get CPU usage
+    let cpu_percent = calculate_cpu_usage_windows(pid, handle);
+
+    // Get start time
+    let start_time = get_start_time_windows(handle).unwrap_or_else(|| "Unknown".to_string());
+
+    unsafe { CloseHandle(handle) };
+
+    Ok(ProcessInfo {
+        pid,
+        name,
+        cmdline,
+        working_dir: String::new(), // Windows doesn't easily expose cwd
+        cpu_percent,
+        memory_kb,
+        start_time,
+    })
+}
+
+#[cfg(target_os = "windows")]
+fn get_process_name_windows(handle: *mut std::ffi::c_void) -> Option<String> {
+    use std::ffi::OsString;
+    use std::os::windows::ffi::OsStringExt;
+
+    const MAX_PATH: usize = 260;
+
+    extern "system" {
+        fn K32GetModuleBaseNameW(
+            hProcess: *mut std::ffi::c_void,
+            hModule: *mut std::ffi::c_void,
+            lpBaseName: *mut u16,
+            nSize: u32,
+        ) -> u32;
+    }
+
+    let mut buf = vec![0u16; MAX_PATH];
+    let len = unsafe {
+        K32GetModuleBaseNameW(
+            handle,
+            std::ptr::null_mut(),
+            buf.as_mut_ptr(),
+            MAX_PATH as u32,
+        )
+    };
+
+    if len > 0 {
+        buf.truncate(len as usize);
+        Some(OsString::from_wide(&buf).to_string_lossy().into_owned())
+    } else {
+        None
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn get_cmdline_windows(pid: u32) -> Option<String> {
+    // Getting command line on Windows requires reading from PEB which is complex
+    // Use WMI or simplified approach via QueryFullProcessImageNameW
+    use std::ffi::OsString;
+    use std::os::windows::ffi::OsStringExt;
+
+    const PROCESS_QUERY_LIMITED_INFORMATION: u32 = 0x1000;
+    const MAX_PATH: usize = 32768;
+
+    extern "system" {
+        fn OpenProcess(dwDesiredAccess: u32, bInheritHandle: i32, dwProcessId: u32) -> *mut std::ffi::c_void;
+        fn CloseHandle(hObject: *mut std::ffi::c_void) -> i32;
+        fn QueryFullProcessImageNameW(
+            hProcess: *mut std::ffi::c_void,
+            dwFlags: u32,
+            lpExeName: *mut u16,
+            lpdwSize: *mut u32,
+        ) -> i32;
+    }
+
+    let handle = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };
+    if handle.is_null() {
+        return None;
+    }
+
+    let mut buf = vec![0u16; MAX_PATH];
+    let mut size = MAX_PATH as u32;
+
+    let result = unsafe { QueryFullProcessImageNameW(handle, 0, buf.as_mut_ptr(), &mut size) };
+
+    unsafe { CloseHandle(handle) };
+
+    if result != 0 && size > 0 {
+        buf.truncate(size as usize);
+        Some(OsString::from_wide(&buf).to_string_lossy().into_owned())
+    } else {
+        None
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn get_memory_windows(handle: *mut std::ffi::c_void) -> Option<u64> {
+    #[repr(C)]
+    struct ProcessMemoryCounters {
+        cb: u32,
+        page_fault_count: u32,
+        peak_working_set_size: usize,
+        working_set_size: usize,
+        quota_peak_paged_pool_usage: usize,
+        quota_paged_pool_usage: usize,
+        quota_peak_non_paged_pool_usage: usize,
+        quota_non_paged_pool_usage: usize,
+        pagefile_usage: usize,
+        peak_pagefile_usage: usize,
+    }
+
+    extern "system" {
+        fn K32GetProcessMemoryInfo(
+            hProcess: *mut std::ffi::c_void,
+            ppsmemCounters: *mut ProcessMemoryCounters,
+            cb: u32,
+        ) -> i32;
+    }
+
+    let mut counters: ProcessMemoryCounters = unsafe { std::mem::zeroed() };
+    counters.cb = std::mem::size_of::<ProcessMemoryCounters>() as u32;
+
+    let result = unsafe { K32GetProcessMemoryInfo(handle, &mut counters, counters.cb) };
+
+    if result != 0 {
+        // Convert bytes to KB
+        Some((counters.working_set_size / 1024) as u64)
+    } else {
+        None
+    }
+}
+
+#[cfg(target_os = "windows")]
+lazy_static::lazy_static! {
+    static ref WINDOWS_CPU_CACHE: Arc<RwLock<StdHashMap<u32, (u64, Instant)>>> =
+        Arc::new(RwLock::new(StdHashMap::new()));
+}
+
+#[cfg(target_os = "windows")]
+fn calculate_cpu_usage_windows(pid: u32, handle: *mut std::ffi::c_void) -> f32 {
+    #[repr(C)]
+    struct Filetime {
+        low: u32,
+        high: u32,
+    }
+
+    extern "system" {
+        fn GetProcessTimes(
+            hProcess: *mut std::ffi::c_void,
+            lpCreationTime: *mut Filetime,
+            lpExitTime: *mut Filetime,
+            lpKernelTime: *mut Filetime,
+            lpUserTime: *mut Filetime,
+        ) -> i32;
+    }
+
+    let mut creation = Filetime { low: 0, high: 0 };
+    let mut exit = Filetime { low: 0, high: 0 };
+    let mut kernel = Filetime { low: 0, high: 0 };
+    let mut user = Filetime { low: 0, high: 0 };
+
+    let result = unsafe {
+        GetProcessTimes(handle, &mut creation, &mut exit, &mut kernel, &mut user)
+    };
+
+    if result == 0 {
+        return 0.0;
+    }
+
+    // Convert FILETIME to 100-nanosecond intervals
+    let kernel_time = ((kernel.high as u64) << 32) | (kernel.low as u64);
+    let user_time = ((user.high as u64) << 32) | (user.low as u64);
+    let total_time = kernel_time + user_time;
+
+    if let Ok(mut cache) = WINDOWS_CPU_CACHE.write() {
+        let now = Instant::now();
+
+        if let Some((prev_total, prev_time)) = cache.get(&pid) {
+            let time_delta = now.duration_since(*prev_time).as_secs_f32();
+            if time_delta > 0.0 {
+                let cpu_delta = total_time.saturating_sub(*prev_total) as f32;
+                // Convert 100-nanosecond intervals to percentage
+                let cpu_percent = (cpu_delta / 10_000_000.0 / time_delta) * 100.0;
+
+                cache.insert(pid, (total_time, now));
+                return cpu_percent.min(100.0 * num_cpus::get() as f32);
+            }
+        }
+
+        cache.insert(pid, (total_time, now));
+    }
+
+    0.0
+}
+
+#[cfg(target_os = "windows")]
+fn get_start_time_windows(handle: *mut std::ffi::c_void) -> Option<String> {
+    #[repr(C)]
+    struct Filetime {
+        low: u32,
+        high: u32,
+    }
+
+    extern "system" {
+        fn GetProcessTimes(
+            hProcess: *mut std::ffi::c_void,
+            lpCreationTime: *mut Filetime,
+            lpExitTime: *mut Filetime,
+            lpKernelTime: *mut Filetime,
+            lpUserTime: *mut Filetime,
+        ) -> i32;
+    }
+
+    let mut creation = Filetime { low: 0, high: 0 };
+    let mut exit = Filetime { low: 0, high: 0 };
+    let mut kernel = Filetime { low: 0, high: 0 };
+    let mut user = Filetime { low: 0, high: 0 };
+
+    let result = unsafe {
+        GetProcessTimes(handle, &mut creation, &mut exit, &mut kernel, &mut user)
+    };
+
+    if result == 0 {
+        return None;
+    }
+
+    // Convert FILETIME to duration since UNIX epoch
+    // FILETIME is 100-nanosecond intervals since January 1, 1601
+    let creation_time = ((creation.high as u64) << 32) | (creation.low as u64);
+
+    // Difference between 1601 and 1970 in 100-nanosecond intervals
+    const EPOCH_DIFF: u64 = 116444736000000000;
+
+    if creation_time > EPOCH_DIFF {
+        let unix_time = (creation_time - EPOCH_DIFF) / 10_000_000;
+        let start = std::time::UNIX_EPOCH + std::time::Duration::from_secs(unix_time);
+        if let Ok(elapsed) = std::time::SystemTime::now().duration_since(start) {
+            return Some(format_duration(elapsed));
+        }
+    }
+
+    None
 }
 
 pub fn discover_shared_memory() -> HorusResult<Vec<SharedMemoryInfo>> {
@@ -1248,11 +1943,11 @@ mod tests {
     #[test]
     fn test_node_status_with_publishers_subscribers() {
         let pub_topic = TopicInfo {
-            topic: "/sensor/data".to_string(),
+            topic: "sensor.data".to_string(),
             type_name: "SensorMsg".to_string(),
         };
         let sub_topic = TopicInfo {
-            topic: "/commands".to_string(),
+            topic: "commands".to_string(),
             type_name: "CmdMsg".to_string(),
         };
 
@@ -1278,7 +1973,7 @@ mod tests {
 
         assert_eq!(node.publishers.len(), 1);
         assert_eq!(node.subscribers.len(), 1);
-        assert_eq!(node.publishers[0].topic, "/sensor/data");
+        assert_eq!(node.publishers[0].topic, "sensor.data");
         assert_eq!(node.subscribers[0].type_name, "CmdMsg");
     }
 
@@ -1323,7 +2018,7 @@ mod tests {
     #[test]
     fn test_shared_memory_info_inactive() {
         let shm = SharedMemoryInfo {
-            topic_name: "/old/topic".to_string(),
+            topic_name: "old.topic".to_string(),
             size_bytes: 1024,
             active: false,
             accessing_processes: vec![],
@@ -1346,11 +2041,11 @@ mod tests {
     #[test]
     fn test_topic_info_creation() {
         let topic = TopicInfo {
-            topic: "/camera/image".to_string(),
+            topic: "camera.image".to_string(),
             type_name: "sensor_msgs::Image".to_string(),
         };
 
-        assert_eq!(topic.topic, "/camera/image");
+        assert_eq!(topic.topic, "camera.image");
         assert_eq!(topic.type_name, "sensor_msgs::Image");
     }
 
@@ -1676,7 +2371,7 @@ mod tests {
     fn test_discovery_cache_update_shared_memory() {
         let mut cache = DiscoveryCache::new();
         let shm = vec![SharedMemoryInfo {
-            topic_name: "/test".to_string(),
+            topic_name: "test".to_string(),
             size_bytes: 1024,
             active: true,
             accessing_processes: vec![],
@@ -1731,7 +2426,7 @@ mod tests {
             error_count: 2,
             actual_rate_hz: 100,
             publishers: vec![TopicInfo {
-                topic: "/pub".to_string(),
+                topic: "pub".to_string(),
                 type_name: "Msg".to_string(),
             }],
             subscribers: vec![],
@@ -1746,7 +2441,7 @@ mod tests {
     #[test]
     fn test_shared_memory_info_clone() {
         let shm = SharedMemoryInfo {
-            topic_name: "/clone_topic".to_string(),
+            topic_name: "clone_topic".to_string(),
             size_bytes: 8192,
             active: true,
             accessing_processes: vec![1, 2, 3],

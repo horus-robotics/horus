@@ -74,3 +74,6 @@ Thumbs.db
 # Cache
 .cache/
 *.cache
+
+# Documentation
+docs/

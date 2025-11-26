@@ -314,6 +314,19 @@ impl Node for DigitalIONode {
         "DigitalIONode"
     }
 
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info("DigitalIONode shutting down - setting all outputs to LOW");
+
+        // Set all outputs to LOW for safety
+        for pin in 0..self.output_pin_count {
+            self.output_states.insert(pin, false);
+            self.write_output_pin(pin, false);
+        }
+
+        ctx.log_info("All digital outputs set to LOW safely");
+        Ok(())
+    }
+
     fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
         let current_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)

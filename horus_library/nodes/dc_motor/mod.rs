@@ -563,4 +563,14 @@ impl Node for DcMotorNode {
         // Check for command timeouts
         self.check_timeouts(ctx.as_deref_mut());
     }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info("DcMotorNode shutting down - stopping all motors");
+
+        // Emergency stop all motors (uses brake mode for safety)
+        self.emergency_stop();
+
+        ctx.log_info("All DC motors stopped safely");
+        Ok(())
+    }
 }

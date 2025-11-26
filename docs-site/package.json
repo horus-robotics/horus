@@ -3,14 +3,16 @@
   "version": "0.1.5",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3009 -H 0.0.0.0",
-    "build": "next build",
+    "dev": "node scripts/build-search-index.js && next dev -p 3009 -H 0.0.0.0",
+    "build": "node scripts/build-search-index.js && next build",
+    "build:search": "node scripts/build-search-index.js",
     "start": "next start -p 3009 -H 0.0.0.0",
     "lint": "next lint"
   },
   "dependencies": {
     "@types/prismjs": "^1.26.5",
     "@vercel/analytics": "^1.5.0",
+    "flexsearch": "^0.8.212",
     "gray-matter": "^4.0.3",
     "next": "14.2.3",
     "next-mdx-remote": "^5.0.0",
@@ -23,6 +25,7 @@
     "unist-util-visit": "^5.0.0"
   },
   "devDependencies": {
+    "@types/flexsearch": "^0.7.6",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

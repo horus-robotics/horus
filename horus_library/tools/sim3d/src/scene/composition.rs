@@ -153,10 +153,10 @@ impl SceneComposer {
         // Apply namespace to object/robot names
         if let Some(ns) = &include.namespace {
             for obj in &mut source.objects {
-                obj.name = format!("{}/{}", ns, obj.name);
+                obj.name = format!("{}.{}", ns, obj.name);
             }
             for robot in &mut source.robots {
-                robot.name = format!("{}/{}", ns, robot.name);
+                robot.name = format!("{}.{}", ns, robot.name);
             }
         }
 

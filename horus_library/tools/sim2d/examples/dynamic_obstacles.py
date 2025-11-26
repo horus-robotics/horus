@@ -28,8 +28,8 @@ class ObstacleController:
     """Controls dynamic obstacles in sim2d simulator"""
 
     def __init__(self):
-        self.hub = Hub("/sim2d/obstacle_cmd")
-        print("Connected to /sim2d/obstacle_cmd topic")
+        self.hub = Hub("sim2d.obstacle_cmd")
+        print("Connected to sim2d.obstacle_cmd topic")
         print("Make sure sim2d is running!\n")
 
     def add_rectangle(self, x, y, width, height, color=None):

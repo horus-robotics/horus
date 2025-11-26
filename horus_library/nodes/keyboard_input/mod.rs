@@ -425,6 +425,22 @@ impl Node for KeyboardInputNode {
         "KeyboardInputNode"
     }
 
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info("KeyboardInputNode shutting down - restoring terminal mode");
+
+        // Restore terminal mode if raw mode was enabled
+        #[cfg(feature = "crossterm")]
+        {
+            if self.terminal_enabled {
+                let _ = disable_raw_mode();
+                self.terminal_enabled = false;
+            }
+        }
+
+        ctx.log_info("Terminal mode restored");
+        Ok(())
+    }
+
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Try to capture real keyboard events if crossterm is enabled
         #[cfg(feature = "crossterm")]

@@ -3,7 +3,7 @@
 # Copy and modify this file for your custom robot
 
 name: "differential_robot"
-topic_prefix: "/robot"  # HORUS topic prefix for all robot messages
+topic_prefix: "robot"  # HORUS topic prefix for all robot messages
 
 # Initial position and orientation
 position: [0.0, 0.0]  # [x, y] in meters
@@ -51,4 +51,4 @@ camera:
 
 # Example usage:
 #   sim2d --robot configs/template_differential_robot.yaml
-#   horus run "echo 'CmdVel(1.0, 0.0)' > /robot/cmd_vel"
+#   horus run "echo 'CmdVel(1.0, 0.0)' > robot.cmd_vel"

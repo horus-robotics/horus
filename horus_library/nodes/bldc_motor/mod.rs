@@ -682,6 +682,31 @@ impl Node for BldcMotorNode {
             }
         }
     }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info("BldcMotorNode shutting down - stopping all ESCs");
+
+        // Stop all motors by setting throttle to 0
+        for motor_id in 0..self.num_motors {
+            // Set target and current velocity to 0
+            self.target_velocities[motor_id as usize] = 0.0;
+            self.current_velocities[motor_id as usize] = 0.0;
+
+            // Publish stop command
+            let stop_cmd = MotorCommand::stop(motor_id);
+            let _ = self.publisher.send(stop_cmd, &mut None);
+        }
+
+        // If hardware mode, send stop signal to ESCs
+        #[cfg(feature = "gpio-hardware")]
+        for pwm in self.pwm_outputs.iter_mut().flatten() {
+            // Set PWM to minimum throttle (typically 1000us for ESCs)
+            let _ = pwm.set_duty_cycle(0.05); // 5% duty = 1000us at 50Hz
+        }
+
+        ctx.log_info("All BLDC motors/ESCs stopped");
+        Ok(())
+    }
 }
 
 /// Preset configurations for common motor/ESC setups

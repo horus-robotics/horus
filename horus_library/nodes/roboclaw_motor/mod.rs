@@ -224,11 +224,11 @@ impl RoboclawMotorNode {
         }
 
         Ok(Self {
-            motor1_cmd_sub: Hub::new("roboclaw/motor1/cmd")?,
-            motor2_cmd_sub: Hub::new("roboclaw/motor2/cmd")?,
-            motor1_feedback_pub: Hub::new("roboclaw/motor1/feedback")?,
-            motor2_feedback_pub: Hub::new("roboclaw/motor2/feedback")?,
-            diagnostic_pub: Hub::new("roboclaw/diagnostics")?,
+            motor1_cmd_sub: Hub::new("roboclaw.motor1.cmd")?,
+            motor2_cmd_sub: Hub::new("roboclaw.motor2.cmd")?,
+            motor1_feedback_pub: Hub::new("roboclaw.motor1.feedback")?,
+            motor2_feedback_pub: Hub::new("roboclaw.motor2.feedback")?,
+            diagnostic_pub: Hub::new("roboclaw.diagnostics")?,
             device_address: address,
             baud_rate: 38400,
             serial_port: serial_port.to_string(),
@@ -849,6 +849,33 @@ impl Node for RoboclawMotorNode {
                 self.battery_voltage
             ));
         }
+    }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info("RoboclawMotorNode shutting down - stopping all motors");
+
+        // Stop both motors by setting velocity to 0
+        self.motor_states[0].velocity = 0;
+        self.motor_states[0].duty_cycle = 0;
+        self.motor_states[0].enabled = false;
+        self.motor_states[1].velocity = 0;
+        self.motor_states[1].duty_cycle = 0;
+        self.motor_states[1].enabled = false;
+
+        // If hardware mode, send stop command over serial
+        #[cfg(feature = "serial-hardware")]
+        if let Some(ref mut port) = self.hardware_port {
+            use std::io::Write;
+            // Roboclaw command 0 with duty 0 = stop motor 1, command 4 = stop motor 2
+            let stop_m1 = [self.device_address, 0, 0, 0];
+            let stop_m2 = [self.device_address, 4, 0, 0];
+            let _ = port.write_all(&stop_m1);
+            let _ = port.write_all(&stop_m2);
+            let _ = port.flush();
+        }
+
+        ctx.log_info("Roboclaw motors stopped safely");
+        Ok(())
     }
 }
 

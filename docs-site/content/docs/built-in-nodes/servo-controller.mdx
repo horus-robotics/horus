@@ -613,6 +613,14 @@ Large servo: 10-30 kg·cm
 Heavy-duty: 30-40+ kg·cm
 ```
 
+## Graceful Shutdown
+
+ServoControllerNode automatically stops all servos when your application receives Ctrl+C (SIGINT/SIGTERM):
+
+- `stop_all()` called on all servos
+- All velocities set to 0
+- Servos hold their current position (PWM continues until power off)
+
 ## See Also
 
 - [DynamixelNode](./dynamixel) - Smart servos with feedback

@@ -35,47 +35,6 @@ pub fn setup_scene(
         Transform::from_rotation(Quat::from_euler(EulerRot::XYZ, -0.5, -0.5, 0.0)),
     ));
 
-    // DEBUG: Spawn a simple test cube to verify basic mesh rendering works
-    // This cube does NOT have physics and should always render
-    commands.spawn((
-        Name::new("debug_test_cube"),
-        Mesh3d(meshes.add(Cuboid::new(2.0, 2.0, 2.0))),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::srgb(1.0, 0.0, 0.0), // Bright red
-            ..default()
-        })),
-        Transform::from_xyz(0.0, 1.0, 0.0),
-    ));
-    info!("DEBUG: Spawned red test cube at origin (0, 1, 0) - should always render");
-
-    // DEBUG TEST: Spawn a blue cube WITH physics components using exact same inline pattern
-    // This tests whether physics components interfere with rendering
-    use crate::physics::rigid_body::{RigidBodyComponent, Velocity, Mass};
-    use rapier3d::prelude::{RigidBodyBuilder, vector};
-
-    // Create physics rigid body the same way ObjectSpawner does
-    let test_rb = RigidBodyBuilder::fixed()
-        .translation(vector![5.0, 1.0, 0.0])
-        .build();
-    let test_rb_handle = physics_world.rigid_body_set.insert(test_rb);
-
-    // Spawn entity with BOTH rendering AND physics components inline
-    // Use bevy::prelude::Cuboid explicitly to avoid parry3d::Cuboid conflict
-    commands.spawn((
-        Name::new("debug_physics_cube"),
-        Mesh3d(meshes.add(bevy::prelude::Cuboid::new(2.0, 2.0, 2.0))),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::srgb(0.0, 0.0, 1.0), // Bright blue
-            ..default()
-        })),
-        Transform::from_xyz(5.0, 1.0, 0.0),
-        RigidBodyComponent::new(test_rb_handle),
-        Velocity::zero(),
-        Mass::new(1.0),
-    ));
-    info!("DEBUG: Spawned blue physics test cube at (5, 1, 0) - tests if physics components break rendering");
-
-
     // Load world file if provided, otherwise create default world
     if let Some(world_path) = &cli.world {
         info!("Loading world from: {:?}", world_path);

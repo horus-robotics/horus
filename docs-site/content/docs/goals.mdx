@@ -70,7 +70,7 @@ HORUS aims to become the **de facto standard for real-time robotics communicatio
 
 ### Complex Build and Runtime Management
 
-**Problem**: Different build systems for different languages. Manual dependency installation. Configuration files everywhere. Switching between Rust, Python, and C requires completely different workflows.
+**Problem**: Different build systems for different languages. Manual dependency installation. Configuration files everywhere. Switching between Rust and Python requires completely different workflows.
 
 **HORUS Solution**:
 - **Single unified command**: `horus run` for everything
@@ -199,7 +199,7 @@ scheduler.add(Box::new(CartographerNode::new()?), 2, Some(true));
 **Problem**: Switching between languages in robotics often requires multiple communication frameworks or language-specific bindings with performance penalties.
 
 **HORUS Solution**:
-- Native support for Rust, Python, and C
+- Native support for Rust and Python
 - Unified workflow across all languages
 - Same low latency regardless of language choice
 - No FFI overhead, no binding complexity

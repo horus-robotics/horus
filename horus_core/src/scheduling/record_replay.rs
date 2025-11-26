@@ -1,18 +1,17 @@
-/// Record/Replay System for HORUS
-///
-/// Enables node-level granular recording and replay for debugging,
-/// testing, and analysis. Features include:
-/// - Record individual nodes or entire system
-/// - Replay with tick-perfect determinism
-/// - Mix recordings from different runs
-/// - Time travel to specific ticks
+//! Record/Replay System for HORUS
+//!
+//! Enables node-level granular recording and replay for debugging,
+//! testing, and analysis. Features include:
+//! - Record individual nodes or entire system
+//! - Replay with tick-perfect determinism
+//! - Mix recordings from different runs
+//! - Time travel to specific ticks
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::{self, File};
-use std::io::{BufReader, BufWriter, Read, Write};
+use std::io::{BufReader, BufWriter};
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
 /// Directory for storing recordings
@@ -243,7 +242,7 @@ impl NodeRecording {
 
         // Use bincode for efficient serialization
         bincode::serialize_into(writer, self)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| std::io::Error::other(e.to_string()))?;
 
         Ok(())
     }
@@ -254,7 +253,7 @@ impl NodeRecording {
         let reader = BufReader::new(file);
 
         bincode::deserialize_from(reader)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
+            .map_err(|e| std::io::Error::other(e.to_string()))
     }
 }
 
@@ -328,7 +327,7 @@ impl SchedulerRecording {
         let writer = BufWriter::new(file);
 
         bincode::serialize_into(writer, self)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| std::io::Error::other(e.to_string()))?;
 
         Ok(())
     }
@@ -339,7 +338,7 @@ impl SchedulerRecording {
         let reader = BufReader::new(file);
 
         bincode::deserialize_from(reader)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
+            .map_err(|e| std::io::Error::other(e.to_string()))
     }
 }
 

@@ -371,6 +371,23 @@ impl Node for I2cBusNode {
         "I2cBusNode"
     }
 
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info(&format!(
+            "I2cBusNode shutting down - closing I2C bus {}",
+            self.bus_number
+        ));
+
+        // Close all I2C hardware devices
+        #[cfg(feature = "i2c-hardware")]
+        {
+            self.i2c_devices.clear();
+        }
+        self.hardware_enabled = false;
+
+        ctx.log_info("I2C bus closed safely");
+        Ok(())
+    }
+
     fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info(&format!(
             "I2C bus {} initialized @ {} Hz",

@@ -291,7 +291,7 @@ pub fn publish_lidar3d_system(
     let current_time = time.elapsed_secs_f64();
 
     for (_, pointcloud, name) in query.iter() {
-        let topic = format!("{}/pointcloud", name.as_str());
+        let topic = format!("{}.pointcloud", name.as_str());
         publisher.publish_pointcloud(&topic, pointcloud, name.as_str(), current_time);
     }
 }

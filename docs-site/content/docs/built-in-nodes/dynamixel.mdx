@@ -592,6 +592,16 @@ Use Dynamixel Wizard to:
 3. Check for mechanical play
 4. Use profile control (X series)
 
+## Graceful Shutdown
+
+DynamixelNode automatically disables torque on all servos when your application receives Ctrl+C (SIGINT/SIGTERM):
+
+- Torque disabled on all servos (safe to move by hand)
+- Velocities set to 0
+- Serial port closed
+
+This prevents servos from holding position with high torque after shutdown, making the robot arm safe to manipulate.
+
 ## See Also
 
 - [StepperMotorNode](./stepper-motor) - Stepper motor control

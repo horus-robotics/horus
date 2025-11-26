@@ -41,21 +41,28 @@ lazy_static = "1.4"
 thiserror = "1.0"
 anyhow = "1.0"
 
-# Platform-specific shared memory and process handling
-[target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.52", features = ["Win32_Foundation", "Win32_System_Memory", "Win32_Security", "Win32_System_Threading"] }
-
 # TLS/Security (optional)
 rustls = { version = "0.23", optional = true }
 tokio-rustls = { version = "0.26", optional = true }
 rustls-pemfile = { version = "2.1", optional = true }
 rcgen = { version = "0.13", optional = true }  # For self-signed certs
 
+# QUIC transport (optional)
+quinn = { version = "0.11", optional = true }
+
 # Macros (optional)
 horus_macros = { path = "../horus_macros", optional = true }
 
 # HTTP client for model downloading (optional)
 reqwest = { version = "0.11", features = ["blocking"], optional = true }
+
+# Platform-specific: Windows shared memory
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.52", features = ["Win32_Foundation", "Win32_System_Memory", "Win32_Security", "Win32_System_Threading"] }
+
+# Platform-specific: Linux io_uring (optional)
+[target.'cfg(target_os = "linux")'.dependencies]
+io-uring = { version = "0.6", optional = true }
 
 [dev-dependencies]
 criterion = "0.5"
@@ -65,6 +72,10 @@ default = ["macros"]
 macros = ["horus_macros"]
 rtos = []
 tls = ["rustls", "tokio-rustls", "rustls-pemfile", "rcgen"]
+quic = ["quinn", "rustls", "rcgen"]
+io-uring-net = ["io-uring"]
+ultra-low-latency = ["io-uring-net"]  # Enable io_uring for lowest latency
+network-v2 = []  # Enable all network v2 optimizations
 rt-linux = ["rtos"]
 freertos = ["rtos"]
 zephyr = ["rtos"]

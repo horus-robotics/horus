@@ -394,7 +394,7 @@ mod tests {
         // This is based on the get_position closure which uses x_base = 300.0 for Topic
         let node = GraphNode {
             id: "test_topic".to_string(),
-            label: "/test".to_string(),
+            label: "test".to_string(),
             node_type: NodeType::Topic,
             position: Pos2::new(320.0, 100.0), // Typical topic position
             velocity: Vec2::ZERO,
@@ -413,7 +413,7 @@ mod tests {
     fn test_publish_edge_direction() {
         // Publish edges go from Process -> Topic
         let process_id = "process_1234_pub".to_string();
-        let topic_id = "topic_/data".to_string();
+        let topic_id = "topic_data".to_string();
 
         let edge = GraphEdge {
             from: process_id.clone(),
@@ -429,7 +429,7 @@ mod tests {
     #[test]
     fn test_subscribe_edge_direction() {
         // Subscribe edges go from Topic -> Process
-        let topic_id = "topic_/commands".to_string();
+        let topic_id = "topic_commands".to_string();
         let process_id = "process_5678_sub".to_string();
 
         let edge = GraphEdge {
@@ -465,8 +465,8 @@ mod tests {
 
         // Add a topic node
         nodes.push(GraphNode {
-            id: "topic_/sensor_data".to_string(),
-            label: "/sensor_data".to_string(),
+            id: "topic_sensor_data".to_string(),
+            label: "sensor_data".to_string(),
             node_type: NodeType::Topic,
             position: Pos2::new(300.0, 0.0),
             velocity: Vec2::ZERO,

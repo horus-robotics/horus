@@ -1,7 +1,7 @@
-/// Congestion control for network backends
-///
-/// Prevents sender from flooding the network with configurable drop policies,
-/// rate limiting, and backpressure mechanisms.
+//! Congestion control for network backends
+//!
+//! Prevents sender from flooding the network with configurable drop policies,
+//! rate limiting, and backpressure mechanisms.
 
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -16,9 +16,10 @@ const DEFAULT_RATE_LIMIT: u64 = 0;
 const DEFAULT_BUFFER_BYTES: usize = 10 * 1024 * 1024;
 
 /// Policy for handling congestion when buffer is full
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DropPolicy {
     /// Return error to caller immediately
+    #[default]
     Error,
     /// Block until buffer space is available (with timeout)
     Block,
@@ -28,12 +29,6 @@ pub enum DropPolicy {
     DropNewest,
     /// Drop based on priority (requires priority field)
     DropLowestPriority,
-}
-
-impl Default for DropPolicy {
-    fn default() -> Self {
-        DropPolicy::Error
-    }
 }
 
 /// Congestion control configuration
@@ -108,7 +103,8 @@ struct QueuedMessage {
     payload: Vec<u8>,
     /// Message priority (higher = more important)
     priority: u8,
-    /// When the message was queued
+    /// When the message was queued (for future use in time-based eviction)
+    #[allow(dead_code)]
     queued_at: Instant,
 }
 

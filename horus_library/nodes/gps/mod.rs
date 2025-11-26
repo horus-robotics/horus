@@ -351,6 +351,20 @@ impl Node for GpsNode {
         "GpsNode"
     }
 
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info("GpsNode shutting down - closing serial connection");
+
+        // Close serial port
+        #[cfg(feature = "nmea-gps")]
+        {
+            self.serial = None;
+            self.nmea_parser = None;
+        }
+
+        ctx.log_info("GPS serial connection closed safely");
+        Ok(())
+    }
+
     fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
         ctx.log_info("GPS node initialized");
 

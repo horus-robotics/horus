@@ -12,7 +12,7 @@ This directory contains pre-built exercise scenarios for learning robotics with 
 **Commands:**
 ```bash
 sim2d --scenario scenarios/01_basic_navigation.yaml
-horus run "echo 'CmdVel(1.0, 0.0)' > /robot1/cmd_vel"
+horus run "echo 'CmdVel(1.0, 0.0)' > robot1.cmd_vel"
 ```
 
 ### 02. Obstacle Avoidance Maze
@@ -23,7 +23,7 @@ horus run "echo 'CmdVel(1.0, 0.0)' > /robot1/cmd_vel"
 **Commands:**
 ```bash
 sim2d --scenario scenarios/02_obstacle_maze.yaml
-horus monitor /robot1/lidar  # View LIDAR data
+horus monitor robot1.lidar  # View LIDAR data
 # Implement reactive obstacle avoidance algorithm
 ```
 
@@ -35,7 +35,7 @@ horus monitor /robot1/lidar  # View LIDAR data
 **Commands:**
 ```bash
 sim2d --scenario scenarios/03_ackermann_parking.yaml
-horus run "echo 'CmdVel(1.0, 0.3)' > /car/cmd_vel"  # Forward with right turn
+horus run "echo 'CmdVel(1.0, 0.3)' > car.cmd_vel"  # Forward with right turn
 # Note: angular velocity is steering angle for Ackermann robots!
 ```
 
@@ -47,7 +47,7 @@ horus run "echo 'CmdVel(1.0, 0.3)' > /car/cmd_vel"  # Forward with right turn
 **Commands:**
 ```bash
 sim2d --scenario scenarios/04_omnidirectional_warehouse.yaml
-horus run "echo 'CmdVel(0.7, 0.7)' > /holonomic/cmd_vel"  # Diagonal movement
+horus run "echo 'CmdVel(0.7, 0.7)' > holonomic.cmd_vel"  # Diagonal movement
 # linear = forward/back, angular = left/right strafe
 ```
 
@@ -60,9 +60,9 @@ horus run "echo 'CmdVel(0.7, 0.7)' > /holonomic/cmd_vel"  # Diagonal movement
 ```bash
 sim2d --scenario scenarios/05_multi_robot_coordination.yaml
 # Control each robot independently:
-horus run "echo 'CmdVel(1.0, 0.0)' > /robot1/cmd_vel"
-horus run "echo 'CmdVel(1.0, 0.0)' > /robot2/cmd_vel"
-horus run "echo 'CmdVel(1.0, 0.0)' > /robot3/cmd_vel"
+horus run "echo 'CmdVel(1.0, 0.0)' > robot1.cmd_vel"
+horus run "echo 'CmdVel(1.0, 0.0)' > robot2.cmd_vel"
+horus run "echo 'CmdVel(1.0, 0.0)' > robot3.cmd_vel"
 ```
 
 ## Loading Scenarios
@@ -115,7 +115,7 @@ robots:
     velocity: [linear, angular]
     config:
       name: "robot_name"
-      topic_prefix: "/robot_name"
+      topic_prefix: "robot_name"
       position: [x, y]
       width: 0.6
       length: 0.9
@@ -199,7 +199,7 @@ All scenarios automatically track:
 
 Access metrics via:
 ```bash
-horus monitor /robot_name/metrics
+horus monitor robot_name.metrics
 ```
 
 Or view in GUI metrics dashboard.

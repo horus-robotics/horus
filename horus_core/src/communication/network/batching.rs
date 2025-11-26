@@ -1,7 +1,7 @@
-/// Message batching for network efficiency
-///
-/// Automatically batches multiple small messages into single network packets
-/// to reduce overhead and improve throughput for high-frequency data.
+//! Message batching for network efficiency
+//!
+//! Automatically batches multiple small messages into single network packets
+//! to reduce overhead and improve throughput for high-frequency data.
 
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
@@ -357,17 +357,23 @@ mod tests {
         let mut batcher = MessageBatcher::new("test", config);
 
         // Add messages until we exceed byte limit
+        // Each message is 200 bytes payload + 4 byte length prefix = 204 bytes
+        // max_bytes is 1000, so 4 messages = 816 bytes (fits)
+        // 5th message would be 1020 bytes > 1000, triggering flush
+        let mut flush_triggered = false;
         for i in 0..5 {
-            let payload = vec![i as u8; 200]; // 200 bytes each
+            let payload = vec![i as u8; 200]; // 200 bytes each + 4 prefix = 204 bytes
             let result = batcher.add(payload);
-            if i < 4 {
-                assert!(result.is_none());
+            if result.is_some() {
+                flush_triggered = true;
+                // Flush should contain messages 0-3 (4 messages)
+                let batch = result.unwrap();
+                assert_eq!(batch.count, 4);
             }
         }
 
-        // 5th message (1000+ bytes) should trigger flush
-        let result = batcher.add(vec![5; 200]);
-        assert!(result.is_some());
+        // 5th message (i=4) should have triggered flush of first 4 messages
+        assert!(flush_triggered, "Expected flush when byte limit exceeded");
     }
 
     #[test]

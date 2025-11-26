@@ -101,7 +101,6 @@ Options:
   -m, --macro              Rust with node! macro (less boilerplate)
   -r, --rust               Plain Rust project
   -p, --python             Python project
-  -c, --c                  C project
   -o, --output <PATH>      Where to create it (default: current directory)
 ```
 
@@ -327,7 +326,7 @@ horus run "src/*.rs"            # Run all Rust nodes concurrently
 **Features:**
 - -**Color-coded output**: Each node is prefixed with `[node_name]` in a unique color
 - -**Graceful shutdown**: Ctrl+C cleanly terminates all processes
-- -**Multi-language**: Works with Rust, Python, and C
+- -**Multi-language**: Works with Rust and Python
 - -**Automatic detection**: No flags needed, just use glob patterns
 
 **Example output:**

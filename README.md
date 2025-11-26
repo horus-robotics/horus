@@ -143,7 +143,7 @@ See [Built-in Nodes Documentation](horus_library/nodes/README.md) for complete c
 ### Developer Experience
 - **Simple Node API**: Clean `tick()` method with lifecycle hooks
 - **Macro-Based Development**: `node!` macro eliminates boilerplate
-- **Multi-Language Support**: Rust, Python, C with unified workflow
+- **Multi-Language Support**: Rust and Python with unified workflow
 - **Built-in Logging**: Automatic pub/sub tracking with IPC timing
 - **Unified CLI**: `horus` command for all operations
 
@@ -306,14 +306,14 @@ HORUS supports running multiple nodes concurrently as separate processes using g
 ```bash
 horus run "nodes/*.py"          # Run all Python nodes concurrently
 horus run "src/*.rs"            # Run all Rust nodes concurrently
-horus run "nodes/*.c"           # Run all C nodes concurrently
+horus run "nodes/*.rs"          # Run all Rust nodes concurrently
 ```
 
 **Features:**
 - **Two-Phase Execution**: Builds all files sequentially (respects Cargo lock), then executes concurrently
 - **Color-Coded Output**: Each node's output is prefixed with `[node_name]` in a unique color
 - **Graceful Shutdown**: Ctrl+C cleanly terminates all running processes
-- **Multi-Language**: Works with Rust, Python, and C files
+- **Multi-Language**: Works with Rust and Python files
 
 **Example:**
 ```bash

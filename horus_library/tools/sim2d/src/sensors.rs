@@ -94,7 +94,7 @@ impl Default for GpsConfig {
             update_rate: 1.0,                              // 1 Hz typical for GPS
             position_noise: NoiseModel::with_std_dev(2.0), // 2m typical GPS error
             altitude_noise: NoiseModel::default(),
-            topic: "/gps".to_string(),
+            topic: "gps".to_string(),
         }
     }
 }
@@ -230,7 +230,7 @@ impl Default for UltrasonicConfig {
                     noise: NoiseModel::with_std_dev(0.02),
                 },
             ],
-            topic_prefix: "/ultrasonic".to_string(),
+            topic_prefix: "ultrasonic".to_string(),
         }
     }
 }
@@ -253,7 +253,7 @@ impl Default for ContactConfig {
             enabled: false,
             num_zones: 8, // 8 zones around perimeter
             threshold: 0.1,
-            topic: "/contact".to_string(),
+            topic: "contact".to_string(),
         }
     }
 }

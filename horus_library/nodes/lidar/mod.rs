@@ -240,6 +240,17 @@ impl Node for LidarNode {
         "LidarNode"
     }
 
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info("LidarNode shutting down - stopping LiDAR sensor");
+
+        // Stop LiDAR scanning
+        self.is_initialized = false;
+
+        // Hardware cleanup would go here when LiDAR drivers are enabled
+        ctx.log_info("LiDAR sensor stopped safely");
+        Ok(())
+    }
+
     fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
         // Initialize LiDAR on first tick
         if !self.is_initialized && !self.initialize_lidar() {

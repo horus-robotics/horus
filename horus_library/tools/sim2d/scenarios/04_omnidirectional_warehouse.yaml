@@ -51,7 +51,7 @@ robots:
     velocity: [0.0, 0.0]
     config:
       name: "holonomic_robot"
-      topic_prefix: "/holonomic"
+      topic_prefix: "holonomic"
       position: [3.0, 3.0]
       width: 0.6
       length: 0.6

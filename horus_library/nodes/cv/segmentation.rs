@@ -205,7 +205,7 @@ impl SemanticSegmentationNode {
             .to_string();
 
         let vis_pub = if config.output_colored {
-            Some(Hub::new(&format!("{}/visualization", output_topic))?)
+            Some(Hub::new(&format!("{}.visualization", output_topic))?)
         } else {
             None
         };
@@ -214,7 +214,7 @@ impl SemanticSegmentationNode {
             image_sub: Hub::new(input_topic)?,
             mask_pub: Hub::new(output_topic)?,
             vis_pub,
-            metrics_pub: Hub::new(&format!("{}/metrics", output_topic))?,
+            metrics_pub: Hub::new(&format!("{}.metrics", output_topic))?,
             session,
             config,
             model_name,

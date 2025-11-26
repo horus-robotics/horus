@@ -252,9 +252,9 @@ impl DynamixelNode {
     /// Create a new Dynamixel controller node
     pub fn new(port: &str, protocol: DynamixelProtocol) -> Result<Self> {
         Ok(Self {
-            command_subscriber: Hub::new("dynamixel/servo_cmd")?,
-            joint_subscriber: Hub::new("dynamixel/joint_cmd")?,
-            feedback_publisher: Hub::new("dynamixel/feedback")?,
+            command_subscriber: Hub::new("dynamixel.servo_cmd")?,
+            joint_subscriber: Hub::new("dynamixel.joint_cmd")?,
+            feedback_publisher: Hub::new("dynamixel.feedback")?,
             #[cfg(feature = "serial-hardware")]
             serial_port: None,
             hardware_enabled: false,
@@ -788,6 +788,25 @@ impl Node for DynamixelNode {
 
             self.last_log_time = current_time;
         }
+    }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info("DynamixelNode shutting down - disabling torque on all servos");
+
+        // Disable torque on all servos for safety
+        for servo in self.servos.values_mut() {
+            servo.torque_enabled = false;
+            servo.velocity = 0.0;
+        }
+
+        // Close hardware port if open
+        #[cfg(feature = "serial-hardware")]
+        {
+            self.serial_port = None;
+        }
+
+        ctx.log_info("All Dynamixel servos torque disabled");
+        Ok(())
     }
 }
 

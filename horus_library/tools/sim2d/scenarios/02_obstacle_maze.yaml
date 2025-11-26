@@ -41,7 +41,7 @@ robots:
     velocity: [0.0, 0.0]
     config:
       name: "robot1"
-      topic_prefix: "/robot1"
+      topic_prefix: "robot1"
       position: [3.0, 10.0]
       width: 0.5
       length: 0.8
@@ -67,6 +67,6 @@ simulation:
 # Goal: Navigate from (3.0, 10.0) to (22.0, 10.0) through the maze
 # Tips:
 #   - Use LIDAR data to detect obstacles
-#   - Subscribe to /robot1/lidar for range data
+#   - Subscribe to robot1.lidar for range data
 #   - Implement reactive obstacle avoidance
-#   - Example: horus monitor /robot1/lidar
+#   - Example: horus monitor robot1.lidar

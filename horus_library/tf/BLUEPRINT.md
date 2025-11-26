@@ -393,7 +393,7 @@ pub struct TFBroadcasterNode {
 impl TFBroadcasterNode {
     pub fn new() -> HorusResult<Self> {
         Ok(Self {
-            publisher: Hub::new("/tf")?,
+            publisher: Hub::new("tf")?,
         })
     }
 
@@ -455,8 +455,8 @@ pub struct TFListenerNode {
 impl TFListenerNode {
     pub fn new(tree: Arc<RwLock<TFTree>>) -> HorusResult<Self> {
         Ok(Self {
-            subscriber: Hub::new("/tf")?,
-            static_sub: Hub::new("/tf_static")?,
+            subscriber: Hub::new("tf")?,
+            static_sub: Hub::new("tf_static")?,
             tree,
         })
     }

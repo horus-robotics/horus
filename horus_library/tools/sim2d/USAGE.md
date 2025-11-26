@@ -20,7 +20,7 @@ cargo run --release
 horus sim --2d --headless
 
 # With custom config
-horus sim --2d --headless --world world.yaml --topic /robot/cmd_vel
+horus sim --2d --headless --world world.yaml --topic robot.cmd_vel
 ```
 
 ## Configuration Formats
@@ -91,7 +91,7 @@ horus sim --2d \
   --world-image warehouse.png \
   --resolution 0.02 \
   --threshold 128 \
-  --topic /robot/cmd_vel
+  --topic robot.cmd_vel
 ```
 
 ### Image Format
@@ -140,7 +140,7 @@ Options:
   --world-image <FILE>    World image (PNG/JPG/PGM) - takes priority over --world
   --resolution <FLOAT>    Image resolution in m/pixel [default: 0.05]
   --threshold <0-255>     Obstacle threshold [default: 128]
-  --topic <NAME>          Control topic name [default: /robot/cmd_vel]
+  --topic <NAME>          Control topic name [default: robot.cmd_vel]
   --name <NAME>           Robot name [default: robot]
   --headless              Run without GUI (for CI/CD, servers)
   -h, --help              Print help
@@ -200,10 +200,10 @@ horus sim --2d \
 ### Pattern 4: Multi-Robot Simulation
 ```bash
 # Robot 1
-horus sim --2d --topic /robot1/cmd_vel --name robot1 &
+horus sim --2d --topic robot1.cmd_vel --name robot1 &
 
 # Robot 2
-horus sim --2d --topic /robot2/cmd_vel --name robot2 &
+horus sim --2d --topic robot2.cmd_vel --name robot2 &
 
 # Control both
 horus run multi_robot_controller.rs

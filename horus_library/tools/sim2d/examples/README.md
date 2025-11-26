@@ -57,7 +57,7 @@ python3 dynamic_obstacles.py interactive
 
 **Message Format:**
 
-The script publishes to `/sim2d/obstacle_cmd` topic:
+The script publishes to `sim2d.obstacle_cmd` topic:
 
 ```python
 # Add rectangle
@@ -99,7 +99,7 @@ The script publishes to `/sim2d/obstacle_cmd` topic:
 from horus import Hub
 
 # Create hub for obstacle commands
-obstacle_hub = Hub("/sim2d/obstacle_cmd")
+obstacle_hub = Hub("sim2d.obstacle_cmd")
 
 # Add obstacle
 cmd = {
@@ -127,7 +127,7 @@ obstacle_hub.send(cmd)
 
 ## Troubleshooting
 
-**"Connected to /sim2d/obstacle_cmd topic" but nothing happens:**
+**"Connected to sim2d.obstacle_cmd topic" but nothing happens:**
 - Make sure sim2d is running first
 - Check sim2d terminal for obstacle spawn messages
 - Verify HORUS is working: `horus --version`

@@ -24,7 +24,7 @@ robots:
     velocity: [0.0, 0.0]
     config:
       name: "explorer_bot"
-      topic_prefix: "/explorer"
+      topic_prefix: "explorer"
       position: [2.0, 2.0]
       width: 0.5
       length: 0.8

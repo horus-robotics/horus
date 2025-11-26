@@ -591,6 +591,16 @@ hub.send(cmd, None)?;
 6. **Monitor battery voltage**
 7. **Keep clear of rotating parts**
 
+## Graceful Shutdown
+
+BldcMotorNode automatically stops all ESCs when your application receives Ctrl+C (SIGINT/SIGTERM):
+
+- All target velocities set to 0
+- Stop commands sent to all motors
+- PWM outputs set to idle (5% duty cycle for ESCs)
+
+This ensures motors stop safely when shutting down your robot.
+
 ## See Also
 
 - [StepperMotorNode](./stepper-motor) - Stepper motor control

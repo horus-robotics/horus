@@ -255,6 +255,21 @@ impl Node for ServoControllerNode {
         "ServoControllerNode"
     }
 
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info("ServoControllerNode shutting down - stopping all servos");
+
+        // Stop all servo motion immediately
+        self.stop_all();
+
+        // Set all velocities to zero
+        for servo_id in 0..self.servo_count {
+            self.current_velocities.insert(servo_id, 0.0);
+        }
+
+        ctx.log_info("All servos stopped safely");
+        Ok(())
+    }
+
     fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
         let current_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)

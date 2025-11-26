@@ -4,7 +4,7 @@
 # Copy and modify this file for your custom holonomic robot
 
 name: "omnidirectional_robot"
-topic_prefix: "/holonomic"  # HORUS topic prefix for all robot messages
+topic_prefix: "holonomic"  # HORUS topic prefix for all robot messages
 
 # Initial position and orientation
 position: [0.0, 0.0]  # [x, y] in meters
@@ -67,9 +67,9 @@ camera:
 
 # Example usage:
 #   sim2d --robot configs/template_omnidirectional_robot.yaml
-#   horus run "echo 'CmdVel(0.7, 0.7)' > /holonomic/cmd_vel"   # Move diagonally NE
-#   horus run "echo 'CmdVel(0.0, 1.0)' > /holonomic/cmd_vel"   # Strafe right
-#   horus run "echo 'CmdVel(-1.0, 0.5)' > /holonomic/cmd_vel"  # Move back-right
+#   horus run "echo 'CmdVel(0.7, 0.7)' > holonomic.cmd_vel"   # Move diagonally NE
+#   horus run "echo 'CmdVel(0.0, 1.0)' > holonomic.cmd_vel"   # Strafe right
+#   horus run "echo 'CmdVel(-1.0, 0.5)' > holonomic.cmd_vel"  # Move back-right
 
 # Advantages of omnidirectional robots:
 # 1. Can move in any direction instantly

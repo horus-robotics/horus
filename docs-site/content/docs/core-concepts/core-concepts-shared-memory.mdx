@@ -93,10 +93,10 @@ Without sessions, all HORUS applications on the same machine would share a singl
 
 ```
 # Project A: Robot Arm Controller
-Hub::new("/robot/cmd_vel")  → writes to /dev/shm/horus/topics/robot_cmd_vel
+Hub::new("robot.cmd_vel")  → writes to /dev/shm/horus/topics/robot_cmd_vel
 
 # Project B: Mobile Robot (running simultaneously)
-Hub::new("/robot/cmd_vel")  → SAME file! Collision!
+Hub::new("robot.cmd_vel")  → SAME file! Collision!
 ```
 
 **Result**: Project B's velocity commands would control Project A's robot arm. This is dangerous and confusing.

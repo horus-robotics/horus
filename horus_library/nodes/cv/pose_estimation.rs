@@ -244,7 +244,7 @@ impl PoseEstimationNode {
         let keypoint_names = Self::get_keypoint_names(&config.model_type);
 
         let vis_pub = if config.output_visualization {
-            Some(Hub::new(&format!("{}/visualization", output_topic))?)
+            Some(Hub::new(&format!("{}.visualization", output_topic))?)
         } else {
             None
         };
@@ -253,7 +253,7 @@ impl PoseEstimationNode {
             image_sub: Hub::new(input_topic)?,
             pose_pub: Hub::new(output_topic)?,
             vis_pub,
-            metrics_pub: Hub::new(&format!("{}/metrics", output_topic))?,
+            metrics_pub: Hub::new(&format!("{}.metrics", output_topic))?,
             session,
             config,
             model_name,

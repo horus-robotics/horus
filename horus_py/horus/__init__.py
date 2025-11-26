@@ -1142,6 +1142,21 @@ __all__ = [
     "preprocess_image_yolo",
     "nms",
     "calculate_iou",
+    # Hardware nodes
+    "SerialNode",
+    "JoystickNode",
+    "KeyboardNode",
+    "ImuNode",
+    "GpsNode",
+    "CameraNode",
+    "LidarNode",
+    # Hardware node data types
+    "SerialData",
+    "JoystickState",
+    "KeyboardState",
+    "ImuData",
+    "GpsData",
+    "ImageData",
     # sim2d API
     "Sim2D",
     "RobotConfigPy",
@@ -1162,6 +1177,26 @@ from .ml_utils import (
     preprocess_image_yolo,
     nms,
     calculate_iou,
+)
+
+# Import hardware nodes
+from .nodes import (
+    # Nodes
+    SerialNode,
+    JoystickNode,
+    KeyboardNode,
+    ImuNode,
+    GpsNode,
+    CameraNode,
+    LidarNode,
+    # Data types
+    SerialData,
+    JoystickState,
+    KeyboardState,
+    ImuData,
+    GpsData,
+    ImageData,
+    LaserScan,
 )
 
 # NOTE: Hub is now imported directly from Rust (no alias needed)

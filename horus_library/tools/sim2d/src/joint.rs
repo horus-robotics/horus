@@ -11,7 +11,7 @@
 //! ## Example Configuration (YAML)
 //! ```yaml
 //! name: "arm_2dof"
-//! topic_prefix: "/arm"
+//! topic_prefix: "arm"
 //! position: [0.0, 0.0]
 //! fixed_base: true
 //!
@@ -293,7 +293,7 @@ pub struct ArticulatedRobotConfig {
 }
 
 fn default_articulated_topic() -> String {
-    "/articulated".to_string()
+    "articulated".to_string()
 }
 
 fn default_self_collision() -> bool {
@@ -972,7 +972,7 @@ pub fn joint_command_system(
 pub fn preset_arm_2dof() -> ArticulatedRobotConfig {
     ArticulatedRobotConfig {
         name: "arm_2dof".to_string(),
-        topic_prefix: "/arm".to_string(),
+        topic_prefix: "arm".to_string(),
         position: [0.0, 0.0],
         orientation: 0.0,
         fixed_base: true,
@@ -1051,7 +1051,7 @@ pub fn preset_arm_2dof() -> ArticulatedRobotConfig {
 pub fn preset_humanoid_simple() -> ArticulatedRobotConfig {
     ArticulatedRobotConfig {
         name: "humanoid_2d".to_string(),
-        topic_prefix: "/humanoid".to_string(),
+        topic_prefix: "humanoid".to_string(),
         position: [0.0, 1.0],
         orientation: 0.0,
         fixed_base: false,
@@ -1375,7 +1375,7 @@ pub fn preset_humanoid_simple() -> ArticulatedRobotConfig {
 pub fn preset_arm_6dof() -> ArticulatedRobotConfig {
     ArticulatedRobotConfig {
         name: "arm_6dof".to_string(),
-        topic_prefix: "/arm6".to_string(),
+        topic_prefix: "arm6".to_string(),
         position: [0.0, 0.0],
         orientation: 0.0,
         fixed_base: true,
