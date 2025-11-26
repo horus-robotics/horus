@@ -545,6 +545,53 @@ PWM on PWMA/PWMB controls speed.
 2. Add capacitor across motor terminals (0.1μF)
 3. Check mechanical binding
 
+## Graceful Shutdown
+
+DcMotorNode automatically stops all motors when your application receives Ctrl+C (SIGINT/SIGTERM). This is a critical safety feature for autonomous vehicles and robots.
+
+### Automatic Emergency Stop
+
+When shutdown is triggered:
+
+1. `emergency_stop()` is called automatically
+2. All motor velocities are set to 0
+3. PWM duty cycles are set to 0%
+4. Motors coast to a stop (or brake if configured)
+
+```rust
+// This happens automatically on Ctrl+C
+fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+    ctx.log_info("DcMotorNode shutting down - stopping all motors");
+    self.emergency_stop();  // Sets all motors to 0
+    ctx.log_info("All DC motors stopped safely");
+    Ok(())
+}
+```
+
+### Manual Emergency Stop
+
+You can also trigger an emergency stop programmatically:
+
+```rust
+// In your control node
+if danger_detected {
+    hub.send(DcMotorCommand {
+        motor_id: 0,
+        command_type: DcMotorCommand::CMD_BRAKE,
+        ..Default::default()
+    }, None)?;
+}
+```
+
+### Shutdown Logging
+
+When shutdown occurs, you'll see in the logs:
+
+```
+[12:34:56.789] [INFO] DcMotorNode shutting down - stopping all motors
+[12:34:56.790] [INFO] All DC motors stopped safely
+```
+
 ## Safety Guidelines
 
 1. **Always use appropriate current rating:**
@@ -563,6 +610,10 @@ PWM on PWMA/PWMB controls speed.
 4. **Fuses:**
    - Add fuse on motor power supply
    - Protects against shorts
+
+5. **Test shutdown behavior:**
+   - Test Ctrl+C behavior before deployment
+   - Verify motors actually stop in logs
 
 ## See Also
 

@@ -37,7 +37,6 @@ tests/
 **Coverage**:
 - Python project creation
 - Rust project creation (with/without macros)
-- C project creation
 - Project structure validation
 - Custom output directories
 - Flag conflict detection
@@ -60,7 +59,6 @@ cd horus_new
 **Coverage**:
 - Python execution (9 tests)
 - Rust compilation and execution (10 tests)
-- C compilation and execution (9 tests)
 - Auto-detection of main files (11 tests)
 - Build modes: debug/release/clean (10 tests)
 - Dependency resolution (10 tests)

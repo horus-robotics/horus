@@ -18,6 +18,10 @@ harness = false
 name = "link_performance"
 harness = false
 
+[[bench]]
+name = "network_transport"
+harness = false
+
 [[bin]]
 name = "ipc_benchmark"
 path = "src/bin/ipc_benchmark.rs"
@@ -66,6 +70,7 @@ doc = false
 
 [dependencies]
 horus = { path = "../horus" }
+horus_core = { path = "../horus_core" }
 horus_library = { path = "../horus_library" }
 serde.workspace = true
 serde_json = "1.0"

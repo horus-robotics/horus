@@ -557,6 +557,31 @@ impl Node for UltrasonicNode {
         "UltrasonicNode"
     }
 
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info("UltrasonicNode shutting down - releasing GPIO resources");
+
+        // Release GPIO pins
+        #[cfg(feature = "gpio-hardware")]
+        {
+            for i in 0..16 {
+                // Unexport GPIO pins if they were exported
+                if let Some(ref trigger_pin) = self.trigger_pins[i] {
+                    let _ = trigger_pin.set_value(0); // Set trigger low
+                    let _ = trigger_pin.unexport();
+                }
+                if let Some(ref echo_pin) = self.echo_pins[i] {
+                    let _ = echo_pin.unexport();
+                }
+                self.trigger_pins[i] = None;
+                self.echo_pins[i] = None;
+            }
+        }
+
+        self.hardware_enabled = false;
+        ctx.log_info("Ultrasonic sensor resources released safely");
+        Ok(())
+    }
+
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let current_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)

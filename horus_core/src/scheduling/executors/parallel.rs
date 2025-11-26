@@ -1,7 +1,7 @@
-/// Parallel executor module for thread pool configuration
-///
-/// This module provides thread pool configuration for the scheduler.
-/// Actual parallel execution is handled by AsyncIOExecutor for I/O-bound nodes.
+//! Parallel executor module for thread pool configuration
+//!
+//! This module provides thread pool configuration for the scheduler.
+//! Actual parallel execution is handled by AsyncIOExecutor for I/O-bound nodes.
 
 /// Parallel executor configuration for thread pool settings
 #[derive(Debug)]

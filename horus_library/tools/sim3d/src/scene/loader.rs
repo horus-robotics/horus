@@ -25,7 +25,7 @@ pub struct SceneObject {
     pub name: String,
     pub shape: SceneShape,
     pub position: [f32; 3],
-    #[serde(default)]
+    #[serde(default = "default_rotation")]
     pub rotation: [f32; 4], // Quaternion (w, x, y, z)
     #[serde(default)]
     pub rotation_euler: Option<[f32; 3]>, // Alternative: euler angles (x, y, z) in degrees
@@ -58,7 +58,7 @@ pub struct SceneRobot {
     pub name: String,
     pub urdf_path: String,
     pub position: [f32; 3],
-    #[serde(default)]
+    #[serde(default = "default_rotation")]
     pub rotation: [f32; 4], // Quaternion (w, x, y, z)
     #[serde(default)]
     pub rotation_euler: Option<[f32; 3]>, // Alternative: euler angles (x, y, z) in degrees
@@ -80,6 +80,10 @@ pub struct DirectionalLightConfig {
 }
 
 // Default values
+fn default_rotation() -> [f32; 4] {
+    [1.0, 0.0, 0.0, 0.0] // Identity quaternion (w, x, y, z)
+}
+
 fn default_is_static() -> bool {
     false
 }

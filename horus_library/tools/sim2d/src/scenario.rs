@@ -356,7 +356,7 @@ simulation:
         // Add robot state
         let robot_config = RobotConfig {
             name: "test_robot".to_string(),
-            topic_prefix: "/test".to_string(),
+            topic_prefix: "test".to_string(),
             position: [3.0, 4.0],
             width: 0.6,
             length: 0.9,

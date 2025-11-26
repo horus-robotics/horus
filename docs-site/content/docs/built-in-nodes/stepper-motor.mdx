@@ -426,6 +426,16 @@ pub const CMD_DISABLE: u8 = 8;          // Disable motor
 3. Check mechanical resistance
 4. Verify power supply capacity
 
+## Graceful Shutdown
+
+StepperMotorNode automatically stops all motors when your application receives Ctrl+C (SIGINT/SIGTERM):
+
+- Emergency stop called on all motors
+- Enable pins set to disabled state (HIGH for active-low drivers)
+- Motors hold position or coast depending on driver configuration
+
+This ensures steppers stop safely when shutting down your robot.
+
 ## See Also
 
 - [BldcMotorNode](./bldc-motor) - Brushless motor control

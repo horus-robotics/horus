@@ -25,7 +25,7 @@ Thank you for your interest in contributing to HORUS! This document provides gui
 
 - Rust 1.70+ (`rustup update`)
 - Python 3.9+ with `pip` (optional)
-- GCC/Clang for C bindings
+- Build tools (GCC/Clang)
 - Node.js 18+ for documentation site
 
 ### Building
@@ -119,13 +119,6 @@ Follow PEP 8:
 - Use `black` for formatting
 - Use `mypy` for type checking
 - Use descriptive variable names
-
-### C
-
-Follow standard conventions:
-- Use `clang-format`
-- Prefix all public APIs with `horus_`
-- Document APIs in header files
 
 ## What to Contribute
 
@@ -226,7 +219,7 @@ Fixes #123
 1. **Zero-copy when possible**: Use shared memory
 2. **Type safety**: Leverage Rust's type system
 3. **Minimal latency**: Profile and optimize hot paths
-4. **Multi-language**: Ensure features work across Rust/Python/C
+4. **Multi-language**: Ensure features work across Rust/Python
 
 ### Code Organization
 

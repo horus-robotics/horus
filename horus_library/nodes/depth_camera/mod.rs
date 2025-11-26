@@ -175,10 +175,10 @@ impl DepthCameraNode {
     /// Create a new depth camera node with specific backend
     pub fn new_with_backend(model: CameraModel, backend: DepthBackend) -> Result<Self> {
         let mut node = Self {
-            rgb_publisher: Hub::new("depth_camera/rgb/image")?,
-            depth_publisher: Hub::new("depth_camera/depth/image")?,
-            pointcloud_publisher: Hub::new("depth_camera/pointcloud")?,
-            camera_info_publisher: Hub::new("depth_camera/camera_info")?,
+            rgb_publisher: Hub::new("depth_camera.rgb.image")?,
+            depth_publisher: Hub::new("depth_camera.depth.image")?,
+            pointcloud_publisher: Hub::new("depth_camera.pointcloud")?,
+            camera_info_publisher: Hub::new("depth_camera.camera_info")?,
             camera_model: model,
             device_serial: String::new(),
             resolution: (640, 480),

@@ -344,6 +344,73 @@ scheduler.add(AggregatedNode::new());
 
 **Fewer nodes** = less scheduling overhead.
 
+## Ultra-Low-Latency Networking (Linux)
+
+HORUS provides optional kernel bypass networking for sub-microsecond latency requirements.
+
+### Transport Options
+
+| Transport | Latency | Throughput | Requirements |
+|-----------|---------|------------|--------------|
+| Shared Memory | ~250ns | 10M+ msg/s | Local only |
+| io_uring | 2-3µs | 500K+ msg/s | Linux 5.1+ |
+| Batch UDP | 3-5µs | 300K+ msg/s | Linux 3.0+ |
+| Standard UDP | 5-10µs | 200K+ msg/s | Cross-platform |
+
+### Enable io_uring Transport
+
+io_uring eliminates syscalls on the send path using kernel-side polling:
+
+```bash
+# Build with io_uring support
+cargo build --release --features io-uring-net
+```
+
+**Requirements:**
+- Linux 5.1+ (5.6+ recommended for SQ polling)
+- CAP_SYS_NICE capability for SQ_POLL mode
+
+### Enable Batch UDP (Linux)
+
+Batch UDP uses `sendmmsg`/`recvmmsg` syscalls for efficient batched network I/O:
+
+```bash
+# Batch UDP is automatically enabled on Linux - no extra dependencies needed
+cargo build --release
+```
+
+**Requirements:**
+- Linux 3.0+ (available on virtually all modern Linux systems)
+
+### Enable All Ultra-Low-Latency Features
+
+```bash
+# Build with all ultra-low-latency features (io_uring)
+cargo build --release --features ultra-low-latency
+```
+
+### Smart Transport Selection
+
+HORUS automatically selects the best transport based on:
+- Network location (local, LAN, WAN)
+- Available system features
+- Kernel version
+
+```rust
+// Transport is automatically selected
+let hub: Hub<SensorData> = Hub::new("sensor@192.168.1.100:9870")?;
+// Uses: io_uring > Batch UDP > Standard UDP (based on availability)
+```
+
+To check which transport was selected:
+
+```rust
+// In node context
+if let Some(ctx) = &ctx {
+    ctx.log_info(&format!("Transport: {}", hub.transport_type()));
+}
+```
+
 ## Shared Memory Optimization
 
 ### Check Available Space

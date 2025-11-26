@@ -12,16 +12,30 @@ Test and validate your robot algorithms in virtual environments before deploying
 
 ## Overview
 
+HORUS provides **two levels of simulation**:
+
+| Level | Tools | Use Case |
+|-------|-------|----------|
+| **Environment Simulation** | sim2d, sim3d | Full robot + world simulation |
+| **Node Simulation Mode** | Built into nodes | Hardware prototyping without devices |
+
+### Environment Simulators
+
 | Simulator | Status | Dimensions | Use Case | Performance |
 |-----------|--------|------------|----------|-------------|
 | **sim2d** |  **Active Development** | 2D Top-Down | Fast prototyping, navigation | 1000+ Hz headless |
 | **sim3d** |  **Available** | Full 3D | Realistic testing, RL training | 60 FPS visual, 100K+ steps/sec RL |
+
+### Node Simulation Mode
+
+Every hardware node (IMU, GPS, LiDAR, Camera, Serial, etc.) has a built-in `simulation` mode that generates synthetic data. See [Node Simulation Mode](#node-simulation-mode) below.
 
 **Key Benefits:**
 -  **Same code works in sim and reality** - Write once, deploy anywhere
 -  **HORUS-native** - Direct Hub integration, no middleware
 -  **Sub-microsecond IPC** - Realistic latency testing
 -  **CI/CD ready** - Headless mode for automated testing
+-  **No hardware required** - Develop before hardware arrives
 
 ---
 
@@ -578,6 +592,190 @@ for _ in range(1000):
 | Reset time | &lt;1ms (fast reset) |
 | Memory (visual) | &lt;500MB (single robot) |
 | Memory (headless) | &lt;50MB per environment |
+
+---
+
+## Node Simulation Mode
+
+Beyond full environment simulators (sim2d/sim3d), HORUS hardware nodes include **built-in simulation mode** for prototyping without physical hardware.
+
+### Why Simulation Mode?
+
+| Use Case | Benefit |
+|----------|---------|
+| **Early prototyping** | Develop control logic before hardware arrives |
+| **CI/CD testing** | Run automated tests without physical devices |
+| **Algorithm development** | Test perception/planning pipelines with synthetic data |
+| **Team collaboration** | Developers without hardware can still contribute |
+| **Graceful degradation** | Auto-fallback when hardware fails or is unavailable |
+
+### Rust Nodes with Simulation
+
+All HORUS hardware nodes use a **Backend enum pattern** with `Simulation` as an option:
+
+```rust
+use horus_library::nodes::imu::{ImuNode, ImuBackend};
+use horus_library::nodes::gps::{GpsNode, GpsBackend};
+use horus_library::nodes::lidar::{LidarNode, LidarBackend};
+
+// Explicit simulation mode
+let imu = ImuNode::new_with_backend("imu", ImuBackend::Simulation)?;
+let gps = GpsNode::new_with_backend("gps.fix", GpsBackend::Simulation)?;
+let lidar = LidarNode::new_with_backend("scan", LidarBackend::Simulation)?;
+
+// Default constructors use simulation mode
+let imu = ImuNode::new()?;  // Simulation by default
+```
+
+**Nodes with simulation support:**
+
+| Node | Backend Enum | Hardware Backends |
+|------|--------------|-------------------|
+| `SerialNode` | `SerialBackend::Simulation` | `Hardware` |
+| `ImuNode` | `ImuBackend::Simulation` | `Mpu6050`, `Bno055` |
+| `GpsNode` | `GpsBackend::Simulation` | `NmeaSerial` |
+| `LidarNode` | `LidarBackend::Simulation` | `RplidarA2`, `YdlidarX4` |
+| `CameraNode` | (use sim2d/sim3d) | `OpenCV`, `V4L2`, `RealSense` |
+| `DepthCameraNode` | `DepthBackend::Simulation` | `RealSense`, `Zed` |
+| `DcMotorNode` | `MotorDriver::Simulation` | `L298N`, `Cytron` |
+| `EncoderNode` | `EncoderBackend::Simulation` | `Gpio`, `Spi` |
+| `DynamixelNode` | Auto-fallback | `Hardware` |
+| `RoboclawMotorNode` | Auto-fallback | `Hardware` |
+| `I2cBusNode` | Auto-fallback | `Hardware` |
+| `SpiBusNode` | Auto-fallback | `Hardware` |
+
+### Python Nodes with Simulation
+
+Python hardware nodes follow the same pattern:
+
+```python
+from horus.nodes import (
+    SerialNode, JoystickNode, KeyboardNode,
+    ImuNode, GpsNode, CameraNode, LidarNode
+)
+
+# Explicit simulation mode
+serial = SerialNode(port="/dev/ttyUSB0", simulation=True)
+imu = ImuNode(i2c_bus=1, simulation=True)
+gps = GpsNode(port="/dev/ttyACM0", simulation=True)
+camera = CameraNode(device_id=0, simulation=True)
+lidar = LidarNode(port="/dev/ttyUSB0", simulation=True)
+
+# Auto-fallback: If hardware unavailable, switches to simulation
+serial = SerialNode(port="/dev/ttyUSB0")  # Falls back if port doesn't exist
+```
+
+**Python nodes with simulation:**
+
+| Node | Library | Simulation Data |
+|------|---------|-----------------|
+| `SerialNode` | pyserial | Accepts writes, no reads |
+| `JoystickNode` | pygame | Zero axes/buttons |
+| `KeyboardNode` | pynput | No events |
+| `ImuNode` | smbus2 | Gravity (0,0,9.81), small gyro drift |
+| `GpsNode` | pynmea2 | San Francisco coordinates |
+| `CameraNode` | opencv | Black frame with "SIMULATION" text |
+| `LidarNode` | rplidar | Circular room pattern |
+
+### Auto-Fallback Behavior
+
+Many nodes automatically fall back to simulation when hardware fails:
+
+```rust
+// Rust: Auto-fallback on hardware error
+impl Node for ImuNode {
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        match self.backend {
+            ImuBackend::Mpu6050 => {
+                if let Err(e) = self.initialize_mpu6050() {
+                    ctx.log_warning(&format!("MPU6050 init failed: {}, falling back to simulation", e));
+                    self.backend = ImuBackend::Simulation;
+                }
+            }
+            ImuBackend::Simulation => {
+                ctx.log_info("IMU running in simulation mode");
+            }
+        }
+        Ok(())
+    }
+}
+```
+
+```python
+# Python: Auto-fallback on hardware error
+def _init(self, node):
+    if self.simulation:
+        self.log_info("ImuNode running in simulation mode")
+        return
+
+    try:
+        self._bus = smbus2.SMBus(self.i2c_bus)
+        self._bus.write_byte_data(self.i2c_address, 0x6B, 0)  # Wake MPU6050
+    except Exception as e:
+        self.log_error(f"Failed to initialize IMU: {e}")
+        self.simulation = True  # Auto-fallback
+```
+
+### Simulation Data Quality
+
+Simulation mode generates **realistic synthetic data**:
+
+**IMU Simulation:**
+- Gravity vector: (0, 0, 9.81) m/s²
+- Small gyroscope drift over time
+- Temperature: 25°C constant
+
+**GPS Simulation:**
+- Default: San Francisco (37.7749, -122.4194)
+- Configurable via `set_simulation_position()`
+- Realistic satellite count and HDOP
+
+**LiDAR Simulation:**
+- Circular room pattern with walls
+- Gaussian noise on range measurements
+- Configurable num_samples, range_min, range_max
+
+**Camera Simulation:**
+- Black frame with "SIMULATION" overlay
+- Frame counter displayed
+- Configurable resolution
+
+### Best Practices
+
+**1. Develop with simulation first:**
+```bash
+# Start with simulation
+cargo run --example my_robot  # Uses simulation by default
+
+# Then test with hardware
+cargo run --example my_robot --features hardware
+```
+
+**2. Use feature flags for hardware:**
+```toml
+# Cargo.toml
+[features]
+default = []  # Simulation by default
+hardware = ["mpu6050", "rplidar", "gpio"]
+```
+
+**3. CI/CD with simulation:**
+```yaml
+# .github/workflows/test.yml
+- name: Run tests
+  run: cargo test  # No hardware needed
+```
+
+**4. Gradual hardware transition:**
+```rust
+// Start with all simulation
+let imu = ImuNode::new()?;  // Simulation
+let gps = GpsNode::new()?;  // Simulation
+
+// Enable hardware one-by-one
+let imu = ImuNode::new_with_backend("imu", ImuBackend::Mpu6050)?;
+let gps = GpsNode::new()?;  // Still simulation
+```
 
 ---
 

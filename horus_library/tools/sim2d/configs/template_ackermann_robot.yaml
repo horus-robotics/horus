@@ -3,7 +3,7 @@
 # Copy and modify this file for your custom car-like robot
 
 name: "ackermann_robot"
-topic_prefix: "/car"  # HORUS topic prefix for all robot messages
+topic_prefix: "car"  # HORUS topic prefix for all robot messages
 
 # Initial position and orientation
 position: [0.0, 0.0]  # [x, y] in meters
@@ -64,9 +64,9 @@ camera:
 
 # Example usage:
 #   sim2d --robot configs/template_ackermann_robot.yaml
-#   horus run "echo 'CmdVel(2.0, 0.3)' > /car/cmd_vel"   # Forward with left turn
-#   horus run "echo 'CmdVel(2.0, -0.3)' > /car/cmd_vel"  # Forward with right turn
-#   horus run "echo 'CmdVel(-1.0, 0.0)' > /car/cmd_vel"  # Reverse straight
+#   horus run "echo 'CmdVel(2.0, 0.3)' > car.cmd_vel"   # Forward with left turn
+#   horus run "echo 'CmdVel(2.0, -0.3)' > car.cmd_vel"  # Forward with right turn
+#   horus run "echo 'CmdVel(-1.0, 0.0)' > car.cmd_vel"  # Reverse straight
 
 # Tips for Ackermann steering:
 # 1. Cannot rotate in place (unlike differential drive)

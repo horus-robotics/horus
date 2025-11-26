@@ -1,9 +1,7 @@
-/// Compression support for network messages
-///
-/// Provides transparent compression/decompression for large messages
-/// using LZ4 (fast) or Zstd (better ratio) algorithms.
-
-use std::io::{Read, Write};
+//! Compression support for network messages
+//!
+//! Provides transparent compression/decompression for large messages
+//! using LZ4 (fast) or Zstd (better ratio) algorithms.
 
 /// Minimum payload size to consider compression (bytes)
 const MIN_COMPRESS_SIZE: usize = 512;
@@ -204,7 +202,7 @@ impl Compressor {
 
         while i < data.len() {
             // Look for runs of repeated bytes
-            let start = i;
+            let _start = i;
             let current_byte = data[i];
             let mut run_length = 1;
 
@@ -317,7 +315,7 @@ impl Compressor {
                 while i + match_len < data.len()
                     && j + match_len < i
                     && data[i + match_len] == data[j + match_len]
-                    && match_len < 255
+                    && match_len < 127  // Max 127 since we use 7 bits for length
                 {
                     match_len += 1;
                 }

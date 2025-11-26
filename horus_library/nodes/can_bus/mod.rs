@@ -144,9 +144,9 @@ impl CanBusNode {
     /// Create a new CAN bus node
     pub fn new(interface: &str) -> Result<Self> {
         Ok(Self {
-            tx_subscriber: Hub::new(&format!("can/{}/tx", interface))?,
-            rx_publisher: Hub::new(&format!("can/{}/rx", interface))?,
-            error_publisher: Hub::new(&format!("can/{}/error", interface))?,
+            tx_subscriber: Hub::new(&format!("can.{}.tx", interface))?,
+            rx_publisher: Hub::new(&format!("can.{}.rx", interface))?,
+            error_publisher: Hub::new(&format!("can.{}.error", interface))?,
             #[cfg(feature = "can-hardware")]
             socket: None,
             hardware_enabled: false,
@@ -790,6 +790,19 @@ impl CanBusNode {
 impl Node for CanBusNode {
     fn name(&self) -> &'static str {
         "CanBusNode"
+    }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info(&format!(
+            "CanBusNode shutting down - closing {} interface",
+            self.interface_name
+        ));
+
+        // Stop the CAN interface
+        self.stop(Some(ctx));
+
+        ctx.log_info("CAN bus interface closed safely");
+        Ok(())
     }
 
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {

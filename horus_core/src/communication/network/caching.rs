@@ -1,7 +1,7 @@
-/// Topic caching with TTL for last-value semantics
-///
-/// Provides in-memory caching for topics where you only need the latest value,
-/// such as configuration, status, or slowly-changing data. Cache hits are 0ns.
+//! Topic caching with TTL for last-value semantics
+//!
+//! Provides in-memory caching for topics where you only need the latest value,
+//! such as configuration, status, or slowly-changing data. Cache hits are 0ns.
 
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};

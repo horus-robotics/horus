@@ -1,7 +1,7 @@
-/// Query/Response pattern for request-reply communication
-///
-/// Provides RPC-style request-response semantics on top of the pub/sub
-/// infrastructure, enabling service calls and synchronous queries.
+//! Query/Response pattern for request-reply communication
+//!
+//! Provides RPC-style request-response semantics on top of the pub/sub
+//! infrastructure, enabling service calls and synchronous queries.
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -164,7 +164,8 @@ struct PendingQuery {
     timeout: Duration,
     /// Response (filled when received)
     response: Option<QueryResponse>,
-    /// Number of retries
+    /// Number of retries (for future retry logic)
+    #[allow(dead_code)]
     retries: u32,
 }
 

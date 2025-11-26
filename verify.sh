@@ -537,9 +537,34 @@ else
 fi
 
 #=====================================
-# 10. GPU & GRAPHICS (for sim3d)
+# 10. ULTRA-LOW-LATENCY NETWORKING (optional)
 #=====================================
-section "10. GPU & Graphics (sim3d)"
+section "10. Ultra-Low-Latency Networking"
+
+# Check for io_uring support (Linux 5.1+)
+if [ "$OS_TYPE" = "linux" ]; then
+    KERNEL_VERSION=$(uname -r | cut -d'.' -f1-2)
+    KERNEL_MAJOR=$(echo $KERNEL_VERSION | cut -d'.' -f1)
+    KERNEL_MINOR=$(echo $KERNEL_VERSION | cut -d'.' -f2)
+
+    if [ "$KERNEL_MAJOR" -ge 5 ] && [ "$KERNEL_MINOR" -ge 1 ]; then
+        pass "io_uring support: Linux $KERNEL_VERSION (>= 5.1)"
+    elif [ "$KERNEL_MAJOR" -ge 6 ]; then
+        pass "io_uring support: Linux $KERNEL_VERSION (>= 5.1)"
+    else
+        info "io_uring not available: Linux $KERNEL_VERSION (requires 5.1+)"
+    fi
+
+    # Check for Batch UDP support (always available on Linux)
+    pass "Batch UDP (sendmmsg/recvmmsg): Available"
+else
+    info "Ultra-low-latency features only available on Linux"
+fi
+
+#=====================================
+# 11. GPU & GRAPHICS (for sim3d)
+#=====================================
+section "11. GPU & Graphics (sim3d)"
 
 # Check Vulkan
 if command -v vulkaninfo &>/dev/null; then
@@ -579,9 +604,9 @@ else
 fi
 
 #=====================================
-# 11. NETWORK & REGISTRY
+# 12. NETWORK & REGISTRY
 #=====================================
-section "11. Network & Registry"
+section "12. Network & Registry"
 
 # Check network connectivity to crates.io (for cargo)
 if curl -s --connect-timeout 5 https://crates.io/api/v1/crates/serde 2>/dev/null | grep -q "serde"; then
@@ -606,9 +631,9 @@ else
 fi
 
 #=====================================
-# 12. DISK USAGE
+# 13. DISK USAGE
 #=====================================
-section "12. Disk Usage"
+section "13. Disk Usage"
 
 if [ -d "$HORUS_DIR" ]; then
     HORUS_SIZE=$(du -sh "$HORUS_DIR" 2>/dev/null | awk '{print $1}')
@@ -636,9 +661,9 @@ AVAILABLE=$(df -h "$HOME" 2>/dev/null | tail -1 | awk '{print $4}')
 info "Available disk space: $AVAILABLE"
 
 #=====================================
-# 13. BUILD VERIFICATION (if in repo)
+# 14. BUILD VERIFICATION (if in repo)
 #=====================================
-section "13. Build Verification"
+section "14. Build Verification"
 
 if [ -f "$SCRIPT_DIR/Cargo.toml" ] && grep -q "horus_manager" "$SCRIPT_DIR/Cargo.toml" 2>/dev/null; then
     info "Running in HORUS source repository"

@@ -256,7 +256,7 @@ obstacles:
 
 ### Custom Control Topic
 ```bash
-horus sim 2d --topic /my_robot/cmd_vel
+horus sim 2d --topic my_robot.cmd_vel
 ```
 
 ### Headless Mode (No GUI)
@@ -269,13 +269,13 @@ horus sim 2d --headless
 horus sim 2d \
   --robot configs/robot.yaml \
   --world configs/world.yaml \
-  --topic /robot/cmd_vel \
+  --topic robot.cmd_vel \
   --name my_robot
 ```
 
 ## Controlling the Robot
 
-The simulator listens for `CmdVel` messages on the control topic (default: `/robot/cmd_vel`).
+The simulator listens for `CmdVel` messages on the control topic (default: `robot.cmd_vel`).
 
 **From another terminal:**
 ```bash

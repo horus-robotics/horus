@@ -35,6 +35,9 @@ struct RegisteredNode {
     watchdog_timeout_ms: u64,    // Watchdog timeout in milliseconds
     last_watchdog_feed: Instant, // Last time watchdog was fed
     watchdog_expired: bool,      // Has watchdog expired?
+    // Pub/Sub tracking for dashboard
+    publishers: Vec<String>,    // Topics this node publishes to
+    subscribers: Vec<String>,   // Topics this node subscribes to
 }
 
 /// Python wrapper for HORUS Scheduler with per-node rate control
@@ -126,6 +129,16 @@ impl PyScheduler {
         // Extract node name
         let name: String = node.getattr(py, "name")?.extract(py)?;
 
+        // Extract publishers and subscribers from Python node
+        let publishers: Vec<String> = node
+            .getattr(py, "pub_topics")
+            .and_then(|attr| attr.extract(py))
+            .unwrap_or_default();
+        let subscribers: Vec<String> = node
+            .getattr(py, "sub_topics")
+            .and_then(|attr| attr.extract(py))
+            .unwrap_or_default();
+
         // Create NodeInfo context for this node
         let context = Arc::new(Mutex::new(CoreNodeInfo::new(name.clone(), logging_enabled)));
 
@@ -161,6 +174,9 @@ impl PyScheduler {
             watchdog_timeout_ms: self.watchdog_timeout_ms, // Use global default
             last_watchdog_feed: Instant::now(),
             watchdog_expired: false,
+            // Pub/Sub tracking
+            publishers,
+            subscribers,
         });
 
         println!(
@@ -1639,9 +1655,25 @@ impl PyScheduler {
                     let name = &registered.name;
                     let priority = registered.priority;
 
+                    // Format publishers array
+                    let pubs_json: Vec<String> = registered
+                        .publishers
+                        .iter()
+                        .map(|t| format!("\"{}\"", t))
+                        .collect();
+                    let pubs_str = pubs_json.join(", ");
+
+                    // Format subscribers array
+                    let subs_json: Vec<String> = registered
+                        .subscribers
+                        .iter()
+                        .map(|t| format!("\"{}\"", t))
+                        .collect();
+                    let subs_str = subs_json.join(", ");
+
                     format!(
-                        "    {{\"name\": \"{}\", \"priority\": {}, \"publishers\": [], \"subscribers\": []}}",
-                        name, priority
+                        "    {{\"name\": \"{}\", \"priority\": {}, \"publishers\": [{}], \"subscribers\": [{}]}}",
+                        name, priority, pubs_str, subs_str
                     )
                 })
                 .collect();
@@ -1701,9 +1733,25 @@ impl PyScheduler {
                             )
                         };
 
+                    // Format publishers array
+                    let pubs_json: Vec<String> = registered
+                        .publishers
+                        .iter()
+                        .map(|t| format!("\"{}\"", t))
+                        .collect();
+                    let pubs_str = pubs_json.join(", ");
+
+                    // Format subscribers array
+                    let subs_json: Vec<String> = registered
+                        .subscribers
+                        .iter()
+                        .map(|t| format!("\"{}\"", t))
+                        .collect();
+                    let subs_str = subs_json.join(", ");
+
                     format!(
-                        "    {{\"name\": \"{}\", \"priority\": {}, \"state\": \"{}\", \"health\": \"{}\", \"error_count\": {}, \"tick_count\": {}, \"publishers\": [], \"subscribers\": []}}",
-                        name, priority, state_str, health_str, error_count, tick_count
+                        "    {{\"name\": \"{}\", \"priority\": {}, \"state\": \"{}\", \"health\": \"{}\", \"error_count\": {}, \"tick_count\": {}, \"publishers\": [{}], \"subscribers\": [{}]}}",
+                        name, priority, state_str, health_str, error_count, tick_count, pubs_str, subs_str
                     )
                 })
                 .collect();

@@ -68,6 +68,15 @@ hub.send(TwistCommand {
 }, None)?;
 ```
 
+## Graceful Shutdown
+
+DifferentialDriveNode automatically stops the robot when your application receives Ctrl+C (SIGINT/SIGTERM):
+
+- Zero velocity command published (linear=0, angular=0)
+- Robot coasts to a stop
+
+This ensures your mobile robot stops moving when shutting down.
+
 ## See Also
 
 - [OdometryNode](./odometry) - Position tracking

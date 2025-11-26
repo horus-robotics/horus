@@ -308,6 +308,25 @@ impl Node for ImuNode {
         "ImuNode"
     }
 
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info("ImuNode shutting down - releasing IMU resources");
+
+        // Release hardware IMU resources
+        #[cfg(feature = "mpu6050-imu")]
+        {
+            self.mpu6050 = None;
+        }
+
+        #[cfg(feature = "bno055-imu")]
+        {
+            self.bno055 = None;
+        }
+
+        self.is_initialized = false;
+        ctx.log_info("IMU resources released safely");
+        Ok(())
+    }
+
     fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
         // Initialize IMU on first tick
         if !self.is_initialized && !self.initialize_imu() {

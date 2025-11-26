@@ -5,8 +5,8 @@ import { Analytics } from "@vercel/analytics/react";
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://docs.horus-registry.dev'),
-  title: "HORUS: Learn Robot Programming - Fastest Framework for Beginners | Rust, Python, C++",
-  description: "Learn to build real robots with HORUS - the easiest and fastest robotics framework. 5-minute setup, supports Python, Rust, C++. Build autonomous robots, drones, humanoids. 500x faster than ROS2. Free tutorials for beginners. Start your first robot today.",
+  title: "HORUS: Learn Robot Programming - Fastest Framework for Beginners | Rust, Python",
+  description: "Learn to build real robots with HORUS - the easiest and fastest robotics framework. 5-minute setup, supports Python and Rust. Build autonomous robots, drones, humanoids. 500x faster than ROS2. Free tutorials for beginners. Start your first robot today.",
   keywords: [
     // BEGINNER/DISCOVERY KEYWORDS (capture people early!)
     'how to program a robot',
@@ -54,7 +54,7 @@ export const metadata: Metadata = {
     // Language + framework combinations (high intent)
     'rust robotics framework',
     'python robotics framework',
-    'c++ robotics framework',
+    'fast robotics framework',
     'rust robot library',
     'rust real-time robotics',
     'rust embedded robotics',
@@ -132,7 +132,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "HORUS: 500x Faster Than ROS2 - Real-Time Robotics Framework",
-    description: "Build production robots with 248ns latency. Zero-copy messaging, multi-language (Rust/Python/C++), open source. Modern ROS alternative for autonomous robots, humanoids, drones. Start building in 5 minutes.",
+    description: "Build production robots with 248ns latency. Zero-copy messaging, multi-language (Rust/Python), open source. Modern ROS alternative for autonomous robots, humanoids, drones. Start building in 5 minutes.",
     url: "https://docs.horus-registry.dev",
     siteName: "HORUS Robotics",
     images: [
@@ -149,7 +149,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: "HORUS: 500x Faster Robotics Framework",
-    description: "Build real-time robots with 248ns latency. ROS alternative with Rust, Python, C++. Zero-copy, production-ready, open source. Start in 5 min.",
+    description: "Build real-time robots with 248ns latency. ROS alternative with Rust and Python. Zero-copy, production-ready, open source. Start in 5 min.",
     images: ['https://docs.horus-registry.dev/og-image.png'],
     creator: '@horus_robotics',
   },
@@ -191,14 +191,14 @@ export default function RootLayout({
     applicationCategory: ['DeveloperApplication', 'SoftwareLibrary'],
     applicationSubCategory: 'Real-Time Robotics Framework',
     operatingSystem: ['Linux', 'macOS', 'Windows'],
-    description: 'HORUS is the fastest open-source robotics framework with 248ns IPC latency - 500x faster than ROS2. Build production autonomous robots, humanoids, and drones with zero-copy messaging, multi-language support (Rust, Python, C++), and deterministic real-time control. Modern alternative to ROS/ROS2 for AI robotics startups and research labs.',
+    description: 'HORUS is the fastest open-source robotics framework with 248ns IPC latency - 500x faster than ROS2. Build production autonomous robots, humanoids, and drones with zero-copy messaging, multi-language support (Rust, Python), and deterministic real-time control. Modern alternative to ROS/ROS2 for AI robotics startups and research labs.',
     softwareVersion: '0.1.3',
     url: 'https://docs.horus-registry.dev',
     downloadUrl: 'https://github.com/softmata/HORUS',
     installUrl: 'https://docs.horus-registry.dev/docs/installation',
     softwareHelp: 'https://docs.horus-registry.dev/docs',
     keywords: 'fastest robotics framework, 500x faster than ROS2, sub-microsecond robotics, 248ns latency, zero-copy messaging, rust robotics, python robotics, autonomous robot, humanoid robot, drone control, ROS alternative, real-time control, production robotics, AI robotics, embodied AI, robot startup, robotics research',
-    programmingLanguage: ['Rust', 'Python', 'C++'],
+    programmingLanguage: ['Rust', 'Python'],
     license: 'https://opensource.org/licenses/Apache-2.0',
     creator: {
       '@type': 'Organization',
@@ -217,7 +217,7 @@ export default function RootLayout({
       '248-437ns IPC latency (500x faster than ROS2)',
       'Zero-copy shared memory architecture',
       'Deterministic real-time control',
-      'Multi-language: Rust, Python, C++ support',
+      'Multi-language: Rust and Python support',
       'Production-ready reliability and stability',
       'Native hardware integration',
       'High-speed sensor data processing',

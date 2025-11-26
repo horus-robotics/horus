@@ -56,7 +56,7 @@ robots:
     velocity: [0.0, 0.0]
     config:
       name: "car"
-      topic_prefix: "/car"
+      topic_prefix: "car"
       position: [5.0, 10.0]
       width: 0.9
       length: 1.8

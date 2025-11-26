@@ -498,43 +498,193 @@ fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
 
 For slow operations, use async tasks or separate threads initialized in `init()`.
 
-### Initialize in init()
+### What to Include in init()
 
-Pre-allocate resources during initialization:
+The `init()` method runs **once** when your node starts. Use it to set up everything your node needs before `tick()` begins.
+
+**Always include in init():**
+
+| Category | Examples | Why |
+|----------|----------|-----|
+| **Hardware connections** | Serial ports, I2C/SPI devices, GPIO pins | Must be opened before use |
+| **Network connections** | TCP/UDP sockets, WebSocket clients | Establish before tick loop |
+| **File handles** | Config files, log files, data files | Open once, use in tick |
+| **Pre-allocated buffers** | Image buffers, point cloud arrays | Avoid allocation in tick |
+| **Calibration/setup** | Sensor calibration, motor homing | One-time setup operations |
+| **Initial state** | Reset counters, clear flags | Start from known state |
 
 ```rust
 fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
-    // Pre-allocate buffer
-    self.buffer = vec![0.0; 1000];
+    ctx.log_info("Initializing MyMotorNode");
 
-    // Open connections
-    self.connection = connect_to_device()?;
+    // 1. Open hardware connections
+    self.serial_port = serialport::new("/dev/ttyUSB0", 115200)
+        .open()
+        .map_err(|e| format!("Failed to open serial: {}", e))?;
 
+    // 2. Pre-allocate buffers (avoid allocation in tick)
+    self.command_buffer = vec![0u8; 256];
+
+    // 3. Initialize hardware state
+    self.send_init_sequence()?;
+
+    // 4. Set initial values
+    self.velocity = 0.0;
+    self.is_armed = false;
+
+    ctx.log_info("MyMotorNode initialized successfully");
     Ok(())
-}
-
-fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
-    // Use pre-allocated resources
-    self.buffer[0] = 42.0;
 }
 ```
 
-### Clean up in shutdown()
+### What to Include in shutdown()
 
-Release resources gracefully:
+The `shutdown()` method runs **once** when your application exits (Ctrl+C, SIGINT, SIGTERM). Use it to safely stop hardware and release resources.
+
+**Always include in shutdown():**
+
+| Category | Examples | Why |
+|----------|----------|-----|
+| **Stop actuators** | Motors, servos, pumps, valves | **CRITICAL SAFETY** - prevent runaway |
+| **Disable hardware** | Disable motor drivers, turn off outputs | Safe state for power-off |
+| **Close connections** | Serial ports, network sockets | Release system resources |
+| **Release GPIO** | Unexport pins, set to input mode | Allow other processes to use |
+| **Save state** | Log final position, save calibration | Preserve data for next run |
+| **Flush buffers** | Write pending data to disk | Prevent data loss |
 
 ```rust
 fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
-    // Close connections
-    self.connection.close();
+    ctx.log_info("MyMotorNode shutting down");
 
-    // Save state
-    self.save_state_to_file()?;
+    // 1. CRITICAL: Stop all actuators FIRST
+    self.velocity = 0.0;
+    self.send_stop_command();
 
-    ctx.log_info("Cleanup complete");
+    // 2. Disable hardware (safe state)
+    self.disable_motor_driver();
+
+    // 3. Close hardware connections
+    if let Some(port) = self.serial_port.take() {
+        drop(port);  // Closes the port
+    }
+
+    // 4. Save any important state
+    self.save_position_to_file()?;
+
+    ctx.log_info("MyMotorNode shutdown complete");
     Ok(())
 }
 ```
+
+### Complete Custom Node Example
+
+Here's a complete example showing proper `init()` and `shutdown()` implementation:
+
+```rust
+use horus::prelude::*;
+
+struct MyMotorController {
+    // Hardware
+    serial_port: Option<Box<dyn serialport::SerialPort>>,
+
+    // Communication
+    cmd_sub: Hub<MotorCommand>,
+    status_pub: Hub<MotorStatus>,
+
+    // State
+    velocity: f64,
+    position: i32,
+    is_enabled: bool,
+}
+
+impl MyMotorController {
+    fn new() -> Result<Self> {
+        Ok(Self {
+            serial_port: None,
+            cmd_sub: Hub::new("motor/cmd")?,
+            status_pub: Hub::new("motor/status")?,
+            velocity: 0.0,
+            position: 0,
+            is_enabled: false,
+        })
+    }
+
+    fn send_velocity(&mut self, vel: f64) {
+        if let Some(ref mut port) = self.serial_port {
+            let cmd = format!("V{}\n", vel);
+            let _ = port.write(cmd.as_bytes());
+        }
+    }
+}
+
+impl Node for MyMotorController {
+    fn name(&self) -> &'static str { "MyMotorController" }
+
+    fn init(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info("Opening serial connection to motor controller");
+
+        // Open hardware connection
+        self.serial_port = Some(
+            serialport::new("/dev/ttyUSB0", 115200)
+                .timeout(std::time::Duration::from_millis(100))
+                .open()
+                .map_err(|e| format!("Serial open failed: {}", e))?
+        );
+
+        // Initialize motor to stopped state
+        self.send_velocity(0.0);
+        self.is_enabled = true;
+
+        ctx.log_info("Motor controller ready");
+        Ok(())
+    }
+
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+        // Process commands
+        if let Some(cmd) = self.cmd_sub.recv(&mut ctx) {
+            self.velocity = cmd.velocity;
+            self.send_velocity(self.velocity);
+        }
+
+        // Publish status
+        let status = MotorStatus {
+            velocity: self.velocity,
+            position: self.position,
+        };
+        self.status_pub.send(status, &mut ctx).ok();
+    }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info("Stopping motor for safe shutdown");
+
+        // CRITICAL: Stop motor first!
+        self.velocity = 0.0;
+        self.send_velocity(0.0);
+
+        // Close serial port
+        self.serial_port = None;
+        self.is_enabled = false;
+
+        ctx.log_info("Motor stopped safely");
+        Ok(())
+    }
+}
+```
+
+### When init() and shutdown() Are NOT Optional
+
+While the default implementations are no-ops, you **should** implement them when:
+
+| Scenario | init() Required | shutdown() Required |
+|----------|-----------------|---------------------|
+| Controls motors/actuators | Setup | **YES - SAFETY CRITICAL** |
+| Opens serial/I2C/SPI ports | **YES** | **YES** |
+| Uses GPIO pins | **YES** | **YES** |
+| Opens network connections | **YES** | Recommended |
+| Allocates large buffers | **YES** | No |
+| Reads config files | **YES** | No |
+| Writes log/data files | Optional | **YES** (flush) |
+| Pure computation node | No | No |
 
 ### Use Result Types
 
@@ -699,6 +849,161 @@ impl Node for Synchronizer {
             self.process(a, b);
         }
     }
+}
+```
+
+## Graceful Shutdown & Motor Safety
+
+When a HORUS application receives a termination signal (Ctrl+C, SIGINT, SIGTERM), the scheduler automatically calls `shutdown()` on all registered nodes. This is critical for robotics safety.
+
+### Signal Handling
+
+The scheduler intercepts termination signals and ensures proper cleanup:
+
+```
+User presses Ctrl+C
+        │
+        ▼
+Signal Handler (SIGINT/SIGTERM)
+        │
+        ▼
+scheduler.running = false
+        │
+        ▼
+Break out of tick loop
+        │
+        ▼
+For each node (in priority order):
+    node.shutdown(&mut ctx)
+        │
+        ▼
+Application exits cleanly
+```
+
+### Why shutdown() Matters for Motors
+
+**Without shutdown()**: If you stop your robot with Ctrl+C while motors are running, they continue at their last commanded velocity - potentially dangerous for autonomous vehicles!
+
+**With shutdown()**: Motors receive stop commands before the application exits:
+
+```rust
+fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+    ctx.log_info("Stopping all motors for safe shutdown");
+
+    // Send stop command to all motors
+    self.emergency_stop();
+
+    // Optionally: disable motor drivers
+    self.disable_all_drivers();
+
+    ctx.log_info("Motors stopped safely");
+    Ok(())
+}
+```
+
+### Built-in Node Shutdown Behavior
+
+All HORUS motor and actuator nodes implement `shutdown()` for safety:
+
+| Node | Shutdown Action |
+|------|----------------|
+| **DcMotorNode** | Calls `emergency_stop()` - sets all motors to 0 |
+| **BldcMotorNode** | Stops all ESCs, sets velocities to 0 |
+| **StepperMotorNode** | Emergency stop, disables enable pins |
+| **ServoControllerNode** | Calls `stop_all()` on all servos |
+| **DynamixelNode** | Disables torque on all servos |
+| **RoboclawMotorNode** | Stops both motors, sends serial stop commands |
+| **DifferentialDriveNode** | Publishes zero velocity command |
+| **PidControllerNode** | Resets PID, sends zero output |
+| **DigitalIONode** | Sets all outputs to LOW |
+
+### Sensor and Bus Nodes
+
+Sensor and communication nodes also implement `shutdown()` to release resources:
+
+| Node | Shutdown Action |
+|------|----------------|
+| **CameraNode** | Releases OpenCV capture device |
+| **LidarNode** | Stops LiDAR scanning |
+| **GpsNode** | Closes serial connection |
+| **CanBusNode** | Closes CAN interface |
+| **I2cBusNode** | Releases I2C devices |
+| **SpiBusNode** | Releases SPI devices |
+| **KeyboardInputNode** | Restores terminal mode |
+
+### Implementing shutdown() in Custom Nodes
+
+Always implement `shutdown()` for nodes that control actuators:
+
+```rust
+impl Node for MyMotorController {
+    fn name(&self) -> &'static str { "MyMotorController" }
+
+    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+        // Normal operation - motors running
+        self.motor_pub.send(self.velocity, &mut ctx).ok();
+    }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info("MyMotorController shutting down");
+
+        // CRITICAL: Stop all motors
+        self.velocity = 0.0;
+        self.motor_pub.send(0.0, &mut None).ok();
+
+        // Close hardware connections
+        if let Some(port) = self.serial_port.take() {
+            port.close();
+        }
+
+        ctx.log_info("All motors stopped safely");
+        Ok(())
+    }
+}
+```
+
+### Testing Shutdown Behavior
+
+Test your shutdown implementation before deploying:
+
+```bash
+# Start your application
+horus run
+
+# In another terminal, send SIGINT
+kill -SIGINT <pid>
+
+# Or simply press Ctrl+C in the application terminal
+```
+
+Verify in logs:
+```
+[12:34:56.789] [INFO] MyMotorController shutting down
+[12:34:56.790] [INFO] All motors stopped safely
+```
+
+### Best Practices for Shutdown
+
+1. **Always stop actuators first** - Motors, servos, and other actuators should receive stop commands
+2. **Close hardware connections** - Serial ports, I2C, SPI, CAN bus connections
+3. **Release system resources** - GPIO pins, file handles, network sockets
+4. **Log shutdown progress** - Helps debug shutdown issues
+5. **Don't panic in shutdown** - Handle errors gracefully, continue cleanup
+
+```rust
+fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+    // Always try to stop motors, even if other cleanup fails
+    if let Err(e) = self.stop_motors() {
+        ctx.log_error(&format!("Failed to stop motors: {}", e));
+        // Continue with other cleanup anyway
+    }
+
+    // Close connections (non-critical)
+    if let Err(e) = self.close_connection() {
+        ctx.log_warning(&format!("Failed to close connection: {}", e));
+    }
+
+    Ok(())
 }
 ```
 

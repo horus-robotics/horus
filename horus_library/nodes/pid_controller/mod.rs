@@ -137,6 +137,17 @@ impl Node for PidControllerNode {
         "PidControllerNode"
     }
 
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info("PidControllerNode shutting down - sending zero output");
+
+        // Reset PID state and send zero output to motor
+        self.reset();
+        self.publish_output(0.0);
+
+        ctx.log_info("PID controller stopped with zero output");
+        Ok(())
+    }
+
     fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
         let current_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)

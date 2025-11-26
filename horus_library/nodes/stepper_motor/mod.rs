@@ -809,6 +809,26 @@ impl Node for StepperMotorNode {
         "StepperMotorNode"
     }
 
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info("StepperMotorNode shutting down - stopping all stepper motors");
+
+        // Emergency stop all motors
+        self.emergency_stop();
+
+        // Disable hardware GPIO pins (set enable pins high = disabled for active-low drivers)
+        #[cfg(feature = "gpio-hardware")]
+        for motor_id in 0..self.num_motors {
+            let idx = motor_id as usize;
+            if let Some(ref enable_pin) = self.enable_pins[idx] {
+                // Set enable high (disabled for active-low drivers)
+                let _ = enable_pin.set_value(1);
+            }
+        }
+
+        ctx.log_info("All stepper motors stopped and disabled safely");
+        Ok(())
+    }
+
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         let current_time = SystemTime::now()
             .duration_since(UNIX_EPOCH)

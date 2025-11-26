@@ -287,9 +287,6 @@ fn run_visual_mode(cli: Cli) {
         systems::tf_update::tf_update_system.in_set(SimSystemSet::TF),
     );
 
-    // Debug system to check mesh components
-    app.add_systems(Update, systems::sync_visual::debug_mesh_components_system);
-
     #[cfg(feature = "visual")]
     {
         // UI plugins

@@ -526,6 +526,16 @@ Available at: `www.basicmicro.com`
 3. Verify motor rating matches controller
 4. Check for mechanical resistance
 
+## Graceful Shutdown
+
+RoboclawMotorNode automatically stops both motors when your application receives Ctrl+C (SIGINT/SIGTERM):
+
+- Both motor velocities set to 0
+- Hardware stop commands sent via serial (duty cycle 0)
+- Motors coast to stop
+
+This ensures your mobile robot stops safely when shutting down.
+
 ## See Also
 
 - [DcMotorNode](./dc-motor) - Basic DC motor control

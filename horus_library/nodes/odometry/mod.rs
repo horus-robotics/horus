@@ -91,8 +91,8 @@ impl OdometryNode {
     /// Create odometry node for differential drive robot
     pub fn new_differential_drive(wheel_base: f64, wheel_radius: f64) -> Result<Self> {
         Ok(Self {
-            encoder_left_sub: Hub::new("encoder/left")?,
-            encoder_right_sub: Hub::new("encoder/right")?,
+            encoder_left_sub: Hub::new("encoder.left")?,
+            encoder_right_sub: Hub::new("encoder.right")?,
             velocity_sub: Hub::new("cmd_vel")?,
             odom_publisher: Hub::new("odom")?,
             kinematic_model: KinematicModel::DifferentialDrive,

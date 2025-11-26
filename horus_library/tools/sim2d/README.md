@@ -62,7 +62,7 @@ horus sim --2d \
   --world-image map.png \
   --resolution 0.05 \
   --robot configs/robot.yaml \
-  --topic /my_robot/cmd_vel \
+  --topic my_robot.cmd_vel \
   --headless
 ```
 
@@ -136,8 +136,8 @@ horus run circle_driver.rs
 - Window resolution: 1200×900
 
 **HORUS Integration:**
-- Subscribes to: `cmd_vel` (velocity commands), `/sim2d/obstacle_cmd` (dynamic obstacles)
-- Publishes: `/robot/odom` (odometry), `/robot/imu` (IMU), `/robot/scan` (LiDAR)
+- Subscribes to: `cmd_vel` (velocity commands), `sim2d.obstacle_cmd` (dynamic obstacles)
+- Publishes: `robot.odom` (odometry), `robot.imu` (IMU), `robot.scan` (LiDAR)
 - Direct shared memory communication (85-167ns latency)
 - No ROS dependency
 
@@ -227,7 +227,7 @@ python3 dynamic_obstacles.py interactive # Manual control
 from horus import Hub
 
 # Connect to obstacle command topic
-hub = Hub("/sim2d/obstacle_cmd")
+hub = Hub("sim2d.obstacle_cmd")
 
 # Add rectangular obstacle
 hub.send({
@@ -272,36 +272,36 @@ sim2d publishes sensor data on HORUS topics - ready for your navigation algorith
 
 ### Available Sensors
 
-**LiDAR (`/robot/scan`)**
+**LiDAR (`robot.scan`)**
 ```rust
 // Subscribe to laser scan data
 use horus_library::messages::laser_scan::LaserScan;
 
-let mut scan_sub: Hub<LaserScan> = Hub::new("/robot/scan")?;
+let mut scan_sub: Hub<LaserScan> = Hub::new("robot.scan")?;
 if let Some(scan) = scan_sub.recv(None)? {
     println!("Got {} ranges, min angle: {}, max angle: {}",
         scan.ranges.len(), scan.angle_min, scan.angle_max);
 }
 ```
 
-**IMU (`/robot/imu`)**
+**IMU (`robot.imu`)**
 ```rust
 // Subscribe to IMU data
 use horus_library::messages::imu::Imu;
 
-let mut imu_sub: Hub<Imu> = Hub::new("/robot/imu")?;
+let mut imu_sub: Hub<Imu> = Hub::new("robot.imu")?;
 if let Some(imu) = imu_sub.recv(None)? {
     println!("Linear accel: {:?}", imu.linear_acceleration);
     println!("Angular vel: {:?}", imu.angular_velocity);
 }
 ```
 
-**Odometry (`/robot/odom`)**
+**Odometry (`robot.odom`)**
 ```rust
 // Subscribe to odometry (ground truth)
 use horus_library::messages::odometry::Odometry;
 
-let mut odom_sub: Hub<Odometry> = Hub::new("/robot/odom")?;
+let mut odom_sub: Hub<Odometry> = Hub::new("robot.odom")?;
 if let Some(odom) = odom_sub.recv(None)? {
     println!("Position: ({}, {})", odom.pose.position.x, odom.pose.position.y);
     println!("Orientation: {}", odom.pose.orientation.z);
@@ -411,7 +411,7 @@ Options:
                           Default: 128
 
   --topic <NAME>          HORUS topic for velocity commands
-                          Default: /robot/cmd_vel
+                          Default: robot.cmd_vel
 
   --name <NAME>           Robot name for logging
                           Default: robot
@@ -577,9 +577,9 @@ sim2d renders **simple 2D shapes**, not detailed 3D models:
 - ✅ Real-time visualization with Bevy
 - ✅ **LiDAR sensor** - 720-beam laser scanner with configurable FOV
 - ✅ **IMU sensor** - Linear/angular acceleration with noise
-- ✅ **Odometry publishing** - Ground-truth pose on `/robot/odom`
+- ✅ **Odometry publishing** - Ground-truth pose on `robot.odom`
 - ✅ **Headless mode** - For CI/CD and server deployments (1000+ Hz)
-- ✅ **Dynamic obstacle spawning** - Add/remove obstacles at runtime via `/sim2d/obstacle_cmd`
+- ✅ **Dynamic obstacle spawning** - Add/remove obstacles at runtime via `sim2d.obstacle_cmd`
 - ✅ Image-based world loading (PNG/JPG/PGM, perfect for ROS maps)
 
 **In Progress:**

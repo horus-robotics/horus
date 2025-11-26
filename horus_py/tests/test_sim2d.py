@@ -15,7 +15,7 @@ def test_create_sim2d():
 
     sim = Sim2D(
         robot_name="test_robot",
-        topic_prefix="/test",
+        topic_prefix="test",
         headless=True,
         robot_width=0.5,
         robot_length=0.8,
@@ -26,7 +26,7 @@ def test_create_sim2d():
 
     assert sim is not None
     assert "test_robot" in str(sim)
-    assert "/test" in str(sim)
+    assert "test" in str(sim)
 
 
 def test_sim2d_add_obstacle():
@@ -76,7 +76,7 @@ def test_sim2d_get_robot_config():
 
     sim = Sim2D(
         robot_name="my_robot",
-        topic_prefix="/my_robot",
+        topic_prefix="my_robot",
         headless=True,
         robot_width=0.6,
         robot_length=0.9,
@@ -85,7 +85,7 @@ def test_sim2d_get_robot_config():
 
     config = sim.get_robot_config()
     assert config.name == "my_robot"
-    assert config.topic_prefix == "/my_robot"
+    assert config.topic_prefix == "my_robot"
     assert config.width == pytest.approx(0.6, rel=1e-5)
     assert config.length == pytest.approx(0.9, rel=1e-5)
     assert config.max_speed == pytest.approx(3.0, rel=1e-5)

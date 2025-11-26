@@ -42,10 +42,6 @@ horus new my_robot --rust
 horus new my_robot -p
 horus new my_robot --python
 
-# Create C project
-horus new my_robot -c
-horus new my_robot --c
-
 # Create Rust project with macros
 horus new my_robot -m
 horus new my_robot --macro
@@ -58,7 +54,6 @@ horus new my_robot --output /path/to/dir
 **Flags:**
 - `-r, --rust` - Create Rust project
 - `-p, --python` - Create Python project
-- `-c, --c` - Create C project
 - `-m, --macro` - Create Rust project with node! macro
 - `-o, --output <PATH>` - Output directory
 
@@ -73,7 +68,6 @@ horus run
 # Run specific file
 horus run main.rs
 horus run main.py
-horus run main.c
 
 # Build in release mode
 horus run --release
@@ -401,14 +395,12 @@ All commands follow consistent patterns:
 `horus run` automatically detects:
 - Rust projects (Cargo.toml)
 - Python files (.py)
-- C files (.c)
 - Current working directory context
 
 ### Build System Integration
 
 - Rust: Uses `cargo build` and `cargo run`
 - Python: Direct execution with `python3`
-- C: Compiles with gcc/clang and executes
 
 ## Troubleshooting
 

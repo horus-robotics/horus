@@ -41,8 +41,8 @@ impl CameraNode {
 
     /// Create a new camera node with custom topic prefix
     pub fn new_with_topic(topic_prefix: &str) -> Result<Self> {
-        let image_topic = format!("{}/image", topic_prefix);
-        let info_topic = format!("{}/camera_info", topic_prefix);
+        let image_topic = format!("{}.image", topic_prefix);
+        let info_topic = format!("{}.camera_info", topic_prefix);
 
         Ok(Self {
             publisher: Hub::new(&image_topic)?,
@@ -253,6 +253,20 @@ impl CameraNode {
 impl Node for CameraNode {
     fn name(&self) -> &'static str {
         "CameraNode"
+    }
+
+    fn shutdown(&mut self, ctx: &mut NodeInfo) -> Result<()> {
+        ctx.log_info("CameraNode shutting down - releasing camera resources");
+
+        // Release OpenCV capture device
+        #[cfg(feature = "opencv-backend")]
+        {
+            self.capture = None;
+        }
+
+        self.is_initialized = false;
+        ctx.log_info("Camera resources released safely");
+        Ok(())
     }
 
     fn tick(&mut self, _ctx: Option<&mut NodeInfo>) {
