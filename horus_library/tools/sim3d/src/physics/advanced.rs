@@ -499,7 +499,11 @@ impl AnisotropicFrictionComponent {
 
     /// Get friction coefficient in a world-space direction given local-to-world transform
     #[allow(dead_code)]
-    pub fn coefficient_in_direction(&self, world_direction: Vec3, local_to_world: &Transform) -> f32 {
+    pub fn coefficient_in_direction(
+        &self,
+        world_direction: Vec3,
+        local_to_world: &Transform,
+    ) -> f32 {
         if !self.enabled {
             return (self.primary_coefficient + self.secondary_coefficient) / 2.0;
         }
@@ -1461,8 +1465,7 @@ pub fn update_breakable_joints_system(
                 // Estimate joint force from relative motion
                 let vel1 = rb1.linvel();
                 let vel2 = rb2.linvel();
-                let relative_vel =
-                    Vec3::new(vel2.x - vel1.x, vel2.y - vel1.y, vel2.z - vel1.z);
+                let relative_vel = Vec3::new(vel2.x - vel1.x, vel2.y - vel1.y, vel2.z - vel1.z);
 
                 let angvel1 = rb1.angvel();
                 let angvel2 = rb2.angvel();
@@ -1544,12 +1547,8 @@ pub fn apply_spring_damper_system(
                 let rotation_a = transform_a.to_scale_rotation_translation().1;
                 let rotation_b = transform_b.to_scale_rotation_translation().1;
 
-                let torque = spring.calculate_angular_torque(
-                    rotation_a,
-                    rotation_b,
-                    Vec3::ZERO,
-                    Vec3::ZERO,
-                );
+                let torque =
+                    spring.calculate_angular_torque(rotation_a, rotation_b, Vec3::ZERO, Vec3::ZERO);
 
                 let _ = torque; // Torque calculated but application depends on physics integration
             }
@@ -1564,12 +1563,8 @@ pub fn apply_spring_damper_system(
                 let rotation_a = transform_a.to_scale_rotation_translation().1;
                 let rotation_b = transform_b.to_scale_rotation_translation().1;
 
-                let torque = spring.calculate_angular_torque(
-                    rotation_a,
-                    rotation_b,
-                    Vec3::ZERO,
-                    Vec3::ZERO,
-                );
+                let torque =
+                    spring.calculate_angular_torque(rotation_a, rotation_b, Vec3::ZERO, Vec3::ZERO);
 
                 let _ = (force, torque);
             }
@@ -1831,9 +1826,7 @@ mod tests {
         pairs.set_friction(1, 2, rubber_concrete.clone());
 
         let retrieved = pairs.get_friction(1, 2);
-        assert!(
-            (retrieved.static_coefficient - rubber_concrete.static_coefficient).abs() < 0.001
-        );
+        assert!((retrieved.static_coefficient - rubber_concrete.static_coefficient).abs() < 0.001);
 
         // Should work with reversed order too
         let retrieved_reversed = pairs.get_friction(2, 1);
@@ -2070,8 +2063,7 @@ mod tests {
 
     #[test]
     fn test_spring_damper_angular() {
-        let spring =
-            SpringDamperConstraint::angular(100.0, 10.0, std::f32::consts::FRAC_PI_2);
+        let spring = SpringDamperConstraint::angular(100.0, 10.0, std::f32::consts::FRAC_PI_2);
         assert_eq!(spring.spring_type, SpringType::Angular);
         assert!((spring.rest_angle - std::f32::consts::FRAC_PI_2).abs() < 0.001);
     }
@@ -2158,8 +2150,7 @@ mod tests {
 
     #[test]
     fn test_spring_max_force_clamping() {
-        let spring =
-            SpringDamperConstraint::linear(1000.0, 100.0, 1.0).with_max_force(500.0);
+        let spring = SpringDamperConstraint::linear(1000.0, 100.0, 1.0).with_max_force(500.0);
 
         let anchor_a = Vec3::ZERO;
         let anchor_b = Vec3::new(2.0, 0.0, 0.0); // Would produce 1000N without clamping
@@ -2207,12 +2198,8 @@ mod tests {
 
     #[test]
     fn test_create_breakable_fixed_joint() {
-        let (_joint, max_force, max_torque) = create_breakable_fixed_joint(
-            Vec3::ZERO,
-            Vec3::new(0.0, 1.0, 0.0),
-            2000.0,
-            1000.0,
-        );
+        let (_joint, max_force, max_torque) =
+            create_breakable_fixed_joint(Vec3::ZERO, Vec3::new(0.0, 1.0, 0.0), 2000.0, 1000.0);
 
         assert!((max_force - 2000.0).abs() < 0.001);
         assert!((max_torque - 1000.0).abs() < 0.001);

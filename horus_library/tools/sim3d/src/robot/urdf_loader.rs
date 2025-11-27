@@ -8,6 +8,7 @@ use urdf_rs::{Geometry, Joint, Link, Robot as URDFRobot, Visual};
 
 use crate::assets::mesh::{MeshLoadOptions, MeshLoader};
 use crate::assets::resolver::PathResolver;
+use crate::hframe::TFTree;
 use crate::physics::collider::{ColliderBuilder, ColliderShape};
 use crate::physics::joints::{
     create_fixed_joint, create_prismatic_joint, create_prismatic_joint_with_limits,
@@ -16,7 +17,6 @@ use crate::physics::joints::{
 };
 use crate::physics::world::PhysicsWorld;
 use crate::robot::robot::Robot;
-use crate::tf::tree::TFTree;
 
 pub struct URDFLoader {
     base_path: PathBuf,

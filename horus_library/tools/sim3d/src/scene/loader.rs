@@ -3,11 +3,11 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 use crate::error::{EnhancedError, ErrorCategory, Result};
+use crate::hframe::TFTree;
 use crate::physics::world::PhysicsWorld;
 use crate::robot::urdf_loader::URDFLoader;
 use crate::scene::spawner::{ObjectSpawnConfig, ObjectSpawner, SpawnShape, SpawnedObjects};
 use crate::scene::validation::SceneValidator;
-use crate::tf::TFTree;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SceneDefinition {
@@ -196,7 +196,8 @@ struct LegacyLight {
 impl LegacyWorldFile {
     /// Convert legacy format to standard SceneDefinition
     fn to_scene_definition(self) -> SceneDefinition {
-        let name = self.world
+        let name = self
+            .world
             .as_ref()
             .and_then(|w| w.name.clone())
             .unwrap_or_else(|| "Unnamed Scene".to_string());
@@ -218,13 +219,15 @@ impl LegacyWorldFile {
         // Convert lighting before moving other fields
         let lighting = self.convert_lighting();
 
-        let objects: Vec<SceneObject> = self.objects
+        let objects: Vec<SceneObject> = self
+            .objects
             .into_iter()
             .enumerate()
             .filter_map(|(i, obj)| obj.to_scene_object(i))
             .collect();
 
-        let robots: Vec<SceneRobot> = self.robots
+        let robots: Vec<SceneRobot> = self
+            .robots
             .into_iter()
             .filter_map(|r| r.to_scene_robot())
             .collect();
@@ -267,7 +270,10 @@ impl LegacyWorldFile {
             }
         }
 
-        Some(SceneLighting { ambient, directional })
+        Some(SceneLighting {
+            ambient,
+            directional,
+        })
     }
 }
 
@@ -296,7 +302,10 @@ impl LegacyObject {
             }
             "ground" | "plane" => {
                 let size = self.size.unwrap_or([20.0, 0.1, 20.0]);
-                SceneShape::Ground { size_x: size[0], size_z: size[2] }
+                SceneShape::Ground {
+                    size_x: size[0],
+                    size_z: size[2],
+                }
             }
             _ => {
                 warn!("Unknown object type '{}', defaulting to box", self.obj_type);
@@ -307,9 +316,17 @@ impl LegacyObject {
 
         let (color, friction, restitution) = if let Some(mat) = &self.material {
             let color = mat.color.as_ref().map(|c| {
-                if c.len() >= 3 { [c[0], c[1], c[2]] } else { [0.8, 0.8, 0.8] }
+                if c.len() >= 3 {
+                    [c[0], c[1], c[2]]
+                } else {
+                    [0.8, 0.8, 0.8]
+                }
             });
-            (color, mat.friction.unwrap_or(0.5), mat.restitution.unwrap_or(0.0))
+            (
+                color,
+                mat.friction.unwrap_or(0.5),
+                mat.restitution.unwrap_or(0.0),
+            )
         } else {
             (None, 0.5, 0.0)
         };
@@ -356,8 +373,8 @@ impl LegacyRobot {
 /// Try to parse as legacy format
 fn try_parse_legacy(content: &str) -> Option<SceneDefinition> {
     // Check if it looks like legacy format (has "world:" or objects with "type:" at top level)
-    if content.contains("world:") ||
-       (content.contains("objects:") && content.contains("  - type:")) {
+    if content.contains("world:") || (content.contains("objects:") && content.contains("  - type:"))
+    {
         match serde_yaml::from_str::<LegacyWorldFile>(content) {
             Ok(legacy) => {
                 info!("Detected legacy world format, converting...");

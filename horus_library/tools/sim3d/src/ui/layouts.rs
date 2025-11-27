@@ -96,18 +96,36 @@ impl Default for PanelAnchor {
 
 impl PanelAnchor {
     /// Convert anchor to screen position
-    pub fn to_position(&self, screen_width: f32, screen_height: f32, panel_width: f32, panel_height: f32) -> [f32; 2] {
+    pub fn to_position(
+        &self,
+        screen_width: f32,
+        screen_height: f32,
+        panel_width: f32,
+        panel_height: f32,
+    ) -> [f32; 2] {
         let margin = 10.0;
         match self {
             PanelAnchor::TopLeft => [margin, margin],
             PanelAnchor::TopRight => [screen_width - panel_width - margin, margin],
             PanelAnchor::BottomLeft => [margin, screen_height - panel_height - margin],
-            PanelAnchor::BottomRight => [screen_width - panel_width - margin, screen_height - panel_height - margin],
+            PanelAnchor::BottomRight => [
+                screen_width - panel_width - margin,
+                screen_height - panel_height - margin,
+            ],
             PanelAnchor::TopCenter => [(screen_width - panel_width) / 2.0, margin],
-            PanelAnchor::BottomCenter => [(screen_width - panel_width) / 2.0, screen_height - panel_height - margin],
+            PanelAnchor::BottomCenter => [
+                (screen_width - panel_width) / 2.0,
+                screen_height - panel_height - margin,
+            ],
             PanelAnchor::LeftCenter => [margin, (screen_height - panel_height) / 2.0],
-            PanelAnchor::RightCenter => [screen_width - panel_width - margin, (screen_height - panel_height) / 2.0],
-            PanelAnchor::Center => [(screen_width - panel_width) / 2.0, (screen_height - panel_height) / 2.0],
+            PanelAnchor::RightCenter => [
+                screen_width - panel_width - margin,
+                (screen_height - panel_height) / 2.0,
+            ],
+            PanelAnchor::Center => [
+                (screen_width - panel_width) / 2.0,
+                (screen_height - panel_height) / 2.0,
+            ],
         }
     }
 }
@@ -209,7 +227,9 @@ impl PanelConfig {
     pub fn get_position(&self, screen_width: f32, screen_height: f32) -> [f32; 2] {
         let panel_width = self.width.unwrap_or(280.0);
         let panel_height = self.height.unwrap_or(400.0);
-        let base_pos = self.anchor.to_position(screen_width, screen_height, panel_width, panel_height);
+        let base_pos =
+            self.anchor
+                .to_position(screen_width, screen_height, panel_width, panel_height);
         [
             base_pos[0] + self.position_offset[0],
             base_pos[1] + self.position_offset[1],
@@ -260,7 +280,12 @@ impl Default for ViewportMargins {
 
 impl ViewportMargins {
     pub fn new(left: f32, right: f32, top: f32, bottom: f32) -> Self {
-        Self { left, right, top, bottom }
+        Self {
+            left,
+            right,
+            top,
+            bottom,
+        }
     }
 
     /// Create uniform margins
@@ -619,7 +644,10 @@ impl LayoutManager {
     /// Cycle to the next preset
     pub fn next_preset(&mut self) {
         let presets = LayoutPreset::all();
-        let current_idx = presets.iter().position(|p| *p == self.current_preset).unwrap_or(0);
+        let current_idx = presets
+            .iter()
+            .position(|p| *p == self.current_preset)
+            .unwrap_or(0);
         let next_idx = (current_idx + 1) % presets.len();
         self.switch_to_preset(presets[next_idx]);
     }
@@ -627,8 +655,15 @@ impl LayoutManager {
     /// Cycle to the previous preset
     pub fn previous_preset(&mut self) {
         let presets = LayoutPreset::all();
-        let current_idx = presets.iter().position(|p| *p == self.current_preset).unwrap_or(0);
-        let prev_idx = if current_idx == 0 { presets.len() - 1 } else { current_idx - 1 };
+        let current_idx = presets
+            .iter()
+            .position(|p| *p == self.current_preset)
+            .unwrap_or(0);
+        let prev_idx = if current_idx == 0 {
+            presets.len() - 1
+        } else {
+            current_idx - 1
+        };
         self.switch_to_preset(presets[prev_idx]);
     }
 }
@@ -763,7 +798,11 @@ pub fn layout_panel_system(
             ui.heading("Custom Layouts");
 
             // List custom layouts
-            let custom_names: Vec<String> = manager.custom_layout_names().iter().map(|s| (*s).clone()).collect();
+            let custom_names: Vec<String> = manager
+                .custom_layout_names()
+                .iter()
+                .map(|s| (*s).clone())
+                .collect();
             for name in custom_names {
                 ui.horizontal(|ui| {
                     if ui.button(&name).clicked() {
@@ -824,14 +863,7 @@ impl Plugin for LayoutPlugin {
         app.init_resource::<LayoutManager>()
             .init_resource::<LayoutConfig>()
             .add_event::<LayoutEvent>()
-            .add_systems(
-                Update,
-                (
-                    layout_hotkey_system,
-                    handle_layout_events,
-                )
-                    .chain(),
-            );
+            .add_systems(Update, (layout_hotkey_system, handle_layout_events).chain());
 
         #[cfg(feature = "visual")]
         app.add_systems(Update, layout_panel_system);

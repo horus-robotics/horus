@@ -16,14 +16,14 @@ pub mod ycb_loader;
 
 // Re-export commonly used types
 pub use ycb_loader::{
-    YCBLoader, YCBObject, YCBObjectConfig, YCBSpawnOptions, SpawnedYCBObject,
-    YCBMeshObjectConfig, YCBPrimitiveConfig,
-    spawn_ycb_object_at, spawn_ycb_object_with_transform, create_ycb_clutter,
+    create_ycb_clutter, spawn_ycb_object_at, spawn_ycb_object_with_transform, SpawnedYCBObject,
+    YCBLoader, YCBMeshObjectConfig, YCBObject, YCBObjectConfig, YCBPrimitiveConfig,
+    YCBSpawnOptions,
 };
 
 // Re-export asset validation
 pub use asset_validator::{
-    AssetValidationReport, AssetType, validate_urdf, validate_robot_package,
+    validate_robot_package, validate_urdf, AssetType, AssetValidationReport,
 };
 
 // Re-export cache types

@@ -66,7 +66,11 @@ impl RecentFileType {
 
     /// Infers the file type from a path's extension
     pub fn from_path(path: &Path) -> Self {
-        match path.extension().and_then(|e| e.to_str()).map(|e| e.to_lowercase()) {
+        match path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.to_lowercase())
+        {
             Some(ext) => match ext.as_str() {
                 "scene" | "scn" => RecentFileType::Scene,
                 "urdf" => RecentFileType::Urdf,
@@ -75,7 +79,8 @@ impl RecentFileType {
                 "gltf" | "glb" | "obj" | "stl" | "dae" => RecentFileType::Model,
                 "json" => {
                     // Check if it's a scene JSON
-                    if path.file_name()
+                    if path
+                        .file_name()
                         .and_then(|n| n.to_str())
                         .map(|n| n.contains("scene"))
                         .unwrap_or(false)
@@ -470,7 +475,8 @@ impl RecentFilesManager {
         if config.show_pinned_first {
             files.sort_by(|a, b| {
                 // First sort by pinned (pinned first)
-                b.pinned.cmp(&a.pinned)
+                b.pinned
+                    .cmp(&a.pinned)
                     // Then by timestamp (most recent first)
                     .then(b.last_opened.cmp(&a.last_opened))
             });
@@ -568,7 +574,8 @@ impl RecentFilesManager {
 
         // Sort by pinned first, then by last_opened
         self.files.sort_by(|a, b| {
-            b.pinned.cmp(&a.pinned)
+            b.pinned
+                .cmp(&a.pinned)
                 .then(b.last_opened.cmp(&a.last_opened))
         });
 
@@ -581,8 +588,7 @@ impl RecentFilesManager {
     pub fn save(&mut self, path: &Path) -> Result<(), RecentFilesError> {
         // Ensure parent directory exists
         if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| RecentFilesError::IoError(e.to_string()))?;
+            fs::create_dir_all(parent).map_err(|e| RecentFilesError::IoError(e.to_string()))?;
         }
 
         let data = RecentFilesData {
@@ -593,8 +599,7 @@ impl RecentFilesManager {
         let json = serde_json::to_string_pretty(&data)
             .map_err(|e| RecentFilesError::SerializationError(e.to_string()))?;
 
-        fs::write(path, json)
-            .map_err(|e| RecentFilesError::IoError(e.to_string()))?;
+        fs::write(path, json).map_err(|e| RecentFilesError::IoError(e.to_string()))?;
 
         self.dirty = false;
         Ok(())
@@ -606,8 +611,8 @@ impl RecentFilesManager {
             return Ok(Self::new());
         }
 
-        let json = fs::read_to_string(path)
-            .map_err(|e| RecentFilesError::IoError(e.to_string()))?;
+        let json =
+            fs::read_to_string(path).map_err(|e| RecentFilesError::IoError(e.to_string()))?;
 
         let data: RecentFilesData = serde_json::from_str(&json)
             .map_err(|e| RecentFilesError::DeserializationError(e.to_string()))?;
@@ -750,10 +755,7 @@ pub fn auto_save_recent_files_system(
 }
 
 /// System to load recent files on startup
-fn startup_load_recent_files(
-    mut commands: Commands,
-    config: Res<RecentFilesConfig>,
-) {
+fn startup_load_recent_files(mut commands: Commands, config: Res<RecentFilesConfig>) {
     let manager = match RecentFilesManager::load(&config.storage_path) {
         Ok(m) => m,
         Err(e) => {
@@ -918,7 +920,9 @@ mod tests {
     use tempfile::TempDir;
 
     fn create_test_file(name: &str, file_type: RecentFileType) -> RecentFile {
-        let path = PathBuf::from(format!("/test/{}.{}", name,
+        let path = PathBuf::from(format!(
+            "/test/{}.{}",
+            name,
             match file_type {
                 RecentFileType::Scene => "scene",
                 RecentFileType::Urdf => "urdf",
@@ -1137,7 +1141,10 @@ mod tests {
         let mut manager = RecentFilesManager::new();
 
         for i in 0..10 {
-            manager.add_recent(create_test_file(&format!("file{}", i), RecentFileType::Scene));
+            manager.add_recent(create_test_file(
+                &format!("file{}", i),
+                RecentFileType::Scene,
+            ));
         }
 
         assert_eq!(manager.count(), 10);
@@ -1155,7 +1162,10 @@ mod tests {
         manager.add_recent(create_test_file("old_pinned", RecentFileType::Scene).pinned());
 
         for i in 0..9 {
-            manager.add_recent(create_test_file(&format!("file{}", i), RecentFileType::Scene));
+            manager.add_recent(create_test_file(
+                &format!("file{}", i),
+                RecentFileType::Scene,
+            ));
         }
 
         manager.trim_to(5);
@@ -1286,14 +1296,16 @@ mod tests {
         file.last_opened = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
-            .as_secs() - 120;
+            .as_secs()
+            - 120;
         assert!(file.relative_time().contains("minute"));
 
         // Hours ago
         file.last_opened = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
-            .as_secs() - 7200;
+            .as_secs()
+            - 7200;
         assert!(file.relative_time().contains("hour"));
     }
 

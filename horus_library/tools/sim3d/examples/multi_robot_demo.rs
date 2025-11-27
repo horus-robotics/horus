@@ -20,10 +20,7 @@ use sim3d::multi_robot::{
 
 fn main() {
     App::new()
-        .add_plugins((
-            DefaultPlugins,
-            MultiRobotPlugin { max_robots: 20 },
-        ))
+        .add_plugins((DefaultPlugins, MultiRobotPlugin { max_robots: 20 }))
         .add_systems(Startup, setup_multi_robot_scene)
         .add_systems(Update, (robot_communication_example, print_stats))
         .run();

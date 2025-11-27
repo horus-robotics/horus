@@ -466,7 +466,7 @@ impl SensorFusionNode {
         Ok(Self {
             state: [0.0; 6],
             covariance: [[1.0; 6]; 6],
-            imu_sub: Hub::new("imu/data")?,
+            imu_sub: Hub::new("imu.data")?,
             gps_position: (0.0, 0.0),
             encoder_speeds: Arc::new(Mutex::new((0.0, 0.0))),
             odometry_pub: Hub::new("odometry")?,
@@ -548,7 +548,7 @@ impl Node for SensorFusionNode {
 
     fn get_subscribers(&self) -> Vec<TopicMetadata> {
         vec![TopicMetadata {
-            topic_name: "imu/data".to_string(),
+            topic_name: "imu.data".to_string(),
             type_name: "sensor_msgs/Imu".to_string(),
         }]
     }
@@ -919,7 +919,7 @@ struct IMUSensorNode {
 impl IMUSensorNode {
     fn new() -> HorusResult<Self> {
         Ok(Self {
-            imu_pub: Hub::new("imu/data")?,
+            imu_pub: Hub::new("imu.data")?,
             tick_count: 0,
         })
     }
@@ -959,7 +959,7 @@ impl Node for IMUSensorNode {
 
     fn get_publishers(&self) -> Vec<TopicMetadata> {
         vec![TopicMetadata {
-            topic_name: "imu/data".to_string(),
+            topic_name: "imu.data".to_string(),
             type_name: "sensor_msgs/Imu".to_string(),
         }]
     }

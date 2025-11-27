@@ -30,12 +30,12 @@ mod node;
 /// node! {
 ///     CameraNode {
 ///         pub {
-///             image: Image -> "camera/image",
-///             status: Status -> "camera/status",
+///             image: Image -> "camera.image",
+///             status: Status -> "camera.status",
 ///         }
 ///
 ///         sub {
-///             command: Command -> "camera/command",
+///             command: Command -> "camera.command",
 ///         }
 ///
 ///         data {
@@ -133,7 +133,7 @@ pub fn node(input: TokenStream) -> TokenStream {
 /// ```rust,ignore
 /// message!(Position = (f32, f32));
 ///
-/// let hub = Hub::<Position>::new("robot/position")?;
+/// let hub = Hub::<Position>::new("robot.position")?;
 /// hub.send(Position(1.0, 2.0), ctx)?;  // Works automatically!
 /// ```
 ///

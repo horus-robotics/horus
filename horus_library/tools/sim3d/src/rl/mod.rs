@@ -12,19 +12,17 @@ pub mod tasks;
 pub mod python;
 
 // Re-export curriculum learning
-pub use curriculum::{
-    CurriculumStage, CurriculumManager, CurriculumBuilder, CurriculumStats,
-};
+pub use curriculum::{CurriculumBuilder, CurriculumManager, CurriculumStage, CurriculumStats};
 
 // Re-export domain randomization
 pub use domain_randomization::{
-    DomainRandomizationConfig, PhysicsRandomization, VisualRandomization,
-    EnvironmentRandomization, DomainRandomizer,
+    DomainRandomizationConfig, DomainRandomizer, EnvironmentRandomization, PhysicsRandomization,
+    VisualRandomization,
 };
 
 // Re-export reward shaping
 pub use reward_shaping::{
-    RewardFunctions, CompositeReward, RewardComponent, RewardManager, RewardStats,
+    CompositeReward, RewardComponent, RewardFunctions, RewardManager, RewardStats,
 };
 
 /// Observation space for RL tasks

@@ -48,8 +48,8 @@ fn main() -> Result<()> {
 
     let tflite_node = TFLiteInferenceNode::new(
         "models/mobilenet_v2_quant.tflite",
-        "camera/raw",
-        "ml/predictions",
+        "camera.raw",
+        "ml.predictions",
         config,
     )?;
 
@@ -131,7 +131,7 @@ let config = TFLiteConfig {
 
 let classifier = TFLiteInferenceNode::new(
     "models/mobilenet_v2_quant.tflite",  // Quantized model
-    "camera/raw",
+    "camera.raw",
     "classification/result",
     config,
 )?;
@@ -149,7 +149,7 @@ let config = TFLiteConfig {
 
 let detector = TFLiteInferenceNode::new(
     "models/ssd_mobilenet_edgetpu.tflite",
-    "camera/raw",
+    "camera.raw",
     "detection/result",
     config,
 )?;
@@ -158,7 +158,7 @@ let detector = TFLiteInferenceNode::new(
 ### Reading Predictions
 
 ```rust
-let predictions_hub = Hub::<Predictions>::new("ml/predictions")?;
+let predictions_hub = Hub::<Predictions>::new("ml.predictions")?;
 
 if let Some(preds) = predictions_hub.recv(None) {
     if let Some((class_id, confidence)) = preds.top_k(1).first() {

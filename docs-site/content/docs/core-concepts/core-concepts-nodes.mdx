@@ -601,7 +601,7 @@ impl MyMotorController {
     fn new() -> Result<Self> {
         Ok(Self {
             serial_port: None,
-            cmd_sub: Hub::new("motor/cmd")?,
+            cmd_sub: Hub::new("motor.cmd")?,
             status_pub: Hub::new("motor/status")?,
             velocity: 0.0,
             position: 0,

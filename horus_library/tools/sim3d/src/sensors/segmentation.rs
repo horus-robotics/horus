@@ -402,7 +402,10 @@ impl Plugin for SegmentationCameraPlugin {
             .register_type::<SemanticClass>()
             .add_systems(Update, segmentation_camera_update_system);
 
-        tracing::info!("Segmentation camera plugin loaded with {} default classes", 15);
+        tracing::info!(
+            "Segmentation camera plugin loaded with {} default classes",
+            15
+        );
     }
 }
 

@@ -6,22 +6,20 @@ pub mod validation;
 
 // Re-export SDF types for external use
 pub use sdf_importer::{
-    SDFImporter, SDFWorld, SDFModel, SDFLink, SDFJoint, SDFAxis,
-    SDFPose, SDFInertial, SDFInertia, SDFCollision, SDFVisual,
-    SDFMaterial, SDFLight, SDFAttenuation, SDFPhysics,
+    SDFAttenuation, SDFAxis, SDFCollision, SDFImporter, SDFInertia, SDFInertial, SDFJoint,
+    SDFLight, SDFLink, SDFMaterial, SDFModel, SDFPhysics, SDFPose, SDFVisual, SDFWorld,
 };
 
 // Re-export scene loader types
 pub use loader::{
-    SceneDefinition, SceneObject, SceneShape, SceneRobot, SceneLighting,
-    DirectionalLightConfig, LoadedScene, SceneLoader, SceneBuilder,
+    DirectionalLightConfig, LoadedScene, SceneBuilder, SceneDefinition, SceneLighting, SceneLoader,
+    SceneObject, SceneRobot, SceneShape,
 };
 
 // Re-export scene spawner types
 pub use spawner::{
-    ObjectSpawnConfig, SpawnShape, ObjectSpawner, SpawnedObjects,
-    despawn_all_objects_system,
+    despawn_all_objects_system, ObjectSpawnConfig, ObjectSpawner, SpawnShape, SpawnedObjects,
 };
 
 // Re-export scene composition types
-pub use composition::{ComposableScene, SceneInclude, SceneComposer};
+pub use composition::{ComposableScene, SceneComposer, SceneInclude};

@@ -542,10 +542,11 @@ pub fn spawn_articulated_robot(
 
     // 1. Spawn all links as rigid bodies
     for link in &config.links {
-        let (x, y, angle) = link_positions
-            .get(&link.name)
-            .copied()
-            .unwrap_or((config.position[0], config.position[1], config.orientation));
+        let (x, y, angle) = link_positions.get(&link.name).copied().unwrap_or((
+            config.position[0],
+            config.position[1],
+            config.orientation,
+        ));
 
         // Determine if this is the base link
         let is_base = config
@@ -571,17 +572,19 @@ pub fn spawn_articulated_robot(
 
         // Create collider based on shape
         let collider = match &link.shape {
-            LinkShape::Rectangle => {
-                ColliderBuilder::cuboid(link.size[0] / 2.0, link.size[1] / 2.0)
-                    .density(link.mass / (link.size[0] * link.size[1]))
-                    .collision_groups(robot_collision_group)
-                    .build()
-            }
+            LinkShape::Rectangle => ColliderBuilder::cuboid(link.size[0] / 2.0, link.size[1] / 2.0)
+                .density(link.mass / (link.size[0] * link.size[1]))
+                .collision_groups(robot_collision_group)
+                .build(),
             LinkShape::Capsule => {
                 let half_length = (link.size[0] - link.size[1]) / 2.0;
                 let radius = link.size[1] / 2.0;
                 ColliderBuilder::capsule_x(half_length.max(0.01), radius)
-                    .density(link.mass / (std::f32::consts::PI * radius * radius + link.size[0] * link.size[1]))
+                    .density(
+                        link.mass
+                            / (std::f32::consts::PI * radius * radius
+                                + link.size[0] * link.size[1]),
+                    )
                     .collision_groups(robot_collision_group)
                     .build()
             }
@@ -669,9 +672,12 @@ pub fn spawn_articulated_robot(
                         .impulse_joint_set
                         .insert(world_handle, child_handle, joint, true)
                 } else if let Some(parent_handle) = link_handles.get(&joint_cfg.parent) {
-                    physics_world
-                        .impulse_joint_set
-                        .insert(*parent_handle, child_handle, joint, true)
+                    physics_world.impulse_joint_set.insert(
+                        *parent_handle,
+                        child_handle,
+                        joint,
+                        true,
+                    )
                 } else {
                     tracing::warn!(
                         "Joint '{}' references unknown parent link '{}'",
@@ -681,7 +687,11 @@ pub fn spawn_articulated_robot(
                     continue;
                 }
             }
-            Joint2DType::Prismatic { axis, limits, motor } => {
+            Joint2DType::Prismatic {
+                axis,
+                limits,
+                motor,
+            } => {
                 let axis_vec = UnitVector::new_normalize(vector![axis[0], axis[1]]);
                 let mut builder = PrismaticJointBuilder::new(axis_vec)
                     .local_anchor1(parent_anchor)
@@ -711,9 +721,12 @@ pub fn spawn_articulated_robot(
                         .impulse_joint_set
                         .insert(world_handle, child_handle, joint, true)
                 } else if let Some(parent_handle) = link_handles.get(&joint_cfg.parent) {
-                    physics_world
-                        .impulse_joint_set
-                        .insert(*parent_handle, child_handle, joint, true)
+                    physics_world.impulse_joint_set.insert(
+                        *parent_handle,
+                        child_handle,
+                        joint,
+                        true,
+                    )
                 } else {
                     continue;
                 }
@@ -736,9 +749,12 @@ pub fn spawn_articulated_robot(
                         .impulse_joint_set
                         .insert(world_handle, child_handle, joint, true)
                 } else if let Some(parent_handle) = link_handles.get(&joint_cfg.parent) {
-                    physics_world
-                        .impulse_joint_set
-                        .insert(*parent_handle, child_handle, joint, true)
+                    physics_world.impulse_joint_set.insert(
+                        *parent_handle,
+                        child_handle,
+                        joint,
+                        true,
+                    )
                 } else {
                     continue;
                 }
@@ -886,7 +902,11 @@ pub fn joint_marker_sync_system(
 
         // Find the robot and joint
         if let Some(robot) = robots.iter().find(|r| r.name == marker.robot_name) {
-            if let Some(joint_cfg) = robot.config.joints.iter().find(|j| j.name == marker.joint_name)
+            if let Some(joint_cfg) = robot
+                .config
+                .joints
+                .iter()
+                .find(|j| j.name == marker.joint_name)
             {
                 // Get child link position (joint is at child anchor)
                 if let Some(child_handle) = robot.link_handles.get(&joint_cfg.child) {

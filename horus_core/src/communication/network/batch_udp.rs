@@ -283,8 +283,12 @@ impl BatchUdpSender {
             bytes_sent += self.msg_headers[i].msg_len as u64;
         }
 
-        self.stats.packets_sent.fetch_add(sent as u64, Ordering::Relaxed);
-        self.stats.bytes_sent.fetch_add(bytes_sent, Ordering::Relaxed);
+        self.stats
+            .packets_sent
+            .fetch_add(sent as u64, Ordering::Relaxed);
+        self.stats
+            .bytes_sent
+            .fetch_add(bytes_sent, Ordering::Relaxed);
         self.stats.batches_sent.fetch_add(1, Ordering::Relaxed);
 
         // Remove sent packets from queue
@@ -635,7 +639,10 @@ fn socket_addr_to_raw(
                 (*sin).sin_port = v4.port().to_be();
                 (*sin).sin_addr.s_addr = u32::from_ne_bytes(v4.ip().octets());
             }
-            (storage, std::mem::size_of::<libc::sockaddr_in>() as libc::socklen_t)
+            (
+                storage,
+                std::mem::size_of::<libc::sockaddr_in>() as libc::socklen_t,
+            )
         }
         SocketAddr::V6(v6) => {
             let sin6 = storage as *mut _ as *mut libc::sockaddr_in6;
@@ -646,7 +653,10 @@ fn socket_addr_to_raw(
                 (*sin6).sin6_addr.s6_addr = v6.ip().octets();
                 (*sin6).sin6_scope_id = v6.scope_id();
             }
-            (storage, std::mem::size_of::<libc::sockaddr_in6>() as libc::socklen_t)
+            (
+                storage,
+                std::mem::size_of::<libc::sockaddr_in6>() as libc::socklen_t,
+            )
         }
     }
 }
@@ -735,8 +745,12 @@ impl ScalableUdpBackend {
                     while run_flag.load(Ordering::Relaxed) {
                         match socket.recv_from(&mut buf) {
                             Ok((len, addr)) => {
-                                thread_stats.packets_received.fetch_add(1, Ordering::Relaxed);
-                                thread_stats.bytes_received.fetch_add(len as u64, Ordering::Relaxed);
+                                thread_stats
+                                    .packets_received
+                                    .fetch_add(1, Ordering::Relaxed);
+                                thread_stats
+                                    .bytes_received
+                                    .fetch_add(len as u64, Ordering::Relaxed);
                                 queue.push(ReceivedPacket {
                                     data: buf[..len].to_vec(),
                                     addr,
@@ -913,7 +927,9 @@ mod tests {
             sender.send(&[i as u8; 100], target).unwrap();
         }
 
-        assert!(sender.pending_count() > 0 || sender.stats().packets_sent.load(Ordering::Relaxed) > 0);
+        assert!(
+            sender.pending_count() > 0 || sender.stats().packets_sent.load(Ordering::Relaxed) > 0
+        );
 
         // Flush remaining
         sender.flush().unwrap();

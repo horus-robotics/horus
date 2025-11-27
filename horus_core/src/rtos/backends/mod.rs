@@ -1,11 +1,13 @@
 // RTOS backend implementations
+//
+// Currently supported:
+// - RT-Linux (PREEMPT_RT) - Full implementation for Linux systems
+//
+// Future backends (contributions welcome):
+// - FreeRTOS - Embedded RTOS
+// - Zephyr - Modern scalable RTOS
+// - QNX Neutrino - Commercial hard real-time OS
 
-pub mod freertos;
-pub mod qnx;
 pub mod rtlinux;
-pub mod zephyr;
 
-pub use freertos::FreeRTOSBackend;
-pub use qnx::QNXBackend;
 pub use rtlinux::RTLinuxBackend;
-pub use zephyr::ZephyrBackend;

@@ -237,7 +237,9 @@ pub struct PyramidStackingResult {
 }
 
 /// Run pyramid stacking stability test
-pub fn run_pyramid_stacking_test(config: PyramidStackingConfig) -> Result<PyramidStackingResult, String> {
+pub fn run_pyramid_stacking_test(
+    config: PyramidStackingConfig,
+) -> Result<PyramidStackingResult, String> {
     let start_time = Instant::now();
 
     // Setup Rapier physics
@@ -282,16 +284,15 @@ pub fn run_pyramid_stacking_test(config: PyramidStackingConfig) -> Result<Pyrami
             let x = start_x + col as f32 * config.box_size;
             let pos = vector![x, y, 0.0];
 
-            let box_body = RigidBodyBuilder::dynamic()
-                .translation(pos)
-                .build();
+            let box_body = RigidBodyBuilder::dynamic().translation(pos).build();
             let box_handle = rigid_body_set.insert(box_body);
 
-            let box_collider = ColliderBuilder::cuboid(half_size * 0.95, half_size * 0.95, half_size * 0.95)
-                .mass(config.box_mass)
-                .friction(0.8)
-                .restitution(0.1)
-                .build();
+            let box_collider =
+                ColliderBuilder::cuboid(half_size * 0.95, half_size * 0.95, half_size * 0.95)
+                    .mass(config.box_mass)
+                    .friction(0.8)
+                    .restitution(0.1)
+                    .build();
             collider_set.insert_with_parent(box_collider, box_handle, &mut rigid_body_set);
 
             box_handles.push(box_handle);
@@ -336,7 +337,7 @@ pub fn run_pyramid_stacking_test(config: PyramidStackingConfig) -> Result<Pyrami
 
             let horizontal_displacement = ((final_pos.x - initial_pos.x).powi(2)
                 + (final_pos.z - initial_pos.z).powi(2))
-                .sqrt();
+            .sqrt();
 
             displacements.push(horizontal_displacement);
 
@@ -399,7 +400,9 @@ pub struct RigidBodyStressResult {
 }
 
 /// Run 1000+ rigid body simulation stress test
-pub fn run_rigid_body_stress_test(config: RigidBodyStressConfig) -> Result<RigidBodyStressResult, String> {
+pub fn run_rigid_body_stress_test(
+    config: RigidBodyStressConfig,
+) -> Result<RigidBodyStressResult, String> {
     let start_time = Instant::now();
 
     // Setup Rapier physics
@@ -447,14 +450,19 @@ pub fn run_rigid_body_stress_test(config: RigidBodyStressConfig) -> Result<Rigid
         // Random shape
         let shape_type = rng.gen_range(0..3);
         let collider = match shape_type {
-            0 => ColliderBuilder::ball(rng.gen_range(0.1..0.3)).mass(1.0).build(),
+            0 => ColliderBuilder::ball(rng.gen_range(0.1..0.3))
+                .mass(1.0)
+                .build(),
             1 => ColliderBuilder::cuboid(
                 rng.gen_range(0.1..0.3),
                 rng.gen_range(0.1..0.3),
                 rng.gen_range(0.1..0.3),
-            ).mass(1.0).build(),
+            )
+            .mass(1.0)
+            .build(),
             _ => ColliderBuilder::capsule_y(rng.gen_range(0.1..0.2), rng.gen_range(0.05..0.1))
-                .mass(1.0).build(),
+                .mass(1.0)
+                .build(),
         };
         collider_set.insert_with_parent(collider, handle, &mut rigid_body_set);
     }
@@ -597,9 +605,7 @@ pub fn run_robot_stress_test(config: RobotStressConfig) -> Result<RobotStressRes
                 .build();
             let link_handle = rigid_body_set.insert(link);
 
-            let link_collider = ColliderBuilder::capsule_y(0.1, 0.03)
-                .mass(0.5)
-                .build();
+            let link_collider = ColliderBuilder::capsule_y(0.1, 0.03).mass(0.5).build();
             collider_set.insert_with_parent(link_collider, link_handle, &mut rigid_body_set);
 
             // Create revolute joint
@@ -779,7 +785,8 @@ pub fn run_long_running_test(config: LongRunningConfig) -> Result<LongRunningRes
 
         // Record checkpoint
         if (step + 1) % config.checkpoint_interval == 0 || step == config.simulation_steps - 1 {
-            let avg_time = recent_step_times.iter().sum::<Duration>() / recent_step_times.len() as u32;
+            let avg_time =
+                recent_step_times.iter().sum::<Duration>() / recent_step_times.len() as u32;
 
             // Count active vs sleeping bodies
             let mut active_count = 0;
@@ -928,10 +935,16 @@ mod tests {
 
     #[test]
     fn test_pyramid_config_total_boxes() {
-        let config = PyramidStackingConfig { base_size: 5, ..Default::default() };
+        let config = PyramidStackingConfig {
+            base_size: 5,
+            ..Default::default()
+        };
         assert_eq!(config.total_boxes(), 15); // 5 + 4 + 3 + 2 + 1 = 15
 
-        let config = PyramidStackingConfig { base_size: 10, ..Default::default() };
+        let config = PyramidStackingConfig {
+            base_size: 10,
+            ..Default::default()
+        };
         assert_eq!(config.total_boxes(), 55); // Sum 1 to 10
     }
 
@@ -942,7 +955,10 @@ mod tests {
         let result = run_pyramid_stacking_test(config).expect("Test failed");
 
         assert!(result.total_boxes > 0, "Should create boxes");
-        assert!(result.simulation_time.as_secs() < 60, "Should complete in reasonable time");
+        assert!(
+            result.simulation_time.as_secs() < 60,
+            "Should complete in reasonable time"
+        );
     }
 
     #[test]
@@ -954,8 +970,7 @@ mod tests {
         assert!(
             result.pyramid_stable,
             "Medium pyramid should be stable: {}/{} settled",
-            result.boxes_settled,
-            result.total_boxes
+            result.boxes_settled, result.total_boxes
         );
     }
 
@@ -970,7 +985,11 @@ mod tests {
 
         assert_eq!(result.body_count, 100);
         assert!(result.successful_steps == 500, "All steps should complete");
-        assert!(result.fps > 10.0, "Should maintain >10 FPS: {:.1}", result.fps);
+        assert!(
+            result.fps > 10.0,
+            "Should maintain >10 FPS: {:.1}",
+            result.fps
+        );
     }
 
     #[test]

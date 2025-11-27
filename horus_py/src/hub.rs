@@ -3,6 +3,12 @@
 // New API matches Rust exactly:
 //   from horus import Hub, CmdVel, Pose2D
 //   hub = Hub(CmdVel)  # Type determines everything
+//
+// Network support (NEW):
+//   hub = Hub(CmdVel, endpoint="cmdvel@192.168.1.5:9000")  # Direct UDP
+//   hub = Hub(CmdVel, endpoint="cmdvel@localhost")         # Unix socket
+//   hub = Hub(CmdVel, endpoint="cmdvel@router")            # Via router
+//   hub = Hub(CmdVel, endpoint="cmdvel@*")                 # Multicast
 
 use horus::communication::hub::Hub;
 use horus_library::messages::cmd_vel::CmdVel;
@@ -24,10 +30,20 @@ enum HubType {
 ///     hub = Hub(CmdVel)       # Creates Hub<CmdVel> - zero overhead!
 ///     hub = Hub(Pose2D)       # Creates Hub<Pose2D>
 ///     hub = Hub("custom")     # Generic hub (fallback, slower)
+///
+/// Network examples:
+///     hub = Hub(CmdVel, endpoint="cmdvel@192.168.1.5:9000")  # Direct UDP
+///     hub = Hub(CmdVel, endpoint="cmdvel@localhost")         # Unix socket
+///     hub = Hub(CmdVel, endpoint="cmdvel@router:7777")       # Via router
+///     hub = Hub(CmdVel, endpoint="cmdvel@*")                 # Multicast
 #[pyclass(name = "Hub")] // Export as "Hub" in Python, not "PyHub"
 pub struct PyHub {
     hub_type: HubType,
     topic: String,
+    /// Endpoint string used to create this hub (if network)
+    endpoint: Option<String>,
+    /// Whether this hub uses network transport
+    is_network: bool,
 }
 
 #[pymethods]
@@ -37,14 +53,31 @@ impl PyHub {
     /// Args:
     ///     msg_type: Message class (CmdVel, Pose2D) or string for generic hub
     ///     capacity: Optional buffer capacity (default: 1024 if not specified)
+    ///     endpoint: Optional network endpoint string for distributed communication
+    ///
+    /// Endpoint formats:
+    ///     "topic"                    - Local shared memory (default)
+    ///     "topic@host:port"          - Direct UDP to specific host
+    ///     "topic@localhost"          - Unix domain socket (Unix only)
+    ///     "topic@router"             - Via HORUS router (TCP broker)
+    ///     "topic@router:port"        - Via router on specific port
+    ///     "topic@*"                  - Multicast discovery
     ///
     /// Examples:
-    ///     hub = Hub(CmdVel)           # Default capacity (1024)
-    ///     hub = Hub(Pose2D, 2048)     # Custom capacity
-    ///     hub = Hub("custom")         # Generic hub, default capacity
+    ///     hub = Hub(CmdVel)                                    # Local, default capacity
+    ///     hub = Hub(Pose2D, capacity=2048)                     # Local, custom capacity
+    ///     hub = Hub(CmdVel, endpoint="cmdvel@192.168.1.5:9000") # Network UDP
+    ///     hub = Hub(CmdVel, endpoint="cmdvel@localhost")       # Unix socket
+    ///     hub = Hub(CmdVel, endpoint="cmdvel@router")          # Via router
+    ///     hub = Hub("custom")                                  # Generic hub
     #[new]
-    #[pyo3(signature = (msg_type, capacity=None))]
-    fn new(py: Python, msg_type: PyObject, capacity: Option<usize>) -> PyResult<Self> {
+    #[pyo3(signature = (msg_type, capacity=None, endpoint=None))]
+    fn new(
+        py: Python,
+        msg_type: PyObject,
+        capacity: Option<usize>,
+        endpoint: Option<String>,
+    ) -> PyResult<Self> {
         // Get type name from the Python object
         let type_name = if let Ok(name) = msg_type.getattr(py, "__name__") {
             name.extract::<String>(py)?
@@ -63,47 +96,56 @@ impl PyHub {
             type_name.to_lowercase()
         };
 
-        // Create the appropriate typed Hub (with optional custom capacity)
+        // Determine the effective endpoint:
+        // - If endpoint is provided, use it directly
+        // - Otherwise, use just the topic name (local shared memory)
+        let effective_endpoint = endpoint.clone().unwrap_or_else(|| topic.clone());
+        let is_network = endpoint.as_ref().map_or(false, |e| e.contains('@'));
+        let cap = capacity.unwrap_or(1024);
+
+        // Create the appropriate typed Hub
+        // new_with_capacity() automatically parses the endpoint string and creates
+        // network backends when needed (e.g., "topic@host:port")
         let hub_type = match type_name.as_str() {
             "CmdVel" => {
-                let hub = if let Some(cap) = capacity {
-                    Hub::<CmdVel>::new_with_capacity(&topic, cap)
-                } else {
-                    Hub::<CmdVel>::new(&topic)
-                }
-                .map_err(|_| {
-                    pyo3::exceptions::PyRuntimeError::new_err("Failed to create Hub<CmdVel>")
-                })?;
+                let hub =
+                    Hub::<CmdVel>::new_with_capacity(&effective_endpoint, cap).map_err(|e| {
+                        pyo3::exceptions::PyRuntimeError::new_err(format!(
+                            "Failed to create Hub<CmdVel>: {}",
+                            e
+                        ))
+                    })?;
                 HubType::CmdVel(Arc::new(Mutex::new(hub)))
             }
             "Pose2D" => {
-                let hub = if let Some(cap) = capacity {
-                    Hub::<Pose2D>::new_with_capacity(&topic, cap)
-                } else {
-                    Hub::<Pose2D>::new(&topic)
-                }
-                .map_err(|_| {
-                    pyo3::exceptions::PyRuntimeError::new_err("Failed to create Hub<Pose2D>")
-                })?;
+                let hub =
+                    Hub::<Pose2D>::new_with_capacity(&effective_endpoint, cap).map_err(|e| {
+                        pyo3::exceptions::PyRuntimeError::new_err(format!(
+                            "Failed to create Hub<Pose2D>: {}",
+                            e
+                        ))
+                    })?;
                 HubType::Pose2D(Arc::new(Mutex::new(hub)))
             }
             _ => {
                 // Fallback to GenericMessage for unknown types
-                let hub = if let Some(cap) = capacity {
-                    Hub::<GenericMessage>::new_with_capacity(&topic, cap)
-                } else {
-                    Hub::<GenericMessage>::new(&topic)
-                }
-                .map_err(|_| {
-                    pyo3::exceptions::PyRuntimeError::new_err(
-                        "Failed to create Hub<GenericMessage>",
-                    )
-                })?;
+                let hub = Hub::<GenericMessage>::new_with_capacity(&effective_endpoint, cap)
+                    .map_err(|e| {
+                        pyo3::exceptions::PyRuntimeError::new_err(format!(
+                            "Failed to create Hub<GenericMessage>: {}",
+                            e
+                        ))
+                    })?;
                 HubType::Generic(Arc::new(Mutex::new(hub)))
             }
         };
 
-        Ok(Self { hub_type, topic })
+        Ok(Self {
+            hub_type,
+            topic,
+            endpoint,
+            is_network,
+        })
     }
 
     /// Send a message (type must match Hub's type)
@@ -146,7 +188,6 @@ impl PyHub {
                             let log_msg = cmd.log_summary();
                             let _ =
                                 info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
-
                         }
                     }
                 }
@@ -181,7 +222,6 @@ impl PyHub {
                             let log_msg = pose.log_summary();
                             let _ =
                                 info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
-
                         }
                     }
                 }
@@ -191,13 +231,12 @@ impl PyHub {
             HubType::Generic(hub) => {
                 // Convert Python object to MessagePack via pythonize
                 let bound = message.bind(py);
-                let value: serde_json::Value = pythonize::depythonize(&bound)
-                    .map_err(|e| {
-                        pyo3::exceptions::PyTypeError::new_err(format!(
-                            "Failed to convert Python object: {}",
-                            e
-                        ))
-                    })?;
+                let value: serde_json::Value = pythonize::depythonize(&bound).map_err(|e| {
+                    pyo3::exceptions::PyTypeError::new_err(format!(
+                        "Failed to convert Python object: {}",
+                        e
+                    ))
+                })?;
 
                 // Serialize to MessagePack
                 let msgpack_bytes = rmp_serde::to_vec(&value).map_err(|e| {
@@ -224,7 +263,6 @@ impl PyHub {
                             let log_msg = msg.log_summary();
                             let _ =
                                 info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
-
                         }
                     }
                 }
@@ -269,7 +307,6 @@ impl PyHub {
                                     "log_sub",
                                     (&self.topic, log_msg, ipc_ns),
                                 );
-
                             }
                         }
                     }
@@ -299,7 +336,6 @@ impl PyHub {
                                     "log_sub",
                                     (&self.topic, log_msg, ipc_ns),
                                 );
-
                             }
                         }
                     }
@@ -330,7 +366,6 @@ impl PyHub {
                                     "log_sub",
                                     (&self.topic, log_msg, ipc_ns),
                                 );
-
                             }
                         }
                     }
@@ -395,7 +430,6 @@ impl PyHub {
                             let log_msg = msg.log_summary();
                             let _ =
                                 info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
-
                         }
                     }
                 }
@@ -449,7 +483,6 @@ impl PyHub {
                             let log_msg = msg.log_summary();
                             let _ =
                                 info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
-
                         }
                     }
                 }
@@ -500,7 +533,6 @@ impl PyHub {
                             let log_msg = msg.log_summary();
                             let _ =
                                 info.call_method1(py, "log_pub", (&self.topic, log_msg, ipc_ns));
-
                         }
                     }
                 }
@@ -546,7 +578,6 @@ impl PyHub {
                                     "log_sub",
                                     (&self.topic, log_msg, ipc_ns),
                                 );
-
                             }
                         }
                     }
@@ -582,5 +613,143 @@ impl PyHub {
     ///     True if this is a generic hub, False if it's a typed hub
     fn is_generic(&self) -> PyResult<bool> {
         Ok(matches!(self.hub_type, HubType::Generic(_)))
+    }
+
+    // === Network Information Methods ===
+
+    /// Check if this hub uses network transport
+    ///
+    /// Returns:
+    ///     True if the hub is communicating over the network, False for local shared memory
+    ///
+    /// Example:
+    ///     hub = Hub(CmdVel, endpoint="cmdvel@192.168.1.5:9000")
+    ///     print(hub.is_network())  # True
+    #[getter]
+    fn is_network_hub(&self) -> bool {
+        self.is_network
+    }
+
+    /// Get the endpoint string (if network hub)
+    ///
+    /// Returns:
+    ///     The endpoint string used to create this hub, or None for local hubs
+    ///
+    /// Example:
+    ///     hub = Hub(CmdVel, endpoint="cmdvel@192.168.1.5:9000")
+    ///     print(hub.endpoint)  # "cmdvel@192.168.1.5:9000"
+    #[getter]
+    fn get_endpoint(&self) -> Option<String> {
+        self.endpoint.clone()
+    }
+
+    /// Get transport type information
+    ///
+    /// Returns:
+    ///     String describing the transport: "shared_memory", "unix_socket", "udp_direct",
+    ///     "batch_udp", "multicast", or "router"
+    ///
+    /// Example:
+    ///     hub = Hub(CmdVel, endpoint="cmdvel@192.168.1.5:9000")
+    ///     print(hub.transport_type)  # "udp_direct" or "batch_udp"
+    #[getter]
+    fn transport_type(&self) -> String {
+        if !self.is_network {
+            return "shared_memory".to_string();
+        }
+
+        // Check endpoint pattern to determine transport type
+        if let Some(ref ep) = self.endpoint {
+            if ep.contains("@localhost") {
+                #[cfg(unix)]
+                return "unix_socket".to_string();
+                #[cfg(not(unix))]
+                return "udp_direct".to_string();
+            } else if ep.contains("@router") {
+                return "router".to_string();
+            } else if ep.contains("@*") {
+                return "multicast".to_string();
+            } else if ep.contains("@") {
+                // Direct UDP (or batch UDP on Linux)
+                #[cfg(target_os = "linux")]
+                return "batch_udp".to_string();
+                #[cfg(not(target_os = "linux"))]
+                return "udp_direct".to_string();
+            }
+        }
+
+        "shared_memory".to_string()
+    }
+
+    /// Get hub statistics as a dictionary
+    ///
+    /// Returns:
+    ///     Dictionary with keys: messages_sent, messages_received, send_failures, recv_failures
+    ///
+    /// Example:
+    ///     stats = hub.stats()
+    ///     print(f"Sent: {stats['messages_sent']}, Received: {stats['messages_received']}")
+    fn stats(&self) -> PyResult<pyo3::Py<pyo3::types::PyDict>> {
+        Python::with_gil(|py| {
+            let dict = pyo3::types::PyDict::new_bound(py);
+
+            // Get metrics from the underlying hub using get_metrics()
+            let (sent, received, send_failures, recv_failures) = match &self.hub_type {
+                HubType::CmdVel(hub) => {
+                    let h = hub.lock().unwrap();
+                    let m = h.get_metrics();
+                    (
+                        m.messages_sent,
+                        m.messages_received,
+                        m.send_failures,
+                        m.recv_failures,
+                    )
+                }
+                HubType::Pose2D(hub) => {
+                    let h = hub.lock().unwrap();
+                    let m = h.get_metrics();
+                    (
+                        m.messages_sent,
+                        m.messages_received,
+                        m.send_failures,
+                        m.recv_failures,
+                    )
+                }
+                HubType::Generic(hub) => {
+                    let h = hub.lock().unwrap();
+                    let m = h.get_metrics();
+                    (
+                        m.messages_sent,
+                        m.messages_received,
+                        m.send_failures,
+                        m.recv_failures,
+                    )
+                }
+            };
+
+            dict.set_item("messages_sent", sent)?;
+            dict.set_item("messages_received", received)?;
+            dict.set_item("send_failures", send_failures)?;
+            dict.set_item("recv_failures", recv_failures)?;
+            dict.set_item("is_network", self.is_network)?;
+            dict.set_item("transport", self.transport_type())?;
+
+            Ok(dict.into())
+        })
+    }
+
+    /// String representation
+    fn __repr__(&self) -> String {
+        let transport = self.transport_type();
+        if self.is_network {
+            format!(
+                "Hub(topic='{}', endpoint='{}', transport='{}')",
+                self.topic,
+                self.endpoint.as_deref().unwrap_or("unknown"),
+                transport
+            )
+        } else {
+            format!("Hub(topic='{}', transport='{}')", self.topic, transport)
+        }
     }
 }

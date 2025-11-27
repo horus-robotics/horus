@@ -1,10 +1,10 @@
 use bevy::prelude::*;
 use nalgebra::{Isometry3, Translation3, UnitQuaternion};
 
+use crate::hframe::TFTree;
 use crate::physics::rigid_body::RigidBodyComponent;
 use crate::physics::world::PhysicsWorld;
 use crate::robot::state::{ArticulatedRobot, JointLink, RobotJointStates};
-use crate::tf::tree::TFTree;
 
 /// Component to mark an entity that should publish its transform to the TF tree
 #[derive(Component, Clone)]
@@ -72,7 +72,7 @@ pub fn tf_update_system(
         let isometry = Isometry3::from_parts(nalgebra_translation.into(), nalgebra_rotation);
 
         // Update or add frame to TF tree
-        if tf_tree.frames.contains_key(&publisher.frame_name) {
+        if tf_tree.has_frame(&publisher.frame_name) {
             tf_tree.update_frame(&publisher.frame_name, isometry).ok();
         } else {
             tf_tree
@@ -117,7 +117,7 @@ pub fn tf_update_from_physics_system(
             );
 
             // Update TF tree
-            if tf_tree.frames.contains_key(&publisher.frame_name) {
+            if tf_tree.has_frame(&publisher.frame_name) {
                 tf_tree.update_frame(&publisher.frame_name, isometry).ok();
             } else {
                 tf_tree
@@ -162,7 +162,7 @@ pub fn tf_update_robot_joints_system(
                 // Frame name would be the child link name
                 let child_frame = format!("{}_frame", joint_link.joint_name);
 
-                if tf_tree.frames.contains_key(&child_frame) {
+                if tf_tree.has_frame(&child_frame) {
                     tf_tree.update_frame(&child_frame, isometry).ok();
                 } else {
                     // Parent frame would be the parent link
@@ -232,7 +232,7 @@ pub fn emit_tf_updated_event(
     mut events: EventWriter<TFTreeUpdatedEvent>,
 ) {
     events.send(TFTreeUpdatedEvent {
-        frame_count: tf_tree.frames.len(),
+        frame_count: tf_tree.frame_count(),
         update_time: time.elapsed_secs(),
     });
 }
@@ -272,7 +272,7 @@ pub fn track_tf_stats_system(
     query: Query<&TFPublisher>,
 ) {
     let frames_updated = query.iter().count() as u64;
-    stats.update(tf_tree.frames.len(), frames_updated, time.elapsed_secs());
+    stats.update(tf_tree.frame_count(), frames_updated, time.elapsed_secs());
 }
 
 /// Plugin to register all TF update systems

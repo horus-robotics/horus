@@ -43,7 +43,7 @@ fn main() -> Result<()> {
 ## Usage
 
 ```rust
-let hub = Hub::<ForceTorqueData>::new("ft_sensor/data")?;
+let hub = Hub::<ForceTorqueData>::new("ft_sensor.data")?;
 
 if let Some(data) = hub.recv(None) {
     println!("Force: [{:.2}, {:.2}, {:.2}] N",

@@ -156,7 +156,7 @@ impl ImageProcessorNode {
 
     /// Process an image through the pipeline
     fn process_image(&mut self, image: Image, ctx: Option<&mut NodeInfo>) -> Option<Image> {
-        let _start_time = std::time::Instant::now();  // Reserved for timing statistics
+        let _start_time = std::time::Instant::now(); // Reserved for timing statistics
 
         match self.backend {
             ImageBackend::Simulation => self.process_image_simulation(image, ctx),

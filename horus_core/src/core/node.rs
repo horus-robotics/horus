@@ -224,6 +224,113 @@ impl NodeHeartbeat {
     }
 }
 
+/// Network transport status for monitoring
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct NetworkStatus {
+    /// Node name
+    pub node_name: String,
+    /// Active transport type (SharedMemory, Udp, BatchUdp, Quic, Unix, etc.)
+    pub transport_type: String,
+    /// Local endpoint address (if network-based)
+    pub local_endpoint: Option<String>,
+    /// Remote endpoints this node connects to
+    pub remote_endpoints: Vec<String>,
+    /// Topics being published over network
+    pub network_topics_pub: Vec<String>,
+    /// Topics being subscribed over network
+    pub network_topics_sub: Vec<String>,
+    /// Bytes sent
+    pub bytes_sent: u64,
+    /// Bytes received
+    pub bytes_received: u64,
+    /// Packets sent
+    pub packets_sent: u64,
+    /// Packets received
+    pub packets_received: u64,
+    /// Last update timestamp (Unix seconds)
+    pub timestamp: u64,
+}
+
+impl NetworkStatus {
+    /// Create a new network status
+    pub fn new(node_name: &str, transport_type: &str) -> Self {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
+        Self {
+            node_name: node_name.to_string(),
+            transport_type: transport_type.to_string(),
+            local_endpoint: None,
+            remote_endpoints: Vec::new(),
+            network_topics_pub: Vec::new(),
+            network_topics_sub: Vec::new(),
+            bytes_sent: 0,
+            bytes_received: 0,
+            packets_sent: 0,
+            packets_received: 0,
+            timestamp: now,
+        }
+    }
+
+    /// Write network status to shared memory file
+    pub fn write_to_file(&self) -> crate::error::HorusResult<()> {
+        use crate::memory::platform::shm_network_dir;
+
+        let dir = shm_network_dir();
+        std::fs::create_dir_all(&dir)?;
+
+        let path = dir.join(&self.node_name);
+        let json = serde_json::to_string_pretty(self)
+            .map_err(|e| format!("Failed to serialize network status: {}", e))?;
+
+        std::fs::write(&path, json)?;
+        Ok(())
+    }
+
+    /// Read network status from file
+    pub fn read_from_file(node_name: &str) -> Option<Self> {
+        use crate::memory::platform::shm_network_dir;
+
+        let path = shm_network_dir().join(node_name);
+        let content = std::fs::read_to_string(&path).ok()?;
+        serde_json::from_str(&content).ok()
+    }
+
+    /// Read all network statuses from the network directory
+    pub fn read_all() -> Vec<Self> {
+        use crate::memory::platform::shm_network_dir;
+
+        let dir = shm_network_dir();
+        if !dir.exists() {
+            return Vec::new();
+        }
+
+        let mut statuses = Vec::new();
+        if let Ok(entries) = std::fs::read_dir(&dir) {
+            for entry in entries.flatten() {
+                if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                    if let Ok(status) = serde_json::from_str::<NetworkStatus>(&content) {
+                        statuses.push(status);
+                    }
+                }
+            }
+        }
+        statuses
+    }
+
+    /// Check if status is fresh (within last N seconds)
+    pub fn is_fresh(&self, max_age_secs: u64) -> bool {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
+        now.saturating_sub(self.timestamp) <= max_age_secs
+    }
+}
+
 /// Performance metrics for node execution
 #[derive(Debug, Clone, Default)]
 pub struct NodeMetrics {

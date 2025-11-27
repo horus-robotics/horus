@@ -173,4 +173,3 @@ impl CompiledDataflow {
         self.avg_exec_ns() < 100.0
     }
 }
-

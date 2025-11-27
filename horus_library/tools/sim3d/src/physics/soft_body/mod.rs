@@ -9,11 +9,11 @@ pub mod spring;
 use bevy::prelude::*;
 
 // Re-export soft body types
-pub use particle::{Particle, ParticleSystem};
-pub use spring::{Spring, SpringSystem};
 pub use cloth::Cloth;
-pub use rope::Rope;
 pub use material::SoftBodyMaterial;
+pub use particle::{Particle, ParticleSystem};
+pub use rope::Rope;
+pub use spring::{Spring, SpringSystem};
 
 /// Soft body physics plugin
 pub struct SoftBodyPlugin;

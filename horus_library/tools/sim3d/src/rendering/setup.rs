@@ -1,11 +1,11 @@
 use crate::cli::Cli;
 use crate::config::robot::DiffDrivePresets;
+use crate::hframe::TFTree;
 use crate::physics::diff_drive::{CmdVel, DifferentialDrive};
 use crate::physics::PhysicsWorld;
 use crate::rendering::camera_controller::OrbitCamera;
 use crate::scene::loader::SceneLoader;
 use crate::scene::spawner::{ObjectSpawnConfig, ObjectSpawner, SpawnShape, SpawnedObjects};
-use crate::tf::TFTree;
 use bevy::prelude::*;
 
 pub fn setup_scene(
@@ -105,24 +105,38 @@ fn spawn_default_world(
     spawned_objects: &mut SpawnedObjects,
 ) {
     // Spawn ground plane with physics
-    let ground = ObjectSpawner::spawn_ground(
-        50.0,
-        50.0,
-        commands,
-        physics_world,
-        meshes,
-        materials,
-    );
+    let ground =
+        ObjectSpawner::spawn_ground(50.0, 50.0, commands, physics_world, meshes, materials);
     spawned_objects.add(ground);
 
     // Spawn some default obstacles for navigation testing
     let obstacles = [
         // Position (x, y, z), Size (w, h, d), Color
-        (Vec3::new(3.0, 0.5, 2.0), Vec3::new(1.0, 1.0, 1.0), Color::srgb(0.8, 0.3, 0.3)),
-        (Vec3::new(-2.0, 0.5, 3.0), Vec3::new(0.8, 1.0, 0.8), Color::srgb(0.3, 0.3, 0.8)),
-        (Vec3::new(4.0, 0.5, -3.0), Vec3::new(1.2, 1.0, 0.6), Color::srgb(0.3, 0.8, 0.3)),
-        (Vec3::new(-3.0, 0.5, -2.0), Vec3::new(0.6, 1.0, 1.2), Color::srgb(0.8, 0.8, 0.3)),
-        (Vec3::new(0.0, 0.5, 5.0), Vec3::new(2.0, 1.0, 0.5), Color::srgb(0.5, 0.5, 0.5)),
+        (
+            Vec3::new(3.0, 0.5, 2.0),
+            Vec3::new(1.0, 1.0, 1.0),
+            Color::srgb(0.8, 0.3, 0.3),
+        ),
+        (
+            Vec3::new(-2.0, 0.5, 3.0),
+            Vec3::new(0.8, 1.0, 0.8),
+            Color::srgb(0.3, 0.3, 0.8),
+        ),
+        (
+            Vec3::new(4.0, 0.5, -3.0),
+            Vec3::new(1.2, 1.0, 0.6),
+            Color::srgb(0.3, 0.8, 0.3),
+        ),
+        (
+            Vec3::new(-3.0, 0.5, -2.0),
+            Vec3::new(0.6, 1.0, 1.2),
+            Color::srgb(0.8, 0.8, 0.3),
+        ),
+        (
+            Vec3::new(0.0, 0.5, 5.0),
+            Vec3::new(2.0, 1.0, 0.5),
+            Color::srgb(0.5, 0.5, 0.5),
+        ),
     ];
 
     for (pos, size, color) in obstacles {
@@ -131,11 +145,15 @@ fn spawn_default_world(
             .as_static()
             .with_color(color)
             .with_friction(0.7);
-        let entity = ObjectSpawner::spawn_object(config, commands, physics_world, meshes, materials);
+        let entity =
+            ObjectSpawner::spawn_object(config, commands, physics_world, meshes, materials);
         spawned_objects.add(entity);
     }
 
-    info!("Default world spawned with {} objects", spawned_objects.len());
+    info!(
+        "Default world spawned with {} objects",
+        spawned_objects.len()
+    );
 }
 
 /// Spawn a default differential drive robot (TurtleBot3-style)
@@ -168,19 +186,13 @@ fn spawn_default_robot(
         .with_friction(0.5)
         .with_damping(0.5, 0.5); // Add damping to prevent sliding
 
-    let robot_entity = ObjectSpawner::spawn_object(
-        robot_config,
-        commands,
-        physics_world,
-        meshes,
-        materials,
-    );
+    let robot_entity =
+        ObjectSpawner::spawn_object(robot_config, commands, physics_world, meshes, materials);
 
     // Add differential drive and velocity command components
-    commands.entity(robot_entity).insert((
-        diff_drive,
-        CmdVel::default(),
-    ));
+    commands
+        .entity(robot_entity)
+        .insert((diff_drive, CmdVel::default()));
 
     spawned_objects.add(robot_entity);
 
@@ -193,54 +205,66 @@ fn spawn_default_robot(
     let wheel_y = -0.04 + wheel_radius; // Bottom of body + wheel radius
 
     // Left wheel - rotate around X axis to lay flat (cylinder default is vertical)
-    let left_wheel = commands.spawn((
-        Name::new("left_wheel"),
-        Mesh3d(meshes.add(Cylinder {
-            radius: wheel_radius,
-            half_height: wheel_width / 2.0,
-        })),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::srgb(0.1, 0.1, 0.1),
-            ..default()
-        })),
-        Transform::from_xyz(-wheel_separation / 2.0, wheel_y, 0.0)
-            .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
-    )).id();
+    let left_wheel = commands
+        .spawn((
+            Name::new("left_wheel"),
+            Mesh3d(meshes.add(Cylinder {
+                radius: wheel_radius,
+                half_height: wheel_width / 2.0,
+            })),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: Color::srgb(0.1, 0.1, 0.1),
+                ..default()
+            })),
+            Transform::from_xyz(-wheel_separation / 2.0, wheel_y, 0.0)
+                .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
+        ))
+        .id();
 
     // Right wheel
-    let right_wheel = commands.spawn((
-        Name::new("right_wheel"),
-        Mesh3d(meshes.add(Cylinder {
-            radius: wheel_radius,
-            half_height: wheel_width / 2.0,
-        })),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::srgb(0.1, 0.1, 0.1),
-            ..default()
-        })),
-        Transform::from_xyz(wheel_separation / 2.0, wheel_y, 0.0)
-            .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
-    )).id();
+    let right_wheel = commands
+        .spawn((
+            Name::new("right_wheel"),
+            Mesh3d(meshes.add(Cylinder {
+                radius: wheel_radius,
+                half_height: wheel_width / 2.0,
+            })),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: Color::srgb(0.1, 0.1, 0.1),
+                ..default()
+            })),
+            Transform::from_xyz(wheel_separation / 2.0, wheel_y, 0.0)
+                .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
+        ))
+        .id();
 
     // Parent wheels to robot body
-    commands.entity(robot_entity).add_children(&[left_wheel, right_wheel]);
+    commands
+        .entity(robot_entity)
+        .add_children(&[left_wheel, right_wheel]);
 
     // Add a small "direction indicator" on front (relative to body center)
-    let indicator = commands.spawn((
-        Name::new("direction_indicator"),
-        Mesh3d(meshes.add(Cuboid::new(0.02, 0.02, 0.04))),
-        MeshMaterial3d(materials.add(StandardMaterial {
-            base_color: Color::srgb(1.0, 0.0, 0.0), // Red indicator
-            ..default()
-        })),
-        Transform::from_xyz(0.0, 0.0, 0.09), // Front of robot (Z+ is forward)
-    )).id();
+    let indicator = commands
+        .spawn((
+            Name::new("direction_indicator"),
+            Mesh3d(meshes.add(Cuboid::new(0.02, 0.02, 0.04))),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: Color::srgb(1.0, 0.0, 0.0), // Red indicator
+                ..default()
+            })),
+            Transform::from_xyz(0.0, 0.0, 0.09), // Front of robot (Z+ is forward)
+        ))
+        .id();
     commands.entity(robot_entity).add_children(&[indicator]);
 
     info!("Default robot spawned at {:?}", body_position);
-    info!("  - Differential drive: wheel_separation={:.3}m, wheel_radius={:.3}m",
-          wheel_separation, wheel_radius);
-    info!("  - Max velocities: linear={:.2}m/s, angular={:.2}rad/s",
-          max_linear_velocity, max_angular_velocity);
+    info!(
+        "  - Differential drive: wheel_separation={:.3}m, wheel_radius={:.3}m",
+        wheel_separation, wheel_radius
+    );
+    info!(
+        "  - Max velocities: linear={:.2}m/s, angular={:.2}rad/s",
+        max_linear_velocity, max_angular_velocity
+    );
     info!("  - Control topic: robot.cmd_vel (use HORUS Hub to send CmdVel messages)");
 }

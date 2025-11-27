@@ -1,12 +1,12 @@
-use bevy::prelude::*;
 use bevy::asset::AssetPlugin;
+use bevy::prelude::*;
 use bevy::scene::ScenePlugin;
+use bevy_rapier3d::dynamics::GravityScale;
+use bevy_rapier3d::geometry::CollisionGroups;
 use bevy_rapier3d::plugin::{NoUserData, RapierPhysicsPlugin};
 use bevy_rapier3d::prelude::{
     ActiveEvents, Collider, CollisionEvent, Group, RigidBody, Sensor, Velocity,
 };
-use bevy_rapier3d::dynamics::GravityScale;
-use bevy_rapier3d::geometry::CollisionGroups;
 
 /// Test helper to create a minimal headless physics app
 fn create_headless_physics_app() -> App {
@@ -59,11 +59,14 @@ fn test_rigid_body_spawning() {
     let mut app = create_headless_physics_app();
 
     // Spawn a dynamic rigid body
-    let entity = app.world_mut().spawn((
-        Transform::from_xyz(0.0, 10.0, 0.0),
-        RigidBody::Dynamic,
-        Collider::ball(1.0),
-    )).id();
+    let entity = app
+        .world_mut()
+        .spawn((
+            Transform::from_xyz(0.0, 10.0, 0.0),
+            RigidBody::Dynamic,
+            Collider::ball(1.0),
+        ))
+        .id();
 
     // Run one frame to process spawned entities
     app.update();
@@ -71,8 +74,14 @@ fn test_rigid_body_spawning() {
     // Verify entity exists and has physics components
     let world = app.world();
     assert!(world.get_entity(entity).is_ok(), "Entity should exist");
-    assert!(world.get::<RigidBody>(entity).is_some(), "Entity should have RigidBody");
-    assert!(world.get::<Collider>(entity).is_some(), "Entity should have Collider");
+    assert!(
+        world.get::<RigidBody>(entity).is_some(),
+        "Entity should have RigidBody"
+    );
+    assert!(
+        world.get::<Collider>(entity).is_some(),
+        "Entity should have Collider"
+    );
 }
 
 #[test]
@@ -82,11 +91,14 @@ fn test_gravity_affects_dynamic_bodies() {
 
     // Spawn a dynamic body high in the air
     let initial_height = 100.0;
-    let entity = app.world_mut().spawn((
-        Transform::from_xyz(0.0, initial_height, 0.0),
-        RigidBody::Dynamic,
-        Collider::ball(1.0),
-    )).id();
+    let entity = app
+        .world_mut()
+        .spawn((
+            Transform::from_xyz(0.0, initial_height, 0.0),
+            RigidBody::Dynamic,
+            Collider::ball(1.0),
+        ))
+        .id();
 
     // Run physics for several frames
     for _ in 0..60 {
@@ -95,7 +107,9 @@ fn test_gravity_affects_dynamic_bodies() {
 
     // Check that the body has fallen due to gravity
     let world = app.world();
-    let transform = world.get::<Transform>(entity).expect("Entity should have Transform");
+    let transform = world
+        .get::<Transform>(entity)
+        .expect("Entity should have Transform");
 
     assert!(
         transform.translation.y < initial_height,
@@ -112,11 +126,14 @@ fn test_static_bodies_do_not_move() {
 
     // Spawn a static body
     let position = Vec3::new(5.0, 5.0, 5.0);
-    let entity = app.world_mut().spawn((
-        Transform::from_translation(position),
-        RigidBody::Fixed,
-        Collider::cuboid(1.0, 1.0, 1.0),
-    )).id();
+    let entity = app
+        .world_mut()
+        .spawn((
+            Transform::from_translation(position),
+            RigidBody::Fixed,
+            Collider::cuboid(1.0, 1.0, 1.0),
+        ))
+        .id();
 
     // Run physics for several frames
     for _ in 0..60 {
@@ -125,7 +142,9 @@ fn test_static_bodies_do_not_move() {
 
     // Verify static body hasn't moved
     let world = app.world();
-    let transform = world.get::<Transform>(entity).expect("Entity should have Transform");
+    let transform = world
+        .get::<Transform>(entity)
+        .expect("Entity should have Transform");
 
     assert_eq!(
         transform.translation, position,
@@ -149,12 +168,15 @@ fn test_collision_detection() {
     ));
 
     // Spawn a ball that will fall onto the ground
-    let ball = app.world_mut().spawn((
-        Transform::from_xyz(0.0, 2.0, 0.0),
-        RigidBody::Dynamic,
-        Collider::ball(0.5),
-        ActiveEvents::COLLISION_EVENTS,
-    )).id();
+    let ball = app
+        .world_mut()
+        .spawn((
+            Transform::from_xyz(0.0, 2.0, 0.0),
+            RigidBody::Dynamic,
+            Collider::ball(0.5),
+            ActiveEvents::COLLISION_EVENTS,
+        ))
+        .id();
 
     // Run physics until the ball should have hit the ground
     for _ in 0..120 {
@@ -179,13 +201,17 @@ fn test_multiple_bodies_simulation() {
     let mut app = create_headless_physics_app();
 
     // Spawn several bodies at different heights
-    let bodies: Vec<Entity> = (0..5).map(|i| {
-        app.world_mut().spawn((
-            Transform::from_xyz(i as f32 * 3.0, 10.0 + i as f32 * 5.0, 0.0),
-            RigidBody::Dynamic,
-            Collider::ball(0.5),
-        )).id()
-    }).collect();
+    let bodies: Vec<Entity> = (0..5)
+        .map(|i| {
+            app.world_mut()
+                .spawn((
+                    Transform::from_xyz(i as f32 * 3.0, 10.0 + i as f32 * 5.0, 0.0),
+                    RigidBody::Dynamic,
+                    Collider::ball(0.5),
+                ))
+                .id()
+        })
+        .collect();
 
     // Run physics
     for _ in 0..60 {
@@ -200,7 +226,8 @@ fn test_multiple_bodies_simulation() {
         assert!(
             transform.translation.y < initial_height,
             "Body {} should have fallen from initial height {}",
-            i, initial_height
+            i,
+            initial_height
         );
     }
 }
@@ -211,16 +238,19 @@ fn test_velocity_application() {
     let mut app = create_headless_physics_app();
 
     // Spawn a body with initial velocity
-    let entity = app.world_mut().spawn((
-        Transform::from_xyz(0.0, 0.0, 0.0),
-        RigidBody::Dynamic,
-        Collider::ball(0.5),
-        Velocity {
-            linvel: Vec3::new(10.0, 0.0, 0.0),
-            angvel: Vec3::ZERO,
-        },
-        GravityScale(0.0), // Disable gravity for this test
-    )).id();
+    let entity = app
+        .world_mut()
+        .spawn((
+            Transform::from_xyz(0.0, 0.0, 0.0),
+            RigidBody::Dynamic,
+            Collider::ball(0.5),
+            Velocity {
+                linvel: Vec3::new(10.0, 0.0, 0.0),
+                angvel: Vec3::ZERO,
+            },
+            GravityScale(0.0), // Disable gravity for this test
+        ))
+        .id();
 
     // Run physics
     for _ in 0..30 {
@@ -244,11 +274,14 @@ fn test_kinematic_bodies() {
     let mut app = create_headless_physics_app();
 
     // Spawn a kinematic body
-    let entity = app.world_mut().spawn((
-        Transform::from_xyz(0.0, 5.0, 0.0),
-        RigidBody::KinematicPositionBased,
-        Collider::ball(1.0),
-    )).id();
+    let entity = app
+        .world_mut()
+        .spawn((
+            Transform::from_xyz(0.0, 5.0, 0.0),
+            RigidBody::KinematicPositionBased,
+            Collider::ball(1.0),
+        ))
+        .id();
 
     // Run a few frames
     for _ in 0..30 {
@@ -271,19 +304,25 @@ fn test_sensor_colliders() {
     let mut app = create_headless_physics_app();
 
     // Spawn a sensor collider
-    let _sensor = app.world_mut().spawn((
-        Transform::from_xyz(0.0, 0.0, 0.0),
-        Collider::ball(2.0),
-        Sensor,
-    )).id();
+    let _sensor = app
+        .world_mut()
+        .spawn((
+            Transform::from_xyz(0.0, 0.0, 0.0),
+            Collider::ball(2.0),
+            Sensor,
+        ))
+        .id();
 
     // Spawn a dynamic body that will pass through the sensor
     let initial_height = 5.0;
-    let ball = app.world_mut().spawn((
-        Transform::from_xyz(0.0, initial_height, 0.0),
-        RigidBody::Dynamic,
-        Collider::ball(0.5),
-    )).id();
+    let ball = app
+        .world_mut()
+        .spawn((
+            Transform::from_xyz(0.0, initial_height, 0.0),
+            RigidBody::Dynamic,
+            Collider::ball(0.5),
+        ))
+        .id();
 
     // Run physics for enough time for the ball to fall through
     for _ in 0..300 {
@@ -320,12 +359,15 @@ fn test_collision_groups() {
     ));
 
     // Spawn a dynamic body in group B (shouldn't collide with group A)
-    let ball = app.world_mut().spawn((
-        Transform::from_xyz(0.0, 5.0, 0.0),
-        RigidBody::Dynamic,
-        Collider::ball(0.5),
-        CollisionGroups::new(group_b, group_b),
-    )).id();
+    let ball = app
+        .world_mut()
+        .spawn((
+            Transform::from_xyz(0.0, 5.0, 0.0),
+            RigidBody::Dynamic,
+            Collider::ball(0.5),
+            CollisionGroups::new(group_b, group_b),
+        ))
+        .id();
 
     // Run physics for enough time to fall through
     for _ in 0..300 {

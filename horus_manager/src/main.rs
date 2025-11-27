@@ -372,7 +372,10 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 println!(
                     "{} Scanning workspace: {}\n",
                     "".cyan().bold(),
-                    target_path.canonicalize().unwrap_or(target_path.clone()).display()
+                    target_path
+                        .canonicalize()
+                        .unwrap_or(target_path.clone())
+                        .display()
                 );
 
                 let mut total_errors = 0;
@@ -388,11 +391,11 @@ fn run_command(command: Commands) -> HorusResult<()> {
                     .filter_entry(|e| {
                         let name = e.file_name().to_string_lossy();
                         // Skip hidden dirs, target, node_modules, __pycache__, .horus
-                        !name.starts_with('.') &&
-                        name != "target" &&
-                        name != "node_modules" &&
-                        name != "__pycache__" &&
-                        name != ".horus"
+                        !name.starts_with('.')
+                            && name != "target"
+                            && name != "node_modules"
+                            && name != "__pycache__"
+                            && name != ".horus"
                     })
                     .filter_map(|e| e.ok())
                 {
@@ -437,7 +440,10 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 // ═══════════════════════════════════════════════════════════
                 if !horus_yamls.is_empty() {
                     println!("{}", "━".repeat(60).dimmed());
-                    println!("{} Phase 1: Validating horus.yaml manifests...\n", "".cyan().bold());
+                    println!(
+                        "{} Phase 1: Validating horus.yaml manifests...\n",
+                        "".cyan().bold()
+                    );
 
                     for yaml_path in &horus_yamls {
                         let rel_path = yaml_path.strip_prefix(&target_path).unwrap_or(yaml_path);
@@ -454,36 +460,52 @@ fn run_command(command: Commands) -> HorusResult<()> {
                                         if yaml.get("name").is_none() {
                                             file_errors.push("missing 'name' field".to_string());
                                         }
-                                        let language = yaml.get("language").and_then(|l| l.as_str());
+                                        let language =
+                                            yaml.get("language").and_then(|l| l.as_str());
                                         if language.is_none() {
-                                            file_errors.push("missing 'language' field".to_string());
+                                            file_errors
+                                                .push("missing 'language' field".to_string());
                                         }
 
                                         // Check main file exists
                                         if let Some(lang) = language {
                                             let main_exists = match lang {
-                                                "rust" => base_dir.join("main.rs").exists() ||
-                                                          base_dir.join("src/main.rs").exists() ||
-                                                          base_dir.join("Cargo.toml").exists(),
+                                                "rust" => {
+                                                    base_dir.join("main.rs").exists()
+                                                        || base_dir.join("src/main.rs").exists()
+                                                        || base_dir.join("Cargo.toml").exists()
+                                                }
                                                 "python" => base_dir.join("main.py").exists(),
-                                                _ => true
+                                                _ => true,
                                             };
                                             if !main_exists {
-                                                file_errors.push(format!("main file not found for '{}'", lang));
+                                                file_errors.push(format!(
+                                                    "main file not found for '{}'",
+                                                    lang
+                                                ));
                                             }
                                         }
 
                                         // Validate path dependencies exist
-                                        if let Ok(deps) = parse_horus_yaml_dependencies_v2(yaml_path.to_str().unwrap_or("")) {
+                                        if let Ok(deps) = parse_horus_yaml_dependencies_v2(
+                                            yaml_path.to_str().unwrap_or(""),
+                                        ) {
                                             for dep in &deps {
-                                                if let DependencySource::Path(path_str) = &dep.source {
-                                                    let dep_path = if Path::new(path_str).is_absolute() {
-                                                        PathBuf::from(path_str)
-                                                    } else {
-                                                        base_dir.join(path_str)
-                                                    };
+                                                if let DependencySource::Path(path_str) =
+                                                    &dep.source
+                                                {
+                                                    let dep_path =
+                                                        if Path::new(path_str).is_absolute() {
+                                                            PathBuf::from(path_str)
+                                                        } else {
+                                                            base_dir.join(path_str)
+                                                        };
                                                     if !dep_path.exists() {
-                                                        file_errors.push(format!("dependency '{}' path not found: {}", dep.name, dep_path.display()));
+                                                        file_errors.push(format!(
+                                                            "dependency '{}' path not found: {}",
+                                                            dep.name,
+                                                            dep_path.display()
+                                                        ));
                                                     }
                                                 }
                                             }
@@ -518,11 +540,18 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 // ═══════════════════════════════════════════════════════════
                 if !cargo_dirs.is_empty() {
                     println!("\n{}", "━".repeat(60).dimmed());
-                    println!("{} Phase 2: Deep Rust check (cargo check)...\n", "".cyan().bold());
+                    println!(
+                        "{} Phase 2: Deep Rust check (cargo check)...\n",
+                        "".cyan().bold()
+                    );
 
                     for cargo_dir in &cargo_dirs {
                         let rel_path = cargo_dir.strip_prefix(&target_path).unwrap_or(cargo_dir);
-                        let display_path = if rel_path.as_os_str().is_empty() { "." } else { rel_path.to_str().unwrap_or(".") };
+                        let display_path = if rel_path.as_os_str().is_empty() {
+                            "."
+                        } else {
+                            rel_path.to_str().unwrap_or(".")
+                        };
                         print!("  {} {} ... ", "".cyan(), display_path);
                         std::io::Write::flush(&mut std::io::stdout()).ok();
 
@@ -560,10 +589,20 @@ fn run_command(command: Commands) -> HorusResult<()> {
                 // ═══════════════════════════════════════════════════════════
                 if !python_files.is_empty() {
                     println!("\n{}", "━".repeat(60).dimmed());
-                    println!("{} Phase 3: Python validation (syntax + imports)...\n", "".cyan().bold());
+                    println!(
+                        "{} Phase 3: Python validation (syntax + imports)...\n",
+                        "".cyan().bold()
+                    );
 
                     for py_path in &python_files {
-                        print!("  {} {} ", "".cyan(), py_path.strip_prefix(&target_path).unwrap_or(py_path).display());
+                        print!(
+                            "  {} {} ",
+                            "".cyan(),
+                            py_path
+                                .strip_prefix(&target_path)
+                                .unwrap_or(py_path)
+                                .display()
+                        );
 
                         // Syntax check
                         let syntax_check = std::process::Command::new("python3")
@@ -614,7 +653,11 @@ except ImportError as e:
                                         println!("{}", "".yellow());
                                         let err = String::from_utf8_lossy(&r.stderr);
                                         if !err.is_empty() {
-                                            println!("      {} {}", "".yellow(), err.lines().next().unwrap_or("").trim());
+                                            println!(
+                                                "      {} {}",
+                                                "".yellow(),
+                                                err.lines().next().unwrap_or("").trim()
+                                            );
                                         }
                                         total_warnings += 1;
                                     }
@@ -625,13 +668,19 @@ except ImportError as e:
                                 println!("{}", "".red());
                                 let error = String::from_utf8_lossy(&result.stderr);
                                 if !error.is_empty() {
-                                    println!("      {} {}", "".red(), error.lines().next().unwrap_or("").trim());
+                                    println!(
+                                        "      {} {}",
+                                        "".red(),
+                                        error.lines().next().unwrap_or("").trim()
+                                    );
                                 }
                                 total_errors += 1;
                             }
                             Err(_) => {
                                 println!("{}", "⊘".dimmed());
-                                if !quiet { total_warnings += 1; }
+                                if !quiet {
+                                    total_warnings += 1;
+                                }
                             }
                         }
                         files_checked += 1;
@@ -656,7 +705,10 @@ except ImportError as e:
                 println!();
 
                 if total_errors > 0 {
-                    return Err(HorusError::Config(format!("{} error(s) found", total_errors)));
+                    return Err(HorusError::Config(format!(
+                        "{} error(s) found",
+                        total_errors
+                    )));
                 }
                 return Ok(());
             }
@@ -2713,7 +2765,10 @@ except ImportError as e:
             // Find sim2d path relative to HORUS repo (cross-platform)
             let horus_source = env::var("HORUS_SOURCE")
                 .ok()
-                .or_else(|| dirs::home_dir().map(|h| h.join(".horus/cache/HORUS").to_string_lossy().to_string()))
+                .or_else(|| {
+                    dirs::home_dir()
+                        .map(|h| h.join(".horus/cache/HORUS").to_string_lossy().to_string())
+                })
                 .unwrap_or_else(|| ".".to_string());
 
             let sim2d_path = format!("{}/horus_library/tools/sim2d", horus_source);
@@ -2859,7 +2914,10 @@ except ImportError as e:
             // Find sim3d path relative to HORUS repo (cross-platform)
             let horus_source = env::var("HORUS_SOURCE")
                 .ok()
-                .or_else(|| dirs::home_dir().map(|h| h.join(".horus/cache/HORUS").to_string_lossy().to_string()))
+                .or_else(|| {
+                    dirs::home_dir()
+                        .map(|h| h.join(".horus/cache/HORUS").to_string_lossy().to_string())
+                })
                 .unwrap_or_else(|| ".".to_string());
 
             let sim3d_path = format!("{}/horus_library/tools/sim3d", horus_source);

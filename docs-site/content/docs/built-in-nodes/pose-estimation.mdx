@@ -49,7 +49,7 @@ fn main() -> Result<()> {
 
     let pose_node = PoseEstimationNode::new(
         "models/movenet_lightning.onnx",
-        "camera/raw",
+        "camera.raw",
         "vision/poses",
         config,
     )?;

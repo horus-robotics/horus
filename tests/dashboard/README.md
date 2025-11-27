@@ -27,16 +27,16 @@ A comprehensive mobile robot fleet management system with:
 
 **Topics:**
 ```
-sensors/camera           Image
-sensors/lidar            LaserScan
-sensors/imu              Imu
-sensors/gps              GpsCoordinates
-sensors/odometry         Odometry
-control/cmd_vel          CmdVel
-control/cmd_vel_override CmdVel
-safety/obstacle_alert    ObstacleAlert
-system/battery           BatteryStatus
-system/health            SystemHealth
+sensors.camera           Image
+sensors.lidar            LaserScan
+sensors.imu              Imu
+sensors.gps              GpsCoordinates
+sensors.odometry         Odometry
+control.cmd_vel          CmdVel
+control.cmd_vel_override CmdVel
+safety.obstacle_alert    ObstacleAlert
+system.battery           BatteryStatus
+system.health            SystemHealth
 ```
 
 ---
@@ -66,18 +66,18 @@ An autonomous warehouse robot with AI vision and task management:
 
 **Topics:**
 ```
-vision/qr_codes          dict (code, confidence)
-vision/objects           dict (objects, timestamp)
-localization/map         dict (resolution, occupied_cells)
-localization/pose        dict (x, y, theta, covariance)
-localization/position_estimate  dict (x, y, theta, confidence)
-tasks/current_task       dict (id, type, shelf/dock, item)
-tasks/status             dict (queue_size, active_task, completed)
-control/cmd_vel          dict (linear, angular)
-control/cmd_vel_safe     dict (linear, angular)
-safety/collision_alert   dict (type, object_class, distance, severity)
-safety/status            dict (emergency_active, system_status)
-system/performance       dict (uptime, tick_rate, cpu, memory)
+vision.qr_codes          dict (code, confidence)
+vision.objects           dict (objects, timestamp)
+localization.map         dict (resolution, occupied_cells)
+localization.pose        dict (x, y, theta, covariance)
+localization.position_estimate  dict (x, y, theta, confidence)
+tasks.current_task       dict (id, type, shelf.dock, item)
+tasks.status             dict (queue_size, active_task, completed)
+control.cmd_vel          dict (linear, angular)
+control.cmd_vel_safe     dict (linear, angular)
+safety.collision_alert   dict (type, object_class, distance, severity)
+safety.status            dict (emergency_active, system_status)
+system.performance       dict (uptime, tick_rate, cpu, memory)
 ```
 
 ---

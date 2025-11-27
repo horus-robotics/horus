@@ -124,7 +124,7 @@ impl Node for FlakyNode {
 
     fn get_subscribers(&self) -> Vec<TopicMetadata> {
         vec![TopicMetadata {
-            topic_name: "camera/data".to_string(),
+            topic_name: "camera.data".to_string(),
             type_name: "sensor_msgs/Image".to_string(),
         }]
     }

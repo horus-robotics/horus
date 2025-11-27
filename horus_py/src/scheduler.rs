@@ -36,8 +36,8 @@ struct RegisteredNode {
     last_watchdog_feed: Instant, // Last time watchdog was fed
     watchdog_expired: bool,      // Has watchdog expired?
     // Pub/Sub tracking for dashboard
-    publishers: Vec<String>,    // Topics this node publishes to
-    subscribers: Vec<String>,   // Topics this node subscribes to
+    publishers: Vec<String>,  // Topics this node publishes to
+    subscribers: Vec<String>, // Topics this node subscribes to
 }
 
 /// Python wrapper for HORUS Scheduler with per-node rate control

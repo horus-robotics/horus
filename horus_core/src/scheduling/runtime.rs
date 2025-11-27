@@ -50,9 +50,8 @@ pub fn set_thread_affinity(cores: &[usize]) -> RuntimeResult<()> {
         return Ok(());
     }
 
-    let core_ids = core_affinity::get_core_ids().ok_or_else(|| {
-        RuntimeError::AffinityError("Failed to get core IDs".to_string())
-    })?;
+    let core_ids = core_affinity::get_core_ids()
+        .ok_or_else(|| RuntimeError::AffinityError("Failed to get core IDs".to_string()))?;
 
     // Find the requested cores
     for &core_idx in cores {
@@ -314,11 +313,7 @@ pub fn get_numa_node_count() -> usize {
     if let Ok(entries) = std::fs::read_dir("/sys/devices/system/node/") {
         entries
             .filter_map(|e| e.ok())
-            .filter(|e| {
-                e.file_name()
-                    .to_string_lossy()
-                    .starts_with("node")
-            })
+            .filter(|e| e.file_name().to_string_lossy().starts_with("node"))
             .count()
             .max(1)
     } else {

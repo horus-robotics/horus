@@ -249,11 +249,7 @@ impl DockWorkspace {
         let tree = state.main_surface_mut();
 
         // Split: Left panel (Hierarchy)
-        let [_viewport, _left] = tree.split_left(
-            NodeIndex::root(),
-            0.2,
-            vec![DockTab::Hierarchy],
-        );
+        let [_viewport, _left] = tree.split_left(NodeIndex::root(), 0.2, vec![DockTab::Hierarchy]);
 
         // Split: Right panel (Inspector + Settings as tabs)
         let [_viewport, _right] = tree.split_right(
@@ -283,11 +279,8 @@ impl DockWorkspace {
         let mut state = DockState::new(vec![DockTab::Viewport]);
         let tree = state.main_surface_mut();
 
-        let [_viewport, _right] = tree.split_right(
-            NodeIndex::root(),
-            0.3,
-            vec![DockTab::Inspector],
-        );
+        let [_viewport, _right] =
+            tree.split_right(NodeIndex::root(), 0.3, vec![DockTab::Inspector]);
 
         Self {
             state,
@@ -409,10 +402,7 @@ impl Plugin for DockPlugin {
         app.init_resource::<DockWorkspace>()
             .add_event::<ChangeDockLayoutEvent>()
             .add_event::<AddPluginTabEvent>()
-            .add_systems(
-                Update,
-                (handle_layout_change, handle_add_plugin_tab),
-            );
+            .add_systems(Update, (handle_layout_change, handle_add_plugin_tab));
 
         tracing::info!("Dock system initialized");
     }

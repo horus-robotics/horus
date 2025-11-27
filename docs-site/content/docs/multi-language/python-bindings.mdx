@@ -490,6 +490,166 @@ print(f"Sensor: {stats['total_ticks']} ticks in 5 seconds")
 
 ---
 
+## Network Communication
+
+HORUS Python supports network communication for distributed multi-machine systems. Hub, Link, and Router all work transparently over the network.
+
+### Hub Network Endpoints
+
+Add an `endpoint` parameter to communicate over the network:
+
+```python
+from horus import Hub, CmdVel
+
+# Local (shared memory) - default
+local_hub = Hub(CmdVel)
+
+# Network (UDP direct)
+network_hub = Hub(CmdVel, endpoint="cmdvel@192.168.1.100:8000")
+
+# Router (TCP broker for WAN/NAT traversal)
+router_hub = Hub(CmdVel, endpoint="cmdvel@router")
+```
+
+**Endpoint Syntax:**
+- `"topic"` - Local shared memory (~500ns latency)
+- `"topic@host:port"` - Direct UDP (&lt;50μs latency)
+- `"topic@router"` - Router broker (auto-discovery on localhost:7777)
+- `"topic@192.168.1.100:7777"` - Router broker at specific address
+
+### Link Class (Point-to-Point)
+
+Link provides high-performance point-to-point (SPSC) communication - ~30% faster than Hub for single producer/consumer patterns.
+
+**Key Architecture**: Link uses a **single-slot design** (not a ring buffer):
+- Always stores exactly **one message** (the latest value)
+- New messages **overwrite** old unread messages
+- Perfect for **sensors** where only the latest reading matters
+- `send()` **never blocks** - it always succeeds immediately
+
+```python
+from horus import Link, CmdVel
+
+# === MACHINE 1 (Producer) ===
+# Connects to consumer at 192.168.1.20:9000
+output = Link.producer(CmdVel, "sensors@192.168.1.20:9000")
+output.send(CmdVel(linear=1.0, angular=0.5))
+
+# === MACHINE 2 (Consumer) ===
+# Listens on port 9000
+input_link = Link.consumer(CmdVel, "sensors@0.0.0.0:9000")
+if msg := input_link.recv():
+    print(f"Received: {msg}")
+```
+
+**Link Methods:**
+
+| Method | Description |
+|--------|-------------|
+| `Link.producer(type, endpoint)` | Create producer (connects to consumer) |
+| `Link.consumer(type, endpoint)` | Create consumer (listens for producer) |
+| `link.send(msg)` | Send a message |
+| `link.recv()` | Receive a message (returns None if empty) |
+| `link.topic()` | Get the topic name |
+
+**Local Link (Shared Memory):**
+
+```python
+# No "@" in endpoint = local shared memory
+producer = Link.producer(CmdVel, "motor_commands")
+consumer = Link.consumer(CmdVel, "motor_commands")
+
+producer.send(CmdVel(linear=1.0, angular=0.0))
+msg = consumer.recv()  # ~248ns latency
+```
+
+### Router Client (WAN/NAT Traversal)
+
+For communication across networks, through NAT, or for large-scale deployments, use the Router:
+
+```python
+from horus import RouterClient, Hub, CmdVel
+
+# Create router client for explicit connection management
+router = RouterClient("192.168.1.100", 7777)
+
+# Build endpoints through the router
+cmd_endpoint = router.endpoint("cmdvel")  # Returns "cmdvel@192.168.1.100:7777"
+pose_endpoint = router.endpoint("pose")
+
+# Use endpoints with Hub
+hub = Hub(CmdVel, endpoint=cmd_endpoint)
+
+# Router properties
+print(f"Address: {router.address}")        # "192.168.1.100:7777"
+print(f"Connected: {router.is_connected}") # True
+print(f"Topics: {router.topics}")          # ["cmdvel", "pose"]
+print(f"Uptime: {router.uptime_seconds}s")
+```
+
+**Helper Functions:**
+
+```python
+from horus import default_router_endpoint, router_endpoint
+
+# Default router (localhost:7777)
+ep1 = default_router_endpoint("cmdvel")  # "cmdvel@router"
+
+# Custom router address
+ep2 = router_endpoint("cmdvel", "192.168.1.100", 7777)  # "cmdvel@192.168.1.100:7777"
+```
+
+**Router Server (for testing):**
+
+```python
+from horus import RouterServer
+
+# Start a local router (for development/testing)
+server = RouterServer(port=7777)
+server.start()
+
+# For production, use CLI instead:
+# $ horus router start --port 7777
+```
+
+### When to Use What
+
+| Transport | Latency | Use Case |
+|-----------|---------|----------|
+| Hub (local) | ~500ns | Same-machine pub/sub |
+| Link (local) | ~248ns | Same-machine point-to-point (30% faster) |
+| Hub (network) | &lt;50μs | Multi-machine pub/sub on LAN |
+| Link (network) | 5-15μs | Multi-machine point-to-point (3-10x faster than Hub) |
+| Router | 10-50ms | WAN, NAT traversal, cloud deployments |
+
+### Multi-Machine Example
+
+```python
+# === ROBOT (192.168.1.50) ===
+from horus import Hub, Link, CmdVel, LaserScan
+
+# Local: Critical flight control (ultra-fast)
+imu_link = Link.consumer(ImuData, "imu")  # 248ns
+
+# Network: Telemetry to ground station
+telemetry = Hub(DroneStatus, endpoint="telem@192.168.1.100:8000")
+
+# Network: Commands from ground station
+commands = Hub(Command, endpoint="cmd@0.0.0.0:8001")
+
+
+# === GROUND STATION (192.168.1.100) ===
+from horus import Hub
+
+# Receive telemetry from robot
+telemetry_sub = Hub(DroneStatus, endpoint="telem@0.0.0.0:8000")
+
+# Send commands to robot
+command_pub = Hub(Command, endpoint="cmd@192.168.1.50:8001")
+```
+
+---
+
 ## Integration with Python Ecosystem
 
 ### NumPy Integration
@@ -1052,6 +1212,7 @@ Dashboard integration for Python nodes is planned for a future release. This wil
 
 ## See Also
 
+- [Network Communication](/core-concepts/network-communication) - Detailed network guide (Rust-focused, concepts apply to Python)
 - [Examples](/examples) - More code examples
 - [Core Concepts](/core-concepts/core-concepts-nodes) - Understanding HORUS architecture
 - [Dashboard](/development/dashboard) - Real-time monitoring and visualization

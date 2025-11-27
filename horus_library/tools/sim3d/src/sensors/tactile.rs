@@ -298,7 +298,12 @@ pub struct ContactPoint {
 pub fn tactile_sensor_update_system(
     time: Res<Time>,
     physics_world: Res<PhysicsWorld>,
-    mut sensors: Query<(Entity, &mut TactileSensor, &mut TactileData, &GlobalTransform)>,
+    mut sensors: Query<(
+        Entity,
+        &mut TactileSensor,
+        &mut TactileData,
+        &GlobalTransform,
+    )>,
 ) {
     let current_time = time.elapsed_secs();
 
@@ -312,13 +317,7 @@ pub fn tactile_sensor_update_system(
         data.clear();
 
         // Query physics contacts from Rapier
-        process_tactile_contacts(
-            entity,
-            &sensor,
-            &mut data,
-            transform,
-            &physics_world,
-        );
+        process_tactile_contacts(entity, &sensor, &mut data, transform, &physics_world);
 
         // Calculate aggregate values
         let total_normal: f32 = data.readings.iter().map(|r| r.force_normal).sum();
@@ -399,19 +398,27 @@ fn process_tactile_contacts(
                             let z_proj = local_point.dot(sensor_tangent_z);
 
                             // Convert to taxel coordinates
-                            let taxel_x = ((x_proj + sensor.physical_size.0 / 2.0) / taxel_width) as usize;
-                            let taxel_y = ((z_proj + sensor.physical_size.1 / 2.0) / taxel_height) as usize;
+                            let taxel_x =
+                                ((x_proj + sensor.physical_size.0 / 2.0) / taxel_width) as usize;
+                            let taxel_y =
+                                ((z_proj + sensor.physical_size.1 / 2.0) / taxel_height) as usize;
 
                             // Check if within sensor bounds
                             if taxel_x < sensor.array_size.0 && taxel_y < sensor.array_size.1 {
                                 // Calculate contact force components from contact data
                                 // Normal impulse is stored in the contact data
                                 let impulse = contact.data.impulse;
-                                let force_magnitude = impulse.abs() / physics_world.integration_parameters.dt;
+                                let force_magnitude =
+                                    impulse.abs() / physics_world.integration_parameters.dt;
 
                                 // Decompose force into normal and shear components
-                                let normal_dir = Vec3::new(manifold.local_n1.x, manifold.local_n1.y, manifold.local_n1.z);
-                                let force_normal = force_magnitude * normal_dir.dot(sensor_normal).abs();
+                                let normal_dir = Vec3::new(
+                                    manifold.local_n1.x,
+                                    manifold.local_n1.y,
+                                    manifold.local_n1.z,
+                                );
+                                let force_normal =
+                                    force_magnitude * normal_dir.dot(sensor_normal).abs();
 
                                 // Calculate shear forces (tangential to surface)
                                 let force_vector = normal_dir * force_magnitude;
@@ -419,13 +426,16 @@ fn process_tactile_contacts(
                                 let force_shear_y = force_vector.dot(sensor_tangent_z);
 
                                 // Apply force to taxel (with sensor characteristics)
-                                let quantized_normal = (force_normal / sensor.force_resolution).round()
+                                let quantized_normal = (force_normal / sensor.force_resolution)
+                                    .round()
                                     * sensor.force_resolution;
                                 let quantized_normal = quantized_normal.min(sensor.max_force);
 
-                                let quantized_shear_x = (force_shear_x / sensor.force_resolution).round()
+                                let quantized_shear_x = (force_shear_x / sensor.force_resolution)
+                                    .round()
                                     * sensor.force_resolution;
-                                let quantized_shear_y = (force_shear_y / sensor.force_resolution).round()
+                                let quantized_shear_y = (force_shear_y / sensor.force_resolution)
+                                    .round()
                                     * sensor.force_resolution;
 
                                 // Update taxel reading
@@ -434,7 +444,7 @@ fn process_tactile_contacts(
                                     force_shear_x: quantized_shear_x,
                                     force_shear_y: quantized_shear_y,
                                     contact_area: 1.0, // Full taxel contact assumed
-                                    vibration: 0.0, // Static contact, no vibration
+                                    vibration: 0.0,    // Static contact, no vibration
                                 };
 
                                 data.set_taxel(taxel_x, taxel_y, reading);

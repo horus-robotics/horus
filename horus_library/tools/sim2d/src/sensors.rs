@@ -44,7 +44,7 @@ impl NoiseModel {
         // We already check for <= 0 above, so this should be safe, but handle error anyway
         let normal = match Normal::new(self.mean, self.std_dev) {
             Ok(n) => n,
-            Err(_) => return value + self.mean,  // Fall back to just applying mean
+            Err(_) => return value + self.mean, // Fall back to just applying mean
         };
         value + normal.sample(&mut rng)
     }

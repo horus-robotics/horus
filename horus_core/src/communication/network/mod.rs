@@ -70,9 +70,17 @@ pub use udp_multicast::UdpMulticastBackend;
 // Re-export new modules
 pub use batching::{BatchConfig, BatchReceiver, MessageBatch, MessageBatcher, SharedBatcher};
 pub use caching::{CacheConfig, CacheStats, SharedCache, TopicCache};
-pub use compression::{CompressedData, CompressedPacket, CompressionAlgo, CompressionConfig, Compressor};
-pub use congestion::{CongestionConfig, CongestionController, CongestionResult, DropPolicy, SharedCongestionController};
-pub use queryable::{QueryClient, QueryConfig, QueryError, QueryHandler, QueryRequest, QueryResponse, QueryServer, ResponseStatus};
+pub use compression::{
+    CompressedData, CompressedPacket, CompressionAlgo, CompressionConfig, Compressor,
+};
+pub use congestion::{
+    CongestionConfig, CongestionController, CongestionResult, DropPolicy,
+    SharedCongestionController,
+};
+pub use queryable::{
+    QueryClient, QueryConfig, QueryError, QueryHandler, QueryRequest, QueryResponse, QueryServer,
+    ResponseStatus,
+};
 
 #[cfg(unix)]
 pub use unix_socket::UnixSocketBackend;
@@ -82,24 +90,23 @@ pub use tls::{TlsCertConfig, TlsStream};
 
 // Network v2 re-exports
 pub use batch_udp::{
-    BatchUdpConfig, BatchUdpReceiver, BatchUdpSender, BatchUdpStats,
-    ReceivedPacket, ScalableUdpBackend,
-};
-pub use smart_transport::{
-    NetworkLocation, TransportBuilder, TransportPreferences,
-    TransportSelector, TransportSelectorStats, TransportType,
+    BatchUdpConfig, BatchUdpReceiver, BatchUdpSender, BatchUdpStats, ReceivedPacket,
+    ScalableUdpBackend,
 };
 pub use smart_copy::{
-    BufferPool, CopyStrategy, RegisteredBuffer, SmartCopyConfig,
-    SmartCopySender, SmartCopyStats,
+    BufferPool, CopyStrategy, RegisteredBuffer, SmartCopyConfig, SmartCopySender, SmartCopyStats,
+};
+pub use smart_transport::{
+    NetworkLocation, TransportBuilder, TransportPreferences, TransportSelector,
+    TransportSelectorStats, TransportType,
 };
 
 // io_uring re-exports (real implementation)
 #[cfg(all(target_os = "linux", feature = "io-uring-net"))]
 pub use io_uring::{
-    CompletionResult, RealIoUringBackend, RealIoUringConfig, RealIoUringStats,
-    is_real_io_uring_available, is_sqpoll_available,
+    is_real_io_uring_available, is_sqpoll_available, CompletionResult, RealIoUringBackend,
+    RealIoUringConfig, RealIoUringStats,
 };
 
 #[cfg(feature = "quic")]
-pub use quic::{QuicConfig, QuicStats, QuicTransport, generate_self_signed_cert};
+pub use quic::{generate_self_signed_cert, QuicConfig, QuicStats, QuicTransport};

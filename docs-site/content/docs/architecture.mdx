@@ -151,14 +151,14 @@ node! {
     MyController {
         // Publishers
         pub {
-            cmd: CmdVel -> "motors/cmd"
-            status: Status -> "system/status"
+            cmd: CmdVel -> "motors.cmd"
+            status: Status -> "system.status"
         }
 
         // Subscribers
         sub {
-            sensors: SensorData <- "sensors/data"
-            odom: Odometry <- "nav/odom"
+            sensors: SensorData <- "sensors.data"
+            odom: Odometry <- "nav.odom"
         }
 
         // State fields
@@ -695,7 +695,7 @@ See [CLI Reference - horus run](/cli-reference#horus-run---build-and-run) for us
 ```
 ─────────────  1. tick()    ──────────────────
  SensorNode  ──────────────> Hub<SensorData>               
- Priority: 0                 "sensors/data"                
+ Priority: 0                 "sensors.data"                
 ─────────────               ─────────────────
                                         2. send()
                                        ▼
@@ -708,13 +708,13 @@ See [CLI Reference - horus run](/cli-reference#horus-run---build-and-run) for us
                                        ▼
 ────────────── 4. tick()   ──────────────────
  ControlNode  <───────────── Hub<SensorData>               
- Priority: 5                 "sensors/data"                
+ Priority: 5                 "sensors.data"                
 ─────────────              ──────────────────
         5. send()
        ▼
 ──────────────────
  Hub<CmdVel>                                                 
- "motors/cmd"                                                
+ "motors.cmd"                                                
 ─────────────────
           6. Shared memory write
          ▼

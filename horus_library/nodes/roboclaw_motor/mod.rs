@@ -389,7 +389,7 @@ impl RoboclawMotorNode {
                             && self.motor_states[1].encoder_count == 0)
                     {
                         ctx.log_warning(
-                            "RoboclawMotorNode: Hardware unavailable - using SIMULATION mode"
+                            "RoboclawMotorNode: Hardware unavailable - using SIMULATION mode",
                         );
                         ctx.log_warning(&format!("  Tried: {}", self.serial_port));
                         ctx.log_warning(&format!("  Error: {}", e));
@@ -480,7 +480,7 @@ impl RoboclawMotorNode {
                             && self.motor_states[1].encoder_count == 0)
                     {
                         ctx.log_warning(
-                            "RoboclawMotorNode: Hardware unavailable - using SIMULATION mode"
+                            "RoboclawMotorNode: Hardware unavailable - using SIMULATION mode",
                         );
                         ctx.log_warning(&format!("  Tried: {}", self.serial_port));
                         ctx.log_warning(&format!("  Error: {}", e));
@@ -743,7 +743,11 @@ impl RoboclawMotorNode {
         // M1 Forward: 0, M1 Backward: 1
         // M2 Forward: 4, M2 Backward: 5
         let command = if motor_id == 1 {
-            if duty >= 0 { 0 } else { 1 }
+            if duty >= 0 {
+                0
+            } else {
+                1
+            }
         } else if duty >= 0 {
             4
         } else {

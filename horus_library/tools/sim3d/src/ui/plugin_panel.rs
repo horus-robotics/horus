@@ -134,7 +134,9 @@ pub fn handle_open_plugin_settings(
     for event in events.read() {
         config.show_settings_panel = true;
         config.active_tab = SettingsTab::Plugins;
-        config.expanded_sections.insert(event.plugin_name.clone(), true);
+        config
+            .expanded_sections
+            .insert(event.plugin_name.clone(), true);
     }
 }
 
@@ -187,20 +189,18 @@ pub fn unified_settings_panel_system(
             }
 
             // Tab content
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                match config.active_tab {
-                    SettingsTab::Plugins => {
-                        show_plugins_settings(ui, &mut config, &registry, &ui_registry);
-                    }
-                    SettingsTab::Simulation => {
-                        show_simulation_settings(ui);
-                    }
-                    SettingsTab::Rendering => {
-                        show_rendering_settings(ui);
-                    }
-                    SettingsTab::Input => {
-                        show_input_settings(ui);
-                    }
+            egui::ScrollArea::vertical().show(ui, |ui| match config.active_tab {
+                SettingsTab::Plugins => {
+                    show_plugins_settings(ui, &mut config, &registry, &ui_registry);
+                }
+                SettingsTab::Simulation => {
+                    show_simulation_settings(ui);
+                }
+                SettingsTab::Rendering => {
+                    show_rendering_settings(ui);
+                }
+                SettingsTab::Input => {
+                    show_input_settings(ui);
                 }
             });
         });
@@ -293,9 +293,7 @@ fn show_plugins_settings(
                             crate::plugins::PluginState::Active => {
                                 ("Active", egui::Color32::LIGHT_GREEN)
                             }
-                            crate::plugins::PluginState::Paused => {
-                                ("Paused", egui::Color32::GRAY)
-                            }
+                            crate::plugins::PluginState::Paused => ("Paused", egui::Color32::GRAY),
                             crate::plugins::PluginState::Stopped => {
                                 ("Stopped", egui::Color32::DARK_GRAY)
                             }

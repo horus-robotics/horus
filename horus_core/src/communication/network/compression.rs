@@ -109,9 +109,7 @@ impl Compressor {
         let original_size = data.len();
 
         // Skip compression for small messages
-        if original_size < self.config.min_size
-            || self.config.algorithm == CompressionAlgo::None
-        {
+        if original_size < self.config.min_size || self.config.algorithm == CompressionAlgo::None {
             return CompressedData {
                 data: data.to_vec(),
                 original_size,
@@ -254,7 +252,11 @@ impl Compressor {
         }
     }
 
-    fn decompress_lz4(&self, data: &[u8], _original_size: usize) -> Result<Vec<u8>, CompressionError> {
+    fn decompress_lz4(
+        &self,
+        data: &[u8],
+        _original_size: usize,
+    ) -> Result<Vec<u8>, CompressionError> {
         let mut output = Vec::new();
         let mut i = 0;
 
@@ -315,7 +317,8 @@ impl Compressor {
                 while i + match_len < data.len()
                     && j + match_len < i
                     && data[i + match_len] == data[j + match_len]
-                    && match_len < 127  // Max 127 since we use 7 bits for length
+                    && match_len < 127
+                // Max 127 since we use 7 bits for length
                 {
                     match_len += 1;
                 }
@@ -356,8 +359,7 @@ impl Compressor {
             return Err(CompressionError::InvalidMagic);
         }
 
-        let original_size =
-            u32::from_le_bytes([data[4], data[5], data[6], data[7]]) as usize;
+        let original_size = u32::from_le_bytes([data[4], data[5], data[6], data[7]]) as usize;
         let mut output = Vec::with_capacity(original_size);
 
         let mut i = 8;

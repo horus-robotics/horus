@@ -15,39 +15,81 @@ MAGENTA='\033[0;35m'
 WHITE='\033[1;37m'
 NC='\033[0m' # No Color
 
-# WALL-E Robot indicators (UTF-8)
-ROBOT="[□_□]"
-ROBOT_SUCCESS="[■_■]"
-ROBOT_BYE="[;_;]"
-ROBOT_CLEAN="[▣_▣]"
-ROBOT_CHECK="[□_□]?"
+# Status indicators
+STATUS_OK="[+]"
+STATUS_ERR="[-]"
+STATUS_WARN="[!]"
+STATUS_INFO="[*]"
 
-# Spinner function - WALL-E compacting trash animation
+# Spinner function - simple dots
 spin() {
     local pid=$1
     local msg="$2"
-    # WALL-E compacting trash: sees trash, eats it, compacts, ejects cube
-    local spin_chars=(
-        '[□_□]  ▮▮▮'
-        '[□_□] ▮▮▮ '
-        '[□_□]▮▮▮  '
-        '[□■□]▮▮   '
-        '[■_■]▮    '
-        '[▣_▣]     '
-        '[▪_▪]     '
-        '[□_□]▫    '
-        '[□_□] ▫▫  '
-        '[□_□]  ▫▫▫'
-    )
+    local spin_chars=('.' '..' '...' '....')
     local i=0
     tput civis 2>/dev/null || true
     while kill -0 $pid 2>/dev/null; do
         printf "\r  ${spin_chars[$i]} ${msg}"
         i=$(( (i + 1) % ${#spin_chars[@]} ))
-        sleep 0.15
+        sleep 0.25
     done
     tput cnorm 2>/dev/null || true
     printf "\r\033[K"
+}
+
+# ============================================================================
+# PROGRESS BAR FUNCTIONS - Real progress with percentages
+# ============================================================================
+
+# Global uninstall progress tracking
+UNINSTALL_TOTAL_STEPS=5
+UNINSTALL_CURRENT_STEP=0
+UNINSTALL_START_TIME=0
+
+# Initialize uninstall progress
+init_uninstall_progress() {
+    UNINSTALL_TOTAL_STEPS=$1
+    UNINSTALL_CURRENT_STEP=0
+    UNINSTALL_START_TIME=$(date +%s)
+}
+
+# Update uninstall progress bar
+update_uninstall_progress() {
+    local step_name="$1"
+    UNINSTALL_CURRENT_STEP=$((UNINSTALL_CURRENT_STEP + 1))
+
+    local percent=0
+    if [ "$UNINSTALL_TOTAL_STEPS" -gt 0 ]; then
+        percent=$((UNINSTALL_CURRENT_STEP * 100 / UNINSTALL_TOTAL_STEPS))
+    fi
+
+    # Calculate ETA
+    local elapsed=$(($(date +%s) - UNINSTALL_START_TIME))
+    local eta_str=""
+    if [ "$elapsed" -gt 0 ] && [ "$percent" -gt 0 ] && [ "$percent" -lt 100 ]; then
+        local total_estimated=$((elapsed * 100 / percent))
+        local remaining=$((total_estimated - elapsed))
+        if [ "$remaining" -gt 0 ]; then
+            eta_str=" ETA: ${remaining}s"
+        fi
+    fi
+
+    # Build progress bar
+    local width=25
+    local filled=$((percent * width / 100))
+    local empty=$((width - filled))
+    local bar=""
+    for ((j=0; j<filled; j++)); do bar+="█"; done
+    for ((j=0; j<empty; j++)); do bar+="░"; done
+
+    # Print progress
+    printf "\r  ${STATUS_INFO} [${bar}] %3d%% %-25s${eta_str}    " "$percent" "$step_name"
+}
+
+# Complete uninstall progress
+complete_uninstall_progress() {
+    local elapsed=$(($(date +%s) - UNINSTALL_START_TIME))
+    printf "\r  ${STATUS_OK} [█████████████████████████] 100%% Uninstall completed in ${elapsed}s    \n"
 }
 
 # Cross-platform shared memory path detection
@@ -116,7 +158,7 @@ FISH_COMPLETION_PATHS=(
 
 echo ""
 echo -e "${BLUE}============================================${NC}"
-echo -e "${WHITE}   ${ROBOT_BYE} HORUS Uninstallation Script v2.0.0${NC}"
+echo -e "${WHITE}   HORUS Uninstallation Script v2.0.0${NC}"
 echo -e "${BLUE}============================================${NC}"
 echo ""
 
@@ -241,15 +283,20 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 fi
 
 echo ""
-echo -e "${CYAN}${ROBOT_CLEAN} Uninstalling HORUS...${NC}"
+echo -e "${CYAN}${STATUS_INFO} Uninstalling HORUS...${NC}"
 echo ""
 
 REMOVED=0
 SKIPPED=0
 
+# Initialize progress tracking (5 main steps)
+init_uninstall_progress 5
+
 #=====================================
 # 1. Remove binaries
 #=====================================
+update_uninstall_progress "Removing binaries..."
+echo ""
 echo -e "${MAGENTA}[1/5] Removing binaries...${NC}"
 
 for bin in "${BINARIES[@]}"; do
@@ -263,6 +310,7 @@ done
 #=====================================
 # 2. Remove shell completions
 #=====================================
+update_uninstall_progress "Removing completions..."
 echo ""
 echo -e "${MAGENTA}[2/5] Removing shell completions...${NC}"
 
@@ -282,6 +330,7 @@ fi
 #=====================================
 # 3. Remove shared memory
 #=====================================
+update_uninstall_progress "Cleaning shared memory..."
 echo ""
 echo -e "${MAGENTA}[3/5] Cleaning shared memory...${NC}"
 
@@ -308,6 +357,7 @@ fi
 #=====================================
 # 4. Remove HORUS directory
 #=====================================
+update_uninstall_progress "Removing HORUS data..."
 echo ""
 echo -e "${MAGENTA}[4/5] Removing HORUS data...${NC}"
 
@@ -353,6 +403,7 @@ fi
 #=====================================
 # 5. Optional: Clean Cargo cache
 #=====================================
+update_uninstall_progress "Optional cleanup..."
 echo ""
 echo -e "${MAGENTA}[5/5] Optional cleanup...${NC}"
 
@@ -381,6 +432,10 @@ fi
 #=====================================
 # Summary
 #=====================================
+
+# Show final progress bar completion
+complete_uninstall_progress
+
 echo ""
 echo -e "${BLUE}============================================${NC}"
 echo -e "${WHITE}   Uninstallation Complete${NC}"
@@ -397,7 +452,7 @@ if pgrep -x "horus" > /dev/null 2>&1 || pgrep -x "sim2d" > /dev/null 2>&1 || pgr
     echo ""
 fi
 
-echo -e "${GREEN}${ROBOT_BYE} HORUS has been uninstalled. Goodbye!${NC}"
+echo -e "${GREEN}${STATUS_OK} HORUS has been uninstalled. Goodbye!${NC}"
 echo ""
 echo -e "${CYAN}Notes:${NC}"
 echo "  - Project-local .horus/ directories were NOT removed"

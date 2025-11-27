@@ -39,13 +39,13 @@ impl TransportType {
     /// Get expected latency range in microseconds
     pub fn expected_latency_us(&self) -> (u32, u32) {
         match self {
-            TransportType::SharedMemory => (0, 1),      // 200-500ns
-            TransportType::IoUring => (2, 5),           // 2-5µs
-            TransportType::UnixSocket => (1, 3),        // 1-3µs
-            TransportType::BatchUdp => (5, 15),         // 5-15µs
-            TransportType::Udp => (5, 20),              // 5-20µs
-            TransportType::Tcp => (10, 50),             // 10-50µs
-            TransportType::Quic => (20, 100),           // 20-100µs (includes crypto)
+            TransportType::SharedMemory => (0, 1), // 200-500ns
+            TransportType::IoUring => (2, 5),      // 2-5µs
+            TransportType::UnixSocket => (1, 3),   // 1-3µs
+            TransportType::BatchUdp => (5, 15),    // 5-15µs
+            TransportType::Udp => (5, 20),         // 5-20µs
+            TransportType::Tcp => (10, 50),        // 10-50µs
+            TransportType::Quic => (20, 100),      // 20-100µs (includes crypto)
         }
     }
 
@@ -74,13 +74,13 @@ impl TransportType {
     /// Get priority for transport selection (higher = better)
     pub fn priority(&self) -> u8 {
         match self {
-            TransportType::SharedMemory => 100,  // Best for local
-            TransportType::IoUring => 95,        // Best for network (Linux)
+            TransportType::SharedMemory => 100, // Best for local
+            TransportType::IoUring => 95,       // Best for network (Linux)
             TransportType::UnixSocket => 85,    // Good for localhost
-            TransportType::BatchUdp => 70,       // Good for LAN
-            TransportType::Udp => 50,            // Universal fallback
-            TransportType::Tcp => 40,            // Reliable but slower
-            TransportType::Quic => 60,           // Good for WAN
+            TransportType::BatchUdp => 70,      // Good for LAN
+            TransportType::Udp => 50,           // Universal fallback
+            TransportType::Tcp => 40,           // Reliable but slower
+            TransportType::Quic => 60,          // Good for WAN
         }
     }
 }
@@ -273,12 +273,8 @@ impl TransportSelector {
             NetworkLocation::SameProcess | NetworkLocation::SameMachine => {
                 self.select_local_transport()
             }
-            NetworkLocation::LocalNetwork => {
-                self.select_lan_transport()
-            }
-            NetworkLocation::WideArea | NetworkLocation::Unknown => {
-                self.select_wan_transport()
-            }
+            NetworkLocation::LocalNetwork => self.select_lan_transport(),
+            NetworkLocation::WideArea | NetworkLocation::Unknown => self.select_wan_transport(),
         }
     }
 
@@ -357,10 +353,14 @@ impl TransportSelector {
                 self.stats.shm_selections.fetch_add(1, Ordering::Relaxed);
             }
             TransportType::IoUring => {
-                self.stats.io_uring_selections.fetch_add(1, Ordering::Relaxed);
+                self.stats
+                    .io_uring_selections
+                    .fetch_add(1, Ordering::Relaxed);
             }
             TransportType::BatchUdp => {
-                self.stats.batch_udp_selections.fetch_add(1, Ordering::Relaxed);
+                self.stats
+                    .batch_udp_selections
+                    .fetch_add(1, Ordering::Relaxed);
             }
             TransportType::Udp => {
                 self.stats.udp_selections.fetch_add(1, Ordering::Relaxed);
@@ -372,7 +372,9 @@ impl TransportSelector {
                 self.stats.quic_selections.fetch_add(1, Ordering::Relaxed);
             }
             TransportType::UnixSocket => {
-                self.stats.unix_socket_selections.fetch_add(1, Ordering::Relaxed);
+                self.stats
+                    .unix_socket_selections
+                    .fetch_add(1, Ordering::Relaxed);
             }
         }
     }
@@ -495,19 +497,31 @@ mod tests {
     #[test]
     fn test_network_location_localhost() {
         let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 8080));
-        assert_eq!(NetworkLocation::from_addr(&addr), NetworkLocation::SameMachine);
+        assert_eq!(
+            NetworkLocation::from_addr(&addr),
+            NetworkLocation::SameMachine
+        );
     }
 
     #[test]
     fn test_network_location_private() {
         let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(192, 168, 1, 100), 8080));
-        assert_eq!(NetworkLocation::from_addr(&addr), NetworkLocation::LocalNetwork);
+        assert_eq!(
+            NetworkLocation::from_addr(&addr),
+            NetworkLocation::LocalNetwork
+        );
 
         let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(10, 0, 0, 1), 8080));
-        assert_eq!(NetworkLocation::from_addr(&addr), NetworkLocation::LocalNetwork);
+        assert_eq!(
+            NetworkLocation::from_addr(&addr),
+            NetworkLocation::LocalNetwork
+        );
 
         let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(172, 16, 0, 1), 8080));
-        assert_eq!(NetworkLocation::from_addr(&addr), NetworkLocation::LocalNetwork);
+        assert_eq!(
+            NetworkLocation::from_addr(&addr),
+            NetworkLocation::LocalNetwork
+        );
     }
 
     #[test]
@@ -525,7 +539,10 @@ mod tests {
         // Should prefer shared memory or unix socket for localhost
         assert!(matches!(
             transport,
-            TransportType::SharedMemory | TransportType::UnixSocket | TransportType::IoUring | TransportType::BatchUdp
+            TransportType::SharedMemory
+                | TransportType::UnixSocket
+                | TransportType::IoUring
+                | TransportType::BatchUdp
         ));
     }
 
@@ -603,9 +620,7 @@ mod tests {
 
     #[test]
     fn test_builder() {
-        let selector = TransportBuilder::new()
-            .low_latency()
-            .build();
+        let selector = TransportBuilder::new().low_latency().build();
 
         assert!(selector.preferences().prefer_low_latency);
         assert!(!selector.preferences().prefer_reliability);

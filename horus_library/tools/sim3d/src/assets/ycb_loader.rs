@@ -362,7 +362,11 @@ impl YCBLoader {
 
     /// List all available object names
     pub fn list_objects(&self) -> Vec<&str> {
-        self.config.objects.iter().map(|o| o.name.as_str()).collect()
+        self.config
+            .objects
+            .iter()
+            .map(|o| o.name.as_str())
+            .collect()
     }
 
     /// List all available primitive names
@@ -415,7 +419,14 @@ impl YCBLoader {
             .with_context(|| format!("YCB object not found: {}", name))?
             .clone();
 
-        self.spawn_mesh_object(&obj_config, options, commands, physics_world, meshes, materials)
+        self.spawn_mesh_object(
+            &obj_config,
+            options,
+            commands,
+            physics_world,
+            meshes,
+            materials,
+        )
     }
 
     /// Spawn a primitive shape by name
@@ -494,8 +505,8 @@ impl YCBLoader {
         for (i, name) in names.iter().enumerate() {
             let row = i / grid_size;
             let col = i % grid_size;
-            let position = start_position
-                + Vec3::new(col as f32 * spacing, 0.0, row as f32 * spacing);
+            let position =
+                start_position + Vec3::new(col as f32 * spacing, 0.0, row as f32 * spacing);
 
             let options = YCBSpawnOptions::at_position(position);
             let result =
@@ -525,18 +536,12 @@ impl YCBLoader {
         for obj in &self.config.objects {
             let row = index / grid_size;
             let col = index % grid_size;
-            let position = start_position
-                + Vec3::new(col as f32 * spacing, 0.0, row as f32 * spacing);
+            let position =
+                start_position + Vec3::new(col as f32 * spacing, 0.0, row as f32 * spacing);
 
             let options = YCBSpawnOptions::at_position(position);
-            let result = self.spawn_mesh_object(
-                obj,
-                options,
-                commands,
-                physics_world,
-                meshes,
-                materials,
-            )?;
+            let result =
+                self.spawn_mesh_object(obj, options, commands, physics_world, meshes, materials)?;
             spawned.push(result);
             index += 1;
         }
@@ -545,8 +550,8 @@ impl YCBLoader {
         for prim in &self.config.primitives {
             let row = index / grid_size;
             let col = index % grid_size;
-            let position = start_position
-                + Vec3::new(col as f32 * spacing, 0.0, row as f32 * spacing);
+            let position =
+                start_position + Vec3::new(col as f32 * spacing, 0.0, row as f32 * spacing);
 
             let options = YCBSpawnOptions::at_position(position);
             let result = self.spawn_primitive_object(
@@ -658,9 +663,7 @@ impl YCBLoader {
 
         // Create rigid body
         let rigid_body = if options.is_static {
-            RigidBodyBuilder::fixed()
-                .position(physics_position)
-                .build()
+            RigidBodyBuilder::fixed().position(physics_position).build()
         } else {
             RigidBodyBuilder::dynamic()
                 .position(physics_position)
@@ -680,16 +683,16 @@ impl YCBLoader {
         let visual_mesh = meshes.add(Cuboid::new(scaled_dims.x, scaled_dims.y, scaled_dims.z));
 
         // Create material with distinct color based on category
-        let color = options.color_override.unwrap_or_else(|| {
-            match config.category.as_str() {
+        let color = options
+            .color_override
+            .unwrap_or_else(|| match config.category.as_str() {
                 "food" => Color::srgb(0.9, 0.6, 0.3),
                 "kitchen" => Color::srgb(0.7, 0.7, 0.8),
                 "tools" => Color::srgb(0.5, 0.5, 0.6),
                 "shapes" => Color::srgb(0.8, 0.7, 0.5),
                 "office" => Color::srgb(0.4, 0.4, 0.5),
                 _ => Color::srgb(0.8, 0.8, 0.8),
-            }
-        });
+            });
 
         let material = materials.add(StandardMaterial {
             base_color: color,
@@ -754,9 +757,7 @@ impl YCBLoader {
         // Create rigid body
         let scaled_mass = config.mass * options.scale.powi(3);
         let rigid_body = if options.is_static {
-            RigidBodyBuilder::fixed()
-                .position(physics_position)
-                .build()
+            RigidBodyBuilder::fixed().position(physics_position).build()
         } else {
             RigidBodyBuilder::dynamic()
                 .position(physics_position)
@@ -797,10 +798,13 @@ impl YCBLoader {
                 let length = config.length.unwrap_or(0.1) * options.scale;
                 let half_height = length / 2.0;
 
-                let collider = ColliderBuilder::new(ColliderShape::Cylinder { half_height, radius })
-                    .friction(config.friction)
-                    .restitution(config.restitution)
-                    .build();
+                let collider = ColliderBuilder::new(ColliderShape::Cylinder {
+                    half_height,
+                    radius,
+                })
+                .friction(config.friction)
+                .restitution(config.restitution)
+                .build();
 
                 let mesh = meshes.add(Cylinder {
                     radius,
@@ -813,10 +817,13 @@ impl YCBLoader {
                 let length = config.length.unwrap_or(0.1) * options.scale;
                 let half_height = length / 2.0;
 
-                let collider = ColliderBuilder::new(ColliderShape::Capsule { half_height, radius })
-                    .friction(config.friction)
-                    .restitution(config.restitution)
-                    .build();
+                let collider = ColliderBuilder::new(ColliderShape::Capsule {
+                    half_height,
+                    radius,
+                })
+                .friction(config.friction)
+                .restitution(config.restitution)
+                .build();
 
                 let mesh = meshes.add(Capsule3d {
                     radius,
@@ -831,7 +838,12 @@ impl YCBLoader {
 
         // Create material
         let color = options.color_override.unwrap_or_else(|| {
-            Color::srgba(config.color[0], config.color[1], config.color[2], config.color[3])
+            Color::srgba(
+                config.color[0],
+                config.color[1],
+                config.color[2],
+                config.color[3],
+            )
         });
 
         let material = materials.add(StandardMaterial {
@@ -935,7 +947,11 @@ pub fn create_ycb_clutter(
     meshes: &mut Assets<Mesh>,
     materials: &mut Assets<StandardMaterial>,
 ) -> Result<Vec<Entity>> {
-    let bounds_min = Vec3::new(-table_size.x / 2.0, table_height + 0.05, -table_size.z / 2.0);
+    let bounds_min = Vec3::new(
+        -table_size.x / 2.0,
+        table_height + 0.05,
+        -table_size.z / 2.0,
+    );
     let bounds_max = Vec3::new(table_size.x / 2.0, table_height + 0.3, table_size.z / 2.0);
 
     let spawned = loader.spawn_cluttered_scene(

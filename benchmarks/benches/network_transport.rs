@@ -7,8 +7,8 @@
 //!
 //! Run with: cargo bench --bench network_transport
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
-use std::net::{UdpSocket, SocketAddr};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use std::net::{SocketAddr, UdpSocket};
 use std::time::Duration;
 
 use horus::prelude::Link;
@@ -34,7 +34,9 @@ fn bench_udp_loopback(c: &mut Criterion) {
             let recv_addr = receiver.local_addr().unwrap();
 
             sender.set_nonblocking(false).unwrap();
-            receiver.set_read_timeout(Some(Duration::from_millis(100))).unwrap();
+            receiver
+                .set_read_timeout(Some(Duration::from_millis(100)))
+                .unwrap();
 
             let payload = create_payload(size);
             let mut recv_buf = vec![0u8; size + 64];
@@ -63,8 +65,12 @@ fn bench_udp_roundtrip(c: &mut Criterion) {
         let addr_a = socket_a.local_addr().unwrap();
         let addr_b = socket_b.local_addr().unwrap();
 
-        socket_a.set_read_timeout(Some(Duration::from_millis(100))).unwrap();
-        socket_b.set_read_timeout(Some(Duration::from_millis(100))).unwrap();
+        socket_a
+            .set_read_timeout(Some(Duration::from_millis(100)))
+            .unwrap();
+        socket_b
+            .set_read_timeout(Some(Duration::from_millis(100)))
+            .unwrap();
 
         let payload = create_payload(size);
         let mut recv_buf = vec![0u8; size + 64];
@@ -91,23 +97,28 @@ fn bench_batch_send(c: &mut Criterion) {
     let payload_size = 256;
 
     for &batch in batch_sizes {
-        group.bench_with_input(BenchmarkId::new("batch_size", batch), &batch, |b, &batch| {
-            let sender = UdpSocket::bind("127.0.0.1:0").unwrap();
-            let receiver = UdpSocket::bind("127.0.0.1:0").unwrap();
-            let recv_addr = receiver.local_addr().unwrap();
+        group.bench_with_input(
+            BenchmarkId::new("batch_size", batch),
+            &batch,
+            |b, &batch| {
+                let sender = UdpSocket::bind("127.0.0.1:0").unwrap();
+                let receiver = UdpSocket::bind("127.0.0.1:0").unwrap();
+                let recv_addr = receiver.local_addr().unwrap();
 
-            sender.set_nonblocking(true).unwrap();
-            receiver.set_nonblocking(true).unwrap();
+                sender.set_nonblocking(true).unwrap();
+                receiver.set_nonblocking(true).unwrap();
 
-            let payloads: Vec<Vec<u8>> = (0..batch).map(|_| create_payload(payload_size)).collect();
+                let payloads: Vec<Vec<u8>> =
+                    (0..batch).map(|_| create_payload(payload_size)).collect();
 
-            b.iter(|| {
-                // Send batch
-                for payload in &payloads {
-                    let _ = sender.send_to(black_box(payload), recv_addr);
-                }
-            });
-        });
+                b.iter(|| {
+                    // Send batch
+                    for payload in &payloads {
+                        let _ = sender.send_to(black_box(payload), recv_addr);
+                    }
+                });
+            },
+        );
     }
 
     group.finish();
@@ -145,7 +156,9 @@ fn bench_latency_percentiles(c: &mut Criterion) {
         let receiver = UdpSocket::bind("127.0.0.1:0").unwrap();
         let recv_addr = receiver.local_addr().unwrap();
 
-        receiver.set_read_timeout(Some(Duration::from_millis(10))).unwrap();
+        receiver
+            .set_read_timeout(Some(Duration::from_millis(10)))
+            .unwrap();
 
         let payload = create_payload(64);
         let mut recv_buf = vec![0u8; 128];
@@ -183,7 +196,9 @@ fn bench_transport_comparison(c: &mut Criterion) {
         let receiver = UdpSocket::bind("127.0.0.1:0").unwrap();
         let recv_addr = receiver.local_addr().unwrap();
 
-        receiver.set_read_timeout(Some(Duration::from_millis(100))).unwrap();
+        receiver
+            .set_read_timeout(Some(Duration::from_millis(100)))
+            .unwrap();
 
         let payload = create_payload(16);
         let mut recv_buf = [0u8; 64];
@@ -233,7 +248,7 @@ fn bench_throughput(c: &mut Criterion) {
 /// Linux-specific: Test batch UDP with sendmmsg
 #[cfg(target_os = "linux")]
 fn bench_linux_batch_udp(c: &mut Criterion) {
-    use horus_core::communication::network::batch_udp::{BatchUdpSender, BatchUdpConfig};
+    use horus_core::communication::network::batch_udp::{BatchUdpConfig, BatchUdpSender};
 
     let mut group = c.benchmark_group("linux_batch_udp");
     group.measurement_time(Duration::from_secs(5));
@@ -270,9 +285,7 @@ fn bench_io_uring_check(c: &mut Criterion) {
     let mut group = c.benchmark_group("io_uring_availability");
 
     group.bench_function("check_support", |b| {
-        b.iter(|| {
-            black_box(is_io_uring_available())
-        });
+        b.iter(|| black_box(is_io_uring_available()));
     });
 
     // Print io_uring status
@@ -287,7 +300,6 @@ fn bench_io_uring_check(c: &mut Criterion) {
     group.finish();
 }
 
-
 // Register criterion groups
 criterion_group!(
     benches,
@@ -301,11 +313,7 @@ criterion_group!(
 );
 
 #[cfg(target_os = "linux")]
-criterion_group!(
-    linux_benches,
-    bench_linux_batch_udp,
-    bench_io_uring_check,
-);
+criterion_group!(linux_benches, bench_linux_batch_udp, bench_io_uring_check,);
 
 #[cfg(target_os = "linux")]
 criterion_main!(benches, linux_benches);

@@ -225,7 +225,11 @@ impl BlackBox {
             let file = File::create(path)?;
             let writer = BufWriter::new(file);
             serde_json::to_writer_pretty(writer, &self.get_events())?;
-            println!("[BLACKBOX] Saved {} events to {:?}", self.buffer.len(), path);
+            println!(
+                "[BLACKBOX] Saved {} events to {:?}",
+                self.buffer.len(),
+                path
+            );
         }
         Ok(())
     }
@@ -237,7 +241,11 @@ impl BlackBox {
                 let content = fs::read_to_string(path)?;
                 let events: Vec<BlackBoxRecord> = serde_json::from_str(&content)?;
                 self.buffer = VecDeque::from(events);
-                println!("[BLACKBOX] Loaded {} events from {:?}", self.buffer.len(), path);
+                println!(
+                    "[BLACKBOX] Loaded {} events from {:?}",
+                    self.buffer.len(),
+                    path
+                );
             }
         }
         Ok(())
@@ -256,19 +264,13 @@ impl BlackBox {
         let anomalies = self.get_anomalies();
         report.push_str(&format!("=== ANOMALIES ({}) ===\n", anomalies.len()));
         for record in anomalies.iter().take(50) {
-            report.push_str(&format!(
-                "[tick {}] {:?}\n",
-                record.tick, record.event
-            ));
+            report.push_str(&format!("[tick {}] {:?}\n", record.tick, record.event));
         }
 
         // Last 100 events
         report.push_str("\n=== LAST 100 EVENTS ===\n");
         for record in self.buffer.iter().rev().take(100) {
-            report.push_str(&format!(
-                "[tick {}] {:?}\n",
-                record.tick, record.event
-            ));
+            report.push_str(&format!("[tick {}] {:?}\n", record.tick, record.event));
         }
 
         report

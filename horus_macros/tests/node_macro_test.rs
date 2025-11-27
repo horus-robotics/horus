@@ -114,11 +114,11 @@ mod tests {
         node! {
             TestNode {
                 pub {
-                    output: TestData -> "test/output",
+                    output: TestData -> "test.output",
                 }
 
                 sub {
-                    input: TestData -> "test/input",
+                    input: TestData -> "test.input",
                 }
 
                 data {
@@ -202,7 +202,7 @@ mod tests {
         node! {
             SensorNode {
                 pub {
-                    data: SensorData -> "sensor/data",
+                    data: SensorData -> "sensor.data",
                 }
 
                 sub {}

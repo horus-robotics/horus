@@ -30,6 +30,7 @@ colored = { version = "2.0", optional = true }
 opencv = { version = "0.92", optional = true }
 v4l = { version = "0.14", optional = true }
 rppal = { version = "0.14", optional = true }  # Raspberry Pi GPIO
+sysfs_gpio = { version = "0.6", optional = true }  # Linux sysfs GPIO interface
 serialport = { version = "4.2", optional = true }
 socketcan = { version = "3.1", optional = true }
 i2cdev = { version = "0.6", optional = true }
@@ -88,7 +89,7 @@ serial-hardware = ["serialport"]
 can-hardware = ["socketcan"]
 i2c-hardware = ["i2cdev"]
 spi-hardware = ["spidev"]
-gpio-hardware = ["rppal"]
+gpio-hardware = ["rppal", "sysfs_gpio"]
 modbus-hardware = ["tokio-modbus"]
 
 # Input device features

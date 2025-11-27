@@ -4,9 +4,9 @@ use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 
 #[cfg(feature = "visual")]
-use crate::systems::tf_update::TFPublisher;
+use crate::hframe::TFTree;
 #[cfg(feature = "visual")]
-use crate::tf::tree::TFTree;
+use crate::systems::tf_update::TFPublisher;
 
 /// Resource to control TF panel display options
 #[derive(Resource, Clone)]

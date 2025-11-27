@@ -173,22 +173,20 @@ impl PluginRegistry {
             })?;
 
             // Parse the dependency version requirement
-            let version_req = VersionReq::parse(&dep.version_requirement)
-                .map_err(|e| {
-                    format!(
-                        "Invalid version requirement '{}' for dependency {}: {}",
-                        dep.version_requirement, dep.name, e
-                    )
-                })?;
+            let version_req = VersionReq::parse(&dep.version_requirement).map_err(|e| {
+                format!(
+                    "Invalid version requirement '{}' for dependency {}: {}",
+                    dep.version_requirement, dep.name, e
+                )
+            })?;
 
             // Parse the actual plugin version
-            let actual_version = Version::parse(&dep_metadata.version)
-                .map_err(|e| {
-                    format!(
-                        "Invalid version '{}' for plugin {}: {}",
-                        dep_metadata.version, dep.name, e
-                    )
-                })?;
+            let actual_version = Version::parse(&dep_metadata.version).map_err(|e| {
+                format!(
+                    "Invalid version '{}' for plugin {}: {}",
+                    dep_metadata.version, dep.name, e
+                )
+            })?;
 
             // Check if the actual version satisfies the requirement
             if !version_req.matches(&actual_version) {

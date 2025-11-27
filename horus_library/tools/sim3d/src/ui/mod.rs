@@ -54,8 +54,8 @@ pub use tooltips::{
 
 // Re-export recent files components for convenience
 pub use recent_files::{
-    AddRecentFileEvent, ClearRecentFilesEvent, RecentFile, RecentFileSelectedEvent,
-    RecentFileType, RecentFilesConfig, RecentFilesError, RecentFilesManager, RecentFilesPlugin,
+    AddRecentFileEvent, ClearRecentFilesEvent, RecentFile, RecentFileSelectedEvent, RecentFileType,
+    RecentFilesConfig, RecentFilesError, RecentFilesManager, RecentFilesPlugin,
 };
 
 // Re-export crash recovery components for convenience

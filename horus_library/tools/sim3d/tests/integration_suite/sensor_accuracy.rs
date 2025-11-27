@@ -113,9 +113,21 @@ impl KnownGeometry {
         let max = self.position + half_size;
 
         let inv_dir = Vec3::new(
-            if dir.x.abs() > 1e-6 { 1.0 / dir.x } else { f32::INFINITY },
-            if dir.y.abs() > 1e-6 { 1.0 / dir.y } else { f32::INFINITY },
-            if dir.z.abs() > 1e-6 { 1.0 / dir.z } else { f32::INFINITY },
+            if dir.x.abs() > 1e-6 {
+                1.0 / dir.x
+            } else {
+                f32::INFINITY
+            },
+            if dir.y.abs() > 1e-6 {
+                1.0 / dir.y
+            } else {
+                f32::INFINITY
+            },
+            if dir.z.abs() > 1e-6 {
+                1.0 / dir.z
+            } else {
+                f32::INFINITY
+            },
         );
 
         let t1 = (min.x - origin.x) * inv_dir.x;
@@ -168,11 +180,7 @@ impl KnownGeometry {
         let half_height = self.size.y * 0.5;
 
         // Project to XZ plane for infinite cylinder
-        let oc = Vec3::new(
-            origin.x - self.position.x,
-            0.0,
-            origin.z - self.position.z,
-        );
+        let oc = Vec3::new(origin.x - self.position.x, 0.0, origin.z - self.position.z);
         let dir_xz = Vec3::new(dir.x, 0.0, dir.z);
 
         let a = dir_xz.dot(dir_xz);
@@ -316,7 +324,8 @@ pub fn validate_lidar_accuracy(
     let max_error = errors.iter().cloned().fold(0.0f32, f32::max);
 
     let std_error = if errors.len() > 1 {
-        let variance = errors.iter().map(|e| (e - mean_error).powi(2)).sum::<f32>() / errors.len() as f32;
+        let variance =
+            errors.iter().map(|e| (e - mean_error).powi(2)).sum::<f32>() / errors.len() as f32;
         variance.sqrt()
     } else {
         0.0
@@ -676,9 +685,12 @@ pub fn validate_imu_accuracy(config: ImuAccuracyTestConfig) -> ImuAccuracyResult
         }
     }
 
-    let mean_orientation_error = orientation_errors.iter().sum::<f32>() / orientation_errors.len() as f32;
-    let mean_angular_error = angular_velocity_errors.iter().sum::<f32>() / angular_velocity_errors.len() as f32;
-    let mean_accel_error = acceleration_errors.iter().sum::<f32>() / acceleration_errors.len() as f32;
+    let mean_orientation_error =
+        orientation_errors.iter().sum::<f32>() / orientation_errors.len() as f32;
+    let mean_angular_error =
+        angular_velocity_errors.iter().sum::<f32>() / angular_velocity_errors.len() as f32;
+    let mean_accel_error =
+        acceleration_errors.iter().sum::<f32>() / acceleration_errors.len() as f32;
 
     // Check if gravity readings are near 9.81 m/s^2
     let mean_gravity = if !gravity_readings.is_empty() {
@@ -689,9 +701,8 @@ pub fn validate_imu_accuracy(config: ImuAccuracyTestConfig) -> ImuAccuracyResult
     let gravity_detected = (mean_gravity - 9.81).abs() < 1.0;
 
     // For noiseless sensor, errors should be very small
-    let accuracy_passed = mean_orientation_error < 0.1
-        && mean_angular_error < 0.1
-        && mean_accel_error < 1.0;
+    let accuracy_passed =
+        mean_orientation_error < 0.1 && mean_angular_error < 0.1 && mean_accel_error < 1.0;
 
     ImuAccuracyResult {
         samples_collected: orientation_errors.len(),
@@ -736,10 +747,7 @@ pub struct GpsAccuracyResult {
 }
 
 /// Simulate GPS reading
-pub fn simulate_gps_reading(
-    true_position: Vec3,
-    config: &GpsAccuracyTestConfig,
-) -> Vec3 {
+pub fn simulate_gps_reading(true_position: Vec3, config: &GpsAccuracyTestConfig) -> Vec3 {
     use rand::Rng;
     let mut rng = rand::thread_rng();
 
@@ -776,7 +784,8 @@ pub fn validate_gps_accuracy(config: GpsAccuracyTestConfig) -> GpsAccuracyResult
             measured.x - true_position.x,
             0.0,
             measured.z - true_position.z,
-        ).length();
+        )
+        .length();
 
         let vertical_error = (measured.y - true_position.y).abs();
 
@@ -880,22 +889,36 @@ pub fn simulate_force_torque_reading(
 
     // Apply saturation
     let saturated_force = Vec3::new(
-        measured_force.x.clamp(-config.max_force.x, config.max_force.x),
-        measured_force.y.clamp(-config.max_force.y, config.max_force.y),
-        measured_force.z.clamp(-config.max_force.z, config.max_force.z),
+        measured_force
+            .x
+            .clamp(-config.max_force.x, config.max_force.x),
+        measured_force
+            .y
+            .clamp(-config.max_force.y, config.max_force.y),
+        measured_force
+            .z
+            .clamp(-config.max_force.z, config.max_force.z),
     );
 
     let saturated_torque = Vec3::new(
-        measured_torque.x.clamp(-config.max_torque.x, config.max_torque.x),
-        measured_torque.y.clamp(-config.max_torque.y, config.max_torque.y),
-        measured_torque.z.clamp(-config.max_torque.z, config.max_torque.z),
+        measured_torque
+            .x
+            .clamp(-config.max_torque.x, config.max_torque.x),
+        measured_torque
+            .y
+            .clamp(-config.max_torque.y, config.max_torque.y),
+        measured_torque
+            .z
+            .clamp(-config.max_torque.z, config.max_torque.z),
     );
 
     (saturated_force, saturated_torque)
 }
 
 /// Validate force/torque sensor accuracy
-pub fn validate_force_torque_accuracy(config: ForceTorqueAccuracyTestConfig) -> ForceTorqueAccuracyResult {
+pub fn validate_force_torque_accuracy(
+    config: ForceTorqueAccuracyTestConfig,
+) -> ForceTorqueAccuracyResult {
     let test_cases = vec![
         (Vec3::new(10.0, 0.0, 0.0), Vec3::ZERO),
         (Vec3::new(0.0, 50.0, 0.0), Vec3::new(1.0, 0.0, 0.0)),
@@ -969,11 +992,17 @@ mod tests {
     fn test_lidar_accuracy_single_box() {
         let config = LidarAccuracyTestConfig::default();
         let sensor_pos = Vec3::ZERO;
-        let geometries = vec![KnownGeometry::box_at(Vec3::new(0.0, 0.0, -5.0), Vec3::splat(2.0))];
+        let geometries = vec![KnownGeometry::box_at(
+            Vec3::new(0.0, 0.0, -5.0),
+            Vec3::splat(2.0),
+        )];
 
         let result = validate_lidar_accuracy(config, sensor_pos, geometries);
 
-        assert!(result.rays_hitting_target > 0, "LiDAR should detect the box");
+        assert!(
+            result.rays_hitting_target > 0,
+            "LiDAR should detect the box"
+        );
         assert!(result.hit_rate > 0.0, "Hit rate should be positive");
     }
 
@@ -985,7 +1014,10 @@ mod tests {
 
         let result = validate_lidar_accuracy(config, sensor_pos, geometries);
 
-        assert!(result.rays_hitting_target > 0, "LiDAR should detect the sphere");
+        assert!(
+            result.rays_hitting_target > 0,
+            "LiDAR should detect the sphere"
+        );
     }
 
     #[test]
@@ -1000,7 +1032,10 @@ mod tests {
 
         let result = validate_lidar_accuracy(config, sensor_pos, geometries);
 
-        assert!(result.rays_hitting_target > 100, "LiDAR should detect multiple objects");
+        assert!(
+            result.rays_hitting_target > 100,
+            "LiDAR should detect multiple objects"
+        );
     }
 
     #[test]
@@ -1010,7 +1045,10 @@ mod tests {
             ..Default::default()
         };
         let sensor_pos = Vec3::ZERO;
-        let geometries = vec![KnownGeometry::box_at(Vec3::new(0.0, 0.0, -5.0), Vec3::splat(4.0))];
+        let geometries = vec![KnownGeometry::box_at(
+            Vec3::new(0.0, 0.0, -5.0),
+            Vec3::splat(4.0),
+        )];
 
         let result = validate_lidar_accuracy(config, sensor_pos, geometries);
 
@@ -1028,7 +1066,10 @@ mod tests {
             ..Default::default()
         };
         let sensor_pos = Vec3::ZERO;
-        let geometries = vec![KnownGeometry::box_at(Vec3::new(0.0, 0.0, -5.0), Vec3::splat(4.0))];
+        let geometries = vec![KnownGeometry::box_at(
+            Vec3::new(0.0, 0.0, -5.0),
+            Vec3::splat(4.0),
+        )];
 
         let result = validate_lidar_accuracy(config, sensor_pos, geometries);
 
@@ -1058,12 +1099,14 @@ mod tests {
         assert!(
             (x - center_x).abs() < 10.0,
             "X should be near center: {} vs {}",
-            x, center_x
+            x,
+            center_x
         );
         assert!(
             (y - center_y).abs() < 10.0,
             "Y should be near center: {} vs {}",
-            y, center_y
+            y,
+            center_y
         );
     }
 
@@ -1076,7 +1119,10 @@ mod tests {
 
         let projected = project_point(world_point, camera_pos, camera_rot, &config);
 
-        assert!(projected.is_none(), "Point behind camera should not be visible");
+        assert!(
+            projected.is_none(),
+            "Point behind camera should not be visible"
+        );
     }
 
     #[test]
@@ -1087,8 +1133,7 @@ mod tests {
         assert!(
             result.projection_correct,
             "Camera projection should be correct: {}/{}",
-            result.points_correctly_projected,
-            result.points_tested
+            result.points_correctly_projected, result.points_tested
         );
     }
 
@@ -1104,7 +1149,10 @@ mod tests {
         // After rotating camera, this point might be visible depending on the angle
         // The test verifies the rotation is applied correctly
         if let Some((x, _y)) = projected {
-            assert!(x >= 0.0 && x <= config.width as f32, "Projected X should be in bounds");
+            assert!(
+                x >= 0.0 && x <= config.width as f32,
+                "Projected X should be in bounds"
+            );
         }
     }
 
@@ -1155,10 +1203,7 @@ mod tests {
 
         let result = validate_imu_accuracy(config);
 
-        assert!(
-            result.samples_collected > 0,
-            "Should collect IMU samples"
-        );
+        assert!(result.samples_collected > 0, "Should collect IMU samples");
     }
 
     // GPS Tests
@@ -1281,10 +1326,7 @@ mod tests {
 
         let result = validate_force_torque_accuracy(config);
 
-        assert!(
-            result.samples_collected > 0,
-            "Should collect F/T samples"
-        );
+        assert!(result.samples_collected > 0, "Should collect F/T samples");
         assert!(
             result.saturation_correct,
             "Saturation should still work with noise"
@@ -1310,12 +1352,14 @@ mod tests {
             assert!(
                 (measured_force - force).length() < 1.0,
                 "Force measurement error too large: {} vs {}",
-                measured_force, force
+                measured_force,
+                force
             );
             assert!(
                 (measured_torque - torque).length() < 0.5,
                 "Torque measurement error too large: {} vs {}",
-                measured_torque, torque
+                measured_torque,
+                torque
             );
         }
     }
@@ -1334,7 +1378,10 @@ mod tests {
         let lidar_result = validate_lidar_accuracy(
             lidar_config,
             Vec3::ZERO,
-            vec![KnownGeometry::box_at(Vec3::new(0.0, 0.0, -5.0), Vec3::splat(2.0))],
+            vec![KnownGeometry::box_at(
+                Vec3::new(0.0, 0.0, -5.0),
+                Vec3::splat(2.0),
+            )],
         );
         let camera_result = validate_camera_projection(camera_config);
         let imu_result = validate_imu_accuracy(imu_config);

@@ -167,19 +167,19 @@ impl DynamixelModel {
     /// Get maximum velocity in rad/s
     fn max_velocity_rad_s(&self) -> f32 {
         match self {
-            Self::AX12A => 10.47,     // 100 RPM
-            Self::AX18A => 20.94,     // 200 RPM
-            Self::MX28 => 11.94,      // 114 RPM
-            Self::MX64 => 13.09,      // 125 RPM
-            Self::MX106 => 9.42,      // 90 RPM
-            Self::XL330M077 => 24.09, // 230 RPM
-            Self::XL330M288 => 19.42, // 185 RPM
-            Self::XL430W250 => 5.02,  // 48 RPM
-            Self::XM430W210 => 7.65,  // 73 RPM
-            Self::XM430W350 => 4.82,  // 46 RPM
-            Self::XM540W150 => 5.44,  // 52 RPM
-            Self::XM540W270 => std::f32::consts::PI,  // 30 RPM
-            _ => std::f32::consts::TAU,                // ~60 RPM default
+            Self::AX12A => 10.47,                    // 100 RPM
+            Self::AX18A => 20.94,                    // 200 RPM
+            Self::MX28 => 11.94,                     // 114 RPM
+            Self::MX64 => 13.09,                     // 125 RPM
+            Self::MX106 => 9.42,                     // 90 RPM
+            Self::XL330M077 => 24.09,                // 230 RPM
+            Self::XL330M288 => 19.42,                // 185 RPM
+            Self::XL430W250 => 5.02,                 // 48 RPM
+            Self::XM430W210 => 7.65,                 // 73 RPM
+            Self::XM430W350 => 4.82,                 // 46 RPM
+            Self::XM540W150 => 5.44,                 // 52 RPM
+            Self::XM540W270 => std::f32::consts::PI, // 30 RPM
+            _ => std::f32::consts::TAU,              // ~60 RPM default
         }
     }
 
@@ -368,7 +368,7 @@ impl DynamixelNode {
                         // Provide detailed troubleshooting information (only log once)
                         if self.hardware_enabled || self.successful_packets == 0 {
                             ctx.log_warning(
-                                "DynamixelNode: Hardware unavailable - using SIMULATION mode"
+                                "DynamixelNode: Hardware unavailable - using SIMULATION mode",
                             );
                             ctx.log_warning(&format!("  Tried: {}", self.port));
                             ctx.log_warning(&format!("  Error: {}", e));

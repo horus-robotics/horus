@@ -1,6 +1,8 @@
-use horus_core::core::{HealthStatus, NodeHeartbeat, NodeState};
+use horus_core::core::{HealthStatus, NetworkStatus, NodeHeartbeat, NodeState};
 use horus_core::error::HorusResult;
-use horus_core::memory::{shm_base_dir, shm_topics_dir, is_session_alive};
+use horus_core::memory::{
+    is_session_alive, shm_base_dir, shm_heartbeats_dir, shm_network_dir, shm_topics_dir,
+};
 use std::path::Path;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
@@ -126,9 +128,19 @@ pub fn discover_nodes() -> HorusResult<Vec<NodeStatus>> {
 }
 
 fn discover_nodes_uncached() -> HorusResult<Vec<NodeStatus>> {
-    // PRIMARY SOURCE: registry.json - discover nodes from scheduler registry
+    // PRIMARY SOURCE 1: registry.json - discover nodes from scheduler registry
     // This is session-based: registry file is cleaned when scheduler PID dies
     let mut nodes = discover_nodes_from_registry().unwrap_or_default();
+
+    // PRIMARY SOURCE 2: Heartbeat files - discover nodes from /dev/shm/horus/heartbeats
+    // This works even when registry is not available (e.g., when scheduler creates heartbeats but no registry)
+    let heartbeat_nodes = discover_nodes_from_heartbeats().unwrap_or_default();
+    for hb_node in heartbeat_nodes {
+        // Only add if not already found by registry
+        if !nodes.iter().any(|n| n.name == hb_node.name) {
+            nodes.push(hb_node);
+        }
+    }
 
     // SUPPLEMENT: Add heartbeat data if available (extra metadata like tick counts)
     enrich_nodes_with_heartbeats(&mut nodes);
@@ -159,6 +171,70 @@ fn discover_nodes_uncached() -> HorusResult<Vec<NodeStatus>> {
                 .any(|n| n.process_id == process_node.process_id || n.name == process_node.name)
             {
                 nodes.push(process_node);
+            }
+        }
+    }
+
+    Ok(nodes)
+}
+
+/// Discover nodes from heartbeat files in /dev/shm/horus/heartbeats
+/// This provides discovery even when registry is not available
+fn discover_nodes_from_heartbeats() -> HorusResult<Vec<NodeStatus>> {
+    let mut nodes = Vec::new();
+    let heartbeats_dir = shm_heartbeats_dir();
+
+    if !heartbeats_dir.exists() {
+        return Ok(nodes);
+    }
+
+    // Read all heartbeat files
+    if let Ok(entries) = std::fs::read_dir(&heartbeats_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() {
+                if let Some(node_name) = path.file_name().and_then(|n| n.to_str()) {
+                    // Read heartbeat to get status info
+                    if let Some(heartbeat) = NodeHeartbeat::read_from_file(node_name) {
+                        // Only include nodes with recent heartbeats (within 60 seconds)
+                        // This prevents showing stale nodes from previous sessions
+                        if heartbeat.is_fresh(60) {
+                            let status_str = match heartbeat.state {
+                                NodeState::Uninitialized => "Idle",
+                                NodeState::Initializing => "Initializing",
+                                NodeState::Running => "Running",
+                                NodeState::Paused => "Paused",
+                                NodeState::Stopping => "Stopping",
+                                NodeState::Stopped => "Stopped",
+                                NodeState::Error(_) => "Error",
+                                NodeState::Crashed(_) => "Crashed",
+                            };
+
+                            // Try to find PID for this node
+                            let pid = find_node_pid(node_name).unwrap_or(0);
+
+                            nodes.push(NodeStatus {
+                                name: node_name.to_string(),
+                                status: status_str.to_string(),
+                                health: heartbeat.health,
+                                priority: 0,
+                                process_id: pid,
+                                command_line: String::new(),
+                                working_dir: String::new(),
+                                cpu_usage: 0.0,
+                                memory_usage: 0,
+                                start_time: String::new(),
+                                scheduler_name: "Heartbeat".to_string(),
+                                category: ProcessCategory::Node,
+                                tick_count: heartbeat.tick_count,
+                                error_count: heartbeat.error_count,
+                                actual_rate_hz: heartbeat.actual_rate_hz,
+                                publishers: Vec::new(),
+                                subscribers: Vec::new(),
+                            });
+                        }
+                    }
+                }
             }
         }
     }
@@ -616,7 +692,11 @@ fn process_exists(pid: u32) -> bool {
         use std::ptr::null_mut;
         const PROCESS_QUERY_LIMITED_INFORMATION: u32 = 0x1000;
         extern "system" {
-            fn OpenProcess(dwDesiredAccess: u32, bInheritHandle: i32, dwProcessId: u32) -> *mut std::ffi::c_void;
+            fn OpenProcess(
+                dwDesiredAccess: u32,
+                bInheritHandle: i32,
+                dwProcessId: u32,
+            ) -> *mut std::ffi::c_void;
             fn CloseHandle(hObject: *mut std::ffi::c_void) -> i32;
         }
         unsafe {
@@ -992,7 +1072,10 @@ fn get_cwd_macos(pid: u32) -> Option<String> {
 
     // Extract current directory path
     let path_bytes = &info.pvi_cdir.vip_path;
-    let end = path_bytes.iter().position(|&b| b == 0).unwrap_or(path_bytes.len());
+    let end = path_bytes
+        .iter()
+        .position(|&b| b == 0)
+        .unwrap_or(path_bytes.len());
     std::str::from_utf8(&path_bytes[..end])
         .ok()
         .map(|s| s.to_string())
@@ -1208,7 +1291,11 @@ fn get_process_info_windows(pid: u32) -> anyhow::Result<ProcessInfo> {
     const PROCESS_VM_READ: u32 = 0x0010;
 
     extern "system" {
-        fn OpenProcess(dwDesiredAccess: u32, bInheritHandle: i32, dwProcessId: u32) -> *mut std::ffi::c_void;
+        fn OpenProcess(
+            dwDesiredAccess: u32,
+            bInheritHandle: i32,
+            dwProcessId: u32,
+        ) -> *mut std::ffi::c_void;
         fn CloseHandle(hObject: *mut std::ffi::c_void) -> i32;
     }
 
@@ -1300,7 +1387,11 @@ fn get_cmdline_windows(pid: u32) -> Option<String> {
     const MAX_PATH: usize = 32768;
 
     extern "system" {
-        fn OpenProcess(dwDesiredAccess: u32, bInheritHandle: i32, dwProcessId: u32) -> *mut std::ffi::c_void;
+        fn OpenProcess(
+            dwDesiredAccess: u32,
+            bInheritHandle: i32,
+            dwProcessId: u32,
+        ) -> *mut std::ffi::c_void;
         fn CloseHandle(hObject: *mut std::ffi::c_void) -> i32;
         fn QueryFullProcessImageNameW(
             hProcess: *mut std::ffi::c_void,
@@ -1396,9 +1487,8 @@ fn calculate_cpu_usage_windows(pid: u32, handle: *mut std::ffi::c_void) -> f32 {
     let mut kernel = Filetime { low: 0, high: 0 };
     let mut user = Filetime { low: 0, high: 0 };
 
-    let result = unsafe {
-        GetProcessTimes(handle, &mut creation, &mut exit, &mut kernel, &mut user)
-    };
+    let result =
+        unsafe { GetProcessTimes(handle, &mut creation, &mut exit, &mut kernel, &mut user) };
 
     if result == 0 {
         return 0.0;
@@ -1453,9 +1543,8 @@ fn get_start_time_windows(handle: *mut std::ffi::c_void) -> Option<String> {
     let mut kernel = Filetime { low: 0, high: 0 };
     let mut user = Filetime { low: 0, high: 0 };
 
-    let result = unsafe {
-        GetProcessTimes(handle, &mut creation, &mut exit, &mut kernel, &mut user)
-    };
+    let result =
+        unsafe { GetProcessTimes(handle, &mut creation, &mut exit, &mut kernel, &mut user) };
 
     if result == 0 {
         return None;
@@ -1834,7 +1923,6 @@ fn check_node_heartbeat(node_name: &str) -> (String, HealthStatus, u64, u32, u32
         .unwrap_or_else(|| ("Unknown".to_string(), HealthStatus::Unknown, 0, 0, 0))
 }
 
-
 /// Enrich nodes with heartbeat data if available (optional metadata)
 fn enrich_nodes_with_heartbeats(nodes: &mut [NodeStatus]) {
     for node in nodes {
@@ -2102,30 +2190,12 @@ mod tests {
 
     #[test]
     fn test_categorize_process_gui() {
-        assert_eq!(
-            categorize_process("robot_gui", ""),
-            ProcessCategory::Tool
-        );
-        assert_eq!(
-            categorize_process("viewer_app", ""),
-            ProcessCategory::Tool
-        );
-        assert_eq!(
-            categorize_process("viz_tool", ""),
-            ProcessCategory::Tool
-        );
-        assert_eq!(
-            categorize_process("my_GUI_app", ""),
-            ProcessCategory::Tool
-        );
-        assert_eq!(
-            categorize_process("app_gui", ""),
-            ProcessCategory::Tool
-        );
-        assert_eq!(
-            categorize_process("test", "--gui"),
-            ProcessCategory::Tool
-        );
+        assert_eq!(categorize_process("robot_gui", ""), ProcessCategory::Tool);
+        assert_eq!(categorize_process("viewer_app", ""), ProcessCategory::Tool);
+        assert_eq!(categorize_process("viz_tool", ""), ProcessCategory::Tool);
+        assert_eq!(categorize_process("my_GUI_app", ""), ProcessCategory::Tool);
+        assert_eq!(categorize_process("app_gui", ""), ProcessCategory::Tool);
+        assert_eq!(categorize_process("test", "--gui"), ProcessCategory::Tool);
         assert_eq!(
             categorize_process("test", "--view mode"),
             ProcessCategory::Tool
@@ -2134,14 +2204,8 @@ mod tests {
 
     #[test]
     fn test_categorize_process_cli() {
-        assert_eq!(
-            categorize_process("horus", ""),
-            ProcessCategory::CLI
-        );
-        assert_eq!(
-            categorize_process("horus run", ""),
-            ProcessCategory::CLI
-        );
+        assert_eq!(categorize_process("horus", ""), ProcessCategory::CLI);
+        assert_eq!(categorize_process("horus run", ""), ProcessCategory::CLI);
         assert_eq!(
             categorize_process("test", "/bin/horus run pkg"),
             ProcessCategory::CLI
@@ -2154,10 +2218,7 @@ mod tests {
 
     #[test]
     fn test_categorize_process_node() {
-        assert_eq!(
-            categorize_process("scheduler", ""),
-            ProcessCategory::Node
-        );
+        assert_eq!(categorize_process("scheduler", ""), ProcessCategory::Node);
         assert_eq!(
             categorize_process("test", "my_scheduler"),
             ProcessCategory::Node
@@ -2175,10 +2236,7 @@ mod tests {
             extract_process_name("/usr/bin/robot_control"),
             "robot_control"
         );
-        assert_eq!(
-            extract_process_name("./my_program"),
-            "my_program"
-        );
+        assert_eq!(extract_process_name("./my_program"), "my_program");
     }
 
     #[test]
@@ -2191,10 +2249,7 @@ mod tests {
             extract_process_name("horus monitor dashboard"),
             "horus monitor dashboard"
         );
-        assert_eq!(
-            extract_process_name("horus version"),
-            "horus version"
-        );
+        assert_eq!(extract_process_name("horus version"), "horus version");
     }
 
     #[test]
@@ -2253,15 +2308,19 @@ mod tests {
     #[test]
     fn test_discover_shared_memory_with_real_topic() {
         // Use simple topic name to avoid underscore-to-slash conversion confusion
-        let test_topic = "testshm";  // Simple name without underscores
+        let test_topic = "testshm"; // Simple name without underscores
         let topic_file = create_test_topic(test_topic);
 
         if topic_file.is_some() {
             // Force cache refresh - handle potential poisoned lock
-            let cache_refreshed = DISCOVERY_CACHE.write().map(|mut cache| {
-                cache.shared_memory_last_updated = std::time::Instant::now() - std::time::Duration::from_secs(10);
-                true
-            }).unwrap_or(false);
+            let cache_refreshed = DISCOVERY_CACHE
+                .write()
+                .map(|mut cache| {
+                    cache.shared_memory_last_updated =
+                        std::time::Instant::now() - std::time::Duration::from_secs(10);
+                    true
+                })
+                .unwrap_or(false);
 
             if !cache_refreshed {
                 cleanup_test_file(topic_file);
@@ -2273,8 +2332,11 @@ mod tests {
             if let Ok(topics) = result {
                 // Should find our test topic (underscores in filename become / in topic name)
                 let found = topics.iter().any(|t| t.topic_name.contains("testshm"));
-                assert!(found, "Should discover testshm topic, found: {:?}",
-                    topics.iter().map(|t| &t.topic_name).collect::<Vec<_>>());
+                assert!(
+                    found,
+                    "Should discover testshm topic, found: {:?}",
+                    topics.iter().map(|t| &t.topic_name).collect::<Vec<_>>()
+                );
 
                 // Verify topic properties
                 if let Some(topic) = topics.iter().find(|t| t.topic_name.contains("testshm")) {
@@ -2312,7 +2374,8 @@ mod tests {
         if std::fs::write(&test_file, vec![0u8; 512]).is_ok() {
             // Force cache refresh
             if let Ok(mut cache) = DISCOVERY_CACHE.write() {
-                cache.shared_memory_last_updated = std::time::Instant::now() - std::time::Duration::from_secs(10);
+                cache.shared_memory_last_updated =
+                    std::time::Instant::now() - std::time::Duration::from_secs(10);
             }
 
             let result = discover_shared_memory();
@@ -2537,4 +2600,87 @@ mod tests {
             println!("Sessions directory DOES NOT EXIST");
         }
     }
+}
+
+// ============================================================================
+// Network Status Discovery
+// ============================================================================
+
+/// Discover network transport status for all nodes
+///
+/// Reads network status files from /dev/shm/horus/network/ directory.
+/// These files are written by nodes when they use network transports.
+pub fn discover_network_status() -> HorusResult<Vec<NetworkStatus>> {
+    let network_dir = shm_network_dir();
+    if !network_dir.exists() {
+        return Ok(Vec::new());
+    }
+
+    let mut statuses = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(&network_dir) {
+        for entry in entries.flatten() {
+            if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                if let Ok(status) = serde_json::from_str::<NetworkStatus>(&content) {
+                    // Only include fresh statuses (within last 30 seconds)
+                    if status.is_fresh(30) {
+                        statuses.push(status);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(statuses)
+}
+
+/// Get aggregated network statistics across all nodes
+pub fn get_network_summary() -> NetworkSummary {
+    let statuses = discover_network_status().unwrap_or_default();
+
+    let mut summary = NetworkSummary::default();
+    let mut transport_counts: std::collections::HashMap<String, u32> =
+        std::collections::HashMap::new();
+
+    for status in &statuses {
+        summary.total_nodes += 1;
+        summary.total_bytes_sent += status.bytes_sent;
+        summary.total_bytes_received += status.bytes_received;
+        summary.total_packets_sent += status.packets_sent;
+        summary.total_packets_received += status.packets_received;
+
+        *transport_counts
+            .entry(status.transport_type.clone())
+            .or_insert(0) += 1;
+
+        for endpoint in &status.remote_endpoints {
+            if !summary.unique_endpoints.contains(endpoint) {
+                summary.unique_endpoints.push(endpoint.clone());
+            }
+        }
+    }
+
+    summary.transport_breakdown = transport_counts;
+    summary.node_statuses = statuses;
+    summary
+}
+
+/// Summary of network activity across all HORUS nodes
+#[derive(Debug, Clone, Default)]
+pub struct NetworkSummary {
+    /// Total nodes with network status
+    pub total_nodes: u32,
+    /// Total bytes sent across all nodes
+    pub total_bytes_sent: u64,
+    /// Total bytes received across all nodes
+    pub total_bytes_received: u64,
+    /// Total packets sent
+    pub total_packets_sent: u64,
+    /// Total packets received
+    pub total_packets_received: u64,
+    /// Breakdown by transport type (e.g., "Udp": 3, "SharedMemory": 5)
+    pub transport_breakdown: std::collections::HashMap<String, u32>,
+    /// Unique remote endpoints discovered
+    pub unique_endpoints: Vec<String>,
+    /// Individual node statuses
+    pub node_statuses: Vec<NetworkStatus>,
 }

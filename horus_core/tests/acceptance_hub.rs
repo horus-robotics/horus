@@ -242,7 +242,7 @@ fn test_edge_case_topic_name_with_special_chars() {
     // When: Hub is created
     // Then: Topic name is sanitized for filesystem
 
-    let topic = format!("robot/sensors/lidar_{}", std::process::id());
+    let topic = format!("robot.sensors.lidar_{}", std::process::id());
 
     let hub = Hub::<i32>::new(&topic).expect("Hub should handle special chars in topic name");
     hub.send(42, &mut None)

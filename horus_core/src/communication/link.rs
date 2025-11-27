@@ -130,7 +130,13 @@ struct LinkHeader {
 /// is optimized for direct point-to-point communication with a single peer.
 pub enum LinkNetworkBackend<T>
 where
-    T: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + Clone + std::fmt::Debug + 'static,
+    T: serde::Serialize
+        + serde::de::DeserializeOwned
+        + Send
+        + Sync
+        + Clone
+        + std::fmt::Debug
+        + 'static,
 {
     /// Connected UDP - optimized for 1P1C with connect() syscall
     /// ~30% faster than unconnected UDP due to kernel route caching
@@ -150,7 +156,13 @@ where
 /// - ~30% faster than unconnected UDP
 pub struct ConnectedUdpBackend<T>
 where
-    T: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + Clone + std::fmt::Debug + 'static,
+    T: serde::Serialize
+        + serde::de::DeserializeOwned
+        + Send
+        + Sync
+        + Clone
+        + std::fmt::Debug
+        + 'static,
 {
     socket: UdpSocket,
     role: LinkRole,
@@ -163,20 +175,38 @@ where
 
 // Safety: ConnectedUdpBackend is designed for 1P1C where only one thread
 // accesses send_buffer (producer) and one thread accesses recv_buffer (consumer)
-unsafe impl<T> Send for ConnectedUdpBackend<T>
-where
-    T: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + Clone + std::fmt::Debug + 'static,
-{}
-unsafe impl<T> Sync for ConnectedUdpBackend<T>
-where
-    T: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + Clone + std::fmt::Debug + 'static,
-{}
+unsafe impl<T> Send for ConnectedUdpBackend<T> where
+    T: serde::Serialize
+        + serde::de::DeserializeOwned
+        + Send
+        + Sync
+        + Clone
+        + std::fmt::Debug
+        + 'static
+{
+}
+unsafe impl<T> Sync for ConnectedUdpBackend<T> where
+    T: serde::Serialize
+        + serde::de::DeserializeOwned
+        + Send
+        + Sync
+        + Clone
+        + std::fmt::Debug
+        + 'static
+{
+}
 
 /// Unix socket backend for Link - optimized for localhost 1P1C
 #[cfg(unix)]
 pub struct UnixSocketLinkBackend<T>
 where
-    T: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + Clone + std::fmt::Debug + 'static,
+    T: serde::Serialize
+        + serde::de::DeserializeOwned
+        + Send
+        + Sync
+        + Clone
+        + std::fmt::Debug
+        + 'static,
 {
     socket: UnixDatagram,
     socket_path: String,
@@ -189,34 +219,50 @@ where
 }
 
 #[cfg(unix)]
-unsafe impl<T> Send for UnixSocketLinkBackend<T>
-where
-    T: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + Clone + std::fmt::Debug + 'static,
-{}
+unsafe impl<T> Send for UnixSocketLinkBackend<T> where
+    T: serde::Serialize
+        + serde::de::DeserializeOwned
+        + Send
+        + Sync
+        + Clone
+        + std::fmt::Debug
+        + 'static
+{
+}
 #[cfg(unix)]
-unsafe impl<T> Sync for UnixSocketLinkBackend<T>
-where
-    T: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + Clone + std::fmt::Debug + 'static,
-{}
+unsafe impl<T> Sync for UnixSocketLinkBackend<T> where
+    T: serde::Serialize
+        + serde::de::DeserializeOwned
+        + Send
+        + Sync
+        + Clone
+        + std::fmt::Debug
+        + 'static
+{
+}
 
 impl<T> std::fmt::Debug for LinkNetworkBackend<T>
 where
-    T: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + Clone + std::fmt::Debug + 'static,
+    T: serde::Serialize
+        + serde::de::DeserializeOwned
+        + Send
+        + Sync
+        + Clone
+        + std::fmt::Debug
+        + 'static,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            LinkNetworkBackend::ConnectedUdp(u) => {
-                f.debug_struct("ConnectedUdp")
-                    .field("role", &u.role)
-                    .finish()
-            }
+            LinkNetworkBackend::ConnectedUdp(u) => f
+                .debug_struct("ConnectedUdp")
+                .field("role", &u.role)
+                .finish(),
             #[cfg(unix)]
-            LinkNetworkBackend::UnixSocket(u) => {
-                f.debug_struct("UnixSocket")
-                    .field("role", &u.role)
-                    .field("path", &u.socket_path)
-                    .finish()
-            }
+            LinkNetworkBackend::UnixSocket(u) => f
+                .debug_struct("UnixSocket")
+                .field("role", &u.role)
+                .field("path", &u.socket_path)
+                .finish(),
         }
     }
 }
@@ -226,7 +272,13 @@ const LINK_BUFFER_SIZE: usize = 65536;
 
 impl<T> ConnectedUdpBackend<T>
 where
-    T: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + Clone + std::fmt::Debug + 'static,
+    T: serde::Serialize
+        + serde::de::DeserializeOwned
+        + Send
+        + Sync
+        + Clone
+        + std::fmt::Debug
+        + 'static,
 {
     /// Create a Connected UDP producer
     ///
@@ -239,14 +291,16 @@ where
             "[::]:0".parse().unwrap()
         };
 
-        let socket = UdpSocket::bind(bind_addr)
-            .map_err(|e| format!("Failed to bind UDP socket: {}", e))?;
+        let socket =
+            UdpSocket::bind(bind_addr).map_err(|e| format!("Failed to bind UDP socket: {}", e))?;
 
         // KEY OPTIMIZATION: connect() to peer for faster send()
-        socket.connect(consumer_addr)
+        socket
+            .connect(consumer_addr)
             .map_err(|e| format!("Failed to connect UDP socket to {}: {}", consumer_addr, e))?;
 
-        socket.set_nonblocking(true)
+        socket
+            .set_nonblocking(true)
             .map_err(|e| format!("Failed to set non-blocking: {}", e))?;
 
         Ok(Self {
@@ -266,7 +320,8 @@ where
         let socket = UdpSocket::bind(listen_addr)
             .map_err(|e| format!("Failed to bind UDP socket to {}: {}", listen_addr, e))?;
 
-        socket.set_nonblocking(true)
+        socket
+            .set_nonblocking(true)
             .map_err(|e| format!("Failed to set non-blocking: {}", e))?;
 
         Ok(Self {
@@ -293,7 +348,8 @@ where
             .map_err(|e| format!("Serialization error: {}", e))?;
 
         // Connected UDP: just send() - no address needed!
-        self.socket.send(buffer)
+        self.socket
+            .send(buffer)
             .map_err(|e| format!("UDP send error: {}", e))?;
 
         Ok(())
@@ -321,7 +377,13 @@ where
 #[cfg(unix)]
 impl<T> UnixSocketLinkBackend<T>
 where
-    T: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + Clone + std::fmt::Debug + 'static,
+    T: serde::Serialize
+        + serde::de::DeserializeOwned
+        + Send
+        + Sync
+        + Clone
+        + std::fmt::Debug
+        + 'static,
 {
     /// Create a Unix socket producer with connect() for fast send()
     pub fn new_producer(topic: &str, consumer_path: &str) -> HorusResult<Self> {
@@ -334,10 +396,12 @@ where
             .map_err(|e| format!("Failed to bind Unix socket: {}", e))?;
 
         // KEY OPTIMIZATION: connect() to consumer for fast send()
-        socket.connect(consumer_path)
+        socket
+            .connect(consumer_path)
             .map_err(|e| format!("Failed to connect Unix socket to {}: {}", consumer_path, e))?;
 
-        socket.set_nonblocking(true)
+        socket
+            .set_nonblocking(true)
             .map_err(|e| format!("Failed to set non-blocking: {}", e))?;
 
         Ok(Self {
@@ -359,7 +423,8 @@ where
 
         let socket = UnixDatagram::bind(&socket_path)
             .map_err(|e| format!("Failed to bind Unix socket: {}", e))?;
-        socket.set_nonblocking(true)
+        socket
+            .set_nonblocking(true)
             .map_err(|e| format!("Failed to set non-blocking: {}", e))?;
 
         Ok(Self {
@@ -382,7 +447,8 @@ where
             .map_err(|e| format!("Serialization error: {}", e))?;
 
         // Connected Unix socket: just send()!
-        self.socket.send(buffer)
+        self.socket
+            .send(buffer)
             .map_err(|e| format!("Unix socket send error: {}", e))?;
 
         Ok(())
@@ -407,7 +473,13 @@ where
 #[cfg(unix)]
 impl<T> Drop for UnixSocketLinkBackend<T>
 where
-    T: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + Clone + std::fmt::Debug + 'static,
+    T: serde::Serialize
+        + serde::de::DeserializeOwned
+        + Send
+        + Sync
+        + Clone
+        + std::fmt::Debug
+        + 'static,
 {
     fn drop(&mut self) {
         let _ = std::fs::remove_file(&self.socket_path);
@@ -431,7 +503,13 @@ where
 #[repr(align(64))]
 pub struct Link<T>
 where
-    T: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + Clone + std::fmt::Debug + 'static,
+    T: serde::Serialize
+        + serde::de::DeserializeOwned
+        + Send
+        + Sync
+        + Clone
+        + std::fmt::Debug
+        + 'static,
 {
     shm_region: Option<Arc<ShmRegion>>, // Local shared memory (if local)
     network: Option<LinkNetworkBackend<T>>, // Network backend (if network)
@@ -452,7 +530,13 @@ where
 // Manual Debug implementation since DirectBackend doesn't implement Debug for all T
 impl<T> std::fmt::Debug for Link<T>
 where
-    T: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + Clone + std::fmt::Debug + 'static,
+    T: serde::Serialize
+        + serde::de::DeserializeOwned
+        + Send
+        + Sync
+        + Clone
+        + std::fmt::Debug
+        + 'static,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Link")
@@ -815,13 +899,18 @@ where
         role: LinkRole,
     ) -> HorusResult<(LinkNetworkBackend<T>, &'static str)> {
         // Check for localhost - use Unix socket (fastest for local)
-        if addr_str == "localhost" || addr_str.starts_with("127.0.0.1") || addr_str.starts_with("::1") {
+        if addr_str == "localhost"
+            || addr_str.starts_with("127.0.0.1")
+            || addr_str.starts_with("::1")
+        {
             #[cfg(unix)]
             {
                 // For localhost, prefer Unix sockets - ~1-2µs latency
                 let consumer_path = format!("/tmp/horus_link_{}_consumer.sock", topic);
                 let backend = match role {
-                    LinkRole::Producer => UnixSocketLinkBackend::new_producer(topic, &consumer_path)?,
+                    LinkRole::Producer => {
+                        UnixSocketLinkBackend::new_producer(topic, &consumer_path)?
+                    }
                     LinkRole::Consumer => UnixSocketLinkBackend::new_consumer(topic)?,
                 };
                 return Ok((LinkNetworkBackend::UnixSocket(backend), "unix_socket"));
@@ -1332,5 +1421,23 @@ where
     }
 }
 
-unsafe impl<T> Send for Link<T> where T: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + Clone + std::fmt::Debug + 'static {}
-unsafe impl<T> Sync for Link<T> where T: serde::Serialize + serde::de::DeserializeOwned + Send + Sync + Clone + std::fmt::Debug + 'static {}
+unsafe impl<T> Send for Link<T> where
+    T: serde::Serialize
+        + serde::de::DeserializeOwned
+        + Send
+        + Sync
+        + Clone
+        + std::fmt::Debug
+        + 'static
+{
+}
+unsafe impl<T> Sync for Link<T> where
+    T: serde::Serialize
+        + serde::de::DeserializeOwned
+        + Send
+        + Sync
+        + Clone
+        + std::fmt::Debug
+        + 'static
+{
+}

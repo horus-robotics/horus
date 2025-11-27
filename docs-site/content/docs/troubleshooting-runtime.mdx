@@ -70,6 +70,38 @@ thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value'
 
 ---
 
+### Error: "No such file or directory" when creating Hub
+
+**Symptom**: Application crashes with:
+```
+thread 'main' panicked at 'Failed to create publisher 'camera': No such file or directory'
+```
+
+**Cause**: You're using **slashes (`/`)** in your topic name instead of **dots (`.`)**.
+
+HORUS topic names become file names in `/dev/shm`. When you use a slash, it's interpreted as a directory path that doesn't exist:
+
+```
+Topic: "sensors/camera"  →  /dev/shm/horus_default_sensors/camera  (FAILS!)
+Topic: "sensors.camera"  →  /dev/shm/horus_default_sensors.camera  (Works!)
+```
+
+**Fix**: Replace all slashes with dots in topic names:
+
+```rust
+// WRONG - causes "No such file or directory"
+let hub = Hub::new("sensors/camera")?;
+let hub = Hub::new("robot/cmd_vel")?;
+
+// CORRECT - use dots
+let hub = Hub::new("sensors.camera")?;
+let hub = Hub::new("robot.cmd_vel")?;
+```
+
+**Coming from ROS?** ROS uses slashes (`/sensor/lidar`) because it uses network-based naming. HORUS uses dots because topic names map directly to shared memory file names. See [Topic Naming](/core-concepts/core-concepts-hub#use-dots-not-slashes) for details.
+
+---
+
 ## Message Communication Issues
 
 ### Problem: "No messages received" - recv() always returns None

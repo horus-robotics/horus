@@ -281,7 +281,12 @@ impl ImuNode {
 
                     if let Ok(quat) = bno.quaternion() {
                         // mint::Quaternion has v (Vector3 for x,y,z) and s (scalar for w)
-                        imu.orientation = [quat.v.x as f64, quat.v.y as f64, quat.v.z as f64, quat.s as f64];
+                        imu.orientation = [
+                            quat.v.x as f64,
+                            quat.v.y as f64,
+                            quat.v.z as f64,
+                            quat.s as f64,
+                        ];
                     }
 
                     if let Ok(gyro) = bno.gyro_data() {

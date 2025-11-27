@@ -20,7 +20,7 @@ pub mod interrupt;
 pub mod memory;
 pub mod sync;
 
-pub use backends::{FreeRTOSBackend, QNXBackend, RTLinuxBackend, ZephyrBackend};
+pub use backends::RTLinuxBackend;
 pub use hal::{HardwareAbstractionLayer, HardwareTimer, PlatformInfo};
 pub use interrupt::{InterruptHandler, InterruptPriority};
 pub use memory::{RTOSMemoryPool, StaticAllocator};
@@ -43,19 +43,29 @@ impl RTOSPlatform {
     /// Detect the current RTOS platform at compile time
     pub fn detect() -> Self {
         #[cfg(feature = "freertos")]
-        return RTOSPlatform::FreeRTOS;
+        {
+            return RTOSPlatform::FreeRTOS;
+        }
 
-        #[cfg(feature = "zephyr")]
-        return RTOSPlatform::Zephyr;
+        #[cfg(all(feature = "zephyr", not(feature = "freertos")))]
+        {
+            return RTOSPlatform::Zephyr;
+        }
 
-        #[cfg(feature = "rt-linux")]
-        return RTOSPlatform::RTLinux;
+        #[cfg(all(feature = "rt-linux", not(any(feature = "freertos", feature = "zephyr"))))]
+        {
+            return RTOSPlatform::RTLinux;
+        }
 
-        #[cfg(feature = "qnx")]
-        return RTOSPlatform::QNX;
+        #[cfg(all(feature = "qnx", not(any(feature = "freertos", feature = "zephyr", feature = "rt-linux"))))]
+        {
+            return RTOSPlatform::QNX;
+        }
 
-        #[cfg(feature = "bare-metal")]
-        return RTOSPlatform::Bare;
+        #[cfg(all(feature = "bare-metal", not(any(feature = "freertos", feature = "zephyr", feature = "rt-linux", feature = "qnx"))))]
+        {
+            return RTOSPlatform::Bare;
+        }
 
         // Default to RT-Linux if no specific RTOS is selected
         #[cfg(not(any(
@@ -430,48 +440,15 @@ pub struct RTOSScheduler {
 
 impl RTOSScheduler {
     /// Create scheduler for specific RTOS platform
+    ///
+    /// Currently only RT-Linux is supported. Other platforms (FreeRTOS, Zephyr, QNX)
+    /// are planned for future releases.
     pub fn new(platform: RTOSPlatform) -> HorusResult<Self> {
         let backend: Box<dyn RTOSBackend> = match platform {
-            RTOSPlatform::FreeRTOS => {
-                #[cfg(feature = "freertos")]
-                {
-                    Box::new(backends::FreeRTOSBackend::new())
-                }
-                #[cfg(not(feature = "freertos"))]
-                {
-                    return Err(crate::error::HorusError::Internal(
-                        "FreeRTOS support not compiled in (enable 'freertos' feature)".to_string(),
-                    ));
-                }
-            }
             RTOSPlatform::RTLinux => Box::new(backends::RTLinuxBackend::new()),
-            RTOSPlatform::Zephyr => {
-                #[cfg(feature = "zephyr")]
-                {
-                    Box::new(backends::ZephyrBackend::new())
-                }
-                #[cfg(not(feature = "zephyr"))]
-                {
-                    return Err(crate::error::HorusError::Internal(
-                        "Zephyr support not compiled in (enable 'zephyr' feature)".to_string(),
-                    ));
-                }
-            }
-            RTOSPlatform::QNX => {
-                #[cfg(feature = "qnx")]
-                {
-                    Box::new(backends::QNXBackend::new())
-                }
-                #[cfg(not(feature = "qnx"))]
-                {
-                    return Err(crate::error::HorusError::Internal(
-                        "QNX support not compiled in (enable 'qnx' feature)".to_string(),
-                    ));
-                }
-            }
             _ => {
                 return Err(crate::error::HorusError::Internal(format!(
-                    "Unsupported RTOS platform: {:?}",
+                    "Unsupported RTOS platform: {:?}. Currently only RTLinux is supported.",
                     platform
                 )));
             }
