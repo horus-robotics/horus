@@ -185,7 +185,7 @@ let msg = SerialMessage {
 };
 
 // Send
-let hub = Hub::<SerialMessage>::new("serial/tx")?;
+let hub = Hub::<SerialMessage>::new("serial.tx")?;
 hub.send(msg, None)?;
 ```
 
@@ -193,7 +193,7 @@ hub.send(msg, None)?;
 
 ```rust
 // Subscribe to RX topic
-let hub = Hub::<SerialMessage>::new("serial/rx")?;
+let hub = Hub::<SerialMessage>::new("serial.rx")?;
 
 if let Some(msg) = hub.recv(None) {
     // Convert to string if ASCII
@@ -240,7 +240,7 @@ serial.set_framing_mode(FramingMode::Line);
 serial.set_line_ending("\r\n");
 
 // Read NMEA sentences
-let hub = Hub::<SerialMessage>::new("serial/rx")?;
+let hub = Hub::<SerialMessage>::new("serial.rx")?;
 while let Some(msg) = hub.recv(None) {
     let nmea = String::from_utf8_lossy(&msg.data);
     if nmea.starts_with("$GPGGA") {
@@ -348,7 +348,7 @@ fn main() -> Result<()> {
     let gps_parser = node! {
         name: "gps_parser",
         tick: |ctx| {
-            let hub = Hub::<SerialMessage>::new("serial/rx")?;
+            let hub = Hub::<SerialMessage>::new("serial.rx")?;
 
             while let Some(msg) = hub.recv(None) {
                 let nmea = String::from_utf8_lossy(&msg.data);

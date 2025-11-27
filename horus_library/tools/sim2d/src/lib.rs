@@ -398,7 +398,16 @@ fn create_app(
         )
         .add_systems(
             Update,
-            (odometry_publish_system, imu_system, lidar_system, camera_system, gps_system, ultrasonic_system, contact_system).after(tick_start_system),
+            (
+                odometry_publish_system,
+                imu_system,
+                lidar_system,
+                camera_system,
+                gps_system,
+                ultrasonic_system,
+                contact_system,
+            )
+                .after(tick_start_system),
         )
         .add_systems(
             Update,
@@ -425,10 +434,7 @@ fn create_app(
             Update,
             (visual_color_system, grid_system, lidar_rays_system),
         )
-        .add_systems(
-            Update,
-            (editor_input_system, editor_preview_system),
-        )
+        .add_systems(Update, (editor_input_system, editor_preview_system))
         // Articulated robot systems
         .add_systems(
             Update,

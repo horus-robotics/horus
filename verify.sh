@@ -16,40 +16,86 @@ MAGENTA='\033[0;35m'
 WHITE='\033[1;37m'
 NC='\033[0m' # No Color
 
-# WALL-E Robot indicators (UTF-8)
-ROBOT="[□_□]"
-ROBOT_SUCCESS="[■_■]"
-ROBOT_ERROR="[×_×]"
-ROBOT_WARN="[□_□]!"
-ROBOT_CHECK="[□_□]?"
-ROBOT_HAPPY="[■_■]"
+# Status indicators
+STATUS_OK="[+]"
+STATUS_ERR="[-]"
+STATUS_WARN="[!]"
+STATUS_INFO="[*]"
 
-# Spinner function - WALL-E compacting trash animation
+# Spinner function - simple dots
 spin() {
     local pid=$1
     local msg="$2"
-    # WALL-E compacting trash: sees trash, eats it, compacts, ejects cube
-    local spin_chars=(
-        '[□_□]  ▮▮▮'
-        '[□_□] ▮▮▮ '
-        '[□_□]▮▮▮  '
-        '[□■□]▮▮   '
-        '[■_■]▮    '
-        '[▣_▣]     '
-        '[▪_▪]     '
-        '[□_□]▫    '
-        '[□_□] ▫▫  '
-        '[□_□]  ▫▫▫'
-    )
+    local spin_chars=('.' '..' '...' '....')
     local i=0
     tput civis 2>/dev/null || true
     while kill -0 $pid 2>/dev/null; do
         printf "\r  ${spin_chars[$i]} ${msg}"
         i=$(( (i + 1) % ${#spin_chars[@]} ))
-        sleep 0.15
+        sleep 0.25
     done
     tput cnorm 2>/dev/null || true
     printf "\r\033[K"
+}
+
+# ============================================================================
+# PROGRESS BAR FUNCTIONS - Real progress with percentages
+# ============================================================================
+
+# Global progress tracking
+VERIFY_TOTAL_CHECKS=0
+VERIFY_CURRENT_CHECK=0
+VERIFY_START_TIME=0
+
+# Initialize verification progress
+init_verify_progress() {
+    VERIFY_TOTAL_CHECKS=$1
+    VERIFY_CURRENT_CHECK=0
+    VERIFY_START_TIME=$(date +%s)
+}
+
+# Update verification progress
+update_verify_progress() {
+    local section="$1"
+    VERIFY_CURRENT_CHECK=$((VERIFY_CURRENT_CHECK + 1))
+
+    local percent=0
+    if [ "$VERIFY_TOTAL_CHECKS" -gt 0 ]; then
+        percent=$((VERIFY_CURRENT_CHECK * 100 / VERIFY_TOTAL_CHECKS))
+    fi
+
+    # Calculate ETA
+    local elapsed=$(($(date +%s) - VERIFY_START_TIME))
+    local eta_str=""
+    if [ "$elapsed" -gt 1 ] && [ "$percent" -gt 0 ] && [ "$percent" -lt 100 ]; then
+        local total_estimated=$((elapsed * 100 / percent))
+        local remaining=$((total_estimated - elapsed))
+        if [ "$remaining" -gt 0 ]; then
+            if [ "$remaining" -lt 60 ]; then
+                eta_str=" ETA: ${remaining}s"
+            else
+                local mins=$((remaining / 60))
+                eta_str=" ETA: ${mins}m"
+            fi
+        fi
+    fi
+
+    # Build progress bar
+    local width=25
+    local filled=$((percent * width / 100))
+    local empty=$((width - filled))
+    local bar=""
+    for ((j=0; j<filled; j++)); do bar+="█"; done
+    for ((j=0; j<empty; j++)); do bar+="░"; done
+
+    # Print progress
+    printf "\r  ${STATUS_INFO} [${bar}] %3d%% Checking: %-20s${eta_str}    " "$percent" "$section"
+}
+
+# Complete verification progress
+complete_verify_progress() {
+    local elapsed=$(($(date +%s) - VERIFY_START_TIME))
+    printf "\r  ${STATUS_OK} [█████████████████████████] 100%% Verification completed in ${elapsed}s    \n"
 }
 
 # Source shared dependency functions
@@ -126,7 +172,7 @@ fi
 
 echo ""
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║${NC}    ${ROBOT_CHECK} ${WHITE}HORUS Installation Verification v2.0.0${NC}          ${BLUE}║${NC}"
+echo -e "${BLUE}║${NC}       ${WHITE}HORUS Installation Verification v2.0.0${NC}          ${BLUE}║${NC}"
 echo -e "${BLUE}║${NC}       ${CYAN}Comprehensive • Systematic • Complete${NC}              ${BLUE}║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
 
@@ -478,15 +524,16 @@ if command -v horus &>/dev/null || [ -x "$INSTALL_DIR/horus" ]; then
     declare -a COMMANDS=(
         "--version:Version check"
         "--help:Help system"
+        "init --help:Workspace init"
         "new --help:Project creation"
         "run --help:Project runner"
+        "check --help:Validation"
         "pkg --help:Package manager"
         "env --help:Environment"
         "dashboard --help:Dashboard"
         "auth --help:Authentication"
         "sim2d --help:2D Simulator"
         "sim3d --help:3D Simulator"
-        "monitor --help:Monitor"
     )
 
     ALL_OK=true
@@ -752,21 +799,21 @@ echo ""
 
 if [ $ERRORS -eq 0 ] && [ $WARNINGS -eq 0 ]; then
     echo -e "  ${GREEN}════════════════════════════════════════${NC}"
-    echo -e "  ${GREEN}  ${ROBOT_SUCCESS} HORUS installation is PERFECT!${NC}"
+    echo -e "  ${GREEN}  ${STATUS_OK} HORUS installation is PERFECT!${NC}"
     echo -e "  ${GREEN}════════════════════════════════════════${NC}"
     echo ""
     echo -e "  Ready to use: ${CYAN}horus new my_project${NC}"
     EXIT_CODE=0
 elif [ $ERRORS -eq 0 ]; then
     echo -e "  ${YELLOW}════════════════════════════════════════${NC}"
-    echo -e "  ${YELLOW}  ${ROBOT_WARN} HORUS is functional with warnings${NC}"
+    echo -e "  ${YELLOW}  ${STATUS_WARN} HORUS is functional with warnings${NC}"
     echo -e "  ${YELLOW}════════════════════════════════════════${NC}"
     echo ""
     echo -e "  Review warnings above for optional improvements."
     EXIT_CODE=1
 else
     echo -e "  ${RED}════════════════════════════════════════${NC}"
-    echo -e "  ${RED}  ${ROBOT_ERROR} HORUS installation has ERRORS${NC}"
+    echo -e "  ${RED}  ${STATUS_ERR} HORUS installation has ERRORS${NC}"
     echo -e "  ${RED}════════════════════════════════════════${NC}"
     echo ""
     echo -e "  ${CYAN}Recommended fixes:${NC}"

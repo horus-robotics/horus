@@ -17,9 +17,10 @@ pub struct ResolvedDependency {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DependencySource {
-    Registry,                    // HORUS registry (default)
-    Path(std::path::PathBuf),    // Local filesystem path
-    Git {                        // Git repository
+    Registry,                 // HORUS registry (default)
+    Path(std::path::PathBuf), // Local filesystem path
+    Git {
+        // Git repository
         url: String,
         branch: Option<String>,
         tag: Option<String>,
@@ -107,7 +108,9 @@ impl DependencySpec {
                     })
                 }
                 // Check for git dependency
-                else if let Some(Value::String(git_url)) = map.get(Value::String("git".to_string())) {
+                else if let Some(Value::String(git_url)) =
+                    map.get(Value::String("git".to_string()))
+                {
                     let branch = map
                         .get(Value::String("branch".to_string()))
                         .and_then(|v| v.as_str().map(String::from));

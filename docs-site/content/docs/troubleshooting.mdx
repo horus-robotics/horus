@@ -667,7 +667,7 @@ sudo chmod 1777 /dev/shm
 // Ensure topic names are valid (alphanumeric, underscore, slash)
 // Good:
 let hub = Hub::new("sensor_data")?;
-let hub = Hub::new("robot/cmd_vel")?;
+let hub = Hub::new("robot.cmd_vel")?;
 
 // Bad (will fail):
 let hub = Hub::new("sensor data")?;  // Space

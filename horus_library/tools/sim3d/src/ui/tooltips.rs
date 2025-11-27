@@ -432,7 +432,9 @@ impl TooltipRegistry {
 
     /// Get the currently active tooltip
     pub fn active(&self) -> Option<&Tooltip> {
-        self.active_tooltip.as_ref().and_then(|id| self.tooltips.get(id))
+        self.active_tooltip
+            .as_ref()
+            .and_then(|id| self.tooltips.get(id))
     }
 
     /// Update cursor position
@@ -498,7 +500,11 @@ impl Default for ContextualHelp {
 
 impl ContextualHelp {
     /// Create new contextual help
-    pub fn new(id: impl Into<String>, title: impl Into<String>, description: impl Into<String>) -> Self {
+    pub fn new(
+        id: impl Into<String>,
+        title: impl Into<String>,
+        description: impl Into<String>,
+    ) -> Self {
         Self {
             id: id.into(),
             title: title.into(),
@@ -720,7 +726,14 @@ pub fn handle_tooltip_events(
             }
             TooltipEvent::ToggleEnabled => {
                 config.enabled = !config.enabled;
-                info!("Tooltips {}", if config.enabled { "enabled" } else { "disabled" });
+                info!(
+                    "Tooltips {}",
+                    if config.enabled {
+                        "enabled"
+                    } else {
+                        "disabled"
+                    }
+                );
             }
             TooltipEvent::ShowHelp { id } => {
                 help_state.current_entry = Some(id.clone());
@@ -772,34 +785,26 @@ pub fn tooltip_render_system(
         }
 
         let ctx = contexts.ctx_mut();
-        let cursor_pos = ctx.input(|i| i.pointer.hover_pos()).unwrap_or(egui::pos2(0.0, 0.0));
+        let cursor_pos = ctx
+            .input(|i| i.pointer.hover_pos())
+            .unwrap_or(egui::pos2(0.0, 0.0));
 
         let pos = match tooltip.position {
-            TooltipPosition::FollowCursor => {
-                egui::pos2(
-                    cursor_pos.x + config.cursor_offset[0],
-                    cursor_pos.y + config.cursor_offset[1],
-                )
-            }
+            TooltipPosition::FollowCursor => egui::pos2(
+                cursor_pos.x + config.cursor_offset[0],
+                cursor_pos.y + config.cursor_offset[1],
+            ),
             TooltipPosition::Fixed { x, y } => egui::pos2(x as f32, y as f32),
-            TooltipPosition::RelativeToElement { offset_x, offset_y } => {
-                egui::pos2(
-                    cursor_pos.x + offset_x as f32,
-                    cursor_pos.y + offset_y as f32,
-                )
-            }
-            TooltipPosition::Above => {
-                egui::pos2(cursor_pos.x, cursor_pos.y - 30.0)
-            }
-            TooltipPosition::Below => {
-                egui::pos2(cursor_pos.x, cursor_pos.y + 20.0)
-            }
+            TooltipPosition::RelativeToElement { offset_x, offset_y } => egui::pos2(
+                cursor_pos.x + offset_x as f32,
+                cursor_pos.y + offset_y as f32,
+            ),
+            TooltipPosition::Above => egui::pos2(cursor_pos.x, cursor_pos.y - 30.0),
+            TooltipPosition::Below => egui::pos2(cursor_pos.x, cursor_pos.y + 20.0),
             TooltipPosition::Left => {
                 egui::pos2(cursor_pos.x - tooltip.max_width - 10.0, cursor_pos.y)
             }
-            TooltipPosition::Right => {
-                egui::pos2(cursor_pos.x + 20.0, cursor_pos.y)
-            }
+            TooltipPosition::Right => egui::pos2(cursor_pos.x + 20.0, cursor_pos.y),
         };
 
         egui::Area::new(egui::Id::new("tooltip_area"))
@@ -820,12 +825,12 @@ pub fn tooltip_render_system(
                                 ui.label(
                                     egui::RichText::new(tooltip.style.icon())
                                         .color(tooltip.style.text_color())
-                                        .strong()
+                                        .strong(),
                                 );
                                 ui.label(
                                     egui::RichText::new(title)
                                         .color(tooltip.style.text_color())
-                                        .strong()
+                                        .strong(),
                                 );
                             });
                             ui.separator();
@@ -835,16 +840,30 @@ pub fn tooltip_render_system(
                         for segment in tooltip.formatted_text() {
                             match segment {
                                 TextSegment::Normal(text) => {
-                                    ui.label(egui::RichText::new(text).color(tooltip.style.text_color()));
+                                    ui.label(
+                                        egui::RichText::new(text).color(tooltip.style.text_color()),
+                                    );
                                 }
                                 TextSegment::Bold(text) => {
-                                    ui.label(egui::RichText::new(text).color(tooltip.style.text_color()).strong());
+                                    ui.label(
+                                        egui::RichText::new(text)
+                                            .color(tooltip.style.text_color())
+                                            .strong(),
+                                    );
                                 }
                                 TextSegment::Italic(text) => {
-                                    ui.label(egui::RichText::new(text).color(tooltip.style.text_color()).italics());
+                                    ui.label(
+                                        egui::RichText::new(text)
+                                            .color(tooltip.style.text_color())
+                                            .italics(),
+                                    );
                                 }
                                 TextSegment::Code(text) => {
-                                    ui.label(egui::RichText::new(format!("`{}`", text)).color(tooltip.style.text_color()).monospace());
+                                    ui.label(
+                                        egui::RichText::new(format!("`{}`", text))
+                                            .color(tooltip.style.text_color())
+                                            .monospace(),
+                                    );
                                 }
                             }
                         }
@@ -896,7 +915,10 @@ pub fn help_overlay_render_system(
             // Category filter
             ui.horizontal(|ui| {
                 ui.label("Category:");
-                if ui.selectable_label(help_state.selected_category.is_none(), "All").clicked() {
+                if ui
+                    .selectable_label(help_state.selected_category.is_none(), "All")
+                    .clicked()
+                {
                     help_state.selected_category = None;
                 }
                 for category in help_registry.categories() {
@@ -928,9 +950,16 @@ pub fn help_overlay_render_system(
                             ui.horizontal(|ui| {
                                 ui.heading(&entry.title);
                                 if let Some(ref shortcut) = entry.shortcut {
-                                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                        ui.label(egui::RichText::new(format!("[{}]", shortcut)).monospace().small());
-                                    });
+                                    ui.with_layout(
+                                        egui::Layout::right_to_left(egui::Align::Center),
+                                        |ui| {
+                                            ui.label(
+                                                egui::RichText::new(format!("[{}]", shortcut))
+                                                    .monospace()
+                                                    .small(),
+                                            );
+                                        },
+                                    );
                                 }
                             });
 
@@ -972,75 +1001,127 @@ pub fn help_overlay_render_system() {}
 pub fn setup_default_help(mut help_registry: ResMut<HelpRegistry>) {
     // Camera controls
     help_registry.register(
-        ContextualHelp::new("camera_orbit", "Orbit Camera", "Right-click and drag to orbit the camera around the focus point.")
-            .with_shortcut("Right Mouse + Drag")
-            .with_category("Camera")
+        ContextualHelp::new(
+            "camera_orbit",
+            "Orbit Camera",
+            "Right-click and drag to orbit the camera around the focus point.",
+        )
+        .with_shortcut("Right Mouse + Drag")
+        .with_category("Camera"),
     );
     help_registry.register(
-        ContextualHelp::new("camera_pan", "Pan Camera", "Middle-click and drag to pan the camera view.")
-            .with_shortcut("Middle Mouse + Drag")
-            .with_category("Camera")
+        ContextualHelp::new(
+            "camera_pan",
+            "Pan Camera",
+            "Middle-click and drag to pan the camera view.",
+        )
+        .with_shortcut("Middle Mouse + Drag")
+        .with_category("Camera"),
     );
     help_registry.register(
-        ContextualHelp::new("camera_zoom", "Zoom Camera", "Use the mouse wheel to zoom in and out.")
-            .with_shortcut("Mouse Wheel")
-            .with_category("Camera")
+        ContextualHelp::new(
+            "camera_zoom",
+            "Zoom Camera",
+            "Use the mouse wheel to zoom in and out.",
+        )
+        .with_shortcut("Mouse Wheel")
+        .with_category("Camera"),
     );
 
     // Simulation controls
     help_registry.register(
-        ContextualHelp::new("sim_pause", "Pause/Resume", "Toggle simulation pause state.")
-            .with_shortcut("Space")
-            .with_category("Simulation")
+        ContextualHelp::new(
+            "sim_pause",
+            "Pause/Resume",
+            "Toggle simulation pause state.",
+        )
+        .with_shortcut("Space")
+        .with_category("Simulation"),
     );
     help_registry.register(
-        ContextualHelp::new("sim_reset", "Reset Simulation", "Reset the simulation to its initial state.")
-            .with_shortcut("R")
-            .with_category("Simulation")
+        ContextualHelp::new(
+            "sim_reset",
+            "Reset Simulation",
+            "Reset the simulation to its initial state.",
+        )
+        .with_shortcut("R")
+        .with_category("Simulation"),
     );
     help_registry.register(
-        ContextualHelp::new("sim_speed", "Time Scale", "Use number keys 1-5 to adjust simulation speed (0.25x to 5x).")
-            .with_shortcut("1-5")
-            .with_category("Simulation")
+        ContextualHelp::new(
+            "sim_speed",
+            "Time Scale",
+            "Use number keys 1-5 to adjust simulation speed (0.25x to 5x).",
+        )
+        .with_shortcut("1-5")
+        .with_category("Simulation"),
     );
 
     // Layout controls
     help_registry.register(
-        ContextualHelp::new("layout_coding", "Coding Layout", "Full development layout with all panels visible.")
-            .with_shortcut("F2")
-            .with_category("Layouts")
+        ContextualHelp::new(
+            "layout_coding",
+            "Coding Layout",
+            "Full development layout with all panels visible.",
+        )
+        .with_shortcut("F2")
+        .with_category("Layouts"),
     );
     help_registry.register(
-        ContextualHelp::new("layout_debug", "Debugging Layout", "Layout optimized for debugging with stats and console.")
-            .with_shortcut("F3")
-            .with_category("Layouts")
+        ContextualHelp::new(
+            "layout_debug",
+            "Debugging Layout",
+            "Layout optimized for debugging with stats and console.",
+        )
+        .with_shortcut("F3")
+        .with_category("Layouts"),
     );
     help_registry.register(
-        ContextualHelp::new("layout_present", "Presentation Layout", "Clean layout for demonstrations.")
-            .with_shortcut("F4")
-            .with_category("Layouts")
+        ContextualHelp::new(
+            "layout_present",
+            "Presentation Layout",
+            "Clean layout for demonstrations.",
+        )
+        .with_shortcut("F4")
+        .with_category("Layouts"),
     );
 
     // Visualization toggles
     help_registry.register(
-        ContextualHelp::new("vis_debug", "Debug Info", "Toggle debug information overlay.")
-            .with_shortcut("D")
-            .with_category("Visualization")
+        ContextualHelp::new(
+            "vis_debug",
+            "Debug Info",
+            "Toggle debug information overlay.",
+        )
+        .with_shortcut("D")
+        .with_category("Visualization"),
     );
     help_registry.register(
-        ContextualHelp::new("vis_physics", "Physics Debug", "Toggle physics debug visualization.")
-            .with_shortcut("P")
-            .with_category("Visualization")
+        ContextualHelp::new(
+            "vis_physics",
+            "Physics Debug",
+            "Toggle physics debug visualization.",
+        )
+        .with_shortcut("P")
+        .with_category("Visualization"),
     );
     help_registry.register(
-        ContextualHelp::new("vis_sensors", "Sensor Rays", "Toggle sensor ray visualization.")
-            .with_shortcut("S")
-            .with_category("Visualization")
+        ContextualHelp::new(
+            "vis_sensors",
+            "Sensor Rays",
+            "Toggle sensor ray visualization.",
+        )
+        .with_shortcut("S")
+        .with_category("Visualization"),
     );
     help_registry.register(
-        ContextualHelp::new("vis_tf", "TF Frames", "Toggle transform frame visualization.")
-            .with_shortcut("T")
-            .with_category("Visualization")
+        ContextualHelp::new(
+            "vis_tf",
+            "TF Frames",
+            "Toggle transform frame visualization.",
+        )
+        .with_shortcut("T")
+        .with_category("Visualization"),
     );
 }
 
@@ -1057,11 +1138,7 @@ impl Plugin for TooltipsPlugin {
             .add_systems(Startup, setup_default_help)
             .add_systems(
                 Update,
-                (
-                    handle_tooltip_events,
-                    help_overlay_hotkey_system,
-                )
-                    .chain(),
+                (handle_tooltip_events, help_overlay_hotkey_system).chain(),
             );
 
         #[cfg(feature = "visual")]
@@ -1111,12 +1188,11 @@ mod tests {
 
     #[test]
     fn test_tooltip_position_variants() {
-        let tooltip = Tooltip::new("test", "Text")
-            .with_position(TooltipPosition::Above);
+        let tooltip = Tooltip::new("test", "Text").with_position(TooltipPosition::Above);
         assert_eq!(tooltip.position, TooltipPosition::Above);
 
-        let tooltip = Tooltip::new("test", "Text")
-            .with_position(TooltipPosition::Fixed { x: 100, y: 200 });
+        let tooltip =
+            Tooltip::new("test", "Text").with_position(TooltipPosition::Fixed { x: 100, y: 200 });
         match tooltip.position {
             TooltipPosition::Fixed { x, y } => {
                 assert_eq!(x, 100);
@@ -1246,8 +1322,7 @@ mod tests {
 
     #[test]
     fn test_contextual_help_formatted_shortcut() {
-        let help = ContextualHelp::new("test", "Test", "Desc")
-            .with_shortcut("Ctrl+S");
+        let help = ContextualHelp::new("test", "Test", "Desc").with_shortcut("Ctrl+S");
         assert_eq!(help.formatted_shortcut(), Some("[Ctrl+S]".to_string()));
 
         let help_no_shortcut = ContextualHelp::new("test", "Test", "Desc");
@@ -1258,18 +1333,9 @@ mod tests {
     fn test_help_registry_operations() {
         let mut registry = HelpRegistry::new();
 
-        registry.register(
-            ContextualHelp::new("help1", "Title 1", "Desc 1")
-                .with_category("Cat A")
-        );
-        registry.register(
-            ContextualHelp::new("help2", "Title 2", "Desc 2")
-                .with_category("Cat A")
-        );
-        registry.register(
-            ContextualHelp::new("help3", "Title 3", "Desc 3")
-                .with_category("Cat B")
-        );
+        registry.register(ContextualHelp::new("help1", "Title 1", "Desc 1").with_category("Cat A"));
+        registry.register(ContextualHelp::new("help2", "Title 2", "Desc 2").with_category("Cat A"));
+        registry.register(ContextualHelp::new("help3", "Title 3", "Desc 3").with_category("Cat B"));
 
         // Get by ID
         let help = registry.get("help1").unwrap();
@@ -1295,9 +1361,21 @@ mod tests {
     fn test_help_registry_search() {
         let mut registry = HelpRegistry::new();
 
-        registry.register(ContextualHelp::new("h1", "Camera Controls", "How to control the camera"));
-        registry.register(ContextualHelp::new("h2", "Simulation", "Running the simulation"));
-        registry.register(ContextualHelp::new("h3", "Camera Reset", "Reset the camera view"));
+        registry.register(ContextualHelp::new(
+            "h1",
+            "Camera Controls",
+            "How to control the camera",
+        ));
+        registry.register(ContextualHelp::new(
+            "h2",
+            "Simulation",
+            "Running the simulation",
+        ));
+        registry.register(ContextualHelp::new(
+            "h3",
+            "Camera Reset",
+            "Reset the camera view",
+        ));
 
         let results = registry.search("camera");
         assert_eq!(results.len(), 2);
@@ -1440,9 +1518,7 @@ mod tests {
 
     #[test]
     fn test_tooltip_config_serialization() {
-        let config = TooltipConfig::new()
-            .with_show_delay(750)
-            .with_opacity(0.9);
+        let config = TooltipConfig::new().with_show_delay(750).with_opacity(0.9);
 
         let json = serde_json::to_string(&config).unwrap();
         let deserialized: TooltipConfig = serde_json::from_str(&json).unwrap();

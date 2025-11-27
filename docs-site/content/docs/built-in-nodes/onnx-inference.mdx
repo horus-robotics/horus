@@ -58,8 +58,8 @@ fn main() -> Result<()> {
 
     let inference_node = ONNXInferenceNode::new(
         "models/mobilenet_v2.onnx",
-        "camera/raw",
-        "ml/predictions",
+        "camera.raw",
+        "ml.predictions",
         config,
     )?;
 
@@ -118,7 +118,7 @@ fn main() -> Result<()> {
 ```rust
 use horus_library::messages::ml::Predictions;
 
-let predictions_hub = Hub::<Predictions>::new("ml/predictions")?;
+let predictions_hub = Hub::<Predictions>::new("ml.predictions")?;
 
 if let Some(preds) = predictions_hub.recv(None) {
     // Get top-k predictions

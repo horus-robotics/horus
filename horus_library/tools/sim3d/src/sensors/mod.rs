@@ -25,48 +25,60 @@ pub use thermal::ThermalCameraPlugin;
 
 // Re-export noise models for external use
 pub use noise::{
-    NoiseModel, GaussianNoise, UniformNoise, SaltPepperNoise, DriftNoise,
-    CombinedNoise, SensorNoise, patterns as noise_patterns,
+    patterns as noise_patterns, CombinedNoise, DriftNoise, GaussianNoise, NoiseModel,
+    SaltPepperNoise, SensorNoise, UniformNoise,
 };
 
 // Re-export segmentation semantic classes
 pub use segmentation::{
-    SemanticClass, SemanticClassRegistry, SegmentationCamera, SegmentationImage,
-    classes as predefined_classes, ClassId, initialize_default_classes,
+    classes as predefined_classes, initialize_default_classes, ClassId, SegmentationCamera,
+    SegmentationImage, SemanticClass, SemanticClassRegistry,
 };
 
 // Re-export camera types
-pub use camera::{RGBCamera, DepthCamera as CameraDepth, CameraImage, DepthImage, CameraVisualization};
+pub use camera::{
+    CameraImage, CameraVisualization, DepthCamera as CameraDepth, DepthImage, RGBCamera,
+};
 
 // Re-export IMU types
-pub use imu::{IMU, IMUData, Gravity};
+pub use imu::{Gravity, IMUData, IMU};
 
 // Re-export LiDAR types
-pub use lidar3d::{Lidar3D, Lidar2D, PointCloud, LaserScan};
+pub use lidar3d::{LaserScan, Lidar2D, Lidar3D, PointCloud};
 
 // Re-export GPS types
-pub use gps::{GPS, GPSData, VelocitySmoothingMethod};
+pub use gps::{GPSData, VelocitySmoothingMethod, GPS};
 
 // Re-export encoder types
-pub use encoder::{Encoder, EncoderType, EncoderData, IncrementalEncoder, AbsoluteEncoder, QuadratureEncoder, EncoderCalibration};
+pub use encoder::{
+    AbsoluteEncoder, Encoder, EncoderCalibration, EncoderData, EncoderType, IncrementalEncoder,
+    QuadratureEncoder,
+};
 
 // Re-export force/torque sensor types
-pub use force_torque::{ForceTorqueSensor, ForceTorqueData, ForceTorqueCalibration, ForceTorqueFilter, FilterType};
+pub use force_torque::{
+    FilterType, ForceTorqueCalibration, ForceTorqueData, ForceTorqueFilter, ForceTorqueSensor,
+};
 
 // Re-export tactile sensor types
-pub use tactile::{TactileSensor, TactileSensorType, TaxelReading, TactileData, ContactPoint, GripperForceSensor};
+pub use tactile::{
+    ContactPoint, GripperForceSensor, TactileData, TactileSensor, TactileSensorType, TaxelReading,
+};
 
 // Re-export event camera types
-pub use event_camera::{EventCamera, Event, EventStream};
+pub use event_camera::{Event, EventCamera, EventStream};
 
 // Re-export radar types
-pub use radar::{RadarSensor, RadarPoint, RadarPointCloud};
+pub use radar::{RadarPoint, RadarPointCloud, RadarSensor};
 
 // Re-export sonar types
-pub use sonar::{SonarSensor, SonarType, SonarMeasurement, SonarArray};
+pub use sonar::{SonarArray, SonarMeasurement, SonarSensor, SonarType};
 
 // Re-export thermal camera types
-pub use thermal::{ThermalCamera, ThermalImage, ThermalProperties, ThermalStatistics, HeatSource, HeatPattern, Temperature};
+pub use thermal::{
+    HeatPattern, HeatSource, Temperature, ThermalCamera, ThermalImage, ThermalProperties,
+    ThermalStatistics,
+};
 
 // Re-export distortion models
-pub use distortion::{LensDistortion, DistortionModel};
+pub use distortion::{DistortionModel, LensDistortion};

@@ -51,8 +51,8 @@ fn main() -> Result<()> {
 
     let detector = YOLOv8DetectorNode::new(
         "models/yolov8n.onnx",
-        "camera/raw",        // Input image topic
-        "vision/detections", // Output detections topic
+        "camera.raw",        // Input image topic
+        "vision.detections", // Output detections topic
         config,
     )?;
 
@@ -100,7 +100,7 @@ fn main() -> Result<()> {
 ```rust
 use horus_library::messages::{Detection, DetectionArray};
 
-let detections_hub = Hub::<DetectionArray>::new("vision/detections")?;
+let detections_hub = Hub::<DetectionArray>::new("vision.detections")?;
 
 if let Some(detections) = detections_hub.recv(None) {
     for det in &detections.detections {

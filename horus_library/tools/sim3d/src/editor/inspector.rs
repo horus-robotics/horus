@@ -274,7 +274,10 @@ fn show_entity_inspector(
                 ));
 
                 ui.label(format!("Metallic: {:.2}", material.metallic));
-                ui.label(format!("Perceptual Roughness: {:.2}", material.perceptual_roughness));
+                ui.label(format!(
+                    "Perceptual Roughness: {:.2}",
+                    material.perceptual_roughness
+                ));
                 ui.label(format!("Reflectance: {:.2}", material.reflectance));
 
                 if material.emissive != LinearRgba::BLACK {
@@ -283,7 +286,10 @@ fn show_entity_inspector(
                         "Emissive: [{:.2}, {:.2}, {:.2}, {:.2}]",
                         emissive.red, emissive.green, emissive.blue, emissive.alpha
                     ));
-                    ui.label(format!("Emissive Exposure: {:.2}", material.emissive_exposure_weight));
+                    ui.label(format!(
+                        "Emissive Exposure: {:.2}",
+                        material.emissive_exposure_weight
+                    ));
                 }
 
                 ui.label(format!("Double Sided: {}", material.double_sided));
@@ -320,7 +326,10 @@ fn show_entity_inspector(
 
     if let Ok(directional_light) = directional_lights.get(entity) {
         ui.collapsing("Directional Light", |ui| {
-            ui.label(format!("Illuminance: {:.1} lux", directional_light.illuminance));
+            ui.label(format!(
+                "Illuminance: {:.1} lux",
+                directional_light.illuminance
+            ));
 
             let color = directional_light.color.to_srgba();
             ui.label(format!(

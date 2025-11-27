@@ -61,7 +61,7 @@ fn main() -> Result<()> {
     camera.set_device_id(0);  // Default camera
     camera.set_resolution(640, 480);
     camera.set_fps(30.0);
-    camera.set_topic("camera/raw");
+    camera.set_topic("camera.raw");
 
     scheduler.add(Box::new(camera), 0, Some(true));
     scheduler.run()?;
@@ -96,8 +96,8 @@ pub struct VisionProcessorNode {
 impl VisionProcessorNode {
     pub fn new() -> Result<Self> {
         Ok(Self {
-            camera_sub: Hub::new("camera/raw")?,
-            detections_pub: Hub::new("vision/detections")?,
+            camera_sub: Hub::new("camera.raw")?,
+            detections_pub: Hub::new("vision.detections")?,
         })
     }
 
@@ -183,8 +183,8 @@ impl YOLOv8Node {
             .map_err(|e| HorusError::Config(format!("Failed to load model: {}", e)))?;
 
         Ok(Self {
-            camera_sub: Hub::new("camera/raw")?,
-            detections_pub: Hub::new("vision/detections")?,
+            camera_sub: Hub::new("camera.raw")?,
+            detections_pub: Hub::new("vision.detections")?,
             session,
         })
     }
@@ -271,8 +271,8 @@ impl TFLiteClassifierNode {
             .collect();
 
         Ok(Self {
-            camera_sub: Hub::new("camera/raw")?,
-            class_pub: Hub::new("vision/classification")?,
+            camera_sub: Hub::new("camera.raw")?,
+            class_pub: Hub::new("vision.classification")?,
             interpreter,
             labels,
         })
@@ -346,8 +346,8 @@ impl TractInferenceNode {
             .map_err(|e| HorusError::Config(format!("Runnable error: {}", e)))?;
 
         Ok(Self {
-            camera_sub: Hub::new("camera/raw")?,
-            output_pub: Hub::new("vision/output")?,
+            camera_sub: Hub::new("camera.raw")?,
+            output_pub: Hub::new("vision.output")?,
             model,
         })
     }
@@ -459,8 +459,8 @@ impl LLMCommandNode {
             .map_err(|e| HorusError::Config(format!("Context error: {}", e)))?;
 
         Ok(Self {
-            text_sub: Hub::new("speech/text")?,
-            cmd_pub: Hub::new("robot/commands")?,
+            text_sub: Hub::new("speech.text")?,
+            cmd_pub: Hub::new("robot.commands")?,
             context,
         })
     }
@@ -561,8 +561,8 @@ impl CandleLLMNode {
             .map_err(|e| HorusError::Config(format!("Tokenizer error: {}", e)))?;
 
         Ok(Self {
-            text_sub: Hub::new("user/input")?,
-            response_pub: Hub::new("llm/response")?,
+            text_sub: Hub::new("user.input")?,
+            response_pub: Hub::new("llm.response")?,
             model,
             tokenizer,
             device,
@@ -662,8 +662,8 @@ impl GPT4PlannerNode {
         };
 
         Ok(Self {
-            goal_sub: Hub::new("user/goal")?,
-            plan_pub: Hub::new("robot/plan")?,
+            goal_sub: Hub::new("user.goal")?,
+            plan_pub: Hub::new("robot.plan")?,
             client: Client::new(),
             api_key,
             conversation: vec![system_prompt],
@@ -755,8 +755,8 @@ pub struct ClaudeReasoningNode {
 impl ClaudeReasoningNode {
     pub fn new(api_key: String) -> Result<Self> {
         Ok(Self {
-            sensor_sub: Hub::new("sensors/summary")?,
-            decision_pub: Hub::new("robot/decision")?,
+            sensor_sub: Hub::new("sensors.summary")?,
+            decision_pub: Hub::new("robot.decision")?,
             client: Client::new(),
             api_key,
         })
@@ -843,8 +843,8 @@ pub struct SceneUnderstandingNode {
 impl SceneUnderstandingNode {
     pub fn new(api_key: String) -> Result<Self> {
         Ok(Self {
-            camera_sub: Hub::new("camera/raw")?,
-            description_pub: Hub::new("scene/description")?,
+            camera_sub: Hub::new("camera.raw")?,
+            description_pub: Hub::new("scene.description")?,
             client: Client::new(),
             api_key,
         })
@@ -930,8 +930,8 @@ pub struct CommandParserNode {
 impl CommandParserNode {
     pub fn new() -> Result<Self> {
         Ok(Self {
-            llm_sub: Hub::new("robot/plan")?,
-            cmd_pub: Hub::new("motor/cmd")?,
+            llm_sub: Hub::new("robot.plan")?,
+            cmd_pub: Hub::new("motor.cmd")?,
         })
     }
 }
@@ -1066,8 +1066,8 @@ pub struct PythonMLNode {
 impl PythonMLNode {
     pub fn new() -> Result<Self> {
         Ok(Self {
-            camera_sub: Hub::new("camera/raw")?,
-            detections_pub: Hub::new("ml/detections")?,
+            camera_sub: Hub::new("camera.raw")?,
+            detections_pub: Hub::new("ml.detections")?,
             frame_count: 0,
         })
     }
@@ -1139,8 +1139,8 @@ pub struct HTTPInferenceNode {
 impl HTTPInferenceNode {
     pub fn new() -> Result<Self> {
         Ok(Self {
-            camera_sub: Hub::new("camera/raw")?,
-            detections_pub: Hub::new("ml/detections")?,
+            camera_sub: Hub::new("camera.raw")?,
+            detections_pub: Hub::new("ml.detections")?,
             client: Client::new(),
         })
     }
@@ -1243,8 +1243,8 @@ pub struct OpenAIVisionNode {
 impl OpenAIVisionNode {
     pub fn new(api_key: String) -> Result<Self> {
         Ok(Self {
-            camera_sub: Hub::new("camera/raw")?,
-            description_pub: Hub::new("vision/description")?,
+            camera_sub: Hub::new("camera.raw")?,
+            description_pub: Hub::new("vision.description")?,
             client: Client::new(),
             api_key,
         })
@@ -1303,8 +1303,8 @@ pub struct ObjectFollowerNode {
 impl ObjectFollowerNode {
     pub fn new() -> Result<Self> {
         Ok(Self {
-            vision_sub: Hub::new("vision/detections")?,
-            cmd_pub: Hub::new("motor/cmd")?,
+            vision_sub: Hub::new("vision.detections")?,
+            cmd_pub: Hub::new("motor.cmd")?,
         })
     }
 }
@@ -1336,7 +1336,7 @@ fn main() -> Result<()> {
 
     // Camera capture (if opencv-backend feature enabled)
     let mut camera = CameraNode::new()?;
-    camera.set_topic("camera/raw");
+    camera.set_topic("camera.raw");
 
     // Vision processing
     let vision = VisionProcessorNode::new()?;

@@ -17,6 +17,7 @@ use ratatui::{
 };
 use std::io::stdout;
 use std::time::{Duration, Instant};
+use tui_nodes::{Connection, LineType, NodeGraph, NodeLayout};
 
 // Import the monitoring structs and functions
 #[derive(Debug, Clone)]
@@ -200,6 +201,7 @@ enum Tab {
     Nodes,
     Topics,
     Graph,
+    Network,
     Packages,
     Parameters,
 }
@@ -217,6 +219,7 @@ impl Tab {
             Tab::Nodes => "Nodes",
             Tab::Topics => "Topics",
             Tab::Graph => "Graph",
+            Tab::Network => "Network",
             Tab::Packages => "Packages",
             Tab::Parameters => "Params",
         }
@@ -228,6 +231,7 @@ impl Tab {
             Tab::Nodes,
             Tab::Topics,
             Tab::Graph,
+            Tab::Network,
             Tab::Packages,
             Tab::Parameters,
         ]
@@ -638,7 +642,7 @@ impl TuiDashboard {
                 Constraint::Min(0),    // Content
                 Constraint::Length(2), // Footer
             ])
-            .split(f.size());
+            .split(f.area());
 
         self.draw_header(f, chunks[0]);
 
@@ -662,6 +666,7 @@ impl TuiDashboard {
                     Tab::Nodes => self.draw_nodes_simple(f, horizontal_chunks[0]),
                     Tab::Topics => self.draw_topics_simple(f, horizontal_chunks[0]),
                     Tab::Graph => self.draw_graph(f, horizontal_chunks[0]),
+                    Tab::Network => self.draw_network(f, horizontal_chunks[0]),
                     Tab::Packages => self.draw_packages(f, horizontal_chunks[0]),
                     Tab::Parameters => self.draw_parameters(f, horizontal_chunks[0]),
                 }
@@ -679,6 +684,7 @@ impl TuiDashboard {
                     Tab::Nodes => self.draw_nodes(f, content_area),
                     Tab::Topics => self.draw_topics(f, content_area),
                     Tab::Graph => self.draw_graph(f, content_area),
+                    Tab::Network => self.draw_network(f, content_area),
                     Tab::Packages => self.draw_packages(f, content_area),
                     Tab::Parameters => self.draw_parameters(f, content_area),
                 }
@@ -812,7 +818,13 @@ impl TuiDashboard {
             Color::White
         };
 
-        let table = Table::new(rows)
+        let widths = [
+            Constraint::Length(2),
+            Constraint::Min(30),
+            Constraint::Length(8),
+            Constraint::Length(12),
+        ];
+        let table = Table::new(rows, widths)
             .header(
                 Row::new(vec!["", "Name", "PID", "Memory"])
                     .style(Style::default().add_modifier(Modifier::BOLD)),
@@ -826,18 +838,12 @@ impl TuiDashboard {
                     .borders(Borders::ALL)
                     .border_style(Style::default().fg(border_color)),
             )
-            .highlight_style(
+            .row_highlight_style(
                 Style::default()
                     .bg(Color::DarkGray)
                     .add_modifier(Modifier::BOLD),
             )
-            .highlight_symbol(" ")
-            .widths(&[
-                Constraint::Length(2),
-                Constraint::Min(30),
-                Constraint::Length(8),
-                Constraint::Length(12),
-            ]);
+            .highlight_symbol(" ");
 
         let mut table_state = TableState::default();
         if is_focused && !self.nodes.is_empty() {
@@ -901,7 +907,14 @@ impl TuiDashboard {
             Color::White
         };
 
-        let table = Table::new(rows)
+        let widths = [
+            Constraint::Percentage(30),
+            Constraint::Percentage(20),
+            Constraint::Percentage(20),
+            Constraint::Percentage(20),
+            Constraint::Length(10),
+        ];
+        let table = Table::new(rows, widths)
             .header(
                 Row::new(vec![
                     "Topic",
@@ -921,19 +934,12 @@ impl TuiDashboard {
                     .borders(Borders::ALL)
                     .border_style(Style::default().fg(border_color)),
             )
-            .highlight_style(
+            .row_highlight_style(
                 Style::default()
                     .bg(Color::DarkGray)
                     .add_modifier(Modifier::BOLD),
             )
-            .highlight_symbol(" ")
-            .widths(&[
-                Constraint::Percentage(30),
-                Constraint::Percentage(20),
-                Constraint::Percentage(20),
-                Constraint::Percentage(20),
-                Constraint::Length(10),
-            ]);
+            .highlight_symbol(" ");
 
         let mut table_state = TableState::default();
         if is_focused && !self.topics.is_empty() {
@@ -968,19 +974,19 @@ impl TuiDashboard {
             })
             .collect();
 
-        let table = Table::new(rows)
+        let widths = [Constraint::Length(2), Constraint::Min(10)];
+        let table = Table::new(rows, widths)
             .header(
                 Row::new(vec!["", "Topic Name"])
                     .style(Style::default().add_modifier(Modifier::BOLD)),
             )
             .block(Block::default().title("Topics").borders(Borders::ALL))
-            .highlight_style(
+            .row_highlight_style(
                 Style::default()
                     .bg(Color::DarkGray)
                     .add_modifier(Modifier::BOLD),
             )
-            .highlight_symbol(" ")
-            .widths(&[Constraint::Length(2), Constraint::Min(10)]);
+            .highlight_symbol(" ");
 
         // Create table state with current selection
         let mut table_state = TableState::default();
@@ -1020,7 +1026,14 @@ impl TuiDashboard {
             })
             .collect();
 
-        let table = Table::new(rows)
+        let widths = [
+            Constraint::Percentage(25),
+            Constraint::Percentage(20),
+            Constraint::Length(8),
+            Constraint::Percentage(27),
+            Constraint::Percentage(28),
+        ];
+        let table = Table::new(rows, widths)
             .header(
                 Row::new(vec!["Topic", "Type", "Hz", "Publishers", "Subscribers"])
                     .style(Style::default().add_modifier(Modifier::BOLD)),
@@ -1030,19 +1043,12 @@ impl TuiDashboard {
                     .title("Topics - Use  to select, Enter to view logs")
                     .borders(Borders::ALL),
             )
-            .highlight_style(
+            .row_highlight_style(
                 Style::default()
                     .bg(Color::DarkGray)
                     .add_modifier(Modifier::BOLD),
             )
-            .highlight_symbol(" ")
-            .widths(&[
-                Constraint::Percentage(25),
-                Constraint::Percentage(20),
-                Constraint::Length(8),
-                Constraint::Percentage(27),
-                Constraint::Percentage(28),
-            ]);
+            .highlight_symbol(" ");
 
         // Create table state with current selection
         let mut table_state = TableState::default();
@@ -1055,13 +1061,14 @@ impl TuiDashboard {
         f.render_stateful_widget(table, area, &mut table_state);
     }
 
-    fn draw_graph(&self, f: &mut Frame, area: Rect) {
+    fn draw_graph(&mut self, f: &mut Frame, area: Rect) {
+        use ratatui::widgets::StatefulWidget;
         use std::collections::HashMap;
 
         // Create a block for the graph
         let block = Block::default()
             .title(format!(
-                "Graph - {} nodes, {} edges | Layout: {:?} | [L]ayout [+/-] Zoom [←↑↓→] Pan",
+                "Graph - {} nodes, {} edges | [L]ayout: {:?} | [R]efresh",
                 self.graph_nodes.len(),
                 self.graph_edges.len(),
                 self.graph_layout
@@ -1082,437 +1089,331 @@ impl TuiDashboard {
             return;
         }
 
-        // Create a buffer to draw on with color support
-        let width = inner.width as usize;
-        let height = inner.height as usize;
+        // Build tui-nodes structures
+        // We need to map our internal node IDs to indices for tui-nodes
+        let mut id_to_index: HashMap<String, usize> = HashMap::new();
 
-        #[derive(Clone)]
-        struct ColoredCell {
-            text: String,
-            color: Option<Color>,
-        }
+        // Separate processes and topics for layout
+        let mut processes: Vec<&TuiGraphNode> = Vec::new();
+        let mut topics: Vec<&TuiGraphNode> = Vec::new();
 
-        impl From<(String, Option<Color>)> for ColoredCell {
-            fn from((text, color): (String, Option<Color>)) -> Self {
-                ColoredCell { text, color }
+        for node in &self.graph_nodes {
+            match node.node_type {
+                TuiNodeType::Process => processes.push(node),
+                TuiNodeType::Topic => topics.push(node),
             }
         }
 
-        let mut canvas: Vec<Vec<ColoredCell>> = vec![
-            vec![
-                ColoredCell {
-                    text: " ".to_string(),
-                    color: None
+        // Calculate node sizes based on label length
+        let node_height = 3u16; // Fixed height for all nodes
+        let min_width = 12u16;
+
+        // First, collect all labels (to own the strings for the lifetime of this function)
+        let mut labels: Vec<String> = Vec::new();
+        let mut border_styles: Vec<Style> = Vec::new();
+        let mut widths_vec: Vec<u16> = Vec::new();
+
+        // Process labels
+        for node in &processes {
+            let label = if node.active {
+                format!("● {}", node.label)
+            } else {
+                format!("○ {}", node.label)
+            };
+            let width = (label.len() as u16 + 4).max(min_width);
+            let border_style = if node.active {
+                Style::default().fg(Color::Green)
+            } else {
+                Style::default().fg(Color::DarkGray)
+            };
+            labels.push(label);
+            border_styles.push(border_style);
+            widths_vec.push(width);
+        }
+
+        // Topic labels
+        for node in &topics {
+            let label = format!("◆ {}", node.label);
+            let width = (label.len() as u16 + 4).max(min_width);
+            let border_style = Style::default().fg(Color::Yellow);
+            labels.push(label);
+            border_styles.push(border_style);
+            widths_vec.push(width);
+        }
+
+        // Create NodeLayout for each node
+        // Order: processes first, then topics (for consistent indexing)
+        let mut node_layouts: Vec<NodeLayout> = Vec::new();
+        let mut current_index = 0usize;
+
+        // Add process nodes
+        for (i, node) in processes.iter().enumerate() {
+            let layout = NodeLayout::new((widths_vec[i], node_height))
+                .with_title(&labels[i])
+                .with_border_style(border_styles[i]);
+
+            node_layouts.push(layout);
+            id_to_index.insert(node.id.clone(), current_index);
+            current_index += 1;
+        }
+
+        // Add topic nodes
+        let offset = processes.len();
+        for (i, node) in topics.iter().enumerate() {
+            let idx = offset + i;
+            let layout = NodeLayout::new((widths_vec[idx], node_height))
+                .with_title(&labels[idx])
+                .with_border_style(border_styles[idx]);
+
+            node_layouts.push(layout);
+            id_to_index.insert(node.id.clone(), current_index);
+            current_index += 1;
+        }
+
+        // Create connections
+        // tui-nodes uses port indices: each node can have multiple input/output ports
+        // For simplicity, we use port 0 for all connections
+        let mut connections: Vec<Connection> = Vec::new();
+
+        for edge in &self.graph_edges {
+            if let (Some(&from_idx), Some(&to_idx)) =
+                (id_to_index.get(&edge.from), id_to_index.get(&edge.to))
+            {
+                let line_style = match (&edge.edge_type, edge.active) {
+                    (TuiEdgeType::Publish, true) => Style::default().fg(Color::Blue),
+                    (TuiEdgeType::Publish, false) => Style::default().fg(Color::DarkGray),
+                    (TuiEdgeType::Subscribe, true) => Style::default().fg(Color::Magenta),
+                    (TuiEdgeType::Subscribe, false) => Style::default().fg(Color::DarkGray),
                 };
-                width
-            ];
-            height
+
+                let connection = Connection::new(from_idx, 0, to_idx, 0)
+                    .with_line_type(LineType::Rounded)
+                    .with_line_style(line_style);
+
+                connections.push(connection);
+            }
+        }
+
+        // Create the NodeGraph widget
+        let mut node_graph = NodeGraph::new(
+            node_layouts,
+            connections,
+            inner.width as usize,
+            inner.height as usize,
+        );
+
+        // Calculate layout
+        node_graph.calculate();
+
+        // Get the sub-areas for each node
+        let node_areas = node_graph.split(inner);
+
+        // Render the graph using StatefulWidget
+        // NodeGraph requires a state, we use a unit tuple for now
+        let mut state = ();
+        StatefulWidget::render(node_graph, inner, f.buffer_mut(), &mut state);
+
+        // Render node content inside each node area
+        for (i, node_area) in node_areas.iter().enumerate() {
+            if node_area.width > 2 && node_area.height > 2 {
+                // Get the inner area (inside borders)
+                let content_area = Rect {
+                    x: node_area.x + 1,
+                    y: node_area.y + 1,
+                    width: node_area.width.saturating_sub(2),
+                    height: node_area.height.saturating_sub(2),
+                };
+
+                // Determine if this is a process or topic
+                let is_process = i < processes.len();
+                let node = if is_process {
+                    processes.get(i)
+                } else {
+                    topics.get(i - processes.len())
+                };
+
+                if let Some(node) = node {
+                    // Show additional info in the node
+                    let info = if is_process {
+                        if let Some(pid) = node.pid {
+                            format!("PID: {}", pid)
+                        } else {
+                            String::new()
+                        }
+                    } else {
+                        String::new()
+                    };
+
+                    if !info.is_empty() && content_area.height > 0 {
+                        let info_style = Style::default().fg(Color::Gray);
+                        let info_text = Paragraph::new(info).style(info_style);
+                        f.render_widget(info_text, content_area);
+                    }
+                }
+            }
+        }
+    }
+
+    fn draw_network(&self, f: &mut Frame, area: Rect) {
+        let summary = crate::commands::monitor::get_network_summary();
+
+        // Split area into summary panel and details table
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(8), Constraint::Min(5)])
+            .split(area);
+
+        // Draw summary panel
+        let transport_info: String = if summary.transport_breakdown.is_empty() {
+            "No active transports".to_string()
+        } else {
+            summary
+                .transport_breakdown
+                .iter()
+                .map(|(t, c)| format!("{}: {}", t, c))
+                .collect::<Vec<_>>()
+                .join(" | ")
+        };
+
+        let summary_text = vec![
+            Line::from(vec![
+                Span::styled("Active Nodes: ", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("{}", summary.total_nodes),
+                    Style::default()
+                        .fg(Color::Green)
+                        .add_modifier(Modifier::BOLD),
+                ),
+            ]),
+            Line::from(vec![
+                Span::styled("Transports: ", Style::default().fg(Color::Cyan)),
+                Span::raw(transport_info),
+            ]),
+            Line::from(vec![
+                Span::styled("Bytes Sent: ", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format_bytes(summary.total_bytes_sent),
+                    Style::default().fg(Color::Yellow),
+                ),
+                Span::raw(" | "),
+                Span::styled("Received: ", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format_bytes(summary.total_bytes_received),
+                    Style::default().fg(Color::Yellow),
+                ),
+            ]),
+            Line::from(vec![
+                Span::styled("Packets Sent: ", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("{}", summary.total_packets_sent),
+                    Style::default().fg(Color::Magenta),
+                ),
+                Span::raw(" | "),
+                Span::styled("Received: ", Style::default().fg(Color::Cyan)),
+                Span::styled(
+                    format!("{}", summary.total_packets_received),
+                    Style::default().fg(Color::Magenta),
+                ),
+            ]),
+            Line::from(vec![
+                Span::styled("Endpoints: ", Style::default().fg(Color::Cyan)),
+                Span::raw(if summary.unique_endpoints.is_empty() {
+                    "None discovered".to_string()
+                } else {
+                    summary.unique_endpoints.join(", ")
+                }),
+            ]),
         ];
 
-        // Create a map of node ID to node for quick lookup
-        let node_map: HashMap<String, &TuiGraphNode> =
-            self.graph_nodes.iter().map(|n| (n.id.clone(), n)).collect();
+        let summary_paragraph = Paragraph::new(summary_text).block(
+            Block::default()
+                .title("Network Summary")
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Blue)),
+        );
 
-        // Draw edges first (so they appear behind nodes)
-        for edge in &self.graph_edges {
-            if let (Some(from_node), Some(to_node)) =
-                (node_map.get(&edge.from), node_map.get(&edge.to))
-            {
-                self.draw_edge(
-                    &mut canvas,
-                    from_node,
-                    to_node,
-                    &edge.edge_type,
-                    edge.active,
-                    (width, height),
-                );
-            }
-        }
+        f.render_widget(summary_paragraph, chunks[0]);
 
-        // Draw nodes on top of edges
-        for node in &self.graph_nodes {
-            self.draw_node(&mut canvas, node, width, height);
-        }
-
-        // Convert canvas to ratatui Lines with color support
-        let lines: Vec<Line> = canvas
+        // Draw node network status table
+        let rows: Vec<Row> = summary
+            .node_statuses
             .iter()
-            .map(|row| {
-                let spans: Vec<Span> = row
-                    .iter()
-                    .map(|cell| {
-                        if let Some(color) = cell.color {
-                            Span::styled(cell.text.clone(), Style::default().fg(color))
-                        } else {
-                            Span::raw(cell.text.clone())
-                        }
-                    })
-                    .collect();
-                Line::from(spans)
+            .map(|status| {
+                let transport_color = match status.transport_type.as_str() {
+                    "SharedMemory" => Color::Green,
+                    "BatchUdp" | "Udp" => Color::Cyan,
+                    "Quic" => Color::Magenta,
+                    "UnixSocket" => Color::Yellow,
+                    "IoUring" => Color::LightGreen,
+                    _ => Color::White,
+                };
+
+                let endpoints = if status.remote_endpoints.is_empty() {
+                    "-".to_string()
+                } else {
+                    status.remote_endpoints.join(", ")
+                };
+
+                let topics_pub = if status.network_topics_pub.is_empty() {
+                    "-".to_string()
+                } else {
+                    status.network_topics_pub.join(", ")
+                };
+
+                Row::new(vec![
+                    Cell::from(status.node_name.clone()),
+                    Cell::from(status.transport_type.clone())
+                        .style(Style::default().fg(transport_color)),
+                    Cell::from(
+                        status
+                            .local_endpoint
+                            .clone()
+                            .unwrap_or_else(|| "-".to_string()),
+                    ),
+                    Cell::from(endpoints),
+                    Cell::from(topics_pub),
+                    Cell::from(format_bytes(status.bytes_sent)),
+                    Cell::from(format_bytes(status.bytes_received)),
+                ])
             })
             .collect();
 
-        let paragraph = Paragraph::new(lines);
-        f.render_widget(paragraph, inner);
-    }
+        let widths = [
+            Constraint::Percentage(15),
+            Constraint::Length(12),
+            Constraint::Percentage(15),
+            Constraint::Percentage(20),
+            Constraint::Percentage(20),
+            Constraint::Length(10),
+            Constraint::Length(10),
+        ];
 
-    fn draw_node<T>(&self, canvas: &mut [Vec<T>], node: &TuiGraphNode, width: usize, height: usize)
-    where
-        T: Clone,
-        T: From<(String, Option<Color>)>,
-    {
-        // Apply zoom and offset
-        let x = ((node.x as f32 * self.graph_zoom) as i32 + self.graph_offset_x) as usize;
-        let y = ((node.y as f32 * self.graph_zoom) as i32 + self.graph_offset_y) as usize;
+        let table = Table::new(rows, widths)
+            .header(
+                Row::new(vec![
+                    "Node",
+                    "Transport",
+                    "Local",
+                    "Remote",
+                    "Topics",
+                    "Sent",
+                    "Recv",
+                ])
+                .style(Style::default().add_modifier(Modifier::BOLD)),
+            )
+            .block(
+                Block::default()
+                    .title("Node Network Status")
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(Color::Blue)),
+            )
+            .row_highlight_style(
+                Style::default()
+                    .bg(Color::DarkGray)
+                    .add_modifier(Modifier::BOLD),
+            );
 
-        // Check bounds
-        if y >= height {
-            return;
-        }
-
-        match node.node_type {
-            TuiNodeType::Process => {
-                // Draw process as a circle with color coding
-                let (symbol, color) = if node.active {
-                    ("●", Color::Green) // Active processes are green
-                } else {
-                    ("○", Color::DarkGray) // Inactive processes are gray
-                };
-
-                if x < width {
-                    canvas[y][x] = T::from((symbol.to_string(), Some(color)));
-                }
-
-                // Draw label next to the node with appropriate color
-                let label = format!(" {}", node.label);
-                let label_color = if node.active {
-                    Color::Cyan
-                } else {
-                    Color::DarkGray
-                };
-
-                for (i, ch) in label.chars().enumerate() {
-                    let label_x = x + i + 1;
-                    if label_x < width && y < height {
-                        canvas[y][label_x] = T::from((ch.to_string(), Some(label_color)));
-                    }
-                }
-            }
-            TuiNodeType::Topic => {
-                // Draw topic as a box with yellow/gold color
-                let label = format!("[{}]", node.label);
-                let topic_color = Color::Yellow;
-
-                for (i, ch) in label.chars().enumerate() {
-                    let label_x = x + i;
-                    if label_x < width && y < height {
-                        canvas[y][label_x] = T::from((ch.to_string(), Some(topic_color)));
-                    }
-                }
-            }
-        }
-    }
-
-    fn draw_edge<T>(
-        &self,
-        canvas: &mut [Vec<T>],
-        from: &TuiGraphNode,
-        to: &TuiGraphNode,
-        edge_type: &TuiEdgeType,
-        active: bool,
-        dimensions: (usize, usize),
-    ) where
-        T: Clone,
-        T: From<(String, Option<Color>)>,
-    {
-        let (width, height) = dimensions;
-        // Apply zoom and offset - use f32 for smoother curves
-        let x1 = ((from.x as f32 * self.graph_zoom) as i32 + self.graph_offset_x) as f32;
-        let y1 = ((from.y as f32 * self.graph_zoom) as i32 + self.graph_offset_y) as f32;
-        let x2 = ((to.x as f32 * self.graph_zoom) as i32 + self.graph_offset_x) as f32;
-        let y2 = ((to.y as f32 * self.graph_zoom) as i32 + self.graph_offset_y) as f32;
-
-        // Color code based on edge type and activity
-        let edge_color = match edge_type {
-            TuiEdgeType::Publish => {
-                if active {
-                    Color::Blue
-                } else {
-                    Color::DarkGray
-                }
-            }
-            TuiEdgeType::Subscribe => {
-                if active {
-                    Color::Magenta
-                } else {
-                    Color::DarkGray
-                }
-            }
-        };
-
-        // Draw clean orthogonal lines
-        self.draw_orthogonal_edge(canvas, x1, y1, x2, y2, edge_color, width, height);
-    }
-
-    // Draw orthogonal edge with horizontal and vertical segments
-    #[allow(clippy::too_many_arguments)]
-    fn draw_orthogonal_edge<T>(
-        &self,
-        canvas: &mut [Vec<T>],
-        x1: f32,
-        y1: f32,
-        x2: f32,
-        y2: f32,
-        color: Color,
-        width: usize,
-        height: usize,
-    ) where
-        T: Clone,
-        T: From<(String, Option<Color>)>,
-    {
-        let x1 = x1 as usize;
-        let y1 = y1 as usize;
-        let x2 = x2 as usize;
-        let y2 = y2 as usize;
-
-        // Calculate midpoint for the vertical segment
-        let mid_x = (x1 + x2) / 2;
-
-        // Draw horizontal line from source to midpoint
-        if y1 < height {
-            for x in x1.min(mid_x)..=x1.max(mid_x) {
-                if x < width {
-                    canvas[y1][x] = T::from(("─".to_string(), Some(color)));
-                }
-            }
-        }
-
-        // Draw vertical line at midpoint
-        let (min_y, max_y) = if y1 < y2 { (y1, y2) } else { (y2, y1) };
-        for y in min_y..=max_y {
-            if y < height && mid_x < width {
-                // Use corner characters at transitions
-                let ch = if y == y1 && y1 != y2 {
-                    if y1 < y2 { "┐" } else { "┘" }
-                } else if y == y2 && y1 != y2 {
-                    if y1 < y2 { "└" } else { "┌" }
-                } else if y1 == y2 {
-                    "─"
-                } else {
-                    "│"
-                };
-                canvas[y][mid_x] = T::from((ch.to_string(), Some(color)));
-            }
-        }
-
-        // Draw horizontal line from midpoint to target
-        if y2 < height {
-            for x in mid_x.min(x2)..x2 {
-                if x < width {
-                    canvas[y2][x] = T::from(("─".to_string(), Some(color)));
-                }
-            }
-        }
-
-        // Draw arrow at destination
-        if y2 < height && x2 > 0 && x2 - 1 < width {
-            canvas[y2][x2 - 1] = T::from(("→".to_string(), Some(color)));
-        }
-    }
-
-    // Draw a smooth Bézier curve between two points (like rqt_graph)
-    #[allow(clippy::too_many_arguments)]
-    fn draw_bezier_curve<T>(
-        &self,
-        canvas: &mut [Vec<T>],
-        x1: f32,
-        y1: f32,
-        x2: f32,
-        y2: f32,
-        color: Color,
-        width: usize,
-        height: usize,
-    ) where
-        T: Clone,
-        T: From<(String, Option<Color>)>,
-    {
-        let dx = x2 - x1;
-        let dy = y2 - y1;
-
-        // Calculate control points for cubic Bézier curve
-        // This creates smooth S-curves like in rqt_graph
-        let control_distance = dx.abs() * 0.5;
-
-        let cp1_x = x1 + control_distance;
-        let cp1_y = y1;
-        let cp2_x = x2 - control_distance;
-        let cp2_y = y2;
-
-        // Sample the curve at regular intervals for smoothness
-        let distance = (dx * dx + dy * dy).sqrt();
-        let num_samples = (distance * 1.5) as usize;
-        let num_samples = num_samples.clamp(10, 200);
-
-        let mut prev_x = x1 as i32;
-        let mut prev_y = y1 as i32;
-
-        for i in 0..=num_samples {
-            let t = i as f32 / num_samples as f32;
-
-            // Cubic Bézier formula: B(t) = (1-t)³P₀ + 3(1-t)²tP₁ + 3(1-t)t²P₂ + t³P₃
-            let t2 = t * t;
-            let t3 = t2 * t;
-            let mt = 1.0 - t;
-            let mt2 = mt * mt;
-            let mt3 = mt2 * mt;
-
-            let x = mt3 * x1 + 3.0 * mt2 * t * cp1_x + 3.0 * mt * t2 * cp2_x + t3 * x2;
-            let y = mt3 * y1 + 3.0 * mt2 * t * cp1_y + 3.0 * mt * t2 * cp2_y + t3 * y2;
-
-            let curr_x = x as i32;
-            let curr_y = y as i32;
-
-            // Draw line segment
-            self.draw_line_segment(canvas, prev_x, prev_y, curr_x, curr_y, color, width, height);
-
-            prev_x = curr_x;
-            prev_y = curr_y;
-        }
-
-        // Draw arrowhead at the end
-        self.draw_arrowhead(canvas, x1, y1, x2, y2, color, width, height);
-    }
-
-    // Draw a line segment using Bresenham's algorithm with smooth characters
-    #[allow(clippy::too_many_arguments)]
-    fn draw_line_segment<T>(
-        &self,
-        canvas: &mut [Vec<T>],
-        x1: i32,
-        y1: i32,
-        x2: i32,
-        y2: i32,
-        color: Color,
-        width: usize,
-        height: usize,
-    ) where
-        T: Clone,
-        T: From<(String, Option<Color>)>,
-    {
-        let dx = (x2 - x1).abs();
-        let dy = (y2 - y1).abs();
-        let sx = if x1 < x2 { 1 } else { -1 };
-        let sy = if y1 < y2 { 1 } else { -1 };
-        let mut err = dx - dy;
-        let mut x = x1;
-        let mut y = y1;
-
-        loop {
-            if x >= 0 && (x as usize) < width && y >= 0 && (y as usize) < height {
-                // Use simple consistent character for clean Bezier curves
-                let ch = if dx > dy * 2 {
-                    "─" // Mostly horizontal
-                } else if dy > dx * 2 {
-                    "│" // Mostly vertical
-                } else {
-                    "·" // Diagonal/curve points - dot for cleaner transitions
-                };
-
-                canvas[y as usize][x as usize] = T::from((ch.to_string(), Some(color)));
-            }
-
-            if x == x2 && y == y2 {
-                break;
-            }
-
-            let e2 = 2 * err;
-            if e2 > -dy {
-                err -= dy;
-                x += sx;
-            }
-            if e2 < dx {
-                err += dx;
-                y += sy;
-            }
-        }
-    }
-
-    // Draw an arrowhead at the destination with proper direction
-    #[allow(clippy::too_many_arguments)]
-    fn draw_arrowhead<T>(
-        &self,
-        canvas: &mut [Vec<T>],
-        x1: f32,
-        y1: f32,
-        x2: f32,
-        y2: f32,
-        color: Color,
-        width: usize,
-        height: usize,
-    ) where
-        T: Clone,
-        T: From<(String, Option<Color>)>,
-    {
-        let end_x = x2 as i32;
-        let end_y = y2 as i32;
-
-        if end_x < 0 || end_x >= width as i32 || end_y < 0 || end_y >= height as i32 {
-            return;
-        }
-
-        // Calculate approach angle
-        let dx = x2 - x1;
-        let dy = y2 - y1;
-        let angle = dy.atan2(dx);
-
-        // Choose arrow based on angle (8 directions)
-        let arrow = if (-std::f32::consts::PI / 8.0..std::f32::consts::PI / 8.0).contains(&angle) {
-            "→" // Right
-        } else if (std::f32::consts::PI / 8.0..3.0 * std::f32::consts::PI / 8.0).contains(&angle) {
-            "↘" // Down-right
-        } else if (3.0 * std::f32::consts::PI / 8.0..5.0 * std::f32::consts::PI / 8.0)
-            .contains(&angle)
-        {
-            "↓" // Down
-        } else if (5.0 * std::f32::consts::PI / 8.0..7.0 * std::f32::consts::PI / 8.0)
-            .contains(&angle)
-        {
-            "↙" // Down-left
-        } else if !(-7.0 * std::f32::consts::PI / 8.0..7.0 * std::f32::consts::PI / 8.0)
-            .contains(&angle)
-        {
-            "←" // Left
-        } else if (-7.0 * std::f32::consts::PI / 8.0..-5.0 * std::f32::consts::PI / 8.0)
-            .contains(&angle)
-        {
-            "↖" // Up-left
-        } else if (-5.0 * std::f32::consts::PI / 8.0..-3.0 * std::f32::consts::PI / 8.0)
-            .contains(&angle)
-        {
-            "↑" // Up
-        } else {
-            "↗" // Up-right
-        };
-
-        // Place arrow slightly before destination to avoid node overlap
-        let offset_x = if dx.abs() > 2.0 {
-            -(dx.signum() as i32)
-        } else {
-            0
-        };
-        let offset_y = if dy.abs() > 2.0 {
-            -(dy.signum() as i32)
-        } else {
-            0
-        };
-
-        let arrow_x = end_x + offset_x;
-        let arrow_y = end_y + offset_y;
-
-        if arrow_x >= 0 && (arrow_x as usize) < width && arrow_y >= 0 && (arrow_y as usize) < height
-        {
-            canvas[arrow_y as usize][arrow_x as usize] = T::from((arrow.to_string(), Some(color)));
-        }
+        f.render_widget(table, chunks[1]);
     }
 
     fn draw_packages(&mut self, f: &mut Frame, area: Rect) {
@@ -1585,7 +1486,12 @@ impl TuiDashboard {
             })
             .collect();
 
-        let workspace_table = Table::new(workspace_rows)
+        let workspace_widths = [
+            Constraint::Length(25),
+            Constraint::Length(10),
+            Constraint::Min(30),
+        ];
+        let workspace_table = Table::new(workspace_rows, workspace_widths)
             .header(
                 Row::new(vec!["Workspace", "Pkgs (Missing)", "Path"])
                     .style(Style::default().add_modifier(Modifier::BOLD)),
@@ -1608,12 +1514,7 @@ impl TuiDashboard {
                         Style::default().fg(Color::DarkGray)
                     }),
             )
-            .widths(&[
-                Constraint::Length(25),
-                Constraint::Length(10),
-                Constraint::Min(30),
-            ])
-            .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
+            .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED));
 
         // Add TableState for scrolling support
         let mut workspace_state = TableState::default();
@@ -1645,7 +1546,12 @@ impl TuiDashboard {
             })
             .collect();
 
-        let global_table = Table::new(global_rows)
+        let global_widths = [
+            Constraint::Min(30),
+            Constraint::Length(15),
+            Constraint::Length(12),
+        ];
+        let global_table = Table::new(global_rows, global_widths)
             .header(
                 Row::new(vec!["Package", "Version", "Size"])
                     .style(Style::default().add_modifier(Modifier::BOLD)),
@@ -1668,12 +1574,7 @@ impl TuiDashboard {
                         Style::default().fg(Color::DarkGray)
                     }),
             )
-            .widths(&[
-                Constraint::Min(30),
-                Constraint::Length(15),
-                Constraint::Length(12),
-            ])
-            .highlight_style(Style::default().add_modifier(Modifier::REVERSED));
+            .row_highlight_style(Style::default().add_modifier(Modifier::REVERSED));
 
         let mut global_state = TableState::default();
         if global_focused && !global_packages.is_empty() {
@@ -1736,7 +1637,13 @@ impl TuiDashboard {
                 })
                 .collect();
 
-            let package_table = Table::new(package_rows)
+            let package_widths = [
+                Constraint::Length(25),
+                Constraint::Length(12),
+                Constraint::Length(6),
+                Constraint::Min(30),
+            ];
+            let package_table = Table::new(package_rows, package_widths)
                 .header(
                     Row::new(vec!["Package", "Version", "Deps", "Installed Packages"])
                         .style(Style::default().add_modifier(Modifier::BOLD)),
@@ -1750,13 +1657,7 @@ impl TuiDashboard {
                         ))
                         .borders(Borders::ALL)
                         .border_style(Style::default().fg(Color::Green)),
-                )
-                .widths(&[
-                    Constraint::Length(25),
-                    Constraint::Length(12),
-                    Constraint::Length(6),
-                    Constraint::Min(30),
-                ]);
+                );
 
             f.render_widget(package_table, chunks[0]);
 
@@ -1774,7 +1675,12 @@ impl TuiDashboard {
                     })
                     .collect();
 
-                let dep_table = Table::new(dep_rows)
+                let dep_widths = [
+                    Constraint::Length(25),
+                    Constraint::Length(30),
+                    Constraint::Min(15),
+                ];
+                let dep_table = Table::new(dep_rows, dep_widths)
                     .header(
                         Row::new(vec!["Package", "Declared (horus.yaml)", "Status"])
                             .style(Style::default().add_modifier(Modifier::BOLD)),
@@ -1787,12 +1693,7 @@ impl TuiDashboard {
                             ))
                             .borders(Borders::ALL)
                             .border_style(Style::default().fg(Color::Red)),
-                    )
-                    .widths(&[
-                        Constraint::Length(25),
-                        Constraint::Length(30),
-                        Constraint::Min(15),
-                    ]);
+                    );
 
                 f.render_widget(dep_table, chunks[1]);
             }
@@ -1863,7 +1764,12 @@ impl TuiDashboard {
             "[a] Add | [e] Edit | [d] Delete | [s] Save | [r] Refresh"
         };
 
-        let table = Table::new(rows)
+        let widths = [
+            Constraint::Percentage(35),
+            Constraint::Percentage(50),
+            Constraint::Percentage(15),
+        ];
+        let table = Table::new(rows, widths)
             .header(
                 Row::new(vec!["Parameter", "Value", "Type"])
                     .style(Style::default().add_modifier(Modifier::BOLD)),
@@ -1876,12 +1782,7 @@ impl TuiDashboard {
                         help_text
                     ))
                     .borders(Borders::ALL),
-            )
-            .widths(&[
-                Constraint::Percentage(35),
-                Constraint::Percentage(50),
-                Constraint::Percentage(15),
-            ]);
+            );
 
         f.render_widget(table, area);
     }
@@ -1903,19 +1804,19 @@ impl TuiDashboard {
             })
             .collect();
 
-        let table = Table::new(rows)
+        let widths = [Constraint::Length(2), Constraint::Min(10)];
+        let table = Table::new(rows, widths)
             .header(
                 Row::new(vec!["", "Node Name"])
                     .style(Style::default().add_modifier(Modifier::BOLD)),
             )
             .block(Block::default().title("Nodes").borders(Borders::ALL))
-            .highlight_style(
+            .row_highlight_style(
                 Style::default()
                     .bg(Color::DarkGray)
                     .add_modifier(Modifier::BOLD),
             )
-            .highlight_symbol(" ")
-            .widths(&[Constraint::Length(2), Constraint::Min(10)]);
+            .highlight_symbol(" ");
 
         // Create table state with current selection
         let mut table_state = TableState::default();
@@ -1961,7 +1862,16 @@ impl TuiDashboard {
             })
             .collect();
 
-        let table = Table::new(rows)
+        let widths = [
+            Constraint::Percentage(15),
+            Constraint::Length(8),
+            Constraint::Length(8),
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Percentage(24),
+            Constraint::Percentage(25),
+        ];
+        let table = Table::new(rows, widths)
             .header(
                 Row::new(vec![
                     "Name",
@@ -1979,21 +1889,12 @@ impl TuiDashboard {
                     .title("Node Details - Use  to select, Enter to view logs")
                     .borders(Borders::ALL),
             )
-            .highlight_style(
+            .row_highlight_style(
                 Style::default()
                     .bg(Color::DarkGray)
                     .add_modifier(Modifier::BOLD),
             )
-            .highlight_symbol(" ")
-            .widths(&[
-                Constraint::Percentage(15),
-                Constraint::Length(8),
-                Constraint::Length(8),
-                Constraint::Length(10),
-                Constraint::Length(10),
-                Constraint::Percentage(24),
-                Constraint::Percentage(25),
-            ]);
+            .highlight_symbol(" ");
 
         // Create table state with current selection
         let mut table_state = TableState::default();
@@ -2446,7 +2347,7 @@ impl TuiDashboard {
 
     fn draw_param_edit_dialog(&self, f: &mut Frame) {
         // Create centered popup area
-        let area = f.size();
+        let area = f.area();
         let popup_width = 60.min(area.width - 4);
         let popup_height = 10.min(area.height - 4);
         let popup_x = (area.width - popup_width) / 2;
@@ -3506,6 +3407,23 @@ fn get_installed_packages() -> InstalledPackages {
 
 // Removed: get_runtime_parameters() - now using real RuntimeParams from horus_core
 
+/// Format bytes into human-readable string (B, KB, MB, GB)
+fn format_bytes(bytes: u64) -> String {
+    const KB: u64 = 1024;
+    const MB: u64 = KB * 1024;
+    const GB: u64 = MB * 1024;
+
+    if bytes >= GB {
+        format!("{:.1}GB", bytes as f64 / GB as f64)
+    } else if bytes >= MB {
+        format!("{:.1}MB", bytes as f64 / MB as f64)
+    } else if bytes >= KB {
+        format!("{:.1}KB", bytes as f64 / KB as f64)
+    } else {
+        format!("{}B", bytes)
+    }
+}
+
 fn get_active_topics() -> Result<Vec<TopicInfo>> {
     // Use unified backend from monitor module
     let discovered_topics = crate::commands::monitor::discover_shared_memory().unwrap_or_default();
@@ -3598,7 +3516,10 @@ mod tests {
         assert!(dashboard.panel_target.is_none());
         assert_eq!(dashboard.param_edit_mode, ParamEditMode::None);
         assert_eq!(dashboard.package_view_mode, PackageViewMode::List);
-        assert_eq!(dashboard.package_panel_focus, PackagePanelFocus::LocalWorkspaces);
+        assert_eq!(
+            dashboard.package_panel_focus,
+            PackagePanelFocus::LocalWorkspaces
+        );
         assert_eq!(dashboard.overview_panel_focus, OverviewPanelFocus::Nodes);
         assert_eq!(dashboard.graph_zoom, 1.0);
         assert_eq!(dashboard.graph_offset_x, 0);
@@ -3783,10 +3704,10 @@ mod tests {
     fn test_log_panel_target_topic() {
         let mut dashboard = TuiDashboard::new();
         dashboard.show_log_panel = true;
-        dashboard.panel_target = Some(LogPanelTarget::Topic("sensors/lidar".to_string()));
+        dashboard.panel_target = Some(LogPanelTarget::Topic("sensors.lidar".to_string()));
 
         match &dashboard.panel_target {
-            Some(LogPanelTarget::Topic(name)) => assert_eq!(name, "sensors/lidar"),
+            Some(LogPanelTarget::Topic(name)) => assert_eq!(name, "sensors.lidar"),
             _ => panic!("Expected Topic target"),
         }
     }
@@ -3838,16 +3759,25 @@ mod tests {
         assert_eq!(dashboard.package_view_mode, PackageViewMode::List);
 
         dashboard.package_view_mode = PackageViewMode::WorkspaceDetails;
-        assert_eq!(dashboard.package_view_mode, PackageViewMode::WorkspaceDetails);
+        assert_eq!(
+            dashboard.package_view_mode,
+            PackageViewMode::WorkspaceDetails
+        );
     }
 
     #[test]
     fn test_package_panel_focus() {
         let mut dashboard = TuiDashboard::new();
-        assert_eq!(dashboard.package_panel_focus, PackagePanelFocus::LocalWorkspaces);
+        assert_eq!(
+            dashboard.package_panel_focus,
+            PackagePanelFocus::LocalWorkspaces
+        );
 
         dashboard.package_panel_focus = PackagePanelFocus::GlobalPackages;
-        assert_eq!(dashboard.package_panel_focus, PackagePanelFocus::GlobalPackages);
+        assert_eq!(
+            dashboard.package_panel_focus,
+            PackagePanelFocus::GlobalPackages
+        );
     }
 
     // ========================================================================
@@ -3931,16 +3861,20 @@ mod tests {
     #[test]
     fn test_topic_info_creation() {
         let topic = TopicInfo {
-            name: "sensors/lidar".to_string(),
+            name: "sensors.lidar".to_string(),
             msg_type: "LidarScan".to_string(),
             publishers: 2,
             subscribers: 3,
             rate: 10.0,
             publisher_nodes: vec!["node1".to_string(), "node2".to_string()],
-            subscriber_nodes: vec!["node3".to_string(), "node4".to_string(), "node5".to_string()],
+            subscriber_nodes: vec![
+                "node3".to_string(),
+                "node4".to_string(),
+                "node5".to_string(),
+            ],
         };
 
-        assert_eq!(topic.name, "sensors/lidar");
+        assert_eq!(topic.name, "sensors.lidar");
         assert_eq!(topic.msg_type, "LidarScan");
         assert_eq!(topic.publishers, 2);
         assert_eq!(topic.subscribers, 3);

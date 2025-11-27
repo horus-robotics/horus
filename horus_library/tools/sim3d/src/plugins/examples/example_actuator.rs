@@ -115,7 +115,10 @@ impl UiPlugin for ExampleActuatorPlugin {
                     // Thrust control
                     ui.horizontal(|ui| {
                         ui.label("Thrust:");
-                        ui.label(format!("{:.1} / {:.1} N", thruster.thrust, thruster.max_thrust));
+                        ui.label(format!(
+                            "{:.1} / {:.1} N",
+                            thruster.thrust, thruster.max_thrust
+                        ));
                     });
 
                     // Thrust percentage bar

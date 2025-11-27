@@ -118,8 +118,7 @@ impl CheckpointManager {
 
         let file = File::create(&path)?;
         let writer = BufWriter::new(file);
-        bincode::serialize_into(writer, checkpoint)
-            .map_err(std::io::Error::other)?;
+        bincode::serialize_into(writer, checkpoint).map_err(std::io::Error::other)?;
 
         println!(
             "[CHECKPOINT] Saved checkpoint {} ({} nodes)",
@@ -163,8 +162,8 @@ impl CheckpointManager {
 
         let file = File::open(path)?;
         let reader = BufReader::new(file);
-        let checkpoint: Checkpoint = bincode::deserialize_from(reader)
-            .map_err(std::io::Error::other)?;
+        let checkpoint: Checkpoint =
+            bincode::deserialize_from(reader).map_err(std::io::Error::other)?;
 
         println!(
             "[CHECKPOINT] Loaded checkpoint {} from {:?}",

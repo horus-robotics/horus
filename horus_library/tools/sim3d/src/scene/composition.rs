@@ -296,7 +296,7 @@ mod tests {
         composer.merge_scene(&mut target, source, &include).unwrap();
 
         assert_eq!(target.objects.len(), 1);
-        assert_eq!(target.objects[0].name, "env/box1");
+        assert_eq!(target.objects[0].name, "env.box1");
         assert_eq!(target.objects[0].position[0], 1.0);
     }
 }

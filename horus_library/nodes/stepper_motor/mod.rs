@@ -10,6 +10,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[cfg(feature = "gpio-hardware")]
 use std::thread;
 #[cfg(feature = "gpio-hardware")]
+use std::time::Duration;
+#[cfg(feature = "gpio-hardware")]
 use sysfs_gpio::{Direction, Pin};
 
 /// Stepper Motor Controller Node - Step/Direction stepper motor control
@@ -625,7 +627,7 @@ impl StepperMotorNode {
         &mut self,
         motor_id: u8,
         current_time: u64,
-        ctx: Option<&mut NodeInfo>,
+        mut ctx: Option<&mut NodeInfo>,
     ) -> bool {
         if motor_id >= self.num_motors {
             return false;

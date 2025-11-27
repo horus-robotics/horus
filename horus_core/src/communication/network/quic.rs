@@ -124,8 +124,8 @@ impl QuicTransport {
     pub async fn new_client(bind_addr: SocketAddr, config: QuicConfig) -> io::Result<Self> {
         let client_config = Self::create_client_config(&config)?;
 
-        let mut endpoint = Endpoint::client(bind_addr)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        let mut endpoint =
+            Endpoint::client(bind_addr).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
         endpoint.set_default_client_config(client_config);
 
@@ -171,9 +171,7 @@ impl QuicTransport {
             .with_no_client_auth();
 
         let mut transport = TransportConfig::default();
-        transport.max_idle_timeout(Some(
-            config.max_idle_timeout.try_into().unwrap_or_default(),
-        ));
+        transport.max_idle_timeout(Some(config.max_idle_timeout.try_into().unwrap_or_default()));
         transport.keep_alive_interval(Some(config.keep_alive_interval));
         transport.initial_rtt(config.initial_rtt);
 
@@ -193,9 +191,7 @@ impl QuicTransport {
         config: &QuicConfig,
     ) -> io::Result<ServerConfig> {
         let mut transport = TransportConfig::default();
-        transport.max_idle_timeout(Some(
-            config.max_idle_timeout.try_into().unwrap_or_default(),
-        ));
+        transport.max_idle_timeout(Some(config.max_idle_timeout.try_into().unwrap_or_default()));
         transport.keep_alive_interval(Some(config.keep_alive_interval));
         transport.initial_rtt(config.initial_rtt);
 
@@ -229,7 +225,9 @@ impl QuicTransport {
             .await
             .map_err(|e| io::Error::new(io::ErrorKind::ConnectionRefused, e))?;
 
-        self.stats.connections_established.fetch_add(1, Ordering::Relaxed);
+        self.stats
+            .connections_established
+            .fetch_add(1, Ordering::Relaxed);
 
         // Cache the connection
         {
@@ -267,7 +265,9 @@ impl QuicTransport {
             .finish()
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
-        self.stats.bytes_sent.fetch_add(data.len() as u64 + 4, Ordering::Relaxed);
+        self.stats
+            .bytes_sent
+            .fetch_add(data.len() as u64 + 4, Ordering::Relaxed);
         self.stats.messages_sent.fetch_add(1, Ordering::Relaxed);
         self.stats.streams_closed.fetch_add(1, Ordering::Relaxed);
 
@@ -296,7 +296,9 @@ impl QuicTransport {
         send.finish()
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
-        self.stats.bytes_sent.fetch_add(data.len() as u64 + 4, Ordering::Relaxed);
+        self.stats
+            .bytes_sent
+            .fetch_add(data.len() as u64 + 4, Ordering::Relaxed);
         self.stats.messages_sent.fetch_add(1, Ordering::Relaxed);
 
         // Receive response
@@ -311,7 +313,9 @@ impl QuicTransport {
             .await
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
-        self.stats.bytes_received.fetch_add(response_len as u64 + 4, Ordering::Relaxed);
+        self.stats
+            .bytes_received
+            .fetch_add(response_len as u64 + 4, Ordering::Relaxed);
         self.stats.messages_received.fetch_add(1, Ordering::Relaxed);
         self.stats.streams_closed.fetch_add(1, Ordering::Relaxed);
 
@@ -320,11 +324,10 @@ impl QuicTransport {
 
     /// Accept incoming connections (for server)
     pub async fn accept(&self) -> io::Result<(Connection, SocketAddr)> {
-        let incoming = self
-            .endpoint
-            .accept()
-            .await
-            .ok_or_else(|| io::Error::new(io::ErrorKind::ConnectionAborted, "Endpoint closed"))?;
+        let incoming =
+            self.endpoint.accept().await.ok_or_else(|| {
+                io::Error::new(io::ErrorKind::ConnectionAborted, "Endpoint closed")
+            })?;
 
         let conn = incoming
             .await
@@ -332,7 +335,9 @@ impl QuicTransport {
 
         let addr = conn.remote_address();
 
-        self.stats.connections_established.fetch_add(1, Ordering::Relaxed);
+        self.stats
+            .connections_established
+            .fetch_add(1, Ordering::Relaxed);
 
         // Cache the connection
         {
@@ -364,7 +369,9 @@ impl QuicTransport {
             .await
             .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
-        self.stats.bytes_received.fetch_add(data_len as u64 + 4, Ordering::Relaxed);
+        self.stats
+            .bytes_received
+            .fetch_add(data_len as u64 + 4, Ordering::Relaxed);
         self.stats.messages_received.fetch_add(1, Ordering::Relaxed);
         self.stats.streams_closed.fetch_add(1, Ordering::Relaxed);
 
@@ -453,8 +460,9 @@ pub fn generate_self_signed_cert() -> io::Result<(
     Vec<rustls::pki_types::CertificateDer<'static>>,
     rustls::pki_types::PrivateKeyDer<'static>,
 )> {
-    let cert = rcgen::generate_simple_self_signed(vec!["horus".to_string(), "localhost".to_string()])
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+    let cert =
+        rcgen::generate_simple_self_signed(vec!["horus".to_string(), "localhost".to_string()])
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
     let cert_der = rustls::pki_types::CertificateDer::from(cert.cert.der().to_vec());
     let key_der = rustls::pki_types::PrivateKeyDer::try_from(cert.key_pair.serialize_der())

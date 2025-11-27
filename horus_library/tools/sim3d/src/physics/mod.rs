@@ -21,51 +21,47 @@ pub use advanced::{
 
 // Physics benchmarks
 pub use benchmarks::{
-    BenchmarkConfig, BenchmarkReport, BenchmarkResult, PhysicsBenchmark,
-    BenchmarkMetrics, ReferenceAccuracy, ReferenceComparison, BenchmarkPhysicsWorld,
+    BenchmarkConfig, BenchmarkMetrics, BenchmarkPhysicsWorld, BenchmarkReport, BenchmarkResult,
+    PhysicsBenchmark, ReferenceAccuracy, ReferenceComparison,
 };
 
 // Material system
 pub use material::{
-    MaterialPreset, AdvancedMaterial, FrictionModel, AnisotropicFriction,
-    MaterialInteractionDB, MaterialInteraction, InteractionFlags,
+    AdvancedMaterial, AnisotropicFriction, FrictionModel, InteractionFlags, MaterialInteraction,
+    MaterialInteractionDB, MaterialPreset,
 };
 
 // Collider builders and helpers
 pub use collider::{
-    PhysicsCollider, ColliderShape, ColliderBuilder,
-    create_box_collider, create_sphere_collider, create_capsule_collider,
-    create_cylinder_collider, create_mesh_collider, create_ground_collider,
+    create_box_collider, create_capsule_collider, create_cylinder_collider, create_ground_collider,
+    create_mesh_collider, create_sphere_collider, ColliderBuilder, ColliderShape, PhysicsCollider,
 };
 
 // Rigid body components
 pub use rigid_body::{
-    RigidBodyComponent, ContactForce, RigidBodyType, Velocity, ExternalForce,
-    ExternalImpulse, Mass, Damping, Sleeping, GravityScale, LockedAxes,
+    ContactForce, Damping, ExternalForce, ExternalImpulse, GravityScale, LockedAxes, Mass,
+    RigidBodyComponent, RigidBodyType, Sleeping, Velocity,
 };
 
 // Joint creation and control
 pub use joints::{
-    PhysicsJoint, JointType,
-    create_revolute_joint, create_revolute_joint_with_limits,
-    create_prismatic_joint, create_prismatic_joint_with_limits,
-    create_fixed_joint, create_spherical_joint,
-    add_joint_motor, add_joint_spring,
+    add_joint_motor, add_joint_spring, create_fixed_joint, create_prismatic_joint,
+    create_prismatic_joint_with_limits, create_revolute_joint, create_revolute_joint_with_limits,
+    create_spherical_joint, JointType, PhysicsJoint,
 };
 
 // Controllers
-pub use controllers::{PIDController, JointController, ControlMode};
+pub use controllers::{ControlMode, JointController, PIDController};
 
 // Differential drive
-pub use diff_drive::{DifferentialDrive, CmdVel};
+pub use diff_drive::{CmdVel, DifferentialDrive};
 
 // GPU acceleration
-pub use gpu_integration::{GPUPhysicsAdapter, setup_gpu_acceleration};
+pub use gpu_integration::{setup_gpu_acceleration, GPUPhysicsAdapter};
 
 // Soft body physics
 pub use soft_body::{
-    SoftBodyPlugin, Particle, ParticleSystem, Spring, SpringSystem,
-    Cloth, Rope, SoftBodyMaterial,
+    Cloth, Particle, ParticleSystem, Rope, SoftBodyMaterial, SoftBodyPlugin, Spring, SpringSystem,
 };
 
 // Physics world

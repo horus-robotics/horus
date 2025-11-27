@@ -4,8 +4,8 @@ pub mod validation;
 
 // Re-export validation types for use by horus_manager
 pub use validation::{
-    validate_file, format_text, format_json, format_html, format_batch_report,
-    ValidationResult, BatchValidationReport, MeshReference, ValidationType, OutputFormat,
+    format_batch_report, format_html, format_json, format_text, validate_file,
+    BatchValidationReport, MeshReference, OutputFormat, ValidationResult, ValidationType,
 };
 
 use bevy::prelude::Resource;

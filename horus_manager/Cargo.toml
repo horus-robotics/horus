@@ -57,8 +57,9 @@ libc = "0.2"
 syn = { version = "2.0", features = ["full", "visit"] }
 
 # TUI dependencies
-ratatui = "0.24"
-crossterm = "0.27"
+ratatui = "0.29"
+crossterm = "0.28"
+tui-nodes = "0.9"
 rand = "0.8"
 
 # Web dashboard dependencies

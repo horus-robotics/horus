@@ -1,8 +1,8 @@
 //! Thermal camera (infrared) sensor simulation
 
+use crate::physics::world::PhysicsWorld;
 use bevy::prelude::*;
 use rand::Rng;
-use crate::physics::world::PhysicsWorld;
 use rapier3d::prelude::*;
 use std::collections::HashMap;
 
@@ -42,7 +42,7 @@ impl Default for ThermalCamera {
             fov: 60.0,
             near: 0.1,
             far: 100.0,
-            wavelength_min: 8.0,  // LWIR
+            wavelength_min: 8.0, // LWIR
             wavelength_max: 14.0,
             netd: 0.05, // 50mK
             rate_hz: 30.0,
@@ -128,9 +128,7 @@ impl Temperature {
     }
 
     pub fn from_celsius(c: f32) -> Self {
-        Self {
-            kelvin: c + 273.15,
-        }
+        Self { kelvin: c + 273.15 }
     }
 
     pub fn from_fahrenheit(f: f32) -> Self {
@@ -268,14 +266,9 @@ pub enum HeatPattern {
     /// Radiates equally in all directions
     Isotropic,
     /// Radiates in a cone
-    Directional {
-        direction: Vec3,
-        cone_angle: f32,
-    },
+    Directional { direction: Vec3, cone_angle: f32 },
     /// Radiates from a surface
-    Surface {
-        normal: Vec3,
-    },
+    Surface { normal: Vec3 },
 }
 
 impl Default for HeatPattern {
@@ -333,8 +326,12 @@ impl ThermalImage {
     /// Update temperature range from current data
     pub fn update_range(&mut self) {
         if let (Some(&min), Some(&max)) = (
-            self.temperatures.iter().min_by(|a, b| a.partial_cmp(b).unwrap()),
-            self.temperatures.iter().max_by(|a, b| a.partial_cmp(b).unwrap()),
+            self.temperatures
+                .iter()
+                .min_by(|a, b| a.partial_cmp(b).unwrap()),
+            self.temperatures
+                .iter()
+                .max_by(|a, b| a.partial_cmp(b).unwrap()),
         ) {
             self.min_temp = min;
             self.max_temp = max;
@@ -459,7 +456,8 @@ fn perform_thermal_raycasting(
             let screen_y = (1.0 - v * 2.0) * half_height;
 
             // Calculate ray direction in world space
-            let ray_dir = (camera_forward + camera_right * screen_x + camera_up * screen_y).normalize();
+            let ray_dir =
+                (camera_forward + camera_right * screen_x + camera_up * screen_y).normalize();
 
             // Create ray
             let ray = Ray::new(
@@ -487,7 +485,8 @@ fn perform_thermal_raycasting(
                         // Get the entity from the rigid body
                         if let Some(entity) = physics_world.get_entity_from_handle(parent_handle) {
                             // Check if this entity has thermal properties
-                            if let Some((temperature, properties)) = entity_to_thermal.get(&entity) {
+                            if let Some((temperature, properties)) = entity_to_thermal.get(&entity)
+                            {
                                 let distance = toi;
 
                                 if distance >= camera.near {
@@ -495,27 +494,31 @@ fn perform_thermal_raycasting(
                                     let object_temp = temperature.kelvin;
 
                                     // Stefan-Boltzmann constant: 5.67×10⁻⁸ W⋅m⁻²⋅K⁻⁴
-                                    let radiant_power = properties.emissivity * 5.67e-8 * object_temp.powi(4);
+                                    let radiant_power =
+                                        properties.emissivity * 5.67e-8 * object_temp.powi(4);
 
                                     // Apply inverse square law for distance
-                                    let received_intensity = radiant_power / (distance * distance).max(1.0);
+                                    let received_intensity =
+                                        radiant_power / (distance * distance).max(1.0);
 
                                     // Apply atmospheric absorption (Beer-Lambert law)
                                     let atmosphere_transmission =
                                         (-properties.absorption_coefficient * distance).exp();
-                                    let attenuated_intensity = received_intensity * atmosphere_transmission;
+                                    let attenuated_intensity =
+                                        received_intensity * atmosphere_transmission;
 
                                     // Calculate thermal contrast for the specific wavelength range
                                     let wavelength_factor = calculate_wavelength_response(
                                         object_temp,
                                         camera.wavelength_min,
-                                        camera.wavelength_max
+                                        camera.wavelength_max,
                                     );
 
                                     // Convert received intensity back to apparent temperature
                                     // T = (P / (ε * σ))^(1/4)
-                                    let apparent_temp =
-                                        (attenuated_intensity * wavelength_factor / 5.67e-8).powf(0.25);
+                                    let apparent_temp = (attenuated_intensity * wavelength_factor
+                                        / 5.67e-8)
+                                        .powf(0.25);
 
                                     // Store in image
                                     let pixel_index = (y * camera.resolution.0 + x) as usize;
@@ -535,7 +538,11 @@ fn perform_thermal_raycasting(
 }
 
 /// Calculate wavelength-specific response based on Planck's law
-fn calculate_wavelength_response(temperature: f32, wavelength_min: f32, wavelength_max: f32) -> f32 {
+fn calculate_wavelength_response(
+    temperature: f32,
+    wavelength_min: f32,
+    wavelength_max: f32,
+) -> f32 {
     // Simplified calculation using Wien's displacement law
     // Peak wavelength: λ_max = b/T where b = 2.898×10⁻³ m⋅K
     let peak_wavelength = 2898.0 / temperature; // in micrometers

@@ -21,7 +21,12 @@ try:
     from horus._horus import (
         PyNode as _PyNode,
         PyNodeInfo as _NodeInfo,
-        Hub,  # New type-based Hub (exported as "Hub" from Rust)
+        Hub,  # Type-based Hub with network support (exported as "Hub" from Rust)
+        Link,  # Point-to-point SPSC communication with network support
+        RouterClient,  # Explicit router connection management
+        RouterServer,  # Router server management
+        default_router_endpoint,  # Helper: "topic@router"
+        router_endpoint,  # Helper: "topic@host:port"
         PyScheduler as _PyScheduler,
         PyNodeState as NodeState,
         PyRobotPreset as RobotPreset,
@@ -37,7 +42,12 @@ except ImportError:
     print("Warning: Rust bindings not available. Running in mock mode.")
     _PyNode = None
     _NodeInfo = None
-    Hub = None  # New type-based Hub
+    Hub = None  # Type-based Hub with network support
+    Link = None  # Point-to-point SPSC communication
+    RouterClient = None  # Router client management
+    RouterServer = None  # Router server management
+    default_router_endpoint = lambda t: f"{t}@router"
+    router_endpoint = lambda t, h="127.0.0.1", p=7777: f"{t}@{h}:{p}"
     _PyScheduler = None
 
     # Mock NodeState for testing
@@ -1125,6 +1135,11 @@ __all__ = [
     "Scheduler",
     "NodeState",
     "Hub",
+    "Link",  # Point-to-point SPSC communication with network support
+    "RouterClient",  # Explicit router connection management
+    "RouterServer",  # Router server management
+    "default_router_endpoint",  # Helper: "topic@router"
+    "router_endpoint",  # Helper: "topic@host:port"
     "run",
     # Simple async API
     "AsyncNode",

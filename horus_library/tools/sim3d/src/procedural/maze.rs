@@ -334,9 +334,8 @@ impl Maze {
         let mut rank = vec![0u32; num_cells];
 
         // Convert 2D coordinates to cell index (only for cells at odd positions)
-        let cell_index = |x: u32, y: u32| -> usize {
-            ((y / 2) * (config.width / 2) + (x / 2)) as usize
-        };
+        let cell_index =
+            |x: u32, y: u32| -> usize { ((y / 2) * (config.width / 2) + (x / 2)) as usize };
 
         // Mark all cells at odd coordinates as paths
         for y in (1..config.height).step_by(2) {

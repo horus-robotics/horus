@@ -8,14 +8,16 @@ pub mod video_export;
 use bevy::prelude::*;
 
 // Re-export key types
-pub use video_export::{VideoRecorder, VideoRecordingConfig, VideoFormat, VideoFrame, ImageDataFormat};
-pub use trajectory::{RecordingSession, Trajectory, TrajectoryPoint};
+pub use dataset_export::{DatasetFormat, DatasetRecorder, Experience};
+pub use sensor_data::{SensorBagPlayback, SensorBagRecorder, SensorData, SensorMessage};
 pub use time_control::TimeControl;
-pub use sensor_data::{SensorBagRecorder, SensorBagPlayback, SensorData, SensorMessage};
-pub use dataset_export::{DatasetRecorder, DatasetFormat, Experience};
+pub use trajectory::{RecordingSession, Trajectory, TrajectoryPoint};
+pub use video_export::{
+    ImageDataFormat, VideoFormat, VideoFrame, VideoRecorder, VideoRecordingConfig,
+};
 
 // Re-export recording manager and presets
-pub use manager::{RecordingManager, RecordingPresets, RecordingStats, RecordingCommands};
+pub use manager::{RecordingCommands, RecordingManager, RecordingPresets, RecordingStats};
 
 /// Recording and playback plugin
 pub struct RecordingPlugin;
@@ -37,7 +39,9 @@ impl Plugin for RecordingPlugin {
         ));
 
         // Sensor data recording - initialized lazily when user starts recording
-        app.insert_resource(sensor_data::SensorBagRecorder::new("sim3d_recording".to_string()));
+        app.insert_resource(sensor_data::SensorBagRecorder::new(
+            "sim3d_recording".to_string(),
+        ));
 
         // Note: SensorBagPlayback and DatasetRecorder are initialized on-demand
         // when the user loads a bag file or starts RL training

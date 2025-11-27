@@ -15,12 +15,12 @@ pub use raycasting::GPURaycastPipeline;
 
 // Re-export profiling types
 pub use profiling::{
-    BufferDescriptor, BufferUsage, GPUBufferPool, GPUProfilingSession, GPUTimer,
-    report_gpu_profiling_system, update_gpu_profiling_system,
+    report_gpu_profiling_system, update_gpu_profiling_system, BufferDescriptor, BufferUsage,
+    GPUBufferPool, GPUProfilingSession, GPUTimer,
 };
 
 // Re-export benchmarks
-pub use benchmarks::{BenchmarkResult, run_all_benchmarks};
+pub use benchmarks::{run_all_benchmarks, BenchmarkResult};
 
 use bevy::prelude::*;
 use std::sync::Arc;

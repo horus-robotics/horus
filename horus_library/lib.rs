@@ -9,7 +9,7 @@
 //! ── messages/       # Shared memory-safe messages
 //! ── nodes/          # Reusable nodes
 //! ── algorithms/     # Common algorithms (future)
-//! ── tf/             # Transform frame system
+//! ── hframe/         # HFrame - High-performance transform system
 //! ── apps/           # Complete demo applications
 //! ── tools/          # Development utilities (sim2d, sim3d)
 //! ```
@@ -37,15 +37,18 @@
 //! use horus_library::messages::{Direction, SnakeState};
 //! use horus_library::nodes::{PidControllerNode, SafetyMonitorNode};
 //!
+//! // Use HFrame for coordinate transforms
+//! use horus_library::hframe::{HFrame, Transform};
+//!
 //! // Use simulators (separate crates to avoid cyclic deps)
 //! use sim2d::{Sim2DBuilder, RobotConfig};
 //! use sim3d::rl::{RLTask, Action, Observation};
 //! ```
 
 pub mod algorithms;
+pub mod hframe;
 pub mod messages;
 pub mod nodes;
-pub mod tf;
 
 // Note: sim2d and sim3d are separate crates to avoid cyclic dependencies.
 // Access them directly via:
@@ -104,15 +107,14 @@ pub mod prelude {
     // Common message types
     pub use crate::messages::{
         cmd_vel::CmdVel,
-        geometry::{Pose2D, Transform, Twist, Vector3, Quaternion, Point3},
-        sensor::{LaserScan, Imu, BatteryState, NavSatFix, Odometry},
+        geometry::{Point3, Pose2D, Quaternion, Twist, Vector3},
+        sensor::{BatteryState, Imu, LaserScan, NavSatFix, Odometry},
     };
 
-    // TF (Transform Frame) types
-    pub use crate::tf::{
-        Transform as TFTransform, TFTree, TFBuffer, TFError,
-        TransformStamped, StaticTransformStamped, TFMessage,
-        CircularBuffer, FrameNode, timestamp_now,
+    // HFrame - High-performance transform system
+    pub use crate::hframe::{
+        timestamp_now, FrameId, FrameRegistry, FrameSlot, HFrame, HFrameConfig, HFrameCore,
+        HFrameError, StaticTransformStamped, TFMessage, Transform, TransformStamped,
     };
 
     // Common nodes

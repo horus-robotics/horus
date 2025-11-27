@@ -40,7 +40,10 @@ pub enum StatusItemContent {
     /// Icon followed by text
     IconText { icon: String, text: String },
     /// Text with a colored indicator
-    ColoredText { text: String, color: StatusItemColor },
+    ColoredText {
+        text: String,
+        color: StatusItemColor,
+    },
     /// Progress indicator
     Progress { value: f32, label: Option<String> },
 }
@@ -117,7 +120,11 @@ impl StatusItem {
     }
 
     /// Creates a new status item with icon and text
-    pub fn with_icon(key: impl Into<String>, icon: impl Into<String>, text: impl Into<String>) -> Self {
+    pub fn with_icon(
+        key: impl Into<String>,
+        icon: impl Into<String>,
+        text: impl Into<String>,
+    ) -> Self {
         Self {
             id: next_status_item_id(),
             key: key.into(),
@@ -280,7 +287,11 @@ impl StatusBarConfig {
 
     /// Sets which sections are enabled
     pub fn with_sections(mut self, left: bool, center: bool, right: bool) -> Self {
-        self.sections_enabled = StatusBarSections { left, center, right };
+        self.sections_enabled = StatusBarSections {
+            left,
+            center,
+            right,
+        };
         self
     }
 }
@@ -460,7 +471,12 @@ impl StatusBarManager {
     }
 
     /// Updates icon and text content
-    pub fn update_icon_text(&mut self, key: &str, icon: impl Into<String>, text: impl Into<String>) -> bool {
+    pub fn update_icon_text(
+        &mut self,
+        key: &str,
+        icon: impl Into<String>,
+        text: impl Into<String>,
+    ) -> bool {
         if let Some(item) = self.items.get_mut(key) {
             item.set_icon_text(icon, text);
             true
@@ -470,7 +486,12 @@ impl StatusBarManager {
     }
 
     /// Updates to colored text
-    pub fn update_colored_text(&mut self, key: &str, text: impl Into<String>, color: StatusItemColor) -> bool {
+    pub fn update_colored_text(
+        &mut self,
+        key: &str,
+        text: impl Into<String>,
+        color: StatusItemColor,
+    ) -> bool {
         if let Some(item) = self.items.get_mut(key) {
             item.set_colored_text(text, color);
             true
@@ -590,7 +611,10 @@ pub struct MouseWorldPosition {
 impl MouseWorldPosition {
     pub fn display(&self) -> String {
         if self.valid {
-            format!("{:.1}, {:.1}, {:.1}", self.position.x, self.position.y, self.position.z)
+            format!(
+                "{:.1}, {:.1}, {:.1}",
+                self.position.x, self.position.y, self.position.z
+            )
         } else {
             "-, -, -".to_string()
         }
@@ -689,13 +713,21 @@ pub fn update_status_bar_system(
     // Update scene info
     if let Some(scene) = scene_state {
         manager.update_icon_text(keys::SCENE_NAME, "SCENE", scene.display_name());
-        manager.update_icon_text(keys::ZOOM_LEVEL, "ZOOM", format!("{:.0}%", scene.zoom_level * 100.0));
+        manager.update_icon_text(
+            keys::ZOOM_LEVEL,
+            "ZOOM",
+            format!("{:.0}%", scene.zoom_level * 100.0),
+        );
     }
 
     // Update tool state
     if let Some(tool) = tool_state {
         manager.update_icon_text(keys::CURRENT_TOOL, "TOOL", &tool.current_tool);
-        manager.update_icon_text(keys::SELECTION_COUNT, "SEL", tool.selection_count.to_string());
+        manager.update_icon_text(
+            keys::SELECTION_COUNT,
+            "SEL",
+            tool.selection_count.to_string(),
+        );
         manager.update_icon_text(keys::GRID_SNAP, "GRID", tool.grid_snap_display());
     }
 
@@ -738,49 +770,47 @@ pub fn render_status_bar_system(
                 config.background_color[3],
             );
 
-            egui::Frame::none()
-                .fill(bg_color)
-                .show(ui, |ui| {
-                    ui.set_min_size(egui::vec2(bar_rect.width(), config.height));
+            egui::Frame::none().fill(bg_color).show(ui, |ui| {
+                ui.set_min_size(egui::vec2(bar_rect.width(), config.height));
 
-                    ui.horizontal(|ui| {
-                        ui.set_height(config.height);
-                        ui.style_mut().spacing.item_spacing.x = config.item_padding;
+                ui.horizontal(|ui| {
+                    ui.set_height(config.height);
+                    ui.style_mut().spacing.item_spacing.x = config.item_padding;
 
-                        // Left section
-                        if config.sections_enabled.left {
-                            ui.add_space(config.section_padding);
-                            let left_items = manager.get_items_by_section(StatusBarSection::Left);
-                            for item in left_items {
-                                render_status_item(ui, item, &mut clicks_to_send);
-                            }
+                    // Left section
+                    if config.sections_enabled.left {
+                        ui.add_space(config.section_padding);
+                        let left_items = manager.get_items_by_section(StatusBarSection::Left);
+                        for item in left_items {
+                            render_status_item(ui, item, &mut clicks_to_send);
                         }
+                    }
 
-                        // Flexible space before center
-                        ui.add_space(ui.available_width() * 0.3);
+                    // Flexible space before center
+                    ui.add_space(ui.available_width() * 0.3);
 
-                        // Center section
-                        if config.sections_enabled.center {
-                            let center_items = manager.get_items_by_section(StatusBarSection::Center);
-                            for item in center_items {
-                                render_status_item(ui, item, &mut clicks_to_send);
-                            }
+                    // Center section
+                    if config.sections_enabled.center {
+                        let center_items = manager.get_items_by_section(StatusBarSection::Center);
+                        for item in center_items {
+                            render_status_item(ui, item, &mut clicks_to_send);
                         }
+                    }
 
-                        // Flexible space after center
-                        let remaining = ui.available_width() - config.section_padding;
-                        ui.add_space(remaining * 0.4);
+                    // Flexible space after center
+                    let remaining = ui.available_width() - config.section_padding;
+                    ui.add_space(remaining * 0.4);
 
-                        // Right section
-                        if config.sections_enabled.right {
-                            let right_items = manager.get_items_by_section(StatusBarSection::Right);
-                            for item in right_items {
-                                render_status_item(ui, item, &mut clicks_to_send);
-                            }
-                            ui.add_space(config.section_padding);
+                    // Right section
+                    if config.sections_enabled.right {
+                        let right_items = manager.get_items_by_section(StatusBarSection::Right);
+                        for item in right_items {
+                            render_status_item(ui, item, &mut clicks_to_send);
                         }
-                    });
+                        ui.add_space(config.section_padding);
+                    }
                 });
+            });
         });
 
     // Send click events
@@ -813,7 +843,8 @@ fn render_status_item(ui: &mut egui::Ui, item: &StatusItem, clicks: &mut Vec<(u6
                     ui.label(text);
                     ui.label("")
                 }
-            }).inner
+            })
+            .inner
         }
         StatusItemContent::ColoredText { text, color } => {
             let egui_color = color.to_egui_color();
@@ -1100,9 +1131,21 @@ mod tests {
     fn test_status_bar_manager_items_sorted_by_priority() {
         let mut manager = StatusBarManager::empty();
 
-        manager.register(StatusItem::new("low", "Low").section(StatusBarSection::Left).priority(10));
-        manager.register(StatusItem::new("high", "High").section(StatusBarSection::Left).priority(100));
-        manager.register(StatusItem::new("medium", "Medium").section(StatusBarSection::Left).priority(50));
+        manager.register(
+            StatusItem::new("low", "Low")
+                .section(StatusBarSection::Left)
+                .priority(10),
+        );
+        manager.register(
+            StatusItem::new("high", "High")
+                .section(StatusBarSection::Left)
+                .priority(100),
+        );
+        manager.register(
+            StatusItem::new("medium", "Medium")
+                .section(StatusBarSection::Left)
+                .priority(50),
+        );
 
         let items = manager.get_items_by_section(StatusBarSection::Left);
 
@@ -1117,7 +1160,11 @@ mod tests {
         let mut manager = StatusBarManager::empty();
 
         manager.register(StatusItem::new("visible", "Visible").section(StatusBarSection::Left));
-        manager.register(StatusItem::new("hidden", "Hidden").section(StatusBarSection::Left).visible(false));
+        manager.register(
+            StatusItem::new("hidden", "Hidden")
+                .section(StatusBarSection::Left)
+                .visible(false),
+        );
 
         let items = manager.get_items_by_section(StatusBarSection::Left);
 

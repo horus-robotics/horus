@@ -1,6 +1,6 @@
 use super::endpoint::Endpoint;
 use super::router::RouterBackend;
-use super::smart_copy::{SmartCopyConfig, SmartCopySender, CopyStrategy};
+use super::smart_copy::{CopyStrategy, SmartCopyConfig, SmartCopySender};
 use super::smart_transport::{NetworkLocation, TransportSelector, TransportType};
 use super::udp_direct::UdpDirectBackend;
 use super::udp_multicast::UdpMulticastBackend;
@@ -237,7 +237,9 @@ where
             TransportType::Quic => {
                 // QUIC requires async runtime - fall back to UDP for sync API
                 // QUIC can be used directly via QuicTransport for async use cases
-                log::debug!("QUIC transport requested but NetworkBackend is sync; falling back to UDP");
+                log::debug!(
+                    "QUIC transport requested but NetworkBackend is sync; falling back to UDP"
+                );
                 let udp_backend = UdpDirectBackend::new(topic, addr.ip(), addr.port())?;
                 Ok(NetworkBackend::UdpDirect(udp_backend))
             }
@@ -257,7 +259,10 @@ where
         };
 
         let sender = BatchUdpSender::new(bind_addr, config.clone()).map_err(|e| {
-            crate::error::HorusError::Communication(format!("Failed to create batch UDP sender: {}", e))
+            crate::error::HorusError::Communication(format!(
+                "Failed to create batch UDP sender: {}",
+                e
+            ))
         })?;
 
         // Receiver binds to a specific port (use default HORUS port or dynamic)
@@ -268,7 +273,10 @@ where
         };
 
         let receiver = BatchUdpReceiver::new(recv_addr, config).map_err(|e| {
-            crate::error::HorusError::Communication(format!("Failed to create batch UDP receiver: {}", e))
+            crate::error::HorusError::Communication(format!(
+                "Failed to create batch UDP receiver: {}",
+                e
+            ))
         })?;
 
         // Create smart copy sender for automatic zero-copy on large messages
@@ -311,7 +319,10 @@ where
                     };
 
                     sender.send(send_data, backend.remote_addr).map_err(|e| {
-                        crate::error::HorusError::Communication(format!("Batch UDP send error: {}", e))
+                        crate::error::HorusError::Communication(format!(
+                            "Batch UDP send error: {}",
+                            e
+                        ))
                     })
                 };
 

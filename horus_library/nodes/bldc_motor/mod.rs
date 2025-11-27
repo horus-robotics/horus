@@ -689,8 +689,8 @@ impl Node for BldcMotorNode {
         // Stop all motors by setting throttle to 0
         for motor_id in 0..self.num_motors {
             // Set target and current velocity to 0
-            self.target_velocities[motor_id as usize] = 0.0;
-            self.current_velocities[motor_id as usize] = 0.0;
+            self.target_velocity[motor_id as usize] = 0.0;
+            self.current_velocity[motor_id as usize] = 0.0;
 
             // Publish stop command
             let stop_cmd = MotorCommand::stop(motor_id);
@@ -699,7 +699,7 @@ impl Node for BldcMotorNode {
 
         // If hardware mode, send stop signal to ESCs
         #[cfg(feature = "gpio-hardware")]
-        for pwm in self.pwm_outputs.iter_mut().flatten() {
+        for pwm in self.pwm_channels.iter_mut().flatten() {
             // Set PWM to minimum throttle (typically 1000us for ESCs)
             let _ = pwm.set_duty_cycle(0.05); // 5% duty = 1000us at 50Hz
         }

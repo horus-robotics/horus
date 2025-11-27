@@ -1,5 +1,5 @@
 use horus_core::scheduling::Scheduler;
-use horus_core::{Hub, Link, Node, NodeInfo, NodeInfoExt, HorusResult};
+use horus_core::{HorusResult, Hub, Link, Node, NodeInfo, NodeInfoExt};
 use std::time::Duration;
 
 // Node that publishes telemetry data using Hub (multiple subscribers can consume)

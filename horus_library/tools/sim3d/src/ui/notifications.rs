@@ -462,7 +462,12 @@ impl NotificationManager {
     }
 
     /// Creates and adds an info notification
-    pub fn notify_info(&mut self, title: impl Into<String>, message: impl Into<String>, current_time: f64) -> u64 {
+    pub fn notify_info(
+        &mut self,
+        title: impl Into<String>,
+        message: impl Into<String>,
+        current_time: f64,
+    ) -> u64 {
         let notification = Notification::info(title).with_message(message);
         let id = notification.id;
         self.notify(notification, current_time);
@@ -470,7 +475,12 @@ impl NotificationManager {
     }
 
     /// Creates and adds a success notification
-    pub fn notify_success(&mut self, title: impl Into<String>, message: impl Into<String>, current_time: f64) -> u64 {
+    pub fn notify_success(
+        &mut self,
+        title: impl Into<String>,
+        message: impl Into<String>,
+        current_time: f64,
+    ) -> u64 {
         let notification = Notification::success(title).with_message(message);
         let id = notification.id;
         self.notify(notification, current_time);
@@ -478,7 +488,12 @@ impl NotificationManager {
     }
 
     /// Creates and adds a warning notification
-    pub fn notify_warning(&mut self, title: impl Into<String>, message: impl Into<String>, current_time: f64) -> u64 {
+    pub fn notify_warning(
+        &mut self,
+        title: impl Into<String>,
+        message: impl Into<String>,
+        current_time: f64,
+    ) -> u64 {
         let notification = Notification::warning(title).with_message(message);
         let id = notification.id;
         self.notify(notification, current_time);
@@ -486,7 +501,12 @@ impl NotificationManager {
     }
 
     /// Creates and adds an error notification
-    pub fn notify_error(&mut self, title: impl Into<String>, message: impl Into<String>, current_time: f64) -> u64 {
+    pub fn notify_error(
+        &mut self,
+        title: impl Into<String>,
+        message: impl Into<String>,
+        current_time: f64,
+    ) -> u64 {
         let notification = Notification::error(title).with_message(message);
         let id = notification.id;
         self.notify(notification, current_time);
@@ -494,7 +514,12 @@ impl NotificationManager {
     }
 
     /// Creates and adds a progress notification
-    pub fn notify_progress(&mut self, title: impl Into<String>, progress: f32, current_time: f64) -> u64 {
+    pub fn notify_progress(
+        &mut self,
+        title: impl Into<String>,
+        progress: f32,
+        current_time: f64,
+    ) -> u64 {
         let notification = Notification::progress(title, progress);
         let id = notification.id;
         self.notify(notification, current_time);
@@ -669,21 +694,15 @@ pub fn render_notifications_system(
             config.margin_y,
             1.0,
         ),
-        NotificationPosition::TopLeft => (
-            config.margin_x,
-            config.margin_y,
-            1.0,
-        ),
+        NotificationPosition::TopLeft => (config.margin_x, config.margin_y, 1.0),
         NotificationPosition::BottomRight => (
             screen_rect.max.x - config.notification_width - config.margin_x,
             screen_rect.max.y - config.margin_y,
             -1.0,
         ),
-        NotificationPosition::BottomLeft => (
-            config.margin_x,
-            screen_rect.max.y - config.margin_y,
-            -1.0,
-        ),
+        NotificationPosition::BottomLeft => {
+            (config.margin_x, screen_rect.max.y - config.margin_y, -1.0)
+        }
         NotificationPosition::TopCenter => (
             (screen_rect.max.x - config.notification_width) / 2.0,
             config.margin_y,
@@ -709,7 +728,12 @@ pub fn render_notifications_system(
     let visible_count = config.max_visible.min(manager.count());
     let mut current_y = start_y;
 
-    for (index, notification) in manager.notifications_mut().iter_mut().take(visible_count).enumerate() {
+    for (index, notification) in manager
+        .notifications_mut()
+        .iter_mut()
+        .take(visible_count)
+        .enumerate()
+    {
         let window_id = egui::Id::new(format!("notification_{}", notification.id));
 
         // Calculate position
@@ -752,8 +776,10 @@ pub fn render_notifications_system(
 
                         // Progress bar for progress notifications
                         if let Some(progress) = notification_progress {
-                            ui.add(egui::ProgressBar::new(progress)
-                                .text(format!("{:.0}%", progress * 100.0)));
+                            ui.add(
+                                egui::ProgressBar::new(progress)
+                                    .text(format!("{:.0}%", progress * 100.0)),
+                            );
                         }
 
                         // Action buttons
@@ -873,7 +899,10 @@ mod tests {
         assert_eq!(notification.title, "Test Title");
         assert_eq!(notification.message, "Test message");
         assert_eq!(notification.notification_type, NotificationType::Info);
-        assert_eq!(notification.duration, NotificationDuration::Timed(Duration::from_secs(10)));
+        assert_eq!(
+            notification.duration,
+            NotificationDuration::Timed(Duration::from_secs(10))
+        );
     }
 
     #[test]
@@ -991,8 +1020,7 @@ mod tests {
 
     #[test]
     fn test_notification_action() {
-        let action = NotificationAction::new("action1", "Click Me")
-            .with_dismiss(false);
+        let action = NotificationAction::new("action1", "Click Me").with_dismiss(false);
 
         assert_eq!(action.id, "action1");
         assert_eq!(action.label, "Click Me");
@@ -1018,7 +1046,10 @@ mod tests {
 
         let timed = Notification::info("Test")
             .with_duration(NotificationDuration::Timed(Duration::from_secs(10)));
-        assert_eq!(timed.duration, NotificationDuration::Timed(Duration::from_secs(10)));
+        assert_eq!(
+            timed.duration,
+            NotificationDuration::Timed(Duration::from_secs(10))
+        );
     }
 
     #[test]

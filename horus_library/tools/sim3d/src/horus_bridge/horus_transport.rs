@@ -19,8 +19,12 @@ impl LogSummary for Twist {
     fn log_summary(&self) -> String {
         format!(
             "Twist(lin:[{:.2},{:.2},{:.2}] ang:[{:.2},{:.2},{:.2}])",
-            self.linear.x, self.linear.y, self.linear.z,
-            self.angular.x, self.angular.y, self.angular.z
+            self.linear.x,
+            self.linear.y,
+            self.linear.z,
+            self.angular.x,
+            self.angular.y,
+            self.angular.z
         )
     }
 }
@@ -38,7 +42,9 @@ impl LogSummary for PointCloud2 {
     fn log_summary(&self) -> String {
         format!(
             "PointCloud2(frame:{} pts:{} t:{:.3})",
-            self.header.frame_id, self.width * self.height, self.header.stamp
+            self.header.frame_id,
+            self.width * self.height,
+            self.header.stamp
         )
     }
 }
@@ -415,7 +421,10 @@ impl Plugin for HorusTransportPlugin {
 /// System to receive cmd_vel and apply to robots
 fn horus_transport_recv_system(
     transport: Res<HorusTransport>,
-    mut query: Query<(&Name, &mut crate::physics::rigid_body::Velocity), With<crate::robot::robot::Robot>>,
+    mut query: Query<
+        (&Name, &mut crate::physics::rigid_body::Velocity),
+        With<crate::robot::robot::Robot>,
+    >,
 ) {
     if !transport.is_enabled() {
         return;
@@ -439,8 +448,16 @@ mod tests {
     #[test]
     fn test_twist_log_summary() {
         let twist = Twist {
-            linear: Vector3Message { x: 1.0, y: 0.0, z: 0.0 },
-            angular: Vector3Message { x: 0.0, y: 0.0, z: 0.5 },
+            linear: Vector3Message {
+                x: 1.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            angular: Vector3Message {
+                x: 0.0,
+                y: 0.0,
+                z: 0.5,
+            },
         };
         let summary = twist.log_summary();
         assert!(summary.contains("Twist"));

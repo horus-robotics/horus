@@ -1,5 +1,5 @@
 use crate::dependency_resolver::DependencySpec;
-use crate::progress::{self, finish_success, finish_error};
+use crate::progress::{self, finish_error, finish_success};
 use crate::version;
 use anyhow::{anyhow, bail, Context, Result};
 use colored::*;
@@ -278,6 +278,14 @@ path = "{}"
                     "".cyan(),
                     auto_features.join(", ").yellow()
                 );
+
+                // Check system dependencies for detected features
+                use crate::system_deps;
+                let dep_result = system_deps::check_dependencies(&auto_features);
+                let report = system_deps::format_dependency_report(&dep_result, &auto_features);
+                if !report.is_empty() {
+                    eprintln!("{}", report);
+                }
             }
 
             // Find HORUS source directory
@@ -301,7 +309,9 @@ path = "{}"
 
                 if dep_path.exists() && dep_path.join("Cargo.toml").exists() {
                     // Auto-inject features for horus or horus_library
-                    if (dep_name == "horus" || dep_name == "horus_library") && !auto_features.is_empty() {
+                    if (dep_name == "horus" || dep_name == "horus_library")
+                        && !auto_features.is_empty()
+                    {
                         cargo_toml.push_str(&format!(
                             "{} = {{ path = \"{}\", features = [{}] }}\n",
                             dep_name,
@@ -766,7 +776,10 @@ fn execute_from_cargo_toml(
         let binary = format!("target/{}/{}", build_dir, project_name);
 
         if !Path::new(&binary).exists() || clean {
-            let spinner = progress::robot_build_spinner(&format!("Building Cargo project ({} mode)...", build_dir));
+            let spinner = progress::robot_build_spinner(&format!(
+                "Building Cargo project ({} mode)...",
+                build_dir
+            ));
             let mut cmd = Command::new("cargo");
             cmd.arg("build");
             cmd.stdout(std::process::Stdio::piped());
@@ -868,7 +881,8 @@ fn execute_multiple_files(
 
     // Build other languages individually
     for (file_path, language) in other_files {
-        let spinner = progress::robot_build_spinner(&format!("Building {}...", file_path.display()));
+        let spinner =
+            progress::robot_build_spinner(&format!("Building {}...", file_path.display()));
 
         let exec_info = build_file_for_concurrent_execution(
             file_path, language, release, false, // Don't clean - already done if needed
@@ -878,7 +892,10 @@ fn execute_multiple_files(
         finish_success(&spinner, "Built");
     }
 
-    println!("{} All files built successfully!\n", progress::ROBOT_SUCCESS);
+    println!(
+        "{} All files built successfully!\n",
+        progress::STATUS_SUCCESS
+    );
 
     // Phase 2: Execute all binaries concurrently
     println!("{} Phase 2: Starting all processes...", "".cyan());
@@ -1450,12 +1467,7 @@ fn auto_detect_main_file() -> Result<PathBuf> {
     };
 
     // Check for main files in priority order (Rust and Python only)
-    let candidates = [
-        "main.rs",
-        "main.py",
-        "src/main.rs",
-        "src/main.py",
-    ];
+    let candidates = ["main.rs", "main.py", "src/main.rs", "src/main.py"];
 
     for candidate in &candidates {
         let path = PathBuf::from(candidate);
@@ -1475,8 +1487,7 @@ fn auto_detect_main_file() -> Result<PathBuf> {
         .filter(|e| {
             let path = e.path();
             if let Some(ext) = path.extension() {
-                matches!(ext.to_str(), Some("rs") | Some("py"))
-                    && !ignore.should_ignore_file(&path)
+                matches!(ext.to_str(), Some("rs") | Some("py")) && !ignore.should_ignore_file(&path)
             } else {
                 false
             }
@@ -2677,7 +2688,13 @@ fn split_dependencies_with_path_context(
         }
     }
 
-    (horus_packages, pip_packages, cargo_packages, path_packages, git_packages)
+    (
+        horus_packages,
+        pip_packages,
+        cargo_packages,
+        path_packages,
+        git_packages,
+    )
 }
 
 /// Clone a git dependency to the global cache and return the path
@@ -2735,9 +2752,7 @@ fn clone_git_dependency(git_pkg: &GitPackage) -> Result<(String, PathBuf)> {
 
     clone_cmd.args([&git_pkg.url, cache_path.to_str().unwrap()]);
 
-    let output = clone_cmd
-        .output()
-        .context("Failed to run git clone")?;
+    let output = clone_cmd.output().context("Failed to run git clone")?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -2766,11 +2781,7 @@ fn clone_git_dependency(git_pkg: &GitPackage) -> Result<(String, PathBuf)> {
         ));
     }
 
-    println!(
-        "  {} Cloned git dependency: {}",
-        "✓".green(),
-        git_pkg.name
-    );
+    println!("  {} Cloned git dependency: {}", "✓".green(), git_pkg.name);
 
     Ok((git_pkg.name.clone(), cache_path))
 }
@@ -3698,14 +3709,15 @@ fn execute_with_scheduler(
             println!("{} Setting up Cargo workspace...", "".cyan());
 
             // Parse horus.yaml to get dependencies
-            let (horus_deps, cargo_packages, path_deps, git_deps) = if Path::new("horus.yaml").exists() {
-                let deps = parse_horus_yaml_dependencies("horus.yaml")?;
-                let (horus_pkgs, _pip_pkgs, cargo_pkgs, path_pkgs, git_pkgs) =
-                    split_dependencies_with_path_context(deps, Some("rust"));
-                (horus_pkgs, cargo_pkgs, path_pkgs, git_pkgs)
-            } else {
-                (Vec::new(), Vec::new(), Vec::new(), Vec::new())
-            };
+            let (horus_deps, cargo_packages, path_deps, git_deps) =
+                if Path::new("horus.yaml").exists() {
+                    let deps = parse_horus_yaml_dependencies("horus.yaml")?;
+                    let (horus_pkgs, _pip_pkgs, cargo_pkgs, path_pkgs, git_pkgs) =
+                        split_dependencies_with_path_context(deps, Some("rust"));
+                    (horus_pkgs, cargo_pkgs, path_pkgs, git_pkgs)
+                } else {
+                    (Vec::new(), Vec::new(), Vec::new(), Vec::new())
+                };
 
             // Find HORUS source directory
             let horus_source = find_horus_source_dir()?;
@@ -3741,14 +3753,21 @@ path = "{}"
 
             // Auto-detect nodes and required features
             use crate::node_detector;
-            let auto_features =
-                node_detector::detect_features_from_file(&file).unwrap_or_default();
+            let auto_features = node_detector::detect_features_from_file(&file).unwrap_or_default();
             if !auto_features.is_empty() {
                 eprintln!(
                     "  {} Auto-detected hardware nodes (features: {})",
                     "".cyan(),
                     auto_features.join(", ").yellow()
                 );
+
+                // Check system dependencies for detected features
+                use crate::system_deps;
+                let dep_result = system_deps::check_dependencies(&auto_features);
+                let report = system_deps::format_dependency_report(&dep_result, &auto_features);
+                if !report.is_empty() {
+                    eprintln!("{}", report);
+                }
             }
 
             // Add HORUS dependencies from horus.yaml or defaults
@@ -3770,7 +3789,9 @@ path = "{}"
                 let dep_path = horus_source.join(dep_name);
                 if dep_path.exists() && dep_path.join("Cargo.toml").exists() {
                     // Auto-inject features for horus or horus_library
-                    if (dep_name == "horus" || dep_name == "horus_library") && !auto_features.is_empty() {
+                    if (dep_name == "horus" || dep_name == "horus_library")
+                        && !auto_features.is_empty()
+                    {
                         cargo_toml.push_str(&format!(
                             "{} = {{ path = \"{}\", features = [{}] }}\n",
                             dep_name,
@@ -3980,7 +4001,10 @@ path = "{}"
         "python" => {
             execute_python_node(file, args, release)?;
         }
-        _ => bail!("Unsupported language: {}. HORUS supports Rust and Python only.", language),
+        _ => bail!(
+            "Unsupported language: {}. HORUS supports Rust and Python only.",
+            language
+        ),
     }
 
     Ok(())

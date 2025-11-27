@@ -10,9 +10,16 @@ HORUS provides comprehensive support for running on Real-Time Operating Systems 
 
 ## Supported Platforms
 
-HORUS abstracts the underlying RTOS through a common interface, supporting:
+HORUS provides real-time support through the RTOS abstraction layer:
 
-- **RT-Linux (PREEMPT_RT)** - Linux with real-time patches
+### Currently Implemented
+
+- **RT-Linux (PREEMPT_RT)** - Full implementation for Linux systems with real-time patches. This is the production-ready backend.
+
+### Planned (Contributions Welcome)
+
+The following platforms have abstraction layer support but no implementation yet:
+
 - **FreeRTOS** - Popular embedded RTOS
 - **Zephyr** - Modern scalable RTOS
 - **QNX Neutrino** - Commercial hard real-time OS
@@ -20,6 +27,8 @@ HORUS abstracts the underlying RTOS through a common interface, supporting:
 - **NuttX** - POSIX-compliant RTOS
 - **ThreadX** - Azure RTOS
 - **Bare Metal** - No OS, direct hardware
+
+> **Note:** If you need support for an embedded RTOS, contributions are welcome! The abstraction layer (`RTOSBackend` trait) is fully defined - implementations just need to be added.
 
 ## Architecture
 
@@ -44,11 +53,7 @@ horus_core = { version = "0.1.5", features = ["rtos", "rt-linux"] }
 
 Available features:
 - `rtos` - Core RTOS abstraction
-- `rt-linux` - RT-Linux backend
-- `freertos` - FreeRTOS backend
-- `zephyr` - Zephyr backend
-- `qnx` - QNX backend
-- `bare-metal` - Bare metal support
+- `rt-linux` - RT-Linux backend (currently the only implemented backend)
 
 ### Basic Usage
 

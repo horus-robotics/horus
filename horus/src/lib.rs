@@ -79,10 +79,14 @@ pub mod prelude {
     // These are all available by default (standard-nodes feature)
     pub use horus_library::nodes::{
         // Algorithm nodes (always available)
-        DifferentialDriveNode, EmergencyStopNode, LocalizationNode, PathPlannerNode,
-        PidControllerNode,
+        DifferentialDriveNode,
+        EmergencyStopNode,
         // Input nodes (default: standard-nodes)
-        JoystickInputNode, KeyboardInputNode,
+        JoystickInputNode,
+        KeyboardInputNode,
+        LocalizationNode,
+        PathPlannerNode,
+        PidControllerNode,
         // Serial nodes (default: standard-nodes)
         SerialNode,
     };

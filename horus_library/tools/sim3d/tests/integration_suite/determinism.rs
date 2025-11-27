@@ -124,7 +124,9 @@ pub struct DeterminismTestResult {
 }
 
 /// Run two identical simulations and compare results
-pub fn validate_identical_initial_conditions(config: DeterminismTestConfig) -> DeterminismTestResult {
+pub fn validate_identical_initial_conditions(
+    config: DeterminismTestConfig,
+) -> DeterminismTestResult {
     let run1_states = run_deterministic_simulation(&config);
     let run2_states = run_deterministic_simulation(&config);
 
@@ -204,9 +206,9 @@ impl SimulationStateSnapshot {
 
 /// Run a deterministic simulation and return state history
 fn run_deterministic_simulation(config: &DeterminismTestConfig) -> Vec<SimulationStateSnapshot> {
-    use rand::SeedableRng;
     use rand::rngs::StdRng;
     use rand::Rng;
+    use rand::SeedableRng;
 
     let mut rng = StdRng::seed_from_u64(config.seed);
     let mut states = Vec::new();
@@ -248,9 +250,7 @@ fn run_deterministic_simulation(config: &DeterminismTestConfig) -> Vec<Simulatio
             .build();
         let handle = rigid_body_set.insert(body);
 
-        let collider = ColliderBuilder::ball(0.2)
-            .mass(1.0)
-            .build();
+        let collider = ColliderBuilder::ball(0.2).mass(1.0).build();
         collider_set.insert_with_parent(collider, handle, &mut rigid_body_set);
     }
 
@@ -349,9 +349,9 @@ pub struct SaveLoadTestResult {
 
 /// Test save/load simulation state
 pub fn validate_save_load_state(config: DeterminismTestConfig) -> SaveLoadTestResult {
-    use rand::SeedableRng;
     use rand::rngs::StdRng;
     use rand::Rng;
+    use rand::SeedableRng;
 
     let mut rng = StdRng::seed_from_u64(config.seed);
 
@@ -444,7 +444,8 @@ pub fn validate_save_load_state(config: DeterminismTestConfig) -> SaveLoadTestRe
             &event_handler,
         );
     }
-    let reference_final = SimulationStateSnapshot::from_physics(config.simulation_steps, &rigid_body_set);
+    let reference_final =
+        SimulationStateSnapshot::from_physics(config.simulation_steps, &rigid_body_set);
     reference_final_states.push(reference_final.hash);
 
     // Now restore state and continue
@@ -668,7 +669,10 @@ mod tests {
         let hash1 = states1.last().map(|s| s.hash).unwrap_or(0);
         let hash2 = states2.last().map(|s| s.hash).unwrap_or(0);
 
-        assert_ne!(hash1, hash2, "Different seeds should produce different results");
+        assert_ne!(
+            hash1, hash2,
+            "Different seeds should produce different results"
+        );
     }
 
     #[test]
@@ -714,8 +718,7 @@ mod tests {
         assert!(
             result.hashes_match,
             "Sequential and parallel should produce same results: {} vs {}",
-            result.sequential_hash,
-            result.parallel_hash
+            result.sequential_hash, result.parallel_hash
         );
         assert!(
             result.max_position_difference < 1e-5,
@@ -806,11 +809,7 @@ mod tests {
 
         // All corresponding states should have matching hashes
         for (s1, s2) in states1.iter().zip(states2.iter()) {
-            assert_eq!(
-                s1.hash, s2.hash,
-                "Hashes should match at step {}",
-                s1.step
-            );
+            assert_eq!(s1.hash, s2.hash, "Hashes should match at step {}", s1.step);
         }
     }
 }

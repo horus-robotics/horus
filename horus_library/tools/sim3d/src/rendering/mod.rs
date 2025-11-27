@@ -11,13 +11,22 @@ pub mod setup;
 pub mod shadows;
 
 // Re-export key rendering types and presets
-pub use post_processing::{
-    BloomConfig, BloomQuality, HDRConfig, ColorGrading,
-    Vignette, ChromaticAberration, FilmGrain, PostProcessingPlugin,
+pub use ambient_occlusion::{
+    AOSamplingPattern, AOStats, AOTechnique, AOUtils, AdvancedAOSettings, AmbientOcclusionConfig,
+    AmbientOcclusionOverride, AmbientOcclusionPlugin,
 };
-pub use shadows::{ShadowConfig, ShadowQuality, ShadowsPlugin};
-pub use atmosphere::{FogConfig, FogMode, VolumetricLightingConfig, AtmosphericScattering, AtmosphericParticles, ParticleType, AtmospherePlugin};
-pub use ambient_occlusion::{AOTechnique, AmbientOcclusionConfig, AmbientOcclusionOverride, AOSamplingPattern, AdvancedAOSettings, AOStats, AmbientOcclusionPlugin, AOUtils};
-pub use materials::{PBRMaterialProperties, MaterialPresets, MaterialLibrary, MaterialUtils, ColorPalette, MaterialPlugin};
+pub use atmosphere::{
+    AtmospherePlugin, AtmosphericParticles, AtmosphericScattering, FogConfig, FogMode,
+    ParticleType, VolumetricLightingConfig,
+};
 pub use camera_controller::OrbitCamera;
 pub use environment::{EnvironmentConfig, EnvironmentPlugin};
+pub use materials::{
+    ColorPalette, MaterialLibrary, MaterialPlugin, MaterialPresets, MaterialUtils,
+    PBRMaterialProperties,
+};
+pub use post_processing::{
+    BloomConfig, BloomQuality, ChromaticAberration, ColorGrading, FilmGrain, HDRConfig,
+    PostProcessingPlugin, Vignette,
+};
+pub use shadows::{ShadowConfig, ShadowQuality, ShadowsPlugin};

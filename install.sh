@@ -21,33 +21,17 @@ BLUE='\033[0;34m'
 MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
-# WALL-E Robot indicators (UTF-8)
-ROBOT="[□_□]"
-ROBOT_SUCCESS="[■_■]"
-ROBOT_ERROR="[×_×]"
-ROBOT_WARN="[□_□]!"
-ROBOT_BUILD="[□_□]"
-ROBOT_DOWNLOAD="[□_□]"
-ROBOT_CLEAN="[▣_▣]"
-ROBOT_CHECK="[□_□]?"
+# Status indicators
+STATUS_OK="[+]"
+STATUS_ERR="[-]"
+STATUS_WARN="[!]"
+STATUS_INFO="[*]"
 
-# Spinner function - WALL-E compacting trash animation
+# Spinner function - simple dots
 spin() {
     local pid=$1
     local msg="$2"
-    # WALL-E compacting trash: sees trash, eats it, compacts, ejects cube
-    local spin_chars=(
-        '[□_□]  ▮▮▮'
-        '[□_□] ▮▮▮ '
-        '[□_□]▮▮▮  '
-        '[□■□]▮▮   '
-        '[■_■]▮    '
-        '[▣_▣]     '
-        '[▪_▪]     '
-        '[□_□]▫    '
-        '[□_□] ▫▫  '
-        '[□_□]  ▫▫▫'
-    )
+    local spin_chars=('.' '..' '...' '....')
     local i=0
 
     # Hide cursor
@@ -56,7 +40,7 @@ spin() {
     while kill -0 $pid 2>/dev/null; do
         printf "\r  ${spin_chars[$i]} ${msg}"
         i=$(( (i + 1) % ${#spin_chars[@]} ))
-        sleep 0.15
+        sleep 0.25
     done
 
     # Show cursor and clear line
@@ -64,23 +48,11 @@ spin() {
     printf "\r\033[K"
 }
 
-# Build spinner - same WALL-E animation for builds
+# Build spinner - simple dots
 spin_build() {
     local pid=$1
     local msg="$2"
-    # WALL-E compacting trash animation
-    local spin_chars=(
-        '[□_□]  ▮▮▮'
-        '[□_□] ▮▮▮ '
-        '[□_□]▮▮▮  '
-        '[□■□]▮▮   '
-        '[■_■]▮    '
-        '[▣_▣]     '
-        '[▪_▪]     '
-        '[□_□]▫    '
-        '[□_□] ▫▫  '
-        '[□_□]  ▫▫▫'
-    )
+    local spin_chars=('.' '..' '...' '....')
     local i=0
 
     tput civis 2>/dev/null || true
@@ -88,11 +60,182 @@ spin_build() {
     while kill -0 $pid 2>/dev/null; do
         printf "\r  ${spin_chars[$i]} ${msg}"
         i=$(( (i + 1) % ${#spin_chars[@]} ))
-        sleep 0.15
+        sleep 0.25
     done
 
     tput cnorm 2>/dev/null || true
     printf "\r\033[K"
+}
+
+# ============================================================================
+# PROGRESS BAR FUNCTIONS - Real progress with percentages and ETA
+# ============================================================================
+
+# Format seconds into human-readable duration
+format_duration() {
+    local seconds=$1
+    if [ "$seconds" -lt 60 ]; then
+        echo "${seconds}s"
+    elif [ "$seconds" -lt 3600 ]; then
+        local mins=$((seconds / 60))
+        local secs=$((seconds % 60))
+        echo "${mins}m ${secs}s"
+    else
+        local hours=$((seconds / 3600))
+        local mins=$(((seconds % 3600) / 60))
+        echo "${hours}h ${mins}m"
+    fi
+}
+
+# Format bytes into human-readable size
+format_bytes() {
+    local bytes=$1
+    if [ "$bytes" -lt 1024 ]; then
+        echo "${bytes}B"
+    elif [ "$bytes" -lt 1048576 ]; then
+        echo "$((bytes / 1024))KB"
+    elif [ "$bytes" -lt 1073741824 ]; then
+        echo "$((bytes / 1048576))MB"
+    else
+        echo "$((bytes / 1073741824))GB"
+    fi
+}
+
+# Draw a progress bar with percentage and ETA
+# Usage: draw_progress_bar current total width message [start_time]
+draw_progress_bar() {
+    local current=$1
+    local total=$2
+    local width=${3:-30}
+    local msg="$4"
+    local start_time=${5:-$PROGRESS_START_TIME}
+
+    # Calculate percentage
+    local percent=0
+    if [ "$total" -gt 0 ]; then
+        percent=$((current * 100 / total))
+    fi
+
+    # Calculate filled width
+    local filled=$((current * width / total))
+    [ "$filled" -gt "$width" ] && filled=$width
+    local empty=$((width - filled))
+
+    # Build the bar
+    local bar=""
+    for ((j=0; j<filled; j++)); do bar+="█"; done
+    for ((j=0; j<empty; j++)); do bar+="░"; done
+
+    # Calculate ETA
+    local eta_str=""
+    if [ -n "$start_time" ] && [ "$current" -gt 0 ]; then
+        local elapsed=$(($(date +%s) - start_time))
+        if [ "$elapsed" -gt 0 ] && [ "$percent" -gt 0 ] && [ "$percent" -lt 100 ]; then
+            local total_estimated=$((elapsed * 100 / percent))
+            local remaining=$((total_estimated - elapsed))
+            if [ "$remaining" -gt 0 ]; then
+                eta_str=" ETA: $(format_duration $remaining)"
+            fi
+        fi
+    fi
+
+    # Print the progress bar
+    printf "\r  ${STATUS_INFO} [${bar}] %3d%% ${msg}${eta_str}    " "$percent"
+}
+
+# Complete the progress bar (success)
+complete_progress_bar() {
+    local msg="$1"
+    local width=${2:-30}
+    local bar=""
+    for ((j=0; j<width; j++)); do bar+="█"; done
+    printf "\r  ${STATUS_OK} [${bar}] 100%% ${msg}    \n"
+}
+
+# Fail the progress bar (error)
+fail_progress_bar() {
+    local msg="$1"
+    local percent=${2:-0}
+    local width=${3:-30}
+    local filled=$((percent * width / 100))
+    local empty=$((width - filled))
+    local bar=""
+    for ((j=0; j<filled; j++)); do bar+="█"; done
+    for ((j=0; j<empty; j++)); do bar+="░"; done
+    printf "\r  ${STATUS_ERR} [${bar}] %3d%% ${msg}    \n" "$percent"
+}
+
+# Step-based progress tracker
+# Usage: init_step_progress "Step1:weight" "Step2:weight" ...
+STEP_NAMES=()
+STEP_WEIGHTS=()
+STEP_TOTAL_WEIGHT=0
+STEP_CURRENT=0
+STEP_COMPLETED_WEIGHT=0
+STEP_START_TIME=0
+
+init_step_progress() {
+    STEP_NAMES=()
+    STEP_WEIGHTS=()
+    STEP_TOTAL_WEIGHT=0
+    STEP_CURRENT=0
+    STEP_COMPLETED_WEIGHT=0
+    STEP_START_TIME=$(date +%s)
+
+    for step_info in "$@"; do
+        local name="${step_info%%:*}"
+        local weight="${step_info##*:}"
+        STEP_NAMES+=("$name")
+        STEP_WEIGHTS+=("$weight")
+        STEP_TOTAL_WEIGHT=$((STEP_TOTAL_WEIGHT + weight))
+    done
+}
+
+# Start the next step
+# Usage: next_step
+next_step() {
+    if [ "$STEP_CURRENT" -gt 0 ] && [ "$STEP_CURRENT" -le "${#STEP_WEIGHTS[@]}" ]; then
+        local prev_idx=$((STEP_CURRENT - 1))
+        STEP_COMPLETED_WEIGHT=$((STEP_COMPLETED_WEIGHT + STEP_WEIGHTS[prev_idx]))
+    fi
+    STEP_CURRENT=$((STEP_CURRENT + 1))
+}
+
+# Update step progress (0-100 within current step)
+# Usage: update_step_progress percent message
+update_step_progress() {
+    local step_percent=$1
+    local msg="$2"
+
+    if [ "$STEP_CURRENT" -gt 0 ] && [ "$STEP_CURRENT" -le "${#STEP_WEIGHTS[@]}" ]; then
+        local idx=$((STEP_CURRENT - 1))
+        local step_weight=${STEP_WEIGHTS[$idx]}
+        local step_contribution=$((step_weight * step_percent / 100))
+        local total_progress=$((STEP_COMPLETED_WEIGHT + step_contribution))
+
+        # Calculate overall percentage
+        local overall_percent=0
+        if [ "$STEP_TOTAL_WEIGHT" -gt 0 ]; then
+            overall_percent=$((total_progress * 100 / STEP_TOTAL_WEIGHT))
+        fi
+
+        draw_progress_bar "$overall_percent" 100 30 "$msg" "$STEP_START_TIME"
+    fi
+}
+
+# Complete current step
+# Usage: complete_step message
+complete_step() {
+    local msg="$1"
+    if [ "$STEP_CURRENT" -gt 0 ] && [ "$STEP_CURRENT" -le "${#STEP_WEIGHTS[@]}" ]; then
+        update_step_progress 100 "$msg"
+    fi
+}
+
+# Finish all steps successfully
+finish_step_progress() {
+    local msg="$1"
+    complete_progress_bar "$msg" 30
 }
 
 # Source shared dependency functions (if available)
@@ -107,7 +250,7 @@ LOG_FILE="/tmp/horus_install_$(date +%Y%m%d_%H%M%S).log"
 exec 2> >(tee -a "$LOG_FILE" >&2)
 
 echo ""
-echo -e "${CYAN}${ROBOT} HORUS Installation Script v${SCRIPT_VERSION}${NC}"
+echo -e "${CYAN}HORUS Installation Script v${SCRIPT_VERSION}${NC}"
 echo ""
 
 # Detect operating system
@@ -618,56 +761,206 @@ echo -e "${GREEN}${NC} Clean complete - starting fresh build"
 echo ""
 
 # Build with automatic retry and error recovery
+# Shows BOTH overall progress bar AND per-submodule progress bars
 build_with_recovery() {
     local max_retries=3
     local retry=0
 
     # Define ALL packages to build - pre-compile everything so users don't wait
     # This includes all core libraries that user projects depend on
-    local BUILD_PACKAGES=(
-        "horus"
-        "horus_core"
+    # Order matters: dependencies first, then dependents
+    BUILD_PACKAGES=(
         "horus_macros"
+        "horus_core"
+        "horus"
         "horus_manager"
         "horus_library"
         "sim2d"
         "sim3d"
     )
 
+    # Estimated crate counts for each package (for progress calculation)
+    # Based on cargo metadata dependency analysis (incremental builds)
+    declare -A PACKAGE_CRATES=(
+        ["horus_macros"]=230
+        ["horus_core"]=5
+        ["horus"]=50
+        ["horus_manager"]=440
+        ["horus_library"]=10
+        ["sim2d"]=300
+        ["sim3d"]=60
+    )
+
+    # Calculate total crates for overall progress
+    local TOTAL_ALL_CRATES=0
+    for pkg in "${BUILD_PACKAGES[@]}"; do
+        TOTAL_ALL_CRATES=$((TOTAL_ALL_CRATES + PACKAGE_CRATES[$pkg]))
+    done
+
+    # Package status tracking (global for function access)
+    declare -A PKG_STATUS  # "pending", "building", "done", "failed"
+    declare -A PKG_TIME    # Build time in seconds
+    declare -A PKG_PERCENT # Current build percentage
+
     # Note: horus_py is installed from PyPI, not built from source
     # Note: horus_router is part of horus_library (not a separate binary)
 
-    # Build command with explicit package selection (faster, skips benchmarks/tests)
-    local BUILD_CMD="cargo build --release"
-    for pkg in "${BUILD_PACKAGES[@]}"; do
-        BUILD_CMD="$BUILD_CMD -p $pkg"
-    done
+    local total_packages=${#BUILD_PACKAGES[@]}
 
     while [ $retry -lt $max_retries ]; do
         echo ""
         echo -e "${CYAN}   Building HORUS packages (attempt $((retry + 1))/$max_retries)...${NC}"
-        echo -e "${CYAN}   Packages: ${BUILD_PACKAGES[*]}${NC}"
         echo -e "${CYAN}   Skipping: benchmarks, horus_py (installed from PyPI), tanksim, horus_router${NC}"
         echo ""
 
         # Clean build on retry
         if [ $retry -gt 0 ]; then
-            echo -e "${CYAN}${ROBOT_CLEAN} Cleaning previous build artifacts...${NC}"
+            echo -e "${CYAN}${STATUS_INFO} Cleaning previous build artifacts...${NC}"
             cargo clean
         fi
 
-        # Try building only required packages (with spinner for long builds)
-        $BUILD_CMD >> "$LOG_FILE" 2>&1 &
-        local build_pid=$!
-        spin_build $build_pid "Building HORUS (this may take a few minutes)..."
-        wait $build_pid
-        local build_status=$?
+        local OVERALL_START=$(date +%s)
+        local TEMP_OUTPUT="/tmp/horus_build_output_$$.txt"
+        local all_succeeded=true
+        local current_package_num=0
+        local OVERALL_CRATE_COUNT=0
 
-        if [ $build_status -eq 0 ]; then
-            echo -e "  ${ROBOT_SUCCESS} Build completed successfully"
+        # Initialize status tracking
+        declare -A PKG_CRATE  # Current crate being compiled
+        declare -A PKG_ETA    # ETA string
+        for pkg in "${BUILD_PACKAGES[@]}"; do
+            PKG_STATUS[$pkg]="pending"
+            PKG_TIME[$pkg]=0
+            PKG_PERCENT[$pkg]=0
+            PKG_CRATE[$pkg]=""
+            PKG_ETA[$pkg]=""
+        done
+
+        # Hide cursor for clean progress display
+        tput civis 2>/dev/null || true
+
+        # Build each package sequentially
+        for pkg in "${BUILD_PACKAGES[@]}"; do
+            current_package_num=$((current_package_num + 1))
+            PKG_STATUS[$pkg]="building"
+            PKG_PERCENT[$pkg]=0
+
+            local PKG_START=$(date +%s)
+            local CRATE_COUNT=0
+            local TOTAL_CRATES=${PACKAGE_CRATES[$pkg]:-50}
+
+            # Print package header
+            echo -e "  ${STATUS_INFO} [${current_package_num}/${total_packages}] Building ${CYAN}${pkg}${NC}..."
+
+            # Run cargo build for this package and track progress
+            # Use process substitution to avoid subshell variable scope issues
+            local build_status=0
+            local last_line=""
+            while IFS= read -r line; do
+                last_line="$line"
+                echo "$line" >> "$LOG_FILE"
+
+                # Parse Compiling lines for progress
+                if [[ "$line" =~ ^[[:space:]]*Compiling[[:space:]]+([a-zA-Z0-9_-]+) ]]; then
+                    CRATE_COUNT=$((CRATE_COUNT + 1))
+                    OVERALL_CRATE_COUNT=$((OVERALL_CRATE_COUNT + 1))
+                    local CURRENT_CRATE="${BASH_REMATCH[1]}"
+
+                    # Calculate package progress
+                    local percent=$((CRATE_COUNT * 100 / TOTAL_CRATES))
+                    [ "$percent" -gt 99 ] && percent=99  # Cap at 99% until done
+                    PKG_PERCENT[$pkg]=$percent
+
+                    # Calculate overall progress
+                    local overall_percent=$((OVERALL_CRATE_COUNT * 100 / TOTAL_ALL_CRATES))
+                    [ "$overall_percent" -gt 99 ] && overall_percent=99
+
+                    # Calculate ETAs
+                    local elapsed=$(($(date +%s) - PKG_START))
+                    local pkg_eta=""
+                    if [ "$elapsed" -gt 1 ] && [ "$percent" -gt 5 ]; then
+                        local total_estimated=$((elapsed * 100 / percent))
+                        local remaining=$((total_estimated - elapsed))
+                        [ "$remaining" -gt 0 ] && pkg_eta="ETA: $(format_duration $remaining)"
+                    fi
+
+                    local overall_elapsed=$(($(date +%s) - OVERALL_START))
+                    local overall_eta=""
+                    if [ "$overall_elapsed" -gt 2 ] && [ "$overall_percent" -gt 3 ]; then
+                        local total_est=$((overall_elapsed * 100 / overall_percent))
+                        local remain=$((total_est - overall_elapsed))
+                        [ "$remain" -gt 0 ] && overall_eta="ETA: $(format_duration $remain)"
+                    fi
+
+                    # Build progress bars
+                    local pkg_width=20
+                    local pkg_filled=$((percent * pkg_width / 100))
+                    local pkg_empty=$((pkg_width - pkg_filled))
+                    local pkg_bar=""
+                    for ((k=0; k<pkg_filled; k++)); do pkg_bar+="█"; done
+                    for ((k=0; k<pkg_empty; k++)); do pkg_bar+="░"; done
+
+                    local overall_width=30
+                    local overall_filled=$((overall_percent * overall_width / 100))
+                    local overall_empty=$((overall_width - overall_filled))
+                    local overall_bar=""
+                    for ((k=0; k<overall_filled; k++)); do overall_bar+="█"; done
+                    for ((k=0; k<overall_empty; k++)); do overall_bar+="░"; done
+
+                    # Truncate crate name
+                    local crate_display="$CURRENT_CRATE"
+                    [ ${#crate_display} -gt 18 ] && crate_display="${crate_display:0:15}..."
+
+                    # Single line update with carriage return
+                    printf "\r       [${CYAN}${pkg_bar}${NC}] %3d%% %-18s | Overall: [${MAGENTA}${overall_bar}${NC}] %3d%% ${overall_eta}     " \
+                        "$percent" "$crate_display" "$overall_percent"
+                fi
+
+                # Check for errors
+                if [[ "$line" =~ ^error\[E ]]; then
+                    echo "$line" >> "$TEMP_OUTPUT"
+                    build_status=1
+                fi
+            done < <(cargo build --release -p "$pkg" 2>&1; echo "BUILD_EXIT_CODE:$?")
+
+            # Extract exit code from the marker line
+            if [[ "$last_line" =~ BUILD_EXIT_CODE:([0-9]+) ]]; then
+                build_status="${BASH_REMATCH[1]}"
+            fi
+
+            # Update package status
+            local PKG_END=$(date +%s)
+            PKG_TIME[$pkg]=$((PKG_END - PKG_START))
+
+            # Clear the progress line and print result
+            printf "\r\033[K"  # Clear line
+
+            if [ "$build_status" -eq 0 ]; then
+                PKG_STATUS[$pkg]="done"
+                PKG_PERCENT[$pkg]=100
+                echo -e "       ${GREEN}[████████████████████]${NC} 100% ${GREEN}${pkg}${NC} completed in ${GREEN}$(format_duration ${PKG_TIME[$pkg]})${NC}"
+            else
+                PKG_STATUS[$pkg]="failed"
+                all_succeeded=false
+                echo -e "       ${RED}[████████████████████]${NC} ${RED}FAILED${NC} ${pkg}"
+                break  # Stop on first failure
+            fi
+        done
+
+        # Show cursor again
+        tput cnorm 2>/dev/null || true
+
+        if [ "$all_succeeded" = true ]; then
+            local OVERALL_END=$(date +%s)
+            local total_elapsed=$((OVERALL_END - OVERALL_START))
+            echo ""
+            echo -e "  ${STATUS_OK} All packages built successfully in $(format_duration $total_elapsed)"
+            rm -f "$TEMP_OUTPUT" 2>/dev/null
             return 0
         else
             ((retry++))
+            echo ""
+            echo -e "  ${STATUS_ERR} Build failed"
 
             if [ $retry -lt $max_retries ]; then
                 echo -e "${YELLOW} Build failed, attempting recovery...${NC}"
@@ -695,7 +988,8 @@ build_with_recovery() {
         fi
     done
 
-    echo -e "  ${ROBOT_ERROR} Build failed after $max_retries attempts"
+    rm -f "$TEMP_OUTPUT" 2>/dev/null
+    echo -e "  ${STATUS_ERR} Build failed after $max_retries attempts"
     echo -e "${YELLOW} Check the log file for details: $LOG_FILE${NC}"
     echo ""
     echo "Troubleshooting steps:"
@@ -713,7 +1007,7 @@ fi
 echo ""
 
 # Step 2: Install CLI binary
-echo -e "${CYAN}${ROBOT_DOWNLOAD} Installing CLI binary...${NC}"
+echo -e "${CYAN}${STATUS_INFO} Installing CLI binary...${NC}"
 
 if [ ! -d "$INSTALL_DIR" ]; then
     mkdir -p "$INSTALL_DIR"
@@ -741,7 +1035,7 @@ fi
 echo ""
 
 # Step 3: Create cache directory structure
-echo -e "${CYAN}${ROBOT_DOWNLOAD} Setting up library cache...${NC}"
+echo -e "${CYAN}${STATUS_INFO} Setting up library cache...${NC}"
 
 mkdir -p "$CACHE_DIR"
 
@@ -1183,7 +1477,7 @@ if [ "$COMPLETION_INSTALLED" = true ]; then
 fi
 
 echo ""
-echo -e "${GREEN}${ROBOT_SUCCESS} HORUS installation complete!${NC}"
+echo -e "${GREEN}${STATUS_OK} HORUS installation complete!${NC}"
 echo ""
 echo -e "${CYAN}Next steps:${NC}"
 echo "  1. Create a new project:"

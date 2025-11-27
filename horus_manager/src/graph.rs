@@ -161,7 +161,11 @@ pub fn discover_graph_data() -> (Vec<GraphNode>, Vec<GraphEdge>) {
                     id: topic_id,
                     label: topic.topic_name.clone(),
                     node_type: NodeType::Topic,
-                    position: get_position(&NodeType::Topic, topic_index, &format!("topic_{}", topic.topic_name)),
+                    position: get_position(
+                        &NodeType::Topic,
+                        topic_index,
+                        &format!("topic_{}", topic.topic_name),
+                    ),
                     velocity: Vec2::ZERO,
                     pid: None,
                     active: topic.active,
@@ -506,14 +510,26 @@ mod tests {
         assert_eq!(edges.len(), 2);
 
         // Verify node types
-        let process_count = nodes.iter().filter(|n| n.node_type == NodeType::Process).count();
-        let topic_count = nodes.iter().filter(|n| n.node_type == NodeType::Topic).count();
+        let process_count = nodes
+            .iter()
+            .filter(|n| n.node_type == NodeType::Process)
+            .count();
+        let topic_count = nodes
+            .iter()
+            .filter(|n| n.node_type == NodeType::Topic)
+            .count();
         assert_eq!(process_count, 2);
         assert_eq!(topic_count, 1);
 
         // Verify edge types
-        let pub_count = edges.iter().filter(|e| e.edge_type == EdgeType::Publish).count();
-        let sub_count = edges.iter().filter(|e| e.edge_type == EdgeType::Subscribe).count();
+        let pub_count = edges
+            .iter()
+            .filter(|e| e.edge_type == EdgeType::Publish)
+            .count();
+        let sub_count = edges
+            .iter()
+            .filter(|e| e.edge_type == EdgeType::Subscribe)
+            .count();
         assert_eq!(pub_count, 1);
         assert_eq!(sub_count, 1);
 

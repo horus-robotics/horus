@@ -198,8 +198,16 @@ mod tests {
     fn test_robot_cmd_vel() {
         let mut robot = SimulatedRobotData::new("test_robot");
         let twist = Twist {
-            linear: Vector3Message { x: 1.0, y: 0.0, z: 0.0 },
-            angular: Vector3Message { x: 0.0, y: 0.0, z: 0.5 },
+            linear: Vector3Message {
+                x: 1.0,
+                y: 0.0,
+                z: 0.0,
+            },
+            angular: Vector3Message {
+                x: 0.0,
+                y: 0.0,
+                z: 0.5,
+            },
         };
         robot.set_cmd_vel(twist.clone());
         assert_eq!(robot.get_cmd_vel().linear.x, 1.0);

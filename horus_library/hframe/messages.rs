@@ -1,10 +1,9 @@
-//! TF Message types for inter-node communication
+//! HFrame Message types for inter-node communication
 //!
 //! Provides message types compatible with HORUS Hub for broadcasting
 //! and receiving transform updates.
 
 use super::transform::Transform;
-use super::{frame_id_to_string, string_to_frame_id};
 use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
 
@@ -13,6 +12,21 @@ pub const MAX_TRANSFORMS_PER_MESSAGE: usize = 32;
 
 /// Frame ID buffer size
 pub const FRAME_ID_SIZE: usize = 64;
+
+/// Convert frame ID bytes to string
+pub fn frame_id_to_string(bytes: &[u8]) -> String {
+    String::from_utf8_lossy(bytes)
+        .trim_end_matches('\0')
+        .to_string()
+}
+
+/// Copy string to fixed-size frame ID buffer
+pub fn string_to_frame_id(s: &str, buffer: &mut [u8]) {
+    let bytes = s.as_bytes();
+    let len = bytes.len().min(buffer.len() - 1);
+    buffer[..len].copy_from_slice(&bytes[..len]);
+    buffer[len..].fill(0);
+}
 
 /// Stamped transform message (with timestamp)
 ///
@@ -48,12 +62,7 @@ impl Default for TransformStamped {
 
 impl TransformStamped {
     /// Create a new stamped transform
-    pub fn new(
-        parent: &str,
-        child: &str,
-        timestamp: u64,
-        transform: Transform,
-    ) -> Self {
+    pub fn new(parent: &str, child: &str, timestamp: u64, transform: Transform) -> Self {
         let mut msg = Self::default();
         string_to_frame_id(parent, &mut msg.parent_frame);
         string_to_frame_id(child, &mut msg.child_frame);
@@ -286,7 +295,12 @@ mod tests {
         let mut batch = TFMessage::new();
 
         for i in 0..MAX_TRANSFORMS_PER_MESSAGE {
-            let tf = TransformStamped::new(&format!("f{}", i), &format!("f{}", i + 1), i as u64, Transform::identity());
+            let tf = TransformStamped::new(
+                &format!("f{}", i),
+                &format!("f{}", i + 1),
+                i as u64,
+                Transform::identity(),
+            );
             assert!(batch.add(tf));
         }
 
@@ -310,5 +324,19 @@ mod tests {
         let msg = TFMessage::default();
         let bytes: &[u8] = bytemuck::bytes_of(&msg);
         assert!(!bytes.is_empty());
+    }
+
+    #[test]
+    fn test_frame_id_conversion() {
+        let mut buffer = [0u8; 64];
+        string_to_frame_id("base_link", &mut buffer);
+        assert_eq!(frame_id_to_string(&buffer), "base_link");
+    }
+
+    #[test]
+    fn test_frame_id_truncation() {
+        let mut buffer = [0u8; 8];
+        string_to_frame_id("very_long_frame_name", &mut buffer);
+        assert_eq!(frame_id_to_string(&buffer), "very_lo");
     }
 }

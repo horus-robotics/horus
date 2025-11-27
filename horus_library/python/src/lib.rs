@@ -1332,7 +1332,7 @@ impl PyRange {
 
 /// Register sim2d submodule
 fn register_sim2d(py: Python, parent: &Bound<'_, PyModule>) -> PyResult<()> {
-    use sim2d::python_api::{Sim2D, RobotConfigPy, WorldConfigPy};
+    use sim2d::python_api::{RobotConfigPy, Sim2D, WorldConfigPy};
 
     let sim2d_module = PyModule::new_bound(py, "sim2d")?;
     sim2d_module.add_class::<Sim2D>()?;
@@ -1345,7 +1345,7 @@ fn register_sim2d(py: Python, parent: &Bound<'_, PyModule>) -> PyResult<()> {
 /// Register sim3d submodule (feature-gated)
 #[cfg(feature = "sim3d")]
 fn register_sim3d(py: Python, parent: &Bound<'_, PyModule>) -> PyResult<()> {
-    use sim3d::rl::python::{PySim3DEnv, PyVecSim3DEnv, make_env, make_vec_env};
+    use sim3d::rl::python::{make_env, make_vec_env, PySim3DEnv, PyVecSim3DEnv};
 
     let sim3d_module = PyModule::new_bound(py, "sim3d")?;
     sim3d_module.add_class::<PySim3DEnv>()?;

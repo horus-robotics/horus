@@ -9,6 +9,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[cfg(feature = "gpio-hardware")]
 use std::thread;
 #[cfg(feature = "gpio-hardware")]
+use std::time::Duration;
+#[cfg(feature = "gpio-hardware")]
 use sysfs_gpio::{Direction, Pin};
 
 /// Ultrasonic Distance Sensor Node
@@ -372,7 +374,7 @@ impl UltrasonicNode {
         &mut self,
         sensor_id: u8,
         current_time: u64,
-        ctx: Option<&mut NodeInfo>,
+        mut ctx: Option<&mut NodeInfo>,
     ) -> Option<f32> {
         let idx = sensor_id as usize;
 

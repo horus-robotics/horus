@@ -119,7 +119,10 @@ async fn dashboard_session_middleware(
 
 /// Run the web dashboard server
 pub async fn run(port: u16) -> anyhow::Result<()> {
-    eprintln!("Dashboard will read logs from shared memory ring buffer at {}", shm_logs_path().display());
+    eprintln!(
+        "Dashboard will read logs from shared memory ring buffer at {}",
+        shm_logs_path().display()
+    );
 
     // Check if password is configured, if not prompt for setup
     let password_hash = if !crate::security::auth::is_password_configured() {
@@ -155,6 +158,7 @@ pub async fn run(port: u16) -> anyhow::Result<()> {
         .route("/api/nodes", get(nodes_handler))
         .route("/api/topics", get(topics_handler))
         .route("/api/graph", get(graph_handler))
+        .route("/api/network", get(network_handler))
         .route("/api/logs/all", get(logs_all_handler))
         .route("/api/logs/node/:name", get(logs_node_handler))
         .route("/api/logs/topic/:name", get(logs_topic_handler))
@@ -645,6 +649,45 @@ pub async fn graph_handler() -> impl IntoResponse {
         Json(serde_json::json!({
             "nodes": graph_nodes,
             "edges": graph_edges
+        })),
+    )
+        .into_response()
+}
+
+pub async fn network_handler() -> impl IntoResponse {
+    let summary = crate::commands::monitor::get_network_summary();
+
+    let node_statuses = summary
+        .node_statuses
+        .iter()
+        .map(|s| {
+            serde_json::json!({
+                "node_name": s.node_name,
+                "transport_type": s.transport_type,
+                "local_endpoint": s.local_endpoint,
+                "remote_endpoints": s.remote_endpoints,
+                "network_topics_pub": s.network_topics_pub,
+                "network_topics_sub": s.network_topics_sub,
+                "bytes_sent": s.bytes_sent,
+                "bytes_received": s.bytes_received,
+                "packets_sent": s.packets_sent,
+                "packets_received": s.packets_received,
+                "timestamp": s.timestamp,
+            })
+        })
+        .collect::<Vec<_>>();
+
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "total_nodes": summary.total_nodes,
+            "total_bytes_sent": summary.total_bytes_sent,
+            "total_bytes_received": summary.total_bytes_received,
+            "total_packets_sent": summary.total_packets_sent,
+            "total_packets_received": summary.total_packets_received,
+            "transport_breakdown": summary.transport_breakdown,
+            "unique_endpoints": summary.unique_endpoints,
+            "node_statuses": node_statuses,
         })),
     )
         .into_response()

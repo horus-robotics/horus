@@ -44,20 +44,56 @@ fn create_test_router(state: Arc<AppState>) -> Router {
         .route("/api/topics", get(horus_manager::dashboard::topics_handler))
         .route("/api/graph", get(horus_manager::dashboard::graph_handler))
         // Log endpoints
-        .route("/api/logs/all", get(horus_manager::dashboard::logs_all_handler))
-        .route("/api/logs/node/:name", get(horus_manager::dashboard::logs_node_handler))
-        .route("/api/logs/topic/:name", get(horus_manager::dashboard::logs_topic_handler))
+        .route(
+            "/api/logs/all",
+            get(horus_manager::dashboard::logs_all_handler),
+        )
+        .route(
+            "/api/logs/node/:name",
+            get(horus_manager::dashboard::logs_node_handler),
+        )
+        .route(
+            "/api/logs/topic/:name",
+            get(horus_manager::dashboard::logs_topic_handler),
+        )
         // Package endpoints
-        .route("/api/packages/registry", get(horus_manager::dashboard::packages_registry_handler))
-        .route("/api/packages/environments", get(horus_manager::dashboard::packages_environments_handler))
-        .route("/api/packages/publish", post(horus_manager::dashboard::packages_publish_handler))
+        .route(
+            "/api/packages/registry",
+            get(horus_manager::dashboard::packages_registry_handler),
+        )
+        .route(
+            "/api/packages/environments",
+            get(horus_manager::dashboard::packages_environments_handler),
+        )
+        .route(
+            "/api/packages/publish",
+            post(horus_manager::dashboard::packages_publish_handler),
+        )
         // Parameter endpoints (already well-tested in param_api_tests.rs)
-        .route("/api/params", get(horus_manager::dashboard::params_list_handler))
-        .route("/api/params/:key", get(horus_manager::dashboard::params_get_handler))
-        .route("/api/params/:key", post(horus_manager::dashboard::params_set_handler))
-        .route("/api/params/:key", delete(horus_manager::dashboard::params_delete_handler))
-        .route("/api/params/export", post(horus_manager::dashboard::params_export_handler))
-        .route("/api/params/import", post(horus_manager::dashboard::params_import_handler))
+        .route(
+            "/api/params",
+            get(horus_manager::dashboard::params_list_handler),
+        )
+        .route(
+            "/api/params/:key",
+            get(horus_manager::dashboard::params_get_handler),
+        )
+        .route(
+            "/api/params/:key",
+            post(horus_manager::dashboard::params_set_handler),
+        )
+        .route(
+            "/api/params/:key",
+            delete(horus_manager::dashboard::params_delete_handler),
+        )
+        .route(
+            "/api/params/export",
+            post(horus_manager::dashboard::params_export_handler),
+        )
+        .route(
+            "/api/params/import",
+            post(horus_manager::dashboard::params_import_handler),
+        )
         .with_state(state)
 }
 
@@ -96,9 +132,8 @@ async fn test_status_handler_returns_ok() {
 #[tokio::test]
 async fn test_status_handler_with_workspace() {
     let params = Arc::new(RuntimeParams::default());
-    let auth_service = Arc::new(
-        AuthService::new("$argon2id$v=19$m=19456,t=2,p=1$test$test".to_string()).unwrap(),
-    );
+    let auth_service =
+        Arc::new(AuthService::new("$argon2id$v=19$m=19456,t=2,p=1$test$test".to_string()).unwrap());
 
     // Create state with a workspace path
     let state = Arc::new(AppState {
@@ -154,7 +189,11 @@ async fn test_status_handler_health_colors() {
     // Verify health_color is a valid color
     let valid_colors = ["green", "yellow", "orange", "red", "gray"];
     let health_color = json["health_color"].as_str().unwrap();
-    assert!(valid_colors.contains(&health_color), "Invalid health color: {}", health_color);
+    assert!(
+        valid_colors.contains(&health_color),
+        "Invalid health color: {}",
+        health_color
+    );
 }
 
 // ============================================================================
@@ -264,7 +303,10 @@ async fn test_topics_handler_response_structure() {
         for topic in topics {
             assert!(topic["name"].is_string(), "Topic should have name");
             assert!(topic["size"].is_string(), "Topic should have size");
-            assert!(topic["active"].is_boolean(), "Topic should have active status");
+            assert!(
+                topic["active"].is_boolean(),
+                "Topic should have active status"
+            );
         }
     }
 }
@@ -326,7 +368,8 @@ async fn test_graph_handler_node_structure() {
             let node_type = node["type"].as_str().unwrap();
             assert!(
                 node_type == "process" || node_type == "topic",
-                "Invalid node type: {}", node_type
+                "Invalid node type: {}",
+                node_type
             );
         }
     }
@@ -360,7 +403,8 @@ async fn test_graph_handler_edge_structure() {
             let edge_type = edge["type"].as_str().unwrap();
             assert!(
                 edge_type == "publish" || edge_type == "subscribe",
-                "Invalid edge type: {}", edge_type
+                "Invalid edge type: {}",
+                edge_type
             );
         }
     }
@@ -463,7 +507,10 @@ async fn test_packages_registry_handler_returns_ok() {
         .unwrap();
 
     // Should return OK even if registry is unavailable
-    assert!(response.status() == StatusCode::OK || response.status() == StatusCode::INTERNAL_SERVER_ERROR);
+    assert!(
+        response.status() == StatusCode::OK
+            || response.status() == StatusCode::INTERNAL_SERVER_ERROR
+    );
 }
 
 #[tokio::test]
@@ -487,8 +534,16 @@ async fn test_packages_environments_handler_returns_ok() {
     let json: Value = serde_json::from_slice(&body).unwrap();
 
     // Should have global and local arrays (actual response structure)
-    assert!(json["global"].is_array(), "Expected global to be array, got: {}", json);
-    assert!(json["local"].is_array(), "Expected local to be array, got: {}", json);
+    assert!(
+        json["global"].is_array(),
+        "Expected global to be array, got: {}",
+        json
+    );
+    assert!(
+        json["local"].is_array(),
+        "Expected local to be array, got: {}",
+        json
+    );
 }
 
 #[tokio::test]
@@ -512,7 +567,8 @@ async fn test_packages_publish_handler_returns_response() {
     let status = response.status();
     assert!(
         status.is_success() || status.is_client_error() || status.is_server_error(),
-        "Expected valid HTTP status, got: {}", status
+        "Expected valid HTTP status, got: {}",
+        status
     );
 
     // Should return JSON response
@@ -659,7 +715,11 @@ async fn test_api_returns_json_content_type() {
 
     let content_type = response.headers().get("content-type");
     assert!(content_type.is_some());
-    assert!(content_type.unwrap().to_str().unwrap().contains("application/json"));
+    assert!(content_type
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .contains("application/json"));
 }
 
 // ============================================================================
@@ -691,5 +751,9 @@ async fn test_params_count_in_status() {
 
     // Should have at least the parameters we set
     let count = json["count"].as_u64().unwrap();
-    assert!(count >= 2, "Should have at least 2 parameters, got {}", count);
+    assert!(
+        count >= 2,
+        "Should have at least 2 parameters, got {}",
+        count
+    );
 }

@@ -613,7 +613,10 @@ impl AppConfig {
                 "arm_6dof" | "arm6" => crate::joint::preset_arm_6dof(),
                 "humanoid" | "human" => crate::joint::preset_humanoid_simple(),
                 _ => {
-                    warn!("Unknown preset '{}', available: arm_2dof, arm_6dof, humanoid", preset_name);
+                    warn!(
+                        "Unknown preset '{}', available: arm_2dof, arm_6dof, humanoid",
+                        preset_name
+                    );
                     return configs;
                 }
             };
@@ -634,7 +637,10 @@ impl AppConfig {
                     configs.push(config);
                 }
                 Err(e) => {
-                    warn!("Failed to load articulated robot from '{}': {}", file_path, e);
+                    warn!(
+                        "Failed to load articulated robot from '{}': {}",
+                        file_path, e
+                    );
                 }
             }
         }
@@ -1258,7 +1264,8 @@ pub fn tick_end_system(
             let mut robot_states = Vec::new();
 
             for robot in robot_query.iter() {
-                if let Some(rigid_body) = physics_world.rigid_body_set.get(robot.rigid_body_handle) {
+                if let Some(rigid_body) = physics_world.rigid_body_set.get(robot.rigid_body_handle)
+                {
                     let pos = rigid_body.translation();
                     let linvel = rigid_body.linvel();
                     let angvel = rigid_body.angvel();
@@ -1636,7 +1643,9 @@ pub fn camera_system(
             .or_insert_with(|| crate::camera::CameraSensor::new(camera_config));
 
         // Render camera image and clone it
-        let image = sensor.render(pos, heading, &obstacles, world_width, world_height).clone();
+        let image = sensor
+            .render(pos, heading, &obstacles, world_width, world_height)
+            .clone();
         rendered_images.push((name, image));
     }
 
@@ -1665,7 +1674,11 @@ pub fn gps_system(
                 .get(robot.rigid_body_handle)
                 .map(|rb| {
                     let pos = rb.translation();
-                    (robot.config.name.clone(), robot.config.gps.clone(), rapier2d::na::vector![pos.x, pos.y])
+                    (
+                        robot.config.name.clone(),
+                        robot.config.gps.clone(),
+                        rapier2d::na::vector![pos.x, pos.y],
+                    )
                 })
         })
         .collect();
@@ -1706,18 +1719,17 @@ pub fn ultrasonic_system(
                 // Calculate sensor position in world frame
                 let cos_h = robot_heading.cos();
                 let sin_h = robot_heading.sin();
-                let sensor_x = robot_pos.x + sensor_config.offset[0] * cos_h - sensor_config.offset[1] * sin_h;
-                let sensor_y = robot_pos.y + sensor_config.offset[0] * sin_h + sensor_config.offset[1] * cos_h;
+                let sensor_x =
+                    robot_pos.x + sensor_config.offset[0] * cos_h - sensor_config.offset[1] * sin_h;
+                let sensor_y =
+                    robot_pos.y + sensor_config.offset[0] * sin_h + sensor_config.offset[1] * cos_h;
 
                 // Calculate ray direction
                 let ray_angle = robot_heading + sensor_config.angle;
                 let ray_dir = vector![ray_angle.cos(), ray_angle.sin()];
 
                 // Cast ray
-                let ray = Ray::new(
-                    point![sensor_x, sensor_y],
-                    ray_dir,
-                );
+                let ray = Ray::new(point![sensor_x, sensor_y], ray_dir);
 
                 let hit = query_pipeline.cast_ray(
                     &physics_world.rigid_body_set,
@@ -1774,7 +1786,10 @@ pub fn contact_system(
             .and_then(|rb| rb.colliders().first().copied())
         {
             // Iterate through contact pairs involving this collider
-            for contact_pair in physics_world.narrow_phase.contact_pairs_with(collider_handle) {
+            for contact_pair in physics_world
+                .narrow_phase
+                .contact_pairs_with(collider_handle)
+            {
                 if contact_pair.has_any_active_contact {
                     // Get contact normal to determine which zone
                     for manifold in contact_pair.manifolds.iter() {
@@ -1782,7 +1797,8 @@ pub fn contact_system(
                         let angle = normal.y.atan2(normal.x);
 
                         // Map angle to zone (0 to num_zones-1)
-                        let normalized_angle = (angle + std::f32::consts::PI) / (2.0 * std::f32::consts::PI);
+                        let normalized_angle =
+                            (angle + std::f32::consts::PI) / (2.0 * std::f32::consts::PI);
                         let zone_idx = (normalized_angle * num_zones as f32) as usize % num_zones;
                         zones[zone_idx] = true;
 
@@ -2744,7 +2760,9 @@ pub fn editor_input_system(
                 editor.handle_mouse_release();
 
                 // Find obstacle at click position
-                if let Some(idx) = editor.try_delete_at(world_pos_adjusted, &app_config.world_config.obstacles) {
+                if let Some(idx) =
+                    editor.try_delete_at(world_pos_adjusted, &app_config.world_config.obstacles)
+                {
                     // Record undo action
                     let removed = app_config.world_config.obstacles.remove(idx);
 
@@ -2805,20 +2823,25 @@ fn spawn_obstacle(
 
     // Create collider based on shape
     let collider = match obstacle.shape {
-        ObstacleShape::Rectangle => ColliderBuilder::cuboid(
-            obstacle.size[0] / 2.0,
-            obstacle.size[1] / 2.0,
-        )
-        .build(),
+        ObstacleShape::Rectangle => {
+            ColliderBuilder::cuboid(obstacle.size[0] / 2.0, obstacle.size[1] / 2.0).build()
+        }
         ObstacleShape::Circle => ColliderBuilder::ball(obstacle.size[0] / 2.0).build(),
     };
-    physics_world.collider_set.insert_with_parent(collider, handle, &mut physics_world.rigid_body_set);
+    physics_world.collider_set.insert_with_parent(
+        collider,
+        handle,
+        &mut physics_world.rigid_body_set,
+    );
 
     // Create visual
     commands.spawn((
         Sprite {
             color: Color::srgb(color[0], color[1], color[2]),
-            custom_size: Some(Vec2::new(obstacle.size[0] * scale, obstacle.size[1] * scale)),
+            custom_size: Some(Vec2::new(
+                obstacle.size[0] * scale,
+                obstacle.size[1] * scale,
+            )),
             ..default()
         },
         Transform::from_xyz(obstacle.pos[0] * scale, obstacle.pos[1] * scale, 1.0),
@@ -2830,10 +2853,7 @@ fn spawn_obstacle(
 }
 
 /// Editor preview system - renders obstacle being created
-pub fn editor_preview_system(
-    editor: Res<crate::editor::WorldEditor>,
-    mut gizmos: Gizmos,
-) {
+pub fn editor_preview_system(editor: Res<crate::editor::WorldEditor>, mut gizmos: Gizmos) {
     if !editor.enabled {
         return;
     }
@@ -2847,12 +2867,9 @@ pub fn editor_preview_system(
 
         match preview.shape {
             ObstacleShape::Rectangle => {
-                let half_size = Vec2::new(preview.size[0] * scale / 2.0, preview.size[1] * scale / 2.0);
-                gizmos.rect_2d(
-                    Isometry2d::from_translation(pos),
-                    half_size * 2.0,
-                    color,
-                );
+                let half_size =
+                    Vec2::new(preview.size[0] * scale / 2.0, preview.size[1] * scale / 2.0);
+                gizmos.rect_2d(Isometry2d::from_translation(pos), half_size * 2.0, color);
             }
             ObstacleShape::Circle => {
                 let radius = preview.size[0] * scale / 2.0;
@@ -2976,7 +2993,16 @@ pub fn run_simulation(args: Args) -> Result<()> {
         )
         .add_systems(
             bevy::prelude::Update,
-            (odometry_publish_system, imu_system, lidar_system, camera_system, gps_system, ultrasonic_system, contact_system).after(tick_start_system),
+            (
+                odometry_publish_system,
+                imu_system,
+                lidar_system,
+                camera_system,
+                gps_system,
+                ultrasonic_system,
+                contact_system,
+            )
+                .after(tick_start_system),
         )
         .add_systems(
             bevy::prelude::Update,
@@ -3018,7 +3044,10 @@ pub fn run_simulation(args: Args) -> Result<()> {
         )
         .add_systems(bevy::prelude::Update, ui::ui_system)
         .add_systems(bevy::prelude::Update, ui::file_dialog_system)
-        .add_systems(bevy::prelude::Update, tick_end_system.after(ui::file_dialog_system));
+        .add_systems(
+            bevy::prelude::Update,
+            tick_end_system.after(ui::file_dialog_system),
+        );
 
         // Initialize GpuPreprocessingSupport in RenderApp
         if let Some(render_app) = app.get_sub_app_mut(RenderApp) {

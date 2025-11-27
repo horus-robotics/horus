@@ -74,7 +74,7 @@ pub struct BatteryMonitorNode {
     temperature: f32,         // °C
     cell_voltages: [f32; 16], // Individual cell voltages
     power_supply_status: u8,
-    _cycle_count: u32,  // Reserved for battery health tracking
+    _cycle_count: u32, // Reserved for battery health tracking
 
     // Monitoring
     sampling_rate: f32, // Hz

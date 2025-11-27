@@ -1,6 +1,5 @@
 /// Integration test for JIT compilation system
 /// Demonstrates how the new trait-based JIT support works
-
 use horus_core::core::Node;
 use horus_core::scheduling::jit::ScalingNode;
 use horus_core::scheduling::Scheduler;

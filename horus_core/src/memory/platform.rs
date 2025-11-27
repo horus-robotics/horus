@@ -48,7 +48,10 @@ pub fn shm_topics_dir() -> PathBuf {
 
 /// Get the topics directory for a specific session
 pub fn shm_session_topics_dir(session_id: &str) -> PathBuf {
-    shm_base_dir().join("sessions").join(session_id).join("topics")
+    shm_base_dir()
+        .join("sessions")
+        .join(session_id)
+        .join("topics")
 }
 
 /// Get the heartbeats directory for node health monitoring
@@ -59,6 +62,11 @@ pub fn shm_heartbeats_dir() -> PathBuf {
 /// Get the global shared memory directory
 pub fn shm_global_dir() -> PathBuf {
     shm_base_dir().join("global")
+}
+
+/// Get the network status directory for transport monitoring
+pub fn shm_network_dir() -> PathBuf {
+    shm_base_dir().join("network")
 }
 
 /// Get the logs shared memory path
@@ -162,7 +170,9 @@ pub fn is_process_running(pid: u32) -> bool {
     {
         // On Windows, try to open the process using windows-sys
         use windows_sys::Win32::Foundation::CloseHandle;
-        use windows_sys::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};
+        use windows_sys::Win32::System::Threading::{
+            OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION,
+        };
         unsafe {
             let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
             if handle == 0 {
@@ -195,23 +205,31 @@ pub fn has_native_shm() -> bool {
 
     #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
     {
-        false  // BSD and others still use file-based fallback
+        false // BSD and others still use file-based fallback
     }
 }
 
 /// Get platform name for logging/diagnostics
 pub fn platform_name() -> &'static str {
     #[cfg(target_os = "linux")]
-    { "Linux" }
+    {
+        "Linux"
+    }
 
     #[cfg(target_os = "macos")]
-    { "macOS" }
+    {
+        "macOS"
+    }
 
     #[cfg(target_os = "windows")]
-    { "Windows" }
+    {
+        "Windows"
+    }
 
     #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
-    { "Unix" }
+    {
+        "Unix"
+    }
 }
 
 #[cfg(test)]

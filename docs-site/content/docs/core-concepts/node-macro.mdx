@@ -92,8 +92,8 @@ Define what this node sends:
 ```rust
 pub {
     // Syntax: name: Type -> "topic"
-    velocity: f32 -> "robot/velocity",
-    status: String -> "robot/status"
+    velocity: f32 -> "robot.velocity",
+    status: String -> "robot.status"
 }
 ```
 
@@ -109,8 +109,8 @@ Define what this node receives:
 ```rust
 sub {
     // Syntax: name: Type <- "topic"
-    commands: String <- "user/commands",
-    sensors: f32 <- "sensors/temperature"
+    commands: String <- "user.commands",
+    sensors: f32 <- "sensors.temperature"
 }
 ```
 
@@ -204,7 +204,7 @@ impl {
 ```rust
 node! {
     HeartbeatNode {
-        pub { alive: bool -> "system/heartbeat" }
+        pub { alive: bool -> "system.heartbeat" }
 
         tick(ctx) {
             self.alive.send(true, &mut ctx).ok();
@@ -317,7 +317,7 @@ node! {
 
 ```rust
 // Good
-pub { motor_speed: f32 -> "motors/speed" }
+pub { motor_speed: f32 -> "motors.speed" }
 
 // Bad
 pub { x: f32 -> "data" }

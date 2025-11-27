@@ -4,6 +4,7 @@
 //! (translation + rotation) with full support for composition, inversion,
 //! and point/vector transformation.
 
+use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
 
 /// 3D Transform (translation + rotation as quaternion)
@@ -18,6 +19,10 @@ pub struct Transform {
     /// Rotation as quaternion [x, y, z, w] (Hamilton convention)
     pub rotation: [f64; 4],
 }
+
+// Pod/Zeroable impls for shared memory compatibility
+unsafe impl Pod for Transform {}
+unsafe impl Zeroable for Transform {}
 
 impl Default for Transform {
     fn default() -> Self {
@@ -129,7 +134,11 @@ impl Transform {
         ];
 
         // Rotate negated translation by inverse rotation
-        let neg_translation = [-self.translation[0], -self.translation[1], -self.translation[2]];
+        let neg_translation = [
+            -self.translation[0],
+            -self.translation[1],
+            -self.translation[2],
+        ];
         let inv_translation = rotate_vector_by_quaternion(neg_translation, inv_rotation);
 
         Transform {
@@ -233,10 +242,8 @@ impl Transform {
 
     /// Get the distance (translation magnitude) of this transform
     pub fn translation_magnitude(&self) -> f64 {
-        (self.translation[0].powi(2)
-            + self.translation[1].powi(2)
-            + self.translation[2].powi(2))
-        .sqrt()
+        (self.translation[0].powi(2) + self.translation[1].powi(2) + self.translation[2].powi(2))
+            .sqrt()
     }
 
     /// Get the rotation angle in radians
@@ -369,7 +376,8 @@ fn matrix_to_quaternion(m: [[f64; 3]; 3]) -> [f64; 4] {
     }
 }
 
-fn quaternion_slerp(a: [f64; 4], b: [f64; 4], t: f64) -> [f64; 4] {
+/// Quaternion SLERP (Spherical Linear intERPolation)
+pub fn quaternion_slerp(a: [f64; 4], b: [f64; 4], t: f64) -> [f64; 4] {
     // Compute dot product
     let mut dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
 
@@ -513,5 +521,13 @@ mod tests {
     fn test_translation_magnitude() {
         let tf = Transform::from_translation([3.0, 4.0, 0.0]);
         assert!(approx_eq(tf.translation_magnitude(), 5.0));
+    }
+
+    #[test]
+    fn test_pod_safety() {
+        // Ensure Transform is Pod-safe
+        let tf = Transform::identity();
+        let bytes: &[u8] = bytemuck::bytes_of(&tf);
+        assert!(!bytes.is_empty());
     }
 }

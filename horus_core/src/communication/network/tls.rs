@@ -1,7 +1,7 @@
-/// TLS certificate management and utilities for HORUS
-///
-/// Provides self-signed certificate generation, certificate loading,
-/// and TLS configuration for secure network communication.
+//! TLS certificate management and utilities for HORUS
+//!
+//! Provides self-signed certificate generation, certificate loading,
+//! and TLS configuration for secure network communication.
 
 #[cfg(feature = "tls")]
 use crate::error::{HorusError, HorusResult};
@@ -11,7 +11,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 #[cfg(feature = "tls")]
-use rcgen::{Certificate, CertificateParams, DistinguishedName};
+use rcgen::{CertificateParams, DistinguishedName};
 #[cfg(feature = "tls")]
 use rustls::pki_types::{CertificateDer, PrivateKeyDer};
 #[cfg(feature = "tls")]

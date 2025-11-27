@@ -54,9 +54,9 @@ pub struct SmartCopyConfig {
 impl Default for SmartCopyConfig {
     fn default() -> Self {
         Self {
-            zero_copy_threshold: 64 * 1024,     // 64KB
-            buffer_size: 1024 * 1024,           // 1MB
-            pool_size: 8,                        // 8 buffers = 8MB total
+            zero_copy_threshold: 64 * 1024, // 64KB
+            buffer_size: 1024 * 1024,       // 1MB
+            pool_size: 8,                   // 8 buffers = 8MB total
             enable_zero_copy: true,
             max_message_size: 16 * 1024 * 1024, // 16MB
         }
@@ -67,9 +67,9 @@ impl SmartCopyConfig {
     /// Configuration optimized for robotics (images, point clouds)
     pub fn robotics() -> Self {
         Self {
-            zero_copy_threshold: 32 * 1024,     // 32KB - lower threshold for robotics
-            buffer_size: 4 * 1024 * 1024,       // 4MB - larger buffers for images
-            pool_size: 4,                        // 4 buffers = 16MB total
+            zero_copy_threshold: 32 * 1024, // 32KB - lower threshold for robotics
+            buffer_size: 4 * 1024 * 1024,   // 4MB - larger buffers for images
+            pool_size: 4,                   // 4 buffers = 16MB total
             enable_zero_copy: true,
             max_message_size: 64 * 1024 * 1024, // 64MB for large point clouds
         }
@@ -78,11 +78,11 @@ impl SmartCopyConfig {
     /// Configuration for low-memory systems (embedded, Raspberry Pi)
     pub fn low_memory() -> Self {
         Self {
-            zero_copy_threshold: 128 * 1024,    // 128KB - higher threshold
-            buffer_size: 512 * 1024,            // 512KB buffers
-            pool_size: 4,                        // 4 buffers = 2MB total
+            zero_copy_threshold: 128 * 1024, // 128KB - higher threshold
+            buffer_size: 512 * 1024,         // 512KB buffers
+            pool_size: 4,                    // 4 buffers = 2MB total
             enable_zero_copy: true,
-            max_message_size: 4 * 1024 * 1024,  // 4MB max
+            max_message_size: 4 * 1024 * 1024, // 4MB max
         }
     }
 
@@ -249,10 +249,14 @@ impl BufferPool {
             // Update peak
             let peak = self.stats.peak_buffers_in_use.load(Ordering::Relaxed);
             if in_use > peak {
-                self.stats.peak_buffers_in_use.store(in_use, Ordering::Relaxed);
+                self.stats
+                    .peak_buffers_in_use
+                    .store(in_use, Ordering::Relaxed);
             }
         } else {
-            self.stats.pool_exhausted_count.fetch_add(1, Ordering::Relaxed);
+            self.stats
+                .pool_exhausted_count
+                .fetch_add(1, Ordering::Relaxed);
         }
 
         buffer
@@ -349,7 +353,9 @@ impl SmartCopySender {
         match strategy {
             CopyStrategy::NormalCopy => {
                 self.stats.normal_copy_count.fetch_add(1, Ordering::Relaxed);
-                self.stats.normal_copy_bytes.fetch_add(data.len() as u64, Ordering::Relaxed);
+                self.stats
+                    .normal_copy_bytes
+                    .fetch_add(data.len() as u64, Ordering::Relaxed);
                 (CopyStrategy::NormalCopy, None)
             }
             CopyStrategy::ZeroCopy => {
@@ -357,7 +363,9 @@ impl SmartCopySender {
                 if let Some(mut buffer) = self.pool.acquire() {
                     if buffer.copy_from(data) {
                         self.stats.zero_copy_count.fetch_add(1, Ordering::Relaxed);
-                        self.stats.zero_copy_bytes.fetch_add(data.len() as u64, Ordering::Relaxed);
+                        self.stats
+                            .zero_copy_bytes
+                            .fetch_add(data.len() as u64, Ordering::Relaxed);
                         return (CopyStrategy::ZeroCopy, Some(buffer));
                     } else {
                         // Buffer too small, return it and allocate overflow
@@ -369,12 +377,16 @@ impl SmartCopySender {
                 let mut overflow = self.pool.allocate_overflow(data.len());
                 overflow.copy_from(data);
                 self.stats.zero_copy_count.fetch_add(1, Ordering::Relaxed);
-                self.stats.zero_copy_bytes.fetch_add(data.len() as u64, Ordering::Relaxed);
+                self.stats
+                    .zero_copy_bytes
+                    .fetch_add(data.len() as u64, Ordering::Relaxed);
                 (CopyStrategy::Fallback, Some(overflow))
             }
             CopyStrategy::Fallback => {
                 self.stats.normal_copy_count.fetch_add(1, Ordering::Relaxed);
-                self.stats.normal_copy_bytes.fetch_add(data.len() as u64, Ordering::Relaxed);
+                self.stats
+                    .normal_copy_bytes
+                    .fetch_add(data.len() as u64, Ordering::Relaxed);
                 (CopyStrategy::Fallback, None)
             }
         }
@@ -432,22 +444,13 @@ mod tests {
         let sender = SmartCopySender::new(SmartCopyConfig::default());
 
         // Small message - normal copy
-        assert_eq!(
-            sender.select_strategy(1024),
-            CopyStrategy::NormalCopy
-        );
+        assert_eq!(sender.select_strategy(1024), CopyStrategy::NormalCopy);
 
         // Large message - zero copy
-        assert_eq!(
-            sender.select_strategy(128 * 1024),
-            CopyStrategy::ZeroCopy
-        );
+        assert_eq!(sender.select_strategy(128 * 1024), CopyStrategy::ZeroCopy);
 
         // Exactly at threshold - zero copy
-        assert_eq!(
-            sender.select_strategy(64 * 1024),
-            CopyStrategy::ZeroCopy
-        );
+        assert_eq!(sender.select_strategy(64 * 1024), CopyStrategy::ZeroCopy);
 
         // Just below threshold - normal copy
         assert_eq!(

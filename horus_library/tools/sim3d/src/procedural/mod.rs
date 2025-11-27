@@ -4,10 +4,10 @@ pub mod terrain;
 use bevy::prelude::*;
 
 // Re-export key types
-pub use maze::{Maze, MazeConfig, MazeAlgorithm, CellType};
+pub use maze::{CellType, Maze, MazeAlgorithm, MazeConfig};
 pub use terrain::{
-    Heightmap, NoiseConfig, TerrainConfig, TerrainMeshGenerator,
-    VegetationConfig, VegetationPlacer, VegetationPoint,
+    Heightmap, NoiseConfig, TerrainConfig, TerrainMeshGenerator, VegetationConfig,
+    VegetationPlacer, VegetationPoint,
 };
 
 /// Procedural generation plugin

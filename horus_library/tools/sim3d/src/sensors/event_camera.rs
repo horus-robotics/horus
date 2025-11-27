@@ -199,7 +199,12 @@ impl EventStream {
 }
 
 /// Convert event stream to frame representation (event frame)
-pub fn events_to_frame(events: &[Event], width: u32, height: u32, _time_window_us: u64) -> Vec<i32> {
+pub fn events_to_frame(
+    events: &[Event],
+    width: u32,
+    height: u32,
+    _time_window_us: u64,
+) -> Vec<i32> {
     let mut frame = vec![0i32; (width * height) as usize];
 
     for event in events {
@@ -229,12 +234,8 @@ pub fn event_camera_update_system(
 
     for (camera, mut stream, camera_transform) in cameras.iter_mut() {
         // Generate intensity image
-        let intensities = generate_intensity_image(
-            camera,
-            camera_transform,
-            &mut physics_world,
-            &lights,
-        );
+        let intensities =
+            generate_intensity_image(camera, camera_transform, &mut physics_world, &lights);
 
         // Process the intensity frame to generate events
         stream.process_frame(&intensities, current_time_us, camera);
@@ -319,7 +320,11 @@ fn generate_intensity_image(
                         camera.far,
                         true,
                     ) {
-                        Vec3::new(intersection.normal.x, intersection.normal.y, intersection.normal.z)
+                        Vec3::new(
+                            intersection.normal.x,
+                            intersection.normal.y,
+                            intersection.normal.z,
+                        )
                     } else {
                         // Fallback: use ray direction inverted as rough approximation
                         Vec3::new(-ray_dir.x, -ray_dir.y, -ray_dir.z)
@@ -343,14 +348,17 @@ fn generate_intensity_image(
                     let light_distance = (*light_pos - hit_pos).length();
 
                     // Check for occlusion
-                    let occluded = physics_world.query_pipeline.cast_ray(
-                        &physics_world.rigid_body_set,
-                        &physics_world.collider_set,
-                        &shadow_ray,
-                        light_distance * 0.99, // Slightly less to avoid self-intersection
-                        true,
-                        QueryFilter::default().exclude_sensors(),
-                    ).is_some();
+                    let occluded = physics_world
+                        .query_pipeline
+                        .cast_ray(
+                            &physics_world.rigid_body_set,
+                            &physics_world.collider_set,
+                            &shadow_ray,
+                            light_distance * 0.99, // Slightly less to avoid self-intersection
+                            true,
+                            QueryFilter::default().exclude_sensors(),
+                        )
+                        .is_some();
 
                     if !occluded {
                         // Lambertian shading

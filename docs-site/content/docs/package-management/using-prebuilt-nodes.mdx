@@ -280,8 +280,8 @@ fn main() {
     let mut scheduler = Scheduler::new();
 
     // Using standard library nodes
-    let camera = CameraNode::new("/dev/video0", "camera/raw", 30)?;
-    let processor = ImageProcessorNode::new("camera/raw", "camera/processed")?;
+    let camera = CameraNode::new("/dev/video0", "camera.raw", 30)?;
+    let processor = ImageProcessorNode::new("camera.raw", "camera/processed")?;
     let detector = ObjectDetectorNode::new("camera/processed", "objects")?;
 
     scheduler.add(Box::new(camera), 2, Some(true));

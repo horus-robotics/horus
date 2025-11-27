@@ -241,8 +241,7 @@ impl NodeRecording {
         let writer = BufWriter::new(file);
 
         // Use bincode for efficient serialization
-        bincode::serialize_into(writer, self)
-            .map_err(|e| std::io::Error::other(e.to_string()))?;
+        bincode::serialize_into(writer, self).map_err(|e| std::io::Error::other(e.to_string()))?;
 
         Ok(())
     }
@@ -252,8 +251,7 @@ impl NodeRecording {
         let file = File::open(path)?;
         let reader = BufReader::new(file);
 
-        bincode::deserialize_from(reader)
-            .map_err(|e| std::io::Error::other(e.to_string()))
+        bincode::deserialize_from(reader).map_err(|e| std::io::Error::other(e.to_string()))
     }
 }
 
@@ -326,8 +324,7 @@ impl SchedulerRecording {
         let file = File::create(path)?;
         let writer = BufWriter::new(file);
 
-        bincode::serialize_into(writer, self)
-            .map_err(|e| std::io::Error::other(e.to_string()))?;
+        bincode::serialize_into(writer, self).map_err(|e| std::io::Error::other(e.to_string()))?;
 
         Ok(())
     }
@@ -337,8 +334,7 @@ impl SchedulerRecording {
         let file = File::open(path)?;
         let reader = BufReader::new(file);
 
-        bincode::deserialize_from(reader)
-            .map_err(|e| std::io::Error::other(e.to_string()))
+        bincode::deserialize_from(reader).map_err(|e| std::io::Error::other(e.to_string()))
     }
 }
 
@@ -531,9 +527,7 @@ impl NodeReplayer {
 #[derive(Debug, Clone)]
 pub enum ReplayMode {
     /// Replay all nodes from a scheduler recording
-    Full {
-        scheduler_path: PathBuf,
-    },
+    Full { scheduler_path: PathBuf },
     /// Replay specific nodes while others run live
     Mixed {
         replay_nodes: HashMap<String, PathBuf>,
@@ -591,7 +585,11 @@ impl RecordingManager {
             for entry in fs::read_dir(&session_dir)? {
                 let entry = entry?;
                 let path = entry.path();
-                if path.extension().map(|e| e == RECORDING_EXT).unwrap_or(false) {
+                if path
+                    .extension()
+                    .map(|e| e == RECORDING_EXT)
+                    .unwrap_or(false)
+                {
                     recordings.push(path);
                 }
             }

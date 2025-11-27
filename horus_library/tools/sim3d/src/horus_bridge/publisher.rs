@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use super::messages::*;
+use crate::hframe::TFTree;
 use crate::sensors::lidar3d::{LaserScan, Lidar2D, Lidar3D, PointCloud};
-use crate::tf::tree::TFTree;
 
 #[derive(Resource)]
 pub struct HorusPublisher {

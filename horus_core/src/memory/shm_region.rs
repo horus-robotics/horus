@@ -9,7 +9,9 @@ use crate::error::HorusResult;
 use std::path::PathBuf;
 
 #[cfg(target_os = "linux")]
-use crate::memory::platform::{shm_global_dir, shm_session_topics_dir, shm_topics_dir, write_session_pid};
+use crate::memory::platform::{
+    shm_global_dir, shm_session_topics_dir, shm_topics_dir, write_session_pid,
+};
 #[cfg(target_os = "linux")]
 use memmap2::{MmapMut, MmapOptions};
 #[cfg(target_os = "linux")]
@@ -40,7 +42,7 @@ pub struct ShmRegion {
     #[cfg(target_os = "windows")]
     ptr: *mut u8,
     #[cfg(target_os = "windows")]
-    handle: isize,  // HANDLE
+    handle: isize, // HANDLE
 
     size: usize,
     #[allow(dead_code)]
@@ -77,7 +79,13 @@ impl ShmRegion {
         std::fs::create_dir_all(&horus_shm_dir)?;
 
         // Topic names use dot notation (e.g., "motors.cmd_vel") - no conversion needed
+        // Names can also contain "/" for namespacing (e.g., "links/sensor_test")
         let path = horus_shm_dir.join(format!("horus_{}", name));
+
+        // Create parent directory if the name contains "/" (e.g., "links/sensor_test")
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
 
         let (file, is_owner) = if path.exists() {
             let file = OpenOptions::new().read(true).write(true).open(&path)?;
@@ -199,17 +207,11 @@ impl ShmRegion {
 
         // Topic names use dot notation (e.g., "motors.cmd_vel") - no conversion needed
         let shm_name = format!("/horus_{}_{}", session_prefix, name);
-        let c_name = CString::new(shm_name.clone())
-            .map_err(|e| format!("Invalid shm name: {}", e))?;
+        let c_name =
+            CString::new(shm_name.clone()).map_err(|e| format!("Invalid shm name: {}", e))?;
 
         // Try to open existing first
-        let fd = unsafe {
-            libc::shm_open(
-                c_name.as_ptr(),
-                libc::O_RDWR,
-                0o666,
-            )
-        };
+        let fd = unsafe { libc::shm_open(c_name.as_ptr(), libc::O_RDWR, 0o666) };
 
         let (fd, is_owner) = if fd >= 0 {
             // Opened existing
@@ -225,19 +227,14 @@ impl ShmRegion {
             };
             if fd < 0 {
                 // Race condition: someone else created it, try opening again
-                let fd = unsafe {
-                    libc::shm_open(
-                        c_name.as_ptr(),
-                        libc::O_RDWR,
-                        0o666,
-                    )
-                };
+                let fd = unsafe { libc::shm_open(c_name.as_ptr(), libc::O_RDWR, 0o666) };
                 if fd < 0 {
                     return Err(format!(
                         "Failed to open/create shm '{}': {}",
                         shm_name,
                         std::io::Error::last_os_error()
-                    ).into());
+                    )
+                    .into());
                 }
                 (fd, false)
             } else {
@@ -248,7 +245,8 @@ impl ShmRegion {
                     return Err(format!(
                         "Failed to set shm size: {}",
                         std::io::Error::last_os_error()
-                    ).into());
+                    )
+                    .into());
                 }
                 (fd, true)
             }
@@ -271,10 +269,7 @@ impl ShmRegion {
             if is_owner {
                 unsafe { libc::shm_unlink(c_name.as_ptr()) };
             }
-            return Err(format!(
-                "Failed to mmap shm: {}",
-                std::io::Error::last_os_error()
-            ).into());
+            return Err(format!("Failed to mmap shm: {}", std::io::Error::last_os_error()).into());
         }
 
         // Initialize to zero if owner
@@ -306,16 +301,10 @@ impl ShmRegion {
 
         // Topic names use dot notation (e.g., "motors.cmd_vel") - no conversion needed
         let shm_name = format!("/horus_{}_{}", session_prefix, name);
-        let c_name = CString::new(shm_name.clone())
-            .map_err(|e| format!("Invalid shm name: {}", e))?;
+        let c_name =
+            CString::new(shm_name.clone()).map_err(|e| format!("Invalid shm name: {}", e))?;
 
-        let fd = unsafe {
-            libc::shm_open(
-                c_name.as_ptr(),
-                libc::O_RDWR,
-                0o666,
-            )
-        };
+        let fd = unsafe { libc::shm_open(c_name.as_ptr(), libc::O_RDWR, 0o666) };
 
         if fd < 0 {
             return Err(format!("Shared memory '{}' does not exist", name).into());
@@ -325,10 +314,7 @@ impl ShmRegion {
         let mut stat: libc::stat = unsafe { std::mem::zeroed() };
         if unsafe { libc::fstat(fd, &mut stat) } != 0 {
             unsafe { libc::close(fd) };
-            return Err(format!(
-                "Failed to stat shm: {}",
-                std::io::Error::last_os_error()
-            ).into());
+            return Err(format!("Failed to stat shm: {}", std::io::Error::last_os_error()).into());
         }
         let size = stat.st_size as usize;
 
@@ -345,10 +331,7 @@ impl ShmRegion {
 
         if ptr == libc::MAP_FAILED {
             unsafe { libc::close(fd) };
-            return Err(format!(
-                "Failed to mmap shm: {}",
-                std::io::Error::last_os_error()
-            ).into());
+            return Err(format!("Failed to mmap shm: {}", std::io::Error::last_os_error()).into());
         }
 
         Ok(Self {
@@ -414,7 +397,9 @@ impl ShmRegion {
     }
 
     fn new_internal(name: &str, size: usize, global: bool) -> HorusResult<Self> {
-        use windows_sys::Win32::Foundation::{CloseHandle, GetLastError, INVALID_HANDLE_VALUE, ERROR_ALREADY_EXISTS};
+        use windows_sys::Win32::Foundation::{
+            CloseHandle, GetLastError, ERROR_ALREADY_EXISTS, INVALID_HANDLE_VALUE,
+        };
         use windows_sys::Win32::System::Memory::{
             CreateFileMappingW, MapViewOfFile, FILE_MAP_ALL_ACCESS, PAGE_READWRITE,
         };
@@ -432,7 +417,10 @@ impl ShmRegion {
         let mapping_name = format!("{}_{}", session_prefix, name);
 
         // Convert to wide string
-        let wide_name: Vec<u16> = mapping_name.encode_utf16().chain(std::iter::once(0)).collect();
+        let wide_name: Vec<u16> = mapping_name
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .collect();
 
         // Create or open file mapping (INVALID_HANDLE_VALUE = pagefile-backed)
         let handle = unsafe {
@@ -440,38 +428,29 @@ impl ShmRegion {
                 INVALID_HANDLE_VALUE as isize,
                 std::ptr::null(),
                 PAGE_READWRITE,
-                (size >> 32) as u32,  // High DWORD
-                size as u32,          // Low DWORD
+                (size >> 32) as u32, // High DWORD
+                size as u32,         // Low DWORD
                 wide_name.as_ptr(),
             )
         };
 
         if handle == 0 {
-            return Err(format!(
-                "CreateFileMappingW failed: error {}",
-                unsafe { GetLastError() }
-            ).into());
+            return Err(format!("CreateFileMappingW failed: error {}", unsafe {
+                GetLastError()
+            })
+            .into());
         }
 
         let is_owner = unsafe { GetLastError() } != ERROR_ALREADY_EXISTS;
 
         // Map view of file
-        let ptr = unsafe {
-            MapViewOfFile(
-                handle,
-                FILE_MAP_ALL_ACCESS,
-                0,
-                0,
-                size,
-            )
-        };
+        let ptr = unsafe { MapViewOfFile(handle, FILE_MAP_ALL_ACCESS, 0, 0, size) };
 
         if ptr.is_null() {
             unsafe { CloseHandle(handle) };
-            return Err(format!(
-                "MapViewOfFile failed: error {}",
-                unsafe { GetLastError() }
-            ).into());
+            return Err(
+                format!("MapViewOfFile failed: error {}", unsafe { GetLastError() }).into(),
+            );
         }
 
         // Initialize to zero if owner
@@ -494,7 +473,7 @@ impl ShmRegion {
     pub fn open(name: &str) -> HorusResult<Self> {
         use windows_sys::Win32::Foundation::{CloseHandle, GetLastError};
         use windows_sys::Win32::System::Memory::{
-            OpenFileMappingW, MapViewOfFile, FILE_MAP_ALL_ACCESS,
+            MapViewOfFile, OpenFileMappingW, FILE_MAP_ALL_ACCESS,
         };
 
         let session_prefix = if let Ok(session_id) = std::env::var("HORUS_SESSION_ID") {
@@ -505,12 +484,15 @@ impl ShmRegion {
 
         // Topic names use dot notation (e.g., "motors.cmd_vel") - no conversion needed
         let mapping_name = format!("{}_{}", session_prefix, name);
-        let wide_name: Vec<u16> = mapping_name.encode_utf16().chain(std::iter::once(0)).collect();
+        let wide_name: Vec<u16> = mapping_name
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .collect();
 
         let handle = unsafe {
             OpenFileMappingW(
                 FILE_MAP_ALL_ACCESS,
-                0,  // bInheritHandle = FALSE
+                0, // bInheritHandle = FALSE
                 wide_name.as_ptr(),
             )
         };
@@ -526,16 +508,15 @@ impl ShmRegion {
                 FILE_MAP_ALL_ACCESS,
                 0,
                 0,
-                0,  // Map entire file
+                0, // Map entire file
             )
         };
 
         if ptr.is_null() {
             unsafe { CloseHandle(handle) };
-            return Err(format!(
-                "MapViewOfFile failed: error {}",
-                unsafe { GetLastError() }
-            ).into());
+            return Err(
+                format!("MapViewOfFile failed: error {}", unsafe { GetLastError() }).into(),
+            );
         }
 
         // Note: We can't easily get the size of an existing mapping on Windows
@@ -592,7 +573,9 @@ unsafe impl Sync for ShmRegion {}
 // ============================================================================
 
 #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
-use crate::memory::platform::{shm_global_dir, shm_session_topics_dir, shm_topics_dir, write_session_pid};
+use crate::memory::platform::{
+    shm_global_dir, shm_session_topics_dir, shm_topics_dir, write_session_pid,
+};
 #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
 use memmap2::{MmapMut, MmapOptions};
 #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
@@ -613,16 +596,28 @@ impl ShmRegion {
             (file, false)
         } else {
             let file = OpenOptions::new()
-                .read(true).write(true).create(true).truncate(true)
+                .read(true)
+                .write(true)
+                .create(true)
+                .truncate(true)
                 .open(&path)?;
             file.set_len(size as u64)?;
             (file, true)
         };
 
         let mut mmap = unsafe { MmapOptions::new().len(size).map_mut(&file)? };
-        if is_owner { mmap.fill(0); }
+        if is_owner {
+            mmap.fill(0);
+        }
 
-        Ok(Self { mmap, size, path, _file: file, name: name.to_string(), owner: is_owner })
+        Ok(Self {
+            mmap,
+            size,
+            path,
+            _file: file,
+            name: name.to_string(),
+            owner: is_owner,
+        })
     }
 
     pub fn new_global(name: &str, size: usize) -> HorusResult<Self> {
@@ -638,13 +633,28 @@ impl ShmRegion {
         let file = OpenOptions::new().read(true).write(true).open(&path)?;
         let size = file.metadata()?.len() as usize;
         let mmap = unsafe { MmapOptions::new().len(size).map_mut(&file)? };
-        Ok(Self { mmap, size, path, _file: file, name: name.to_string(), owner: false })
+        Ok(Self {
+            mmap,
+            size,
+            path,
+            _file: file,
+            name: name.to_string(),
+            owner: false,
+        })
     }
 
-    pub fn as_ptr(&self) -> *const u8 { self.mmap.as_ptr() }
-    pub fn as_mut_ptr(&mut self) -> *mut u8 { self.mmap.as_mut_ptr() }
-    pub fn size(&self) -> usize { self.size }
-    pub fn is_owner(&self) -> bool { self.owner }
+    pub fn as_ptr(&self) -> *const u8 {
+        self.mmap.as_ptr()
+    }
+    pub fn as_mut_ptr(&mut self) -> *mut u8 {
+        self.mmap.as_mut_ptr()
+    }
+    pub fn size(&self) -> usize {
+        self.size
+    }
+    pub fn is_owner(&self) -> bool {
+        self.owner
+    }
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]

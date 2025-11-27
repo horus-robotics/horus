@@ -531,10 +531,7 @@ impl Scheduler {
                 (true, None) // Will use get_jit_compute() at runtime
             } else {
                 // JIT capable but no compile params - track for stats only
-                println!(
-                    "[JIT] Node '{}' is JIT-capable (tracking stats)",
-                    node_name
-                );
+                println!("[JIT] Node '{}' is JIT-capable (tracking stats)", node_name);
                 (true, Some(CompiledDataflow::new(&node_name)))
             }
         } else {
@@ -564,12 +561,15 @@ impl Scheduler {
 
         // Store JIT compiled function in the global map for fast lookup
         if let Some(ref compiled) = jit_compiled {
-            self.jit_compiled_nodes.insert(node_name.clone(), CompiledDataflow {
-                name: compiled.name.clone(),
-                func_ptr: compiled.func_ptr,
-                exec_count: 0,
-                total_ns: 0,
-            });
+            self.jit_compiled_nodes.insert(
+                node_name.clone(),
+                CompiledDataflow {
+                    name: compiled.name.clone(),
+                    func_ptr: compiled.func_ptr,
+                    exec_count: 0,
+                    total_ns: 0,
+                },
+            );
         }
 
         self.nodes.push(RegisteredNode {
@@ -989,7 +989,10 @@ impl Scheduler {
                 if let Some(ref mut tm) = self.telemetry {
                     if tm.should_export() {
                         // Record scheduler metrics - use profiler's learning_ticks as tick count
-                        let total_ticks = self.profiler.node_stats.values()
+                        let total_ticks = self
+                            .profiler
+                            .node_stats
+                            .values()
                             .map(|s| s.count)
                             .max()
                             .unwrap_or(0) as u64;
@@ -1003,8 +1006,16 @@ impl Scheduler {
                             if let Some(stats) = self.profiler.get_stats(node_name) {
                                 let mut labels = std::collections::HashMap::new();
                                 labels.insert("node".to_string(), node_name.to_string());
-                                tm.gauge_with_labels("node_avg_duration_us", stats.avg_us, labels.clone());
-                                tm.counter_with_labels("node_tick_count", stats.count as u64, labels);
+                                tm.gauge_with_labels(
+                                    "node_avg_duration_us",
+                                    stats.avg_us,
+                                    labels.clone(),
+                                );
+                                tm.counter_with_labels(
+                                    "node_tick_count",
+                                    stats.count as u64,
+                                    labels,
+                                );
                             }
                         }
 
@@ -1016,7 +1027,10 @@ impl Scheduler {
                 if let Some(ref mut cm) = self.checkpoint_manager {
                     if cm.should_checkpoint() {
                         // Get tick count estimate
-                        let total_ticks = self.profiler.node_stats.values()
+                        let total_ticks = self
+                            .profiler
+                            .node_stats
+                            .values()
                             .map(|s| s.count)
                             .max()
                             .unwrap_or(0) as u64;
@@ -1035,8 +1049,12 @@ impl Scheduler {
                             // Add node states
                             for registered in &self.nodes {
                                 let node_name = registered.node.name();
-                                let (tick_count, last_tick_us, error_count) = self.profiler.get_stats(node_name)
-                                    .map(|s| (s.count as u64, s.avg_us as u64, s.failure_count as u64))
+                                let (tick_count, last_tick_us, error_count) = self
+                                    .profiler
+                                    .get_stats(node_name)
+                                    .map(|s| {
+                                        (s.count as u64, s.avg_us as u64, s.failure_count as u64)
+                                    })
                                     .unwrap_or((0, 0, 0));
 
                                 let node_checkpoint = super::checkpoint::NodeCheckpoint {
@@ -1046,7 +1064,9 @@ impl Scheduler {
                                     error_count,
                                     custom_state: None,
                                 };
-                                checkpoint.node_states.insert(node_name.to_string(), node_checkpoint);
+                                checkpoint
+                                    .node_states
+                                    .insert(node_name.to_string(), node_checkpoint);
                             }
 
                             if let Err(e) = cm.save_checkpoint(&checkpoint) {
@@ -1086,7 +1106,10 @@ impl Scheduler {
             // === Shutdown runtime features ===
 
             // Get total tick count from profiler stats
-            let total_ticks = self.profiler.node_stats.values()
+            let total_ticks = self
+                .profiler
+                .node_stats
+                .values()
                 .map(|s| s.count)
                 .max()
                 .unwrap_or(0) as u64;
@@ -1871,9 +1894,12 @@ impl Scheduler {
                             // Use node's actual parameters
                             match super::jit::JITCompiler::new() {
                                 Ok(mut compiler) => {
-                                    let unique_name =
-                                        format!("{}_{}_learning", node_name, i);
-                                    match compiler.compile_arithmetic_node(&unique_name, factor, offset) {
+                                    let unique_name = format!("{}_{}_learning", node_name, i);
+                                    match compiler.compile_arithmetic_node(
+                                        &unique_name,
+                                        factor,
+                                        offset,
+                                    ) {
                                         Ok(func_ptr) => {
                                             println!(
                                                 "[JIT] Learning phase compiled '{}' with factor={}, offset={}",
@@ -1901,13 +1927,15 @@ impl Scheduler {
                             self.nodes[i].is_jit_compiled = true;
 
                             // Store the compiled dataflow for tracking
-                            self.jit_compiled_nodes
-                                .insert(node_name.to_string(), CompiledDataflow {
+                            self.jit_compiled_nodes.insert(
+                                node_name.to_string(),
+                                CompiledDataflow {
                                     name: compiled.name.clone(),
                                     func_ptr: compiled.func_ptr,
                                     exec_count: 0,
                                     total_ns: 0,
-                                });
+                                },
+                            );
                             self.nodes[i].jit_stats = Some(compiled);
 
                             jit_compiled_count += 1;
@@ -2261,7 +2289,10 @@ impl Scheduler {
             if config.realtime.rt_scheduling_class {
                 let priority = 50; // Default RT priority
                 if super::runtime::set_realtime_priority(priority).is_ok() {
-                    println!("[SCHEDULER] RT scheduling enabled (SCHED_FIFO, priority {})", priority);
+                    println!(
+                        "[SCHEDULER] RT scheduling enabled (SCHED_FIFO, priority {})",
+                        priority
+                    );
                 }
             }
 
@@ -2276,7 +2307,10 @@ impl Scheduler {
             if config.resources.numa_aware {
                 let numa_nodes = super::runtime::get_numa_node_count();
                 if numa_nodes > 1 {
-                    println!("[SCHEDULER] NUMA-aware scheduling ({} nodes detected)", numa_nodes);
+                    println!(
+                        "[SCHEDULER] NUMA-aware scheduling ({} nodes detected)",
+                        numa_nodes
+                    );
                 }
             }
         }

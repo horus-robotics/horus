@@ -14,6 +14,7 @@ mod config;
 mod editor;
 mod error;
 mod gpu;
+mod hframe;
 mod horus_bridge;
 mod multi_robot;
 mod physics;
@@ -25,7 +26,6 @@ mod robot;
 mod scene;
 mod sensors;
 mod systems;
-mod tf;
 mod ui;
 mod utils;
 mod view_modes;
@@ -34,27 +34,26 @@ mod view_modes;
 mod rl;
 
 use cli::{Cli, Command, Mode};
+use hframe::TFTree;
 use physics::PhysicsWorld;
 use scene::spawner::SpawnedObjects;
 use systems::sensor_update::{SensorSystemSet, SensorUpdatePlugin};
-use tf::TFTree;
 
 // Import all plugins for integration
 use gpu::GPUAccelerationPlugin;
+use horus_bridge::{
+    core_integration::HorusCorePlugin, horus_transport::HorusTransportPlugin, HorusBridgePlugin,
+};
 use multi_robot::MultiRobotPlugin;
 use physics::soft_body::SoftBodyPlugin;
 use physics::AdvancedPhysicsPlugin;
+use plugins::PluginSystemPlugin;
 use procedural::ProceduralGenerationPlugin;
 use recording::RecordingPlugin;
 use rendering::{
-    ambient_occlusion::AmbientOcclusionPlugin,
-    area_lights::AreaLightsPlugin,
-    atmosphere::AtmospherePlugin,
-    environment::EnvironmentPlugin,
-    gizmos::GizmoPlugin,
-    materials::MaterialPlugin,
-    post_processing::PostProcessingPlugin,
-    shadows::ShadowsPlugin,
+    ambient_occlusion::AmbientOcclusionPlugin, area_lights::AreaLightsPlugin,
+    atmosphere::AtmospherePlugin, environment::EnvironmentPlugin, gizmos::GizmoPlugin,
+    materials::MaterialPlugin, post_processing::PostProcessingPlugin, shadows::ShadowsPlugin,
 };
 use robot::{articulated::ArticulatedRobotPlugin, state::JointStatePlugin};
 use sensors::{
@@ -64,12 +63,9 @@ use sensors::{
 };
 use systems::{horus_sync::HorusSyncPlugin, tf_update::TFUpdatePlugin};
 use view_modes::{
-    collision_mode::CollisionVisualizationPlugin,
-    physics_mode::PhysicsVisualizationPlugin,
+    collision_mode::CollisionVisualizationPlugin, physics_mode::PhysicsVisualizationPlugin,
     tf_mode::TFVisualizationPlugin,
 };
-use horus_bridge::{HorusBridgePlugin, core_integration::HorusCorePlugin, horus_transport::HorusTransportPlugin};
-use plugins::PluginSystemPlugin;
 
 /// System sets for organizing update order
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
@@ -121,7 +117,7 @@ fn run_validate_command(
     format: cli::CliOutputFormat,
     check_meshes: bool,
 ) {
-    use cli::{validate_file, format_text, format_json, format_html, format_batch_report};
+    use cli::{format_batch_report, format_html, format_json, format_text, validate_file};
     use cli::{BatchValidationReport, OutputFormat};
 
     let mut results = Vec::new();
@@ -247,7 +243,7 @@ fn run_visual_mode(cli: Cli) {
     app.add_plugins(PluginSystemPlugin);
 
     app.insert_resource(PhysicsWorld::default())
-        .insert_resource(TFTree::new("world"))
+        .insert_resource(TFTree::with_root("world"))
         .insert_resource(SpawnedObjects::default())
         .insert_resource(cli)
         .init_resource::<systems::physics_step::PhysicsAccumulator>();
@@ -314,7 +310,7 @@ fn run_visual_mode(cli: Cli) {
             Update,
             (
                 rendering::camera_controller::camera_controller_system,
-                tf::visualizer::render_tf_frames,
+                hframe::render_tf_frames,
             ),
         );
     }
@@ -338,7 +334,7 @@ fn run_headless_mode(cli: Cli) {
 
     // Add essential resources
     app.insert_resource(PhysicsWorld::default())
-        .insert_resource(TFTree::new("world"))
+        .insert_resource(TFTree::with_root("world"))
         .insert_resource(SpawnedObjects::default())
         .insert_resource(cli)
         .init_resource::<systems::physics_step::PhysicsAccumulator>();

@@ -418,6 +418,40 @@ struct Agent2 {
 
 ## Topic Naming
 
+### Use Dots, Not Slashes
+
+> **Important**: HORUS uses **dots (`.`)** for topic hierarchy, not slashes (`/`).
+
+```rust
+// CORRECT - Use dots
+let hub = Hub::new("sensors.lidar");
+let hub = Hub::new("robot.cmd_vel");
+
+// WRONG - Do NOT use slashes
+let hub = Hub::new("sensors/lidar");   // Will cause errors!
+let hub = Hub::new("robot/cmd_vel");   // Will cause errors!
+```
+
+**Why dots instead of slashes?**
+
+HORUS uses shared memory files in `/dev/shm` for ultra-low latency communication. Topic names become part of the file path:
+
+```
+Topic: "sensors.lidar"  →  /dev/shm/horus_default_sensors.lidar
+Topic: "sensors/lidar"  →  /dev/shm/horus_default_sensors/lidar  (ERROR!)
+```
+
+When you use a slash in the topic name, the system interprets it as a subdirectory path. Since that directory doesn't exist, you get a **"No such file or directory"** error.
+
+**Coming from ROS?**
+
+ROS uses slashes (`/sensor/lidar`) because it uses a network-based naming service (rosmaster) that treats topics as URIs. HORUS uses file-based shared memory for sub-microsecond latency, so topic names map directly to filenames where slashes have special meaning.
+
+| Framework | Topic Separator | Example | Reason |
+|-----------|----------------|---------|--------|
+| ROS/ROS2 | `/` | `/sensor/lidar` | Network URI-style naming |
+| HORUS | `.` | `sensor.lidar` | File-based shared memory |
+
 ### Best Practices
 
 **Use descriptive names**:
@@ -428,9 +462,9 @@ let hub = Hub::new("data");              // Too vague
 
 **Follow conventions**:
 ```rust
-let hub = Hub::new("sensor/lidar");      // Hierarchical
-let hub = Hub::new("robot1/cmd_vel");    // Namespaced
-let hub = Hub::new("diagnostics/cpu");   // Categorized
+let hub = Hub::new("sensor.lidar");      // Hierarchical
+let hub = Hub::new("robot1.cmd_vel");    // Namespaced
+let hub = Hub::new("diagnostics.cpu");   // Categorized
 ```
 
 **Be consistent**:
@@ -445,6 +479,7 @@ let hub = Hub::new("diagnostics/cpu");   // Categorized
 
 Avoid using these patterns:
 - Topics starting with `_` (internal use)
+- Topics containing `/` (causes file path errors)
 - Topics containing `/dev/` (conflicts with paths)
 - Topics with special characters: `!@#$%^&*()`
 

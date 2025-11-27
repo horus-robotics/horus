@@ -263,13 +263,13 @@ pub fn ui_system(
 
             // Simulation state indicator
             let state_color = if recorder.is_playing() {
-                egui::Color32::from_rgb(100, 149, 237)  // Cornflower blue for playback
+                egui::Color32::from_rgb(100, 149, 237) // Cornflower blue for playback
             } else if recorder.is_recording() {
-                egui::Color32::from_rgb(220, 60, 60)    // Red for recording
+                egui::Color32::from_rgb(220, 60, 60) // Red for recording
             } else if ui_state.paused {
-                egui::Color32::from_rgb(180, 180, 60)   // Yellow for paused
+                egui::Color32::from_rgb(180, 180, 60) // Yellow for paused
             } else {
-                egui::Color32::from_rgb(60, 179, 113)   // Green for running
+                egui::Color32::from_rgb(60, 179, 113) // Green for running
             };
 
             let state_text = if recorder.is_playing() {
@@ -284,14 +284,12 @@ pub fn ui_system(
 
             // State indicator bar
             ui.horizontal(|ui| {
-                ui.add(
-                    egui::Label::new(
-                        egui::RichText::new(state_text)
-                            .size(11.0)
-                            .color(state_color)
-                            .strong(),
-                    )
-                );
+                ui.add(egui::Label::new(
+                    egui::RichText::new(state_text)
+                        .size(11.0)
+                        .color(state_color)
+                        .strong(),
+                ));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.label(
                         egui::RichText::new(format!("{:.0} FPS", metrics.fps))
@@ -331,7 +329,11 @@ pub fn ui_system(
                         // Reset button
                         let reset_btn = egui::Button::new(egui::RichText::new("Reset").size(13.0))
                             .min_size(egui::vec2(70.0, 28.0));
-                        if ui.add(reset_btn).on_hover_text("Reset simulation to initial state").clicked() {
+                        if ui
+                            .add(reset_btn)
+                            .on_hover_text("Reset simulation to initial state")
+                            .clicked()
+                        {
                             ui_state.reset_simulation = true;
                             ui_state.status_message = "Resetting...".to_string();
                         }
@@ -371,19 +373,41 @@ pub fn ui_system(
                                 .num_columns(2)
                                 .spacing([20.0, 4.0])
                                 .show(ui, |ui| {
-                                    ui.label(egui::RichText::new("Position").size(11.0).color(egui::Color32::from_rgb(160, 160, 160)));
-                                    ui.label(format!("({:.2}, {:.2}) m", telem.position.0, telem.position.1));
+                                    ui.label(
+                                        egui::RichText::new("Position")
+                                            .size(11.0)
+                                            .color(egui::Color32::from_rgb(160, 160, 160)),
+                                    );
+                                    ui.label(format!(
+                                        "({:.2}, {:.2}) m",
+                                        telem.position.0, telem.position.1
+                                    ));
                                     ui.end_row();
 
-                                    ui.label(egui::RichText::new("Velocity").size(11.0).color(egui::Color32::from_rgb(160, 160, 160)));
-                                    ui.label(format!("({:.2}, {:.2}) m/s", telem.velocity.0, telem.velocity.1));
+                                    ui.label(
+                                        egui::RichText::new("Velocity")
+                                            .size(11.0)
+                                            .color(egui::Color32::from_rgb(160, 160, 160)),
+                                    );
+                                    ui.label(format!(
+                                        "({:.2}, {:.2}) m/s",
+                                        telem.velocity.0, telem.velocity.1
+                                    ));
                                     ui.end_row();
 
-                                    ui.label(egui::RichText::new("Heading").size(11.0).color(egui::Color32::from_rgb(160, 160, 160)));
+                                    ui.label(
+                                        egui::RichText::new("Heading")
+                                            .size(11.0)
+                                            .color(egui::Color32::from_rgb(160, 160, 160)),
+                                    );
                                     ui.label(format!("{:.1} deg", telem.heading.to_degrees()));
                                     ui.end_row();
 
-                                    ui.label(egui::RichText::new("Angular").size(11.0).color(egui::Color32::from_rgb(160, 160, 160)));
+                                    ui.label(
+                                        egui::RichText::new("Angular")
+                                            .size(11.0)
+                                            .color(egui::Color32::from_rgb(160, 160, 160)),
+                                    );
                                     ui.label(format!("{:.2} rad/s", telem.angular_velocity));
                                     ui.end_row();
                                 });
@@ -408,19 +432,17 @@ pub fn ui_system(
                         ui.add_space(5.0);
 
                         ui.horizontal(|ui| {
-                            let save_button = egui::Button::new(
-                                egui::RichText::new("Save Scenario").size(13.0),
-                            )
-                            .min_size(egui::vec2(140.0, 28.0));
+                            let save_button =
+                                egui::Button::new(egui::RichText::new("Save Scenario").size(13.0))
+                                    .min_size(egui::vec2(140.0, 28.0));
 
                             if ui.add(save_button).clicked() {
                                 ui_state.show_file_dialog = FileDialogType::ScenarioSave;
                             }
 
-                            let load_button = egui::Button::new(
-                                egui::RichText::new("Load Scenario").size(13.0),
-                            )
-                            .min_size(egui::vec2(140.0, 28.0));
+                            let load_button =
+                                egui::Button::new(egui::RichText::new("Load Scenario").size(13.0))
+                                    .min_size(egui::vec2(140.0, 28.0));
 
                             if ui.add(load_button).clicked() {
                                 ui_state.show_file_dialog = FileDialogType::ScenarioLoad;
@@ -558,12 +580,9 @@ pub fn ui_system(
                         if let Some(path) = &ui_state.recording_path {
                             ui.add_space(3.0);
                             ui.label(
-                                egui::RichText::new(format!(
-                                    "Last: {}",
-                                    get_file_name_str(&path)
-                                ))
-                                .size(10.0)
-                                .color(egui::Color32::from_rgb(120, 120, 120)),
+                                egui::RichText::new(format!("Last: {}", get_file_name_str(&path)))
+                                    .size(10.0)
+                                    .color(egui::Color32::from_rgb(120, 120, 120)),
                             );
                         }
 
@@ -581,7 +600,7 @@ pub fn ui_system(
                             // Progress bar
                             ui.add(
                                 egui::ProgressBar::new(progress)
-                                    .text(format!("Frame {} / {}", current_frame, total_frames))
+                                    .text(format!("Frame {} / {}", current_frame, total_frames)),
                             );
 
                             ui.add_space(3.0);
@@ -595,7 +614,10 @@ pub fn ui_system(
                                     ("Play", egui::Color32::from_rgb(60, 179, 113))
                                 };
 
-                                if ui.button(egui::RichText::new(pb_text).color(pb_color)).clicked() {
+                                if ui
+                                    .button(egui::RichText::new(pb_text).color(pb_color))
+                                    .clicked()
+                                {
                                     if recorder.playback.is_playing {
                                         recorder.playback.pause();
                                     } else {
@@ -611,7 +633,11 @@ pub fn ui_system(
                                 }
 
                                 // Step buttons
-                                if ui.button("< Prev").on_hover_text("Previous frame").clicked() {
+                                if ui
+                                    .button("< Prev")
+                                    .on_hover_text("Previous frame")
+                                    .clicked()
+                                {
                                     let new_frame = current_frame.saturating_sub(1);
                                     recorder.playback.seek(new_frame);
                                 }
@@ -626,7 +652,10 @@ pub fn ui_system(
                             // Speed and loop controls
                             ui.horizontal(|ui| {
                                 ui.label("Speed:");
-                                ui.add(egui::Slider::new(&mut recorder.playback.speed, 0.1..=4.0).text("x"));
+                                ui.add(
+                                    egui::Slider::new(&mut recorder.playback.speed, 0.1..=4.0)
+                                        .text("x"),
+                                );
                             });
 
                             ui.checkbox(&mut recorder.playback.loop_playback, "Loop playback");
@@ -668,11 +697,8 @@ pub fn ui_system(
 
                         if let Some(path) = &ui_state.world_config_path {
                             ui.label(
-                                egui::RichText::new(format!(
-                                    "File: {}",
-                                    get_file_name_str(&path)
-                                ))
-                                .color(egui::Color32::LIGHT_GREEN),
+                                egui::RichText::new(format!("File: {}", get_file_name_str(&path)))
+                                    .color(egui::Color32::LIGHT_GREEN),
                             );
                         } else {
                             ui.label(
@@ -704,11 +730,8 @@ pub fn ui_system(
 
                         if let Some(path) = &ui_state.robot_config_path {
                             ui.label(
-                                egui::RichText::new(format!(
-                                    "File: {}",
-                                    get_file_name_str(&path)
-                                ))
-                                .color(egui::Color32::LIGHT_GREEN),
+                                egui::RichText::new(format!("File: {}", get_file_name_str(&path)))
+                                    .color(egui::Color32::LIGHT_GREEN),
                             );
                         } else {
                             ui.label(
@@ -731,8 +754,10 @@ pub fn ui_system(
                                     )
                                     .changed()
                                 {
-                                    ui_state.status_message =
-                                        format!("Max speed: {:.1} m/s (applied)", robot_config.max_speed);
+                                    ui_state.status_message = format!(
+                                        "Max speed: {:.1} m/s (applied)",
+                                        robot_config.max_speed
+                                    );
                                     // Max speed applies live through kinematics, no restart needed
                                 }
                             });
@@ -747,7 +772,8 @@ pub fn ui_system(
                                     .changed()
                                 {
                                     ui_state.reset_simulation = true;
-                                    ui_state.status_message = "Robot size changed - restarting...".to_string();
+                                    ui_state.status_message =
+                                        "Robot size changed - restarting...".to_string();
                                 }
                             });
 
@@ -761,7 +787,8 @@ pub fn ui_system(
                                     .changed()
                                 {
                                     ui_state.reset_simulation = true;
-                                    ui_state.status_message = "Robot size changed - restarting...".to_string();
+                                    ui_state.status_message =
+                                        "Robot size changed - restarting...".to_string();
                                 }
                             });
 
@@ -779,7 +806,8 @@ pub fn ui_system(
                                         color.b() as f32 / 255.0,
                                     ];
                                     ui_state.reset_simulation = true;
-                                    ui_state.status_message = "Robot color changed - restarting...".to_string();
+                                    ui_state.status_message =
+                                        "Robot color changed - restarting...".to_string();
                                 }
                             });
                         } else {
@@ -804,7 +832,10 @@ pub fn ui_system(
                             let topic_changed = ui_state.topic_input != app_config.args.topic;
 
                             if topic_changed {
-                                if ui.button("Apply").clicked() || response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                                if ui.button("Apply").clicked()
+                                    || response.lost_focus()
+                                        && ui.input(|i| i.key_pressed(egui::Key::Enter))
+                                {
                                     // Update the topic and restart
                                     app_config.args.topic = ui_state.topic_input.clone();
                                     // Update robot topic prefixes too
@@ -813,7 +844,10 @@ pub fn ui_system(
                                     }
                                     ui_state.active_topics = vec![ui_state.topic_input.clone()];
                                     ui_state.reset_simulation = true;
-                                    ui_state.status_message = format!("Topic changed to {} - restarting...", ui_state.topic_input);
+                                    ui_state.status_message = format!(
+                                        "Topic changed to {} - restarting...",
+                                        ui_state.topic_input
+                                    );
                                 }
                             }
                         });
@@ -1196,204 +1230,199 @@ pub fn ui_system(
                     });
 
                 // Performance Metrics Section
-                egui::CollapsingHeader::new(
-                    egui::RichText::new("Performance Metrics").size(14.0),
-                )
-                .default_open(ui_state.show_metrics_section)
-                .show(ui, |ui| {
-                    ui_state.show_metrics_section = true;
+                egui::CollapsingHeader::new(egui::RichText::new("Performance Metrics").size(14.0))
+                    .default_open(ui_state.show_metrics_section)
+                    .show(ui, |ui| {
+                        ui_state.show_metrics_section = true;
 
-                    ui.label(
-                        egui::RichText::new("Real-time performance tracking and analysis")
-                            .size(11.0)
-                            .color(egui::Color32::from_rgb(150, 150, 150)),
-                    );
-                    ui.add_space(5.0);
-
-                    // Goal Status
-                    if perf_metrics.goal_reached {
                         ui.label(
-                            egui::RichText::new("Goal Reached!")
-                                .size(14.0)
-                                .color(egui::Color32::GREEN)
-                                .strong(),
+                            egui::RichText::new("Real-time performance tracking and analysis")
+                                .size(11.0)
+                                .color(egui::Color32::from_rgb(150, 150, 150)),
                         );
-                        if let Some(time) = perf_metrics.time_to_goal {
-                            ui.label(format!("Time: {:.2}s", time));
-                        }
-                    } else if perf_metrics.goal_position.is_some() {
-                        ui.label(
-                            egui::RichText::new("In Progress...")
-                                .size(14.0)
-                                .color(egui::Color32::YELLOW)
-                                .strong(),
-                        );
-                        ui.label(format!(
-                            "Distance to Goal: {:.2}m",
-                            perf_metrics.distance_to_goal
-                        ));
-                    } else {
-                        ui.label(
-                            egui::RichText::new("No goal set")
-                                .size(12.0)
-                                .color(egui::Color32::GRAY),
-                        );
-                    }
+                        ui.add_space(5.0);
 
-                    ui.add_space(5.0);
-                    ui.separator();
-
-                    // Path Metrics
-                    egui::CollapsingHeader::new(egui::RichText::new("Path Metrics").strong())
-                        .default_open(true)
-                        .show(ui, |ui| {
-                            ui.label(format!("Path Length: {:.2}m", perf_metrics.path_length));
-                            ui.label(format!("Avg Speed: {:.2} m/s", perf_metrics.avg_speed));
-                            ui.label(format!("Max Speed: {:.2} m/s", perf_metrics.max_speed));
-
-                            ui.add_space(3.0);
-                            ui.label("Smoothness:");
-                            ui.add(
-                                egui::widgets::ProgressBar::new(perf_metrics.path_smoothness)
-                                    .text(format!("{:.2}", perf_metrics.path_smoothness)),
+                        // Goal Status
+                        if perf_metrics.goal_reached {
+                            ui.label(
+                                egui::RichText::new("Goal Reached!")
+                                    .size(14.0)
+                                    .color(egui::Color32::GREEN)
+                                    .strong(),
                             );
-                        });
-
-                    // Safety Metrics
-                    egui::CollapsingHeader::new(egui::RichText::new("Safety Metrics").strong())
-                        .default_open(true)
-                        .show(ui, |ui| {
-                            ui.label(format!("Collisions: {}", perf_metrics.collision_count));
-                            ui.label(format!("Near Misses: {}", perf_metrics.near_miss_count));
-
-                            ui.add_space(3.0);
-                            let safety = perf_metrics.safety_score();
-                            let safety_color = if safety > 0.8 {
-                                egui::Color32::GREEN
-                            } else if safety > 0.5 {
-                                egui::Color32::YELLOW
-                            } else {
-                                egui::Color32::RED
-                            };
-
-                            ui.colored_label(safety_color, "Safety Score:");
-                            ui.add(
-                                egui::widgets::ProgressBar::new(safety)
-                                    .text(format!("{:.2}", safety))
-                                    .fill(safety_color),
+                            if let Some(time) = perf_metrics.time_to_goal {
+                                ui.label(format!("Time: {:.2}s", time));
+                            }
+                        } else if perf_metrics.goal_position.is_some() {
+                            ui.label(
+                                egui::RichText::new("In Progress...")
+                                    .size(14.0)
+                                    .color(egui::Color32::YELLOW)
+                                    .strong(),
                             );
-                        });
-
-                    // Resource Usage
-                    egui::CollapsingHeader::new(egui::RichText::new("Resource Usage").strong())
-                        .default_open(true)
-                        .show(ui, |ui| {
                             ui.label(format!(
-                                "Elapsed Time: {:.2}s",
-                                perf_metrics.elapsed_time
+                                "Distance to Goal: {:.2}m",
+                                perf_metrics.distance_to_goal
                             ));
-                            ui.label(format!("Energy: {:.2} J", perf_metrics.energy_consumed));
-                        });
-
-                    // Overall Scores
-                    ui.add_space(5.0);
-                    ui.separator();
-                    ui.label(egui::RichText::new("Overall Scores").strong());
-
-                    let efficiency = perf_metrics.efficiency_score();
-                    ui.label("Efficiency:");
-                    ui.add(
-                        egui::widgets::ProgressBar::new(efficiency)
-                            .text(format!("{:.2}", efficiency)),
-                    );
-
-                    ui.add_space(3.0);
-                    let overall = perf_metrics.overall_score();
-                    let overall_color = if overall > 0.8 {
-                        egui::Color32::GREEN
-                    } else if overall > 0.5 {
-                        egui::Color32::YELLOW
-                    } else {
-                        egui::Color32::LIGHT_RED
-                    };
-
-                    ui.colored_label(overall_color, "Overall:");
-                    ui.add(
-                        egui::widgets::ProgressBar::new(overall)
-                            .text(format!("{:.2}", overall))
-                            .fill(overall_color),
-                    );
-
-                    // Export Options
-                    ui.add_space(5.0);
-                    ui.separator();
-                    ui.label(egui::RichText::new("Export").strong());
-
-                    ui.horizontal(|ui| {
-                        if ui.button("Export CSV").clicked() {
-                            if let Some(path) = rfd::FileDialog::new()
-                                .add_filter("CSV Files", &["csv"])
-                                .set_file_name("metrics.csv")
-                                .save_file()
-                            {
-                                match perf_metrics.export_to_csv(&path) {
-                                    Ok(()) => {
-                                        ui_state.metrics_export_path = Some(path.clone());
-                                        ui_state.status_message = format!(
-                                            "Metrics exported: {}",
-                                            get_file_name_str(&path)
-                                        );
-                                    }
-                                    Err(e) => {
-                                        ui_state.status_message =
-                                            format!("Error exporting metrics: {}", e);
-                                    }
-                                }
-                            }
+                        } else {
+                            ui.label(
+                                egui::RichText::new("No goal set")
+                                    .size(12.0)
+                                    .color(egui::Color32::GRAY),
+                            );
                         }
 
-                        if ui.button("Export JSON").clicked() {
-                            if let Some(path) = rfd::FileDialog::new()
-                                .add_filter("JSON Files", &["json"])
-                                .set_file_name("metrics.json")
-                                .save_file()
-                            {
-                                match perf_metrics.export_to_json(&path) {
-                                    Ok(()) => {
-                                        ui_state.metrics_export_path = Some(path.clone());
-                                        ui_state.status_message = format!(
-                                            "Metrics exported: {}",
-                                            get_file_name_str(&path)
-                                        );
-                                    }
-                                    Err(e) => {
-                                        ui_state.status_message =
-                                            format!("Error exporting metrics: {}", e);
+                        ui.add_space(5.0);
+                        ui.separator();
+
+                        // Path Metrics
+                        egui::CollapsingHeader::new(egui::RichText::new("Path Metrics").strong())
+                            .default_open(true)
+                            .show(ui, |ui| {
+                                ui.label(format!("Path Length: {:.2}m", perf_metrics.path_length));
+                                ui.label(format!("Avg Speed: {:.2} m/s", perf_metrics.avg_speed));
+                                ui.label(format!("Max Speed: {:.2} m/s", perf_metrics.max_speed));
+
+                                ui.add_space(3.0);
+                                ui.label("Smoothness:");
+                                ui.add(
+                                    egui::widgets::ProgressBar::new(perf_metrics.path_smoothness)
+                                        .text(format!("{:.2}", perf_metrics.path_smoothness)),
+                                );
+                            });
+
+                        // Safety Metrics
+                        egui::CollapsingHeader::new(egui::RichText::new("Safety Metrics").strong())
+                            .default_open(true)
+                            .show(ui, |ui| {
+                                ui.label(format!("Collisions: {}", perf_metrics.collision_count));
+                                ui.label(format!("Near Misses: {}", perf_metrics.near_miss_count));
+
+                                ui.add_space(3.0);
+                                let safety = perf_metrics.safety_score();
+                                let safety_color = if safety > 0.8 {
+                                    egui::Color32::GREEN
+                                } else if safety > 0.5 {
+                                    egui::Color32::YELLOW
+                                } else {
+                                    egui::Color32::RED
+                                };
+
+                                ui.colored_label(safety_color, "Safety Score:");
+                                ui.add(
+                                    egui::widgets::ProgressBar::new(safety)
+                                        .text(format!("{:.2}", safety))
+                                        .fill(safety_color),
+                                );
+                            });
+
+                        // Resource Usage
+                        egui::CollapsingHeader::new(egui::RichText::new("Resource Usage").strong())
+                            .default_open(true)
+                            .show(ui, |ui| {
+                                ui.label(format!(
+                                    "Elapsed Time: {:.2}s",
+                                    perf_metrics.elapsed_time
+                                ));
+                                ui.label(format!("Energy: {:.2} J", perf_metrics.energy_consumed));
+                            });
+
+                        // Overall Scores
+                        ui.add_space(5.0);
+                        ui.separator();
+                        ui.label(egui::RichText::new("Overall Scores").strong());
+
+                        let efficiency = perf_metrics.efficiency_score();
+                        ui.label("Efficiency:");
+                        ui.add(
+                            egui::widgets::ProgressBar::new(efficiency)
+                                .text(format!("{:.2}", efficiency)),
+                        );
+
+                        ui.add_space(3.0);
+                        let overall = perf_metrics.overall_score();
+                        let overall_color = if overall > 0.8 {
+                            egui::Color32::GREEN
+                        } else if overall > 0.5 {
+                            egui::Color32::YELLOW
+                        } else {
+                            egui::Color32::LIGHT_RED
+                        };
+
+                        ui.colored_label(overall_color, "Overall:");
+                        ui.add(
+                            egui::widgets::ProgressBar::new(overall)
+                                .text(format!("{:.2}", overall))
+                                .fill(overall_color),
+                        );
+
+                        // Export Options
+                        ui.add_space(5.0);
+                        ui.separator();
+                        ui.label(egui::RichText::new("Export").strong());
+
+                        ui.horizontal(|ui| {
+                            if ui.button("Export CSV").clicked() {
+                                if let Some(path) = rfd::FileDialog::new()
+                                    .add_filter("CSV Files", &["csv"])
+                                    .set_file_name("metrics.csv")
+                                    .save_file()
+                                {
+                                    match perf_metrics.export_to_csv(&path) {
+                                        Ok(()) => {
+                                            ui_state.metrics_export_path = Some(path.clone());
+                                            ui_state.status_message = format!(
+                                                "Metrics exported: {}",
+                                                get_file_name_str(&path)
+                                            );
+                                        }
+                                        Err(e) => {
+                                            ui_state.status_message =
+                                                format!("Error exporting metrics: {}", e);
+                                        }
                                     }
                                 }
                             }
+
+                            if ui.button("Export JSON").clicked() {
+                                if let Some(path) = rfd::FileDialog::new()
+                                    .add_filter("JSON Files", &["json"])
+                                    .set_file_name("metrics.json")
+                                    .save_file()
+                                {
+                                    match perf_metrics.export_to_json(&path) {
+                                        Ok(()) => {
+                                            ui_state.metrics_export_path = Some(path.clone());
+                                            ui_state.status_message = format!(
+                                                "Metrics exported: {}",
+                                                get_file_name_str(&path)
+                                            );
+                                        }
+                                        Err(e) => {
+                                            ui_state.status_message =
+                                                format!("Error exporting metrics: {}", e);
+                                        }
+                                    }
+                                }
+                            }
+                        });
+
+                        if let Some(path) = &ui_state.metrics_export_path {
+                            ui.add_space(3.0);
+                            ui.label(
+                                egui::RichText::new(format!("Last: {}", get_file_name_str(&path)))
+                                    .size(10.0)
+                                    .color(egui::Color32::from_rgb(120, 120, 120)),
+                            );
+                        }
+
+                        // Reset button
+                        ui.add_space(5.0);
+                        if ui.button("Reset Metrics").clicked() {
+                            perf_metrics.reset();
+                            ui_state.status_message = "Metrics reset".to_string();
                         }
                     });
-
-                    if let Some(path) = &ui_state.metrics_export_path {
-                        ui.add_space(3.0);
-                        ui.label(
-                            egui::RichText::new(format!(
-                                "Last: {}",
-                                get_file_name_str(&path)
-                            ))
-                            .size(10.0)
-                            .color(egui::Color32::from_rgb(120, 120, 120)),
-                        );
-                    }
-
-                    // Reset button
-                    ui.add_space(5.0);
-                    if ui.button("Reset Metrics").clicked() {
-                        perf_metrics.reset();
-                        ui_state.status_message = "Metrics reset".to_string();
-                    }
-                });
 
                 // ==================== ARTICULATED ROBOTS ====================
                 // Only show if there are articulated robots
@@ -1444,9 +1473,8 @@ pub fn ui_system(
 
                                 // Get limits from joint config
                                 let [min, max] = match &joint_cfg.joint_type {
-                                    crate::joint::Joint2DType::Revolute { limits, .. } => {
-                                        limits.unwrap_or([-std::f32::consts::PI, std::f32::consts::PI])
-                                    }
+                                    crate::joint::Joint2DType::Revolute { limits, .. } => limits
+                                        .unwrap_or([-std::f32::consts::PI, std::f32::consts::PI]),
                                     crate::joint::Joint2DType::Prismatic { limits, .. } => {
                                         limits.unwrap_or([-1.0, 1.0])
                                     }
@@ -1454,7 +1482,8 @@ pub fn ui_system(
                                 };
 
                                 // Only show slider for non-fixed joints
-                                if !matches!(joint_cfg.joint_type, crate::joint::Joint2DType::Fixed) {
+                                if !matches!(joint_cfg.joint_type, crate::joint::Joint2DType::Fixed)
+                                {
                                     ui.horizontal(|ui| {
                                         ui.label(
                                             egui::RichText::new(joint_name)
@@ -1476,14 +1505,19 @@ pub fn ui_system(
 
                                         // If slider changed, update motor target
                                         if response.changed() {
-                                            if let Some(joint_handle) = robot.joint_handles.get(joint_name) {
-                                                if let Some(joint) = physics_world.impulse_joint_set.get_mut(*joint_handle) {
+                                            if let Some(joint_handle) =
+                                                robot.joint_handles.get(joint_name)
+                                            {
+                                                if let Some(joint) = physics_world
+                                                    .impulse_joint_set
+                                                    .get_mut(*joint_handle)
+                                                {
                                                     // Update motor target position
                                                     joint.data.set_motor_position(
                                                         rapier2d::dynamics::JointAxis::AngX,
                                                         *slider_val,
-                                                        100.0,  // stiffness
-                                                        10.0,   // damping
+                                                        100.0, // stiffness
+                                                        10.0,  // damping
                                                     );
                                                 }
                                             }
@@ -1524,13 +1558,17 @@ pub fn ui_system(
                         ui.horizontal(|ui| {
                             if ui.button("Zero All").clicked() {
                                 // Reset all slider values to 0
-                                for key in ui_state.joint_sliders.keys().cloned().collect::<Vec<_>>() {
+                                for key in
+                                    ui_state.joint_sliders.keys().cloned().collect::<Vec<_>>()
+                                {
                                     ui_state.joint_sliders.insert(key, 0.0);
                                 }
                                 // Apply to physics
                                 for robot in articulated_robots.iter() {
                                     for (_, joint_handle) in &robot.joint_handles {
-                                        if let Some(joint) = physics_world.impulse_joint_set.get_mut(*joint_handle) {
+                                        if let Some(joint) =
+                                            physics_world.impulse_joint_set.get_mut(*joint_handle)
+                                        {
                                             joint.data.set_motor_position(
                                                 rapier2d::dynamics::JointAxis::AngX,
                                                 0.0,
@@ -1547,7 +1585,9 @@ pub fn ui_system(
                                 // Set all motor forces to 0 (disable motors)
                                 for robot in articulated_robots.iter() {
                                     for (_, joint_handle) in &robot.joint_handles {
-                                        if let Some(joint) = physics_world.impulse_joint_set.get_mut(*joint_handle) {
+                                        if let Some(joint) =
+                                            physics_world.impulse_joint_set.get_mut(*joint_handle)
+                                        {
                                             joint.data.set_motor_max_force(
                                                 rapier2d::dynamics::JointAxis::AngX,
                                                 0.0,
@@ -1560,7 +1600,6 @@ pub fn ui_system(
                         });
                     });
                 }
-
             });
 
             // Status Bar - Outside scroll area
@@ -1572,12 +1611,18 @@ pub fn ui_system(
                 // Status message
                 let status_color = if ui_state.status_message.contains("Error") {
                     egui::Color32::from_rgb(220, 80, 80)
-                } else if ui_state.status_message.contains("saved") || ui_state.status_message.contains("loaded") {
+                } else if ui_state.status_message.contains("saved")
+                    || ui_state.status_message.contains("loaded")
+                {
                     egui::Color32::from_rgb(80, 180, 80)
                 } else {
                     egui::Color32::from_rgb(180, 180, 180)
                 };
-                ui.label(egui::RichText::new(&ui_state.status_message).size(11.0).color(status_color));
+                ui.label(
+                    egui::RichText::new(&ui_state.status_message)
+                        .size(11.0)
+                        .color(status_color),
+                );
             });
 
             ui.add_space(2.0);
@@ -1586,19 +1631,25 @@ pub fn ui_system(
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 15.0;
                 ui.label(
-                    egui::RichText::new(format!("World: {:.0}x{:.0}m", app_config.world_config.width, app_config.world_config.height))
-                        .size(10.0)
-                        .color(egui::Color32::from_rgb(120, 120, 120))
+                    egui::RichText::new(format!(
+                        "World: {:.0}x{:.0}m",
+                        app_config.world_config.width, app_config.world_config.height
+                    ))
+                    .size(10.0)
+                    .color(egui::Color32::from_rgb(120, 120, 120)),
                 );
                 ui.label(
-                    egui::RichText::new(format!("Obstacles: {}", app_config.world_config.obstacles.len()))
-                        .size(10.0)
-                        .color(egui::Color32::from_rgb(120, 120, 120))
+                    egui::RichText::new(format!(
+                        "Obstacles: {}",
+                        app_config.world_config.obstacles.len()
+                    ))
+                    .size(10.0)
+                    .color(egui::Color32::from_rgb(120, 120, 120)),
                 );
                 ui.label(
                     egui::RichText::new(format!("Robots: {}", app_config.robots.len()))
                         .size(10.0)
-                        .color(egui::Color32::from_rgb(120, 120, 120))
+                        .color(egui::Color32::from_rgb(120, 120, 120)),
                 );
             });
         });
@@ -1801,10 +1852,8 @@ pub fn file_dialog_system(
                 match scenario.save_to_file(&path) {
                     Ok(()) => {
                         ui_state.scenario_path = Some(path.clone());
-                        ui_state.status_message = format!(
-                            "Scenario saved: {}",
-                            get_file_name_str(&path)
-                        );
+                        ui_state.status_message =
+                            format!("Scenario saved: {}", get_file_name_str(&path));
                         info!("Saved scenario to {:?}", path);
                     }
                     Err(e) => {
@@ -1839,10 +1888,8 @@ pub fn file_dialog_system(
                         app_config.robots = scenario.to_robot_configs();
 
                         ui_state.scenario_path = Some(path.clone());
-                        ui_state.status_message = format!(
-                            "Scenario loaded: {}",
-                            get_file_name_str(&path)
-                        );
+                        ui_state.status_message =
+                            format!("Scenario loaded: {}", get_file_name_str(&path));
                         info!("Loaded scenario from {:?}", path);
                     }
                     Err(e) => {
@@ -1892,10 +1939,8 @@ pub fn file_dialog_system(
                 if let Some(path) = dialog.save_file() {
                     match recording.export_to_csv(&path) {
                         Ok(()) => {
-                            ui_state.status_message = format!(
-                                "Exported to CSV: {}",
-                                get_file_name_str(&path)
-                            );
+                            ui_state.status_message =
+                                format!("Exported to CSV: {}", get_file_name_str(&path));
                             info!("Exported recording to CSV: {:?}", path);
                         }
                         Err(e) => {
@@ -1925,10 +1970,8 @@ pub fn file_dialog_system(
                                 "Exporting video (this may take a while)...".to_string();
                             match recording.export_to_video(&path, &temp_dir) {
                                 Ok(()) => {
-                                    ui_state.status_message = format!(
-                                        "Exported to video: {}",
-                                        get_file_name_str(&path)
-                                    );
+                                    ui_state.status_message =
+                                        format!("Exported to video: {}", get_file_name_str(&path));
                                     info!("Exported recording to video: {:?}", path);
                                 }
                                 Err(e) => {

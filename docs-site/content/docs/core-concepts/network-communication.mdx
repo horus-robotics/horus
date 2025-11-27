@@ -50,6 +50,51 @@ if let Some(status) = sub_hub.recv(&mut ctx) {
 }
 ```
 
+### Python Examples
+
+The same endpoint syntax works in Python:
+
+**Link (Python):**
+```python
+from horus import Link, SensorData
+
+# === MACHINE 1 (Producer) ===
+output = Link.producer(SensorData, "sensors@192.168.1.20:9000")
+output.send(data)
+
+# === MACHINE 2 (Consumer) ===
+input_link = Link.consumer(SensorData, "sensors@0.0.0.0:9000")
+if msg := input_link.recv():
+    process(msg)
+```
+
+**Hub (Python):**
+```python
+from horus import Hub, Status
+
+# Network hub with endpoint parameter
+hub = Hub(Status, endpoint="status@192.168.1.20:8000")
+hub.send(status)
+
+# Receive
+if msg := hub.recv():
+    process(msg)
+```
+
+**Router (Python):**
+```python
+from horus import Hub, RouterClient, CmdVel
+
+# Method 1: Implicit router endpoint
+router_hub = Hub(CmdVel, endpoint="cmdvel@router")
+
+# Method 2: Explicit RouterClient
+router = RouterClient("192.168.1.100", 7777)
+hub = Hub(CmdVel, endpoint=router.endpoint("cmdvel"))
+```
+
+See [Python Bindings - Network Communication](/multi-language/python-bindings#network-communication) for full Python documentation.
+
 ## Endpoint Syntax
 
 HORUS uses a simple `topic@address` syntax to specify network endpoints:
@@ -75,7 +120,7 @@ Link::consumer("topic@192.168.1.20:9000")?     // Listen on specific interface
 Hub::new("topic@192.168.1.20")?                // Direct UDP (default port)
 Hub::new("topic@192.168.1.20:8000")?           // Direct UDP (custom port)
 Hub::new("topic@localhost")?                    // Unix socket (localhost optimization)
-Hub::new("topic@router")?                       // Router backend (future)
+Hub::new("topic@router")?                       // Router backend (WAN/NAT traversal)
 ```
 
 ### Local Endpoints (Shared Memory)

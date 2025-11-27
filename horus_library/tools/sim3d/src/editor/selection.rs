@@ -161,7 +161,9 @@ pub fn selection_system(
             if keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight) {
                 // Add to selection
                 selection.add(picked_entity);
-            } else if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
+            } else if keyboard.pressed(KeyCode::ControlLeft)
+                || keyboard.pressed(KeyCode::ControlRight)
+            {
                 // Toggle selection
                 selection.toggle(picked_entity);
             } else {

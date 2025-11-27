@@ -28,10 +28,7 @@ pub enum VoteResult<T> {
     /// Consensus reached with this value
     Consensus(T),
     /// No consensus - disagreement detected
-    Disagreement {
-        values: Vec<T>,
-        reason: String,
-    },
+    Disagreement { values: Vec<T>, reason: String },
     /// Partial failure - some replicas failed
     PartialFailure {
         successful: Vec<T>,
@@ -197,11 +194,7 @@ impl<T: Clone + PartialEq + Eq + Hash> Voter<T> {
 impl Voter<i64> {
     /// Vote with median for numeric values
     pub fn median_vote(&self, redundant: &RedundantValue<i64>) -> VoteResult<i64> {
-        let mut values: Vec<i64> = redundant
-            .successful_values()
-            .into_iter()
-            .cloned()
-            .collect();
+        let mut values: Vec<i64> = redundant.successful_values().into_iter().cloned().collect();
 
         if values.is_empty() {
             return VoteResult::TotalFailure;
@@ -217,11 +210,7 @@ impl Voter<i64> {
 impl Voter<f64> {
     /// Vote with median for floating point values
     pub fn median_vote(&self, redundant: &RedundantValue<f64>) -> VoteResult<f64> {
-        let mut values: Vec<f64> = redundant
-            .successful_values()
-            .into_iter()
-            .cloned()
-            .collect();
+        let mut values: Vec<f64> = redundant.successful_values().into_iter().cloned().collect();
 
         if values.is_empty() {
             return VoteResult::TotalFailure;

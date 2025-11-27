@@ -252,7 +252,7 @@ let cmd = BldcCommand {
 };
 
 // Send command
-let hub = Hub::<BldcCommand>::new("bldc/command")?;
+let hub = Hub::<BldcCommand>::new("bldc.command")?;
 hub.send(cmd, None)?;
 ```
 
@@ -289,7 +289,7 @@ std::thread::sleep(Duration::from_millis(100));
 bldc.enable_telemetry(true);
 
 // Subscribe to telemetry topic
-let telem_hub = Hub::<BldcTelemetry>::new("bldc/telemetry")?;
+let telem_hub = Hub::<BldcTelemetry>::new("bldc.telemetry")?;
 
 if let Some(telem) = telem_hub.recv(None) {
     println!("Motor {}: {} RPM, {}°C, {} A",
@@ -360,7 +360,7 @@ fn main() -> Result<()> {
         name: "motor_control",
         init: |ctx| {
             // Arm motors on startup
-            let hub = Hub::<BldcCommand>::new("bldc/command")?;
+            let hub = Hub::<BldcCommand>::new("bldc.command")?;
 
             // Set all to idle
             for motor_id in 0..4 {
@@ -381,7 +381,7 @@ fn main() -> Result<()> {
             Ok(())
         },
         tick: |ctx| {
-            let hub = Hub::<BldcCommand>::new("bldc/command")?;
+            let hub = Hub::<BldcCommand>::new("bldc.command")?;
 
             // Example: Spin all motors at 25% throttle
             let throttle = 1000 + (1000.0 * 0.25) as u16;
@@ -394,7 +394,7 @@ fn main() -> Result<()> {
             }
 
             // Monitor telemetry
-            let telem_hub = Hub::<BldcTelemetry>::new("bldc/telemetry")?;
+            let telem_hub = Hub::<BldcTelemetry>::new("bldc.telemetry")?;
             while let Some(telem) = telem_hub.recv(None) {
                 if telem.temperature > 80.0 {
                     ctx.log_warning(&format!(

@@ -315,9 +315,13 @@ impl RealIoUringBackend {
         let user_data = self.next_user_data();
 
         // Build send SQE
-        let send_e = opcode::Send::new(types::Fd(self.socket_fd), self.buffers[buffer_idx].as_ptr(), len as u32)
-            .build()
-            .user_data(user_data);
+        let send_e = opcode::Send::new(
+            types::Fd(self.socket_fd),
+            self.buffers[buffer_idx].as_ptr(),
+            len as u32,
+        )
+        .build()
+        .user_data(user_data);
 
         // Submit to ring - check fullness and push in separate scopes
         let push_result = unsafe {
@@ -384,12 +388,16 @@ impl RealIoUringBackend {
 
     /// Submit the ring (required for non-SQPOLL mode)
     pub fn submit(&self) -> io::Result<usize> {
-        self.ring.submit().map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+        self.ring
+            .submit()
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
     }
 
     /// Submit and wait for at least one completion
     pub fn submit_and_wait(&self, want: usize) -> io::Result<usize> {
-        self.ring.submit_and_wait(want).map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+        self.ring
+            .submit_and_wait(want)
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
     }
 
     /// Process completions
@@ -414,7 +422,9 @@ impl RealIoUringBackend {
                     OpType::Send { buffer_idx, len: _ } => {
                         self.release_buffer(buffer_idx);
                         if result >= 0 {
-                            self.stats.bytes_sent.fetch_add(result as u64, Ordering::Relaxed);
+                            self.stats
+                                .bytes_sent
+                                .fetch_add(result as u64, Ordering::Relaxed);
                             CompletionResult::SendComplete {
                                 user_data,
                                 bytes_sent: result as usize,
@@ -429,13 +439,12 @@ impl RealIoUringBackend {
                     OpType::Recv { buffer_idx } => {
                         if result >= 0 {
                             let len = result as usize;
-                            self.stats.bytes_received.fetch_add(len as u64, Ordering::Relaxed);
+                            self.stats
+                                .bytes_received
+                                .fetch_add(len as u64, Ordering::Relaxed);
                             let data = self.buffers[buffer_idx][..len].to_vec();
                             self.release_buffer(buffer_idx);
-                            CompletionResult::RecvComplete {
-                                user_data,
-                                data,
-                            }
+                            CompletionResult::RecvComplete { user_data, data }
                         } else {
                             self.release_buffer(buffer_idx);
                             CompletionResult::Error {
@@ -447,7 +456,9 @@ impl RealIoUringBackend {
                     OpType::SendMsg { buffer_idx } => {
                         self.release_buffer(buffer_idx);
                         if result >= 0 {
-                            self.stats.bytes_sent.fetch_add(result as u64, Ordering::Relaxed);
+                            self.stats
+                                .bytes_sent
+                                .fetch_add(result as u64, Ordering::Relaxed);
                             CompletionResult::SendComplete {
                                 user_data,
                                 bytes_sent: result as usize,
@@ -462,13 +473,12 @@ impl RealIoUringBackend {
                     OpType::RecvMsg { buffer_idx } => {
                         if result >= 0 {
                             let len = result as usize;
-                            self.stats.bytes_received.fetch_add(len as u64, Ordering::Relaxed);
+                            self.stats
+                                .bytes_received
+                                .fetch_add(len as u64, Ordering::Relaxed);
                             let data = self.buffers[buffer_idx][..len].to_vec();
                             self.release_buffer(buffer_idx);
-                            CompletionResult::RecvComplete {
-                                user_data,
-                                data,
-                            }
+                            CompletionResult::RecvComplete { user_data, data }
                         } else {
                             self.release_buffer(buffer_idx);
                             CompletionResult::Error {
@@ -676,17 +686,20 @@ mod tests {
 
         // Create receiver
         let recv_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 19999));
-        let mut receiver = match RealIoUringBackend::new(recv_addr, None, RealIoUringConfig::default()) {
-            Ok(r) => r,
-            Err(_) => return,
-        };
+        let mut receiver =
+            match RealIoUringBackend::new(recv_addr, None, RealIoUringConfig::default()) {
+                Ok(r) => r,
+                Err(_) => return,
+            };
 
         // Create sender connected to receiver
         let send_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 0));
-        let mut sender = match RealIoUringBackend::new(send_addr, Some(recv_addr), RealIoUringConfig::default()) {
-            Ok(s) => s,
-            Err(_) => return,
-        };
+        let mut sender =
+            match RealIoUringBackend::new(send_addr, Some(recv_addr), RealIoUringConfig::default())
+            {
+                Ok(s) => s,
+                Err(_) => return,
+            };
 
         // Submit recv first
         let _ = receiver.submit_recv();
@@ -708,7 +721,10 @@ mod tests {
         let completions = receiver.process_completions();
 
         for c in completions {
-            if let CompletionResult::RecvComplete { data: recv_data, .. } = c {
+            if let CompletionResult::RecvComplete {
+                data: recv_data, ..
+            } = c
+            {
                 assert_eq!(&recv_data, data);
                 return;
             }

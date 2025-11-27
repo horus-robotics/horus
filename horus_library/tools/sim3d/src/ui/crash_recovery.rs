@@ -476,7 +476,10 @@ impl CrashRecoveryManager {
     }
 
     /// Checks for existing recovery files on startup
-    pub fn check_for_recovery(&mut self, config: &AutoSaveConfig) -> Result<usize, CrashRecoveryError> {
+    pub fn check_for_recovery(
+        &mut self,
+        config: &AutoSaveConfig,
+    ) -> Result<usize, CrashRecoveryError> {
         self.recovery_files.clear();
         self.recovery_checked = true;
 
@@ -513,7 +516,10 @@ impl CrashRecoveryManager {
     }
 
     /// Scans the auto-save directory for recovery files
-    fn scan_for_autosave_files(&mut self, config: &AutoSaveConfig) -> Result<(), CrashRecoveryError> {
+    fn scan_for_autosave_files(
+        &mut self,
+        config: &AutoSaveConfig,
+    ) -> Result<(), CrashRecoveryError> {
         if !config.directory.exists() {
             return Ok(());
         }
@@ -560,8 +566,8 @@ impl CrashRecoveryManager {
 
     /// Loads recovery metadata from a file
     fn load_recovery_metadata(&self, path: &Path) -> Result<Vec<RecoveryFile>, CrashRecoveryError> {
-        let json = fs::read_to_string(path)
-            .map_err(|e| CrashRecoveryError::IoError(e.to_string()))?;
+        let json =
+            fs::read_to_string(path).map_err(|e| CrashRecoveryError::IoError(e.to_string()))?;
 
         let data: RecoveryMetadata = serde_json::from_str(&json)
             .map_err(|e| CrashRecoveryError::DeserializationError(e.to_string()))?;
@@ -580,12 +586,10 @@ impl CrashRecoveryManager {
             .map_err(|e| CrashRecoveryError::SerializationError(e.to_string()))?;
 
         if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| CrashRecoveryError::IoError(e.to_string()))?;
+            fs::create_dir_all(parent).map_err(|e| CrashRecoveryError::IoError(e.to_string()))?;
         }
 
-        fs::write(path, json)
-            .map_err(|e| CrashRecoveryError::IoError(e.to_string()))?;
+        fs::write(path, json).map_err(|e| CrashRecoveryError::IoError(e.to_string()))?;
 
         Ok(())
     }
@@ -628,8 +632,7 @@ impl CrashRecoveryManager {
         let content = if recovery.compressed {
             Self::read_compressed_file(&recovery.path)?
         } else {
-            fs::read(&recovery.path)
-                .map_err(|e| CrashRecoveryError::IoError(e.to_string()))?
+            fs::read(&recovery.path).map_err(|e| CrashRecoveryError::IoError(e.to_string()))?
         };
 
         // Mark as recovered
@@ -643,12 +646,12 @@ impl CrashRecoveryManager {
 
     /// Reads a gzip-compressed file
     fn read_compressed_file(path: &Path) -> Result<Vec<u8>, CrashRecoveryError> {
-        let file = fs::File::open(path)
-            .map_err(|e| CrashRecoveryError::IoError(e.to_string()))?;
+        let file = fs::File::open(path).map_err(|e| CrashRecoveryError::IoError(e.to_string()))?;
 
         let mut decoder = GzDecoder::new(file);
         let mut content = Vec::new();
-        decoder.read_to_end(&mut content)
+        decoder
+            .read_to_end(&mut content)
             .map_err(|e| CrashRecoveryError::IoError(e.to_string()))?;
 
         Ok(content)
@@ -662,7 +665,11 @@ impl CrashRecoveryManager {
         config: &AutoSaveConfig,
     ) -> Result<(), CrashRecoveryError> {
         // Find and update the recovery file
-        if let Some(recovery) = self.recovery_files.iter_mut().find(|f| f.path == recovery_path) {
+        if let Some(recovery) = self
+            .recovery_files
+            .iter_mut()
+            .find(|f| f.path == recovery_path)
+        {
             recovery.state = RecoveryState::Dismissed;
 
             if delete_file {
@@ -733,8 +740,7 @@ impl CrashRecoveryManager {
         let result = if config.compress {
             Self::write_compressed_file(&save_path, content)
         } else {
-            fs::write(&save_path, content)
-                .map_err(|e| CrashRecoveryError::IoError(e.to_string()))
+            fs::write(&save_path, content).map_err(|e| CrashRecoveryError::IoError(e.to_string()))
         };
 
         state.save_in_progress = false;
@@ -742,8 +748,7 @@ impl CrashRecoveryManager {
         match result {
             Ok(()) => {
                 // Create recovery file entry
-                let mut recovery = RecoveryFile::new(&save_path)
-                    .with_hash(hash);
+                let mut recovery = RecoveryFile::new(&save_path).with_hash(hash);
 
                 if let Some(scene_path) = &self.current_scene_path {
                     recovery = recovery.with_original_path(scene_path.clone());
@@ -753,12 +758,11 @@ impl CrashRecoveryManager {
                     recovery = recovery.compressed();
                 }
 
-                recovery.size_bytes = fs::metadata(&save_path)
-                    .map(|m| m.len())
-                    .unwrap_or(0);
+                recovery.size_bytes = fs::metadata(&save_path).map(|m| m.len()).unwrap_or(0);
 
                 // Update or add recovery file entry
-                if let Some(existing) = self.recovery_files.iter_mut().find(|f| f.path == save_path) {
+                if let Some(existing) = self.recovery_files.iter_mut().find(|f| f.path == save_path)
+                {
                     *existing = recovery;
                 } else {
                     self.recovery_files.push_front(recovery);
@@ -786,14 +790,16 @@ impl CrashRecoveryManager {
 
     /// Writes a gzip-compressed file
     fn write_compressed_file(path: &Path, content: &[u8]) -> Result<(), CrashRecoveryError> {
-        let file = fs::File::create(path)
-            .map_err(|e| CrashRecoveryError::IoError(e.to_string()))?;
+        let file =
+            fs::File::create(path).map_err(|e| CrashRecoveryError::IoError(e.to_string()))?;
 
         let mut encoder = GzEncoder::new(file, Compression::default());
-        encoder.write_all(content)
+        encoder
+            .write_all(content)
             .map_err(|e| CrashRecoveryError::IoError(e.to_string()))?;
 
-        encoder.finish()
+        encoder
+            .finish()
             .map_err(|e| CrashRecoveryError::IoError(e.to_string()))?;
 
         Ok(())
@@ -825,7 +831,8 @@ impl CrashRecoveryManager {
     /// Cleans up old auto-save files beyond the max count
     fn cleanup_old_files(&mut self, config: &AutoSaveConfig) {
         // Only keep pending recovery files up to max_files
-        let pending: Vec<_> = self.recovery_files
+        let pending: Vec<_> = self
+            .recovery_files
             .iter()
             .filter(|f| f.state == RecoveryState::Pending)
             .cloned()
@@ -840,9 +847,8 @@ impl CrashRecoveryManager {
             }
 
             // Update recovery files list
-            self.recovery_files.retain(|f| {
-                f.state != RecoveryState::Pending || f.path.exists()
-            });
+            self.recovery_files
+                .retain(|f| f.state != RecoveryState::Pending || f.path.exists());
         }
     }
 
@@ -1165,11 +1171,7 @@ pub fn render_recovery_dialog(
 
 #[cfg(feature = "visual")]
 /// Renders auto-save status indicator
-pub fn render_auto_save_status(
-    ui: &mut egui::Ui,
-    state: &AutoSaveState,
-    config: &AutoSaveConfig,
-) {
+pub fn render_auto_save_status(ui: &mut egui::Ui, state: &AutoSaveState, config: &AutoSaveConfig) {
     if !config.enabled {
         ui.label("Auto-save: Disabled");
         return;
@@ -1248,10 +1250,13 @@ impl Plugin for CrashRecoveryPlugin {
             .add_event::<SceneChangedEvent>()
             .add_event::<SceneSavedEvent>()
             .add_event::<RecoverySelectedEvent>()
-            .add_systems(Startup, (
-                startup_check_recovery_system,
-                init_auto_save_schedule_system,
-            ))
+            .add_systems(
+                Startup,
+                (
+                    startup_check_recovery_system,
+                    init_auto_save_schedule_system,
+                ),
+            )
             .add_systems(
                 Update,
                 (
@@ -1287,15 +1292,18 @@ mod tests {
             .with_hash(12345);
 
         assert_eq!(recovery.path, PathBuf::from("/test/autosave.dat"));
-        assert_eq!(recovery.original_path, Some(PathBuf::from("/test/scene.scene")));
+        assert_eq!(
+            recovery.original_path,
+            Some(PathBuf::from("/test/scene.scene"))
+        );
         assert_eq!(recovery.scene_hash, 12345);
         assert_eq!(recovery.state, RecoveryState::Pending);
     }
 
     #[test]
     fn test_recovery_file_display_name() {
-        let recovery_with_original = RecoveryFile::new("/test/autosave_0.dat")
-            .with_original_path("/scenes/my_scene.scene");
+        let recovery_with_original =
+            RecoveryFile::new("/test/autosave_0.dat").with_original_path("/scenes/my_scene.scene");
 
         assert_eq!(recovery_with_original.display_name(), "my_scene");
 
@@ -1500,7 +1508,9 @@ mod tests {
 
         let content = b"test scene content";
 
-        let path = manager.trigger_auto_save(content, &config, &mut state).unwrap();
+        let path = manager
+            .trigger_auto_save(content, &config, &mut state)
+            .unwrap();
 
         assert!(path.exists());
         assert!(!state.has_unsaved_changes);
@@ -1517,7 +1527,9 @@ mod tests {
 
         let content = b"test scene content for compression";
 
-        let path = manager.trigger_auto_save(content, &config, &mut state).unwrap();
+        let path = manager
+            .trigger_auto_save(content, &config, &mut state)
+            .unwrap();
 
         assert!(path.exists());
         assert!(path.to_string_lossy().ends_with(".gz"));
@@ -1533,11 +1545,15 @@ mod tests {
         let content = b"test scene content";
 
         // First save
-        manager.trigger_auto_save(content, &config, &mut state).unwrap();
+        manager
+            .trigger_auto_save(content, &config, &mut state)
+            .unwrap();
         let first_count = state.save_count;
 
         // Second save with same content - should skip
-        manager.trigger_auto_save(content, &config, &mut state).unwrap();
+        manager
+            .trigger_auto_save(content, &config, &mut state)
+            .unwrap();
 
         // Save count shouldn't increase
         assert_eq!(state.save_count, first_count);
@@ -1555,7 +1571,9 @@ mod tests {
         // Save multiple times with different content
         for i in 0..5 {
             let content = format!("content {}", i).into_bytes();
-            manager.trigger_auto_save(&content, &config, &mut state).unwrap();
+            manager
+                .trigger_auto_save(&content, &config, &mut state)
+                .unwrap();
         }
 
         // Check rotating index
@@ -1571,7 +1589,9 @@ mod tests {
 
         // Create a recovery file
         let content = b"test content";
-        let path = manager.trigger_auto_save(content, &config, &mut state).unwrap();
+        let path = manager
+            .trigger_auto_save(content, &config, &mut state)
+            .unwrap();
 
         // Dismiss it
         manager.dismiss_recovery(&path, false, &config).unwrap();
@@ -1590,7 +1610,9 @@ mod tests {
 
         // Create a recovery file
         let content = b"test content";
-        let path = manager.trigger_auto_save(content, &config, &mut state).unwrap();
+        let path = manager
+            .trigger_auto_save(content, &config, &mut state)
+            .unwrap();
 
         assert!(path.exists());
 
@@ -1611,7 +1633,9 @@ mod tests {
         // Create multiple recovery files
         for i in 0..3 {
             let content = format!("content {}", i).into_bytes();
-            manager.trigger_auto_save(&content, &config, &mut state).unwrap();
+            manager
+                .trigger_auto_save(&content, &config, &mut state)
+                .unwrap();
         }
 
         assert!(manager.pending_count() > 0);
@@ -1626,8 +1650,12 @@ mod tests {
     fn test_crash_recovery_manager_pending_count() {
         let mut manager = CrashRecoveryManager::new();
 
-        manager.recovery_files.push_back(RecoveryFile::new("/test/1.dat"));
-        manager.recovery_files.push_back(RecoveryFile::new("/test/2.dat"));
+        manager
+            .recovery_files
+            .push_back(RecoveryFile::new("/test/1.dat"));
+        manager
+            .recovery_files
+            .push_back(RecoveryFile::new("/test/2.dat"));
 
         let mut dismissed = RecoveryFile::new("/test/3.dat");
         dismissed.state = RecoveryState::Dismissed;
@@ -1640,7 +1668,9 @@ mod tests {
     fn test_crash_recovery_manager_get_pending_recoveries() {
         let mut manager = CrashRecoveryManager::new();
 
-        manager.recovery_files.push_back(RecoveryFile::new("/test/1.dat"));
+        manager
+            .recovery_files
+            .push_back(RecoveryFile::new("/test/1.dat"));
 
         let mut recovered = RecoveryFile::new("/test/2.dat");
         recovered.state = RecoveryState::Recovered;
@@ -1659,7 +1689,9 @@ mod tests {
         let mut state = AutoSaveState::new();
 
         let original_content = b"original scene content";
-        let path = manager.trigger_auto_save(original_content, &config, &mut state).unwrap();
+        let path = manager
+            .trigger_auto_save(original_content, &config, &mut state)
+            .unwrap();
 
         // Recover
         let recovered_content = manager.recover_from(&path, &config).unwrap();
@@ -1679,7 +1711,9 @@ mod tests {
         let mut state = AutoSaveState::new();
 
         let original_content = b"compressed scene content";
-        let path = manager.trigger_auto_save(original_content, &config, &mut state).unwrap();
+        let path = manager
+            .trigger_auto_save(original_content, &config, &mut state)
+            .unwrap();
 
         // Recover
         let recovered_content = manager.recover_from(&path, &config).unwrap();
@@ -1697,7 +1731,9 @@ mod tests {
         // Create recovery files
         for i in 0..3 {
             let content = format!("content {}", i).into_bytes();
-            manager.trigger_auto_save(&content, &config, &mut state).unwrap();
+            manager
+                .trigger_auto_save(&content, &config, &mut state)
+                .unwrap();
         }
 
         assert!(!manager.recovery_files.is_empty());
@@ -1760,7 +1796,9 @@ mod tests {
         assert!(!manager.should_show_recovery_dialog());
 
         // Add a pending recovery
-        manager.recovery_files.push_back(RecoveryFile::new("/test/recovery.dat"));
+        manager
+            .recovery_files
+            .push_back(RecoveryFile::new("/test/recovery.dat"));
         manager.show_recovery_dialog = true;
 
         assert!(manager.should_show_recovery_dialog());
@@ -1786,7 +1824,8 @@ mod tests {
         recovery.timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
-            .as_secs() - 3600;
+            .as_secs()
+            - 3600;
 
         let age = recovery.age();
         assert!(age.as_secs() >= 3600);

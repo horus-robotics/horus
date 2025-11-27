@@ -1,8 +1,8 @@
 //! Undo/redo system for editor operations
 
-use bevy::prelude::*;
 use bevy::ecs::entity::EntityHashMap;
-use serde::{Serialize, Deserialize};
+use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
 /// Maximum number of undo operations to store
@@ -371,9 +371,7 @@ pub fn undo_keyboard_system(
 }
 
 /// Exclusive system to process undo events
-pub fn process_undo_system(
-    world: &mut World,
-) {
+pub fn process_undo_system(world: &mut World) {
     // Check for undo events
     let mut should_undo = false;
     {
@@ -391,16 +389,16 @@ pub fn process_undo_system(
             temp_stack.undo(world);
             *undo_stack = temp_stack;
 
-            info!("Undo performed: {}",
-                  undo_stack.undo_description().unwrap_or("Unknown operation"));
+            info!(
+                "Undo performed: {}",
+                undo_stack.undo_description().unwrap_or("Unknown operation")
+            );
         }
     }
 }
 
 /// Exclusive system to process redo events
-pub fn process_redo_system(
-    world: &mut World,
-) {
+pub fn process_redo_system(world: &mut World) {
     // Check for redo events
     let mut should_redo = false;
     {
@@ -418,16 +416,16 @@ pub fn process_redo_system(
             temp_stack.redo(world);
             *undo_stack = temp_stack;
 
-            info!("Redo performed: {}",
-                  undo_stack.redo_description().unwrap_or("Unknown operation"));
+            info!(
+                "Redo performed: {}",
+                undo_stack.redo_description().unwrap_or("Unknown operation")
+            );
         }
     }
 }
 
 /// Exclusive system to execute new operations
-pub fn execute_operation_system(
-    world: &mut World,
-) {
+pub fn execute_operation_system(world: &mut World) {
     // Collect all pending operations
     let mut operations_to_execute = Vec::new();
     {
@@ -448,16 +446,12 @@ pub struct UndoPlugin;
 
 impl Plugin for UndoPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .init_resource::<UndoStack>()
+        app.init_resource::<UndoStack>()
             .add_event::<UndoEvent>()
             .add_event::<RedoEvent>()
             .add_event::<ExecuteOperationEvent>()
             .add_systems(Update, undo_keyboard_system)
-            .add_systems(Last, (
-                process_undo_system,
-                process_redo_system,
-            ).chain());
+            .add_systems(Last, (process_undo_system, process_redo_system).chain());
     }
 }
 

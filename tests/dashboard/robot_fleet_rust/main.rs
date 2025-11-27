@@ -27,7 +27,7 @@ message!(ObstacleAlert = (f32, f32)); // distance, angle
 node! {
     CameraNode {
         pub {
-            camera: Image -> "sensors/camera",
+            camera: Image -> "sensors.camera",
         }
 
         sub {}
@@ -88,7 +88,7 @@ node! {
 node! {
     ImuNode {
         pub {
-            imu: Imu -> "sensors/imu",
+            imu: Imu -> "sensors.imu",
         }
 
         sub {}
@@ -276,7 +276,7 @@ node! {
 node! {
     BatteryMonitorNode {
         pub {
-            battery: BatteryStatus -> "system/battery",
+            battery: BatteryStatus -> "system.battery",
         }
 
         sub {}
@@ -303,7 +303,7 @@ node! {
 node! {
     SystemHealthNode {
         pub {
-            health: SystemHealth -> "system/health",
+            health: SystemHealth -> "system.health",
         }
 
         sub {}

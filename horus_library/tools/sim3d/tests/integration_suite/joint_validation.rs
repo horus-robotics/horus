@@ -48,7 +48,9 @@ pub struct RevoluteJointLimitResult {
 }
 
 /// Run revolute joint limit validation
-pub fn validate_revolute_joint_limits(config: RevoluteJointLimitTest) -> Result<RevoluteJointLimitResult, String> {
+pub fn validate_revolute_joint_limits(
+    config: RevoluteJointLimitTest,
+) -> Result<RevoluteJointLimitResult, String> {
     let num_steps = (config.duration / config.timestep) as usize;
 
     // Setup Rapier physics
@@ -81,9 +83,7 @@ pub fn validate_revolute_joint_limits(config: RevoluteJointLimitTest) -> Result<
         .build();
     let link_handle = rigid_body_set.insert(link);
 
-    let link_collider = ColliderBuilder::cuboid(0.5, 0.05, 0.05)
-        .mass(1.0)
-        .build();
+    let link_collider = ColliderBuilder::cuboid(0.5, 0.05, 0.05).mass(1.0).build();
     collider_set.insert_with_parent(link_collider, link_handle, &mut rigid_body_set);
 
     // Create revolute joint with limits
@@ -91,7 +91,10 @@ pub fn validate_revolute_joint_limits(config: RevoluteJointLimitTest) -> Result<
         .local_anchor1(point![0.0, 0.0, 0.0])
         .local_anchor2(point![-0.5, 0.0, 0.0])
         .limits([config.lower_limit, config.upper_limit])
-        .motor_velocity(config.applied_torque.signum() * 5.0, config.applied_torque.abs())
+        .motor_velocity(
+            config.applied_torque.signum() * 5.0,
+            config.applied_torque.abs(),
+        )
         .build();
     impulse_joint_set.insert(base_handle, link_handle, joint, true);
 
@@ -175,7 +178,9 @@ pub struct PrismaticJointMotionResult {
 }
 
 /// Run prismatic joint motion validation
-pub fn validate_prismatic_joint_motion(config: PrismaticJointMotionTest) -> Result<PrismaticJointMotionResult, String> {
+pub fn validate_prismatic_joint_motion(
+    config: PrismaticJointMotionTest,
+) -> Result<PrismaticJointMotionResult, String> {
     let num_steps = (config.duration / config.timestep) as usize;
 
     // Setup Rapier physics
@@ -208,9 +213,7 @@ pub fn validate_prismatic_joint_motion(config: PrismaticJointMotionTest) -> Resu
         .build();
     let slider_handle = rigid_body_set.insert(slider);
 
-    let slider_collider = ColliderBuilder::cuboid(0.1, 0.1, 0.1)
-        .mass(1.0)
-        .build();
+    let slider_collider = ColliderBuilder::cuboid(0.1, 0.1, 0.1).mass(1.0).build();
     collider_set.insert_with_parent(slider_collider, slider_handle, &mut rigid_body_set);
 
     // Create prismatic joint
@@ -219,7 +222,10 @@ pub fn validate_prismatic_joint_motion(config: PrismaticJointMotionTest) -> Resu
         .local_anchor1(point![0.0, 0.0, 0.0])
         .local_anchor2(point![0.0, 0.0, 0.0])
         .limits([config.lower_limit, config.upper_limit])
-        .motor_velocity(config.applied_force.signum() * 2.0, config.applied_force.abs())
+        .motor_velocity(
+            config.applied_force.signum() * 2.0,
+            config.applied_force.abs(),
+        )
         .build();
     impulse_joint_set.insert(base_handle, slider_handle, joint, true);
 
@@ -245,9 +251,12 @@ pub fn validate_prismatic_joint_motion(config: PrismaticJointMotionTest) -> Resu
             &event_handler,
         );
 
-        let rb = rigid_body_set.get(slider_handle).ok_or("Slider not found")?;
+        let rb = rigid_body_set
+            .get(slider_handle)
+            .ok_or("Slider not found")?;
         let pos = rb.translation();
-        let position_along_axis = pos.x * config.axis.x + pos.y * config.axis.y + pos.z * config.axis.z;
+        let position_along_axis =
+            pos.x * config.axis.x + pos.y * config.axis.y + pos.z * config.axis.z;
 
         min_pos = min_pos.min(position_along_axis);
         max_pos = max_pos.max(position_along_axis);
@@ -297,7 +306,9 @@ pub struct FixedJointRigidityResult {
 }
 
 /// Run fixed joint rigidity validation
-pub fn validate_fixed_joint_rigidity(config: FixedJointRigidityTest) -> Result<FixedJointRigidityResult, String> {
+pub fn validate_fixed_joint_rigidity(
+    config: FixedJointRigidityTest,
+) -> Result<FixedJointRigidityResult, String> {
     let num_steps = (config.duration / config.timestep) as usize;
 
     // Setup Rapier physics
@@ -330,9 +341,7 @@ pub fn validate_fixed_joint_rigidity(config: FixedJointRigidityTest) -> Result<F
         .build();
     let attached_handle = rigid_body_set.insert(attached);
 
-    let attached_collider = ColliderBuilder::cuboid(0.2, 0.2, 0.2)
-        .mass(5.0)
-        .build();
+    let attached_collider = ColliderBuilder::cuboid(0.2, 0.2, 0.2).mass(5.0).build();
     collider_set.insert_with_parent(attached_collider, attached_handle, &mut rigid_body_set);
 
     // Create fixed joint
@@ -344,7 +353,9 @@ pub fn validate_fixed_joint_rigidity(config: FixedJointRigidityTest) -> Result<F
 
     // Get initial relative pose
     let base_rb = rigid_body_set.get(base_handle).ok_or("Base not found")?;
-    let attached_rb = rigid_body_set.get(attached_handle).ok_or("Attached not found")?;
+    let attached_rb = rigid_body_set
+        .get(attached_handle)
+        .ok_or("Attached not found")?;
     let initial_relative_pos = attached_rb.translation() - base_rb.translation();
     let initial_relative_rot = base_rb.rotation().inverse() * attached_rb.rotation();
 
@@ -356,12 +367,22 @@ pub fn validate_fixed_joint_rigidity(config: FixedJointRigidityTest) -> Result<F
         // Apply forces periodically
         if step % 100 == 0 {
             if let Some(rb) = rigid_body_set.get_mut(attached_handle) {
-                rb.apply_impulse(vector![config.applied_force.x * config.timestep,
-                                         config.applied_force.y * config.timestep,
-                                         config.applied_force.z * config.timestep], true);
-                rb.apply_torque_impulse(vector![config.applied_torque.x * config.timestep,
-                                                config.applied_torque.y * config.timestep,
-                                                config.applied_torque.z * config.timestep], true);
+                rb.apply_impulse(
+                    vector![
+                        config.applied_force.x * config.timestep,
+                        config.applied_force.y * config.timestep,
+                        config.applied_force.z * config.timestep
+                    ],
+                    true,
+                );
+                rb.apply_torque_impulse(
+                    vector![
+                        config.applied_torque.x * config.timestep,
+                        config.applied_torque.y * config.timestep,
+                        config.applied_torque.z * config.timestep
+                    ],
+                    true,
+                );
             }
         }
 
@@ -382,7 +403,9 @@ pub fn validate_fixed_joint_rigidity(config: FixedJointRigidityTest) -> Result<F
         );
 
         let base_rb = rigid_body_set.get(base_handle).ok_or("Base not found")?;
-        let attached_rb = rigid_body_set.get(attached_handle).ok_or("Attached not found")?;
+        let attached_rb = rigid_body_set
+            .get(attached_handle)
+            .ok_or("Attached not found")?;
 
         let current_relative_pos = attached_rb.translation() - base_rb.translation();
         let current_relative_rot = base_rb.rotation().inverse() * attached_rb.rotation();
@@ -434,7 +457,9 @@ pub struct SphericalJointDOFResult {
 }
 
 /// Run spherical joint degrees of freedom validation
-pub fn validate_spherical_joint_dof(config: SphericalJointDOFTest) -> Result<SphericalJointDOFResult, String> {
+pub fn validate_spherical_joint_dof(
+    config: SphericalJointDOFTest,
+) -> Result<SphericalJointDOFResult, String> {
     let num_steps = (config.duration / config.timestep) as usize;
 
     // Setup Rapier physics
@@ -467,9 +492,7 @@ pub fn validate_spherical_joint_dof(config: SphericalJointDOFTest) -> Result<Sph
         .build();
     let ball_handle = rigid_body_set.insert(ball);
 
-    let ball_collider = ColliderBuilder::ball(0.2)
-        .mass(1.0)
-        .build();
+    let ball_collider = ColliderBuilder::ball(0.2).mass(1.0).build();
     collider_set.insert_with_parent(ball_collider, ball_handle, &mut rigid_body_set);
 
     // Create spherical joint
@@ -593,7 +616,9 @@ pub struct JointMotorControlResult {
 }
 
 /// Run joint motor position control validation
-pub fn validate_joint_motor_position_control(config: JointMotorControlTest) -> Result<JointMotorControlResult, String> {
+pub fn validate_joint_motor_position_control(
+    config: JointMotorControlTest,
+) -> Result<JointMotorControlResult, String> {
     let num_steps = (config.duration / config.timestep) as usize;
 
     // Setup Rapier physics
@@ -626,9 +651,7 @@ pub fn validate_joint_motor_position_control(config: JointMotorControlTest) -> R
         .build();
     let arm_handle = rigid_body_set.insert(arm);
 
-    let arm_collider = ColliderBuilder::cuboid(0.5, 0.05, 0.05)
-        .mass(1.0)
-        .build();
+    let arm_collider = ColliderBuilder::cuboid(0.5, 0.05, 0.05).mass(1.0).build();
     collider_set.insert_with_parent(arm_collider, arm_handle, &mut rigid_body_set);
 
     // Create revolute joint with position motor
@@ -702,7 +725,9 @@ pub fn validate_joint_motor_position_control(config: JointMotorControlTest) -> R
 }
 
 /// Run joint motor velocity control validation
-pub fn validate_joint_motor_velocity_control(config: JointMotorControlTest) -> Result<JointMotorControlResult, String> {
+pub fn validate_joint_motor_velocity_control(
+    config: JointMotorControlTest,
+) -> Result<JointMotorControlResult, String> {
     let num_steps = (config.duration / config.timestep) as usize;
 
     // Setup Rapier physics
@@ -735,9 +760,7 @@ pub fn validate_joint_motor_velocity_control(config: JointMotorControlTest) -> R
         .build();
     let arm_handle = rigid_body_set.insert(arm);
 
-    let arm_collider = ColliderBuilder::cuboid(0.5, 0.05, 0.05)
-        .mass(1.0)
-        .build();
+    let arm_collider = ColliderBuilder::cuboid(0.5, 0.05, 0.05).mass(1.0).build();
     collider_set.insert_with_parent(arm_collider, arm_handle, &mut rigid_body_set);
 
     // Create revolute joint with velocity motor
@@ -776,7 +799,8 @@ pub fn validate_joint_motor_velocity_control(config: JointMotorControlTest) -> R
     // Calculate average velocity in steady state (last 50%)
     let steady_state_start = velocities.len() / 2;
     let steady_state_velocities: Vec<f32> = velocities[steady_state_start..].to_vec();
-    let avg_velocity: f32 = steady_state_velocities.iter().sum::<f32>() / steady_state_velocities.len() as f32;
+    let avg_velocity: f32 =
+        steady_state_velocities.iter().sum::<f32>() / steady_state_velocities.len() as f32;
 
     let velocity_error = (avg_velocity - config.target_velocity).abs();
     let target_reached = velocity_error < velocity_tolerance;
@@ -864,9 +888,7 @@ pub fn validate_joint_breaking(config: JointBreakingTest) -> Result<JointBreakin
         .build();
     let attached_handle = rigid_body_set.insert(attached);
 
-    let attached_collider = ColliderBuilder::cuboid(0.2, 0.2, 0.2)
-        .mass(1.0)
-        .build();
+    let attached_collider = ColliderBuilder::cuboid(0.2, 0.2, 0.2).mass(1.0).build();
     collider_set.insert_with_parent(attached_collider, attached_handle, &mut rigid_body_set);
 
     // Create fixed joint (we'll manually check breaking conditions)
@@ -891,9 +913,14 @@ pub fn validate_joint_breaking(config: JointBreakingTest) -> Result<JointBreakin
 
         if !joint_broken {
             if let Some(rb) = rigid_body_set.get_mut(attached_handle) {
-                rb.apply_impulse(vector![current_force.x * config.timestep,
-                                         current_force.y * config.timestep,
-                                         current_force.z * config.timestep], true);
+                rb.apply_impulse(
+                    vector![
+                        current_force.x * config.timestep,
+                        current_force.y * config.timestep,
+                        current_force.z * config.timestep
+                    ],
+                    true,
+                );
             }
         }
 
@@ -927,7 +954,8 @@ pub fn validate_joint_breaking(config: JointBreakingTest) -> Result<JointBreakin
 
     let final_pos = *rigid_body_set.get(attached_handle).unwrap().translation();
     let separation_distance = (nalgebra::Vector3::new(final_pos.x, final_pos.y, final_pos.z)
-        - nalgebra::Vector3::new(initial_pos.x, initial_pos.y, initial_pos.z)).norm();
+        - nalgebra::Vector3::new(initial_pos.x, initial_pos.y, initial_pos.z))
+    .norm();
 
     Ok(JointBreakingResult {
         joint_broken,
@@ -969,7 +997,9 @@ pub struct JointDampingFrictionResult {
 }
 
 /// Run joint damping and friction validation
-pub fn validate_joint_damping_friction(config: JointDampingFrictionTest) -> Result<JointDampingFrictionResult, String> {
+pub fn validate_joint_damping_friction(
+    config: JointDampingFrictionTest,
+) -> Result<JointDampingFrictionResult, String> {
     let num_steps = (config.duration / config.timestep) as usize;
 
     // Setup Rapier physics
@@ -1100,9 +1130,7 @@ pub fn validate_joint_constraint_satisfaction() -> Result<bool, String> {
             .build();
         let link_handle = rigid_body_set.insert(link);
 
-        let link_collider = ColliderBuilder::capsule_y(0.2, 0.05)
-            .mass(0.5)
-            .build();
+        let link_collider = ColliderBuilder::capsule_y(0.2, 0.05).mass(0.5).build();
         collider_set.insert_with_parent(link_collider, link_handle, &mut rigid_body_set);
 
         let joint = SphericalJointBuilder::new()
@@ -1177,8 +1205,7 @@ mod tests {
         assert!(
             result.limits_respected,
             "Revolute joint limits should be respected: min={:.3}, max={:.3}",
-            result.min_angle_reached,
-            result.max_angle_reached
+            result.min_angle_reached, result.max_angle_reached
         );
     }
 
@@ -1215,12 +1242,14 @@ mod tests {
 
         let result = validate_prismatic_joint_motion(config).expect("Test failed");
 
-        assert!(result.motion_occurred, "Prismatic joint should allow motion");
+        assert!(
+            result.motion_occurred,
+            "Prismatic joint should allow motion"
+        );
         assert!(
             result.limits_respected,
             "Prismatic joint limits should be respected: min={:.3}, max={:.3}",
-            result.min_position,
-            result.max_position
+            result.min_position, result.max_position
         );
     }
 
@@ -1240,8 +1269,7 @@ mod tests {
         assert!(
             result.limits_respected,
             "Prismatic joint should respect tight limits: min={:.3}, max={:.3}",
-            result.min_position,
-            result.max_position
+            result.min_position, result.max_position
         );
     }
 
@@ -1259,8 +1287,7 @@ mod tests {
         assert!(
             result.joint_maintained,
             "Fixed joint should maintain rigidity: displacement={:.4}, rotation={:.4}",
-            result.max_relative_displacement,
-            result.max_relative_rotation
+            result.max_relative_displacement, result.max_relative_rotation
         );
     }
 
@@ -1373,10 +1400,7 @@ mod tests {
             result.joint_broken,
             "Joint should break when force exceeds threshold"
         );
-        assert!(
-            result.break_time.is_some(),
-            "Break time should be recorded"
-        );
+        assert!(result.break_time.is_some(), "Break time should be recorded");
     }
 
     #[test]
@@ -1412,8 +1436,7 @@ mod tests {
         assert!(
             result.energy_dissipated,
             "Damping should dissipate energy: initial={:.3}, final={:.3}",
-            result.initial_velocity,
-            result.final_velocity
+            result.initial_velocity, result.final_velocity
         );
     }
 

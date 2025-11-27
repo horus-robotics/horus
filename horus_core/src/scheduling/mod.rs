@@ -69,6 +69,6 @@ pub use telemetry::{TelemetryEndpoint, TelemetryManager};
 
 // Re-export record/replay
 pub use record_replay::{
-    NodeRecorder, NodeRecording, NodeReplayer, NodeTickSnapshot, RecordingConfig,
-    RecordingManager, SchedulerRecording,
+    NodeRecorder, NodeRecording, NodeReplayer, NodeTickSnapshot, RecordingConfig, RecordingManager,
+    SchedulerRecording,
 };

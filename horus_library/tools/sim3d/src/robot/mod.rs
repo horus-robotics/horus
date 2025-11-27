@@ -8,20 +8,20 @@ pub use robot::Robot;
 
 // Re-export articulated robot types
 pub use articulated::{
-    JointCommand, RobotJointCommands, TrajectoryPoint, JointTrajectory, IKSolver,
-    ArticulatedRobotPlugin, apply_joint_control_system, apply_robot_joint_commands_system,
-    follow_joint_trajectory_system,
+    apply_joint_control_system, apply_robot_joint_commands_system, follow_joint_trajectory_system,
+    ArticulatedRobotPlugin, IKSolver, JointCommand, JointTrajectory, RobotJointCommands,
+    TrajectoryPoint,
 };
 
 // Re-export joint state types
 pub use state::{
-    JointState, RobotJointStates, JointLink, ArticulatedRobot, JointStateChangedEvent, JointRegistry,
-    update_joint_states_system, update_robot_joint_states_system, detect_joint_state_changes_system,
-    get_robot_joint_position, get_robot_joint_positions,
+    detect_joint_state_changes_system, get_robot_joint_position, get_robot_joint_positions,
+    update_joint_states_system, update_robot_joint_states_system, ArticulatedRobot, JointLink,
+    JointRegistry, JointState, JointStateChangedEvent, RobotJointStates,
 };
 
 // Re-export Gazebo extension types
 pub use gazebo::{
-    GazeboExtensions, GazeboMaterial, GazeboPhysics, GazeboSensor, SensorType,
-    GazeboPlugin, GazeboExtensionParser,
+    GazeboExtensionParser, GazeboExtensions, GazeboMaterial, GazeboPhysics, GazeboPlugin,
+    GazeboSensor, SensorType,
 };

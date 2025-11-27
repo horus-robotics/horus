@@ -5,8 +5,8 @@ use super::{
     undo::{DeleteOperation, EntitySnapshot, UndoStack},
     EditorState,
 };
-use bevy::prelude::*;
 use bevy::ecs::entity::EntityHashMap;
+use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 use std::collections::HashSet;
 

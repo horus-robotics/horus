@@ -250,10 +250,7 @@ impl TopicCache {
     /// Check if a topic is cached (and not expired)
     pub fn contains(&self, topic: &str) -> bool {
         let entries = self.entries.read().unwrap();
-        entries
-            .get(topic)
-            .map(|e| !e.is_expired())
-            .unwrap_or(false)
+        entries.get(topic).map(|e| !e.is_expired()).unwrap_or(false)
     }
 
     /// Get time until a cached entry expires

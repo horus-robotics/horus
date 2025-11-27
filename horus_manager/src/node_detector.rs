@@ -216,12 +216,24 @@ lidar = horus.LidarNode()
         // This is the pattern used in snakesim
         let code = "use horus::library::nodes::{KeyboardInputNode, JoystickInputNode};";
         let nodes = detect_rust_nodes(code);
-        assert!(nodes.contains("KeyboardInputNode"), "Should detect KeyboardInputNode");
-        assert!(nodes.contains("JoystickInputNode"), "Should detect JoystickInputNode");
+        assert!(
+            nodes.contains("KeyboardInputNode"),
+            "Should detect KeyboardInputNode"
+        );
+        assert!(
+            nodes.contains("JoystickInputNode"),
+            "Should detect JoystickInputNode"
+        );
 
         let features = nodes_to_features(&nodes);
-        assert!(features.contains(&"crossterm".to_string()), "KeyboardInputNode requires crossterm");
-        assert!(features.contains(&"gilrs".to_string()), "JoystickInputNode requires gilrs");
+        assert!(
+            features.contains(&"crossterm".to_string()),
+            "KeyboardInputNode requires crossterm"
+        );
+        assert!(
+            features.contains(&"gilrs".to_string()),
+            "JoystickInputNode requires gilrs"
+        );
     }
 
     #[test]

@@ -203,15 +203,13 @@ impl Scenario {
 
         let robots = robot_states
             .into_iter()
-            .map(|(config, position, heading, velocity)| {
-                RobotState {
-                    name: config.name.clone(),
-                    position,
-                    heading,
-                    velocity,
-                    config_file: None,
-                    config: Some(config),
-                }
+            .map(|(config, position, heading, velocity)| RobotState {
+                name: config.name.clone(),
+                position,
+                heading,
+                velocity,
+                config_file: None,
+                config: Some(config),
             })
             .collect();
 

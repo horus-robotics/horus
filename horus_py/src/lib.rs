@@ -1,15 +1,21 @@
 use pyo3::prelude::*;
 
 mod config;
+mod hframe;
 mod hub;
+mod link;
 mod node;
+mod router;
 mod scheduler;
 // mod typed_hub;  // Old separate typed hubs - replaced by polymorphic Hub
 mod types;
 
 use config::{PyRobotPreset, PySchedulerConfig};
+use hframe::{PyHFrame, PyHFrameConfig, PyTransform};
 use hub::PyHub;
+use link::PyLink;
 use node::{PyNode, PyNodeInfo, PyNodeState};
+use router::{PyRouterClient, PyRouterServer};
 use scheduler::PyScheduler;
 use types::Priority;
 
@@ -23,8 +29,15 @@ fn _horus(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyNode>()?;
     m.add_class::<PyNodeInfo>()?;
     m.add_class::<PyHub>()?;
+    m.add_class::<PyLink>()?; // Point-to-point SPSC communication with network support
+    m.add_class::<PyRouterClient>()?; // Explicit router connection management
+    m.add_class::<PyRouterServer>()?; // Router server management
     m.add_class::<PyScheduler>()?;
     m.add_class::<PyNodeState>()?;
+
+    // Router utility functions
+    m.add_function(wrap_pyfunction!(router::default_router_endpoint, m)?)?;
+    m.add_function(wrap_pyfunction!(router::router_endpoint, m)?)?;
 
     // Configuration classes
     m.add_class::<PyRobotPreset>()?;
@@ -32,6 +45,12 @@ fn _horus(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // Priority constants
     m.add_class::<Priority>()?;
+
+    // HFrame - High-Performance Transform System
+    m.add_class::<PyTransform>()?;
+    m.add_class::<PyHFrame>()?;
+    m.add_class::<PyHFrameConfig>()?;
+    m.add_function(wrap_pyfunction!(hframe::get_timestamp_ns, m)?)?;
 
     // Sim2D classes
     m.add_class::<sim2d::python_api::Sim2D>()?;

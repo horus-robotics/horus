@@ -259,7 +259,12 @@ impl WorldEditor {
     }
 
     /// Handle select action at current mouse position
-    pub fn try_select_at(&mut self, pos: Vec2, obstacles: &[Obstacle], entities: &[Entity]) -> Option<Entity> {
+    pub fn try_select_at(
+        &mut self,
+        pos: Vec2,
+        obstacles: &[Obstacle],
+        entities: &[Entity],
+    ) -> Option<Entity> {
         if let Some(idx) = self.find_obstacle_at(pos, obstacles) {
             if idx < entities.len() {
                 let entity = entities[idx];

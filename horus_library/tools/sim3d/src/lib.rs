@@ -18,6 +18,7 @@ pub mod config;
 pub mod editor;
 pub mod error;
 pub mod gpu;
+pub mod hframe;
 pub mod horus_bridge;
 pub mod multi_robot;
 pub mod physics;
@@ -30,7 +31,14 @@ pub mod robot;
 pub mod scene;
 pub mod sensors;
 pub mod systems;
-pub mod tf;
+
+// Backwards-compatible re-export as tf
+pub mod tf {
+    //! Backwards-compatible re-export of hframe module
+    //!
+    //! This module is deprecated. Use `hframe` directly instead.
+    pub use crate::hframe::*;
+}
 pub mod utils;
 pub mod view_modes;
 

@@ -233,7 +233,9 @@ impl TelemetryManager {
 
         // Simple HTTP POST without external dependencies
         // Parse URL
-        let url = url.trim_start_matches("http://").trim_start_matches("https://");
+        let url = url
+            .trim_start_matches("http://")
+            .trim_start_matches("https://");
         let (host, path) = if let Some(idx) = url.find('/') {
             (&url[..idx], &url[idx..])
         } else {
@@ -247,12 +249,8 @@ impl TelemetryManager {
         let mut stream = TcpStream::connect(format!("{}:80", host))
             .map_err(|e| format!("Connect failed: {}", e))?;
 
-        stream
-            .set_write_timeout(Some(Duration::from_secs(5)))
-            .ok();
-        stream
-            .set_read_timeout(Some(Duration::from_secs(5)))
-            .ok();
+        stream.set_write_timeout(Some(Duration::from_secs(5))).ok();
+        stream.set_read_timeout(Some(Duration::from_secs(5))).ok();
 
         let request = format!(
             "POST {} HTTP/1.1\r\n\
@@ -279,7 +277,10 @@ impl TelemetryManager {
             .read_line(&mut status_line)
             .map_err(|e| format!("Read failed: {}", e))?;
 
-        if !status_line.contains("200") && !status_line.contains("201") && !status_line.contains("204") {
+        if !status_line.contains("200")
+            && !status_line.contains("201")
+            && !status_line.contains("204")
+        {
             return Err(format!("HTTP error: {}", status_line.trim()));
         }
 
