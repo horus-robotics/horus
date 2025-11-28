@@ -85,7 +85,7 @@ impl Episode {
         let mut cumulative_return = 0.0;
 
         for exp in self.experiences.iter().rev() {
-            cumulative_return = exp.reward + cumulative_return;
+            cumulative_return += exp.reward;
             returns.push(cumulative_return);
         }
 

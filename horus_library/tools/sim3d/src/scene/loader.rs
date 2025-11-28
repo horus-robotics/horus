@@ -180,6 +180,7 @@ struct LegacyRobot {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)] // Shadows field deserialized but not yet used (for future shadow system)
 struct LegacyLight {
     #[serde(rename = "type")]
     light_type: String,
@@ -194,8 +195,8 @@ struct LegacyLight {
 }
 
 impl LegacyWorldFile {
-    /// Convert legacy format to standard SceneDefinition
-    fn to_scene_definition(self) -> SceneDefinition {
+    /// Convert legacy format to standard SceneDefinition (consumes self)
+    fn into_scene_definition(self) -> SceneDefinition {
         let name = self
             .world
             .as_ref()
@@ -223,13 +224,13 @@ impl LegacyWorldFile {
             .objects
             .into_iter()
             .enumerate()
-            .filter_map(|(i, obj)| obj.to_scene_object(i))
+            .filter_map(|(i, obj)| obj.into_scene_object(i))
             .collect();
 
         let robots: Vec<SceneRobot> = self
             .robots
             .into_iter()
-            .filter_map(|r| r.to_scene_robot())
+            .filter_map(|r| r.into_scene_robot())
             .collect();
 
         SceneDefinition {
@@ -278,7 +279,7 @@ impl LegacyWorldFile {
 }
 
 impl LegacyObject {
-    fn to_scene_object(self, index: usize) -> Option<SceneObject> {
+    fn into_scene_object(self, index: usize) -> Option<SceneObject> {
         let name = self.name.unwrap_or_else(|| format!("object_{}", index));
 
         let shape = match self.obj_type.to_lowercase().as_str() {
@@ -348,7 +349,7 @@ impl LegacyObject {
 }
 
 impl LegacyRobot {
-    fn to_scene_robot(self) -> Option<SceneRobot> {
+    fn into_scene_robot(self) -> Option<SceneRobot> {
         // If there's a URDF path, use it; otherwise try to map built-in types
         let urdf_path = if let Some(path) = self.urdf_path {
             path
@@ -378,7 +379,7 @@ fn try_parse_legacy(content: &str) -> Option<SceneDefinition> {
         match serde_yaml::from_str::<LegacyWorldFile>(content) {
             Ok(legacy) => {
                 info!("Detected legacy world format, converting...");
-                Some(legacy.to_scene_definition())
+                Some(legacy.into_scene_definition())
             }
             Err(_) => None,
         }
@@ -446,7 +447,7 @@ impl SceneDefinition {
         // Parse YAML with enhanced error
         serde_yaml::from_str(&content).map_err(|e| {
             let mut error = EnhancedError::from(e).with_file(&path_buf);
-            error.suggestion = Some(format!(
+            error.suggestion = Some(
                 "Scene file syntax error. Check:\n  \
                      - YAML indentation (use spaces, not tabs)\n  \
                      - Array syntax: [x, y, z] or list with dashes\n  \
@@ -456,9 +457,10 @@ impl SceneDefinition {
                      gravity: -9.81\n  \
                      objects:\n  \
                        - name: \"box1\"\n  \
-                         shape: {{type: box, size: [1.0, 1.0, 1.0]}}\n  \
+                         shape: {type: box, size: [1.0, 1.0, 1.0]}\n  \
                          position: [0.0, 0.5, 0.0]"
-            ));
+                    .to_string(),
+            );
             error
         })
     }

@@ -89,7 +89,7 @@ impl Default for CCDEnabled {
 }
 
 /// CCD Solver that performs sweep tests for fast-moving objects
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct CCDSolverAdvanced {
     /// Global CCD configuration
     pub config: CCDConfig,
@@ -110,16 +110,6 @@ pub struct CCDStats {
     pub tunneling_prevented: u32,
     /// Total substeps used this frame
     pub total_substeps: u32,
-}
-
-impl Default for CCDSolverAdvanced {
-    fn default() -> Self {
-        Self {
-            config: CCDConfig::default(),
-            object_settings: HashMap::new(),
-            stats: CCDStats::default(),
-        }
-    }
 }
 
 impl CCDSolverAdvanced {
@@ -657,17 +647,9 @@ impl ContactConfig {
 }
 
 /// Component for per-object contact configuration
-#[derive(Component, Clone, Debug)]
+#[derive(Component, Clone, Debug, Default)]
 pub struct ContactConfigComponent {
     pub config: ContactConfig,
-}
-
-impl Default for ContactConfigComponent {
-    fn default() -> Self {
-        Self {
-            config: ContactConfig::default(),
-        }
-    }
 }
 
 /// Contact event data for callbacks
@@ -997,6 +979,84 @@ pub struct JointBreakEvent {
     pub torque_exceeded: bool,
 }
 
+/// Configuration for joint force estimation
+#[derive(Clone, Debug)]
+pub struct JointForceEstimationConfig {
+    /// Stiffness coefficient for estimating force from velocity (N·s/m)
+    /// Based on typical joint constraint stiffness
+    pub velocity_to_force_stiffness: f32,
+    /// Stiffness coefficient for estimating torque from angular velocity (N·m·s/rad)
+    pub angvel_to_torque_stiffness: f32,
+    /// Whether to scale by body masses (more accurate but requires mass data)
+    pub use_mass_scaling: bool,
+    /// Default mass to use when actual mass is unavailable (kg)
+    pub default_mass: f32,
+    /// Default inertia scalar to use when actual inertia is unavailable (kg·m²)
+    pub default_inertia: f32,
+}
+
+impl Default for JointForceEstimationConfig {
+    fn default() -> Self {
+        Self {
+            // Based on typical rigid body solver stiffness parameters
+            // Higher values = more responsive joint break detection
+            velocity_to_force_stiffness: 500.0,  // N·s/m - moderate stiffness
+            angvel_to_torque_stiffness: 50.0,    // N·m·s/rad
+            use_mass_scaling: true,
+            default_mass: 1.0,     // 1 kg default
+            default_inertia: 0.1,  // 0.1 kg·m² default (roughly a 1kg sphere of 0.3m radius)
+        }
+    }
+}
+
+impl JointForceEstimationConfig {
+    /// Create a high-sensitivity config (breaks joints more easily)
+    #[allow(dead_code)]
+    pub fn high_sensitivity() -> Self {
+        Self {
+            velocity_to_force_stiffness: 1000.0,
+            angvel_to_torque_stiffness: 100.0,
+            use_mass_scaling: true,
+            default_mass: 1.0,
+            default_inertia: 0.1,
+        }
+    }
+
+    /// Create a low-sensitivity config (joints harder to break)
+    #[allow(dead_code)]
+    pub fn low_sensitivity() -> Self {
+        Self {
+            velocity_to_force_stiffness: 200.0,
+            angvel_to_torque_stiffness: 20.0,
+            use_mass_scaling: true,
+            default_mass: 1.0,
+            default_inertia: 0.1,
+        }
+    }
+
+    /// Estimate joint force from relative motion and body properties
+    pub fn estimate_force(&self, relative_velocity: Vec3, mass: Option<f32>) -> Vec3 {
+        let effective_mass = if self.use_mass_scaling {
+            mass.unwrap_or(self.default_mass)
+        } else {
+            1.0
+        };
+        // F = k * v * m (impulse-based estimation)
+        relative_velocity * self.velocity_to_force_stiffness * effective_mass
+    }
+
+    /// Estimate joint torque from relative angular motion and body properties
+    pub fn estimate_torque(&self, relative_angvel: Vec3, inertia: Option<f32>) -> Vec3 {
+        let effective_inertia = if self.use_mass_scaling {
+            inertia.unwrap_or(self.default_inertia)
+        } else {
+            1.0
+        };
+        // τ = k * ω * I (angular impulse-based estimation)
+        relative_angvel * self.angvel_to_torque_stiffness * effective_inertia
+    }
+}
+
 /// Resource for managing breakable joints
 #[derive(Resource, Default)]
 pub struct BreakableJointManager {
@@ -1004,6 +1064,8 @@ pub struct BreakableJointManager {
     pub broken_joints: Vec<ImpulseJointHandle>,
     /// Statistics
     pub total_breaks: u32,
+    /// Configuration for force estimation
+    pub force_config: JointForceEstimationConfig,
 }
 
 impl BreakableJointManager {
@@ -1446,6 +1508,9 @@ pub fn update_breakable_joints_system(
     mut joint_manager: ResMut<BreakableJointManager>,
     physics_world: Res<crate::physics::world::PhysicsWorld>,
 ) {
+    // Clone config to avoid borrow conflict with mutable operations below
+    let force_config = joint_manager.force_config.clone();
+
     for (entity, mut breakable) in breakable_joints.iter_mut() {
         if breakable.is_broken {
             continue;
@@ -1475,9 +1540,33 @@ pub fn update_breakable_joints_system(
                     angvel2.z - angvel1.z,
                 );
 
-                // Simple force estimation based on constraint violation
-                let estimated_force = relative_vel * 1000.0; // Simplified
-                let estimated_torque = relative_angvel * 100.0; // Simplified
+                // Get mass properties for more accurate force estimation
+                // Use reduced mass for the joint (m1 * m2) / (m1 + m2)
+                let mass1 = rb1.mass();
+                let mass2 = rb2.mass();
+                let reduced_mass = if mass1 > 0.0 && mass2 > 0.0 {
+                    Some((mass1 * mass2) / (mass1 + mass2))
+                } else {
+                    None
+                };
+
+                // Get principal angular inertia (average of diagonal elements)
+                // Note: principal_inertia() returns a Vector3 with the three principal moments of inertia
+                let inertia1 = rb1.mass_properties().local_mprops.principal_inertia();
+                let inertia2 = rb2.mass_properties().local_mprops.principal_inertia();
+                let avg_inertia = {
+                    let i1 = (inertia1.x + inertia1.y + inertia1.z) / 3.0;
+                    let i2 = (inertia2.x + inertia2.y + inertia2.z) / 3.0;
+                    if i1 > 0.0 && i2 > 0.0 {
+                        Some((i1 * i2) / (i1 + i2))  // Reduced inertia
+                    } else {
+                        None
+                    }
+                };
+
+                // Estimate forces using configurable physics-based model
+                let estimated_force = force_config.estimate_force(relative_vel, reduced_mass);
+                let estimated_torque = force_config.estimate_torque(relative_angvel, avg_inertia);
 
                 let was_broken = breakable.update(estimated_force, estimated_torque);
 
@@ -1502,13 +1591,20 @@ pub fn update_breakable_joints_system(
 }
 
 /// System to apply spring-damper constraints
-#[allow(unused_mut)]
 pub fn apply_spring_damper_system(
-    springs: Query<(Entity, &SpringDamperConstraint, &GlobalTransform)>,
-    transforms: Query<&GlobalTransform>,
-    _physics_world: ResMut<crate::physics::world::PhysicsWorld>,
+    springs: Query<(
+        Entity,
+        &SpringDamperConstraint,
+        &GlobalTransform,
+        Option<&crate::physics::rigid_body::RigidBodyComponent>,
+    )>,
+    rigid_bodies: Query<(
+        &GlobalTransform,
+        &crate::physics::rigid_body::RigidBodyComponent,
+    )>,
+    mut physics_world: ResMut<crate::physics::world::PhysicsWorld>,
 ) {
-    for (_entity_a, spring, transform_a) in springs.iter() {
+    for (_entity_a, spring, transform_a, rb_comp_a) in springs.iter() {
         if !spring.enabled {
             continue;
         }
@@ -1517,7 +1613,7 @@ pub fn apply_spring_damper_system(
             continue;
         };
 
-        let Ok(transform_b) = transforms.get(entity_b) else {
+        let Ok((transform_b, rb_comp_b)) = rigid_bodies.get(entity_b) else {
             continue;
         };
 
@@ -1525,9 +1621,43 @@ pub fn apply_spring_damper_system(
         let world_anchor_a = transform_a.transform_point(spring.anchor_a);
         let world_anchor_b = transform_b.transform_point(spring.anchor_b);
 
-        // Get velocities from rigid bodies (simplified - would need proper lookup)
-        let velocity_a = Vec3::ZERO;
-        let velocity_b = Vec3::ZERO;
+        // Get velocities from rigid bodies
+        let velocity_a = if let Some(rb_a) = rb_comp_a {
+            if let Some(rb) = physics_world.rigid_body_set.get(rb_a.handle) {
+                let v = rb.linvel();
+                Vec3::new(v.x, v.y, v.z)
+            } else {
+                Vec3::ZERO
+            }
+        } else {
+            Vec3::ZERO
+        };
+
+        let velocity_b = if let Some(rb) = physics_world.rigid_body_set.get(rb_comp_b.handle) {
+            let v = rb.linvel();
+            Vec3::new(v.x, v.y, v.z)
+        } else {
+            Vec3::ZERO
+        };
+
+        // Get angular velocities for torque calculation
+        let angvel_a = if let Some(rb_a) = rb_comp_a {
+            if let Some(rb) = physics_world.rigid_body_set.get(rb_a.handle) {
+                let av = rb.angvel();
+                Vec3::new(av.x, av.y, av.z)
+            } else {
+                Vec3::ZERO
+            }
+        } else {
+            Vec3::ZERO
+        };
+
+        let angvel_b = if let Some(rb) = physics_world.rigid_body_set.get(rb_comp_b.handle) {
+            let av = rb.angvel();
+            Vec3::new(av.x, av.y, av.z)
+        } else {
+            Vec3::ZERO
+        };
 
         match spring.spring_type {
             SpringType::Linear => {
@@ -1538,19 +1668,36 @@ pub fn apply_spring_damper_system(
                     velocity_b,
                 );
 
-                // Apply force to physics world (would need proper rigid body lookup)
-                // This is a simplified version - actual implementation would
-                // apply forces through the RigidBodySet
-                let _ = force; // Force calculated but application depends on physics integration
+                // Apply force to rigid body A (if it exists)
+                if let Some(rb_a) = rb_comp_a {
+                    if let Some(rb) = physics_world.rigid_body_set.get_mut(rb_a.handle) {
+                        rb.add_force(vector![force.x, force.y, force.z], true);
+                    }
+                }
+
+                // Apply opposite force to rigid body B
+                if let Some(rb) = physics_world.rigid_body_set.get_mut(rb_comp_b.handle) {
+                    rb.add_force(vector![-force.x, -force.y, -force.z], true);
+                }
             }
             SpringType::Angular => {
                 let rotation_a = transform_a.to_scale_rotation_translation().1;
                 let rotation_b = transform_b.to_scale_rotation_translation().1;
 
                 let torque =
-                    spring.calculate_angular_torque(rotation_a, rotation_b, Vec3::ZERO, Vec3::ZERO);
+                    spring.calculate_angular_torque(rotation_a, rotation_b, angvel_a, angvel_b);
 
-                let _ = torque; // Torque calculated but application depends on physics integration
+                // Apply torque to rigid body A (if it exists)
+                if let Some(rb_a) = rb_comp_a {
+                    if let Some(rb) = physics_world.rigid_body_set.get_mut(rb_a.handle) {
+                        rb.add_torque(vector![torque.x, torque.y, torque.z], true);
+                    }
+                }
+
+                // Apply opposite torque to rigid body B
+                if let Some(rb) = physics_world.rigid_body_set.get_mut(rb_comp_b.handle) {
+                    rb.add_torque(vector![-torque.x, -torque.y, -torque.z], true);
+                }
             }
             SpringType::Combined => {
                 let force = spring.calculate_linear_force(
@@ -1564,9 +1711,21 @@ pub fn apply_spring_damper_system(
                 let rotation_b = transform_b.to_scale_rotation_translation().1;
 
                 let torque =
-                    spring.calculate_angular_torque(rotation_a, rotation_b, Vec3::ZERO, Vec3::ZERO);
+                    spring.calculate_angular_torque(rotation_a, rotation_b, angvel_a, angvel_b);
 
-                let _ = (force, torque);
+                // Apply force and torque to rigid body A (if it exists)
+                if let Some(rb_a) = rb_comp_a {
+                    if let Some(rb) = physics_world.rigid_body_set.get_mut(rb_a.handle) {
+                        rb.add_force(vector![force.x, force.y, force.z], true);
+                        rb.add_torque(vector![torque.x, torque.y, torque.z], true);
+                    }
+                }
+
+                // Apply opposite force and torque to rigid body B
+                if let Some(rb) = physics_world.rigid_body_set.get_mut(rb_comp_b.handle) {
+                    rb.add_force(vector![-force.x, -force.y, -force.z], true);
+                    rb.add_torque(vector![-torque.x, -torque.y, -torque.z], true);
+                }
             }
         }
     }
@@ -2274,5 +2433,118 @@ mod tests {
         assert_eq!(ContactModel::default(), ContactModel::Point);
         assert_ne!(point, patch);
         assert_ne!(patch, soft);
+    }
+
+    // Joint Force Estimation Config Tests
+
+    #[test]
+    fn test_joint_force_config_default() {
+        let config = JointForceEstimationConfig::default();
+        assert!(config.velocity_to_force_stiffness > 0.0);
+        assert!(config.angvel_to_torque_stiffness > 0.0);
+        assert!(config.use_mass_scaling);
+        assert!(config.default_mass > 0.0);
+        assert!(config.default_inertia > 0.0);
+    }
+
+    #[test]
+    fn test_joint_force_config_presets() {
+        let high = JointForceEstimationConfig::high_sensitivity();
+        let low = JointForceEstimationConfig::low_sensitivity();
+        let default = JointForceEstimationConfig::default();
+
+        // High sensitivity should have higher stiffness than low
+        assert!(high.velocity_to_force_stiffness > low.velocity_to_force_stiffness);
+        assert!(high.angvel_to_torque_stiffness > low.angvel_to_torque_stiffness);
+
+        // Default should be between high and low
+        assert!(default.velocity_to_force_stiffness < high.velocity_to_force_stiffness);
+        assert!(default.velocity_to_force_stiffness > low.velocity_to_force_stiffness);
+    }
+
+    #[test]
+    fn test_joint_force_estimation_with_mass() {
+        let config = JointForceEstimationConfig::default();
+        let velocity = Vec3::new(1.0, 0.0, 0.0);
+
+        // With mass scaling
+        let force_light = config.estimate_force(velocity, Some(0.5));
+        let force_heavy = config.estimate_force(velocity, Some(2.0));
+
+        // Heavier mass should result in larger force
+        assert!(force_heavy.length() > force_light.length());
+
+        // Force should scale linearly with mass
+        let ratio = force_heavy.length() / force_light.length();
+        assert!((ratio - 4.0).abs() < 0.01); // 2.0 / 0.5 = 4.0
+    }
+
+    #[test]
+    fn test_joint_force_estimation_without_mass() {
+        let config = JointForceEstimationConfig::default();
+        let velocity = Vec3::new(1.0, 0.0, 0.0);
+
+        // Without mass (uses default)
+        let force = config.estimate_force(velocity, None);
+
+        // Should use default mass (1.0 kg)
+        let expected_force = velocity * config.velocity_to_force_stiffness * config.default_mass;
+        assert!((force.length() - expected_force.length()).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_joint_torque_estimation_with_inertia() {
+        let config = JointForceEstimationConfig::default();
+        let angvel = Vec3::new(0.0, 1.0, 0.0);
+
+        // With inertia scaling
+        let torque_light = config.estimate_torque(angvel, Some(0.05));
+        let torque_heavy = config.estimate_torque(angvel, Some(0.2));
+
+        // Higher inertia should result in larger torque
+        assert!(torque_heavy.length() > torque_light.length());
+
+        // Torque should scale linearly with inertia
+        let ratio = torque_heavy.length() / torque_light.length();
+        assert!((ratio - 4.0).abs() < 0.01); // 0.2 / 0.05 = 4.0
+    }
+
+    #[test]
+    fn test_joint_force_config_no_mass_scaling() {
+        let mut config = JointForceEstimationConfig::default();
+        config.use_mass_scaling = false;
+
+        let velocity = Vec3::new(1.0, 0.0, 0.0);
+
+        // With mass scaling disabled, mass shouldn't matter
+        let force_light = config.estimate_force(velocity, Some(0.5));
+        let force_heavy = config.estimate_force(velocity, Some(2.0));
+
+        // Forces should be equal when mass scaling is disabled
+        assert!((force_light.length() - force_heavy.length()).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_joint_force_direction() {
+        let config = JointForceEstimationConfig::default();
+
+        // Force direction should match velocity direction
+        let velocity = Vec3::new(1.0, 2.0, 3.0).normalize();
+        let force = config.estimate_force(velocity, Some(1.0));
+        let force_dir = force.normalize();
+
+        assert!((force_dir.dot(velocity) - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_breakable_joint_manager_with_config() {
+        let mut manager = BreakableJointManager::default();
+
+        // Default config should be present
+        assert!(manager.force_config.velocity_to_force_stiffness > 0.0);
+
+        // Can modify config
+        manager.force_config = JointForceEstimationConfig::high_sensitivity();
+        assert!(manager.force_config.velocity_to_force_stiffness > 500.0);
     }
 }

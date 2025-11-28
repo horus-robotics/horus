@@ -163,6 +163,38 @@ HORUS_DIR="$HOME/.horus"
 CACHE_DIR="$HORUS_DIR/cache"
 TARGET_DIR="$HORUS_DIR/target"
 
+# Detect installation profile from saved file or auto-detect platform
+detect_install_profile() {
+    # Check for saved profile
+    if [ -f "$HORUS_DIR/install_profile" ]; then
+        cat "$HORUS_DIR/install_profile"
+        return
+    fi
+
+    # Auto-detect based on platform
+    local platform="desktop"
+    if grep -q "Raspberry Pi" /proc/cpuinfo 2>/dev/null || grep -q "BCM" /proc/cpuinfo 2>/dev/null; then
+        platform="raspberry_pi"
+    elif [ -f "/etc/nv_tegra_release" ] || grep -q "tegra" /proc/cpuinfo 2>/dev/null; then
+        platform="jetson"
+    elif grep -q "AM33XX" /proc/cpuinfo 2>/dev/null; then
+        platform="beaglebone"
+    elif [ "$(uname -m)" = "aarch64" ] || [ "$(uname -m)" = "armv7l" ]; then
+        local mem_kb=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}')
+        if [ -n "$mem_kb" ] && [ "$mem_kb" -lt 4000000 ]; then
+            platform="arm_sbc"
+        fi
+    fi
+
+    case "$platform" in
+        raspberry_pi|jetson|arm_sbc) echo "embedded" ;;
+        beaglebone) echo "minimal" ;;
+        *) echo "full" ;;
+    esac
+}
+
+INSTALL_PROFILE=$(detect_install_profile)
+
 # Shared memory location
 if [ "$OS_TYPE" = "linux" ]; then
     SHM_DIR="/dev/shm/horus"
@@ -175,10 +207,17 @@ echo -e "${BLUE}╔════════════════════�
 echo -e "${BLUE}║${NC}       ${WHITE}HORUS Installation Verification v2.0.0${NC}          ${BLUE}║${NC}"
 echo -e "${BLUE}║${NC}       ${CYAN}Comprehensive • Systematic • Complete${NC}              ${BLUE}║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
+echo ""
+echo -e "  ${CYAN}Install Profile:${NC} ${INSTALL_PROFILE}"
+echo ""
+
+# Initialize progress bar (14 main sections)
+init_verify_progress 14
 
 #=====================================
 # 1. SYSTEM REQUIREMENTS
 #=====================================
+update_verify_progress "System Requirements"
 section "1. System Requirements"
 
 # OS Detection
@@ -186,15 +225,21 @@ info "Operating System: $OS_TYPE"
 [ -n "$OS_DISTRO" ] && [ "$OS_DISTRO" != "unknown" ] && info "Distribution: $OS_DISTRO"
 
 # Rust
+# Required Rust version (must match install.sh)
+REQUIRED_RUST_MAJOR=1
+REQUIRED_RUST_MINOR=85
+REQUIRED_RUST_VERSION="${REQUIRED_RUST_MAJOR}.${REQUIRED_RUST_MINOR}"
+
 if command -v rustc &> /dev/null; then
     RUST_VERSION=$(rustc --version | awk '{print $2}')
     RUST_MAJOR=$(echo $RUST_VERSION | cut -d'.' -f1)
     RUST_MINOR=$(echo $RUST_VERSION | cut -d'.' -f2)
 
-    if [ "$RUST_MAJOR" -eq 1 ] && [ "$RUST_MINOR" -ge 70 ]; then
-        pass "Rust $RUST_VERSION (>= 1.70 required)"
+    if [ "$RUST_MAJOR" -gt "$REQUIRED_RUST_MAJOR" ] || \
+       ([ "$RUST_MAJOR" -eq "$REQUIRED_RUST_MAJOR" ] && [ "$RUST_MINOR" -ge "$REQUIRED_RUST_MINOR" ]); then
+        pass "Rust $RUST_VERSION (>= $REQUIRED_RUST_VERSION required)"
     else
-        warn "Rust $RUST_VERSION (< 1.70, please update via rustup update)"
+        fail "Rust $RUST_VERSION (< $REQUIRED_RUST_VERSION, please update via: rustup update stable)"
     fi
 else
     fail "Rust not installed (https://rustup.rs/)"
@@ -236,16 +281,30 @@ else
 fi
 
 # Python3 (for horus_py)
+# Required Python version (must match pyproject.toml)
+REQUIRED_PYTHON_MAJOR=3
+REQUIRED_PYTHON_MINOR=9
+REQUIRED_PYTHON_VERSION="${REQUIRED_PYTHON_MAJOR}.${REQUIRED_PYTHON_MINOR}"
+
 if command -v python3 &> /dev/null; then
     PY_VERSION=$(python3 --version 2>&1 | awk '{print $2}')
-    pass "Python $PY_VERSION"
+    PY_MAJOR=$(echo $PY_VERSION | cut -d'.' -f1)
+    PY_MINOR=$(echo $PY_VERSION | cut -d'.' -f2)
+
+    if [ "$PY_MAJOR" -gt "$REQUIRED_PYTHON_MAJOR" ] || \
+       ([ "$PY_MAJOR" -eq "$REQUIRED_PYTHON_MAJOR" ] && [ "$PY_MINOR" -ge "$REQUIRED_PYTHON_MINOR" ]); then
+        pass "Python $PY_VERSION (>= $REQUIRED_PYTHON_VERSION required for bindings)"
+    else
+        warn "Python $PY_VERSION (< $REQUIRED_PYTHON_VERSION, horus_py requires 3.9+)"
+    fi
 else
-    info "Python3 not found (optional for horus_py)"
+    info "Python3 not found (optional for horus_py, requires >= $REQUIRED_PYTHON_VERSION)"
 fi
 
 #=====================================
 # 2. SYSTEM LIBRARIES
 #=====================================
+update_verify_progress "System Libraries"
 section "2. System Libraries"
 
 if [ "$DEPS_SOURCED" = true ]; then
@@ -289,6 +348,7 @@ fi
 #=====================================
 # 3. HORUS BINARIES
 #=====================================
+update_verify_progress "HORUS Binaries"
 section "3. HORUS Binaries"
 
 # Main horus binary
@@ -315,26 +375,42 @@ else
     fail "horus binary not found at $INSTALL_DIR/horus"
 fi
 
-# sim2d binary
-if [ -x "$INSTALL_DIR/sim2d" ]; then
-    if "$INSTALL_DIR/sim2d" --help &>/dev/null; then
-        pass "sim2d binary installed"
+# sim2d binary (only required for full profile)
+if [ "$INSTALL_PROFILE" = "full" ]; then
+    if [ -x "$INSTALL_DIR/sim2d" ]; then
+        if "$INSTALL_DIR/sim2d" --help &>/dev/null; then
+            pass "sim2d binary installed"
+        else
+            fail "sim2d binary installed but not working"
+        fi
     else
-        fail "sim2d binary installed but not working"
+        fail "sim2d binary not found at $INSTALL_DIR/sim2d"
     fi
 else
-    fail "sim2d binary not found at $INSTALL_DIR/sim2d"
+    if [ -x "$INSTALL_DIR/sim2d" ]; then
+        pass "sim2d binary installed (optional)"
+    else
+        info "sim2d binary not installed (${INSTALL_PROFILE} profile)"
+    fi
 fi
 
-# sim3d binary
-if [ -x "$INSTALL_DIR/sim3d" ]; then
-    if "$INSTALL_DIR/sim3d" --help &>/dev/null; then
-        pass "sim3d binary installed"
+# sim3d binary (only required for full profile)
+if [ "$INSTALL_PROFILE" = "full" ]; then
+    if [ -x "$INSTALL_DIR/sim3d" ]; then
+        if "$INSTALL_DIR/sim3d" --help &>/dev/null; then
+            pass "sim3d binary installed"
+        else
+            fail "sim3d binary installed but not working"
+        fi
     else
-        fail "sim3d binary installed but not working"
+        fail "sim3d binary not found at $INSTALL_DIR/sim3d"
     fi
 else
-    fail "sim3d binary not found at $INSTALL_DIR/sim3d"
+    if [ -x "$INSTALL_DIR/sim3d" ]; then
+        pass "sim3d binary installed (optional)"
+    else
+        info "sim3d binary not installed (${INSTALL_PROFILE} profile)"
+    fi
 fi
 
 # horus_router binary (optional)
@@ -347,6 +423,7 @@ fi
 #=====================================
 # 4. HORUS LIBRARY CACHE
 #=====================================
+update_verify_progress "Library Cache"
 section "4. Library Cache"
 
 if [ -d "$CACHE_DIR" ]; then
@@ -417,6 +494,7 @@ fi
 #=====================================
 # 5. PRE-COMPILED DEPENDENCIES
 #=====================================
+update_verify_progress "Pre-compiled Deps"
 section "5. Pre-compiled Dependencies"
 
 if [ -d "$TARGET_DIR" ]; then
@@ -472,6 +550,7 @@ fi
 #=====================================
 # 6. SHARED MEMORY
 #=====================================
+update_verify_progress "Shared Memory"
 section "6. Shared Memory"
 
 # Check if shared memory directory is accessible
@@ -515,6 +594,7 @@ fi
 #=====================================
 # 7. COMMAND FUNCTIONALITY
 #=====================================
+update_verify_progress "Command Tests"
 section "7. Command Functionality"
 
 if command -v horus &>/dev/null || [ -x "$INSTALL_DIR/horus" ]; then
@@ -554,6 +634,7 @@ fi
 #=====================================
 # 8. EXAMPLES & TEMPLATES
 #=====================================
+update_verify_progress "Examples"
 section "8. Examples & Templates"
 
 # Check for examples in cache
@@ -596,6 +677,7 @@ fi
 #=====================================
 # 9. SHELL COMPLETIONS
 #=====================================
+update_verify_progress "Shell Completions"
 section "9. Shell Completions"
 
 # Bash completions
@@ -622,6 +704,7 @@ fi
 #=====================================
 # 10. ULTRA-LOW-LATENCY NETWORKING (optional)
 #=====================================
+update_verify_progress "Networking"
 section "10. Ultra-Low-Latency Networking"
 
 # Check for io_uring support (Linux 5.1+)
@@ -647,6 +730,7 @@ fi
 #=====================================
 # 11. GPU & GRAPHICS (for sim3d)
 #=====================================
+update_verify_progress "GPU & Graphics"
 section "11. GPU & Graphics (sim3d)"
 
 # Check Vulkan
@@ -689,6 +773,7 @@ fi
 #=====================================
 # 12. NETWORK & REGISTRY
 #=====================================
+update_verify_progress "Network & Registry"
 section "12. Network & Registry"
 
 # Check network connectivity to crates.io (for cargo)
@@ -716,6 +801,7 @@ fi
 #=====================================
 # 13. DISK USAGE
 #=====================================
+update_verify_progress "Disk Usage"
 section "13. Disk Usage"
 
 if [ -d "$HORUS_DIR" ]; then
@@ -746,6 +832,7 @@ info "Available disk space: $AVAILABLE"
 #=====================================
 # 14. BUILD VERIFICATION (if in repo)
 #=====================================
+update_verify_progress "Build Verification"
 section "14. Build Verification"
 
 if [ -f "$SCRIPT_DIR/Cargo.toml" ] && grep -q "horus_manager" "$SCRIPT_DIR/Cargo.toml" 2>/dev/null; then
@@ -783,6 +870,10 @@ fi
 #=====================================
 # SUMMARY
 #=====================================
+
+# Complete progress bar
+complete_verify_progress
+
 echo ""
 echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║${NC}                      ${WHITE}VERIFICATION SUMMARY${NC}                   ${BLUE}║${NC}"

@@ -8,7 +8,7 @@ use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 
 /// Configuration for domain randomization
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct DomainRandomizationConfig {
     /// Randomize physics parameters
     pub physics: PhysicsRandomization,
@@ -18,17 +18,6 @@ pub struct DomainRandomizationConfig {
     pub environment: EnvironmentRandomization,
     /// Random seed (None for random)
     pub seed: Option<u64>,
-}
-
-impl Default for DomainRandomizationConfig {
-    fn default() -> Self {
-        Self {
-            physics: PhysicsRandomization::default(),
-            visual: VisualRandomization::default(),
-            environment: EnvironmentRandomization::default(),
-            seed: None,
-        }
-    }
 }
 
 /// Physics randomization parameters
@@ -374,14 +363,14 @@ fn temperature_to_rgb(kelvin: f32) -> Color {
     let red = if temp <= 66.0 {
         255.0
     } else {
-        329.698727446 * (temp - 60.0).powf(-0.1332047592)
+        329.698_73 * (temp - 60.0).powf(-0.133_204_76)
     };
 
     // Green
     let green = if temp <= 66.0 {
-        99.4708025861 * temp.ln() - 161.1195681661
+        99.470_8 * temp.ln() - 161.119_57
     } else {
-        288.1221695283 * (temp - 60.0).powf(-0.0755148492)
+        288.122_16 * (temp - 60.0).powf(-0.075_514_846)
     };
 
     // Blue
@@ -390,7 +379,7 @@ fn temperature_to_rgb(kelvin: f32) -> Color {
     } else if temp <= 19.0 {
         0.0
     } else {
-        138.5177312231 * (temp - 10.0).ln() - 305.0447927307
+        138.517_73 * (temp - 10.0).ln() - 305.044_8
     };
 
     Color::srgb(

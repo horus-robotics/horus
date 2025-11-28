@@ -2,6 +2,9 @@
 //!
 //! Functions for normal generation, tangent generation, and bounding box calculation
 
+// Public API for mesh processing - may not all be used internally
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 use bevy::render::mesh::{Indices, VertexAttributeValues};
 use bevy::render::primitives::Aabb;

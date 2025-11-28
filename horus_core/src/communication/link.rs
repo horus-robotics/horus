@@ -1113,6 +1113,7 @@ where
 
                         if unlikely(ctx.is_some()) {
                             if let Some(ref mut ctx) = ctx {
+                                ctx.register_publisher(&self.topic_name, std::any::type_name::<T>());
                                 ctx.log_pub(&self.topic_name, &msg, 0);
                             }
                         }
@@ -1188,6 +1189,7 @@ where
 
         // Log with accurate IPC timing
         if let Some(ref mut ctx) = ctx {
+            ctx.register_publisher(&self.topic_name, std::any::type_name::<T>());
             let slot = unsafe { &*(data_ptr.as_ptr() as *const T) };
             ctx.log_pub(&self.topic_name, slot, ipc_ns);
         }
@@ -1231,6 +1233,7 @@ where
 
                     if unlikely(ctx.is_some()) {
                         if let Some(ref mut ctx) = ctx {
+                            ctx.register_subscriber(&self.topic_name, std::any::type_name::<T>());
                             ctx.log_sub(&self.topic_name, &msg, 0);
                         }
                     }
@@ -1284,6 +1287,7 @@ where
         // Log with accurate IPC timing
         if unlikely(ctx.is_some()) {
             if let Some(ref mut ctx) = ctx {
+                ctx.register_subscriber(&self.topic_name, std::any::type_name::<T>());
                 ctx.log_sub(&self.topic_name, &msg, ipc_ns);
             }
         }

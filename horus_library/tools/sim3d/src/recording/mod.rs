@@ -8,16 +8,8 @@ pub mod video_export;
 use bevy::prelude::*;
 
 // Re-export key types
-pub use dataset_export::{DatasetFormat, DatasetRecorder, Experience};
-pub use sensor_data::{SensorBagPlayback, SensorBagRecorder, SensorData, SensorMessage};
-pub use time_control::TimeControl;
-pub use trajectory::{RecordingSession, Trajectory, TrajectoryPoint};
-pub use video_export::{
-    ImageDataFormat, VideoFormat, VideoFrame, VideoRecorder, VideoRecordingConfig,
-};
 
 // Re-export recording manager and presets
-pub use manager::{RecordingCommands, RecordingManager, RecordingPresets, RecordingStats};
 
 /// Recording and playback plugin
 pub struct RecordingPlugin;

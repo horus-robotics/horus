@@ -327,7 +327,6 @@ simulation:
 
     #[test]
     fn test_scenario_save_load_cycle() {
-        use std::fs;
         use tempfile::TempDir;
 
         // Create a temporary directory for testing
@@ -371,6 +370,9 @@ simulation:
                 angle_max: std::f32::consts::PI,
             },
             camera: crate::camera::CameraConfig::default(),
+            gps: crate::sensors::GpsConfig::default(),
+            ultrasonic: crate::sensors::UltrasonicConfig::default(),
+            contact: crate::sensors::ContactConfig::default(),
         };
 
         scenario.robots.push(RobotState {
@@ -500,6 +502,9 @@ simulation:
             kinematics: crate::kinematics::KinematicsModel::default(),
             lidar: crate::LidarConfig::default(),
             camera: crate::camera::CameraConfig::default(),
+            gps: crate::sensors::GpsConfig::default(),
+            ultrasonic: crate::sensors::UltrasonicConfig::default(),
+            contact: crate::sensors::ContactConfig::default(),
         }];
 
         let scenario = Scenario::from_current_state(

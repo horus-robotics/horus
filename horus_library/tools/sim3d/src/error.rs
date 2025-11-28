@@ -342,6 +342,8 @@ impl From<anyhow::Error> for EnhancedError {
 }
 
 /// Result type using EnhancedError
+/// Note: EnhancedError is intentionally unboxed to provide rich error context.
+/// The size (136 bytes) is acceptable for error paths which are not hot paths.
 pub type Result<T> = std::result::Result<T, EnhancedError>;
 
 #[cfg(test)]

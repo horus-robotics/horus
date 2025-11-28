@@ -90,8 +90,17 @@ pub fn controls_panel_system(
     mut contexts: EguiContexts,
     mut controls: ResMut<SimulationControls>,
     mut events: EventWriter<SimulationEvent>,
+    #[cfg(feature = "editor")] dock_config: Option<Res<crate::ui::dock::DockConfig>>,
     mut show_panel: Local<bool>,
 ) {
+    // Skip if dock mode is enabled (dock renders its own controls tab)
+    #[cfg(feature = "editor")]
+    if let Some(dock) = dock_config {
+        if dock.enabled {
+            return;
+        }
+    }
+
     if !*show_panel {
         *show_panel = true; // Default to showing
     }

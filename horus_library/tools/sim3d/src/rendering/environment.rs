@@ -160,7 +160,7 @@ impl ProceduralSkyConfig {
         self.sun_position = Vec3::new(angle.cos() * 0.3, angle.sin(), -0.3).normalize();
 
         // Update colors based on time
-        if time < 0.25 || time > 0.75 {
+        if !(0.25..=0.75).contains(&time) {
             // Night
             self.sky_color_zenith = Color::srgb(0.01, 0.01, 0.05);
             self.sun_intensity = 0.05;

@@ -114,8 +114,17 @@ pub fn stats_panel_system(
     stats: Res<SimulationStats>,
     frame_time: Res<FrameTimeBreakdown>,
     horus_stats: Option<Res<HorusSyncStats>>,
+    #[cfg(feature = "editor")] dock_config: Option<Res<crate::ui::dock::DockConfig>>,
     mut show_panel: Local<bool>,
 ) {
+    // Skip if dock mode is enabled (dock renders its own stats tab)
+    #[cfg(feature = "editor")]
+    if let Some(dock) = dock_config {
+        if dock.enabled {
+            return;
+        }
+    }
+
     // Toggle with 'S' key (handled elsewhere)
     if !*show_panel {
         *show_panel = true; // Default to showing

@@ -7,7 +7,6 @@ pub mod subscriber;
 use bevy::prelude::*;
 use std::sync::{Arc, Mutex};
 
-pub use horus_transport::{HorusTransport, HorusTransportConfig, HorusTransportPlugin};
 pub use messages::*;
 pub use publisher::{
     publish_lidar2d_system, publish_lidar3d_system, publish_tf_system, HorusPublisher,
@@ -321,25 +320,16 @@ fn bridge_cleanup_system(
     _publisher: Res<HorusPublisher>,
     _subscriber: Res<HorusSubscriber>,
 ) {
-    if !config.is_active() {
-        return;
-    }
+    if !config.is_active() {}
 
     // Periodic cleanup can be triggered here
     // For now, we keep messages until explicitly cleared
 }
 
 /// Plugin to register HORUS bridge systems
+#[derive(Default)]
 pub struct HorusBridgePlugin {
     config: HorusBridgeConfig,
-}
-
-impl Default for HorusBridgePlugin {
-    fn default() -> Self {
-        Self {
-            config: HorusBridgeConfig::default(),
-        }
-    }
 }
 
 impl HorusBridgePlugin {

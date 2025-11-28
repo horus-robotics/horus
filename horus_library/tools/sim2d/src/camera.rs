@@ -35,8 +35,8 @@ impl Default for CameraConfig {
     fn default() -> Self {
         Self {
             enabled: false,
-            fov_horizontal: 1.0472, // 60 degrees
-            fov_vertical: 0.7854,   // 45 degrees
+            fov_horizontal: std::f32::consts::FRAC_PI_3, // 60 degrees
+            fov_vertical: std::f32::consts::FRAC_PI_4,   // 45 degrees
             width: 320,
             height: 240,
             max_distance: 20.0,

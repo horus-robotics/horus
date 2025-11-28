@@ -1,7 +1,6 @@
 //! GPU-accelerated collision detection using compute shaders
 
 use super::GPUComputeContext;
-use bevy::prelude::*;
 use wgpu::util::DeviceExt;
 
 /// GPU collision detection pipeline
@@ -163,7 +162,7 @@ impl GPUCollisionPipeline {
 
             // Dispatch work groups (64 threads per group)
             let workgroup_size = 64;
-            let num_workgroups = (num_objects + workgroup_size - 1) / workgroup_size;
+            let num_workgroups = num_objects.div_ceil(workgroup_size);
             compute_pass.dispatch_workgroups(num_workgroups as u32, 1, 1);
         }
 

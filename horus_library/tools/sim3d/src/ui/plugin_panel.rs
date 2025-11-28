@@ -416,10 +416,10 @@ fn settings_hotkey_system(
     mut toggle_events: EventWriter<ToggleSettingsPanelEvent>,
 ) {
     // Ctrl+, to toggle settings (common convention)
-    if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
-        if keyboard.just_pressed(KeyCode::Comma) {
-            toggle_events.send(ToggleSettingsPanelEvent);
-        }
+    if (keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight))
+        && keyboard.just_pressed(KeyCode::Comma)
+    {
+        toggle_events.send(ToggleSettingsPanelEvent);
     }
 }
 

@@ -4,7 +4,6 @@
 //! materials, physics properties, sensors, and plugins.
 
 use anyhow::{Context, Result};
-use bevy::prelude::*;
 use roxmltree::{Document, Node};
 use std::collections::HashMap;
 

@@ -170,14 +170,145 @@ impl Heightmap {
     }
 
     /// Load from image file
+    /// Supports grayscale and RGB images. For RGB, uses luminance formula.
     pub fn from_image(image: &Image) -> Option<Self> {
-        // Simplified - would need proper image parsing
+        use bevy::render::render_resource::TextureFormat;
+
         let width = image.texture_descriptor.size.width;
         let height = image.texture_descriptor.size.height;
+        let data = &image.data;
 
-        let heightmap = Self::new(width, height);
-        // Extract heights from image data (grayscale)
-        // This is a simplified version
+        if data.is_empty() {
+            return None;
+        }
+
+        let mut heightmap = Self::new(width, height);
+
+        // Determine bytes per pixel and extraction method based on format
+        match image.texture_descriptor.format {
+            // 8-bit grayscale
+            TextureFormat::R8Unorm => {
+                if data.len() >= (width * height) as usize {
+                    for y in 0..height {
+                        for x in 0..width {
+                            let idx = (y * width + x) as usize;
+                            let value = data[idx] as f32 / 255.0;
+                            heightmap.set(x, y, value);
+                        }
+                    }
+                } else {
+                    return None;
+                }
+            }
+            // 16-bit grayscale (common for heightmaps)
+            TextureFormat::R16Unorm => {
+                let expected_len = (width * height * 2) as usize;
+                if data.len() >= expected_len {
+                    for y in 0..height {
+                        for x in 0..width {
+                            let idx = ((y * width + x) * 2) as usize;
+                            let value =
+                                u16::from_le_bytes([data[idx], data[idx + 1]]) as f32 / 65535.0;
+                            heightmap.set(x, y, value);
+                        }
+                    }
+                } else {
+                    return None;
+                }
+            }
+            // RGBA 8-bit (convert to grayscale using luminance)
+            TextureFormat::Rgba8Unorm | TextureFormat::Rgba8UnormSrgb => {
+                let expected_len = (width * height * 4) as usize;
+                if data.len() >= expected_len {
+                    for y in 0..height {
+                        for x in 0..width {
+                            let idx = ((y * width + x) * 4) as usize;
+                            let r = data[idx] as f32 / 255.0;
+                            let g = data[idx + 1] as f32 / 255.0;
+                            let b = data[idx + 2] as f32 / 255.0;
+                            // Standard luminance formula (ITU-R BT.709)
+                            let luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                            heightmap.set(x, y, luminance);
+                        }
+                    }
+                } else {
+                    return None;
+                }
+            }
+            // RGB 8-bit
+            TextureFormat::Rgba8Uint => {
+                let expected_len = (width * height * 4) as usize;
+                if data.len() >= expected_len {
+                    for y in 0..height {
+                        for x in 0..width {
+                            let idx = ((y * width + x) * 4) as usize;
+                            let r = data[idx] as f32 / 255.0;
+                            let g = data[idx + 1] as f32 / 255.0;
+                            let b = data[idx + 2] as f32 / 255.0;
+                            let luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                            heightmap.set(x, y, luminance);
+                        }
+                    }
+                } else {
+                    return None;
+                }
+            }
+            // Bgra 8-bit (common on some platforms)
+            TextureFormat::Bgra8Unorm | TextureFormat::Bgra8UnormSrgb => {
+                let expected_len = (width * height * 4) as usize;
+                if data.len() >= expected_len {
+                    for y in 0..height {
+                        for x in 0..width {
+                            let idx = ((y * width + x) * 4) as usize;
+                            let b = data[idx] as f32 / 255.0;
+                            let g = data[idx + 1] as f32 / 255.0;
+                            let r = data[idx + 2] as f32 / 255.0;
+                            let luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                            heightmap.set(x, y, luminance);
+                        }
+                    }
+                } else {
+                    return None;
+                }
+            }
+            // 32-bit float grayscale (high precision heightmaps)
+            TextureFormat::R32Float => {
+                let expected_len = (width * height * 4) as usize;
+                if data.len() >= expected_len {
+                    for y in 0..height {
+                        for x in 0..width {
+                            let idx = ((y * width + x) * 4) as usize;
+                            let value = f32::from_le_bytes([
+                                data[idx],
+                                data[idx + 1],
+                                data[idx + 2],
+                                data[idx + 3],
+                            ]);
+                            heightmap.set(x, y, value);
+                        }
+                    }
+                } else {
+                    return None;
+                }
+            }
+            // Unsupported format
+            _ => {
+                // Try to fallback to treating data as raw grayscale bytes
+                let pixel_count = (width * height) as usize;
+                if data.len() >= pixel_count {
+                    for y in 0..height {
+                        for x in 0..width {
+                            let idx = (y * width + x) as usize;
+                            let value = data[idx] as f32 / 255.0;
+                            heightmap.set(x, y, value);
+                        }
+                    }
+                } else {
+                    return None;
+                }
+            }
+        }
+
         Some(heightmap)
     }
 

@@ -433,44 +433,76 @@ impl IKSolver {
     /// * `target_position` - Desired position of the end-effector
     /// * `target_rotation` - Desired orientation of the end-effector (currently unused)
     /// * `current_joint_positions` - Starting configuration for IK solve
-    /// * `joint_axes` - Rotation axes for each joint in world frame
-    /// * `joint_positions` - Current positions of each joint in world frame
-    /// * `end_effector_position` - Current position of end-effector
+    /// * `joint_world_positions` - Optional world positions of each joint
+    /// * `joint_axes` - Optional rotation axes for each joint
     ///
     /// # Returns
     /// * `Some(Vec<f32>)` - Joint angles that achieve the target (or best approximation)
     /// * `None` - If solution could not be found
     pub fn solve(
         &self,
-        _target_position: Vec3,
+        target_position: Vec3,
         _target_rotation: Quat,
         current_joint_positions: &[f32],
     ) -> Option<Vec<f32>> {
-        // For a full implementation, we'd need access to the kinematic chain
-        // This is a simplified version that assumes we have the necessary data
-
-        // Start with current joint positions
-        let joint_angles = current_joint_positions.to_vec();
-
-        // CCD iterations
-        for _iteration in 0..self.max_iterations {
-            // We would iterate through joints here, but without kinematic data,
-            // we return the current best estimate
-
-            // In a full implementation:
-            // 1. For each joint (from end-effector backwards to base):
-            //    a. Compute vector from joint to end-effector
-            //    b. Compute vector from joint to target
-            //    c. Compute rotation needed to align these vectors
-            //    d. Apply rotation to joint angle
-            // 2. Forward kinematics to get new end-effector position
-            // 3. Check if target is reached (within tolerance)
-
-            // For now, return current configuration as best estimate
-            break;
+        if current_joint_positions.is_empty() {
+            return None;
         }
 
-        Some(joint_angles)
+        // Build a default joint chain assuming joints are along X axis with Z rotation
+        // This provides reasonable behavior for typical robot arms without full chain data
+        let mut joint_chain = Vec::with_capacity(current_joint_positions.len());
+        let link_length = 0.1; // Default link length
+
+        for (i, &angle) in current_joint_positions.iter().enumerate() {
+            let position = Vec3::new(i as f32 * link_length, 0.0, 0.0);
+            let axis = Vec3::Z; // Assume Z-axis rotation (common for planar arms)
+            joint_chain.push((position, axis, angle));
+        }
+
+        // Use the CCD solver
+        let result = self.solve_ccd(target_position, &joint_chain);
+        Some(result)
+    }
+
+    /// Solve IK with full kinematic chain information
+    ///
+    /// This is the preferred method when you have access to the full joint chain data.
+    ///
+    /// # Arguments
+    /// * `target_position` - Desired position of the end-effector
+    /// * `target_rotation` - Desired orientation (currently unused, position-only IK)
+    /// * `current_joint_positions` - Starting configuration
+    /// * `joint_world_positions` - World positions of each joint
+    /// * `joint_axes` - Rotation axis for each joint (in world frame)
+    ///
+    /// # Returns
+    /// * `Some(Vec<f32>)` - Joint angles that achieve the target
+    /// * `None` - If solution could not be found
+    pub fn solve_with_chain(
+        &self,
+        target_position: Vec3,
+        _target_rotation: Quat,
+        current_joint_positions: &[f32],
+        joint_world_positions: &[Vec3],
+        joint_axes: &[Vec3],
+    ) -> Option<Vec<f32>> {
+        if current_joint_positions.len() != joint_world_positions.len()
+            || current_joint_positions.len() != joint_axes.len()
+        {
+            return None;
+        }
+
+        // Build joint chain from provided data
+        let joint_chain: Vec<(Vec3, Vec3, f32)> = current_joint_positions
+            .iter()
+            .zip(joint_world_positions.iter())
+            .zip(joint_axes.iter())
+            .map(|((&angle, &pos), &axis)| (pos, axis, angle))
+            .collect();
+
+        let result = self.solve_ccd(target_position, &joint_chain);
+        Some(result)
     }
 
     /// Solve IK using CCD with full kinematic chain data
@@ -559,35 +591,102 @@ impl IKSolver {
         joint_angles
     }
 
-    /// Simplified forward kinematics for CCD
+    /// Forward kinematics using transformation matrices
     /// Computes end-effector position given joint angles
+    ///
+    /// Uses proper transformation matrix composition:
+    /// T_total = T_0 * R_0 * T_1 * R_1 * ... * T_n * R_n
+    ///
+    /// where T_i is translation to joint i and R_i is rotation at joint i
     fn forward_kinematics(&self, joint_angles: &[f32], joint_chain: &[(Vec3, Vec3, f32)]) -> Vec3 {
         if joint_chain.is_empty() {
             return Vec3::ZERO;
         }
 
-        // For a simple serial chain, the end-effector is roughly at the last joint
-        // plus some offset in the direction of accumulated rotations
-        // This is a simplified version - full FK would use transformation matrices
-
-        let mut position = joint_chain[0].0;
-        let link_length = 0.1; // Assumed link length between joints
+        // Use transformation matrices for proper FK computation
+        let mut transform = Transform::IDENTITY;
 
         for (i, angle) in joint_angles.iter().enumerate() {
             if i >= joint_chain.len() {
                 break;
             }
 
+            let joint_pos = joint_chain[i].0;
             let axis = joint_chain[i].1;
 
-            // Rotate forward direction by accumulated angle
-            let rotation = Quat::from_axis_angle(axis, *angle);
-            let forward = rotation * Vec3::X;
+            // Compute offset from previous joint (or origin for first joint)
+            let offset = if i == 0 {
+                joint_pos
+            } else {
+                joint_pos - joint_chain[i - 1].0
+            };
 
-            position += forward * link_length;
+            // Apply translation to this joint
+            transform.translation += transform.rotation * offset;
+
+            // Apply rotation at this joint
+            let rotation = Quat::from_axis_angle(axis, *angle);
+            transform.rotation = transform.rotation * rotation;
         }
 
-        position
+        // Add offset from last joint to end-effector
+        // Compute based on distance from second-to-last to last joint, or use default
+        let ee_offset = if joint_chain.len() >= 2 {
+            let last_link = joint_chain[joint_chain.len() - 1].0 - joint_chain[joint_chain.len() - 2].0;
+            last_link.length()
+        } else {
+            0.1 // Default end-effector offset
+        };
+
+        // End-effector is offset from last joint in the forward direction
+        transform.translation + transform.rotation * Vec3::new(ee_offset, 0.0, 0.0)
+    }
+
+    /// Compute full forward kinematics returning all joint positions
+    /// Useful for visualization and collision checking
+    pub fn forward_kinematics_full(
+        &self,
+        joint_angles: &[f32],
+        joint_chain: &[(Vec3, Vec3, f32)],
+    ) -> Vec<Vec3> {
+        if joint_chain.is_empty() {
+            return vec![];
+        }
+
+        let mut positions = Vec::with_capacity(joint_chain.len() + 1);
+        let mut transform = Transform::IDENTITY;
+
+        for (i, angle) in joint_angles.iter().enumerate() {
+            if i >= joint_chain.len() {
+                break;
+            }
+
+            let joint_pos = joint_chain[i].0;
+            let axis = joint_chain[i].1;
+
+            // Compute offset from previous joint
+            let offset = if i == 0 {
+                joint_pos
+            } else {
+                joint_pos - joint_chain[i - 1].0
+            };
+
+            transform.translation += transform.rotation * offset;
+            positions.push(transform.translation);
+
+            let rotation = Quat::from_axis_angle(axis, *angle);
+            transform.rotation = transform.rotation * rotation;
+        }
+
+        // Add end-effector position
+        let ee_offset = if joint_chain.len() >= 2 {
+            (joint_chain[joint_chain.len() - 1].0 - joint_chain[joint_chain.len() - 2].0).length()
+        } else {
+            0.1
+        };
+        positions.push(transform.translation + transform.rotation * Vec3::new(ee_offset, 0.0, 0.0));
+
+        positions
     }
 }
 

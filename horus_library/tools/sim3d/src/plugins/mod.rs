@@ -75,22 +75,14 @@ pub mod registry;
 pub mod traits;
 
 // Re-export main types
-pub use traits::{
-    ActuatorPlugin, PhysicsPlugin, PluginConfig, PluginDependency, PluginMetadata, PluginState,
-    RLPlugin, RenderingPlugin, SensorPlugin, Sim3dPlugin, WorldPlugin,
-};
+pub use traits::{PluginState, Sim3dPlugin};
 
 #[cfg(feature = "visual")]
-pub use traits::{PluginPanelInfo, UiPlugin};
+pub use traits::PluginPanelInfo;
 
-pub use registry::{PluginConfigLoader, PluginRegistry, PluginStats};
+pub use registry::PluginRegistry;
 
-pub use loader::PluginLoader;
-
-pub use examples::{
-    ExampleActuatorPlugin, ExampleSensorPlugin, ExampleWorldPlugin, ProximitySensor,
-    ThrusterActuator, WindAffected, WindSystem,
-};
+pub use examples::{ExampleActuatorPlugin, ExampleSensorPlugin, ExampleWorldPlugin};
 
 use bevy::prelude::*;
 

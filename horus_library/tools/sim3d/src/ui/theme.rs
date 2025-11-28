@@ -648,7 +648,7 @@ impl ThemeConfig {
         std::env::var("XDG_CONFIG_HOME")
             .ok()
             .map(PathBuf::from)
-            .or_else(|| dirs::config_dir())
+            .or_else(dirs::config_dir)
             .map(|p| p.join("sim3d").join("theme.json"))
     }
 
@@ -702,9 +702,11 @@ impl ThemeConfig {
     /// Load theme preference or create default
     pub fn load_or_default(path: Option<PathBuf>) -> Self {
         Self::load(path.clone()).unwrap_or_else(|_| {
-            let mut config = Self::default();
-            config.config_path = path.or_else(Self::default_config_path);
-            config
+            let config_path = path.or_else(Self::default_config_path);
+            Self {
+                config_path,
+                ..Default::default()
+            }
         })
     }
 }
@@ -851,17 +853,16 @@ pub fn theme_keyboard_system(
     mut events: EventWriter<ThemeChangedEvent>,
 ) {
     // Ctrl+Shift+T: Toggle theme
-    if keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight) {
-        if keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight) {
-            if keyboard.just_pressed(KeyCode::KeyT) {
-                let old_theme = theme_config.current_theme;
-                theme_config.toggle_theme();
-                events.send(ThemeChangedEvent {
-                    old_theme,
-                    new_theme: theme_config.current_theme,
-                });
-            }
-        }
+    if (keyboard.pressed(KeyCode::ControlLeft) || keyboard.pressed(KeyCode::ControlRight))
+        && (keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight))
+        && keyboard.just_pressed(KeyCode::KeyT)
+    {
+        let old_theme = theme_config.current_theme;
+        theme_config.toggle_theme();
+        events.send(ThemeChangedEvent {
+            old_theme,
+            new_theme: theme_config.current_theme,
+        });
     }
 }
 

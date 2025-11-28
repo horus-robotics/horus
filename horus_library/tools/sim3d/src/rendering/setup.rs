@@ -1,12 +1,14 @@
 use crate::cli::Cli;
 use crate::config::robot::DiffDrivePresets;
 use crate::hframe::TFTree;
-use crate::physics::diff_drive::{CmdVel, DifferentialDrive};
+use crate::physics::diff_drive::CmdVel;
 use crate::physics::PhysicsWorld;
 use crate::rendering::camera_controller::OrbitCamera;
+use crate::robot::urdf_loader::URDFLoader;
 use crate::scene::loader::SceneLoader;
 use crate::scene::spawner::{ObjectSpawnConfig, ObjectSpawner, SpawnShape, SpawnedObjects};
 use bevy::prelude::*;
+use std::path::Path;
 
 pub fn setup_scene(
     mut commands: Commands,
@@ -80,8 +82,71 @@ pub fn setup_scene(
     // Load robot file if provided, otherwise spawn default robot
     if let Some(robot_path) = &cli.robot {
         info!("Loading robot from: {:?}", robot_path);
-        // Robot loading handled by scene loader or URDF loader
-        // TODO: Add direct robot file loading support
+
+        // Get the directory containing the robot file for relative mesh resolution
+        let robot_file = Path::new(robot_path);
+        let base_path = robot_file.parent().unwrap_or(Path::new("."));
+
+        // Determine file type by extension and load accordingly
+        let extension = robot_file
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+
+        match extension.as_str() {
+            "urdf" | "xacro" => {
+                // Load URDF/Xacro robot file
+                let mut urdf_loader = URDFLoader::new().with_base_path(base_path);
+                match urdf_loader.load(
+                    robot_file,
+                    &mut commands,
+                    &mut physics_world,
+                    &mut tf_tree,
+                    &mut meshes,
+                    &mut materials,
+                ) {
+                    Ok(robot_entity) => {
+                        spawned_objects.add(robot_entity);
+                        info!("Successfully loaded robot from URDF: {:?}", robot_path);
+                    }
+                    Err(e) => {
+                        error!("Failed to load robot from URDF: {}", e);
+                        warn!("Falling back to default robot");
+                        spawn_default_robot(
+                            &mut commands,
+                            &mut meshes,
+                            &mut materials,
+                            &mut physics_world,
+                            &mut spawned_objects,
+                        );
+                    }
+                }
+            }
+            "sdf" => {
+                // SDF robot files can be loaded through scene loader
+                warn!("Direct SDF robot loading not yet implemented, falling back to default robot");
+                spawn_default_robot(
+                    &mut commands,
+                    &mut meshes,
+                    &mut materials,
+                    &mut physics_world,
+                    &mut spawned_objects,
+                );
+            }
+            _ => {
+                error!("Unsupported robot file format: {}", extension);
+                warn!("Supported formats: .urdf, .xacro");
+                warn!("Falling back to default robot");
+                spawn_default_robot(
+                    &mut commands,
+                    &mut meshes,
+                    &mut materials,
+                    &mut physics_world,
+                    &mut spawned_objects,
+                );
+            }
+        }
     } else {
         info!("No robot file specified, spawning default TurtleBot3-style robot");
         spawn_default_robot(

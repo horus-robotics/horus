@@ -210,7 +210,7 @@ impl RecentFile {
 
     /// Returns a formatted timestamp string
     pub fn formatted_time(&self) -> String {
-        use chrono::{DateTime, Local, TimeZone};
+        use chrono::{Local, TimeZone};
 
         if let Some(dt) = Local.timestamp_opt(self.last_opened as i64, 0).single() {
             dt.format("%Y-%m-%d %H:%M").to_string()
@@ -786,7 +786,7 @@ pub fn on_exit_save_recent_files(
 // ============================================================================
 
 #[cfg(feature = "visual")]
-use bevy_egui::{egui, EguiContexts};
+use bevy_egui::egui;
 
 #[cfg(feature = "visual")]
 /// Renders the recent files menu
@@ -867,17 +867,10 @@ fn format_file_label(file: &RecentFile, _config: &RecentFilesConfig) -> String {
 // ============================================================================
 
 /// Plugin for recent files management
+#[derive(Default)]
 pub struct RecentFilesPlugin {
     /// Initial configuration
     config: RecentFilesConfig,
-}
-
-impl Default for RecentFilesPlugin {
-    fn default() -> Self {
-        Self {
-            config: RecentFilesConfig::default(),
-        }
-    }
 }
 
 impl RecentFilesPlugin {

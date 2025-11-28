@@ -1,12 +1,15 @@
 //! UI module for sim2d control panel
 
+// Bevy systems commonly have many arguments
+#![allow(clippy::too_many_arguments)]
+
 use crate::{recorder::Recorder, scenario::Scenario, AppConfig};
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Helper function to safely get file name from a path
-fn get_file_name_str(path: &PathBuf) -> String {
+fn get_file_name_str(path: &Path) -> String {
     path.file_name()
         .map(|name| name.to_string_lossy().to_string())
         .unwrap_or_else(|| "Unknown".to_string())
@@ -224,21 +227,18 @@ pub fn ui_system(
 
     // Editor keyboard shortcuts
     if editor.enabled {
-        if ctx.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::Z)) {
-            if editor.undo().is_some() {
-                ui_state.status_message = "Undone".to_string();
-            }
+        if ctx.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::Z)) && editor.undo().is_some()
+        {
+            ui_state.status_message = "Undone".to_string();
         }
-        if ctx.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::Y)) {
-            if editor.redo().is_some() {
-                ui_state.status_message = "Redone".to_string();
-            }
+        if ctx.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::Y)) && editor.redo().is_some()
+        {
+            ui_state.status_message = "Redone".to_string();
         }
-        if ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
-            if !editor.selected_obstacles.is_empty() {
-                editor.clear_selection();
-                ui_state.status_message = "Selection cleared".to_string();
-            }
+        if ctx.input(|i| i.key_pressed(egui::Key::Escape)) && !editor.selected_obstacles.is_empty()
+        {
+            editor.clear_selection();
+            ui_state.status_message = "Selection cleared".to_string();
         }
     }
 
@@ -454,7 +454,7 @@ pub fn ui_system(
                             ui.label(
                                 egui::RichText::new(format!(
                                     "Current: {}",
-                                    get_file_name_str(&path)
+                                    get_file_name_str(path)
                                 ))
                                 .color(egui::Color32::LIGHT_GREEN),
                             );
@@ -580,7 +580,7 @@ pub fn ui_system(
                         if let Some(path) = &ui_state.recording_path {
                             ui.add_space(3.0);
                             ui.label(
-                                egui::RichText::new(format!("Last: {}", get_file_name_str(&path)))
+                                egui::RichText::new(format!("Last: {}", get_file_name_str(path)))
                                     .size(10.0)
                                     .color(egui::Color32::from_rgb(120, 120, 120)),
                             );
@@ -666,10 +666,8 @@ pub fn ui_system(
                                 ui_state.recording_path = None;
                                 ui_state.status_message = "Recording unloaded".to_string();
                             }
-                        } else {
-                            if ui.button("Load Recording").clicked() {
-                                ui_state.show_file_dialog = FileDialogType::RecordingLoad;
-                            }
+                        } else if ui.button("Load Recording").clicked() {
+                            ui_state.show_file_dialog = FileDialogType::RecordingLoad;
                         }
 
                         ui.add_space(5.0);
@@ -697,7 +695,7 @@ pub fn ui_system(
 
                         if let Some(path) = &ui_state.world_config_path {
                             ui.label(
-                                egui::RichText::new(format!("File: {}", get_file_name_str(&path)))
+                                egui::RichText::new(format!("File: {}", get_file_name_str(path)))
                                     .color(egui::Color32::LIGHT_GREEN),
                             );
                         } else {
@@ -730,7 +728,7 @@ pub fn ui_system(
 
                         if let Some(path) = &ui_state.robot_config_path {
                             ui.label(
-                                egui::RichText::new(format!("File: {}", get_file_name_str(&path)))
+                                egui::RichText::new(format!("File: {}", get_file_name_str(path)))
                                     .color(egui::Color32::LIGHT_GREEN),
                             );
                         } else {
@@ -831,24 +829,23 @@ pub fn ui_system(
                             // Check if topic changed from current
                             let topic_changed = ui_state.topic_input != app_config.args.topic;
 
-                            if topic_changed {
-                                if ui.button("Apply").clicked()
+                            if topic_changed
+                                && (ui.button("Apply").clicked()
                                     || response.lost_focus()
-                                        && ui.input(|i| i.key_pressed(egui::Key::Enter))
-                                {
-                                    // Update the topic and restart
-                                    app_config.args.topic = ui_state.topic_input.clone();
-                                    // Update robot topic prefixes too
-                                    if let Some(robot) = app_config.robots.get_mut(0) {
-                                        robot.topic_prefix = ui_state.topic_input.clone();
-                                    }
-                                    ui_state.active_topics = vec![ui_state.topic_input.clone()];
-                                    ui_state.reset_simulation = true;
-                                    ui_state.status_message = format!(
-                                        "Topic changed to {} - restarting...",
-                                        ui_state.topic_input
-                                    );
+                                        && ui.input(|i| i.key_pressed(egui::Key::Enter)))
+                            {
+                                // Update the topic and restart
+                                app_config.args.topic = ui_state.topic_input.clone();
+                                // Update robot topic prefixes too
+                                if let Some(robot) = app_config.robots.get_mut(0) {
+                                    robot.topic_prefix = ui_state.topic_input.clone();
                                 }
+                                ui_state.active_topics = vec![ui_state.topic_input.clone()];
+                                ui_state.reset_simulation = true;
+                                ui_state.status_message = format!(
+                                    "Topic changed to {} - restarting...",
+                                    ui_state.topic_input
+                                );
                             }
                         });
 
@@ -1170,19 +1167,17 @@ pub fn ui_system(
                                 if ui
                                     .add_enabled(undo_enabled, egui::Button::new("Undo"))
                                     .clicked()
+                                    && editor.undo().is_some()
                                 {
-                                    if editor.undo().is_some() {
-                                        ui_state.status_message = "Undone".to_string();
-                                    }
+                                    ui_state.status_message = "Undone".to_string();
                                 }
 
                                 if ui
                                     .add_enabled(redo_enabled, egui::Button::new("Redo"))
                                     .clicked()
+                                    && editor.redo().is_some()
                                 {
-                                    if editor.redo().is_some() {
-                                        ui_state.status_message = "Redone".to_string();
-                                    }
+                                    ui_state.status_message = "Redone".to_string();
                                 }
                             });
 
@@ -1410,7 +1405,7 @@ pub fn ui_system(
                         if let Some(path) = &ui_state.metrics_export_path {
                             ui.add_space(3.0);
                             ui.label(
-                                egui::RichText::new(format!("Last: {}", get_file_name_str(&path)))
+                                egui::RichText::new(format!("Last: {}", get_file_name_str(path)))
                                     .size(10.0)
                                     .color(egui::Color32::from_rgb(120, 120, 120)),
                             );
@@ -1565,7 +1560,7 @@ pub fn ui_system(
                                 }
                                 // Apply to physics
                                 for robot in articulated_robots.iter() {
-                                    for (_, joint_handle) in &robot.joint_handles {
+                                    for joint_handle in robot.joint_handles.values() {
                                         if let Some(joint) =
                                             physics_world.impulse_joint_set.get_mut(*joint_handle)
                                         {
@@ -1584,7 +1579,7 @@ pub fn ui_system(
                             if ui.button("Limp").clicked() {
                                 // Set all motor forces to 0 (disable motors)
                                 for robot in articulated_robots.iter() {
-                                    for (_, joint_handle) in &robot.joint_handles {
+                                    for joint_handle in robot.joint_handles.values() {
                                         if let Some(joint) =
                                             physics_world.impulse_joint_set.get_mut(*joint_handle)
                                         {

@@ -63,7 +63,7 @@ fn bench_link_small_message(c: &mut Criterion) {
 
         // Pre-fill with messages
         for _ in 0..1000 {
-            producer.send(CmdVel::new(1.5, 0.8), None).unwrap();
+            producer.send(CmdVel::new(1.5, 0.8), &mut None).unwrap();
         }
 
         b.iter(|| {
@@ -150,13 +150,13 @@ fn bench_link_large_message(c: &mut Criterion) {
     group.finish();
 }
 
-/// Zero-copy loan() API benchmark
-fn bench_link_zero_copy(c: &mut Criterion) {
-    let mut group = c.benchmark_group("link_zero_copy");
+/// Send benchmarks comparing standard vs rapid fire
+fn bench_link_send_patterns(c: &mut Criterion) {
+    let mut group = c.benchmark_group("link_send_patterns");
     group.throughput(Throughput::Bytes(std::mem::size_of::<CmdVel>() as u64));
 
     // Standard send (with clone)
-    group.bench_function("Link::send_with_clone", |b| {
+    group.bench_function("Link::send_standard", |b| {
         let topic = format!("bench_link_clone_{}", std::process::id());
         let producer: Link<CmdVel> = Link::producer(&topic).unwrap();
         let _consumer: Link<CmdVel> = Link::consumer(&topic).unwrap();
@@ -167,15 +167,21 @@ fn bench_link_zero_copy(c: &mut Criterion) {
         });
     });
 
-    // Zero-copy loan API
-    group.bench_function("Link::loan_zero_copy", |b| {
-        let topic = format!("bench_link_loan_{}", std::process::id());
+    // Batch send (rapid fire)
+    group.bench_function("Link::send_batch_10", |b| {
+        let topic = format!("bench_link_batch_{}", std::process::id());
         let producer: Link<CmdVel> = Link::producer(&topic).unwrap();
-        let _consumer: Link<CmdVel> = Link::consumer(&topic).unwrap();
+        let consumer: Link<CmdVel> = Link::consumer(&topic).unwrap();
 
         b.iter(|| {
-            if let Ok(sample) = producer.loan() {
-                sample.write(black_box(CmdVel::new(1.5, 0.8)));
+            // Send 10 messages in rapid succession
+            for _ in 0..10 {
+                let msg = CmdVel::new(1.5, 0.8);
+                let _ = producer.send(black_box(msg), &mut None);
+            }
+            // Drain them
+            for _ in 0..10 {
+                let _ = consumer.recv(&mut None);
             }
         });
     });
@@ -230,14 +236,14 @@ fn bench_link_throughput(c: &mut Criterion) {
 fn bench_link_primitives(c: &mut Criterion) {
     let mut group = c.benchmark_group("link_primitives");
 
-    // u8 (1 byte)
-    group.bench_function("Link::u8_1B", |b| {
-        let topic = format!("bench_link_u8_{}", std::process::id());
-        let producer: Link<u8> = Link::producer(&topic).unwrap();
-        let consumer: Link<u8> = Link::consumer(&topic).unwrap();
+    // u32 (4 bytes) - smallest integer type with LogSummary
+    group.bench_function("Link::u32_4B", |b| {
+        let topic = format!("bench_link_u32_{}", std::process::id());
+        let producer: Link<u32> = Link::producer(&topic).unwrap();
+        let consumer: Link<u32> = Link::consumer(&topic).unwrap();
 
         b.iter(|| {
-            producer.send(black_box(42u8), &mut None).unwrap();
+            producer.send(black_box(42u32), &mut None).unwrap();
             let _ = black_box(consumer.recv(&mut None));
         });
     });
@@ -268,14 +274,16 @@ fn bench_link_primitives(c: &mut Criterion) {
         });
     });
 
-    // [f32; 3] (12 bytes - typical Vec3)
-    group.bench_function("Link::vec3_12B", |b| {
-        let topic = format!("bench_link_vec3_{}", std::process::id());
-        let producer: Link<[f32; 3]> = Link::producer(&topic).unwrap();
-        let consumer: Link<[f32; 3]> = Link::consumer(&topic).unwrap();
+    // CmdVel (16 bytes - typical command message)
+    group.bench_function("Link::cmdvel_16B", |b| {
+        let topic = format!("bench_link_cmdvel_{}", std::process::id());
+        let producer: Link<CmdVel> = Link::producer(&topic).unwrap();
+        let consumer: Link<CmdVel> = Link::consumer(&topic).unwrap();
 
         b.iter(|| {
-            producer.send(black_box([1.0, 2.0, 3.0]), None).unwrap();
+            producer
+                .send(black_box(CmdVel::new(1.0, 2.0)), &mut None)
+                .unwrap();
             let _ = black_box(consumer.recv(&mut None));
         });
     });
@@ -312,7 +320,7 @@ criterion_group!(
     bench_link_small_message,
     bench_link_medium_message,
     bench_link_large_message,
-    bench_link_zero_copy,
+    bench_link_send_patterns,
     bench_link_throughput,
     bench_link_primitives,
     bench_link_buffer_full,

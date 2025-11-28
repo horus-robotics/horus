@@ -273,7 +273,7 @@ impl PyScheduler {
     ) -> PyResult<()> {
         let timeout = timeout_ms.unwrap_or(self.watchdog_timeout_ms);
 
-        if timeout < 10 || timeout > 60000 {
+        if !(10..=60000).contains(&timeout) {
             return Err(PyRuntimeError::new_err(
                 "Watchdog timeout must be between 10 and 60000 ms",
             ));
@@ -494,21 +494,21 @@ impl PyScheduler {
                     if registered.watchdog_enabled && self.watchdog_enabled {
                         let time_since_feed =
                             registered.last_watchdog_feed.elapsed().as_millis() as u64;
-                        if time_since_feed > registered.watchdog_timeout_ms {
-                            if !registered.watchdog_expired {
-                                registered.watchdog_expired = true;
-                                use colored::Colorize;
-                                eprintln!(
-                                    "{}",
-                                    format!(
-                                        "Watchdog expired: node '{}' not fed for {}ms (timeout: {}ms)",
-                                        registered.name,
-                                        time_since_feed,
-                                        registered.watchdog_timeout_ms
-                                    )
-                                    .red()
-                                );
-                            }
+                        if time_since_feed > registered.watchdog_timeout_ms
+                            && !registered.watchdog_expired
+                        {
+                            registered.watchdog_expired = true;
+                            use colored::Colorize;
+                            eprintln!(
+                                "{}",
+                                format!(
+                                    "Watchdog expired: node '{}' not fed for {}ms (timeout: {}ms)",
+                                    registered.name,
+                                    time_since_feed,
+                                    registered.watchdog_timeout_ms
+                                )
+                                .red()
+                            );
                         }
                     }
 
@@ -721,7 +721,7 @@ impl PyScheduler {
         // Set up Ctrl+C handler for immediate shutdown
         let running_clone = self.running.clone();
         let _ = ctrlc::set_handler(move || {
-            eprintln!("{}", "\nCtrl+C received! Shutting down scheduler...");
+            eprintln!("\nCtrl+C received! Shutting down scheduler...");
             if let Ok(mut r) = running_clone.lock() {
                 *r = false;
             }
@@ -839,21 +839,21 @@ impl PyScheduler {
                     if registered.watchdog_enabled && self.watchdog_enabled {
                         let time_since_feed =
                             registered.last_watchdog_feed.elapsed().as_millis() as u64;
-                        if time_since_feed > registered.watchdog_timeout_ms {
-                            if !registered.watchdog_expired {
-                                registered.watchdog_expired = true;
-                                use colored::Colorize;
-                                eprintln!(
-                                    "{}",
-                                    format!(
-                                        "Watchdog expired: node '{}' not fed for {}ms (timeout: {}ms)",
-                                        registered.name,
-                                        time_since_feed,
-                                        registered.watchdog_timeout_ms
-                                    )
-                                    .red()
-                                );
-                            }
+                        if time_since_feed > registered.watchdog_timeout_ms
+                            && !registered.watchdog_expired
+                        {
+                            registered.watchdog_expired = true;
+                            use colored::Colorize;
+                            eprintln!(
+                                "{}",
+                                format!(
+                                    "Watchdog expired: node '{}' not fed for {}ms (timeout: {}ms)",
+                                    registered.name,
+                                    time_since_feed,
+                                    registered.watchdog_timeout_ms
+                                )
+                                .red()
+                            );
                         }
                     }
 
@@ -1634,7 +1634,7 @@ impl PyScheduler {
 
     /// Get path to registry file (cross-platform)
     fn get_registry_path() -> Result<PathBuf, std::io::Error> {
-        let mut path = dirs::home_dir().unwrap_or_else(|| std::env::temp_dir());
+        let mut path = dirs::home_dir().unwrap_or_else(std::env::temp_dir);
         path.push(".horus_registry.json");
         Ok(path)
     }

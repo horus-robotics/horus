@@ -359,8 +359,8 @@ fn validate_mesh_references(
                     mesh_file
                 ));
                 continue;
-            } else if mesh_file.starts_with("file://") {
-                PathBuf::from(&mesh_file[7..])
+            } else if let Some(stripped) = mesh_file.strip_prefix("file://") {
+                PathBuf::from(stripped)
             } else {
                 base_path.join(mesh_file)
             };

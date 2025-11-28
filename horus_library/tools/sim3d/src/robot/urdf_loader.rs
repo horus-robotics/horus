@@ -7,6 +7,8 @@ use std::path::{Path, PathBuf};
 use urdf_rs::{Geometry, Joint, Link, Robot as URDFRobot, Visual};
 
 use crate::assets::mesh::{MeshLoadOptions, MeshLoader};
+use bevy::render::mesh::{Indices, VertexAttributeValues};
+use tracing::info;
 use crate::assets::resolver::PathResolver;
 use crate::hframe::TFTree;
 use crate::physics::collider::{ColliderBuilder, ColliderShape};
@@ -342,7 +344,7 @@ impl URDFLoader {
         Ok(())
     }
 
-    fn create_collider_from_geometry(&self, geometry: &Geometry) -> Result<Option<Collider>> {
+    fn create_collider_from_geometry(&mut self, geometry: &Geometry) -> Result<Option<Collider>> {
         let collider = match geometry {
             Geometry::Box { size } => {
                 let half_extents = Vec3::new(
@@ -378,17 +380,57 @@ impl URDFLoader {
                 let radius = *radius as f32;
                 Some(ColliderBuilder::new(ColliderShape::Sphere { radius }).build())
             }
-            Geometry::Mesh { filename, scale: _ } => {
+            Geometry::Mesh { filename, scale } => {
                 // Load mesh file and create trimesh collider
                 let mesh_path = self.resolve_mesh_path(filename);
 
-                // For now, we'll skip mesh colliders and let them be implemented later
-                // with proper mesh loading infrastructure
-                warn!(
-                    "Mesh colliders not yet fully implemented, skipping: {}",
-                    mesh_path.display()
-                );
-                None
+                // Apply scale from URDF
+                let scale_vec = if let Some(s) = scale {
+                    Vec3::new(s[0] as f32, s[1] as f32, s[2] as f32)
+                } else {
+                    Vec3::ONE
+                };
+
+                // Try to load the mesh
+                let load_options = MeshLoadOptions::default()
+                    .with_scale(scale_vec)
+                    .generate_normals(false) // Don't need normals for collision
+                    .validate(false); // Skip validation for collision meshes
+
+                match self.mesh_loader.load(&mesh_path, load_options) {
+                    Ok(loaded_mesh) => {
+                        // Extract vertices and indices from the loaded mesh
+                        if let Some((vertices, indices)) =
+                            extract_mesh_data_for_collider(&loaded_mesh.mesh)
+                        {
+                            info!(
+                                "Created mesh collider from {} ({} vertices, {} triangles)",
+                                mesh_path.display(),
+                                vertices.len(),
+                                indices.len()
+                            );
+                            Some(
+                                ColliderBuilder::new(ColliderShape::Mesh { vertices, indices })
+                                    .build(),
+                            )
+                        } else {
+                            warn!(
+                                "Failed to extract collision data from mesh: {}",
+                                mesh_path.display()
+                            );
+                            None
+                        }
+                    }
+                    Err(e) => {
+                        warn!(
+                            "Failed to load mesh for collider {}: {}. Using bounding box approximation.",
+                            mesh_path.display(),
+                            e
+                        );
+                        // Fall back to a bounding box approximation if mesh loading fails
+                        None
+                    }
+                }
             }
         };
 
@@ -621,4 +663,46 @@ impl Default for URDFLoader {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Extract vertex and index data from a Bevy Mesh for use in physics collision
+///
+/// Returns (vertices, indices) suitable for creating a trimesh collider
+fn extract_mesh_data_for_collider(mesh: &Mesh) -> Option<(Vec<Vec3>, Vec<[u32; 3]>)> {
+    // Extract vertex positions
+    let positions = mesh.attribute(Mesh::ATTRIBUTE_POSITION)?;
+    let vertices: Vec<Vec3> = match positions {
+        VertexAttributeValues::Float32x3(positions) => positions
+            .iter()
+            .map(|p| Vec3::new(p[0], p[1], p[2]))
+            .collect(),
+        _ => return None,
+    };
+
+    if vertices.is_empty() {
+        return None;
+    }
+
+    // Extract indices
+    let indices = mesh.indices()?;
+    let index_vec: Vec<u32> = match indices {
+        Indices::U16(idx) => idx.iter().map(|i| *i as u32).collect(),
+        Indices::U32(idx) => idx.clone(),
+    };
+
+    // Convert to triangle triplets
+    if index_vec.len() % 3 != 0 {
+        return None;
+    }
+
+    let triangles: Vec<[u32; 3]> = index_vec
+        .chunks(3)
+        .map(|chunk| [chunk[0], chunk[1], chunk[2]])
+        .collect();
+
+    if triangles.is_empty() {
+        return None;
+    }
+
+    Some((vertices, triangles))
 }

@@ -126,7 +126,7 @@ impl RecoveryFile {
 
     /// Returns a formatted timestamp string
     pub fn formatted_time(&self) -> String {
-        use chrono::{DateTime, Local, TimeZone};
+        use chrono::{Local, TimeZone};
 
         if let Some(dt) = Local.timestamp_opt(self.timestamp as i64, 0).single() {
             dt.format("%Y-%m-%d %H:%M:%S").to_string()
@@ -1095,7 +1095,7 @@ pub fn on_exit_auto_save_system(
 // ============================================================================
 
 #[cfg(feature = "visual")]
-use bevy_egui::{egui, EguiContexts};
+use bevy_egui::egui;
 
 #[cfg(feature = "visual")]
 /// Renders the recovery dialog
@@ -1128,7 +1128,7 @@ pub fn render_recovery_dialog(
             for recovery in pending {
                 ui.group(|ui| {
                     ui.horizontal(|ui| {
-                        ui.strong(&recovery.display_name());
+                        ui.strong(recovery.display_name());
                         ui.label(format!("- {}", recovery.age_string()));
                     });
 
@@ -1214,17 +1214,10 @@ pub fn render_auto_save_status(ui: &mut egui::Ui, state: &AutoSaveState, config:
 // ============================================================================
 
 /// Plugin for crash recovery and auto-save
+#[derive(Default)]
 pub struct CrashRecoveryPlugin {
     /// Initial configuration
     config: AutoSaveConfig,
-}
-
-impl Default for CrashRecoveryPlugin {
-    fn default() -> Self {
-        Self {
-            config: AutoSaveConfig::default(),
-        }
-    }
 }
 
 impl CrashRecoveryPlugin {

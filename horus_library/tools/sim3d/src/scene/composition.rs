@@ -2,6 +2,9 @@
 //!
 //! Allows scenes to include other scenes, enabling modular scene design.
 
+// Scene composer stores base_dir for path resolution
+#![allow(dead_code)]
+
 use super::loader::SceneDefinition;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};

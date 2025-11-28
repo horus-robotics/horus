@@ -205,12 +205,14 @@ impl Maze {
                     let nx = (wx as i32 + dx) as u32;
                     let ny = (wy as i32 + dy) as u32;
 
-                    if nx > 0 && nx < config.width - 1 && ny > 0 && ny < config.height - 1 {
-                        if !in_maze[(ny * config.width + nx) as usize]
-                            && maze.get(nx, ny) == CellType::Wall
-                        {
-                            walls.push((nx, ny));
-                        }
+                    if nx > 0
+                        && nx < config.width - 1
+                        && ny > 0
+                        && ny < config.height - 1
+                        && !in_maze[(ny * config.width + nx) as usize]
+                        && maze.get(nx, ny) == CellType::Wall
+                    {
+                        walls.push((nx, ny));
                     }
                 }
             }

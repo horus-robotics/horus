@@ -3,31 +3,22 @@
 //! Provides automatic fallback between GPU and CPU based on workload size
 //! and hardware availability.
 
+// GPU adapter fields stored for initialization state tracking
+#![allow(dead_code)]
+
 use crate::gpu::{
     GPUAccelerationConfig, GPUCollisionPipeline, GPUComputeContext, GPUMetrics, GPURaycastPipeline,
 };
 use bevy::prelude::*;
 
 /// GPU-accelerated physics adapter (with CPU fallback)
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct GPUPhysicsAdapter {
     context: Option<GPUComputeContext>,
     collision_pipeline: Option<GPUCollisionPipeline>,
     raycast_pipeline: Option<GPURaycastPipeline>,
     config: GPUAccelerationConfig,
     initialization_failed: bool,
-}
-
-impl Default for GPUPhysicsAdapter {
-    fn default() -> Self {
-        Self {
-            context: None,
-            collision_pipeline: None,
-            raycast_pipeline: None,
-            config: GPUAccelerationConfig::default(),
-            initialization_failed: false,
-        }
-    }
 }
 
 impl GPUPhysicsAdapter {
@@ -170,7 +161,7 @@ fn ray_triangle_intersect(origin: Vec3, direction: Vec3, tri: &[Vec3; 3]) -> Opt
     let s = origin - tri[0];
     let u = f * s.dot(h);
 
-    if u < 0.0 || u > 1.0 {
+    if !(0.0..=1.0).contains(&u) {
         return None;
     }
 

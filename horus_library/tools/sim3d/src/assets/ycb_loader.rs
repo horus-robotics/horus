@@ -659,7 +659,7 @@ impl YCBLoader {
             options.rotation.y,
             options.rotation.z,
         ));
-        let physics_position = Isometry::from_parts(translation.into(), rotation);
+        let physics_position = Isometry::from_parts(translation, rotation);
 
         // Create rigid body
         let rigid_body = if options.is_static {
@@ -752,7 +752,7 @@ impl YCBLoader {
             options.rotation.y,
             options.rotation.z,
         ));
-        let physics_position = Isometry::from_parts(translation.into(), rotation);
+        let physics_position = Isometry::from_parts(translation, rotation);
 
         // Create rigid body
         let scaled_mass = config.mass * options.scale.powi(3);

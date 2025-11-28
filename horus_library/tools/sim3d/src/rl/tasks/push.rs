@@ -62,15 +62,30 @@ impl PushTask {
 
     /// Find pusher and object entities
     fn find_entities(&mut self, world: &mut World) {
-        let mut query = world.query::<(Entity, &Robot, &Transform)>();
-
-        // Find pusher (robot entity)
-        if let Some((entity, _robot, _transform)) = query.iter(world).next() {
+        // Find pusher (robot entity with Robot component)
+        let mut robot_query = world.query::<(Entity, &Robot, &Transform)>();
+        if let Some((entity, _robot, _transform)) = robot_query.iter(world).next() {
             self.pusher_entity = Some(entity);
         }
 
-        // In a real scenario, would query for a specific object entity
-        // For now, use simplified approach
+        // Find object entity: look for entities with RigidBodyComponent but no Robot component
+        // These are typically pushable objects in the scene
+        let mut object_query = world.query_filtered::<(Entity, &Transform, &RigidBodyComponent), Without<Robot>>();
+        let mut objects: Vec<(Entity, f32)> = object_query
+            .iter(world)
+            .filter(|(_, transform, _)| {
+                // Filter to objects at reasonable push height (on ground/table)
+                transform.translation.y > 0.0 && transform.translation.y < 1.5
+            })
+            .map(|(entity, transform, _)| (entity, transform.translation.y))
+            .collect();
+
+        // Sort by Y position and pick the object closest to ground level
+        objects.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+
+        if let Some((object_entity, _)) = objects.first() {
+            self.object_entity = Some(*object_entity);
+        }
     }
 
     /// Get pusher position

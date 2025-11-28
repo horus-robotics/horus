@@ -235,16 +235,9 @@ pub fn apply_shadow_components_system(
 }
 
 /// Shadow quality configuration plugin
+#[derive(Default)]
 pub struct ShadowsPlugin {
     pub config: ShadowConfig,
-}
-
-impl Default for ShadowsPlugin {
-    fn default() -> Self {
-        Self {
-            config: ShadowConfig::medium(),
-        }
-    }
 }
 
 impl Plugin for ShadowsPlugin {
@@ -261,7 +254,7 @@ pub struct ShadowUtils;
 impl ShadowUtils {
     /// Calculate optimal shadow distance based on scene size
     pub fn calculate_shadow_distance(scene_radius: f32) -> f32 {
-        (scene_radius * 2.0).max(50.0).min(500.0)
+        (scene_radius * 2.0).clamp(50.0, 500.0)
     }
 
     /// Calculate recommended cascade count based on distance

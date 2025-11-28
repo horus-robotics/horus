@@ -75,8 +75,9 @@ impl LayoutPreset {
 }
 
 /// Position anchor for UI panels
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum PanelAnchor {
+    #[default]
     TopLeft,
     TopRight,
     BottomLeft,
@@ -86,12 +87,6 @@ pub enum PanelAnchor {
     LeftCenter,
     RightCenter,
     Center,
-}
-
-impl Default for PanelAnchor {
-    fn default() -> Self {
-        PanelAnchor::TopLeft
-    }
 }
 
 impl PanelAnchor {

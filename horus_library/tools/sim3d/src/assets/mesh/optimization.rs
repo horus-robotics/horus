@@ -3,6 +3,9 @@
 //! Provides mesh decimation and LOD (Level of Detail) generation using
 //! Quadric Error Metrics (QEM) for edge collapse simplification.
 
+// Public API for mesh optimization - may not be used internally
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 use bevy::render::mesh::{Indices, VertexAttributeValues};
 use std::cmp::Ordering;
@@ -204,14 +207,17 @@ impl Eq for EdgeCollapse {}
 
 impl PartialOrd for EdgeCollapse {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        // Reverse ordering for min-heap (we want smallest error first)
-        other.error.partial_cmp(&self.error)
+        Some(self.cmp(other))
     }
 }
 
 impl Ord for EdgeCollapse {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).unwrap_or(Ordering::Equal)
+        // Reverse ordering for min-heap (we want smallest error first)
+        other
+            .error
+            .partial_cmp(&self.error)
+            .unwrap_or(Ordering::Equal)
     }
 }
 

@@ -1,24 +1,8 @@
 use bevy::prelude::*;
 
-// NOTE: horus_bridge integration disabled - requires global HORUS context setup
-// When enabled, uncomment:
-// use crate::horus_bridge::publisher::HorusPublisher;
-// use crate::horus_bridge::subscriber::HorusSubscriber;
-
-// Stub types for library compilation
-#[derive(Resource, Default)]
-pub struct HorusPublisher;
-impl HorusPublisher {
-    pub fn enable(&mut self) {}
-    pub fn disable(&mut self) {}
-}
-
-#[derive(Resource, Default)]
-pub struct HorusSubscriber;
-impl HorusSubscriber {
-    pub fn enable(&mut self) {}
-    pub fn disable(&mut self) {}
-}
+// Import actual HorusPublisher and HorusSubscriber from horus_bridge
+pub use crate::horus_bridge::publisher::HorusPublisher;
+pub use crate::horus_bridge::subscriber::HorusSubscriber;
 
 /// Configuration for HORUS synchronization
 #[derive(Resource, Clone)]
@@ -175,14 +159,16 @@ pub fn emit_horus_sync_event(
 }
 
 /// Plugin to register HORUS sync systems
+///
+/// Note: HorusPublisher and HorusSubscriber are registered by HorusBridgePlugin,
+/// so they should not be re-registered here.
 pub struct HorusSyncPlugin;
 
 impl Plugin for HorusSyncPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<HorusSyncConfig>()
             .init_resource::<HorusSyncStats>()
-            .init_resource::<HorusPublisher>() // Register stub resource
-            .init_resource::<HorusSubscriber>() // Register stub resource
+            // Note: HorusPublisher and HorusSubscriber are registered by HorusBridgePlugin
             .add_event::<HorusSyncEvent>()
             .add_systems(
                 Update,

@@ -93,7 +93,7 @@ impl PIDController {
 
         let derivative = if self.error_history.len() >= 2 {
             // Use moving average for derivative
-            let recent_error = self.error_history.iter().rev().next().unwrap();
+            let recent_error = self.error_history.iter().next_back().unwrap();
             let old_error = self.error_history.iter().next().unwrap();
             (recent_error - old_error) / (self.dt * self.error_history.len() as f32)
         } else {

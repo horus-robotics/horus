@@ -257,13 +257,295 @@ impl AreaLightPresets {
     }
 }
 
+/// Marker component to track that a Bevy light was created for an area light
+#[derive(Component)]
+struct AreaLightRendered;
+
 /// Area light plugin
 pub struct AreaLightsPlugin;
 
 impl Plugin for AreaLightsPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(AreaLightSamplingConfig::default());
-        // Note: Actual rendering would be implemented in the render graph
+        app.insert_resource(AreaLightSamplingConfig::default())
+            .add_systems(Update, (
+                area_light_spawn_system,
+                area_light_update_system,
+                area_light_gizmo_system,
+            ));
+    }
+}
+
+/// System to spawn Bevy light components for AreaLight entities
+/// Since Bevy doesn't have native area lights, we approximate them:
+/// - Rectangle/Disk → Multiple point lights arranged in a pattern
+/// - Sphere → Single point light with adjusted intensity
+/// - Tube → Multiple point lights along the tube axis
+fn area_light_spawn_system(
+    mut commands: Commands,
+    query: Query<(Entity, &AreaLight, &Transform), Without<AreaLightRendered>>,
+) {
+    for (entity, area_light, transform) in query.iter() {
+        // Calculate effective intensity based on shape and area
+        let base_intensity = area_light.intensity * area_light.surface_area();
+
+        // Convert area light color to linear RGB for Bevy
+        let srgba = area_light.color.to_srgba();
+        let color = Color::srgb(srgba.red, srgba.green, srgba.blue);
+
+        match area_light.shape {
+            AreaLightShape::Rectangle { width, height } => {
+                // Use a grid of point lights to simulate rectangle
+                // Number of lights depends on area (max 9 for performance)
+                let lights_x = (width / 0.5).ceil().min(3.0) as i32;
+                let lights_y = (height / 0.5).ceil().min(3.0) as i32;
+                let intensity_per_light = base_intensity / (lights_x * lights_y) as f32;
+
+                commands.entity(entity).with_children(|parent| {
+                    for ix in 0..lights_x {
+                        for iy in 0..lights_y {
+                            let offset_x = if lights_x > 1 {
+                                (ix as f32 / (lights_x - 1) as f32 - 0.5) * width
+                            } else {
+                                0.0
+                            };
+                            let offset_y = if lights_y > 1 {
+                                (iy as f32 / (lights_y - 1) as f32 - 0.5) * height
+                            } else {
+                                0.0
+                            };
+
+                            parent.spawn((
+                                PointLight {
+                                    color,
+                                    intensity: intensity_per_light * 1000.0, // Bevy uses lumens
+                                    range: area_light.range,
+                                    shadows_enabled: area_light.cast_shadows && ix == lights_x / 2 && iy == lights_y / 2,
+                                    ..default()
+                                },
+                                Transform::from_xyz(offset_x, offset_y, 0.0),
+                            ));
+                        }
+                    }
+                });
+            }
+            AreaLightShape::Disk { radius } => {
+                // Use center light + ring of lights for disk
+                let ring_count = (radius / 0.3).ceil().min(4.0) as i32;
+                let total_lights = 1 + ring_count * 4; // center + ring
+                let intensity_per_light = base_intensity / total_lights as f32;
+
+                commands.entity(entity).with_children(|parent| {
+                    // Center light
+                    parent.spawn((
+                        PointLight {
+                            color,
+                            intensity: intensity_per_light * 1000.0,
+                            range: area_light.range,
+                            shadows_enabled: area_light.cast_shadows,
+                            ..default()
+                        },
+                        Transform::IDENTITY,
+                    ));
+
+                    // Ring lights
+                    for i in 0..(ring_count * 4) {
+                        let angle = (i as f32 / (ring_count * 4) as f32) * std::f32::consts::TAU;
+                        let r = radius * 0.7;
+                        parent.spawn((
+                            PointLight {
+                                color,
+                                intensity: intensity_per_light * 1000.0,
+                                range: area_light.range,
+                                shadows_enabled: false,
+                                ..default()
+                            },
+                            Transform::from_xyz(angle.cos() * r, angle.sin() * r, 0.0),
+                        ));
+                    }
+                });
+            }
+            AreaLightShape::Sphere { radius } => {
+                // Single point light at center with intensity based on surface area
+                // Sphere emits equally in all directions, natural for point light
+                commands.entity(entity).with_children(|parent| {
+                    parent.spawn((
+                        PointLight {
+                            color,
+                            intensity: base_intensity * 1000.0,
+                            range: area_light.range,
+                            radius, // Bevy PointLight has a radius parameter
+                            shadows_enabled: area_light.cast_shadows,
+                            ..default()
+                        },
+                        Transform::IDENTITY,
+                    ));
+                });
+            }
+            AreaLightShape::Tube { length, radius: _ } => {
+                // Use a line of point lights along the tube
+                let light_count = (length / 0.3).ceil().min(8.0) as i32;
+                let intensity_per_light = base_intensity / light_count as f32;
+
+                commands.entity(entity).with_children(|parent| {
+                    for i in 0..light_count {
+                        let t = if light_count > 1 {
+                            i as f32 / (light_count - 1) as f32
+                        } else {
+                            0.5
+                        };
+                        let z = (t - 0.5) * length;
+
+                        parent.spawn((
+                            PointLight {
+                                color,
+                                intensity: intensity_per_light * 1000.0,
+                                range: area_light.range,
+                                shadows_enabled: area_light.cast_shadows && i == light_count / 2,
+                                ..default()
+                            },
+                            Transform::from_xyz(0.0, 0.0, z),
+                        ));
+                    }
+                });
+            }
+        }
+
+        // Mark as rendered
+        commands.entity(entity).insert(AreaLightRendered);
+
+        tracing::debug!(
+            "Spawned area light approximation for {:?} shape at {:?}",
+            area_light.shape,
+            transform.translation
+        );
+    }
+}
+
+/// System to update Bevy lights when AreaLight properties change
+fn area_light_update_system(
+    query: Query<(&AreaLight, &Children), (With<AreaLightRendered>, Changed<AreaLight>)>,
+    mut light_query: Query<&mut PointLight>,
+) {
+    for (area_light, children) in query.iter() {
+        let base_intensity = area_light.intensity * area_light.surface_area();
+        let srgba = area_light.color.to_srgba();
+        let color = Color::srgb(srgba.red, srgba.green, srgba.blue);
+
+        let child_count = children.len().max(1) as f32;
+        let intensity_per_light = (base_intensity / child_count) * 1000.0;
+
+        for &child in children.iter() {
+            if let Ok(mut point_light) = light_query.get_mut(child) {
+                point_light.color = color;
+                point_light.intensity = intensity_per_light;
+                point_light.range = area_light.range;
+            }
+        }
+    }
+}
+
+/// System to draw gizmos for area lights (debug visualization)
+fn area_light_gizmo_system(
+    mut gizmos: Gizmos,
+    query: Query<(&AreaLight, &Transform, &GlobalTransform)>,
+    config: Res<AreaLightSamplingConfig>,
+) {
+    // Only draw if we have temporal filtering enabled (used as debug flag)
+    if !config.temporal_filter {
+        return;
+    }
+
+    for (area_light, _local_transform, global_transform) in query.iter() {
+        let transform = global_transform.compute_transform();
+        let srgba = area_light.color.to_srgba();
+        let gizmo_color = Color::srgba(srgba.red, srgba.green, srgba.blue, 0.5);
+
+        match area_light.shape {
+            AreaLightShape::Rectangle { width, height } => {
+                // Draw rectangle outline
+                let half_w = width / 2.0;
+                let half_h = height / 2.0;
+                let corners = [
+                    transform.transform_point(Vec3::new(-half_w, -half_h, 0.0)),
+                    transform.transform_point(Vec3::new(half_w, -half_h, 0.0)),
+                    transform.transform_point(Vec3::new(half_w, half_h, 0.0)),
+                    transform.transform_point(Vec3::new(-half_w, half_h, 0.0)),
+                ];
+
+                gizmos.line(corners[0], corners[1], gizmo_color);
+                gizmos.line(corners[1], corners[2], gizmo_color);
+                gizmos.line(corners[2], corners[3], gizmo_color);
+                gizmos.line(corners[3], corners[0], gizmo_color);
+
+                // Draw light direction indicator
+                let center = transform.translation;
+                let forward = transform.forward();
+                gizmos.line(center, center + forward.as_vec3() * 0.5, gizmo_color);
+            }
+            AreaLightShape::Disk { radius } => {
+                // Draw circle outline
+                let segments = 16;
+                for i in 0..segments {
+                    let angle1 = (i as f32 / segments as f32) * std::f32::consts::TAU;
+                    let angle2 = ((i + 1) as f32 / segments as f32) * std::f32::consts::TAU;
+                    let p1 = transform.transform_point(Vec3::new(
+                        angle1.cos() * radius,
+                        angle1.sin() * radius,
+                        0.0,
+                    ));
+                    let p2 = transform.transform_point(Vec3::new(
+                        angle2.cos() * radius,
+                        angle2.sin() * radius,
+                        0.0,
+                    ));
+                    gizmos.line(p1, p2, gizmo_color);
+                }
+            }
+            AreaLightShape::Sphere { radius } => {
+                // Draw sphere gizmo
+                gizmos.sphere(transform.translation, radius, gizmo_color);
+            }
+            AreaLightShape::Tube { length, radius } => {
+                // Draw tube outline (cylinder)
+                let half_len = length / 2.0;
+                let segments = 8;
+
+                // Draw end caps
+                for end in [-half_len, half_len] {
+                    for i in 0..segments {
+                        let angle1 = (i as f32 / segments as f32) * std::f32::consts::TAU;
+                        let angle2 = ((i + 1) as f32 / segments as f32) * std::f32::consts::TAU;
+                        let p1 = transform.transform_point(Vec3::new(
+                            angle1.cos() * radius,
+                            angle1.sin() * radius,
+                            end,
+                        ));
+                        let p2 = transform.transform_point(Vec3::new(
+                            angle2.cos() * radius,
+                            angle2.sin() * radius,
+                            end,
+                        ));
+                        gizmos.line(p1, p2, gizmo_color);
+                    }
+                }
+
+                // Draw connecting lines
+                for i in 0..4 {
+                    let angle = (i as f32 / 4.0) * std::f32::consts::TAU;
+                    let p1 = transform.transform_point(Vec3::new(
+                        angle.cos() * radius,
+                        angle.sin() * radius,
+                        -half_len,
+                    ));
+                    let p2 = transform.transform_point(Vec3::new(
+                        angle.cos() * radius,
+                        angle.sin() * radius,
+                        half_len,
+                    ));
+                    gizmos.line(p1, p2, gizmo_color);
+                }
+            }
+        }
     }
 }
 

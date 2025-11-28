@@ -40,8 +40,8 @@ impl RGBDCamera {
         Self {
             width,
             height,
-            fov_horizontal: 1.0472, // ~60 degrees
-            fov_vertical: 0.7854,   // ~45 degrees
+            fov_horizontal: std::f32::consts::FRAC_PI_3, // ~60 degrees
+            fov_vertical: std::f32::consts::FRAC_PI_4,   // ~45 degrees
             min_range: 0.1,
             max_range: 10.0,
             rate_hz: 30.0,

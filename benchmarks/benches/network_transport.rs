@@ -280,16 +280,16 @@ fn bench_linux_batch_udp(c: &mut Criterion) {
 /// Linux-specific: Check io_uring availability
 #[cfg(target_os = "linux")]
 fn bench_io_uring_check(c: &mut Criterion) {
-    use horus_core::communication::network::io_uring::is_io_uring_available;
+    use horus_core::communication::network::io_uring::is_real_io_uring_available;
 
     let mut group = c.benchmark_group("io_uring_availability");
 
     group.bench_function("check_support", |b| {
-        b.iter(|| black_box(is_io_uring_available()));
+        b.iter(|| black_box(is_real_io_uring_available()));
     });
 
     // Print io_uring status
-    let available = is_io_uring_available();
+    let available = is_real_io_uring_available();
     if available {
         println!("\nio_uring is AVAILABLE on this system");
         println!("Expected latency improvement: ~2-3µs (vs ~5-10µs for standard UDP)\n");

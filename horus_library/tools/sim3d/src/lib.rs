@@ -3,13 +3,18 @@
 //! This library provides a high-performance 3D physics simulator
 //! with built-in reinforcement learning task support.
 
-// Sim3D - in active development, allow common warnings
-#![allow(clippy::all)]
-#![allow(deprecated)]
-#![allow(unused_imports)]
-#![allow(unused_assignments)]
-#![allow(unreachable_patterns)]
+// Allow cfg for disabled test feature
 #![allow(unexpected_cfgs)]
+// Bevy ECS standard patterns - these are idiomatic for Bevy systems
+#![allow(clippy::type_complexity)]
+#![allow(clippy::too_many_arguments)]
+// EnhancedError is intentionally large (136 bytes) to carry rich error context
+// (file path, line/column, hints, suggestions). Error paths are not hot paths.
+#![allow(clippy::result_large_err)]
+// Public API: This library exports many types, structs, and functions as public API
+// that are not internally consumed but are intended for external users. These are
+// legitimate library exports (config presets, asset loaders, physics types, etc.)
+#![allow(dead_code)]
 
 // Re-export main modules
 pub mod assets;

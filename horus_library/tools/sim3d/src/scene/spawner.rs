@@ -128,7 +128,7 @@ impl ObjectSpawner {
             config.rotation.y,
             config.rotation.z,
         ));
-        let position = Isometry::from_parts(translation.into(), rotation);
+        let position = Isometry::from_parts(translation, rotation);
 
         let rigid_body = if config.is_static {
             RigidBodyBuilder::fixed().position(position).build()

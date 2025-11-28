@@ -1,5 +1,8 @@
 //! GPU-accelerated rigid body integration (experimental)
 
+// Experimental GPU integration - struct fields stored but accessed through methods
+#![allow(dead_code)]
+
 use super::GPUComputeContext;
 
 /// GPU integration pipeline for rigid body dynamics

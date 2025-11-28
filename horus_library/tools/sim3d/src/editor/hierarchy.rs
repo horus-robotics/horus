@@ -60,7 +60,15 @@ pub fn hierarchy_panel_system(
         Option<&Children>,
     )>,
     parents: Query<&Parent>,
+    dock_config: Option<Res<crate::ui::dock::DockConfig>>,
 ) {
+    // Skip if dock mode is enabled (dock renders its own hierarchy tab)
+    if let Some(dock) = dock_config {
+        if dock.enabled {
+            return;
+        }
+    }
+
     if !state.show_hierarchy {
         return;
     }

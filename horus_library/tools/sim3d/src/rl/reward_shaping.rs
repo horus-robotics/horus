@@ -79,6 +79,12 @@ pub struct RewardComponent {
     pub value: f32,
 }
 
+impl Default for CompositeReward {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CompositeReward {
     pub fn new() -> Self {
         Self {

@@ -1,4 +1,4 @@
-use bevy::core_pipeline::bloom::{Bloom, BloomCompositeMode, BloomPrefilter, BloomSettings};
+use bevy::core_pipeline::bloom::{Bloom, BloomCompositeMode, BloomPrefilter};
 use bevy::core_pipeline::tonemapping::{DebandDither, Tonemapping};
 use bevy::prelude::*;
 use bevy::render::extract_resource::ExtractResource;
@@ -91,9 +91,9 @@ impl BloomConfig {
         }
     }
 
-    /// Convert to Bevy BloomSettings
-    pub fn to_bloom_settings(&self) -> BloomSettings {
-        BloomSettings {
+    /// Convert to Bevy Bloom component
+    pub fn to_bloom(&self) -> Bloom {
+        Bloom {
             intensity: self.intensity,
             low_frequency_boost: self.low_frequency_boost,
             low_frequency_boost_curvature: self.low_frequency_boost_curvature,
@@ -311,18 +311,10 @@ impl Default for FilmGrain {
 }
 
 /// Post-processing plugin
+#[derive(Default)]
 pub struct PostProcessingPlugin {
     pub bloom: BloomConfig,
     pub hdr: HDRConfig,
-}
-
-impl Default for PostProcessingPlugin {
-    fn default() -> Self {
-        Self {
-            bloom: BloomConfig::medium(),
-            hdr: HDRConfig::default(),
-        }
-    }
 }
 
 impl Plugin for PostProcessingPlugin {
@@ -349,7 +341,7 @@ fn apply_bloom_to_cameras(
 
     for (entity, bloom) in cameras.iter_mut() {
         if bloom_config.enabled {
-            let settings = bloom_config.to_bloom_settings();
+            let settings = bloom_config.to_bloom();
             if let Some(mut existing_bloom) = bloom {
                 *existing_bloom = Bloom {
                     intensity: settings.intensity,

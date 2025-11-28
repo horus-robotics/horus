@@ -143,7 +143,9 @@ impl Scheduler {
     /// Apply a configuration preset to this scheduler (builder pattern)
     ///
     /// # Example
-    /// ```
+    /// ```no_run
+    /// use horus_core::Scheduler;
+    /// use horus_core::scheduling::SchedulerConfig;
     /// let mut scheduler = Scheduler::new()
     ///     .with_config(SchedulerConfig::hard_realtime())
     ///     .disable_learning();
@@ -179,7 +181,8 @@ impl Scheduler {
     /// - Certification (FDA/CE requirements)
     ///
     /// # Example
-    /// ```
+    /// ```no_run
+    /// use horus_core::Scheduler;
     /// let scheduler = Scheduler::new()
     ///     .enable_determinism();  // Reproducible execution
     /// ```
@@ -205,7 +208,8 @@ impl Scheduler {
     /// `enable_determinism()` instead which also disables learning.
     ///
     /// # Example
-    /// ```
+    /// ```no_run
+    /// use horus_core::Scheduler;
     /// let scheduler = Scheduler::new()
     ///     .disable_learning();  // Skip profiling, run immediately
     /// ```
@@ -234,7 +238,9 @@ impl Scheduler {
     /// Create a hard real-time scheduler (convenience constructor)
     ///
     /// This is equivalent to:
-    /// ```
+    /// ```no_run
+    /// use horus_core::Scheduler;
+    /// use horus_core::scheduling::SchedulerConfig;
     /// Scheduler::new()
     ///     .with_config(SchedulerConfig::hard_realtime())
     ///     .with_capacity(128)
@@ -248,11 +254,15 @@ impl Scheduler {
     /// - `lock_memory()` - Prevent page faults
     ///
     /// # Example
-    /// ```
-    /// let mut scheduler = Scheduler::new_realtime()?;
-    /// scheduler.set_realtime_priority(99)?;
-    /// scheduler.pin_to_cpu(7)?;
-    /// scheduler.lock_memory()?;
+    /// ```no_run
+    /// use horus_core::Scheduler;
+    /// fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let mut scheduler = Scheduler::new_realtime()?;
+    ///     scheduler.set_realtime_priority(99)?;
+    ///     scheduler.pin_to_cpu(7)?;
+    ///     scheduler.lock_memory()?;
+    ///     Ok(())
+    /// }
     /// ```
     pub fn new_realtime() -> crate::error::HorusResult<Self> {
         let sched = Self::new()
@@ -275,7 +285,8 @@ impl Scheduler {
     /// Create a deterministic scheduler (convenience constructor)
     ///
     /// This is equivalent to:
-    /// ```
+    /// ```no_run
+    /// use horus_core::Scheduler;
     /// Scheduler::new()
     ///     .enable_determinism();
     /// ```
@@ -310,7 +321,7 @@ impl Scheduler {
     /// - CAP_SYS_NICE capability or root
     ///
     /// # Example
-    /// ```
+    /// ```ignore
     /// scheduler.set_realtime_priority(99)?;  // Highest priority
     /// ```
     pub fn set_realtime_priority(&self, priority: i32) -> crate::error::HorusResult<()> {
@@ -360,7 +371,7 @@ impl Scheduler {
     /// - Disable hyperthreading for predictable performance
     ///
     /// # Example
-    /// ```
+    /// ```ignore
     /// // Pin to isolated core 7
     /// scheduler.pin_to_cpu(7)?;
     /// ```
@@ -407,7 +418,7 @@ impl Scheduler {
     /// application has bounded memory usage.
     ///
     /// # Example
-    /// ```
+    /// ```ignore
     /// scheduler.lock_memory()?;
     /// ```
     pub fn lock_memory(&self) -> crate::error::HorusResult<()> {
@@ -445,7 +456,7 @@ impl Scheduler {
     /// * `stack_size` - Stack size to pre-fault (bytes)
     ///
     /// # Example
-    /// ```
+    /// ```ignore
     /// scheduler.prefault_stack(8 * 1024 * 1024)?;  // 8MB stack
     /// ```
     pub fn prefault_stack(&self, stack_size: usize) -> crate::error::HorusResult<()> {
@@ -471,7 +482,7 @@ impl Scheduler {
     /// Automatically detects and wraps RTNode types for real-time support
     ///
     /// # Example
-    /// ```
+    /// ```ignore
     /// scheduler.add(node, 0, None);  // Highest priority
     /// scheduler.add(node, 10, None); // Medium priority
     /// scheduler.add(node, 100, None); // Low priority
@@ -605,7 +616,7 @@ impl Scheduler {
     /// deadlines, and other real-time constraints.
     ///
     /// # Example
-    /// ```
+    /// ```ignore
     /// scheduler.add_rt(
     ///     Box::new(MotorControlNode::new("motor")),
     ///     0,  // Highest priority
@@ -699,7 +710,7 @@ impl Scheduler {
     /// * `rate_hz` - The desired rate in Hz (ticks per second)
     ///
     /// # Example
-    /// ```
+    /// ```ignore
     /// scheduler.add(sensor, 0, Some(true))
     ///     .set_node_rate("sensor", 100.0);  // Run sensor at 100Hz
     /// ```
@@ -1173,7 +1184,7 @@ impl Scheduler {
     /// Returns `&mut Self` for method chaining. Logs warning if node not found.
     ///
     /// # Example
-    /// ```
+    /// ```ignore
     /// scheduler
     ///     .set_node_logging("sensor", false)
     ///     .set_node_logging("controller", true)
@@ -1214,8 +1225,24 @@ impl Scheduler {
             let nodes_json: Vec<String> = self.nodes.iter().map(|registered| {
                 let name = registered.node.name();
                 let priority = registered.priority;
-                let publishers = registered.node.get_publishers();
-                let subscribers = registered.node.get_subscribers();
+
+                // Get pub/sub from Node trait (macro-declared)
+                let mut publishers = registered.node.get_publishers();
+                let mut subscribers = registered.node.get_subscribers();
+
+                // Merge runtime-discovered pub/sub from context (if available)
+                if let Some(ref ctx) = registered.context {
+                    for runtime_pub in ctx.get_registered_publishers() {
+                        if !publishers.iter().any(|p| p.topic_name == runtime_pub.topic_name) {
+                            publishers.push(runtime_pub);
+                        }
+                    }
+                    for runtime_sub in ctx.get_registered_subscribers() {
+                        if !subscribers.iter().any(|s| s.topic_name == runtime_sub.topic_name) {
+                            subscribers.push(runtime_sub);
+                        }
+                    }
+                }
 
                 // Format publishers
                 let pubs_json = publishers.iter()
@@ -1309,15 +1336,33 @@ impl Scheduler {
             let nodes_json: Vec<String> = self.nodes.iter().map(|registered| {
                 let name = registered.node.name();
                 let priority = registered.priority;
-                let publishers = registered.node.get_publishers();
-                let subscribers = registered.node.get_subscribers();
 
-                // Get state and health from context
+                // Get pub/sub from Node trait (macro-declared)
+                let mut publishers = registered.node.get_publishers();
+                let mut subscribers = registered.node.get_subscribers();
+
+                // Get state, health, and runtime-discovered pub/sub from context
                 let (state_str, health_str, error_count, tick_count) = if let Some(ref ctx) = registered.context {
                     let heartbeat = NodeHeartbeat::from_metrics(
                         ctx.state().clone(),
                         ctx.metrics()
                     );
+
+                    // Merge runtime-discovered pub/sub (from Hub::send/recv with ctx)
+                    // These are discovered at runtime when ctx is provided
+                    let runtime_pubs = ctx.get_registered_publishers();
+                    let runtime_subs = ctx.get_registered_subscribers();
+                    for runtime_pub in runtime_pubs {
+                        if !publishers.iter().any(|p| p.topic_name == runtime_pub.topic_name) {
+                            publishers.push(runtime_pub);
+                        }
+                    }
+                    for runtime_sub in runtime_subs {
+                        if !subscribers.iter().any(|s| s.topic_name == runtime_sub.topic_name) {
+                            subscribers.push(runtime_sub);
+                        }
+                    }
+
                     (
                         ctx.state().to_string(),
                         heartbeat.health.as_str().to_string(),
@@ -2027,14 +2072,19 @@ impl Scheduler {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
+    /// use horus_core::Scheduler;
+    /// use horus_core::scheduling::SchedulerConfig;
     /// // Runtime reconfiguration
     /// let mut scheduler = Scheduler::new();
+    /// #[allow(deprecated)]
     /// scheduler.set_config(SchedulerConfig::hard_realtime());
     /// ```
     ///
     /// # Prefer Builder Pattern
-    /// ```
+    /// ```no_run
+    /// use horus_core::Scheduler;
+    /// use horus_core::scheduling::SchedulerConfig;
     /// // Better: Use with_config() during construction
     /// let scheduler = Scheduler::new()
     ///     .with_config(SchedulerConfig::hard_realtime());

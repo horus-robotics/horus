@@ -2,7 +2,6 @@
 
 use super::GPUMetrics;
 use bevy::prelude::*;
-use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 

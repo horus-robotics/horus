@@ -509,7 +509,7 @@ impl SchedulerConfig {
     /// - High-priority scheduling
     ///
     /// # Use with
-    /// ```
+    /// ```ignore
     /// let mut scheduler = Scheduler::new_realtime()?;  // Applies this config automatically
     /// ```
     pub fn hard_realtime() -> Self {

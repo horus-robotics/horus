@@ -329,19 +329,10 @@ impl<'de> serde::Deserialize<'de> for VideoFormat {
 }
 
 /// Screenshot capture component
-#[derive(Component, Clone, Debug)]
+#[derive(Component, Clone, Debug, Default)]
 pub struct ScreenshotCapture {
     pub enabled: bool,
     pub save_path: Option<PathBuf>,
-}
-
-impl Default for ScreenshotCapture {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            save_path: None,
-        }
-    }
 }
 
 impl ScreenshotCapture {

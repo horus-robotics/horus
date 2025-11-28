@@ -27,7 +27,15 @@ pub fn inspector_panel_system(
     directional_lights: Query<&DirectionalLight>,
     spot_lights: Query<&SpotLight>,
     cameras: Query<&Camera>,
+    dock_config: Option<Res<crate::ui::dock::DockConfig>>,
 ) {
+    // Skip if dock mode is enabled (dock renders its own inspector tab)
+    if let Some(dock) = dock_config {
+        if dock.enabled {
+            return;
+        }
+    }
+
     if !state.show_inspector {
         return;
     }

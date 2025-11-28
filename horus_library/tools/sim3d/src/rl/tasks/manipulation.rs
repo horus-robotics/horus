@@ -65,22 +65,48 @@ impl ManipulationTask {
     fn find_entities(&mut self, world: &mut World) {
         let mut query = world.query::<(Entity, &Robot, &Transform)>();
 
-        // Find gripper (highest Y position) and object (separate entity)
-        let mut max_y = f32::NEG_INFINITY;
-        let mut gripper = None;
+        // Collect all robot entities with their Y positions
+        let mut entities: Vec<(Entity, f32)> = query
+            .iter(world)
+            .map(|(entity, _, transform)| (entity, transform.translation.y))
+            .collect();
 
-        for (entity, _robot, transform) in query.iter(world) {
-            if transform.translation.y > max_y {
-                max_y = transform.translation.y;
-                gripper = Some(entity);
-            }
+        // Sort by Y position (highest first)
+        entities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
+        // The gripper is the highest entity (end-effector)
+        if let Some((gripper_entity, _)) = entities.first() {
+            self.gripper_entity = Some(*gripper_entity);
         }
 
-        self.gripper_entity = gripper;
+        // Find object entity: look for entities with RigidBodyComponent but no Robot component
+        // This typically represents manipulable objects in the scene
+        let mut rb_query = world.query_filtered::<(Entity, &Transform, &RigidBodyComponent), Without<Robot>>();
+        let mut objects: Vec<(Entity, f32)> = rb_query
+            .iter(world)
+            .filter(|(_, transform, _)| {
+                // Filter to objects that are in reasonable manipulation workspace
+                transform.translation.y > 0.1 && transform.translation.y < 2.0
+            })
+            .map(|(entity, transform, _)| (entity, transform.translation.y))
+            .collect();
 
-        // For this task, assume there's a separate object entity
-        // In a real scenario, would query for specific object components
-        // For now, use a simplified approach
+        // Sort by Y position (typically the object will be on a table/surface)
+        objects.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+
+        // Take the first object found (lowest Y, typically on table)
+        if let Some((object_entity, _)) = objects.first() {
+            self.object_entity = Some(*object_entity);
+        }
+
+        // If no separate object found, fall back to second robot entity
+        // (in case the scene uses multiple robot links)
+        if self.object_entity.is_none() && entities.len() > 1 {
+            // Use second-highest entity as object
+            if let Some((entity, _)) = entities.get(1) {
+                self.object_entity = Some(*entity);
+            }
+        }
     }
 
     /// Get gripper position

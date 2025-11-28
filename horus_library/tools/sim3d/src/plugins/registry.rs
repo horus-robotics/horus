@@ -202,9 +202,10 @@ impl PluginRegistry {
 
     /// Get plugin statistics
     pub fn get_stats(&self) -> PluginStats {
-        let mut stats = PluginStats::default();
-
-        stats.total_plugins = self.plugins.len();
+        let mut stats = PluginStats {
+            total_plugins: self.plugins.len(),
+            ..Default::default()
+        };
 
         for state in self.states.values() {
             match state {

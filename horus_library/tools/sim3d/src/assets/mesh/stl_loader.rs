@@ -28,7 +28,6 @@ pub fn load_stl(path: &Path, options: &MeshLoadOptions) -> Result<LoadedMesh> {
     tracing::debug!("STL file contains {} vertices", stl.vertices.len());
 
     let mut positions = Vec::new();
-    let mut normals = Vec::new();
     let mut indices = Vec::new();
 
     // STL IndexedMesh has vertices, normals, and faces
@@ -52,7 +51,7 @@ pub fn load_stl(path: &Path, options: &MeshLoadOptions) -> Result<LoadedMesh> {
     // STL IndexedMesh doesn't store normals separately in the same way
     // Always generate smooth normals or use flat shading
     tracing::debug!("Generating normals for STL mesh");
-    normals = generate_normals(&positions, &indices);
+    let normals = generate_normals(&positions, &indices);
 
     tracing::debug!(
         "Created mesh with {} vertices, {} triangles",
@@ -91,6 +90,7 @@ pub fn load_stl(path: &Path, options: &MeshLoadOptions) -> Result<LoadedMesh> {
         mesh,
         materials,
         texture_paths: Vec::new(),
+        embedded_textures: Vec::new(), // STL format doesn't support embedded textures
         bounds,
         triangle_count: indices.len() / 3,
         vertex_count: positions.len(),

@@ -193,7 +193,7 @@ impl RLTask for NavigationTask {
 
                         // Update rotation
                         let rotation_delta = Quat::from_rotation_y(angular_vel * dt);
-                        transform.rotation = transform.rotation * rotation_delta;
+                        transform.rotation *= rotation_delta;
 
                         // Update position in forward direction
                         let forward = transform.rotation * Vec3::X;
