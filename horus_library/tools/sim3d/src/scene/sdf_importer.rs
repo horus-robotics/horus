@@ -487,13 +487,10 @@ impl SDFImporter {
         let mut inertial = SDFInertial::default();
 
         for child in elem.children().filter(|n| n.is_element()) {
-            match child.tag_name().name() {
-                "mass" => {
-                    if let Some(text) = child.text() {
-                        inertial.mass = text.trim().parse().unwrap_or(1.0);
-                    }
+            if child.tag_name().name() == "mass" {
+                if let Some(text) = child.text() {
+                    inertial.mass = text.trim().parse().unwrap_or(1.0);
                 }
-                _ => {}
             }
         }
 

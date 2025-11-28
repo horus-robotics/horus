@@ -242,7 +242,8 @@ fn discover_nodes_from_heartbeats() -> HorusResult<Vec<NodeStatus>> {
     Ok(nodes)
 }
 
-// Metadata from registry (supplemental info only)
+// Metadata from registry (supplemental info only) - reserved for future use
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct NodeMetadata {
     command_line: String,
@@ -298,6 +299,7 @@ fn discover_registry_files() -> Vec<std::path::PathBuf> {
 
 /// Load registry metadata for enriching heartbeat-discovered nodes
 /// Now supports multiple schedulers by reading all registry files
+#[allow(dead_code)]
 fn load_registry_metadata() -> std::collections::HashMap<String, NodeMetadata> {
     let mut metadata = std::collections::HashMap::new();
 

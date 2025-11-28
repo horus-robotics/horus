@@ -1,10 +1,16 @@
-// Sim3D - in active development, allow common warnings
-#![allow(clippy::all)]
-#![allow(deprecated)]
-#![allow(unused_imports)]
-#![allow(unused_assignments)]
-#![allow(unreachable_patterns)]
-#![allow(unexpected_cfgs)]
+// Bevy ECS standard patterns - these are idiomatic for Bevy systems
+#![allow(clippy::type_complexity)]
+#![allow(clippy::too_many_arguments)]
+// Public API: Many types in this binary's modules are public API for the sim3d library,
+// exported for external users but not all are used within the binary itself.
+#![allow(dead_code)]
+// Some sensor types use IMU as the standard acronym
+#![allow(clippy::upper_case_acronyms)]
+// Methods on Copy types using &self are intentional for API consistency
+#![allow(clippy::wrong_self_convention)]
+// EnhancedError is intentionally large (136 bytes) to carry rich error context
+// (file path, line/column, hints, suggestions). Error paths are not hot paths.
+#![allow(clippy::result_large_err)]
 
 use bevy::prelude::*;
 
@@ -117,7 +123,7 @@ fn run_validate_command(
     format: cli::CliOutputFormat,
     check_meshes: bool,
 ) {
-    use cli::{format_batch_report, format_html, format_json, format_text, validate_file};
+    use cli::{format_batch_report, validate_file};
     use cli::{BatchValidationReport, OutputFormat};
 
     let mut results = Vec::new();

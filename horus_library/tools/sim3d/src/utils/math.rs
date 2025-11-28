@@ -435,11 +435,13 @@ mod tests {
     }
 }
 
-// Extension trait for AngleUtils
+// Extension trait for AngleUtils - may be used in tests or future code
+#[allow(dead_code)]
 trait AngleUtilsExt {
     fn approx_eq(a: f32, b: f32, epsilon: f32) -> bool;
 }
 
+#[allow(dead_code)]
 impl AngleUtilsExt for AngleUtils {
     fn approx_eq(a: f32, b: f32, epsilon: f32) -> bool {
         (a - b).abs() < epsilon

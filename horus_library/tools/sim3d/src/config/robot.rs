@@ -249,51 +249,229 @@ impl HumanoidPresets {
     }
 }
 
-// Temporarily disable these tests due to dependency issues in foundation code
-#[cfg(all(test, feature = "enable_foundation_tests"))]
+#[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_robot_config() {
+    fn test_robot_config_builder() {
         let config = RobotConfig::new("test_robot")
-            .with_mass(20.0)
-            .with_size(Vec3::new(0.5, 0.5, 0.5));
+            .with_mass(15.0)
+            .with_size(Vec3::new(1.0, 2.0, 0.5));
 
         assert_eq!(config.name, "test_robot");
-        assert_eq!(config.base_mass, 20.0);
-        assert_eq!(config.base_size, Vec3::new(0.5, 0.5, 0.5));
+        assert_eq!(config.base_mass, 15.0);
+        assert_eq!(config.base_size, Vec3::new(1.0, 2.0, 0.5));
     }
 
     #[test]
-    fn test_diff_drive_presets() {
+    fn test_robot_config_defaults() {
+        let config = RobotConfig::new("default_robot");
+
+        assert_eq!(config.name, "default_robot");
+        assert_eq!(config.base_mass, 10.0);
+        assert_eq!(config.base_size, Vec3::new(0.4, 0.2, 0.3));
+    }
+
+    #[test]
+    fn test_robot_config_with_material() {
+        let config = RobotConfig::new("steel_robot").with_material(MaterialPreset::steel());
+
+        assert_eq!(config.material.density, MaterialPreset::steel().density);
+    }
+
+    #[test]
+    fn test_turtlebot3_burger_preset() {
         let (config, diff_drive) = DiffDrivePresets::turtlebot3_burger();
-        assert_eq!(config.name, "turtlebot3_burger");
-        assert_eq!(diff_drive.wheel_separation, 0.16);
 
-        let (config, _diff_drive) = DiffDrivePresets::warehouse_amr();
-        assert!(config.base_mass > 40.0); // Heavy warehouse robot
+        assert_eq!(config.name, "turtlebot3_burger");
+        assert_eq!(config.base_mass, 1.0);
+        assert_eq!(diff_drive.wheel_separation, 0.16);
+        assert_eq!(diff_drive.wheel_radius, 0.033);
+        assert_eq!(diff_drive.max_linear_velocity, 0.22);
     }
 
     #[test]
-    fn test_manipulator_presets() {
-        let ur5 = ManipulatorPresets::ur5();
-        assert_eq!(ur5.num_joints, 6);
-        assert_eq!(ur5.link_masses.len(), 6);
+    fn test_turtlebot3_waffle_preset() {
+        let (config, diff_drive) = DiffDrivePresets::turtlebot3_waffle();
 
-        let panda = ManipulatorPresets::franka_panda();
-        assert_eq!(panda.num_joints, 7); // 7-DOF
+        assert_eq!(config.name, "turtlebot3_waffle");
+        assert_eq!(config.base_mass, 1.8);
+        assert_eq!(diff_drive.wheel_separation, 0.287);
+        assert_eq!(diff_drive.max_linear_velocity, 0.26);
+    }
 
-        let simple = ManipulatorPresets::simple_3dof();
-        assert_eq!(simple.num_joints, 3);
+    #[test]
+    fn test_small_mobile_robot_preset() {
+        let (config, diff_drive) = DiffDrivePresets::small_mobile_robot();
+
+        assert_eq!(config.name, "small_mobile_robot");
+        assert_eq!(config.base_mass, 5.0);
+        assert_eq!(diff_drive.wheel_radius, 0.05);
+    }
+
+    #[test]
+    fn test_warehouse_amr_preset() {
+        let (config, diff_drive) = DiffDrivePresets::warehouse_amr();
+
+        assert_eq!(config.name, "warehouse_amr");
+        assert_eq!(config.base_mass, 50.0);
+        assert_eq!(diff_drive.max_linear_velocity, 1.5);
+    }
+
+    #[test]
+    fn test_ur5_manipulator_preset() {
+        let config = ManipulatorPresets::ur5();
+
+        assert_eq!(config.name, "ur5");
+        assert_eq!(config.num_joints, 6);
+        assert_eq!(config.link_lengths.len(), 6);
+        assert_eq!(config.link_masses.len(), 6);
+        assert_eq!(config.joint_limits.len(), 6);
+        assert_eq!(config.max_velocities.len(), 6);
+        assert_eq!(config.max_efforts.len(), 6);
+
+        // UR5 first link length
+        assert_eq!(config.link_lengths[0], 0.425);
+    }
+
+    #[test]
+    fn test_franka_panda_preset() {
+        let config = ManipulatorPresets::franka_panda();
+
+        assert_eq!(config.name, "franka_panda");
+        assert_eq!(config.num_joints, 7); // 7-DOF arm
+        assert_eq!(config.link_lengths.len(), 7);
+        assert_eq!(config.link_masses.len(), 7);
+        assert_eq!(config.joint_limits.len(), 7);
+    }
+
+    #[test]
+    fn test_simple_3dof_preset() {
+        let config = ManipulatorPresets::simple_3dof();
+
+        assert_eq!(config.name, "simple_3dof");
+        assert_eq!(config.num_joints, 3);
+        assert_eq!(config.link_lengths, vec![0.3, 0.3, 0.2]);
+    }
+
+    #[test]
+    fn test_generic_6dof_preset() {
+        let config = ManipulatorPresets::generic_6dof();
+
+        assert_eq!(config.name, "generic_6dof");
+        assert_eq!(config.num_joints, 6);
+
+        // Verify joint limits are symmetric for rotation joints
+        for (i, (min, max)) in config.joint_limits.iter().enumerate() {
+            assert!(
+                *max > *min,
+                "Joint {} has invalid limits: min={}, max={}",
+                i,
+                min,
+                max
+            );
+        }
     }
 
     #[test]
     fn test_quadruped_presets() {
         let simple = QuadrupedPresets::simple_quadruped();
         assert_eq!(simple.name, "simple_quadruped");
+        assert_eq!(simple.base_mass, 12.0);
 
         let anymal = QuadrupedPresets::anymal_style();
-        assert!(anymal.base_mass > 20.0);
+        assert_eq!(anymal.name, "anymal");
+        assert_eq!(anymal.base_mass, 30.0);
+
+        let spot = QuadrupedPresets::spot_style();
+        assert_eq!(spot.name, "spot");
+        assert_eq!(spot.base_mass, 32.0);
+    }
+
+    #[test]
+    fn test_humanoid_presets() {
+        let simple = HumanoidPresets::simple_humanoid();
+        assert_eq!(simple.name, "simple_humanoid");
+        assert_eq!(simple.base_mass, 50.0);
+
+        let nao = HumanoidPresets::nao_style();
+        assert_eq!(nao.name, "nao");
+        assert_eq!(nao.base_mass, 5.4);
+    }
+
+    #[test]
+    fn test_articulated_robot_config_consistency() {
+        // Verify that all ArticulatedRobotConfig presets have consistent array lengths
+        let presets = vec![
+            ManipulatorPresets::ur5(),
+            ManipulatorPresets::franka_panda(),
+            ManipulatorPresets::simple_3dof(),
+            ManipulatorPresets::generic_6dof(),
+        ];
+
+        for config in presets {
+            assert_eq!(
+                config.link_lengths.len(),
+                config.num_joints,
+                "{} link_lengths mismatch",
+                config.name
+            );
+            assert_eq!(
+                config.link_masses.len(),
+                config.num_joints,
+                "{} link_masses mismatch",
+                config.name
+            );
+            assert_eq!(
+                config.joint_limits.len(),
+                config.num_joints,
+                "{} joint_limits mismatch",
+                config.name
+            );
+            assert_eq!(
+                config.max_velocities.len(),
+                config.num_joints,
+                "{} max_velocities mismatch",
+                config.name
+            );
+            assert_eq!(
+                config.max_efforts.len(),
+                config.num_joints,
+                "{} max_efforts mismatch",
+                config.name
+            );
+        }
+    }
+
+    #[test]
+    fn test_diff_drive_kinematics_sanity() {
+        // Verify wheel separation > wheel radius for all presets
+        let presets = vec![
+            DiffDrivePresets::turtlebot3_burger(),
+            DiffDrivePresets::turtlebot3_waffle(),
+            DiffDrivePresets::small_mobile_robot(),
+            DiffDrivePresets::warehouse_amr(),
+        ];
+
+        for (config, diff_drive) in presets {
+            assert!(
+                diff_drive.wheel_separation > diff_drive.wheel_radius * 2.0,
+                "{}: wheel separation ({}) should be > 2x wheel radius ({})",
+                config.name,
+                diff_drive.wheel_separation,
+                diff_drive.wheel_radius
+            );
+            assert!(
+                diff_drive.max_linear_velocity > 0.0,
+                "{}: max_linear_velocity should be positive",
+                config.name
+            );
+            assert!(
+                diff_drive.max_angular_velocity > 0.0,
+                "{}: max_angular_velocity should be positive",
+                config.name
+            );
+        }
     }
 }

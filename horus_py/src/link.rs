@@ -160,7 +160,7 @@ impl PyLink {
             }
             LinkType::GenericProducer(link) => {
                 let bound = message.bind(py);
-                let value: serde_json::Value = pythonize::depythonize(&bound).map_err(|e| {
+                let value: serde_json::Value = pythonize::depythonize(bound).map_err(|e| {
                     pyo3::exceptions::PyTypeError::new_err(format!(
                         "Failed to convert Python object: {}",
                         e
@@ -170,7 +170,7 @@ impl PyLink {
                     pyo3::exceptions::PyRuntimeError::new_err(format!("Failed to serialize: {}", e))
                 })?;
                 let msg = GenericMessage::new(msgpack_bytes)
-                    .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?;
+                    .map_err(pyo3::exceptions::PyValueError::new_err)?;
 
                 let link = link.lock().unwrap();
                 match link.send(msg, &mut None) {

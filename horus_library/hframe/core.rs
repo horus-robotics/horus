@@ -498,8 +498,7 @@ impl HFrameCore {
         // Part 1: src to common (going UP toward root)
         // Each frame stores transform "from parent to this frame" (parent->child)
         // When going UP, we compose these transforms to accumulate child->root
-        for i in 0..common_idx {
-            let frame_id = chain[i];
+        for &frame_id in chain.iter().take(common_idx) {
             let slot = &self.slots[frame_id as usize];
 
             let entry = if let Some(ts) = timestamp {

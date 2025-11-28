@@ -246,7 +246,7 @@ fn parse_markdown_text(text: &str) -> Vec<TextSegment> {
                         current.clear();
                     }
                     let mut italic_text = String::new();
-                    while let Some(ic) = chars.next() {
+                    for ic in chars.by_ref() {
                         if ic == '*' {
                             break;
                         }
@@ -264,7 +264,7 @@ fn parse_markdown_text(text: &str) -> Vec<TextSegment> {
                     current.clear();
                 }
                 let mut code_text = String::new();
-                while let Some(cc) = chars.next() {
+                for cc in chars.by_ref() {
                     if cc == '`' {
                         break;
                     }
@@ -466,7 +466,7 @@ impl TooltipRegistry {
 }
 
 /// Contextual help content for detailed help
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ContextualHelp {
     /// Unique identifier
     pub id: String,
@@ -482,20 +482,6 @@ pub struct ContextualHelp {
     pub category: Option<String>,
     /// Icon identifier
     pub icon: Option<String>,
-}
-
-impl Default for ContextualHelp {
-    fn default() -> Self {
-        Self {
-            id: String::new(),
-            title: String::new(),
-            description: String::new(),
-            shortcut: None,
-            related: Vec::new(),
-            category: None,
-            icon: None,
-        }
-    }
 }
 
 impl ContextualHelp {
@@ -607,7 +593,7 @@ impl HelpRegistry {
 }
 
 /// Component to mark entities that show help on F1
-#[derive(Component, Debug, Clone)]
+#[derive(Component, Debug, Clone, Default)]
 pub struct HelpOverlay {
     /// Whether the help overlay is currently visible
     pub visible: bool,
@@ -615,16 +601,6 @@ pub struct HelpOverlay {
     pub search_query: String,
     /// Currently selected category filter
     pub selected_category: Option<String>,
-}
-
-impl Default for HelpOverlay {
-    fn default() -> Self {
-        Self {
-            visible: false,
-            search_query: String::new(),
-            selected_category: None,
-        }
-    }
 }
 
 impl HelpOverlay {

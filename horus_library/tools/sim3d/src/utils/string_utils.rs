@@ -109,7 +109,7 @@ impl StringUtils {
         }
 
         // Must start with letter or underscore
-        if !s.chars().next().unwrap().is_alphabetic() && s.chars().next().unwrap() != '_' {
+        if !s.chars().next().unwrap().is_alphabetic() && !s.starts_with('_') {
             return false;
         }
 
@@ -221,7 +221,7 @@ impl PathUtils {
 
     /// Convert file:// URI to path
     pub fn resolve_file_uri(uri: &str) -> Option<PathBuf> {
-        uri.strip_prefix("file://").map(|path| PathBuf::from(path))
+        uri.strip_prefix("file://").map(PathBuf::from)
     }
 
     /// Get relative path from base to target

@@ -140,7 +140,7 @@ impl RLTask for ReachingTask {
 
                     // Apply rotation based on action
                     let rotation_delta = Quat::from_rotation_y(action_value * 0.1);
-                    transform.rotation = transform.rotation * rotation_delta;
+                    transform.rotation *= rotation_delta;
                 }
             }
         }

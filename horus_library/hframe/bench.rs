@@ -3,8 +3,11 @@
 //! Simple benchmarks to measure HFrame performance.
 //! Run with: cargo test --release -p horus_library hframe_benchmark -- --nocapture --ignored
 
+#![allow(dead_code)]
+#![allow(unused_imports)]
+
 use super::*;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 /// Number of iterations for benchmarks
 const ITERATIONS: u64 = 100_000;

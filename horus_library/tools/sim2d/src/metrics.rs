@@ -196,28 +196,28 @@ impl PerformanceMetrics {
             .from_path(path)?;
 
         // Write summary section
-        wtr.write_record(&["Metric", "Value"])?;
-        wtr.write_record(&["Run Name", &self.run_name])?;
-        wtr.write_record(&["Run Description", &self.run_description])?;
-        wtr.write_record(&["Elapsed Time (s)", &self.elapsed_time.to_string()])?;
-        wtr.write_record(&["Path Length (m)", &self.path_length.to_string()])?;
-        wtr.write_record(&["Path Smoothness", &self.path_smoothness.to_string()])?;
-        wtr.write_record(&["Average Speed (m/s)", &self.avg_speed.to_string()])?;
-        wtr.write_record(&["Max Speed (m/s)", &self.max_speed.to_string()])?;
-        wtr.write_record(&["Collision Count", &self.collision_count.to_string()])?;
-        wtr.write_record(&["Near Miss Count", &self.near_miss_count.to_string()])?;
-        wtr.write_record(&["Goal Reached", &self.goal_reached.to_string()])?;
-        wtr.write_record(&["Time to Goal (s)", &format!("{:?}", self.time_to_goal)])?;
-        wtr.write_record(&["Distance to Goal (m)", &self.distance_to_goal.to_string()])?;
-        wtr.write_record(&["Energy Consumed (J)", &self.energy_consumed.to_string()])?;
-        wtr.write_record(&["Safety Score", &self.safety_score().to_string()])?;
-        wtr.write_record(&["Efficiency Score", &self.efficiency_score().to_string()])?;
-        wtr.write_record(&["Overall Score", &self.overall_score().to_string()])?;
+        wtr.write_record(["Metric", "Value"])?;
+        wtr.write_record(["Run Name", &self.run_name])?;
+        wtr.write_record(["Run Description", &self.run_description])?;
+        wtr.write_record(["Elapsed Time (s)", &self.elapsed_time.to_string()])?;
+        wtr.write_record(["Path Length (m)", &self.path_length.to_string()])?;
+        wtr.write_record(["Path Smoothness", &self.path_smoothness.to_string()])?;
+        wtr.write_record(["Average Speed (m/s)", &self.avg_speed.to_string()])?;
+        wtr.write_record(["Max Speed (m/s)", &self.max_speed.to_string()])?;
+        wtr.write_record(["Collision Count", &self.collision_count.to_string()])?;
+        wtr.write_record(["Near Miss Count", &self.near_miss_count.to_string()])?;
+        wtr.write_record(["Goal Reached", &self.goal_reached.to_string()])?;
+        wtr.write_record(["Time to Goal (s)", &format!("{:?}", self.time_to_goal)])?;
+        wtr.write_record(["Distance to Goal (m)", &self.distance_to_goal.to_string()])?;
+        wtr.write_record(["Energy Consumed (J)", &self.energy_consumed.to_string()])?;
+        wtr.write_record(["Safety Score", &self.safety_score().to_string()])?;
+        wtr.write_record(["Efficiency Score", &self.efficiency_score().to_string()])?;
+        wtr.write_record(["Overall Score", &self.overall_score().to_string()])?;
 
         wtr.flush()?;
 
         // Write time series data in a new CSV section
-        wtr.write_record(&[
+        wtr.write_record([
             "Time (s)",
             "Speed (m/s)",
             "Position X (m)",

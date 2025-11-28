@@ -135,8 +135,54 @@ TARGET_DIR="$HORUS_DIR/target"
 SHM_DIR="$(get_shm_base_dir)"
 SHM_LOGS="$(get_shm_logs_path)"
 
-# Binaries installed by HORUS
-BINARIES=("horus" "sim2d" "sim3d" "horus_router")
+# ============================================================================
+# PROFILE DETECTION
+# ============================================================================
+
+# Detect installation profile from saved file or auto-detect platform
+detect_install_profile() {
+    # Check for saved profile
+    if [ -f "$HORUS_DIR/install_profile" ]; then
+        cat "$HORUS_DIR/install_profile"
+        return
+    fi
+
+    # Auto-detect based on platform
+    local platform="desktop"
+    if grep -q "Raspberry Pi" /proc/cpuinfo 2>/dev/null || grep -q "BCM" /proc/cpuinfo 2>/dev/null; then
+        platform="raspberry_pi"
+    elif [ -f "/etc/nv_tegra_release" ] || grep -q "tegra" /proc/cpuinfo 2>/dev/null; then
+        platform="jetson"
+    elif grep -q "AM33XX" /proc/cpuinfo 2>/dev/null; then
+        platform="beaglebone"
+    elif [ "$(uname -m)" = "aarch64" ] || [ "$(uname -m)" = "armv7l" ]; then
+        local mem_kb=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}')
+        if [ -n "$mem_kb" ] && [ "$mem_kb" -lt 4000000 ]; then
+            platform="arm_sbc"
+        fi
+    fi
+
+    case "$platform" in
+        raspberry_pi|jetson|arm_sbc) echo "embedded" ;;
+        beaglebone) echo "minimal" ;;
+        *) echo "full" ;;
+    esac
+}
+
+INSTALL_PROFILE=$(detect_install_profile)
+
+# Binaries installed by HORUS (depends on profile)
+case "$INSTALL_PROFILE" in
+    minimal)
+        BINARIES=("horus")
+        ;;
+    embedded)
+        BINARIES=("horus" "horus_router")
+        ;;
+    full|*)
+        BINARIES=("horus" "sim2d" "sim3d" "horus_router")
+        ;;
+esac
 
 # Shell completion paths
 BASH_COMPLETION_PATHS=(
@@ -160,6 +206,8 @@ echo ""
 echo -e "${BLUE}============================================${NC}"
 echo -e "${WHITE}   HORUS Uninstallation Script v2.0.0${NC}"
 echo -e "${BLUE}============================================${NC}"
+echo ""
+echo -e "  ${CYAN}Install Profile:${NC} ${INSTALL_PROFILE}"
 echo ""
 
 # Calculate sizes
@@ -295,9 +343,8 @@ init_uninstall_progress 5
 #=====================================
 # 1. Remove binaries
 #=====================================
-update_uninstall_progress "Removing binaries..."
+update_uninstall_progress "Removing binaries"
 echo ""
-echo -e "${MAGENTA}[1/5] Removing binaries...${NC}"
 
 for bin in "${BINARIES[@]}"; do
     if [ -f "$INSTALL_DIR/$bin" ]; then
@@ -310,9 +357,8 @@ done
 #=====================================
 # 2. Remove shell completions
 #=====================================
-update_uninstall_progress "Removing completions..."
+update_uninstall_progress "Removing completions"
 echo ""
-echo -e "${MAGENTA}[2/5] Removing shell completions...${NC}"
 
 for path in "${BASH_COMPLETION_PATHS[@]}" "${ZSH_COMPLETION_PATHS[@]}" "${FISH_COMPLETION_PATHS[@]}"; do
     if [ -f "$path" ]; then
@@ -330,9 +376,8 @@ fi
 #=====================================
 # 3. Remove shared memory
 #=====================================
-update_uninstall_progress "Cleaning shared memory..."
+update_uninstall_progress "Cleaning shared memory"
 echo ""
-echo -e "${MAGENTA}[3/5] Cleaning shared memory...${NC}"
 
 if [ -d "$SHM_DIR" ]; then
     # Count active sessions
@@ -357,9 +402,8 @@ fi
 #=====================================
 # 4. Remove HORUS directory
 #=====================================
-update_uninstall_progress "Removing HORUS data..."
+update_uninstall_progress "Removing HORUS data"
 echo ""
-echo -e "${MAGENTA}[4/5] Removing HORUS data...${NC}"
 
 if [ -d "$HORUS_DIR" ]; then
     # Check for user data
@@ -403,9 +447,8 @@ fi
 #=====================================
 # 5. Optional: Clean Cargo cache
 #=====================================
-update_uninstall_progress "Optional cleanup..."
+update_uninstall_progress "Optional cleanup"
 echo ""
-echo -e "${MAGENTA}[5/5] Optional cleanup...${NC}"
 
 CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}"
 CARGO_REGISTRY="$CARGO_HOME/registry"
@@ -455,6 +498,6 @@ fi
 echo -e "${GREEN}${STATUS_OK} HORUS has been uninstalled. Goodbye!${NC}"
 echo ""
 echo -e "${CYAN}Notes:${NC}"
-echo "  - Project-local .horus/ directories were NOT removed"
-echo "  - To reinstall: ${CYAN}./install.sh${NC}"
+echo -e "  - Project-local .horus/ directories were NOT removed"
+echo -e "  - To reinstall: ${CYAN}./install.sh${NC}"
 echo ""

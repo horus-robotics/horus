@@ -21,8 +21,10 @@ pub struct PhysicsWorld {
 
 impl Default for PhysicsWorld {
     fn default() -> Self {
-        let mut integration_parameters = IntegrationParameters::default();
-        integration_parameters.dt = 1.0 / 240.0; // 240 Hz physics
+        let integration_parameters = IntegrationParameters {
+            dt: 1.0 / 240.0, // 240 Hz physics
+            ..Default::default()
+        };
 
         Self {
             rigid_body_set: RigidBodySet::new(),

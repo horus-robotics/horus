@@ -1,3 +1,8 @@
+// PyO3 methods MUST return PyResult<T> for Python bindings.
+// Clippy incorrectly flags this as "useless_conversion" but it's required by PyO3.
+// See: https://github.com/PyO3/pyo3/issues/2092
+#![allow(clippy::useless_conversion)]
+
 use pyo3::prelude::*;
 
 mod config;

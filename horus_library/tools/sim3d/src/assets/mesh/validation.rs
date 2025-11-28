@@ -6,6 +6,9 @@
 //! - Non-manifold geometry
 //! - Invalid normals
 
+// Public API for mesh validation - may not all be used internally
+#![allow(dead_code)]
+
 use anyhow::Result;
 use bevy::prelude::*;
 use bevy::render::mesh::{Indices, Mesh, VertexAttributeValues};

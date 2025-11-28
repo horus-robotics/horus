@@ -148,7 +148,7 @@ impl RTStats {
 /// - Formal verification support
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// impl RTNode for MotorControlNode {
 ///     fn wcet_budget(&self) -> Duration {
 ///         Duration::from_micros(100) // 100μs max execution

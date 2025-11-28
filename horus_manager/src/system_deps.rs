@@ -267,7 +267,7 @@ pub fn check_dependencies(features: &[String]) -> DependencyCheckResult {
             for group in dep.user_groups {
                 if !checked_groups.contains(*group) {
                     checked_groups.insert(group.to_string());
-                    if !user_groups.contains(&group.to_string()) {
+                    if !user_groups.contains(*group) {
                         result.missing_groups.push(group.to_string());
                     }
                 }
@@ -281,13 +281,12 @@ pub fn check_dependencies(features: &[String]) -> DependencyCheckResult {
             }
 
             // Add install command and docs link
-            if !dep.install_cmd.is_empty() {
-                if !result
+            if !dep.install_cmd.is_empty()
+                && !result
                     .install_commands
                     .contains(&dep.install_cmd.to_string())
-                {
-                    result.install_commands.push(dep.install_cmd.to_string());
-                }
+            {
+                result.install_commands.push(dep.install_cmd.to_string());
             }
             result
                 .docs_links
@@ -373,7 +372,7 @@ pub fn format_dependency_report(result: &DependencyCheckResult, features: &[Stri
         for lib in &result.missing_pkg_config {
             report.push_str(&format!("   • {} (pkg-config)\n", lib));
         }
-        report.push_str("\n");
+        report.push('\n');
     }
 
     // Missing device files (hardware not connected - this is a warning, not error)
@@ -396,7 +395,7 @@ pub fn format_dependency_report(result: &DependencyCheckResult, features: &[Stri
                 report.push_str(&format!("   • {}: {}\n", feature, url));
             }
         }
-        report.push_str("\n");
+        report.push('\n');
     }
 
     // Quick install script

@@ -69,7 +69,7 @@ pub fn tf_update_system(
         let nalgebra_rotation = UnitQuaternion::from_quaternion(nalgebra::Quaternion::new(
             rotation.w, rotation.x, rotation.y, rotation.z,
         ));
-        let isometry = Isometry3::from_parts(nalgebra_translation.into(), nalgebra_rotation);
+        let isometry = Isometry3::from_parts(nalgebra_translation, nalgebra_rotation);
 
         // Update or add frame to TF tree
         if tf_tree.has_frame(&publisher.frame_name) {
@@ -106,8 +106,7 @@ pub fn tf_update_from_physics_system(
                     position.translation.x,
                     position.translation.y,
                     position.translation.z,
-                )
-                .into(),
+                ),
                 UnitQuaternion::from_quaternion(nalgebra::Quaternion::new(
                     position.rotation.w,
                     position.rotation.i,
@@ -146,12 +145,12 @@ pub fn tf_update_robot_joints_system(
                         // Rotation around Z-axis (assuming that's the joint axis)
                         let rotation =
                             UnitQuaternion::from_euler_angles(0.0, 0.0, joint_state.position);
-                        Isometry3::from_parts(Translation3::new(0.0, 0.0, 0.0).into(), rotation)
+                        Isometry3::from_parts(Translation3::new(0.0, 0.0, 0.0), rotation)
                     }
                     crate::physics::joints::JointType::Prismatic => {
                         // Translation along Z-axis (assuming that's the joint axis)
                         Isometry3::from_parts(
-                            Translation3::new(0.0, 0.0, joint_state.position).into(),
+                            Translation3::new(0.0, 0.0, joint_state.position),
                             UnitQuaternion::identity(),
                         )
                     }

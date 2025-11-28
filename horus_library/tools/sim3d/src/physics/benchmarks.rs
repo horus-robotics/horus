@@ -522,19 +522,20 @@ impl PhysicsBenchmark {
     pub fn run_all(&self) -> BenchmarkReport {
         let start = Instant::now();
 
-        let mut results = Vec::new();
-        results.push(self.benchmark_freefall_velocity());
-        results.push(self.benchmark_freefall_position());
-        results.push(self.benchmark_elastic_collision_momentum());
-        results.push(self.benchmark_elastic_collision_energy());
-        results.push(self.benchmark_friction_static());
-        results.push(self.benchmark_friction_kinetic());
-        results.push(self.benchmark_pendulum_period());
-        results.push(self.benchmark_projectile_range());
-        results.push(self.benchmark_projectile_height());
-        results.push(self.benchmark_stack_stability());
-        results.push(self.benchmark_spring_frequency());
-        results.push(self.benchmark_spring_amplitude());
+        let results = vec![
+            self.benchmark_freefall_velocity(),
+            self.benchmark_freefall_position(),
+            self.benchmark_elastic_collision_momentum(),
+            self.benchmark_elastic_collision_energy(),
+            self.benchmark_friction_static(),
+            self.benchmark_friction_kinetic(),
+            self.benchmark_pendulum_period(),
+            self.benchmark_projectile_range(),
+            self.benchmark_projectile_height(),
+            self.benchmark_stack_stability(),
+            self.benchmark_spring_frequency(),
+            self.benchmark_spring_amplitude(),
+        ];
 
         let total_time = start.elapsed();
         BenchmarkReport::new(results, self.config.clone(), total_time)
@@ -1336,8 +1337,10 @@ pub struct BenchmarkPhysicsWorld {
 
 impl BenchmarkPhysicsWorld {
     pub fn new(gravity_magnitude: f32, dt: f32) -> Self {
-        let mut integration_parameters = IntegrationParameters::default();
-        integration_parameters.dt = dt;
+        let integration_parameters = IntegrationParameters {
+            dt,
+            ..Default::default()
+        };
 
         Self {
             rigid_body_set: RigidBodySet::new(),

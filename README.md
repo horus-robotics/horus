@@ -2,21 +2,13 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-0.1.5-blue.svg)](https://github.com/softmata/horus/releases)
-[![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-alpha-yellow.svg)](https://github.com/softmata/horus/releases)
-[![Discord](https://img.shields.io/badge/Discord-Join%20Us-7289da?logo=discord&logoColor=white)](https://discord.gg/hEZC3ev2Nf)
-
-[![IPC Latency](https://img.shields.io/badge/IPC%20latency-248ns-brightgreen.svg)](#performance)
-[![Throughput](https://img.shields.io/badge/throughput-6M%2B%20msg%2Fs-green.svg)](#performance)
+[![Version](https://img.shields.io/badge/v0.1.5--alpha-yellow.svg)](https://github.com/softmata/horus/releases) [![Rust](https://img.shields.io/badge/rust-%3E%3D1.85-orange.svg?logo=rust)](https://www.rust-lang.org/) [![Python](https://img.shields.io/badge/python-%3E%3D3.9-blue.svg?logo=python&logoColor=white)](https://www.python.org/) [![License](https://img.shields.io/badge/license-Apache--2.0-green.svg)](LICENSE) [![Installations](https://img.shields.io/endpoint?url=https://telemetry.horus-registry.dev/count/badge)](https://docs.horus-registry.dev/installation) [![IPC Latency](https://img.shields.io/badge/IPC%20latency-248ns-brightgreen.svg)](#performance) [![Throughput](https://img.shields.io/badge/throughput-6M%2B%20msg%2Fs-green.svg)](#performance)
 
 **Hybrid Optimized Robotics Unified System**
 
 A production-grade robotics framework built in Rust for **real-time performance** and **memory safety**. HORUS delivers sub-microsecond IPC latency (50-500x faster than ROS2) while maintaining a simpler developer experience.
 
-[![Documentation](https://img.shields.io/badge/Documentation-Read%20the%20Docs-blue?style=for-the-badge)](https://docs.horus-registry.dev)
-[![Installation](https://img.shields.io/badge/Installation-Get%20Started-green?style=for-the-badge)](https://docs.horus-registry.dev/installation)
-[![Benchmarks](https://img.shields.io/badge/Benchmarks-Performance-red?style=for-the-badge)](https://docs.horus-registry.dev/benchmarks)
+[![Documentation](https://img.shields.io/badge/Documentation-Read%20the%20Docs-blue?style=for-the-badge)](https://docs.horus-registry.dev) [![Installation](https://img.shields.io/badge/Installation-Get%20Started-green?style=for-the-badge)](https://docs.horus-registry.dev/installation) [![Benchmarks](https://img.shields.io/badge/Benchmarks-Performance-red?style=for-the-badge)](https://docs.horus-registry.dev/benchmarks) [![Discord](https://img.shields.io/badge/Discord-Join%20Us-7289da?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/hEZC3ev2Nf)
 
 </div>
 
@@ -158,10 +150,13 @@ See [Built-in Nodes Documentation](horus_library/nodes/README.md) for complete c
 ### Prerequisites
 
 **Required:**
-- **Rust 1.70+** (install from [rustup.rs](https://rustup.rs))
+- **Rust 1.85+** (install from [rustup.rs](https://rustup.rs))
   ```bash
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
   source $HOME/.cargo/env
+
+  # Verify version (must be >= 1.85)
+  rustc --version
   ```
 
 - **Build tools**
@@ -186,8 +181,15 @@ See [Built-in Nodes Documentation](horus_library/nodes/README.md) for complete c
   brew install pkg-config openssl
   ```
 
-**Optional:**
-- Python 3.9+ for Python bindings: `sudo apt install python3 python3-pip`
+**Optional (for Python bindings):**
+- **Python 3.9+** (3.9, 3.10, 3.11, 3.12 supported)
+  ```bash
+  # Ubuntu/Debian
+  sudo apt install python3 python3-pip python3-venv
+
+  # Verify version (must be >= 3.9)
+  python3 --version
+  ```
 
 ### Quick Install
 

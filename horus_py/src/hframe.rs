@@ -483,12 +483,3 @@ impl PyHFrame {
 pub fn get_timestamp_ns() -> u64 {
     timestamp_now()
 }
-
-/// Register HFrame classes with Python module
-pub fn register_hframe_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<PyTransform>()?;
-    m.add_class::<PyHFrameConfig>()?;
-    m.add_class::<PyHFrame>()?;
-    m.add_function(wrap_pyfunction!(get_timestamp_ns, m)?)?;
-    Ok(())
-}

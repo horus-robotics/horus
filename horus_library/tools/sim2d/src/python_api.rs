@@ -10,6 +10,9 @@
 //! sim.run(duration=10.0)
 //! ```
 
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::useless_conversion)]
+
 use crate::{Obstacle, ObstacleShape, RobotConfig, Sim2DBuilder, WorldConfig};
 use pyo3::prelude::*;
 
@@ -48,17 +51,20 @@ impl Sim2D {
         world_width: f32,
         world_height: f32,
     ) -> PyResult<Self> {
-        let mut robot_config = RobotConfig::default();
-        robot_config.name = robot_name.to_string();
-        robot_config.topic_prefix = topic_prefix.to_string();
-        robot_config.width = robot_width;
-        robot_config.length = robot_length;
-        robot_config.max_speed = robot_max_speed;
+        let robot_config = RobotConfig {
+            name: robot_name.to_string(),
+            topic_prefix: topic_prefix.to_string(),
+            width: robot_width,
+            length: robot_length,
+            max_speed: robot_max_speed,
+            ..Default::default()
+        };
 
-        let mut world_config = WorldConfig::default();
-        world_config.width = world_width;
-        world_config.height = world_height;
-        world_config.obstacles.clear(); // Start with empty world
+        let world_config = WorldConfig {
+            width: world_width,
+            height: world_height,
+            obstacles: Vec::new(), // Start with empty world
+        };
 
         Ok(Self {
             robot_config,

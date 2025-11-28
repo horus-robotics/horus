@@ -6,7 +6,6 @@
 use bevy::prelude::*;
 use horus_core::communication::Hub;
 use horus_core::core::LogSummary;
-use horus_core::error::HorusResult;
 use std::sync::{Arc, Mutex};
 
 use super::messages::*;
@@ -360,16 +359,9 @@ impl HorusTransport {
 // ============================================================================
 
 /// Plugin for HORUS transport integration
+#[derive(Default)]
 pub struct HorusTransportPlugin {
     config: HorusTransportConfig,
-}
-
-impl Default for HorusTransportPlugin {
-    fn default() -> Self {
-        Self {
-            config: HorusTransportConfig::default(),
-        }
-    }
 }
 
 impl HorusTransportPlugin {
@@ -433,10 +425,9 @@ fn horus_transport_recv_system(
     // Receive cmd_vel and apply to matching robot
     if let Some(twist) = transport.recv_cmd_vel() {
         // Apply to first robot for now (could be extended for multi-robot)
-        for (_name, mut velocity) in query.iter_mut() {
+        if let Some((_name, mut velocity)) = query.iter_mut().next() {
             velocity.linear = Vec3::new(twist.linear.x, twist.linear.y, twist.linear.z);
             velocity.angular = Vec3::new(twist.angular.x, twist.angular.y, twist.angular.z);
-            break; // Apply to first robot
         }
     }
 }

@@ -8,11 +8,19 @@ use crate::rl::{
     TerminationReason,
 };
 use crate::robot::Robot;
+use crate::robot::articulated::RobotJointCommands;
+use crate::robot::state::{ArticulatedRobot, RobotJointStates};
 
 /// Locomotion task: Learn to walk/run at a target velocity while staying upright
 pub struct LocomotionTask {
     config: TaskConfig,
     robot_base_entity: Option<Entity>,
+    /// Entity of the articulated robot (has RobotJointCommands)
+    articulated_robot_entity: Option<Entity>,
+    /// Names of joints to control (in action order)
+    joint_names: Vec<String>,
+    /// Maximum torque per joint (N·m for revolute, N for prismatic)
+    max_torques: Vec<f32>,
     target_velocity: Vec3,
     episode_info: EpisodeInfo,
     current_step: usize,
@@ -22,6 +30,9 @@ pub struct LocomotionTask {
 }
 
 impl LocomotionTask {
+    /// Default maximum torque for joint motors (N·m)
+    const DEFAULT_MAX_TORQUE: f32 = 50.0;
+
     pub fn new(obs_dim: usize, action_dim: usize) -> Self {
         let height_limit = 0.3; // Min height before falling
 
@@ -37,6 +48,9 @@ impl LocomotionTask {
                 },
             },
             robot_base_entity: None,
+            articulated_robot_entity: None,
+            joint_names: Vec::new(),
+            max_torques: Vec::new(),
             target_velocity: Vec3::new(1.0, 0.0, 0.0),
             episode_info: EpisodeInfo::default(),
             current_step: 0,
@@ -46,8 +60,29 @@ impl LocomotionTask {
         }
     }
 
-    /// Find robot base entity (torso/body)
+    /// Configure joint names and maximum torques for the robot
+    pub fn with_joints(mut self, joint_names: Vec<String>, max_torques: Option<Vec<f32>>) -> Self {
+        let torques = max_torques.unwrap_or_else(|| vec![Self::DEFAULT_MAX_TORQUE; joint_names.len()]);
+        self.joint_names = joint_names;
+        self.max_torques = torques;
+        self
+    }
+
+    /// Find robot base entity (torso/body) and articulated robot entity
     fn find_robot_base(&mut self, world: &mut World) {
+        // Find articulated robot entity first
+        let mut articulated_query = world.query::<(Entity, &ArticulatedRobot, &RobotJointStates)>();
+        for (entity, _robot, joint_states) in articulated_query.iter(world) {
+            self.articulated_robot_entity = Some(entity);
+            // If joint names not configured, use joint order from robot
+            if self.joint_names.is_empty() {
+                self.joint_names = joint_states.joint_order.clone();
+                self.max_torques = vec![Self::DEFAULT_MAX_TORQUE; self.joint_names.len()];
+            }
+            break;
+        }
+
+        // Find base entity (Robot component with Transform closest to initial height)
         let mut query = world.query::<(Entity, &Robot, &Transform)>();
 
         // Find entity closest to initial height (typically the torso)
@@ -166,20 +201,51 @@ impl RLTask for LocomotionTask {
     fn step(&mut self, world: &mut World, action: &Action) -> StepResult {
         self.current_step += 1;
 
-        // Apply action (joint torques for locomotion)
+        // Apply action (joint torques for locomotion) through proper joint motor system
         if let Action::Continuous(actions) = action {
-            let mut query = world.query::<(&Robot, &mut Transform, &RigidBodyComponent)>();
+            // Try to use articulated robot's joint command system (proper physics-based control)
+            if let Some(robot_entity) = self.articulated_robot_entity {
+                if let Some(mut commands) = world.get_mut::<RobotJointCommands>(robot_entity) {
+                    // Apply actions as effort commands to joints
+                    for (i, joint_name) in self.joint_names.iter().enumerate() {
+                        if i < actions.len() {
+                            // Scale action [-1, 1] to torque range [-max_torque, max_torque]
+                            let action_value = actions[i].clamp(-1.0, 1.0);
+                            let max_torque = self.max_torques.get(i).copied().unwrap_or(Self::DEFAULT_MAX_TORQUE);
+                            let torque = action_value * max_torque;
+                            commands.set_effort(joint_name, torque);
+                        }
+                    }
+                }
+            } else {
+                // Fallback: Apply torques directly to rigid bodies through physics world
+                // This handles cases where the robot doesn't have RobotJointCommands
+                // First collect handles without borrowing world mutably
+                let mut handles = Vec::new();
+                {
+                    let mut query = world.query::<(&Robot, &RigidBodyComponent)>();
+                    for (_, rb) in query.iter(world).take(actions.len()) {
+                        handles.push(rb.handle);
+                    }
+                }
 
-            for (i, (_robot, mut transform, _rb)) in query.iter_mut(world).enumerate() {
-                if i < actions.len() {
-                    let action_value = actions[i].clamp(-1.0, 1.0);
+                // Now apply torques through physics world
+                if let Some(mut physics_world) = world.get_resource_mut::<PhysicsWorld>() {
+                    for (i, handle) in handles.into_iter().enumerate() {
+                        if i < actions.len() {
+                            if let Some(body) = physics_world.rigid_body_set.get_mut(handle) {
+                                let action_value = actions[i].clamp(-1.0, 1.0);
+                                let max_torque = self.max_torques.get(i).copied().unwrap_or(Self::DEFAULT_MAX_TORQUE);
+                                let torque = action_value * max_torque;
 
-                    // Apply torque/force based on action
-                    // This is simplified - in practice would apply to joints
-                    let torque_scale = 5.0;
-                    let rotation_delta =
-                        Quat::from_rotation_y(action_value * torque_scale * self.config.dt);
-                    transform.rotation = transform.rotation * rotation_delta;
+                                // Apply torque around the Y axis (vertical) for locomotion
+                                body.apply_torque_impulse(
+                                    rapier3d::prelude::Vector::new(0.0, torque * self.config.dt, 0.0),
+                                    true,
+                                );
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -261,6 +327,23 @@ impl RLTask for LocomotionTask {
         // Velocity error (3D)
         let vel_error = self.target_velocity - velocity;
         obs_data.extend_from_slice(&[vel_error.x, vel_error.y, vel_error.z]);
+
+        // Joint positions and velocities (if articulated robot is available)
+        if let Some(robot_entity) = self.articulated_robot_entity {
+            if let Some(joint_states) = world.get::<RobotJointStates>(robot_entity) {
+                // Add joint positions (normalized to [-1, 1] assuming ±π limits)
+                let positions = joint_states.get_positions();
+                for pos in &positions {
+                    obs_data.push(pos / std::f32::consts::PI);
+                }
+
+                // Add joint velocities (normalized, assuming max velocity of 10 rad/s)
+                let velocities = joint_states.get_velocities();
+                for vel in &velocities {
+                    obs_data.push(vel / 10.0);
+                }
+            }
+        }
 
         Observation::new(obs_data)
     }

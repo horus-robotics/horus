@@ -11,6 +11,10 @@
 //! Control from another terminal:
 //!   cargo run -p simple_driver
 
+// Bevy systems commonly have many arguments and complex query types
+#![allow(clippy::type_complexity)]
+#![allow(clippy::too_many_arguments)]
+
 // ui module is declared at the lib.rs level
 use crate::ui;
 
@@ -305,15 +309,9 @@ pub struct LidarRay;
 pub struct TrajectoryPoint;
 
 /// Trajectory trail history
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct TrajectoryHistory {
     points: Vec<(f32, f32)>, // (x, y) positions
-}
-
-impl Default for TrajectoryHistory {
-    fn default() -> Self {
-        Self { points: Vec::new() }
-    }
 }
 
 /// Last LIDAR scan for visualization
@@ -421,14 +419,8 @@ pub enum ObstacleAction {
 pub struct DynamicObstacleId(u64);
 
 /// Counter for generating unique obstacle IDs
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct ObstacleIdCounter(u64);
-
-impl Default for ObstacleIdCounter {
-    fn default() -> Self {
-        Self(0)
-    }
-}
 
 /// Component to track physics rigid body handle for world elements
 #[derive(Component)]
@@ -524,13 +516,15 @@ impl AppConfig {
             Self::load_robots_config(robot_file).unwrap_or_else(|_| vec![RobotConfig::default()])
         } else {
             // Create single default robot using CLI args
-            let mut robot = RobotConfig::default();
-            robot.name = args.name.clone();
-            robot.topic_prefix = args
-                .topic
-                .strip_suffix(".cmd_vel")
-                .unwrap_or(&args.topic)
-                .to_string();
+            let robot = RobotConfig {
+                name: args.name.clone(),
+                topic_prefix: args
+                    .topic
+                    .strip_suffix(".cmd_vel")
+                    .unwrap_or(&args.topic)
+                    .to_string(),
+                ..Default::default()
+            };
             vec![robot]
         };
 

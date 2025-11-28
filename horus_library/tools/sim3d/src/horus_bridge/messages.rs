@@ -1,19 +1,10 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Twist {
     pub linear: Vector3Message,
     pub angular: Vector3Message,
-}
-
-impl Default for Twist {
-    fn default() -> Self {
-        Self {
-            linear: Vector3Message::default(),
-            angular: Vector3Message::default(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -43,9 +34,9 @@ impl From<Vec3> for Vector3Message {
     }
 }
 
-impl Into<Vec3> for Vector3Message {
-    fn into(self) -> Vec3 {
-        Vec3::new(self.x, self.y, self.z)
+impl From<Vector3Message> for Vec3 {
+    fn from(val: Vector3Message) -> Self {
+        Vec3::new(val.x, val.y, val.z)
     }
 }
 
@@ -68,9 +59,9 @@ impl From<Quat> for QuaternionMessage {
     }
 }
 
-impl Into<Quat> for QuaternionMessage {
-    fn into(self) -> Quat {
-        Quat::from_xyzw(self.x, self.y, self.z, self.w)
+impl From<QuaternionMessage> for Quat {
+    fn from(val: QuaternionMessage) -> Self {
+        Quat::from_xyzw(val.x, val.y, val.z, val.w)
     }
 }
 

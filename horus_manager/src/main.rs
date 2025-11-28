@@ -251,6 +251,34 @@ enum PkgCommands {
         #[arg(short = 'y', long = "yes")]
         yes: bool,
     },
+
+    /// Enable a disabled plugin
+    Enable {
+        /// Plugin command name to enable
+        command: String,
+    },
+
+    /// Disable a plugin (keep installed but don't execute)
+    Disable {
+        /// Plugin command name to disable
+        command: String,
+        /// Reason for disabling
+        #[arg(short = 'r', long = "reason")]
+        reason: Option<String>,
+    },
+
+    /// Verify integrity of installed plugins
+    Verify {
+        /// Specific plugin to verify (optional, verifies all if not specified)
+        plugin: Option<String>,
+    },
+
+    /// List installed plugins
+    Plugins {
+        /// Show all plugins including disabled
+        #[arg(short = 'a', long = "all")]
+        all: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -295,6 +323,58 @@ enum AuthCommands {
 // SimCommands enum removed - sim now uses flags directly with 3D as default
 
 fn main() {
+    // First, try to handle as a plugin command before clap parsing
+    // This allows plugins to be invoked as: `horus <plugin-name> [args...]`
+    let args: Vec<String> = std::env::args().collect();
+
+    // If there's at least one argument (besides program name) and it's not a built-in command
+    if args.len() >= 2 {
+        let potential_command = &args[1];
+
+        // Skip if it's a built-in command, help flag, or version flag
+        let is_builtin = matches!(
+            potential_command.as_str(),
+            "init"
+                | "new"
+                | "run"
+                | "check"
+                | "dashboard"
+                | "pkg"
+                | "env"
+                | "auth"
+                | "sim2d"
+                | "sim3d"
+                | "completion"
+                | "help"
+                | "--help"
+                | "-h"
+                | "--version"
+                | "-V"
+        );
+
+        if !is_builtin && !potential_command.starts_with('-') {
+            // Try to execute as plugin
+            if let Ok(executor) = horus_manager::plugins::PluginExecutor::new() {
+                let plugin_args: Vec<String> = args.iter().skip(2).cloned().collect();
+                match executor.try_execute(potential_command, &plugin_args) {
+                    Ok(Some(exit_code)) => {
+                        // Plugin was found and executed - exit with the same code
+                        std::process::exit(exit_code);
+                    }
+                    Ok(None) => {
+                        // Not a plugin, fall through to normal clap parsing
+                    }
+                    Err(e) => {
+                        // Plugin found but execution failed
+                        eprintln!("{} {}", "Error:".red().bold(), e);
+                        std::process::exit(1);
+                    }
+                }
+            }
+        }
+    }
+
+    // Normal clap parsing
     let cli = Cli::parse();
 
     if let Err(e) = run_command(cli.command) {
@@ -2380,6 +2460,23 @@ except ImportError as e:
                     println!("   The package is no longer available on the registry");
 
                     Ok(())
+                }
+
+                PkgCommands::Enable { command } => commands::pkg::enable_plugin(&command)
+                    .map_err(|e| HorusError::Config(e.to_string())),
+
+                PkgCommands::Disable { command, reason } => {
+                    commands::pkg::disable_plugin(&command, reason.as_deref())
+                        .map_err(|e| HorusError::Config(e.to_string()))
+                }
+
+                PkgCommands::Verify { plugin } => commands::pkg::verify_plugins(plugin.as_deref())
+                    .map_err(|e| HorusError::Config(e.to_string())),
+
+                PkgCommands::Plugins { all: _ } => {
+                    // Show both global and project plugins
+                    commands::pkg::list_plugins(true, true)
+                        .map_err(|e| HorusError::Config(e.to_string()))
                 }
             }
         }

@@ -17,7 +17,6 @@ mod validation;
 pub use collada_loader::load_collada;
 pub use gltf_loader::load_gltf;
 pub use obj_loader::load_obj;
-pub use optimization::{decimate_mesh, generate_lods, DecimationOptions, LODConfig};
 pub use stl_loader::load_stl;
 pub use validation::validate_mesh;
 
@@ -95,6 +94,17 @@ impl MeshLoadOptions {
     }
 }
 
+/// Embedded texture data extracted from GLB/glTF files
+#[derive(Clone, Debug)]
+pub struct EmbeddedTexture {
+    /// Unique identifier for this texture (e.g., "embedded_0")
+    pub id: String,
+    /// MIME type of the image (e.g., "image/png", "image/jpeg")
+    pub mime_type: String,
+    /// Raw image data bytes
+    pub data: Vec<u8>,
+}
+
 /// Loaded mesh data with metadata
 #[derive(Clone)]
 pub struct LoadedMesh {
@@ -104,6 +114,8 @@ pub struct LoadedMesh {
     pub materials: Vec<MaterialInfo>,
     /// Texture paths referenced by materials
     pub texture_paths: Vec<PathBuf>,
+    /// Embedded textures extracted from the mesh file (GLB/glTF)
+    pub embedded_textures: Vec<EmbeddedTexture>,
     /// Axis-aligned bounding box
     pub bounds: Aabb,
     /// Triangle count

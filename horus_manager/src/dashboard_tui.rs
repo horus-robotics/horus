@@ -1104,6 +1104,24 @@ impl TuiDashboard {
             }
         }
 
+        // Limit nodes to prevent tui-nodes from panicking on large graphs
+        // tui-nodes has issues with coordinate calculations for many nodes
+        const MAX_NODES: usize = 12;
+        let total_nodes = processes.len() + topics.len();
+        if total_nodes > MAX_NODES {
+            // Show a simplified message for large graphs
+            let text = Paragraph::new(format!(
+                "Graph too large ({} nodes) for TUI rendering.\nMax: {} nodes. Use web dashboard for full view.\n\nNodes: {}\nTopics: {}",
+                total_nodes, MAX_NODES,
+                processes.iter().map(|n| n.label.as_str()).collect::<Vec<_>>().join(", "),
+                topics.iter().map(|n| n.label.as_str()).collect::<Vec<_>>().join(", ")
+            ))
+            .style(Style::default().fg(Color::Yellow))
+            .alignment(Alignment::Center);
+            f.render_widget(text, inner);
+            return;
+        }
+
         // Calculate node sizes based on label length
         let node_height = 3u16; // Fixed height for all nodes
         let min_width = 12u16;
@@ -1174,11 +1192,17 @@ impl TuiDashboard {
         // tui-nodes uses port indices: each node can have multiple input/output ports
         // For simplicity, we use port 0 for all connections
         let mut connections: Vec<Connection> = Vec::new();
+        let node_count = node_layouts.len();
 
         for edge in &self.graph_edges {
             if let (Some(&from_idx), Some(&to_idx)) =
                 (id_to_index.get(&edge.from), id_to_index.get(&edge.to))
             {
+                // Bounds check to prevent panic in tui-nodes
+                if from_idx >= node_count || to_idx >= node_count {
+                    continue;
+                }
+
                 let line_style = match (&edge.edge_type, edge.active) {
                     (TuiEdgeType::Publish, true) => Style::default().fg(Color::Blue),
                     (TuiEdgeType::Publish, false) => Style::default().fg(Color::DarkGray),

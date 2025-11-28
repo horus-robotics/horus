@@ -122,7 +122,7 @@ impl RobotRegistry {
         for capability in &metadata.capabilities {
             self.capability_index
                 .entry(capability.clone())
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(robot_id.clone());
         }
 

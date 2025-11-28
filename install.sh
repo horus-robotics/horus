@@ -320,6 +320,123 @@ else
     echo -e "${CYAN}[i]${NC} Detected OS: $OS_TYPE ($OS_DISTRO)"
 fi
 
+# ============================================================================
+# PLATFORM PROFILE SELECTION
+# ============================================================================
+# Profiles determine which packages to build:
+#   - full: All packages including sim2d, sim3d (Desktop/Workstation)
+#   - embedded: Core packages only, no heavy GUI (Raspberry Pi, Jetson)
+#   - minimal: Only essential runtime, no library (Resource-constrained)
+
+# Detect if running on embedded/SBC hardware
+detect_embedded_platform() {
+    local platform="desktop"
+
+    # Check for Raspberry Pi
+    if grep -q "Raspberry Pi" /proc/cpuinfo 2>/dev/null || grep -q "BCM" /proc/cpuinfo 2>/dev/null; then
+        platform="raspberry_pi"
+    # Check for NVIDIA Jetson
+    elif [ -f "/etc/nv_tegra_release" ] || grep -q "tegra" /proc/cpuinfo 2>/dev/null; then
+        platform="jetson"
+    # Check for BeagleBone
+    elif grep -q "AM33XX" /proc/cpuinfo 2>/dev/null; then
+        platform="beaglebone"
+    # Check for Orange Pi / other ARM SBCs
+    elif [ "$(uname -m)" = "aarch64" ] || [ "$(uname -m)" = "armv7l" ]; then
+        # Check available RAM (less than 4GB suggests embedded)
+        local mem_kb=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}')
+        if [ -n "$mem_kb" ] && [ "$mem_kb" -lt 4000000 ]; then
+            platform="arm_sbc"
+        fi
+    fi
+
+    echo "$platform"
+}
+
+# Platform selection prompt
+select_platform_profile() {
+    local detected_platform=$(detect_embedded_platform)
+    local default_profile="full"
+    local suggested=""
+
+    # Suggest embedded profile for detected SBC platforms
+    case "$detected_platform" in
+        raspberry_pi)
+            default_profile="embedded"
+            suggested=" (Raspberry Pi detected)"
+            ;;
+        jetson)
+            default_profile="embedded"
+            suggested=" (NVIDIA Jetson detected)"
+            ;;
+        beaglebone)
+            default_profile="minimal"
+            suggested=" (BeagleBone detected)"
+            ;;
+        arm_sbc)
+            default_profile="embedded"
+            suggested=" (ARM SBC detected)"
+            ;;
+    esac
+
+    echo ""
+    echo -e "${CYAN}Select installation profile:${NC}${suggested}"
+    echo ""
+    echo -e "  ${GREEN}1)${NC} Full        - All packages including simulators (sim2d, sim3d)"
+    echo -e "                   Best for: Desktop, Workstation, Development"
+    echo -e "                   Requires: ~8GB RAM, GPU recommended"
+    echo ""
+    echo -e "  ${YELLOW}2)${NC} Embedded    - Core packages only, no heavy GUI dependencies"
+    echo -e "                   Best for: Raspberry Pi, Jetson, ARM SBCs"
+    echo -e "                   Requires: ~2GB RAM, no GPU needed"
+    echo ""
+    echo -e "  ${MAGENTA}3)${NC} Minimal     - Only essential runtime (horus, horus_core, horus_macros)"
+    echo -e "                   Best for: Resource-constrained devices, CI/CD"
+    echo -e "                   Requires: ~1GB RAM"
+    echo ""
+
+    local profile_num=""
+    case "$default_profile" in
+        full) profile_num="1" ;;
+        embedded) profile_num="2" ;;
+        minimal) profile_num="3" ;;
+    esac
+
+    read -p "$(echo -e ${CYAN}?${NC}) Select profile [1/2/3] (default: ${profile_num}): " -n 1 -r PROFILE_CHOICE
+    echo
+
+    # Default to detected profile if user just presses enter
+    if [ -z "$PROFILE_CHOICE" ]; then
+        PROFILE_CHOICE="$profile_num"
+    fi
+
+    case "$PROFILE_CHOICE" in
+        1)
+            INSTALL_PROFILE="full"
+            echo -e "${GREEN}${STATUS_OK}${NC} Selected: Full installation"
+            ;;
+        2)
+            INSTALL_PROFILE="embedded"
+            echo -e "${YELLOW}${STATUS_OK}${NC} Selected: Embedded installation (no sim2d/sim3d)"
+            ;;
+        3)
+            INSTALL_PROFILE="minimal"
+            echo -e "${MAGENTA}${STATUS_OK}${NC} Selected: Minimal installation"
+            ;;
+        *)
+            # Invalid input, use default
+            INSTALL_PROFILE="$default_profile"
+            echo -e "${CYAN}${STATUS_INFO}${NC} Using default: ${INSTALL_PROFILE}"
+            ;;
+    esac
+
+    # Export the profile for later use
+    export INSTALL_PROFILE
+}
+
+# Select platform profile
+select_platform_profile
+
 # Auto-install Rust if not present
 install_rust() {
     if ! command -v cargo &> /dev/null; then
@@ -346,7 +463,32 @@ install_rust() {
 
 # Install Rust
 install_rust
-echo -e "${CYAN}${NC} Detected Rust version: $(rustc --version)"
+
+# Required Rust version (minimum stable version for HORUS)
+REQUIRED_RUST_MAJOR=1
+REQUIRED_RUST_MINOR=85
+REQUIRED_RUST_VERSION="${REQUIRED_RUST_MAJOR}.${REQUIRED_RUST_MINOR}"
+
+# Check Rust version
+RUST_VERSION=$(rustc --version | awk '{print $2}')
+RUST_MAJOR=$(echo $RUST_VERSION | cut -d'.' -f1)
+RUST_MINOR=$(echo $RUST_VERSION | cut -d'.' -f2)
+
+echo -e "${CYAN}${NC} Detected Rust version: $RUST_VERSION"
+
+# Version check
+if [ "$RUST_MAJOR" -lt "$REQUIRED_RUST_MAJOR" ] || \
+   ([ "$RUST_MAJOR" -eq "$REQUIRED_RUST_MAJOR" ] && [ "$RUST_MINOR" -lt "$REQUIRED_RUST_MINOR" ]); then
+    echo -e "${RED}${STATUS_ERR} Rust version $RUST_VERSION is too old${NC}"
+    echo -e "${YELLOW}   HORUS requires Rust >= $REQUIRED_RUST_VERSION${NC}"
+    echo ""
+    echo -e "   Update Rust with: ${CYAN}rustup update stable${NC}"
+    echo -e "   Or install specific version: ${CYAN}rustup install $REQUIRED_RUST_VERSION && rustup default $REQUIRED_RUST_VERSION${NC}"
+    echo ""
+    exit 1
+else
+    echo -e "${GREEN}${STATUS_OK} Rust version $RUST_VERSION meets requirement (>= $REQUIRED_RUST_VERSION)${NC}"
+fi
 
 # Auto-install system dependencies
 install_system_deps() {
@@ -654,23 +796,30 @@ if [ ! -z "$HARDWARE_MISSING" ]; then
 fi
 
 # Check if Python is installed (for horus_py)
+# Required Python version (must match pyproject.toml and verify.sh)
+REQUIRED_PYTHON_MAJOR=3
+REQUIRED_PYTHON_MINOR=9
+REQUIRED_PYTHON_VERSION="${REQUIRED_PYTHON_MAJOR}.${REQUIRED_PYTHON_MINOR}"
+
 if command -v python3 &> /dev/null; then
     PYTHON_VERSION=$(python3 --version | awk '{print $2}')
     echo -e "${CYAN}${NC} Detected Python: $PYTHON_VERSION"
 
-    # Check if Python version is 3.9+
+    # Check if Python version meets requirement
     PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
     PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
 
-    if [ "$PYTHON_MAJOR" -ge 3 ] && [ "$PYTHON_MINOR" -ge 9 ]; then
+    if [ "$PYTHON_MAJOR" -gt "$REQUIRED_PYTHON_MAJOR" ] || \
+       ([ "$PYTHON_MAJOR" -eq "$REQUIRED_PYTHON_MAJOR" ] && [ "$PYTHON_MINOR" -ge "$REQUIRED_PYTHON_MINOR" ]); then
         PYTHON_AVAILABLE=true
+        echo -e "${GREEN}${STATUS_OK} Python version meets requirement (>= $REQUIRED_PYTHON_VERSION)${NC}"
     else
-        echo -e "${YELLOW}${NC}  Python 3.9+ required for horus_py (found $PYTHON_VERSION)"
+        echo -e "${YELLOW}${NC}  Python $REQUIRED_PYTHON_VERSION+ required for horus_py (found $PYTHON_VERSION)"
         echo -e "  horus_py will be skipped"
         PYTHON_AVAILABLE=false
     fi
 else
-    echo -e "${YELLOW}${NC}  Python3 not found - horus_py will be skipped"
+    echo -e "${YELLOW}${NC}  Python3 not found - horus_py will be skipped (requires >= $REQUIRED_PYTHON_VERSION)"
     PYTHON_AVAILABLE=false
 fi
 
@@ -766,29 +915,58 @@ build_with_recovery() {
     local max_retries=3
     local retry=0
 
-    # Define ALL packages to build - pre-compile everything so users don't wait
-    # This includes all core libraries that user projects depend on
+    # Define packages to build based on installation profile
     # Order matters: dependencies first, then dependents
-    BUILD_PACKAGES=(
-        "horus_macros"
-        "horus_core"
-        "horus"
-        "horus_manager"
-        "horus_library"
-        "sim2d"
-        "sim3d"
-    )
+    case "${INSTALL_PROFILE:-full}" in
+        minimal)
+            # Only essential runtime packages
+            BUILD_PACKAGES=(
+                "horus_macros"
+                "horus_core"
+                "horus"
+                "horus_manager"
+            )
+            echo -e "${MAGENTA}   Profile: Minimal - Building core runtime only${NC}"
+            ;;
+        embedded)
+            # Core packages + library + Python bindings, but no heavy simulators
+            BUILD_PACKAGES=(
+                "horus_macros"
+                "horus_core"
+                "horus"
+                "horus_manager"
+                "horus_library"
+                "horus_py"
+            )
+            echo -e "${YELLOW}   Profile: Embedded - Skipping sim2d/sim3d (saves ~1GB RAM during build)${NC}"
+            ;;
+        full|*)
+            # All packages including simulators and Python bindings
+            BUILD_PACKAGES=(
+                "horus_macros"
+                "horus_core"
+                "horus"
+                "horus_manager"
+                "horus_library"
+                "horus_py"
+                "sim2d"
+                "sim3d"
+            )
+            echo -e "${GREEN}   Profile: Full - Building all packages including simulators${NC}"
+            ;;
+    esac
 
     # Estimated crate counts for each package (for progress calculation)
-    # Based on cargo metadata dependency analysis (incremental builds)
+    # Based on actual dependency counts from cargo tree (fresh build)
     declare -A PACKAGE_CRATES=(
-        ["horus_macros"]=230
-        ["horus_core"]=5
+        ["horus_macros"]=10
+        ["horus_core"]=350
         ["horus"]=50
-        ["horus_manager"]=440
-        ["horus_library"]=10
+        ["horus_manager"]=150
+        ["horus_library"]=50
+        ["horus_py"]=20
         ["sim2d"]=300
-        ["sim3d"]=60
+        ["sim3d"]=400
     )
 
     # Calculate total crates for overall progress
@@ -839,6 +1017,18 @@ build_with_recovery() {
         # Hide cursor for clean progress display
         tput civis 2>/dev/null || true
 
+        # Print overall progress header (fixed position - we'll update this in place)
+        echo ""
+        echo -e "  ${MAGENTA}Overall Progress:${NC}"
+        # Line where overall bar lives - we'll track this
+        local OVERALL_BAR_LINE=0
+        OVERALL_BAR_LINE=$(tput lines 2>/dev/null || echo 24)  # Current line
+        echo -e "  [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]   0%"
+        echo ""
+
+        # Track how many lines down we are from the overall bar
+        local LINES_BELOW_OVERALL=1  # Start 1 line below (the blank line)
+
         # Build each package sequentially
         for pkg in "${BUILD_PACKAGES[@]}"; do
             current_package_num=$((current_package_num + 1))
@@ -849,8 +1039,9 @@ build_with_recovery() {
             local CRATE_COUNT=0
             local TOTAL_CRATES=${PACKAGE_CRATES[$pkg]:-50}
 
-            # Print package header
+            # Print package header on new line
             echo -e "  ${STATUS_INFO} [${current_package_num}/${total_packages}] Building ${CYAN}${pkg}${NC}..."
+            LINES_BELOW_OVERALL=$((LINES_BELOW_OVERALL + 1))
 
             # Run cargo build for this package and track progress
             # Use process substitution to avoid subshell variable scope issues
@@ -892,7 +1083,15 @@ build_with_recovery() {
                         [ "$remain" -gt 0 ] && overall_eta="ETA: $(format_duration $remain)"
                     fi
 
-                    # Build progress bars
+                    # Build overall progress bar (40 chars wide) for top bar
+                    local overall_width=40
+                    local overall_filled=$((overall_percent * overall_width / 100))
+                    local overall_empty=$((overall_width - overall_filled))
+                    local overall_bar=""
+                    for ((k=0; k<overall_filled; k++)); do overall_bar+="█"; done
+                    for ((k=0; k<overall_empty; k++)); do overall_bar+="░"; done
+
+                    # Build package progress bar (20 chars wide)
                     local pkg_width=20
                     local pkg_filled=$((percent * pkg_width / 100))
                     local pkg_empty=$((pkg_width - pkg_filled))
@@ -900,20 +1099,19 @@ build_with_recovery() {
                     for ((k=0; k<pkg_filled; k++)); do pkg_bar+="█"; done
                     for ((k=0; k<pkg_empty; k++)); do pkg_bar+="░"; done
 
-                    local overall_width=30
-                    local overall_filled=$((overall_percent * overall_width / 100))
-                    local overall_empty=$((overall_width - overall_filled))
-                    local overall_bar=""
-                    for ((k=0; k<overall_filled; k++)); do overall_bar+="█"; done
-                    for ((k=0; k<overall_empty; k++)); do overall_bar+="░"; done
-
-                    # Truncate crate name
+                    # Truncate crate name to fit
                     local crate_display="$CURRENT_CRATE"
-                    [ ${#crate_display} -gt 18 ] && crate_display="${crate_display:0:15}..."
+                    [ ${#crate_display} -gt 16 ] && crate_display="${crate_display:0:13}..."
 
-                    # Single line update with carriage return
-                    printf "\r       [${CYAN}${pkg_bar}${NC}] %3d%% %-18s | Overall: [${MAGENTA}${overall_bar}${NC}] %3d%% ${overall_eta}     " \
-                        "$percent" "$crate_display" "$overall_percent"
+                    # Update overall progress bar at top
+                    # Move up LINES_BELOW_OVERALL+1 lines (to get to the bar line)
+                    local up_count=$((LINES_BELOW_OVERALL + 1))
+                    printf "\033[%dA" "$up_count"  # Move up to overall bar
+                    printf "\r  [${MAGENTA}${overall_bar}${NC}]%3d%% ${overall_eta}\033[K" "$overall_percent"
+                    printf "\033[%dB" "$up_count"  # Move back down
+
+                    # Update current package progress on current line
+                    printf "\r\033[K    [${CYAN}${pkg_bar}${NC}]%3d%% ${crate_display}" "$percent"
                 fi
 
                 # Check for errors
@@ -938,11 +1136,13 @@ build_with_recovery() {
             if [ "$build_status" -eq 0 ]; then
                 PKG_STATUS[$pkg]="done"
                 PKG_PERCENT[$pkg]=100
-                echo -e "       ${GREEN}[████████████████████]${NC} 100% ${GREEN}${pkg}${NC} completed in ${GREEN}$(format_duration ${PKG_TIME[$pkg]})${NC}"
+                echo -e "    ${GREEN}[███████████████████]${NC} 100% ${GREEN}${pkg}${NC} done ($(format_duration ${PKG_TIME[$pkg]}))"
+                LINES_BELOW_OVERALL=$((LINES_BELOW_OVERALL + 1))
             else
                 PKG_STATUS[$pkg]="failed"
                 all_succeeded=false
-                echo -e "       ${RED}[████████████████████]${NC} ${RED}FAILED${NC} ${pkg}"
+                echo -e "    ${RED}[███████████████████]${NC} ${RED}FAILED${NC} ${pkg}"
+                LINES_BELOW_OVERALL=$((LINES_BELOW_OVERALL + 1))
                 break  # Stop on first failure
             fi
         done
@@ -953,6 +1153,13 @@ build_with_recovery() {
         if [ "$all_succeeded" = true ]; then
             local OVERALL_END=$(date +%s)
             local total_elapsed=$((OVERALL_END - OVERALL_START))
+
+            # Update overall bar to 100%
+            local up_count=$((LINES_BELOW_OVERALL + 1))
+            printf "\033[%dA" "$up_count"
+            printf "\r  [${GREEN}████████████████████████████████████████${NC}] 100%% Done!\033[K"
+            printf "\033[%dB" "$up_count"
+
             echo ""
             echo -e "  ${STATUS_OK} All packages built successfully in $(format_duration $total_elapsed)"
             rm -f "$TEMP_OUTPUT" 2>/dev/null
@@ -1018,18 +1225,26 @@ chmod +x "$INSTALL_DIR/horus"
 
 echo -e "${GREEN}${NC} CLI installed to $INSTALL_DIR/horus"
 
-# Install sim2d binary
-if [ -f "target/release/sim2d" ]; then
-    cp target/release/sim2d "$INSTALL_DIR/sim2d"
-    chmod +x "$INSTALL_DIR/sim2d"
-    echo -e "${GREEN}${NC} sim2d binary installed to $INSTALL_DIR/sim2d"
+# Install sim2d binary (only for full profile)
+if [ "${INSTALL_PROFILE:-full}" = "full" ]; then
+    if [ -f "target/release/sim2d" ]; then
+        cp target/release/sim2d "$INSTALL_DIR/sim2d"
+        chmod +x "$INSTALL_DIR/sim2d"
+        echo -e "${GREEN}${NC} sim2d binary installed to $INSTALL_DIR/sim2d"
+    fi
+else
+    echo -e "${YELLOW}[-]${NC} sim2d: Skipped (${INSTALL_PROFILE} profile)"
 fi
 
-# Install sim3d binary
-if [ -f "target/release/sim3d" ]; then
-    cp target/release/sim3d "$INSTALL_DIR/sim3d"
-    chmod +x "$INSTALL_DIR/sim3d"
-    echo -e "${GREEN}${NC} sim3d binary installed to $INSTALL_DIR/sim3d"
+# Install sim3d binary (only for full profile)
+if [ "${INSTALL_PROFILE:-full}" = "full" ]; then
+    if [ -f "target/release/sim3d" ]; then
+        cp target/release/sim3d "$INSTALL_DIR/sim3d"
+        chmod +x "$INSTALL_DIR/sim3d"
+        echo -e "${GREEN}${NC} sim3d binary installed to $INSTALL_DIR/sim3d"
+    fi
+else
+    echo -e "${YELLOW}[-]${NC} sim3d: Skipped (${INSTALL_PROFILE} profile)"
 fi
 
 echo ""
@@ -1330,6 +1545,9 @@ echo ""
 # Save installed version for future updates
 echo "$HORUS_VERSION" > "$VERSION_FILE"
 
+# Save install profile for verify.sh and uninstall.sh
+echo "$INSTALL_PROFILE" > "$HOME/.horus/install_profile"
+
 # Migrate old config files from localhost to production
 AUTH_CONFIG="$HOME/.horus/auth.json"
 if [ -f "$AUTH_CONFIG" ]; then
@@ -1352,16 +1570,20 @@ else
     echo -e "${RED}${NC} CLI binary (horus): Missing"
 fi
 
-if [ -x "$INSTALL_DIR/sim2d" ]; then
-    echo -e "${GREEN}${NC} sim2d binary: OK"
-else
-    echo -e "${YELLOW}[-]${NC} sim2d binary: Not installed"
-fi
+if [ "${INSTALL_PROFILE:-full}" = "full" ]; then
+    if [ -x "$INSTALL_DIR/sim2d" ]; then
+        echo -e "${GREEN}${NC} sim2d binary: OK"
+    else
+        echo -e "${YELLOW}[-]${NC} sim2d binary: Not installed"
+    fi
 
-if [ -x "$INSTALL_DIR/sim3d" ]; then
-    echo -e "${GREEN}${NC} sim3d binary: OK"
+    if [ -x "$INSTALL_DIR/sim3d" ]; then
+        echo -e "${GREEN}${NC} sim3d binary: OK"
+    else
+        echo -e "${YELLOW}[-]${NC} sim3d binary: Not installed"
+    fi
 else
-    echo -e "${YELLOW}[-]${NC} sim3d binary: Not installed"
+    echo -e "${CYAN}[-]${NC} sim2d/sim3d: Skipped (${INSTALL_PROFILE} profile)"
 fi
 
 if [ -d "$HORUS_DIR" ]; then
@@ -1506,4 +1728,29 @@ fi
 
 echo -e "For help: ${CYAN}horus --help${NC}"
 echo ""
+
+# =============================================================================
+# ANONYMOUS TELEMETRY (Privacy-First)
+# =============================================================================
+# Send anonymous installation count. No personal data, no tracking IDs.
+# Only: event type, OS, timestamp. See: https://github.com/softmata/horus-telemetry-api
+# This helps us understand how HORUS is being used and prioritize development.
+# To disable: set HORUS_NO_TELEMETRY=1 before running install.sh
+
+if [ -z "${HORUS_NO_TELEMETRY:-}" ]; then
+    # Send anonymous install count in background (non-blocking)
+    (
+        TELEMETRY_URL="https://telemetry.horus-registry.dev/count"
+        TIMESTAMP=$(date +%s)
+        OS_NAME=$(uname -s)
+
+        # Fire and forget - don't wait for response, don't fail if it doesn't work
+        curl -s -X POST "$TELEMETRY_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"event\":\"install\",\"os\":\"$OS_NAME\",\"timestamp\":$TIMESTAMP}" \
+            --connect-timeout 3 \
+            --max-time 5 \
+            >/dev/null 2>&1 || true
+    ) &
+fi
 

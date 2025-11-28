@@ -333,6 +333,7 @@ impl<
                         );
 
                         if let Some(ref mut ctx) = ctx {
+                            ctx.register_publisher(&self.topic_name, std::any::type_name::<T>());
                             let summary = msg.log_summary();
                             ctx.log_pub_summary(&self.topic_name, &summary, 0);
                         }
@@ -359,6 +360,9 @@ impl<
             Ok(mut sample) => {
                 // Fast path: when ctx is None (benchmarks), bypass logging completely
                 if let Some(ref mut ctx) = ctx {
+                    // Register as publisher for discovery (only stores once per topic)
+                    ctx.register_publisher(&self.topic_name, std::any::type_name::<T>());
+
                     // Logging enabled: get lightweight summary BEFORE moving msg
                     let summary = msg.log_summary();
 
@@ -430,6 +434,7 @@ impl<
                         .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
                     if let Some(ref mut ctx) = ctx {
+                        ctx.register_subscriber(&self.topic_name, std::any::type_name::<T>());
                         let summary = msg.log_summary();
                         ctx.log_sub_summary(&self.topic_name, &summary, 0);
                     }
@@ -455,6 +460,9 @@ impl<
 
                 // Fast path: when ctx is None, bypass logging completely (benchmarks + production)
                 if let Some(ref mut ctx) = ctx {
+                    // Register as subscriber for discovery (only stores once per topic)
+                    ctx.register_subscriber(&self.topic_name, std::any::type_name::<T>());
+
                     // Logging enabled: get summary from zero-copy reference
                     let summary = sample.get_ref().log_summary();
                     ctx.log_sub_summary(&self.topic_name, &summary, ipc_ns);

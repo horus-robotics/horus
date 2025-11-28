@@ -83,9 +83,6 @@ pub fn load_collada(path: &Path, options: &MeshLoadOptions) -> Result<LoadedMesh
                     tracing::warn!("Polylist geometry found but not fully supported - skipping");
                     tracing::warn!("Consider converting COLLADA to glTF for better support");
                 }
-                _ => {
-                    tracing::warn!("Unsupported COLLADA primitive type, skipping");
-                }
             }
         }
     }
@@ -165,6 +162,7 @@ pub fn load_collada(path: &Path, options: &MeshLoadOptions) -> Result<LoadedMesh
         mesh,
         materials,
         texture_paths: Vec::new(),
+        embedded_textures: Vec::new(), // COLLADA doesn't commonly embed textures
         bounds,
         triangle_count: indices.len() / 3,
         vertex_count: positions.len(),

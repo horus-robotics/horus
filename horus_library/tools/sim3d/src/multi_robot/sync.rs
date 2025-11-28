@@ -164,7 +164,7 @@ impl SynchronizationManager {
     pub fn is_barrier_complete(&self, barrier_id: &str) -> bool {
         self.barriers
             .get(barrier_id)
-            .map_or(false, |b| b.is_complete())
+            .is_some_and(|b| b.is_complete())
     }
 
     /// Reset a barrier
@@ -226,16 +226,10 @@ impl SynchronizationManager {
 }
 
 /// Component to mark robots that should be synchronized
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct Synchronized {
     /// Whether this robot is currently waiting
     pub waiting: bool,
-}
-
-impl Default for Synchronized {
-    fn default() -> Self {
-        Self { waiting: false }
-    }
 }
 
 /// System to handle lock-step synchronization

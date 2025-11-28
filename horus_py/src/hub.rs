@@ -100,7 +100,7 @@ impl PyHub {
         // - If endpoint is provided, use it directly
         // - Otherwise, use just the topic name (local shared memory)
         let effective_endpoint = endpoint.clone().unwrap_or_else(|| topic.clone());
-        let is_network = endpoint.as_ref().map_or(false, |e| e.contains('@'));
+        let is_network = endpoint.as_ref().is_some_and(|e| e.contains('@'));
         let cap = capacity.unwrap_or(1024);
 
         // Create the appropriate typed Hub
@@ -177,13 +177,15 @@ impl PyHub {
 
                 // Send via typed Hub<CmdVel>
                 let hub = hub.lock().unwrap();
-                let success = hub.send(cmd.clone(), &mut None).is_ok();
+                let success = hub.send(cmd, &mut None).is_ok();
 
                 // Log if node provided (use LogSummary trait!)
                 if let Some(node_obj) = &node {
                     let ipc_ns = start.elapsed().as_nanos() as u64;
                     if let Ok(info) = node_obj.getattr(py, "info") {
                         if !info.is_none(py) {
+                            // Register publisher for runtime discovery
+                            let _ = info.call_method1(py, "register_publisher", (&self.topic, "CmdVel"));
                             use horus::core::LogSummary;
                             let log_msg = cmd.log_summary();
                             let _ =
@@ -211,13 +213,15 @@ impl PyHub {
 
                 // Send via typed Hub<Pose2D>
                 let hub = hub.lock().unwrap();
-                let success = hub.send(pose.clone(), &mut None).is_ok();
+                let success = hub.send(pose, &mut None).is_ok();
 
                 // Log if node provided (use LogSummary trait!)
                 if let Some(node_obj) = &node {
                     let ipc_ns = start.elapsed().as_nanos() as u64;
                     if let Ok(info) = node_obj.getattr(py, "info") {
                         if !info.is_none(py) {
+                            // Register publisher for runtime discovery
+                            let _ = info.call_method1(py, "register_publisher", (&self.topic, "Pose2D"));
                             use horus::core::LogSummary;
                             let log_msg = pose.log_summary();
                             let _ =
@@ -231,7 +235,7 @@ impl PyHub {
             HubType::Generic(hub) => {
                 // Convert Python object to MessagePack via pythonize
                 let bound = message.bind(py);
-                let value: serde_json::Value = pythonize::depythonize(&bound).map_err(|e| {
+                let value: serde_json::Value = pythonize::depythonize(bound).map_err(|e| {
                     pyo3::exceptions::PyTypeError::new_err(format!(
                         "Failed to convert Python object: {}",
                         e
@@ -248,7 +252,7 @@ impl PyHub {
 
                 // Create GenericMessage (with size validation)
                 let msg = GenericMessage::new(msgpack_bytes)
-                    .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?;
+                    .map_err(pyo3::exceptions::PyValueError::new_err)?;
 
                 // Send via Hub<GenericMessage>
                 let hub = hub.lock().unwrap();
@@ -259,6 +263,8 @@ impl PyHub {
                     let ipc_ns = start.elapsed().as_nanos() as u64;
                     if let Ok(info) = node_obj.getattr(py, "info") {
                         if !info.is_none(py) {
+                            // Register publisher for runtime discovery
+                            let _ = info.call_method1(py, "register_publisher", (&self.topic, "GenericMessage"));
                             use horus::core::LogSummary;
                             let log_msg = msg.log_summary();
                             let _ =
@@ -300,6 +306,8 @@ impl PyHub {
                     if let Some(node_obj) = &node {
                         if let Ok(info) = node_obj.getattr(py, "info") {
                             if !info.is_none(py) {
+                                // Register subscriber for runtime discovery
+                                let _ = info.call_method1(py, "register_subscriber", (&self.topic, "CmdVel"));
                                 use horus::core::LogSummary;
                                 let log_msg = cmd.log_summary();
                                 let _ = info.call_method1(
@@ -329,6 +337,8 @@ impl PyHub {
                     if let Some(node_obj) = &node {
                         if let Ok(info) = node_obj.getattr(py, "info") {
                             if !info.is_none(py) {
+                                // Register subscriber for runtime discovery
+                                let _ = info.call_method1(py, "register_subscriber", (&self.topic, "Pose2D"));
                                 use horus::core::LogSummary;
                                 let log_msg = pose.log_summary();
                                 let _ = info.call_method1(
@@ -359,6 +369,8 @@ impl PyHub {
                     if let Some(node_obj) = &node {
                         if let Ok(info) = node_obj.getattr(py, "info") {
                             if !info.is_none(py) {
+                                // Register subscriber for runtime discovery
+                                let _ = info.call_method1(py, "register_subscriber", (&self.topic, "GenericMessage"));
                                 use horus::core::LogSummary;
                                 let log_msg = msg.log_summary();
                                 let _ = info.call_method1(
@@ -416,10 +428,10 @@ impl PyHub {
         // Generic hubs only - wrap bytes in GenericMessage
         match &self.hub_type {
             HubType::Generic(hub) => {
-                let msg = GenericMessage::new(data)
-                    .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?;
+                let msg =
+                    GenericMessage::new(data).map_err(pyo3::exceptions::PyValueError::new_err)?;
                 let hub = hub.lock().unwrap();
-                let success = hub.send(msg.clone(), &mut None).is_ok();
+                let success = hub.send(msg, &mut None).is_ok();
 
                 // Log if node provided
                 if let Some(node_obj) = &node {
@@ -470,9 +482,9 @@ impl PyHub {
                 } else {
                     GenericMessage::with_metadata(data, _metadata)
                 }
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?;
+                .map_err(pyo3::exceptions::PyValueError::new_err)?;
                 let hub = hub.lock().unwrap();
-                let success = hub.send(msg.clone(), &mut None).is_ok();
+                let success = hub.send(msg, &mut None).is_ok();
 
                 // Log if node provided
                 if let Some(node_obj) = &node {
@@ -519,10 +531,10 @@ impl PyHub {
                     data.extract(py)?
                 };
 
-                let msg = GenericMessage::new(bytes)
-                    .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?;
+                let msg =
+                    GenericMessage::new(bytes).map_err(pyo3::exceptions::PyValueError::new_err)?;
                 let hub = hub.lock().unwrap();
-                let success = hub.send(msg.clone(), &mut None).is_ok();
+                let success = hub.send(msg, &mut None).is_ok();
 
                 // Log if node provided
                 if let Some(node_obj) = &node {

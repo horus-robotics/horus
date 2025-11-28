@@ -340,10 +340,140 @@ impl GizmoUtils {
         gizmos.line(center - Vec3::Z * size, center + Vec3::Z * size, color);
     }
 
-    /// Draw a billboard (always faces camera) - simplified version
+    /// Draw a billboard cross that always faces the camera
+    /// Requires camera position to compute the facing direction
     pub fn draw_billboard_cross(gizmos: &mut Gizmos, position: Vec3, size: f32, color: Color) {
-        // Draw a simple cross marker
+        // Fallback to 3D cross when no camera info available
         Self::draw_cross_3d(gizmos, position, size, color);
+    }
+
+    /// Draw a billboard cross that always faces a specific camera position
+    /// The cross will be oriented so that it always faces the viewer
+    pub fn draw_billboard_cross_facing(
+        gizmos: &mut Gizmos,
+        position: Vec3,
+        camera_position: Vec3,
+        size: f32,
+        color: Color,
+    ) {
+        // Compute direction from billboard to camera
+        let to_camera = (camera_position - position).normalize_or_zero();
+
+        // Handle degenerate case where camera is at the same position
+        if to_camera == Vec3::ZERO {
+            Self::draw_cross_3d(gizmos, position, size, color);
+            return;
+        }
+
+        // Create a local coordinate system facing the camera
+        // The billboard should face the camera (Z axis points to camera)
+        let forward = to_camera;
+
+        // Choose an up vector that's not parallel to forward
+        let world_up = if forward.dot(Vec3::Y).abs() < 0.99 {
+            Vec3::Y
+        } else {
+            Vec3::Z
+        };
+
+        // Build orthonormal basis (right, up, forward)
+        let right = forward.cross(world_up).normalize();
+        let up = right.cross(forward).normalize();
+
+        // Draw the cross in the billboard plane (perpendicular to camera direction)
+        gizmos.line(position - right * size, position + right * size, color);
+        gizmos.line(position - up * size, position + up * size, color);
+    }
+
+    /// Draw a billboard quad that always faces the camera
+    pub fn draw_billboard_quad(
+        gizmos: &mut Gizmos,
+        position: Vec3,
+        camera_position: Vec3,
+        size: Vec2,
+        color: Color,
+    ) {
+        let to_camera = (camera_position - position).normalize_or_zero();
+
+        if to_camera == Vec3::ZERO {
+            // Fallback to XY plane
+            let half_w = size.x * 0.5;
+            let half_h = size.y * 0.5;
+            Self::draw_path(
+                gizmos,
+                &[
+                    position + Vec3::new(-half_w, -half_h, 0.0),
+                    position + Vec3::new(half_w, -half_h, 0.0),
+                    position + Vec3::new(half_w, half_h, 0.0),
+                    position + Vec3::new(-half_w, half_h, 0.0),
+                ],
+                color,
+                true,
+            );
+            return;
+        }
+
+        let forward = to_camera;
+        let world_up = if forward.dot(Vec3::Y).abs() < 0.99 {
+            Vec3::Y
+        } else {
+            Vec3::Z
+        };
+
+        let right = forward.cross(world_up).normalize();
+        let up = right.cross(forward).normalize();
+
+        let half_w = size.x * 0.5;
+        let half_h = size.y * 0.5;
+
+        // Draw quad corners
+        let corners = [
+            position - right * half_w - up * half_h,
+            position + right * half_w - up * half_h,
+            position + right * half_w + up * half_h,
+            position - right * half_w + up * half_h,
+        ];
+
+        Self::draw_path(gizmos, &corners, color, true);
+    }
+
+    /// Draw a billboard circle that always faces the camera
+    pub fn draw_billboard_circle(
+        gizmos: &mut Gizmos,
+        position: Vec3,
+        camera_position: Vec3,
+        radius: f32,
+        color: Color,
+        segments: usize,
+    ) {
+        let to_camera = (camera_position - position).normalize_or_zero();
+
+        if to_camera == Vec3::ZERO {
+            // Fallback to XY plane circle
+            gizmos.circle(Isometry3d::new(position, Quat::IDENTITY), radius, color);
+            return;
+        }
+
+        let forward = to_camera;
+        let world_up = if forward.dot(Vec3::Y).abs() < 0.99 {
+            Vec3::Y
+        } else {
+            Vec3::Z
+        };
+
+        let right = forward.cross(world_up).normalize();
+        let up = right.cross(forward).normalize();
+
+        // Draw circle in the billboard plane
+        for i in 0..segments {
+            let angle1 = (i as f32 / segments as f32) * std::f32::consts::TAU;
+            let angle2 = ((i + 1) as f32 / segments as f32) * std::f32::consts::TAU;
+
+            let p1 = position + right * angle1.cos() * radius + up * angle1.sin() * radius;
+            let p2 = position + right * angle2.cos() * radius + up * angle2.sin() * radius;
+
+            gizmos.line(p1, p2, color);
+        }
     }
 }
 

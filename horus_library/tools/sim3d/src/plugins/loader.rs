@@ -68,6 +68,14 @@ impl PluginLoader {
     }
 
     /// Load multiple plugins from a directory
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because it loads dynamic libraries which can execute arbitrary code.
+    /// The caller must ensure:
+    /// - The directory contains only trusted plugin libraries
+    /// - The plugin libraries are compiled for the current platform
+    /// - The plugins implement the Sim3dPlugin trait correctly
     pub unsafe fn load_plugins_from_directory(
         &mut self,
         dir: &Path,

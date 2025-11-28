@@ -50,7 +50,7 @@ impl TFPanelConfig {
     pub fn is_selected(&self, frame_name: &str) -> bool {
         self.selected_frame
             .as_ref()
-            .map_or(false, |f| f == frame_name)
+            .is_some_and(|f| f == frame_name)
     }
 }
 
@@ -105,7 +105,16 @@ pub fn tf_panel_system(
     mut config: ResMut<TFPanelConfig>,
     publishers: Query<&TFPublisher>,
     time: Res<Time>,
+    #[cfg(feature = "editor")] dock_config: Option<Res<crate::ui::dock::DockConfig>>,
 ) {
+    // Skip if dock mode is enabled (dock renders its own TF tree tab)
+    #[cfg(feature = "editor")]
+    if let Some(dock) = dock_config {
+        if dock.enabled {
+            return;
+        }
+    }
+
     if !config.show_panel {
         return;
     }

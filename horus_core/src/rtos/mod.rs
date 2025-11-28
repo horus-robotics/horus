@@ -52,17 +52,31 @@ impl RTOSPlatform {
             return RTOSPlatform::Zephyr;
         }
 
-        #[cfg(all(feature = "rt-linux", not(any(feature = "freertos", feature = "zephyr"))))]
+        #[cfg(all(
+            feature = "rt-linux",
+            not(any(feature = "freertos", feature = "zephyr"))
+        ))]
         {
             return RTOSPlatform::RTLinux;
         }
 
-        #[cfg(all(feature = "qnx", not(any(feature = "freertos", feature = "zephyr", feature = "rt-linux"))))]
+        #[cfg(all(
+            feature = "qnx",
+            not(any(feature = "freertos", feature = "zephyr", feature = "rt-linux"))
+        ))]
         {
             return RTOSPlatform::QNX;
         }
 
-        #[cfg(all(feature = "bare-metal", not(any(feature = "freertos", feature = "zephyr", feature = "rt-linux", feature = "qnx"))))]
+        #[cfg(all(
+            feature = "bare-metal",
+            not(any(
+                feature = "freertos",
+                feature = "zephyr",
+                feature = "rt-linux",
+                feature = "qnx"
+            ))
+        ))]
         {
             return RTOSPlatform::Bare;
         }

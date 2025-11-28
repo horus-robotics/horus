@@ -93,8 +93,8 @@ impl FormationController {
                 let row = ((self.formation_index as f32 * 8.0 + 1.0).sqrt() - 1.0) / 2.0;
                 let row_i = row.floor() as usize;
                 let col = self.formation_index - (row_i * (row_i + 1)) / 2;
-                let x = col as f32 * 2.0 * self.scale - row as f32 * self.scale;
-                let z = row as f32 * 2.0 * self.scale;
+                let x = col as f32 * 2.0 * self.scale - row * self.scale;
+                let z = row * 2.0 * self.scale;
                 Vec3::new(x, 0.0, -z)
             }
             FormationType::Custom => {

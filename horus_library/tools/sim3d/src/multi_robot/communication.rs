@@ -139,10 +139,7 @@ impl CommunicationManager {
         robot_id: &RobotId,
         message: RobotMessage,
     ) -> Result<(), String> {
-        let queue = self
-            .queues
-            .entry(robot_id.clone())
-            .or_insert_with(VecDeque::new);
+        let queue = self.queues.entry(robot_id.clone()).or_default();
 
         if queue.len() >= self.config.max_queue_size {
             return Err(format!("Message queue full for robot {:?}", robot_id));
@@ -180,7 +177,7 @@ impl CommunicationManager {
 
     /// Register a robot (creates empty queue)
     pub fn register_robot(&mut self, robot_id: RobotId) {
-        self.queues.entry(robot_id).or_insert_with(VecDeque::new);
+        self.queues.entry(robot_id).or_default();
     }
 
     /// Unregister a robot
@@ -209,16 +206,10 @@ pub struct CommunicationStats {
 }
 
 /// Component for robots that can communicate
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct Communicator {
     /// Callback for received messages (optional)
     pub on_message: Option<fn(&RobotMessage)>,
-}
-
-impl Default for Communicator {
-    fn default() -> Self {
-        Self { on_message: None }
-    }
 }
 
 /// System to process communication

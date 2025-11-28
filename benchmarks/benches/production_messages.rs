@@ -9,7 +9,7 @@
 //! - BatteryState (status monitoring)
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use horus::communication::horus::Hub;
+use horus::communication::Hub;
 use horus_library::messages::{
     cmd_vel::CmdVel,
     geometry::Point3,
@@ -110,8 +110,8 @@ fn bench_odometry_latency(c: &mut Criterion) {
             odom.pose.x = 1.5;
             odom.pose.y = 2.3;
             odom.pose.theta = 0.8;
-            odom.twist.linear_x = 0.5;
-            odom.twist.angular_z = 0.1;
+            odom.twist.linear[0] = 0.5;  // linear_x
+            odom.twist.angular[2] = 0.1; // angular_z
             sender.send(black_box(odom), &mut None).unwrap();
             let _ = black_box(receiver.recv(&mut None));
         });
@@ -281,7 +281,7 @@ fn bench_mixed_messages(c: &mut Criterion) {
                 let _ = cmd_receiver.recv(&mut None);
 
                 // IMU at 100Hz
-                if i.is_multiple_of(1) {
+                if i % 1 == 0 {
                     let mut imu = Imu::new();
                     imu.angular_velocity = [0.01, 0.02, 0.03];
                     imu_sender.send(imu, &mut None).unwrap();
@@ -289,7 +289,7 @@ fn bench_mixed_messages(c: &mut Criterion) {
                 }
 
                 // Battery at 1Hz (every 100 iterations at 100Hz)
-                if i.is_multiple_of(100) {
+                if i % 100 == 0 {
                     let battery = BatteryState::new(12.4, 70.0);
                     battery_sender.send(battery, &mut None).unwrap();
                     let _ = battery_receiver.recv(&mut None);

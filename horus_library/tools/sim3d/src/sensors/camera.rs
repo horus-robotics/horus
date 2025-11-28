@@ -106,19 +106,10 @@ impl DepthCamera {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct RGBDCamera {
     pub rgb: RGBCamera,
     pub depth: DepthCamera,
-}
-
-impl Default for RGBDCamera {
-    fn default() -> Self {
-        Self {
-            rgb: RGBCamera::default(),
-            depth: DepthCamera::default(),
-        }
-    }
 }
 
 impl RGBDCamera {

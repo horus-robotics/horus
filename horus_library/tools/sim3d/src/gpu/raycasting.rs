@@ -242,7 +242,7 @@ impl GPURaycastPipeline {
             compute_pass.set_bind_group(0, &bind_group, &[]);
 
             let workgroup_size = 64;
-            let num_workgroups = (num_rays + workgroup_size - 1) / workgroup_size;
+            let num_workgroups = num_rays.div_ceil(workgroup_size);
             compute_pass.dispatch_workgroups(num_workgroups as u32, 1, 1);
         }
 

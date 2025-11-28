@@ -196,23 +196,12 @@ impl TimeKeyframe {
 }
 
 /// Time control recording (for scripted time manipulation)
-#[derive(Resource, Clone, Debug)]
+#[derive(Resource, Clone, Debug, Default)]
 pub struct TimeControlRecording {
     pub keyframes: Vec<TimeKeyframe>,
     pub playing: bool,
     pub current_index: usize,
     pub loop_playback: bool,
-}
-
-impl Default for TimeControlRecording {
-    fn default() -> Self {
-        Self {
-            keyframes: Vec::new(),
-            playing: false,
-            current_index: 0,
-            loop_playback: false,
-        }
-    }
 }
 
 impl TimeControlRecording {

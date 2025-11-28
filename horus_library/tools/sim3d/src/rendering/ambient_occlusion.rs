@@ -1,3 +1,4 @@
+use bevy::pbr::{ScreenSpaceAmbientOcclusion, ScreenSpaceAmbientOcclusionQualityLevel};
 use bevy::prelude::*;
 use bevy::render::extract_resource::ExtractResource;
 
@@ -242,27 +243,108 @@ pub struct AOStats {
     pub render_time_ms: f32,
 }
 
+/// Marker component for cameras that have SSAO applied
+#[derive(Component)]
+struct SSAOApplied;
+
 /// Ambient Occlusion plugin
+#[derive(Default)]
 pub struct AmbientOcclusionPlugin {
     pub config: AmbientOcclusionConfig,
-}
-
-impl Default for AmbientOcclusionPlugin {
-    fn default() -> Self {
-        Self {
-            config: AmbientOcclusionConfig::ssao_medium(),
-        }
-    }
 }
 
 impl Plugin for AmbientOcclusionPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(self.config.clone())
             .insert_resource(AdvancedAOSettings::default())
-            .insert_resource(AOStats::default());
+            .insert_resource(AOStats::default())
+            .add_systems(Update, (
+                apply_ssao_to_cameras_system,
+                update_ssao_config_system,
+            ));
+    }
+}
 
-        // Note: Actual AO rendering would be implemented as a post-processing effect
-        // using Bevy's render graph. This module provides the configuration infrastructure.
+/// System to apply SSAO to cameras based on AmbientOcclusionConfig
+///
+/// Bevy's ScreenSpaceAmbientOcclusion component enables SSAO on a camera.
+/// This system automatically applies it based on our config.
+fn apply_ssao_to_cameras_system(
+    mut commands: Commands,
+    config: Res<AmbientOcclusionConfig>,
+    cameras: Query<Entity, (With<Camera3d>, Without<SSAOApplied>)>,
+) {
+    // Skip if AO is disabled
+    if !config.is_enabled() {
+        return;
+    }
+
+    for camera_entity in cameras.iter() {
+        // Apply SSAO settings based on our config
+        // Note: Bevy 0.15's SSAO API uses ScreenSpaceAmbientOcclusion with
+        // a quality preset. We map our config to the closest preset.
+
+        // Bevy's SSAO quality levels are based on sample count
+        // We use our config to influence the quality
+        let quality = match config.num_samples {
+            0..=8 => ScreenSpaceAmbientOcclusionQualityLevel::Low,
+            9..=24 => ScreenSpaceAmbientOcclusionQualityLevel::Medium,
+            25..=48 => ScreenSpaceAmbientOcclusionQualityLevel::High,
+            _ => ScreenSpaceAmbientOcclusionQualityLevel::Ultra,
+        };
+
+        commands.entity(camera_entity).insert((
+            ScreenSpaceAmbientOcclusion {
+                quality_level: quality,
+                constant_object_thickness: config.radius * 0.5,
+            },
+            SSAOApplied,
+        ));
+
+        tracing::info!(
+            "Applied SSAO to camera with quality {:?} (samples={}, radius={})",
+            quality,
+            config.num_samples,
+            config.radius
+        );
+    }
+}
+
+/// System to update SSAO when config changes
+fn update_ssao_config_system(
+    mut commands: Commands,
+    config: Res<AmbientOcclusionConfig>,
+    mut ssao_cameras: Query<(Entity, &mut ScreenSpaceAmbientOcclusion), With<SSAOApplied>>,
+) {
+    if !config.is_changed() {
+        return;
+    }
+
+    for (entity, mut ssao) in ssao_cameras.iter_mut() {
+        if !config.is_enabled() {
+            // Remove SSAO when disabled
+            commands.entity(entity).remove::<ScreenSpaceAmbientOcclusion>();
+            commands.entity(entity).remove::<SSAOApplied>();
+            tracing::info!("Disabled SSAO on camera");
+            continue;
+        }
+
+        // Update SSAO quality based on config
+        let quality = match config.num_samples {
+            0..=8 => ScreenSpaceAmbientOcclusionQualityLevel::Low,
+            9..=24 => ScreenSpaceAmbientOcclusionQualityLevel::Medium,
+            25..=48 => ScreenSpaceAmbientOcclusionQualityLevel::High,
+            _ => ScreenSpaceAmbientOcclusionQualityLevel::Ultra,
+        };
+
+        ssao.quality_level = quality;
+        ssao.constant_object_thickness = config.radius * 0.5;
+
+        tracing::debug!(
+            "Updated SSAO config: quality={:?}, thickness={}",
+            quality,
+            ssao.constant_object_thickness
+        );
     }
 }
 

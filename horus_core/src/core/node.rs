@@ -407,6 +407,10 @@ pub struct NodeInfo {
     published_topics: HashMap<String, u64>, // topic -> message count
     subscribed_topics: HashMap<String, u64>, // topic -> message count
 
+    // Runtime-discovered pub/sub (for monitor/dashboard)
+    registered_publishers: HashMap<String, String>, // topic_name -> type_name
+    registered_subscribers: HashMap<String, String>, // topic_name -> type_name
+
     // Debugging
     custom_data: HashMap<String, String>,
 
@@ -453,6 +457,8 @@ impl NodeInfo {
             warning_history: Vec::new(),
             published_topics: HashMap::new(),
             subscribed_topics: HashMap::new(),
+            registered_publishers: HashMap::new(),
+            registered_subscribers: HashMap::new(),
             custom_data: HashMap::new(),
             metrics_lock: Arc::new(Mutex::new(())),
             params: RuntimeParams::default(),
@@ -636,6 +642,45 @@ impl NodeInfo {
         } else {
             0
         }
+    }
+
+    // Runtime Pub/Sub Registration (for monitor/dashboard discovery)
+    // Called by Hub::send()/recv() when ctx is provided
+
+    /// Register this node as a publisher to a topic (called automatically by Hub::send)
+    pub fn register_publisher(&mut self, topic_name: &str, type_name: &str) {
+        self.registered_publishers
+            .entry(topic_name.to_string())
+            .or_insert_with(|| type_name.to_string());
+    }
+
+    /// Register this node as a subscriber to a topic (called automatically by Hub::recv)
+    pub fn register_subscriber(&mut self, topic_name: &str, type_name: &str) {
+        self.registered_subscribers
+            .entry(topic_name.to_string())
+            .or_insert_with(|| type_name.to_string());
+    }
+
+    /// Get all registered publishers (topic_name -> type_name)
+    pub fn get_registered_publishers(&self) -> Vec<TopicMetadata> {
+        self.registered_publishers
+            .iter()
+            .map(|(topic, type_name)| TopicMetadata {
+                topic_name: topic.clone(),
+                type_name: type_name.clone(),
+            })
+            .collect()
+    }
+
+    /// Get all registered subscribers (topic_name -> type_name)
+    pub fn get_registered_subscribers(&self) -> Vec<TopicMetadata> {
+        self.registered_subscribers
+            .iter()
+            .map(|(topic, type_name)| TopicMetadata {
+                topic_name: topic.clone(),
+                type_name: type_name.clone(),
+            })
+            .collect()
     }
 
     // Logging Methods - Production-Ready with IPC Timing

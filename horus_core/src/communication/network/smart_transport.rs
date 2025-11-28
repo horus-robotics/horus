@@ -633,6 +633,6 @@ mod tests {
         assert!(min == 0); // Sub-microsecond
 
         let (min, max) = TransportType::IoUring.expected_latency_us();
-        assert!(min >= 3 && max <= 10);
+        assert!(min >= 2 && max <= 10); // IoUring: 2-5µs
     }
 }

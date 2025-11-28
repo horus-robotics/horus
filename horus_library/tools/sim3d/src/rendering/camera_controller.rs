@@ -13,9 +13,9 @@ impl Default for OrbitCamera {
     fn default() -> Self {
         Self {
             focus: Vec3::ZERO,
-            radius: 10.0,
-            yaw: 0.0,
-            pitch: 0.5, // Positive pitch positions camera above, looking down at scene
+            radius: 15.0, // Good distance for overview
+            yaw: 0.5,     // Slight angle to see more of the scene
+            pitch: 0.6,   // Positive pitch = camera ABOVE ground looking down (spherical coords)
         }
     }
 }
@@ -87,11 +87,22 @@ pub fn camera_controller_system(
         }
 
         // Update camera transform
-        let yaw_rot = Quat::from_rotation_y(orbit.yaw);
-        let pitch_rot = Quat::from_rotation_x(orbit.pitch);
-        let rotation = yaw_rot * pitch_rot;
+        // Calculate camera position on a sphere around the focus point
+        // pitch = 0 means camera at same height as focus, positive = above, negative = below
+        // yaw = 0 means camera on +Z axis from focus
+        let cos_pitch = orbit.pitch.cos();
+        let sin_pitch = orbit.pitch.sin();
+        let cos_yaw = orbit.yaw.cos();
+        let sin_yaw = orbit.yaw.sin();
 
-        transform.translation = orbit.focus + rotation * Vec3::new(0.0, 0.0, orbit.radius);
+        // Spherical to Cartesian: camera position relative to focus
+        let offset = Vec3::new(
+            orbit.radius * cos_pitch * sin_yaw, // X
+            orbit.radius * sin_pitch,           // Y (height above focus)
+            orbit.radius * cos_pitch * cos_yaw, // Z
+        );
+
+        transform.translation = orbit.focus + offset;
         transform.look_at(orbit.focus, Vec3::Y);
     }
 

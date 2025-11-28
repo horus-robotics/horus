@@ -40,10 +40,10 @@ fn bench_local_shm(c: &mut Criterion) {
         let mut counter = 0u64;
         b.iter(|| {
             let msg = TestMessage::new(counter);
-            hub.send(black_box(msg), None).unwrap();
+            hub.send(black_box(msg), &mut None).unwrap();
             counter += 1;
 
-            let received = hub.recv(None).unwrap();
+            let received = hub.recv(&mut None).unwrap();
             black_box(received);
         });
     });
@@ -169,8 +169,8 @@ fn bench_message_sizes(c: &mut Criterion) {
                 let msg = VarMessage {
                     data: vec![0u8; size],
                 };
-                hub.send(msg, None).unwrap();
-                let received = hub.recv(None).unwrap();
+                hub.send(msg, &mut None).unwrap();
+                let received = hub.recv(&mut None).unwrap();
                 black_box(received);
             });
         });

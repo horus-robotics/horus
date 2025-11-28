@@ -115,7 +115,7 @@ pub fn load_obj(path: &Path, options: &MeshLoadOptions) -> Result<LoadedMesh> {
     let bounds = calculate_aabb(&positions);
 
     // Extract material information
-    let material_info = extract_materials(path, &model, materials.as_ref().ok());
+    let material_info = extract_materials(path, model, materials.as_ref().ok());
 
     // Get texture paths
     let texture_paths = material_info
@@ -132,6 +132,7 @@ pub fn load_obj(path: &Path, options: &MeshLoadOptions) -> Result<LoadedMesh> {
         mesh,
         materials: material_info,
         texture_paths,
+        embedded_textures: Vec::new(), // OBJ format doesn't support embedded textures
         bounds,
         triangle_count: mesh_data.indices.len() / 3,
         vertex_count: positions.len(),

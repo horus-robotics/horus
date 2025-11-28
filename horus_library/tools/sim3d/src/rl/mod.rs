@@ -182,21 +182,11 @@ pub struct StepResult {
 }
 
 /// Resource to manage RL tasks
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct RLTaskManager {
     pub current_task: Option<Box<dyn RLTask>>,
     pub episode_count: usize,
     pub total_steps: usize,
-}
-
-impl Default for RLTaskManager {
-    fn default() -> Self {
-        Self {
-            current_task: None,
-            episode_count: 0,
-            total_steps: 0,
-        }
-    }
 }
 
 impl RLTaskManager {
