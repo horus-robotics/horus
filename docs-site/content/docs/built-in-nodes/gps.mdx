@@ -73,9 +73,9 @@ gps.set_update_rate(1);  // 1 Hz (default for most modules)
 ### Reading GPS Data
 
 ```rust
-let hub = Hub::<GpsData>::new("gps/data")?;
+let hub = Hub::<GpsData>::new("gps.data")?;
 
-if let Some(data) = hub.recv(None) {
+if let Some(data) = hub.recv(&mut None) {
     if data.fix_quality > 0 {
         println!("Lat: {:.6}°, Lon: {:.6}°, Alt: {:.1}m",
             data.latitude, data.longitude, data.altitude);
@@ -95,7 +95,7 @@ let home_lat = 37.7749;
 let home_lon = -122.4194;
 let radius_m = 100.0;
 
-if let Some(data) = hub.recv(None) {
+if let Some(data) = hub.recv(&mut None) {
     let distance = calculate_distance(
         data.latitude, data.longitude,
         home_lat, home_lon

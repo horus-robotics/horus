@@ -298,9 +298,10 @@ pub struct HubMetrics {
 ```rust
 let hub: Hub<f32> = Hub::new("velocity")?;
 
-// Send some messages
-hub.send(1.0, None).ok();
-hub.send(2.0, None).ok();
+// Send some messages (requires mutable ctx)
+let mut ctx: Option<&mut NodeInfo> = None;
+hub.send(1.0, &mut ctx).ok();
+hub.send(2.0, &mut ctx).ok();
 
 // Get metrics
 let metrics = hub.get_metrics();
@@ -321,6 +322,8 @@ struct PubNode {
 }
 
 impl Node for PubNode {
+    fn name(&self) -> &'static str { "PubNode" }
+
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         self.data_pub.send(42.0, &mut ctx).ok();
     }
@@ -332,11 +335,11 @@ struct SubNode {
 }
 
 impl Node for SubNode {
+    fn name(&self) -> &'static str { "SubNode" }
+
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         if let Some(data) = self.data_sub.recv(&mut ctx) {
-            if let Some(ref mut c) = ctx {
-                c.log_info(&format!("Got: {}", data));
-            }
+            ctx.log_info(&format!("Got: {}", data));
         }
     }
 }
@@ -388,6 +391,8 @@ struct Aggregator {
 }
 
 impl Node for Aggregator {
+    fn name(&self) -> &'static str { "Aggregator" }
+
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Receives from any publisher on this topic
         if let Some(reading) = self.reading_sub.recv(&mut ctx) {
@@ -428,8 +433,8 @@ let hub = Hub::new("sensors.lidar");
 let hub = Hub::new("robot.cmd_vel");
 
 // WRONG - Do NOT use slashes
-let hub = Hub::new("sensors/lidar");   // Will cause errors!
-let hub = Hub::new("robot/cmd_vel");   // Will cause errors!
+let hub = Hub::new("sensors.lidar");   // Will cause errors!
+let hub = Hub::new("robot.cmd_vel");   // Will cause errors!
 ```
 
 **Why dots instead of slashes?**
@@ -438,7 +443,7 @@ HORUS uses shared memory files in `/dev/shm` for ultra-low latency communication
 
 ```
 Topic: "sensors.lidar"  →  /dev/shm/horus_default_sensors.lidar
-Topic: "sensors/lidar"  →  /dev/shm/horus_default_sensors/lidar  (ERROR!)
+Topic: "sensors.lidar"  →  /dev/shm/horus_default_sensors/lidar  (ERROR!)
 ```
 
 When you use a slash in the topic name, the system interprets it as a subdirectory path. Since that directory doesn't exist, you get a **"No such file or directory"** error.

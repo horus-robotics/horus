@@ -61,9 +61,9 @@ estop.set_watchdog_timeout(1000);  // 1 second timeout
 
 ```rust
 // Monitor e-stop state
-let hub = Hub::<EstopState>::new("estop/state")?;
+let hub = Hub::<EstopState>::new("estop.state")?;
 
-if let Some(state) = hub.recv(None) {
+if let Some(state) = hub.recv(&mut None) {
     if state.triggered {
         println!("E-STOP TRIGGERED! Reason: {:?}", state.reason);
         // All motors stopped
@@ -71,11 +71,11 @@ if let Some(state) = hub.recv(None) {
 }
 
 // Software e-stop trigger
-let cmd_hub = Hub::<EstopCommand>::new("estop/command")?;
-cmd_hub.send(EstopCommand::Trigger, None)?;
+let cmd_hub = Hub::<EstopCommand>::new("estop.command")?;
+cmd_hub.send(EstopCommand::Trigger, &mut None).ok();
 
 // Reset e-stop
-cmd_hub.send(EstopCommand::Reset, None)?;
+cmd_hub.send(EstopCommand::Reset, &mut None).ok();
 ```
 
 ## See Also

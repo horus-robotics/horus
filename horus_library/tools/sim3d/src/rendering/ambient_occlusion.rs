@@ -258,10 +258,21 @@ impl Plugin for AmbientOcclusionPlugin {
         app.insert_resource(self.config.clone())
             .insert_resource(AdvancedAOSettings::default())
             .insert_resource(AOStats::default())
-            .add_systems(Update, (
-                apply_ssao_to_cameras_system,
-                update_ssao_config_system,
-            ));
+            .add_systems(
+                Update,
+                (apply_ssao_to_cameras_system, update_ssao_config_system),
+            );
+
+        // Note: SSAO requires MSAA to be disabled (Msaa::Off)
+        // In Bevy 0.15, MSAA is configured at app initialization via DefaultPlugins
+        // or as a component on camera entities. If you see SSAO/MSAA errors,
+        // configure MSAA::Off when building the app.
+        if self.config.is_enabled() {
+            tracing::info!(
+                "SSAO enabled with technique {:?}. Note: SSAO requires MSAA to be disabled.",
+                self.config.technique
+            );
+        }
     }
 }
 
@@ -293,11 +304,14 @@ fn apply_ssao_to_cameras_system(
             _ => ScreenSpaceAmbientOcclusionQualityLevel::Ultra,
         };
 
+        // Add SSAO with Msaa::Off - SSAO requires MSAA to be disabled
+        // In Bevy 0.15, Msaa is a per-camera component, not a global resource
         commands.entity(camera_entity).insert((
             ScreenSpaceAmbientOcclusion {
                 quality_level: quality,
                 constant_object_thickness: config.radius * 0.5,
             },
+            Msaa::Off,
             SSAOApplied,
         ));
 
@@ -323,7 +337,9 @@ fn update_ssao_config_system(
     for (entity, mut ssao) in ssao_cameras.iter_mut() {
         if !config.is_enabled() {
             // Remove SSAO when disabled
-            commands.entity(entity).remove::<ScreenSpaceAmbientOcclusion>();
+            commands
+                .entity(entity)
+                .remove::<ScreenSpaceAmbientOcclusion>();
             commands.entity(entity).remove::<SSAOApplied>();
             tracing::info!("Disabled SSAO on camera");
             continue;

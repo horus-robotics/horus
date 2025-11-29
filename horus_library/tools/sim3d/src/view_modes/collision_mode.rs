@@ -136,12 +136,7 @@ pub fn collision_shapes_visualization_system(
 
         // Draw AABB (Axis-Aligned Bounding Box) from physics world
         if collision_viz.show_aabb {
-            draw_collider_aabb(
-                &mut gizmos,
-                &physics_world,
-                collider_component,
-                transform,
-            );
+            draw_collider_aabb(&mut gizmos, &physics_world, collider_component, transform);
         }
 
         // Show sleeping indicator
@@ -196,11 +191,7 @@ fn draw_collider_shape(
                 ShapeType::Ball => {
                     // Sphere shape
                     if let Some(ball) = shape.as_ball() {
-                        gizmos.sphere(
-                            Isometry3d::new(world_pos, world_rot),
-                            ball.radius,
-                            color,
-                        );
+                        gizmos.sphere(Isometry3d::new(world_pos, world_rot), ball.radius, color);
                     }
                 }
                 ShapeType::Cuboid => {
@@ -226,7 +217,14 @@ fn draw_collider_shape(
                         let radius = capsule.radius;
 
                         // Draw cylinder body (approximated)
-                        draw_cylinder_gizmo(gizmos, world_pos, world_rot, half_height, radius, color);
+                        draw_cylinder_gizmo(
+                            gizmos,
+                            world_pos,
+                            world_rot,
+                            half_height,
+                            radius,
+                            color,
+                        );
 
                         // Draw sphere caps
                         let up = world_rot * Vec3::Y;
@@ -247,7 +245,14 @@ fn draw_collider_shape(
                     if let Some(cylinder) = shape.as_cylinder() {
                         let half_height = cylinder.half_height;
                         let radius = cylinder.radius;
-                        draw_cylinder_gizmo(gizmos, world_pos, world_rot, half_height, radius, color);
+                        draw_cylinder_gizmo(
+                            gizmos,
+                            world_pos,
+                            world_rot,
+                            half_height,
+                            radius,
+                            color,
+                        );
                     }
                 }
                 ShapeType::TriMesh => {

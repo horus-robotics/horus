@@ -145,7 +145,7 @@ struct TempSensor {
 impl TempSensor {
     fn new() -> HorusResult<Self> {
         Ok(Self {
-            publisher: Hub::new("sensors/temperature")?,
+            publisher: Hub::new("sensors.temperature")?,
             reading: 20.0,
         })
     }
@@ -177,8 +177,8 @@ struct AlertMonitor {
 impl AlertMonitor {
     fn new() -> HorusResult<Self> {
         Ok(Self {
-            subscriber: Hub::new("sensors/temperature")?,
-            alert_pub: Hub::new("alerts/temperature")?,
+            subscriber: Hub::new("sensors.temperature")?,
+            alert_pub: Hub::new("alerts.temperature")?,
             threshold: 30.0,
         })
     }

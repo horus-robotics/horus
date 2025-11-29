@@ -1113,7 +1113,10 @@ where
 
                         if unlikely(ctx.is_some()) {
                             if let Some(ref mut ctx) = ctx {
-                                ctx.register_publisher(&self.topic_name, std::any::type_name::<T>());
+                                ctx.register_publisher(
+                                    &self.topic_name,
+                                    std::any::type_name::<T>(),
+                                );
                                 ctx.log_pub(&self.topic_name, &msg, 0);
                             }
                         }

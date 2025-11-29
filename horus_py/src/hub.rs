@@ -185,7 +185,11 @@ impl PyHub {
                     if let Ok(info) = node_obj.getattr(py, "info") {
                         if !info.is_none(py) {
                             // Register publisher for runtime discovery
-                            let _ = info.call_method1(py, "register_publisher", (&self.topic, "CmdVel"));
+                            let _ = info.call_method1(
+                                py,
+                                "register_publisher",
+                                (&self.topic, "CmdVel"),
+                            );
                             use horus::core::LogSummary;
                             let log_msg = cmd.log_summary();
                             let _ =
@@ -221,7 +225,11 @@ impl PyHub {
                     if let Ok(info) = node_obj.getattr(py, "info") {
                         if !info.is_none(py) {
                             // Register publisher for runtime discovery
-                            let _ = info.call_method1(py, "register_publisher", (&self.topic, "Pose2D"));
+                            let _ = info.call_method1(
+                                py,
+                                "register_publisher",
+                                (&self.topic, "Pose2D"),
+                            );
                             use horus::core::LogSummary;
                             let log_msg = pose.log_summary();
                             let _ =
@@ -264,7 +272,11 @@ impl PyHub {
                     if let Ok(info) = node_obj.getattr(py, "info") {
                         if !info.is_none(py) {
                             // Register publisher for runtime discovery
-                            let _ = info.call_method1(py, "register_publisher", (&self.topic, "GenericMessage"));
+                            let _ = info.call_method1(
+                                py,
+                                "register_publisher",
+                                (&self.topic, "GenericMessage"),
+                            );
                             use horus::core::LogSummary;
                             let log_msg = msg.log_summary();
                             let _ =
@@ -307,7 +319,11 @@ impl PyHub {
                         if let Ok(info) = node_obj.getattr(py, "info") {
                             if !info.is_none(py) {
                                 // Register subscriber for runtime discovery
-                                let _ = info.call_method1(py, "register_subscriber", (&self.topic, "CmdVel"));
+                                let _ = info.call_method1(
+                                    py,
+                                    "register_subscriber",
+                                    (&self.topic, "CmdVel"),
+                                );
                                 use horus::core::LogSummary;
                                 let log_msg = cmd.log_summary();
                                 let _ = info.call_method1(
@@ -338,7 +354,11 @@ impl PyHub {
                         if let Ok(info) = node_obj.getattr(py, "info") {
                             if !info.is_none(py) {
                                 // Register subscriber for runtime discovery
-                                let _ = info.call_method1(py, "register_subscriber", (&self.topic, "Pose2D"));
+                                let _ = info.call_method1(
+                                    py,
+                                    "register_subscriber",
+                                    (&self.topic, "Pose2D"),
+                                );
                                 use horus::core::LogSummary;
                                 let log_msg = pose.log_summary();
                                 let _ = info.call_method1(
@@ -370,7 +390,11 @@ impl PyHub {
                         if let Ok(info) = node_obj.getattr(py, "info") {
                             if !info.is_none(py) {
                                 // Register subscriber for runtime discovery
-                                let _ = info.call_method1(py, "register_subscriber", (&self.topic, "GenericMessage"));
+                                let _ = info.call_method1(
+                                    py,
+                                    "register_subscriber",
+                                    (&self.topic, "GenericMessage"),
+                                );
                                 use horus::core::LogSummary;
                                 let log_msg = msg.log_summary();
                                 let _ = info.call_method1(

@@ -392,13 +392,17 @@ impl Maze {
 
             if root1 != root2 {
                 // Union by rank
-                if rank[root1] < rank[root2] {
-                    parent[root1] = root2;
-                } else if rank[root1] > rank[root2] {
-                    parent[root2] = root1;
-                } else {
-                    parent[root2] = root1;
-                    rank[root1] += 1;
+                match rank[root1].cmp(&rank[root2]) {
+                    std::cmp::Ordering::Less => {
+                        parent[root1] = root2;
+                    }
+                    std::cmp::Ordering::Greater => {
+                        parent[root2] = root1;
+                    }
+                    std::cmp::Ordering::Equal => {
+                        parent[root2] = root1;
+                        rank[root1] += 1;
+                    }
                 }
 
                 // Remove wall between the two cells

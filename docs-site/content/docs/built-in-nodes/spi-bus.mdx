@@ -138,12 +138,12 @@ msg.tx_data[2] = 0x03;
 msg.tx_data[3] = 0x04;
 
 // Send request
-let hub = Hub::<SpiMessage>::new("spi/request")?;
-hub.send(msg, None)?;
+let hub = Hub::<SpiMessage>::new("spi.request")?;
+hub.send(msg, &mut None).ok();
 
 // Receive response
-let resp_hub = Hub::<SpiMessage>::new("spi/response")?;
-if let Some(response) = resp_hub.recv(None) {
+let resp_hub = Hub::<SpiMessage>::new("spi.response")?;
+if let Some(response) = resp_hub.recv(&mut None) {
     if response.success {
         println!("RX: {:?}", &response.rx_data[..response.length as usize]);
     }
@@ -155,7 +155,7 @@ if let Some(response) = resp_hub.recv(None) {
 ```rust
 // Read 4 bytes from device on CS0
 let msg = SpiMessage::read(0, 4);
-hub.send(msg, None)?;
+hub.send(msg, &mut None).ok();
 ```
 
 ### Write to Device
@@ -166,7 +166,7 @@ let mut msg = SpiMessage::write(1, 3);
 msg.tx_data[0] = 0xAA;
 msg.tx_data[1] = 0xBB;
 msg.tx_data[2] = 0xCC;
-hub.send(msg, None)?;
+hub.send(msg, &mut None).ok();
 ```
 
 ## Common Devices
@@ -180,9 +180,9 @@ msg.tx_data[0] = 0x01; // Start bit
 msg.tx_data[1] = 0x80; // Single-ended, channel 0
 msg.tx_data[2] = 0x00;
 
-hub.send(msg, None)?;
+hub.send(msg, &mut None).ok();
 
-if let Some(resp) = resp_hub.recv(None) {
+if let Some(resp) = resp_hub.recv(&mut None) {
     let value = ((resp.rx_data[1] as u16 & 0x03) << 8) | (resp.rx_data[2] as u16);
     println!("ADC: {}", value); // 0-1023
 }
@@ -199,7 +199,7 @@ let mut msg = SpiMessage::new(0, 6);
 msg.tx_data[0] = 0x40; // CMD0
 msg.tx_data[1..5].fill(0x00);
 msg.tx_data[5] = 0x95; // CRC
-hub.send(msg, None)?;
+hub.send(msg, &mut None).ok();
 ```
 
 ### OLED Display (SSD1306)
@@ -209,13 +209,13 @@ hub.send(msg, None)?;
 let mut msg = SpiMessage::new(0, 2);
 msg.tx_data[0] = 0x00; // Command mode
 msg.tx_data[1] = 0xAF; // Display ON
-hub.send(msg, None)?;
+hub.send(msg, &mut None).ok();
 
 // Send data
 let mut msg = SpiMessage::new(0, 2);
 msg.tx_data[0] = 0x40; // Data mode
 msg.tx_data[1] = 0xFF; // Pixel data
-hub.send(msg, None)?;
+hub.send(msg, &mut None).ok();
 ```
 
 ## Message Format

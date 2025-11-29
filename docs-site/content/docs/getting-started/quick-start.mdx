@@ -103,9 +103,7 @@ impl Node for TemperatureMonitor {
     fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
         // Check for new temperature readings
         if let Some(temp) = self.subscriber.recv(&mut ctx) {
-            if let Some(ref mut c) = ctx {
-                c.log_info(&format!("Temperature: {:.1}°C", temp));
-            }
+            println!("Temperature: {:.1}°C", temp);
         }
     }
 }
@@ -194,7 +192,7 @@ impl Node for TemperatureSensor {
     }
 
     // This runs repeatedly
-    fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    fn tick(&mut self, ctx: Option<&mut NodeInfo>) {
         // Your logic here
     }
 }
@@ -243,7 +241,7 @@ horus run sensor.rs
 horus run monitor.rs
 ```
 
-Both share the same session [ARROW] communication works! ✅
+Both share the same session → communication works!
 
 ### Option 2: Use Glob Pattern
 
@@ -337,7 +335,7 @@ Now that you've built your first app, learn the details:
 - **[Dashboard](/development/dashboard)** - Monitor your application visually
 
 **See More Examples:**
-- **[Examples](/examples)** - Real applications you can run
+- **[Examples](/basic-examples)** - Real applications you can run
 - **[Multi-Language](/multi-language/multi-language)** - Use Python instead
 
 ## Common Questions
@@ -420,7 +418,7 @@ Sending and receiving messages
 Your next steps:
 
 1. **[Use the node! macro](/core-concepts/node-macro)** to eliminate boilerplate
-2. **[Run the examples](/examples)** to see real applications
+2. **[Run the examples](/basic-examples)** to see real applications
 3. **[Open the dashboard](/development/dashboard)** to monitor your system
 
 **Having issues?** See the **[Troubleshooting Guide](/troubleshooting)** for help with common problems.

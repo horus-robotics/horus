@@ -13,9 +13,9 @@ use bevy::prelude::*;
 pub use cloth::Cloth;
 #[allow(unused_imports)]
 pub use material::SoftBodyMaterial;
-pub use particle::ParticleSystem;
 #[allow(unused_imports)]
 pub use particle::Particle;
+pub use particle::ParticleSystem;
 #[allow(unused_imports)]
 pub use rope::Rope;
 #[allow(unused_imports)]

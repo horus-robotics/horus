@@ -351,8 +351,87 @@ impl ArticulatedRobotConfig {
             }
         }
 
-        // Check for cycles in the kinematic chain (simplified check)
-        // A proper implementation would use topological sort
+        // Check that each link has at most one parent joint
+        let mut child_count: HashMap<&str, usize> = HashMap::new();
+        for joint in &self.joints {
+            *child_count.entry(joint.child.as_str()).or_insert(0) += 1;
+        }
+        for (link_name, count) in &child_count {
+            if *count > 1 {
+                return Err(format!(
+                    "Link '{}' has {} parent joints (must have at most 1 for a valid tree)",
+                    link_name, count
+                ));
+            }
+        }
+
+        // Check for cycles in the kinematic chain using DFS
+        // Build adjacency list: parent -> [children]
+        let mut children: HashMap<&str, Vec<&str>> = HashMap::new();
+        for joint in &self.joints {
+            children
+                .entry(joint.parent.as_str())
+                .or_default()
+                .push(&joint.child);
+        }
+
+        // DFS to detect cycles
+        let mut visited: std::collections::HashSet<&str> = std::collections::HashSet::new();
+        let mut in_stack: std::collections::HashSet<&str> = std::collections::HashSet::new();
+
+        fn dfs<'a>(
+            node: &'a str,
+            children: &HashMap<&str, Vec<&'a str>>,
+            visited: &mut std::collections::HashSet<&'a str>,
+            in_stack: &mut std::collections::HashSet<&'a str>,
+        ) -> Option<String> {
+            if in_stack.contains(node) {
+                return Some(format!("Cycle detected in kinematic chain involving link '{}'", node));
+            }
+            if visited.contains(node) {
+                return None;
+            }
+
+            visited.insert(node);
+            in_stack.insert(node);
+
+            if let Some(child_list) = children.get(node) {
+                for child in child_list {
+                    if let Some(err) = dfs(child, children, visited, in_stack) {
+                        return Some(err);
+                    }
+                }
+            }
+
+            in_stack.remove(node);
+            None
+        }
+
+        // Start DFS from "world" and all root links
+        if let Some(err) = dfs("world", &children, &mut visited, &mut in_stack) {
+            return Err(err);
+        }
+
+        // Also check from any links that might not be reachable from world
+        for link in &self.links {
+            if let Some(err) = dfs(&link.name, &children, &mut visited, &mut in_stack) {
+                return Err(err);
+            }
+        }
+
+        // Check that all non-root links are connected (reachable from world or a root)
+        let child_set: std::collections::HashSet<&str> =
+            self.joints.iter().map(|j| j.child.as_str()).collect();
+        let root_links: Vec<&str> = self
+            .links
+            .iter()
+            .map(|l| l.name.as_str())
+            .filter(|name| !child_set.contains(name))
+            .collect();
+
+        if root_links.is_empty() && !self.links.is_empty() {
+            return Err("No root link found (all links are children of some joint)".to_string());
+        }
 
         Ok(())
     }
@@ -502,6 +581,28 @@ pub struct JointCommand {
     /// Control mode
     #[serde(default)]
     pub mode: JointControlMode,
+}
+
+// Implement LogSummary for JointState (required by Hub send/recv)
+impl horus_core::core::LogSummary for JointState {
+    fn log_summary(&self) -> String {
+        format!(
+            "JointState({} joints: {:?})",
+            self.name.len(),
+            self.name
+        )
+    }
+}
+
+// Implement LogSummary for JointCommand (required by Hub send/recv)
+impl horus_core::core::LogSummary for JointCommand {
+    fn log_summary(&self) -> String {
+        format!(
+            "JointCommand(mode={:?}, joints={:?})",
+            self.mode,
+            if self.name.is_empty() { "all".to_string() } else { format!("{:?}", self.name) }
+        )
+    }
 }
 
 // ============================================================================
@@ -974,14 +1075,193 @@ pub fn joint_state_update_system(
     }
 }
 
-/// System to apply joint commands
+/// System to apply joint commands received from HORUS
+///
+/// This system reads JointCommand messages from HORUS hubs and applies
+/// motor targets to the physics joints. Supports position, velocity, and effort control modes.
 pub fn joint_command_system(
-    _physics_world: ResMut<crate::PhysicsWorld>,
-    _robots: Query<&ArticulatedRobot>,
-    // Joint commands would come from HORUS communication
-    // For now, this is a placeholder for the command handling
+    mut physics_world: ResMut<crate::PhysicsWorld>,
+    mut robots: Query<&mut ArticulatedRobot>,
+    horus_comm: Option<Res<crate::HorusComm>>,
 ) {
-    // This will be connected to HORUS communication in Phase 2
+    let Some(horus) = horus_comm else {
+        return;
+    };
+
+    // Process joint commands for each articulated robot
+    for mut robot in robots.iter_mut() {
+        // Get the HORUS hub for this robot
+        let Some(hubs) = horus.articulated_robot_hubs.get(&robot.name) else {
+            continue;
+        };
+
+        // Try to receive a joint command (pass None for NodeInfo context)
+        if let Some(cmd) = hubs.joint_cmd_sub.recv(&mut None) {
+            apply_joint_command(&mut physics_world, &mut robot, &cmd);
+        }
+    }
+}
+
+/// Apply a joint command to a robot
+fn apply_joint_command(
+    physics_world: &mut crate::PhysicsWorld,
+    robot: &mut ArticulatedRobot,
+    cmd: &JointCommand,
+) {
+    // If no specific joints named, apply to all joints in order
+    let target_joints: Vec<String> = if cmd.name.is_empty() {
+        robot.config.joints.iter().map(|j| j.name.clone()).collect()
+    } else {
+        cmd.name.clone()
+    };
+
+    for (idx, joint_name) in target_joints.iter().enumerate() {
+        // Get the joint handle
+        let Some(&joint_handle) = robot.joint_handles.get(joint_name) else {
+            continue;
+        };
+
+        // Get the joint from physics world
+        let Some(joint) = physics_world.impulse_joint_set.get_mut(joint_handle) else {
+            continue;
+        };
+
+        // Find the joint configuration to get motor settings
+        let joint_cfg = robot.config.joints.iter().find(|j| &j.name == joint_name);
+
+        match cmd.mode {
+            JointControlMode::Position => {
+                if idx < cmd.position.len() {
+                    let target_pos = cmd.position[idx];
+
+                    // Get motor parameters from config or use defaults
+                    let (stiffness, damping, max_force) = joint_cfg
+                        .and_then(|cfg| match &cfg.joint_type {
+                            Joint2DType::Revolute { motor, .. } => motor.as_ref(),
+                            Joint2DType::Prismatic { motor, .. } => motor.as_ref(),
+                            Joint2DType::Fixed => None,
+                        })
+                        .map(|m| (m.stiffness, m.damping, m.max_force))
+                        .unwrap_or((100.0, 10.0, 50.0));
+
+                    // Apply motor position target using Rapier's motor API
+                    joint.data.set_motor_position(JointAxis::AngX, target_pos, stiffness, damping);
+                    joint.data.set_motor_max_force(JointAxis::AngX, max_force);
+
+                    // Update tracked position
+                    robot.joint_positions.insert(joint_name.clone(), target_pos);
+                }
+            }
+            JointControlMode::Velocity => {
+                if idx < cmd.velocity.len() {
+                    let target_vel = cmd.velocity[idx];
+
+                    // Get motor parameters
+                    let (damping, max_force) = joint_cfg
+                        .and_then(|cfg| match &cfg.joint_type {
+                            Joint2DType::Revolute { motor, .. } => motor.as_ref(),
+                            Joint2DType::Prismatic { motor, .. } => motor.as_ref(),
+                            Joint2DType::Fixed => None,
+                        })
+                        .map(|m| (m.damping, m.max_force))
+                        .unwrap_or((10.0, 50.0));
+
+                    // Apply motor velocity target
+                    joint.data.set_motor_velocity(JointAxis::AngX, target_vel, damping);
+                    joint.data.set_motor_max_force(JointAxis::AngX, max_force);
+
+                    // Update tracked velocity
+                    robot.joint_velocities.insert(joint_name.clone(), target_vel);
+                }
+            }
+            JointControlMode::Effort => {
+                if idx < cmd.effort.len() {
+                    let effort = cmd.effort[idx];
+
+                    // For effort mode, we use a very high stiffness with zero damping
+                    // to directly apply the torque/force
+                    joint.data.set_motor_velocity(JointAxis::AngX, effort.signum() * 1000.0, 0.0);
+                    joint.data.set_motor_max_force(JointAxis::AngX, effort.abs());
+                }
+            }
+        }
+    }
+}
+
+/// System to publish joint states to HORUS
+///
+/// This system reads current joint positions and velocities from the physics
+/// simulation and publishes them as JointState messages.
+pub fn joint_state_publish_system(
+    physics_world: Res<crate::PhysicsWorld>,
+    robots: Query<&ArticulatedRobot>,
+    horus_comm: Option<Res<crate::HorusComm>>,
+) {
+    let Some(horus) = horus_comm else {
+        return;
+    };
+
+    for robot in robots.iter() {
+        // Get the HORUS hub for this robot
+        let Some(hubs) = horus.articulated_robot_hubs.get(&robot.name) else {
+            continue;
+        };
+
+        // Collect joint states
+        let mut names = Vec::new();
+        let mut positions = Vec::new();
+        let mut velocities = Vec::new();
+        let mut efforts = Vec::new();
+
+        for joint_cfg in &robot.config.joints {
+            // Skip fixed joints - they don't have state
+            if matches!(joint_cfg.joint_type, Joint2DType::Fixed) {
+                continue;
+            }
+
+            let Some(&joint_handle) = robot.joint_handles.get(&joint_cfg.name) else {
+                continue;
+            };
+
+            // Get current joint state from physics
+            if let Some(joint) = physics_world.impulse_joint_set.get(joint_handle) {
+                // Get the bodies to compute relative angle/position
+                let body1 = joint.body1;
+                let body2 = joint.body2;
+
+                if let (Some(rb1), Some(rb2)) = (
+                    physics_world.rigid_body_set.get(body1),
+                    physics_world.rigid_body_set.get(body2),
+                ) {
+                    // For revolute joints, compute relative angle
+                    let angle1 = rb1.rotation().angle();
+                    let angle2 = rb2.rotation().angle();
+                    let relative_angle = angle2 - angle1;
+
+                    // Compute relative angular velocity
+                    let angvel1 = rb1.angvel();
+                    let angvel2 = rb2.angvel();
+                    let relative_angvel = angvel2 - angvel1;
+
+                    names.push(joint_cfg.name.clone());
+                    positions.push(relative_angle);
+                    velocities.push(relative_angvel);
+                    efforts.push(0.0); // Effort not easily computed without force sensors
+                }
+            }
+        }
+
+        // Publish the joint state (pass None for NodeInfo context)
+        if !names.is_empty() {
+            let state = JointState {
+                name: names,
+                position: positions,
+                velocity: velocities,
+                effort: efforts,
+            };
+            let _ = hubs.joint_state_pub.send(state, &mut None);
+        }
+    }
 }
 
 // ============================================================================

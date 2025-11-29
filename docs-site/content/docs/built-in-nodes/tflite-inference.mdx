@@ -160,7 +160,7 @@ let detector = TFLiteInferenceNode::new(
 ```rust
 let predictions_hub = Hub::<Predictions>::new("ml.predictions")?;
 
-if let Some(preds) = predictions_hub.recv(None) {
+if let Some(preds) = predictions_hub.recv(&mut None) {
     if let Some((class_id, confidence)) = preds.top_k(1).first() {
         println!("Detected class {} with {:.1}% confidence",
                  class_id, confidence * 100.0);

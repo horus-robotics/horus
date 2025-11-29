@@ -125,7 +125,9 @@ pub fn setup_scene(
             }
             "sdf" => {
                 // SDF robot files can be loaded through scene loader
-                warn!("Direct SDF robot loading not yet implemented, falling back to default robot");
+                warn!(
+                    "Direct SDF robot loading not yet implemented, falling back to default robot"
+                );
                 spawn_default_robot(
                     &mut commands,
                     &mut meshes,

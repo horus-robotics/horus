@@ -626,13 +626,14 @@ impl IKSolver {
 
             // Apply rotation at this joint
             let rotation = Quat::from_axis_angle(axis, *angle);
-            transform.rotation = transform.rotation * rotation;
+            transform.rotation *= rotation;
         }
 
         // Add offset from last joint to end-effector
         // Compute based on distance from second-to-last to last joint, or use default
         let ee_offset = if joint_chain.len() >= 2 {
-            let last_link = joint_chain[joint_chain.len() - 1].0 - joint_chain[joint_chain.len() - 2].0;
+            let last_link =
+                joint_chain[joint_chain.len() - 1].0 - joint_chain[joint_chain.len() - 2].0;
             last_link.length()
         } else {
             0.1 // Default end-effector offset
@@ -675,7 +676,7 @@ impl IKSolver {
             positions.push(transform.translation);
 
             let rotation = Quat::from_axis_angle(axis, *angle);
-            transform.rotation = transform.rotation * rotation;
+            transform.rotation *= rotation;
         }
 
         // Add end-effector position

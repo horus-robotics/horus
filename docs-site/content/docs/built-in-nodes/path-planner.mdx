@@ -43,7 +43,7 @@ fn main() -> Result<()> {
 ## Usage
 
 ```rust
-let hub = Hub::<PathRequest>::new("path_planner/request")?;
+let hub = Hub::<PathRequest>::new("path_planner.request")?;
 
 // Request path from (0,0) to (5,5)
 hub.send(PathRequest {
@@ -53,8 +53,8 @@ hub.send(PathRequest {
     goal_y: 5.0,
 }, None)?;
 
-let path_hub = Hub::<Path>::new("path_planner/path")?;
-if let Some(path) = path_hub.recv(None) {
+let path_hub = Hub::<Path>::new("path_planner.path")?;
+if let Some(path) = path_hub.recv(&mut None) {
     for waypoint in &path.waypoints {
         println!("Waypoint: ({:.2}, {:.2})", waypoint.x, waypoint.y);
     }

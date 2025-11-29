@@ -62,7 +62,7 @@ node.send("temperature", 25.5)
 ```rust
 // Rust subscriber (in another process)
 let hub = Hub::<f32>::new("temperature")?;
-if let Some(temp) = hub.recv(None) {
+if let Some(temp) = hub.recv(&mut None) {
     println!("Temperature: {}", temp);
 }
 ```
@@ -93,7 +93,7 @@ use horus::prelude::*;
 use horus_library::messages::geometry::Pose2D;
 
 let hub = Hub::<Pose2D>::new("pose2d")?;
-if let Some(pose) = hub.recv(None) {
+if let Some(pose) = hub.recv(&mut None) {
     println!("Received: x={}, y={}, theta={}", pose.x, pose.y, pose.theta);
 }
 ```
@@ -210,9 +210,9 @@ fn main() -> Result<()> {
     let cmd_hub = Hub::<CmdVel>::new("cmd_vel")?;
 
     loop {
-        if let Some(scan) = scan_hub.recv(None) {
+        if let Some(scan) = scan_hub.recv(&mut None) {
             let cmd = plan_path(&scan);  // Your planning logic
-            cmd_hub.send(cmd, None)?;
+            cmd_hub.send(cmd, &mut None).ok();
         }
     }
 }
@@ -239,5 +239,5 @@ horus run sensor.py planner.rs
 - [Quick Start](/getting-started/quick-start) - Get started with Rust
 
 **Build something:**
-- [Examples](/examples) - See multi-language systems in action
+- [Examples](/basic-examples) - See multi-language systems in action
 - [CLI Reference](/development/cli-reference) - `horus new` command options

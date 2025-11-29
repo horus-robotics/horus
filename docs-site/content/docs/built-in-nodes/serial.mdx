@@ -186,7 +186,7 @@ let msg = SerialMessage {
 
 // Send
 let hub = Hub::<SerialMessage>::new("serial.tx")?;
-hub.send(msg, None)?;
+hub.send(msg, &mut None).ok();
 ```
 
 ### Receiving Data
@@ -195,7 +195,7 @@ hub.send(msg, None)?;
 // Subscribe to RX topic
 let hub = Hub::<SerialMessage>::new("serial.rx")?;
 
-if let Some(msg) = hub.recv(None) {
+if let Some(msg) = hub.recv(&mut None) {
     // Convert to string if ASCII
     if let Ok(text) = String::from_utf8(msg.data.clone()) {
         println!("RX: {}", text);
@@ -219,10 +219,10 @@ let cmd = SerialMessage {
     data: "GET_TEMP\r\n".as_bytes().to_vec(),
     length: 10,
 };
-hub.send(cmd, None)?;
+hub.send(cmd, &mut None).ok();
 
 // Receive response (automatically framed by newline)
-if let Some(resp) = rx_hub.recv(None) {
+if let Some(resp) = rx_hub.recv(&mut None) {
     let text = String::from_utf8_lossy(&resp.data);
     println!("Response: {}", text);
 }
@@ -241,7 +241,7 @@ serial.set_line_ending("\r\n");
 
 // Read NMEA sentences
 let hub = Hub::<SerialMessage>::new("serial.rx")?;
-while let Some(msg) = hub.recv(None) {
+while let Some(msg) = hub.recv(&mut None) {
     let nmea = String::from_utf8_lossy(&msg.data);
     if nmea.starts_with("$GPGGA") {
         println!("GPS Fix: {}", nmea);
@@ -262,7 +262,7 @@ let msg = SerialMessage {
     data: vec![0xF5, 0x01, 0x00],  // Digital write pin 1 LOW
     length: 3,
 };
-hub.send(msg, None)?;
+hub.send(msg, &mut None).ok();
 ```
 
 ### Modbus RTU Device
@@ -287,7 +287,7 @@ let msg = SerialMessage {
     ],
     length: 8,
 };
-hub.send(msg, None)?;
+hub.send(msg, &mut None).ok();
 ```
 
 ### Telemetry Radio (3DR Radio)
@@ -350,7 +350,7 @@ fn main() -> Result<()> {
         tick: |ctx| {
             let hub = Hub::<SerialMessage>::new("serial.rx")?;
 
-            while let Some(msg) = hub.recv(None) {
+            while let Some(msg) = hub.recv(&mut None) {
                 let nmea = String::from_utf8_lossy(&msg.data);
 
                 // Parse GPGGA sentence (GPS fix data)
@@ -436,7 +436,7 @@ let arduino_port = serial.find_port_by_vid_pid(0x2341, 0x0043)?; // Arduino Uno
 
 6. **Handle disconnections gracefully:**
    ```rust
-   if let Some(error) = error_hub.recv(None) {
+   if let Some(error) = error_hub.recv(&mut None) {
        ctx.log_error("Serial disconnected - attempting reconnect");
        serial.reconnect()?;
    }

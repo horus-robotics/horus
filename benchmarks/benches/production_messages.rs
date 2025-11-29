@@ -110,7 +110,7 @@ fn bench_odometry_latency(c: &mut Criterion) {
             odom.pose.x = 1.5;
             odom.pose.y = 2.3;
             odom.pose.theta = 0.8;
-            odom.twist.linear[0] = 0.5;  // linear_x
+            odom.twist.linear[0] = 0.5; // linear_x
             odom.twist.angular[2] = 0.1; // angular_z
             sender.send(black_box(odom), &mut None).unwrap();
             let _ = black_box(receiver.recv(&mut None));

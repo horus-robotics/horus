@@ -117,7 +117,8 @@ use horus::prelude::*;
 use horus_library::ImuNode;
 
 let mut scheduler = Scheduler::new();
-let imu = ImuNode::new("/dev/i2c-1", "bno055")?;
+// Create IMU node (simulation mode by default)
+let imu = ImuNode::new()?;
 scheduler.add(Box::new(imu), 0, Some(true));
 ```
 
@@ -127,9 +128,8 @@ use horus::prelude::*;
 use horus_library::PidControllerNode;
 
 let mut scheduler = Scheduler::new();
-let mut pid = PidControllerNode::new(1.0, 0.1, 0.05)?;
-// Customize if needed
-pid.set_limits(-100.0, 100.0);
+// Create PID controller with default topics
+let pid = PidControllerNode::new()?;
 scheduler.add(Box::new(pid), 1, Some(true));
 ```
 
@@ -139,9 +139,9 @@ use horus::prelude::*;
 use horus_library::{ImuNode, LidarNode, PidControllerNode, DifferentialDriveNode};
 
 let mut scheduler = Scheduler::new();
-scheduler.add(Box::new(ImuNode::new("/dev/i2c-1", "mpu6050")?), 0, Some(true));
-scheduler.add(Box::new(LidarNode::new("/dev/ttyUSB0")?), 0, Some(true));
-scheduler.add(Box::new(PidControllerNode::new(1.0, 0.1, 0.05)?), 1, Some(true));
+scheduler.add(Box::new(ImuNode::new()?), 0, Some(true));
+scheduler.add(Box::new(LidarNode::new()?), 0, Some(true));
+scheduler.add(Box::new(PidControllerNode::new()?), 1, Some(true));
 scheduler.add(Box::new(DifferentialDriveNode::new()?), 2, Some(true));
 scheduler.run()?;
 ```

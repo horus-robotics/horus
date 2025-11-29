@@ -7,8 +7,6 @@ use std::path::{Path, PathBuf};
 use urdf_rs::{Geometry, Joint, Link, Robot as URDFRobot, Visual};
 
 use crate::assets::mesh::{MeshLoadOptions, MeshLoader};
-use bevy::render::mesh::{Indices, VertexAttributeValues};
-use tracing::info;
 use crate::assets::resolver::PathResolver;
 use crate::hframe::TFTree;
 use crate::physics::collider::{ColliderBuilder, ColliderShape};
@@ -19,6 +17,8 @@ use crate::physics::joints::{
 };
 use crate::physics::world::PhysicsWorld;
 use crate::robot::robot::Robot;
+use bevy::render::mesh::{Indices, VertexAttributeValues};
+use tracing::info;
 
 pub struct URDFLoader {
     base_path: PathBuf,

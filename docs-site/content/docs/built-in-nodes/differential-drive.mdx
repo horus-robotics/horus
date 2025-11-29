@@ -53,7 +53,7 @@ diff_drive.set_max_angular_velocity(2.0); // Max angular velocity (rad/s)
 ## Usage
 
 ```rust
-let hub = Hub::<TwistCommand>::new("diff_drive/cmd_vel")?;
+let hub = Hub::<TwistCommand>::new("diff_drive.cmd_vel")?;
 
 // Drive forward at 0.5 m/s
 hub.send(TwistCommand {

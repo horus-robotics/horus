@@ -112,8 +112,7 @@ pub fn load_gltf(path: &Path, options: &MeshLoadOptions) -> Result<LoadedMesh> {
     // Build a map of image index to embedded texture ID for path resolution
     let embedded_texture_map: HashMap<usize, String> = embedded_textures
         .iter()
-        .enumerate()
-        .filter_map(|(_, tex)| {
+        .filter_map(|tex| {
             // Parse the image index from the texture ID (format: "embedded_{index}")
             tex.id
                 .strip_prefix("embedded_")
@@ -126,7 +125,8 @@ pub fn load_gltf(path: &Path, options: &MeshLoadOptions) -> Result<LoadedMesh> {
     let materials = extract_gltf_materials_with_embedded(&primitive, path, &embedded_texture_map);
 
     // Extract texture paths with embedded texture support
-    let texture_paths = extract_texture_paths_with_embedded(&primitive, path, &embedded_texture_map);
+    let texture_paths =
+        extract_texture_paths_with_embedded(&primitive, path, &embedded_texture_map);
 
     tracing::debug!(
         "Extracted {} embedded textures from glTF file",
@@ -324,12 +324,15 @@ fn encode_image_data(image_data: &gltf::image::Data, original_mime: &str) -> (Ve
                 .chunks(12)
                 .flat_map(|chunk| {
                     // Each channel is 4 bytes (f32)
-                    let r =
-                        (f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]).clamp(0.0, 1.0) * 255.0) as u8;
-                    let g =
-                        (f32::from_le_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]).clamp(0.0, 1.0) * 255.0) as u8;
-                    let b = (f32::from_le_bytes([chunk[8], chunk[9], chunk[10], chunk[11]]).clamp(0.0, 1.0) * 255.0)
-                        as u8;
+                    let r = (f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]])
+                        .clamp(0.0, 1.0)
+                        * 255.0) as u8;
+                    let g = (f32::from_le_bytes([chunk[4], chunk[5], chunk[6], chunk[7]])
+                        .clamp(0.0, 1.0)
+                        * 255.0) as u8;
+                    let b = (f32::from_le_bytes([chunk[8], chunk[9], chunk[10], chunk[11]])
+                        .clamp(0.0, 1.0)
+                        * 255.0) as u8;
                     [r, g, b]
                 })
                 .collect();
@@ -353,14 +356,18 @@ fn encode_image_data(image_data: &gltf::image::Data, original_mime: &str) -> (Ve
             let rgba8: Vec<u8> = pixels
                 .chunks(16)
                 .flat_map(|chunk| {
-                    let r =
-                        (f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]).clamp(0.0, 1.0) * 255.0) as u8;
-                    let g =
-                        (f32::from_le_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]).clamp(0.0, 1.0) * 255.0) as u8;
-                    let b = (f32::from_le_bytes([chunk[8], chunk[9], chunk[10], chunk[11]]).clamp(0.0, 1.0) * 255.0)
-                        as u8;
-                    let a = (f32::from_le_bytes([chunk[12], chunk[13], chunk[14], chunk[15]]).clamp(0.0, 1.0) * 255.0)
-                        as u8;
+                    let r = (f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]])
+                        .clamp(0.0, 1.0)
+                        * 255.0) as u8;
+                    let g = (f32::from_le_bytes([chunk[4], chunk[5], chunk[6], chunk[7]])
+                        .clamp(0.0, 1.0)
+                        * 255.0) as u8;
+                    let b = (f32::from_le_bytes([chunk[8], chunk[9], chunk[10], chunk[11]])
+                        .clamp(0.0, 1.0)
+                        * 255.0) as u8;
+                    let a = (f32::from_le_bytes([chunk[12], chunk[13], chunk[14], chunk[15]])
+                        .clamp(0.0, 1.0)
+                        * 255.0) as u8;
                     [r, g, b, a]
                 })
                 .collect();
@@ -417,7 +424,11 @@ fn extract_gltf_materials_with_embedded(
     });
 
     let normal_texture = material.normal_texture().map(|normal_tex| {
-        resolve_texture_from_image_with_embedded(gltf_path, &normal_tex.texture().source(), embedded_map)
+        resolve_texture_from_image_with_embedded(
+            gltf_path,
+            &normal_tex.texture().source(),
+            embedded_map,
+        )
     });
 
     materials.push(MaterialInfo {

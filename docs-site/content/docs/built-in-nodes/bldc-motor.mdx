@@ -253,7 +253,7 @@ let cmd = BldcCommand {
 
 // Send command
 let hub = Hub::<BldcCommand>::new("bldc.command")?;
-hub.send(cmd, None)?;
+hub.send(cmd, &mut None).ok();
 ```
 
 ### Arming Sequence
@@ -265,7 +265,7 @@ for motor_id in 0..4 {
         motor_id,
         throttle: 1000,
     };
-    hub.send(cmd, None)?;
+    hub.send(cmd, &mut None).ok();
 }
 
 // 2. Send arm command
@@ -274,7 +274,7 @@ let arm_cmd = BldcCommand {
     command_type: BldcCommand::CMD_ARM,
     ..Default::default()
 };
-hub.send(arm_cmd, None)?;
+hub.send(arm_cmd, &mut None).ok();
 
 // 3. Wait for confirmation
 std::thread::sleep(Duration::from_millis(100));
@@ -291,7 +291,7 @@ bldc.enable_telemetry(true);
 // Subscribe to telemetry topic
 let telem_hub = Hub::<BldcTelemetry>::new("bldc.telemetry")?;
 
-if let Some(telem) = telem_hub.recv(None) {
+if let Some(telem) = telem_hub.recv(&mut None) {
     println!("Motor {}: {} RPM, {}°C, {} A",
         telem.motor_id,
         telem.rpm,
@@ -310,7 +310,7 @@ let calibrate_cmd = BldcCommand {
     command_type: BldcCommand::CMD_CALIBRATE,
     ..Default::default()
 };
-hub.send(calibrate_cmd, None)?;
+hub.send(calibrate_cmd, &mut None).ok();
 
 // Process:
 // 1. Send max throttle (2000)
@@ -395,7 +395,7 @@ fn main() -> Result<()> {
 
             // Monitor telemetry
             let telem_hub = Hub::<BldcTelemetry>::new("bldc.telemetry")?;
-            while let Some(telem) = telem_hub.recv(None) {
+            while let Some(telem) = telem_hub.recv(&mut None) {
                 if telem.temperature > 80.0 {
                     ctx.log_warning(&format!(
                         "Motor {} overheating: {}°C",
@@ -522,7 +522,7 @@ let cmd = BldcCommand {
     motor_id: 0,
     throttle: 2000,
 };
-hub.send(cmd, None)?;
+hub.send(cmd, &mut None).ok();
 
 // 3. Connect motor power (you'll hear beeps)
 // 4. Wait 3 seconds
@@ -533,7 +533,7 @@ let cmd = BldcCommand {
     motor_id: 0,
     throttle: 1000,
 };
-hub.send(cmd, None)?;
+hub.send(cmd, &mut None).ok();
 
 // 6. ESC will beep to confirm calibration
 // 7. Repeat for all motors

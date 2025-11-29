@@ -50,7 +50,7 @@ fn main() -> Result<()> {
     let segmentation = SemanticSegmentationNode::new(
         "models/deeplabv3.onnx",
         "camera.raw",
-        "vision/segmentation",
+        "vision.segmentation",
         config,
     )?;
 
@@ -116,9 +116,9 @@ fn main() -> Result<()> {
 ```rust
 use horus_library::messages::SegmentationMask;
 
-let seg_hub = Hub::<SegmentationMask>::new("vision/segmentation")?;
+let seg_hub = Hub::<SegmentationMask>::new("vision.segmentation")?;
 
-if let Some(mask) = seg_hub.recv(None) {
+if let Some(mask) = seg_hub.recv(&mut None) {
     // Find navigable pixels (road = 0 in Cityscapes)
     let navigable_pixels: Vec<(usize, usize)> = mask.data
         .iter()

@@ -7,23 +7,38 @@
 //! from horus.sim2d import Sim2D
 //!
 //! sim = Sim2D()
-//! sim.run(duration=10.0)
+//! sim.run(duration=10.0)  # First 10 seconds
+//! sim.run(duration=5.0)   # Continue for 5 more seconds (state preserved!)
+//! sim.reset()             # Reset to initial state if needed
+//! sim.run(duration=10.0)  # Run fresh simulation
 //! ```
 
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::useless_conversion)]
 
-use crate::{Obstacle, ObstacleShape, RobotConfig, Sim2DBuilder, WorldConfig};
+use crate::{
+    default_obstacle_color, default_wall_color, Obstacle, ObstacleShape, RobotConfig, Sim2DApp,
+    Sim2DBuilder, WorldConfig,
+};
 use pyo3::prelude::*;
+use std::sync::{Arc, Mutex};
 
 /// Python wrapper for Sim2D simulator
-#[pyclass]
+///
+/// The simulator maintains state across multiple `run()` calls, allowing
+/// continuous simulation in segments. Use `reset()` to start fresh.
+///
+/// Note: This class is unsendable because Bevy's App is not thread-safe.
+/// All methods must be called from the same thread that created the instance.
+#[pyclass(unsendable)]
 pub struct Sim2D {
     robot_config: RobotConfig,
     world_config: WorldConfig,
     robot_name: String,
     topic_prefix: String,
     headless: bool,
+    /// Persistent simulation app - created lazily on first run
+    app: Arc<Mutex<Option<Sim2DApp>>>,
 }
 
 #[pymethods]
@@ -64,6 +79,8 @@ impl Sim2D {
             width: world_width,
             height: world_height,
             obstacles: Vec::new(), // Start with empty world
+            wall_color: default_wall_color(),
+            default_obstacle_color: default_obstacle_color(),
         };
 
         Ok(Self {
@@ -72,32 +89,129 @@ impl Sim2D {
             robot_name: robot_name.to_string(),
             topic_prefix: topic_prefix.to_string(),
             headless,
+            app: Arc::new(Mutex::new(None)),
         })
     }
 
     /// Run the simulation for a specified duration (in seconds)
     ///
-    /// This creates a temporary simulation instance and runs it for the specified duration.
+    /// State is preserved across multiple calls to run(). For example:
+    /// ```python
+    /// sim.run(5.0)  # Run for 5 seconds
+    /// sim.run(3.0)  # Continue for 3 more seconds (total 8 seconds of simulation)
+    /// ```
+    ///
+    /// Use reset() to start a fresh simulation.
     ///
     /// Args:
     ///     duration (float): Duration to run in seconds
     fn run(&self, duration: f32) -> PyResult<()> {
-        let mut app = Sim2DBuilder::new()
-            .with_robot(self.robot_config.clone())
-            .with_world(self.world_config.clone())
-            .robot_name(&self.robot_name)
-            .topic_prefix(&self.topic_prefix)
-            .headless(self.headless)
-            .build()
-            .map_err(|e| {
+        let mut app_guard = self.app.lock().map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                "Failed to lock app: {}",
+                e
+            ))
+        })?;
+
+        // Create app lazily on first run
+        if app_guard.is_none() {
+            let new_app = Sim2DBuilder::new()
+                .with_robot(self.robot_config.clone())
+                .with_world(self.world_config.clone())
+                .robot_name(&self.robot_name)
+                .topic_prefix(&self.topic_prefix)
+                .headless(self.headless)
+                .build()
+                .map_err(|e| {
+                    PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                        "Failed to create sim2d: {}",
+                        e
+                    ))
+                })?;
+            *app_guard = Some(new_app);
+        }
+
+        // Run the simulation for the specified duration
+        if let Some(ref mut app) = *app_guard {
+            app.run_for(duration);
+        }
+
+        Ok(())
+    }
+
+    /// Step the simulation forward by one frame
+    ///
+    /// Useful for fine-grained control over simulation stepping.
+    fn step(&self) -> PyResult<()> {
+        let mut app_guard = self.app.lock().map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                "Failed to lock app: {}",
+                e
+            ))
+        })?;
+
+        // Create app lazily if needed
+        if app_guard.is_none() {
+            let new_app = Sim2DBuilder::new()
+                .with_robot(self.robot_config.clone())
+                .with_world(self.world_config.clone())
+                .robot_name(&self.robot_name)
+                .topic_prefix(&self.topic_prefix)
+                .headless(self.headless)
+                .build()
+                .map_err(|e| {
+                    PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                        "Failed to create sim2d: {}",
+                        e
+                    ))
+                })?;
+            *app_guard = Some(new_app);
+        }
+
+        if let Some(ref mut app) = *app_guard {
+            app.step();
+        }
+
+        Ok(())
+    }
+
+    /// Reset the simulation to initial state
+    ///
+    /// This discards all current simulation state (robot position, physics, etc.)
+    /// and starts fresh with the original configuration.
+    fn reset(&self) -> PyResult<()> {
+        let mut app_guard = self.app.lock().map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                "Failed to lock app: {}",
+                e
+            ))
+        })?;
+
+        // If app exists, reset it; otherwise just clear so next run creates fresh
+        if let Some(ref mut app) = *app_guard {
+            app.reset().map_err(|e| {
                 PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
-                    "Failed to create sim2d: {}",
+                    "Failed to reset sim2d: {}",
                     e
                 ))
             })?;
+        }
 
-        app.run_for(duration);
         Ok(())
+    }
+
+    /// Check if simulation has been initialized
+    ///
+    /// Returns:
+    ///     bool: True if simulation app has been created
+    fn is_initialized(&self) -> PyResult<bool> {
+        let app_guard = self.app.lock().map_err(|e| {
+            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(format!(
+                "Failed to lock app: {}",
+                e
+            ))
+        })?;
+        Ok(app_guard.is_some())
     }
 
     /// Add an obstacle to the world configuration

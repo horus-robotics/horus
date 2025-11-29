@@ -7,9 +7,9 @@ use crate::rl::{
     Action, EpisodeInfo, Observation, RLTask, StepResult, TaskConfig, TaskParameters,
     TerminationReason,
 };
-use crate::robot::Robot;
 use crate::robot::articulated::RobotJointCommands;
 use crate::robot::state::{ArticulatedRobot, RobotJointStates};
+use crate::robot::Robot;
 
 /// Locomotion task: Learn to walk/run at a target velocity while staying upright
 pub struct LocomotionTask {
@@ -62,7 +62,8 @@ impl LocomotionTask {
 
     /// Configure joint names and maximum torques for the robot
     pub fn with_joints(mut self, joint_names: Vec<String>, max_torques: Option<Vec<f32>>) -> Self {
-        let torques = max_torques.unwrap_or_else(|| vec![Self::DEFAULT_MAX_TORQUE; joint_names.len()]);
+        let torques =
+            max_torques.unwrap_or_else(|| vec![Self::DEFAULT_MAX_TORQUE; joint_names.len()]);
         self.joint_names = joint_names;
         self.max_torques = torques;
         self
@@ -72,14 +73,13 @@ impl LocomotionTask {
     fn find_robot_base(&mut self, world: &mut World) {
         // Find articulated robot entity first
         let mut articulated_query = world.query::<(Entity, &ArticulatedRobot, &RobotJointStates)>();
-        for (entity, _robot, joint_states) in articulated_query.iter(world) {
+        if let Some((entity, _robot, joint_states)) = articulated_query.iter(world).next() {
             self.articulated_robot_entity = Some(entity);
             // If joint names not configured, use joint order from robot
             if self.joint_names.is_empty() {
                 self.joint_names = joint_states.joint_order.clone();
                 self.max_torques = vec![Self::DEFAULT_MAX_TORQUE; self.joint_names.len()];
             }
-            break;
         }
 
         // Find base entity (Robot component with Transform closest to initial height)
@@ -211,7 +211,11 @@ impl RLTask for LocomotionTask {
                         if i < actions.len() {
                             // Scale action [-1, 1] to torque range [-max_torque, max_torque]
                             let action_value = actions[i].clamp(-1.0, 1.0);
-                            let max_torque = self.max_torques.get(i).copied().unwrap_or(Self::DEFAULT_MAX_TORQUE);
+                            let max_torque = self
+                                .max_torques
+                                .get(i)
+                                .copied()
+                                .unwrap_or(Self::DEFAULT_MAX_TORQUE);
                             let torque = action_value * max_torque;
                             commands.set_effort(joint_name, torque);
                         }
@@ -235,12 +239,20 @@ impl RLTask for LocomotionTask {
                         if i < actions.len() {
                             if let Some(body) = physics_world.rigid_body_set.get_mut(handle) {
                                 let action_value = actions[i].clamp(-1.0, 1.0);
-                                let max_torque = self.max_torques.get(i).copied().unwrap_or(Self::DEFAULT_MAX_TORQUE);
+                                let max_torque = self
+                                    .max_torques
+                                    .get(i)
+                                    .copied()
+                                    .unwrap_or(Self::DEFAULT_MAX_TORQUE);
                                 let torque = action_value * max_torque;
 
                                 // Apply torque around the Y axis (vertical) for locomotion
                                 body.apply_torque_impulse(
-                                    rapier3d::prelude::Vector::new(0.0, torque * self.config.dt, 0.0),
+                                    rapier3d::prelude::Vector::new(
+                                        0.0,
+                                        torque * self.config.dt,
+                                        0.0,
+                                    ),
                                     true,
                                 );
                             }

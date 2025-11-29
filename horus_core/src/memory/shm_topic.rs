@@ -69,7 +69,7 @@ unsafe impl<T: Sync> Sync for PublisherSample<'_, T> {}
 unsafe impl<T: Send> Send for ConsumerSample<'_, T> {}
 unsafe impl<T: Sync> Sync for ConsumerSample<'_, T> {}
 
-impl<'a, T> PublisherSample<'a, T> {
+impl<T> PublisherSample<'_, T> {
     /// Get a mutable reference to the loaned memory
     pub fn as_mut_ptr(&mut self) -> *mut T {
         self.data_ptr
@@ -93,7 +93,7 @@ impl<'a, T> PublisherSample<'a, T> {
     }
 }
 
-impl<'a, T> ConsumerSample<'a, T> {
+impl<T> ConsumerSample<'_, T> {
     /// Get a const reference to the received data
     pub fn get_ref(&self) -> &T {
         unsafe { &*self.data_ptr }
@@ -113,7 +113,7 @@ impl<'a, T> ConsumerSample<'a, T> {
     }
 }
 
-impl<'a, T> Drop for PublisherSample<'a, T> {
+impl<T> Drop for PublisherSample<'_, T> {
     fn drop(&mut self) {
         // When the publisher sample is dropped, publish it by updating sequence number
         let header = unsafe { self.topic.header.as_ref() };
@@ -121,7 +121,7 @@ impl<'a, T> Drop for PublisherSample<'a, T> {
     }
 }
 
-impl<'a, T> Drop for ConsumerSample<'a, T> {
+impl<T> Drop for ConsumerSample<'_, T> {
     fn drop(&mut self) {
         // Consumer sample drop is automatic - just releases the reference
         // The actual slot management is handled by the consumer's tail position

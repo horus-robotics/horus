@@ -3,7 +3,7 @@
 //! This module provides functionality to save and load complete simulation states,
 //! including world configuration, robot states, and simulation parameters.
 
-use crate::{Obstacle, RobotConfig, WorldConfig};
+use crate::{default_obstacle_color, default_wall_color, Obstacle, RobotConfig, WorldConfig};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -234,6 +234,8 @@ impl Scenario {
             width: self.world.width,
             height: self.world.height,
             obstacles: self.world.obstacles.clone(),
+            wall_color: default_wall_color(),
+            default_obstacle_color: default_obstacle_color(),
         }
     }
 

@@ -159,17 +159,17 @@ frame.data[1] = 0x02;
 frame.dlc = 2;
 
 // Publish to TX topic
-let tx_hub = Hub::<CanFrame>::new("can/can0/tx")?;
-tx_hub.send(frame, None)?;
+let tx_hub = Hub::<CanFrame>::new("can.can0.tx")?;
+tx_hub.send(frame, &mut None).ok();
 ```
 
 ### Receiving CAN Frames
 
 ```rust
 // Subscribe to RX topic
-let rx_hub = Hub::<CanFrame>::new("can/can0/rx")?;
+let rx_hub = Hub::<CanFrame>::new("can.can0.rx")?;
 
-if let Some(frame) = rx_hub.recv(None) {
+if let Some(frame) = rx_hub.recv(&mut None) {
     println!("Received CAN ID 0x{:03X}: {:?}",
         frame.id, &frame.data[..frame.dlc as usize]);
 }
@@ -179,9 +179,9 @@ if let Some(frame) = rx_hub.recv(None) {
 
 ```rust
 // Subscribe to error topic
-let error_hub = Hub::<CanError>::new("can/can0/error")?;
+let error_hub = Hub::<CanError>::new("can.can0.error")?;
 
-if let Some(error) = error_hub.recv(None) {
+if let Some(error) = error_hub.recv(&mut None) {
     match error.error_type {
         CanError::ERROR_TX_TIMEOUT => println!("TX timeout"),
         CanError::ERROR_BUS_OFF => println!("Bus off"),
@@ -302,8 +302,8 @@ fn main() -> Result<()> {
             frame.data[1] = 0xBB;
             frame.dlc = 2;
 
-            let hub = Hub::<CanFrame>::new("can/can0/tx")?;
-            hub.send(frame, None)?;
+            let hub = Hub::<CanFrame>::new("can.can0.tx")?;
+            hub.send(frame, &mut None).ok();
             Ok(())
         }
     };
@@ -313,8 +313,8 @@ fn main() -> Result<()> {
     let rx_node = node! {
         name: "can_rx",
         tick: |ctx| {
-            let hub = Hub::<CanFrame>::new("can/can0/rx")?;
-            while let Some(frame) = hub.recv(None) {
+            let hub = Hub::<CanFrame>::new("can.can0.rx")?;
+            while let Some(frame) = hub.recv(&mut None) {
                 ctx.log_info(&format!(
                     "RX: ID=0x{:03X} Data={:02X?}",
                     frame.id, &frame.data[..frame.dlc as usize]
@@ -390,7 +390,7 @@ println!("Bus load: {:.1}%", load);
 
 1. **Always handle errors:**
    ```rust
-   let error_hub = Hub::<CanError>::new("can/can0/error")?;
+   let error_hub = Hub::<CanError>::new("can.can0.error")?;
    // Monitor for bus-off and other errors
    ```
 

@@ -203,10 +203,10 @@ else
 fi
 
 echo ""
-echo -e "${BLUE}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║${NC}       ${WHITE}HORUS Installation Verification v2.0.0${NC}          ${BLUE}║${NC}"
-echo -e "${BLUE}║${NC}       ${CYAN}Comprehensive • Systematic • Complete${NC}              ${BLUE}║${NC}"
-echo -e "${BLUE}╚════════════════════════════════════════════════════════════╝${NC}"
+echo -e "${BLUE}╔═════════════════════════════════════════╗${NC}"
+echo -e "${BLUE}║ ${NC}${WHITE}HORUS Installation Verification v2.0.0${NC}  ${BLUE}║${NC}"
+echo -e "${BLUE}║ ${NC}${CYAN}Comprehensive • Systematic • Complete${NC}   ${BLUE}║${NC}"
+echo -e "${BLUE}╚═════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "  ${CYAN}Install Profile:${NC} ${INSTALL_PROFILE}"
 echo ""
@@ -438,53 +438,83 @@ if [ -d "$CACHE_DIR" ]; then
         warn "Version file missing: $VERSION_FILE"
     fi
 
-    # Core components (REQUIRED)
-    declare -a CORE_COMPONENTS=(
-        "horus:Main library"
-        "horus_core:Runtime core"
-        "horus_macros:Proc macros"
-        "horus_library:Standard library"
-    )
+    # The main horus@version directory contains everything
+    # Structure: horus@version/horus/, horus@version/horus_core/, etc.
+    HORUS_CACHE_DIR=$(ls -d "$CACHE_DIR"/horus@* 2>/dev/null | head -n1)
 
-    for comp_info in "${CORE_COMPONENTS[@]}"; do
-        IFS=':' read -r comp desc <<< "$comp_info"
+    if [ -n "$HORUS_CACHE_DIR" ] && [ -d "$HORUS_CACHE_DIR" ]; then
+        HORUS_CACHE_VERSION=$(basename "$HORUS_CACHE_DIR" | sed "s/horus@//")
+        pass "Main library cache v$HORUS_CACHE_VERSION"
 
-        if ls "$CACHE_DIR"/${comp}@* 1>/dev/null 2>&1; then
-            COMP_DIR=$(ls -d "$CACHE_DIR"/${comp}@* 2>/dev/null | head -n1)
-            COMP_VERSION=$(basename "$COMP_DIR" | sed "s/${comp}@//")
+        # Check for source subdirectories inside horus@version/
+        declare -a SOURCE_SUBDIRS=(
+            "horus:Main library"
+            "horus_core:Runtime core"
+            "horus_macros:Proc macros"
+            "horus_library:Standard library"
+            "horus_manager:Manager"
+            "horus_router:Router"
+            "horus_py:Python bindings"
+        )
 
-            # Check for source files
-            if [ -d "$COMP_DIR/src" ]; then
-                pass "$desc v$COMP_VERSION (with source)"
+        for subdir_info in "${SOURCE_SUBDIRS[@]}"; do
+            IFS=':' read -r subdir desc <<< "$subdir_info"
+
+            if [ -d "$HORUS_CACHE_DIR/$subdir" ]; then
+                # Check for Cargo.toml
+                if [ -f "$HORUS_CACHE_DIR/$subdir/Cargo.toml" ]; then
+                    # Check for src/ or lib.rs (horus_library uses lib.rs)
+                    if [ -d "$HORUS_CACHE_DIR/$subdir/src" ] || [ -f "$HORUS_CACHE_DIR/$subdir/lib.rs" ]; then
+                        pass "$desc source"
+                    else
+                        warn "$desc missing source files"
+                    fi
+                else
+                    warn "$desc missing Cargo.toml"
+                fi
             else
-                warn "$desc v$COMP_VERSION (source missing)"
+                # Optional components are fine to skip
+                case "$subdir" in
+                    horus_manager|horus_router|horus_py)
+                        info "$desc source not cached (optional)"
+                        ;;
+                    *)
+                        warn "$desc source directory missing"
+                        ;;
+                esac
             fi
+        done
 
-            # Check for Cargo.toml
-            if [ ! -f "$COMP_DIR/Cargo.toml" ]; then
-                warn "$desc missing Cargo.toml"
-            fi
+        # Check for workspace Cargo.toml (allows horus run to work)
+        if [ -f "$HORUS_CACHE_DIR/Cargo.toml" ]; then
+            pass "Workspace Cargo.toml present"
         else
-            fail "$desc not cached"
+            warn "Workspace Cargo.toml missing (horus run may not work)"
         fi
-    done
+    else
+        fail "Main library cache (horus@version) not found"
+    fi
 
-    # Additional components
-    declare -a EXTRA_COMPONENTS=(
-        "horus_manager:Manager"
-        "horus_router:Router"
-        "horus_py:Python bindings"
+    # Also check the separate component lib directories for compiled artifacts
+    declare -a LIB_COMPONENTS=(
+        "horus_core:Runtime core libs"
+        "horus_macros:Proc macro libs"
+        "horus_library:Standard library libs"
     )
 
-    for comp_info in "${EXTRA_COMPONENTS[@]}"; do
+    for comp_info in "${LIB_COMPONENTS[@]}"; do
         IFS=':' read -r comp desc <<< "$comp_info"
 
-        if ls "$CACHE_DIR"/${comp}@* 1>/dev/null 2>&1; then
-            COMP_DIR=$(ls -d "$CACHE_DIR"/${comp}@* 2>/dev/null | head -n1)
-            COMP_VERSION=$(basename "$COMP_DIR" | sed "s/${comp}@//")
-            pass "$desc v$COMP_VERSION"
+        COMP_DIR=$(ls -d "$CACHE_DIR"/${comp}@* 2>/dev/null | head -n1)
+        if [ -n "$COMP_DIR" ] && [ -d "$COMP_DIR/lib" ]; then
+            LIB_COUNT=$(ls "$COMP_DIR/lib"/*.* 2>/dev/null | wc -l)
+            if [ "$LIB_COUNT" -gt 0 ]; then
+                pass "$desc ($LIB_COUNT files)"
+            else
+                info "$desc directory exists but empty"
+            fi
         else
-            info "$desc not cached (optional)"
+            info "$desc not separately cached"
         fi
     done
 else
@@ -497,11 +527,20 @@ fi
 update_verify_progress "Pre-compiled Deps"
 section "5. Pre-compiled Dependencies"
 
-if [ -d "$TARGET_DIR" ]; then
-    pass "Target directory exists: $TARGET_DIR"
+# Pre-compiled deps are stored inside the horus@version cache directory
+# (not at ~/.horus/target/ as previously assumed)
+ACTUAL_TARGET_DIR=""
+if [ -n "$HORUS_CACHE_DIR" ] && [ -d "$HORUS_CACHE_DIR/target" ]; then
+    ACTUAL_TARGET_DIR="$HORUS_CACHE_DIR/target"
+elif [ -d "$TARGET_DIR" ]; then
+    ACTUAL_TARGET_DIR="$TARGET_DIR"
+fi
+
+if [ -n "$ACTUAL_TARGET_DIR" ] && [ -d "$ACTUAL_TARGET_DIR" ]; then
+    pass "Target directory exists"
 
     # Check for release deps
-    RELEASE_DEPS="$TARGET_DIR/release/deps"
+    RELEASE_DEPS="$ACTUAL_TARGET_DIR/release/deps"
     if [ -d "$RELEASE_DEPS" ]; then
         # Count rlib files
         RLIB_COUNT=$(ls "$RELEASE_DEPS"/*.rlib 2>/dev/null | wc -l)
@@ -531,7 +570,7 @@ if [ -d "$TARGET_DIR" ]; then
     fi
 
     # Check fingerprints
-    FINGERPRINT_DIR="$TARGET_DIR/release/.fingerprint"
+    FINGERPRINT_DIR="$ACTUAL_TARGET_DIR/release/.fingerprint"
     if [ -d "$FINGERPRINT_DIR" ]; then
         FP_COUNT=$(ls -d "$FINGERPRINT_DIR"/horus* 2>/dev/null | wc -l)
         if [ "$FP_COUNT" -gt 0 ]; then
@@ -543,7 +582,7 @@ if [ -d "$TARGET_DIR" ]; then
         warn "Fingerprint directory missing"
     fi
 else
-    fail "Target directory missing: $TARGET_DIR"
+    fail "Target directory missing"
     info "Run install.sh to create pre-compiled dependencies"
 fi
 
@@ -776,17 +815,19 @@ fi
 update_verify_progress "Network & Registry"
 section "12. Network & Registry"
 
-# Check network connectivity to crates.io (for cargo)
-if curl -s --connect-timeout 5 https://crates.io/api/v1/crates/serde 2>/dev/null | grep -q "serde"; then
-    pass "crates.io accessible"
+# Check network connectivity to crates.io sparse index (what cargo actually uses)
+CRATES_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 -A "HORUS-verify/1.0" https://index.crates.io/config.json 2>/dev/null)
+if [ "$CRATES_STATUS" = "200" ]; then
+    pass "crates.io sparse index accessible"
 else
     warn "crates.io not accessible (offline mode required)"
 fi
 
-# Check HORUS registry (if configured)
-REGISTRY_URL="https://registry.horus.dev"
-if curl -s --connect-timeout 5 "$REGISTRY_URL" 2>/dev/null | head -c 100 | grep -qi "horus\|registry\|html"; then
-    pass "HORUS registry accessible"
+# Check HORUS registry infrastructure (telemetry endpoint)
+REGISTRY_URL="https://telemetry.horus-registry.dev"
+REGISTRY_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 "$REGISTRY_URL" 2>/dev/null)
+if [ "$REGISTRY_STATUS" = "200" ]; then
+    pass "HORUS registry infrastructure accessible"
 else
     info "HORUS registry not accessible (local-only mode)"
 fi

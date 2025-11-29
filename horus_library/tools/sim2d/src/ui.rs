@@ -39,6 +39,8 @@ pub struct UiState {
     pub recording_description: String,
     pub recording_path: Option<PathBuf>,
     pub reset_simulation: bool,
+    /// Pending topic prefix update: (robot_name, new_prefix)
+    pub pending_topic_update: Option<(String, String)>,
     pub show_help: bool,
     pub show_editor_section: bool,
     pub editor_selected_color: [f32; 3],
@@ -183,6 +185,7 @@ impl Default for UiState {
             recording_description: String::new(),
             recording_path: None,
             reset_simulation: false,
+            pending_topic_update: None,
             show_help: false,
             show_editor_section: false,
             editor_selected_color: [0.6, 0.6, 0.6],
@@ -834,16 +837,19 @@ pub fn ui_system(
                                     || response.lost_focus()
                                         && ui.input(|i| i.key_pressed(egui::Key::Enter)))
                             {
-                                // Update the topic and restart
+                                // Update the topic dynamically (no restart needed)
                                 app_config.args.topic = ui_state.topic_input.clone();
                                 // Update robot topic prefixes too
                                 if let Some(robot) = app_config.robots.get_mut(0) {
-                                    robot.topic_prefix = ui_state.topic_input.clone();
+                                    let robot_name = robot.name.clone();
+                                    let new_prefix = ui_state.topic_input.clone();
+                                    robot.topic_prefix = new_prefix.clone();
+                                    // Queue the hub update for the system to process
+                                    ui_state.pending_topic_update = Some((robot_name, new_prefix));
                                 }
                                 ui_state.active_topics = vec![ui_state.topic_input.clone()];
-                                ui_state.reset_simulation = true;
                                 ui_state.status_message = format!(
-                                    "Topic changed to {} - restarting...",
+                                    "Topic changed to {} - updating hubs...",
                                     ui_state.topic_input
                                 );
                             }

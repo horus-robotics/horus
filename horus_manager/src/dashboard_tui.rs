@@ -1066,12 +1066,12 @@ impl TuiDashboard {
         use std::collections::HashMap;
 
         // Create a block for the graph
+        // Legend: Blue = Publish (→), Magenta = Subscribe (←)
         let block = Block::default()
             .title(format!(
-                "Graph - {} nodes, {} edges | [L]ayout: {:?} | [R]efresh",
+                "Graph - {} nodes, {} edges | Pub=Blue Sub=Magenta",
                 self.graph_nodes.len(),
-                self.graph_edges.len(),
-                self.graph_layout
+                self.graph_edges.len()
             ))
             .borders(Borders::ALL);
 
@@ -1104,20 +1104,62 @@ impl TuiDashboard {
             }
         }
 
-        // Limit nodes to prevent tui-nodes from panicking on large graphs
-        // tui-nodes has issues with coordinate calculations for many nodes
-        const MAX_NODES: usize = 12;
+        // Safety limits to prevent tui-nodes from panicking
+        // tui-nodes has bugs with coordinate calculations for large graphs
+        const MAX_NODES: usize = 10;
+        const MAX_EDGES: usize = 15;
         let total_nodes = processes.len() + topics.len();
-        if total_nodes > MAX_NODES {
-            // Show a simplified message for large graphs
+        let total_edges = self.graph_edges.len();
+
+        if total_nodes > MAX_NODES || total_edges > MAX_EDGES {
+            // Show a simplified text-based view for large graphs
+            let node_list = processes
+                .iter()
+                .map(|n| format!("  [P] {}", n.label))
+                .chain(topics.iter().map(|n| format!("  [T] {}", n.label)))
+                .collect::<Vec<_>>()
+                .join("\n");
+
+            // Build edge list showing pub/sub relationships
+            let edge_list: String = self
+                .graph_edges
+                .iter()
+                .take(10) // Limit to first 10 edges to fit screen
+                .map(|e| {
+                    let arrow = match e.edge_type {
+                        TuiEdgeType::Publish => "->",   // Process publishes to Topic
+                        TuiEdgeType::Subscribe => "<-", // Process subscribes from Topic
+                    };
+                    format!("  {} {} {}", e.from, arrow, e.to)
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+
+            let edge_suffix = if self.graph_edges.len() > 10 {
+                format!("\n  ... and {} more", self.graph_edges.len() - 10)
+            } else {
+                String::new()
+            };
+
             let text = Paragraph::new(format!(
-                "Graph too large ({} nodes) for TUI rendering.\nMax: {} nodes. Use web dashboard for full view.\n\nNodes: {}\nTopics: {}",
-                total_nodes, MAX_NODES,
-                processes.iter().map(|n| n.label.as_str()).collect::<Vec<_>>().join(", "),
-                topics.iter().map(|n| n.label.as_str()).collect::<Vec<_>>().join(", ")
+                "Graph too complex for TUI ({} nodes, {} edges). Limits: {}/{}\n\
+                 Use web dashboard for full view.\n\n\
+                 Nodes: [P]=Process [T]=Topic\n{}\n\n\
+                 Edges: -> Pub, <- Sub\n{}{}",
+                total_nodes, total_edges, MAX_NODES, MAX_EDGES, node_list, edge_list, edge_suffix
             ))
             .style(Style::default().fg(Color::Yellow))
-            .alignment(Alignment::Center);
+            .alignment(Alignment::Left);
+            f.render_widget(text, inner);
+            return;
+        }
+
+        // Additional safety: check terminal size is sufficient
+        if inner.width < 40 || inner.height < 10 {
+            let text =
+                Paragraph::new("Terminal too small for graph view.\nResize or use web dashboard.")
+                    .style(Style::default().fg(Color::Yellow))
+                    .alignment(Alignment::Center);
             f.render_widget(text, inner);
             return;
         }
@@ -2172,15 +2214,15 @@ impl TuiDashboard {
         } else if self.active_tab == Tab::Packages
             && self.package_view_mode == PackageViewMode::List
         {
-            "[ENTER] View Packages | [] Navigate | [TAB] Switch Tab | [?] Help | [Q] Quit"
+            "[ENTER] View Packages | [↑↓] Navigate | [TAB] Switch Tab | [?] Help | [Q] Quit"
         } else if self.active_tab == Tab::Packages
             && self.package_view_mode == PackageViewMode::WorkspaceDetails
         {
-            "[ESC] Back to Workspaces | [] Navigate | [TAB] Switch Tab | [?] Help | [Q] Quit"
+            "[ESC] Back to Workspaces | [↑↓] Navigate | [TAB] Switch Tab | [?] Help | [Q] Quit"
         } else if self.active_tab == Tab::Nodes || self.active_tab == Tab::Topics {
-            "[ENTER] View Logs | [] Navigate | [TAB] Switch Tab | [P] Pause | [?] Help | [Q] Quit"
+            "[ENTER] View Logs | [↑↓] Navigate | [TAB] Switch Tab | [P] Pause | [?] Help | [Q] Quit"
         } else {
-            "[TAB] Switch Tab | [] Navigate | [P] Pause | [?] Help | [Q] Quit"
+            "[TAB] Switch Tab | [↑↓] Navigate | [P] Pause | [?] Help | [Q] Quit"
         };
 
         let footer = Paragraph::new(footer_text)
@@ -3506,6 +3548,7 @@ mod tests {
         assert_eq!(Tab::Nodes.as_str(), "Nodes");
         assert_eq!(Tab::Topics.as_str(), "Topics");
         assert_eq!(Tab::Graph.as_str(), "Graph");
+        assert_eq!(Tab::Network.as_str(), "Network");
         assert_eq!(Tab::Packages.as_str(), "Packages");
         assert_eq!(Tab::Parameters.as_str(), "Params");
     }
@@ -3513,11 +3556,12 @@ mod tests {
     #[test]
     fn test_tab_all_returns_all_tabs() {
         let tabs = Tab::all();
-        assert_eq!(tabs.len(), 6);
+        assert_eq!(tabs.len(), 7);
         assert!(tabs.contains(&Tab::Overview));
         assert!(tabs.contains(&Tab::Nodes));
         assert!(tabs.contains(&Tab::Topics));
         assert!(tabs.contains(&Tab::Graph));
+        assert!(tabs.contains(&Tab::Network));
         assert!(tabs.contains(&Tab::Packages));
         assert!(tabs.contains(&Tab::Parameters));
     }
@@ -3580,6 +3624,9 @@ mod tests {
         assert_eq!(dashboard.active_tab, Tab::Graph);
 
         dashboard.next_tab();
+        assert_eq!(dashboard.active_tab, Tab::Network);
+
+        dashboard.next_tab();
         assert_eq!(dashboard.active_tab, Tab::Packages);
 
         dashboard.next_tab();
@@ -3601,6 +3648,9 @@ mod tests {
 
         dashboard.prev_tab();
         assert_eq!(dashboard.active_tab, Tab::Packages);
+
+        dashboard.prev_tab();
+        assert_eq!(dashboard.active_tab, Tab::Network);
 
         dashboard.prev_tab();
         assert_eq!(dashboard.active_tab, Tab::Graph);

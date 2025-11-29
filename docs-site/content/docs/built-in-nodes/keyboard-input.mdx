@@ -42,9 +42,9 @@ fn main() -> Result<()> {
 ## Usage
 
 ```rust
-let hub = Hub::<KeyEvent>::new("keyboard/event")?;
+let hub = Hub::<KeyEvent>::new("keyboard.event")?;
 
-if let Some(event) = hub.recv(None) {
+if let Some(event) = hub.recv(&mut None) {
     if event.pressed {
         match event.key {
             Key::W | Key::Up => println!("Forward"),
@@ -61,13 +61,13 @@ if let Some(event) = hub.recv(None) {
 ## Teleoperation Example
 
 ```rust
-let key_hub = Hub::<KeyEvent>::new("keyboard/event")?;
+let key_hub = Hub::<KeyEvent>::new("keyboard.event")?;
 let cmd_hub = Hub::<TwistCommand>::new("cmd_vel")?;
 
 let mut linear = 0.0;
 let mut angular = 0.0;
 
-while let Some(event) = key_hub.recv(None) {
+while let Some(event) = key_hub.recv(&mut None) {
     if event.pressed {
         match event.key {
             Key::W => linear = 0.5,
@@ -82,7 +82,7 @@ while let Some(event) = key_hub.recv(None) {
         angular = 0.0;
     }
 
-    cmd_hub.send(TwistCommand { linear_x: linear, angular_z: angular }, None)?;
+    cmd_hub.send(TwistCommand { linear_x: linear, angular_z: angular }, &mut None).ok();
 }
 ```
 

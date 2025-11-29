@@ -120,7 +120,7 @@ use horus_library::messages::ml::Predictions;
 
 let predictions_hub = Hub::<Predictions>::new("ml.predictions")?;
 
-if let Some(preds) = predictions_hub.recv(None) {
+if let Some(preds) = predictions_hub.recv(&mut None) {
     // Get top-k predictions
     for (class_id, confidence) in preds.top_k(5) {
         println!("Class {}: {:.2}%", class_id, confidence * 100.0);
@@ -141,8 +141,8 @@ let config = InferenceConfig {
 
 let node = ONNXInferenceNode::new(
     "models/custom_model.onnx",
-    "sensor/image",
-    "custom/output",
+    "sensor.image",
+    "custom.output",
     config,
 )?;
 ```
@@ -163,8 +163,8 @@ let config = InferenceConfig {
 use horus_library::messages::ml::Tensor;
 
 // For models that don't use images
-let input_pub = Hub::<Tensor>::new("ml/input/tensor")?;
-let output_sub = Hub::<Tensor>::new("ml/output/tensor")?;
+let input_pub = Hub::<Tensor>::new("ml.input.tensor")?;
+let output_sub = Hub::<Tensor>::new("ml.output.tensor")?;
 
 // Send custom tensor
 let tensor = Tensor {
@@ -172,10 +172,10 @@ let tensor = Tensor {
     shape: vec![1, 4],
     dtype: "float32".to_string(),
 };
-input_pub.send(tensor, None)?;
+input_pub.send(tensor, &mut None).ok();
 
 // Receive output
-if let Some(output) = output_sub.recv(None) {
+if let Some(output) = output_sub.recv(&mut None) {
     println!("Output shape: {:?}", output.shape);
 }
 ```

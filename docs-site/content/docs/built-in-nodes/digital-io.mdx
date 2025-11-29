@@ -56,15 +56,15 @@ gpio.configure_output(27);
 
 ```rust
 // Read input
-let input_hub = Hub::<GpioInput>::new("gpio/input")?;
-if let Some(input) = input_hub.recv(None) {
+let input_hub = Hub::<GpioInput>::new("gpio.input")?;
+if let Some(input) = input_hub.recv(&mut None) {
     if input.pin == 17 && input.value == false {
         println!("Button pressed!");
     }
 }
 
 // Set output
-let output_hub = Hub::<GpioOutput>::new("gpio/output")?;
+let output_hub = Hub::<GpioOutput>::new("gpio.output")?;
 output_hub.send(GpioOutput {
     pin: 27,
     value: true,  // LED on

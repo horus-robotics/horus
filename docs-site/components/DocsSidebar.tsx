@@ -30,7 +30,7 @@ const sections: SidebarSection[] = [
       { title: "Architecture", href: "/architecture", order: 7 },
             { title: "Troubleshooting", href: "/troubleshooting", order: 8 },
       { title: "Runtime Errors", href: "/troubleshooting-runtime", order: 9 },
-      { title: "Examples Overview", href: "/examples", order: 10 },
+      { title: "Robot Architectures", href: "/robot-architectures", order: 10 },
       { title: "Basic Examples", href: "/basic-examples", order: 11 },
       { title: "Advanced Examples", href: "/advanced-examples", order: 12 },
     ],
@@ -192,7 +192,8 @@ const sections: SidebarSection[] = [
       { title: "Overview", href: "/multi-language/multi-language", order: 1 },
       { title: "Python Bindings", href: "/multi-language/python-bindings", order: 2 },
       { title: "Python Message Library", href: "/multi-language/python-message-library", order: 3 },
-            { title: "AI API Integration", href: "/multi-language/ai-integration", order: 5 },
+      { title: "Python Hardware Nodes", href: "/multi-language/python-hardware-nodes", order: 4 },
+      { title: "AI API Integration", href: "/multi-language/ai-integration", order: 5 },
     ],
   },
   {

@@ -31,7 +31,12 @@ fn main() -> anyhow::Result<()> {
                             DependencySource::Path(p) => {
                                 println!("    Source: Path ({})", p.display())
                             }
-                            DependencySource::Git { url, branch, tag, rev } => {
+                            DependencySource::Git {
+                                url,
+                                branch,
+                                tag,
+                                rev,
+                            } => {
                                 print!("    Source: Git ({})", url);
                                 if let Some(b) = branch {
                                     print!(", branch: {}", b);

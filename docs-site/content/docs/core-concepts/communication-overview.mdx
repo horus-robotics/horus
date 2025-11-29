@@ -192,9 +192,9 @@ struct RobotSystem {
 
 ```rust
 // Multiple sensors → One fusion node (Hub)
-let imu_pub: Hub<ImuData> = Hub::new("sensors/imu")?;
-let gps_pub: Hub<GpsData> = Hub::new("sensors/gps")?;
-let lidar_pub: Hub<LidarScan> = Hub::new("sensors/lidar")?;
+let imu_pub: Hub<ImuData> = Hub::new("sensors.imu")?;
+let gps_pub: Hub<GpsData> = Hub::new("sensors.gps")?;
+let lidar_pub: Hub<LidarScan> = Hub::new("sensors.lidar")?;
 
 // Fusion node subscribes to all
 struct FusionNode {

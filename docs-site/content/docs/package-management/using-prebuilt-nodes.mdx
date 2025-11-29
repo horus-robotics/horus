@@ -172,12 +172,12 @@ fn main() {
     let mut scheduler = Scheduler::new();
 
     // Keyboard input node (priority 0 - runs first)
-    let keyboard = KeyboardNode::new("keyboard/input")?;
+    let keyboard = KeyboardNode::new("keyboard.input")?;
     scheduler.add(Box::new(keyboard), 0, Some(true));
 
     // Differential drive controller (priority 5)
     let drive = DiffDriveNode::new(
-        "keyboard/input",   // Input topic
+        "keyboard.input",   // Input topic
         "motor/left",       // Left motor output
         "motor/right",      // Right motor output
         0.5                 // Wheel separation (meters)
@@ -281,8 +281,8 @@ fn main() {
 
     // Using standard library nodes
     let camera = CameraNode::new("/dev/video0", "camera.raw", 30)?;
-    let processor = ImageProcessorNode::new("camera.raw", "camera/processed")?;
-    let detector = ObjectDetectorNode::new("camera/processed", "objects")?;
+    let processor = ImageProcessorNode::new("camera.raw", "camera.processed")?;
+    let detector = ObjectDetectorNode::new("camera.processed", "objects")?;
 
     scheduler.add(Box::new(camera), 2, Some(true));
     scheduler.add(Box::new(processor), 3, Some(true));
@@ -535,4 +535,4 @@ fn main() -> Result<()> {
 - **[Library Reference](/development/library-reference)** - Browse all standard library nodes
 - **[Package Management](/package-management/package-management)** - Discover and manage packages
 - **[node! Macro](/core-concepts/node-macro)** - When you need custom functionality
-- **[Examples](/examples)** - See complete working systems
+- **[Examples](/basic-examples)** - See complete working systems
