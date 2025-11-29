@@ -50,7 +50,7 @@ fn main() -> Result<()> {
     let pose_node = PoseEstimationNode::new(
         "models/movenet_lightning.onnx",
         "camera.raw",
-        "vision/poses",
+        "vision.poses",
         config,
     )?;
 
@@ -125,9 +125,9 @@ fn main() -> Result<()> {
 ```rust
 use horus_library::messages::PoseArray;
 
-let poses_hub = Hub::<PoseArray>::new("vision/poses")?;
+let poses_hub = Hub::<PoseArray>::new("vision.poses")?;
 
-if let Some(poses) = poses_hub.recv(None) {
+if let Some(poses) = poses_hub.recv(&mut None) {
     for pose in &poses.poses {
         // Check if arm is raised (wrist above shoulder)
         let left_wrist = &pose.keypoints[9];
@@ -152,8 +152,8 @@ let config = PoseConfig {
 
 let pose_node = PoseEstimationNode::new(
     "models/movenet_thunder.onnx",
-    "camera/front",
-    "interaction/person_pose",
+    "camera.front",
+    "interaction.person_pose",
     config,
 )?;
 ```

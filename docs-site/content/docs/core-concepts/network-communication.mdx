@@ -253,8 +253,8 @@ struct Robot1 {
 impl Robot1 {
     fn new() -> Result<Self> {
         Ok(Self {
-            position_pub: Hub::new("fleet/positions@router")?,
-            fleet_positions: Hub::new("fleet/positions@router")?,
+            position_pub: Hub::new("fleet.positions@router")?,
+            fleet_positions: Hub::new("fleet.positions@router")?,
             imu_link: Link::consumer("imu")?,      // Local
             motors_link: Link::producer("motors")?, // Local
         })

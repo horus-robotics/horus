@@ -234,12 +234,12 @@ let cmd = DynamixelCommand {
 };
 
 // Send command
-let hub = Hub::<DynamixelCommand>::new("dynamixel/command")?;
-hub.send(cmd, None)?;
+let hub = Hub::<DynamixelCommand>::new("dynamixel.command")?;
+hub.send(cmd, &mut None).ok();
 
 // Read status
-let status_hub = Hub::<DynamixelStatus>::new("dynamixel/status")?;
-if let Some(status) = status_hub.recv(None) {
+let status_hub = Hub::<DynamixelStatus>::new("dynamixel.status")?;
+if let Some(status) = status_hub.recv(&mut None) {
     println!("Servo {}: position = {}, load = {}%",
         status.servo_id, status.present_position, status.present_load);
 }
@@ -255,7 +255,7 @@ let cmd = DynamixelCommand {
     goal_velocity: 50,  // 50 RPM
     ..Default::default()
 };
-hub.send(cmd, None)?;
+hub.send(cmd, &mut None).ok();
 ```
 
 ### Current Control (Torque)
@@ -268,7 +268,7 @@ let cmd = DynamixelCommand {
     goal_current: 500,  // 500 mA
     ..Default::default()
 };
-hub.send(cmd, None)?;
+hub.send(cmd, &mut None).ok();
 ```
 
 ### Synchronized Motion
@@ -281,8 +281,8 @@ let sync_cmd = DynamixelSyncWrite {
     velocities: vec![50, 50, 50, 50],
 };
 
-let hub = Hub::<DynamixelSyncWrite>::new("dynamixel/sync_write")?;
-hub.send(sync_cmd, None)?;
+let hub = Hub::<DynamixelSyncWrite>::new("dynamixel.sync_write")?;
+hub.send(sync_cmd, &mut None).ok();
 ```
 
 ### Bulk Read
@@ -293,12 +293,12 @@ let bulk_read = DynamixelBulkRead {
     servo_ids: vec![1, 2, 3, 4],
 };
 
-let hub = Hub::<DynamixelBulkRead>::new("dynamixel/bulk_read")?;
-hub.send(bulk_read, None)?;
+let hub = Hub::<DynamixelBulkRead>::new("dynamixel.bulk_read")?;
+hub.send(bulk_read, &mut None).ok();
 
 // Receive results
-let result_hub = Hub::<DynamixelBulkReadResult>::new("dynamixel/bulk_result")?;
-if let Some(result) = result_hub.recv(None) {
+let result_hub = Hub::<DynamixelBulkReadResult>::new("dynamixel.bulk_result")?;
+if let Some(result) = result_hub.recv(&mut None) {
     for status in result.statuses {
         println!("Servo {}: pos={}, vel={}, current={}",
             status.servo_id, status.present_position,
@@ -342,7 +342,7 @@ fn main() -> Result<()> {
         name: "arm_control",
         init: |ctx| {
             // Enable torque on all servos
-            let hub = Hub::<DynamixelCommand>::new("dynamixel/command")?;
+            let hub = Hub::<DynamixelCommand>::new("dynamixel.command")?;
 
             for id in 1..=5 {
                 hub.send(DynamixelCommand {
@@ -356,7 +356,7 @@ fn main() -> Result<()> {
             Ok(())
         },
         tick: |ctx| {
-            let hub = Hub::<DynamixelCommand>::new("dynamixel/command")?;
+            let hub = Hub::<DynamixelCommand>::new("dynamixel.command")?;
 
             // Move to home position
             let home_positions = vec![2048, 1024, 2048, 2048, 2048];
@@ -372,8 +372,8 @@ fn main() -> Result<()> {
             }
 
             // Monitor servo status
-            let status_hub = Hub::<DynamixelStatus>::new("dynamixel/status")?;
-            while let Some(status) = status_hub.recv(None) {
+            let status_hub = Hub::<DynamixelStatus>::new("dynamixel.status")?;
+            while let Some(status) = status_hub.recv(&mut None) {
                 // Check for errors
                 if status.hardware_error != 0 {
                     ctx.log_error(&format!(

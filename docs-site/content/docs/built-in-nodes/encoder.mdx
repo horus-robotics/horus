@@ -54,9 +54,9 @@ encoder.invert_direction(0, false);
 ## Usage
 
 ```rust
-let hub = Hub::<EncoderData>::new("encoder/data")?;
+let hub = Hub::<EncoderData>::new("encoder.data")?;
 
-if let Some(data) = hub.recv(None) {
+if let Some(data) = hub.recv(&mut None) {
     println!("Encoder {}: {} counts, {:.1} RPM",
         data.encoder_id, data.position, data.rpm);
 }

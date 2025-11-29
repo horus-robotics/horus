@@ -492,14 +492,14 @@ mod tests {
         // Add publish edge: sensor -> topic
         edges.push(GraphEdge {
             from: "process_1_sensor".to_string(),
-            to: "topic_/sensor_data".to_string(),
+            to: "topic_sensor_data".to_string(),
             edge_type: EdgeType::Publish,
             active: true,
         });
 
         // Add subscribe edge: topic -> processor
         edges.push(GraphEdge {
-            from: "topic_/sensor_data".to_string(),
+            from: "topic_sensor_data".to_string(),
             to: "process_2_processor".to_string(),
             edge_type: EdgeType::Subscribe,
             active: true,

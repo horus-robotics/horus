@@ -602,7 +602,7 @@ impl MyMotorController {
         Ok(Self {
             serial_port: None,
             cmd_sub: Hub::new("motor.cmd")?,
-            status_pub: Hub::new("motor/status")?,
+            status_pub: Hub::new("motor.status")?,
             velocity: 0.0,
             position: 0,
             is_enabled: false,

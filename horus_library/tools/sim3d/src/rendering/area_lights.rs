@@ -267,11 +267,14 @@ pub struct AreaLightsPlugin;
 impl Plugin for AreaLightsPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(AreaLightSamplingConfig::default())
-            .add_systems(Update, (
-                area_light_spawn_system,
-                area_light_update_system,
-                area_light_gizmo_system,
-            ));
+            .add_systems(
+                Update,
+                (
+                    area_light_spawn_system,
+                    area_light_update_system,
+                    area_light_gizmo_system,
+                ),
+            );
     }
 }
 
@@ -319,7 +322,9 @@ fn area_light_spawn_system(
                                     color,
                                     intensity: intensity_per_light * 1000.0, // Bevy uses lumens
                                     range: area_light.range,
-                                    shadows_enabled: area_light.cast_shadows && ix == lights_x / 2 && iy == lights_y / 2,
+                                    shadows_enabled: area_light.cast_shadows
+                                        && ix == lights_x / 2
+                                        && iy == lights_y / 2,
                                     ..default()
                                 },
                                 Transform::from_xyz(offset_x, offset_y, 0.0),

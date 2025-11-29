@@ -194,7 +194,7 @@ pub struct FramesAccessor<'a> {
     inner: &'a HFrameResource,
 }
 
-impl<'a> FramesAccessor<'a> {
+impl FramesAccessor<'_> {
     pub fn len(&self) -> usize {
         self.inner.frame_count()
     }

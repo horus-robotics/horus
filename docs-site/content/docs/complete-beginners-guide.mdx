@@ -279,30 +279,35 @@ HORUS works with:
 
 **Example hardware setup:**
 ```python
-from horus import Node, Hub
+import horus
 import RPi.GPIO as GPIO  # Raspberry Pi GPIO library
 
-class RealMotorNode(Node):
-    def __init__(self):
-        super().__init__()
-        self.cmd_sub = Hub("cmd_vel", tuple)
+# Setup GPIO pins for motor driver
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(17, GPIO.OUT)  # Left motor
+GPIO.setup(18, GPIO.OUT)  # Right motor
 
-        # Setup GPIO pins for motor driver
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(17, GPIO.OUT)  # Left motor
-        GPIO.setup(18, GPIO.OUT)  # Right motor
+def motor_tick(node):
+    # Receive velocity commands
+    velocity = node.get("cmd_vel")
+    if velocity:
+        linear, angular = velocity
+        # Convert to motor speeds and drive!
+        left_speed = linear - angular
+        right_speed = linear + angular
+        # Write to GPIO (simplified example)
+        GPIO.output(17, left_speed > 0)
+        GPIO.output(18, right_speed > 0)
 
-    def tick(self, ctx):
-        velocity = self.cmd_sub.recv(&mut ctx)
-        if velocity:
-            linear, angular = velocity
-            # Convert to motor speeds and drive!
-            self.drive_motors(linear, angular)
-        return True
+# Create and run the motor controller node
+motor = horus.Node(
+    name="MotorController",
+    subs=["cmd_vel"],
+    tick=motor_tick,
+    rate=50  # 50 Hz control loop
+)
 
-    def drive_motors(self, linear, angular):
-        # Your motor control code here
-        pass
+horus.run(motor)
 ```
 
 ### Recommended First Projects
@@ -324,19 +329,17 @@ class RealMotorNode(Node):
 
 ### Pre-Built Nodes Available
 
-HORUS includes ready-to-use nodes so you don't have to write everything:
+HORUS includes ready-to-use Python nodes so you don't have to write everything:
 
 ```python
-from horus_library import (
-    CameraNode,          # Read from USB/MIPI cameras
-    LidarNode,           # LIDAR sensors (RPLidar, etc.)
-    ImuNode,             # Gyroscope/accelerometer
-    GpsNode,             # GPS positioning
-    JoystickInputNode,   # Game controller input
-    KeyboardInputNode,   # Keyboard control
-    MotorControllerNode, # Motor drivers
-    ServoNode,           # Servo motors
-    SafetyMonitorNode,   # Emergency stop system
+from horus.nodes import (
+    CameraNode,      # Read from USB/MIPI cameras
+    LidarNode,       # LIDAR sensors (RPLidar, etc.)
+    ImuNode,         # Gyroscope/accelerometer
+    GpsNode,         # GPS positioning
+    JoystickNode,    # Game controller input
+    KeyboardNode,    # Keyboard control
+    SerialNode,      # Serial port communication
 )
 ```
 
@@ -442,10 +445,10 @@ Companies are using HORUS for warehouse robots, drones, and autonomous vehicles.
 
 ### Official Documentation
 
-- **[Quick Start Tutorial](/docs/quick-start)** - Build your first app in 10 minutes
-- **[Installation Guide](/docs/installation)** - Detailed installation instructions
-- **[Examples](/docs/examples)** - Real robot projects with code
-- **[Python API Reference](/docs/python-bindings)** - All Python functions explained
+- **[Quick Start Tutorial](/docs/getting-started/quick-start)** - Build your first app in 10 minutes
+- **[Installation Guide](/docs/getting-started/installation)** - Detailed installation instructions
+- **[Basic Examples](/docs/basic-examples)** - Real robot projects with code
+- **[Python API Reference](/docs/multi-language/python-bindings)** - All Python functions explained
 
 ### Video Tutorials (Coming Soon)
 

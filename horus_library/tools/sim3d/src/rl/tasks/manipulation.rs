@@ -81,7 +81,8 @@ impl ManipulationTask {
 
         // Find object entity: look for entities with RigidBodyComponent but no Robot component
         // This typically represents manipulable objects in the scene
-        let mut rb_query = world.query_filtered::<(Entity, &Transform, &RigidBodyComponent), Without<Robot>>();
+        let mut rb_query =
+            world.query_filtered::<(Entity, &Transform, &RigidBodyComponent), Without<Robot>>();
         let mut objects: Vec<(Entity, f32)> = rb_query
             .iter(world)
             .filter(|(_, transform, _)| {

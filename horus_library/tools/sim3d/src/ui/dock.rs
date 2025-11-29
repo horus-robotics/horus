@@ -55,7 +55,7 @@ pub struct DockConfig {
 impl Default for DockConfig {
     fn default() -> Self {
         Self {
-            enabled: false, // Disabled by default - use F7 to enable dockable mode
+            enabled: true, // Enabled by default - unified dock panel on startup
             show_menu_bar: true,
         }
     }
@@ -78,7 +78,7 @@ pub struct SimDockViewer<'a> {
     pub console_messages: &'a mut Vec<String>,
 }
 
-impl<'a> TabViewer for SimDockViewer<'a> {
+impl TabViewer for SimDockViewer<'_> {
     type Tab = DockTab;
 
     fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
@@ -142,19 +142,35 @@ fn render_controls_content(ui: &mut egui::Ui, ctx: &DockRenderContext) {
 
     ui.label(format!(
         "Debug Info: {}",
-        if ctx.controls.show_debug_info { "ON" } else { "OFF" }
+        if ctx.controls.show_debug_info {
+            "ON"
+        } else {
+            "OFF"
+        }
     ));
     ui.label(format!(
         "Physics Debug: {}",
-        if ctx.controls.show_physics_debug { "ON" } else { "OFF" }
+        if ctx.controls.show_physics_debug {
+            "ON"
+        } else {
+            "OFF"
+        }
     ));
     ui.label(format!(
         "TF Frames: {}",
-        if ctx.controls.show_tf_frames { "ON" } else { "OFF" }
+        if ctx.controls.show_tf_frames {
+            "ON"
+        } else {
+            "OFF"
+        }
     ));
     ui.label(format!(
         "Collision Shapes: {}",
-        if ctx.controls.show_collision_shapes { "ON" } else { "OFF" }
+        if ctx.controls.show_collision_shapes {
+            "ON"
+        } else {
+            "OFF"
+        }
     ));
 
     ui.add_space(8.0);
@@ -187,14 +203,23 @@ fn render_stats_content(ui: &mut egui::Ui, ctx: &DockRenderContext) {
         }
     });
 
-    ui.label(format!("Frame Time: {:.2}ms", ctx.time.delta_secs() * 1000.0));
+    ui.label(format!(
+        "Frame Time: {:.2}ms",
+        ctx.time.delta_secs() * 1000.0
+    ));
 
     ui.add_space(5.0);
     ui.label("Frame Breakdown:");
     ui.indent("breakdown", |ui| {
-        ui.label(format!("  Physics: {:.2}ms", ctx.frame_time.physics_time_ms));
+        ui.label(format!(
+            "  Physics: {:.2}ms",
+            ctx.frame_time.physics_time_ms
+        ));
         ui.label(format!("  Sensors: {:.2}ms", ctx.frame_time.sensor_time_ms));
-        ui.label(format!("  Rendering: {:.2}ms", ctx.frame_time.rendering_time_ms));
+        ui.label(format!(
+            "  Rendering: {:.2}ms",
+            ctx.frame_time.rendering_time_ms
+        ));
     });
 
     ui.add_space(10.0);
@@ -216,7 +241,10 @@ fn render_stats_content(ui: &mut egui::Ui, ctx: &DockRenderContext) {
 
     ui.add_space(10.0);
     ui.label(format!("Sim Time: {:.2}s", ctx.stats.simulation_time));
-    ui.label(format!("Est. Memory: {:.2} MB", ctx.stats.estimated_memory_mb()));
+    ui.label(format!(
+        "Est. Memory: {:.2} MB",
+        ctx.stats.estimated_memory_mb()
+    ));
 }
 
 fn render_console_content(ui: &mut egui::Ui, messages: &mut Vec<String>) {
@@ -278,7 +306,9 @@ fn render_tf_tree_content(ui: &mut egui::Ui, ctx: &DockRenderContext) {
                     if let Ok(transform) = ctx.tf_tree.lookup_transform("world", frame) {
                         ui.label(format!(
                             "({:.2}, {:.2}, {:.2})",
-                            transform.translation.x, transform.translation.y, transform.translation.z
+                            transform.translation.x,
+                            transform.translation.y,
+                            transform.translation.z
                         ));
                     }
                 });
@@ -312,8 +342,11 @@ impl DockWorkspace {
         let tree = state.main_surface_mut();
 
         // Split: Bottom panel (Console + TfTree as tabs)
-        let [_main, _bottom] =
-            tree.split_below(NodeIndex::root(), 0.65, vec![DockTab::Console, DockTab::TfTree]);
+        let [_main, _bottom] = tree.split_below(
+            NodeIndex::root(),
+            0.65,
+            vec![DockTab::Console, DockTab::TfTree],
+        );
 
         Self {
             state,
@@ -464,7 +497,11 @@ pub fn handle_toggle_dock_mode(
         config.enabled = !config.enabled;
         tracing::info!(
             "Dock mode: {}",
-            if config.enabled { "enabled" } else { "disabled" }
+            if config.enabled {
+                "enabled"
+            } else {
+                "disabled"
+            }
         );
     }
 }
@@ -645,7 +682,7 @@ impl Plugin for DockPlugin {
                     .chain(),
             );
 
-        tracing::info!("Dock system initialized - Press F7 to toggle, F8-F10 for layouts");
+        tracing::info!("Dock system initialized (enabled by default) - Press F7 to toggle, F8-F10 for layouts");
     }
 }
 

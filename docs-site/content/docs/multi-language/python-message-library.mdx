@@ -314,7 +314,7 @@ use horus::prelude::*;
 use horus_library::messages::cmd_vel::CmdVel;
 
 let hub = Hub::<CmdVel>::new("cmd_vel")?;
-if let Some(cmd) = hub.recv(None) {
+if let Some(cmd) = hub.recv(&mut None) {
     println!("Received: linear={}, angular={}", cmd.linear, cmd.angular);
 }
 ```

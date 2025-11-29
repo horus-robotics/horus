@@ -864,7 +864,7 @@ pub trait NotificationCommands {
     fn notify_error(&mut self, title: impl Into<String>, message: impl Into<String>);
 }
 
-impl<'w, 's> NotificationCommands for Commands<'w, 's> {
+impl NotificationCommands for Commands<'_, '_> {
     fn notify_info(&mut self, title: impl Into<String>, message: impl Into<String>) {
         let notification = Notification::info(title).with_message(message);
         self.send_event(NotifyEvent::new(notification));

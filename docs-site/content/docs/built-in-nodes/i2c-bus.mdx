@@ -141,8 +141,8 @@ i2c.add_simulated_device(0x50, 256); // 256-byte EEPROM simulation
 // Use custom topic names
 let i2c = I2cBusNode::new_with_config(
     1,                  // Bus number
-    "sensors/i2c/req",  // Request topic
-    "sensors/i2c/resp"  // Response topic
+    "sensors.i2c.req",  // Request topic
+    "sensors.i2c.resp"  // Response topic
 )?;
 ```
 
@@ -161,12 +161,12 @@ let request = I2cMessage::read(
 );
 
 // Publish request
-let hub = Hub::<I2cMessage>::new("i2c/request")?;
-hub.send(request, None)?;
+let hub = Hub::<I2cMessage>::new("i2c.request")?;
+hub.send(request, &mut None).ok();
 
 // Receive response
-let response_hub = Hub::<I2cMessage>::new("i2c/response")?;
-if let Some(response) = response_hub.recv(None) {
+let response_hub = Hub::<I2cMessage>::new("i2c.response")?;
+if let Some(response) = response_hub.recv(&mut None) {
     if response.success {
         println!("Data: {:?}", &response.data[..response.data_length as usize]);
     } else {
@@ -182,7 +182,7 @@ let mut request = I2cMessage::write(1, 0x68, 2);
 request.data[0] = 0x6B; // Register address
 request.data[1] = 0x00; // Value to write
 
-hub.send(request, None)?;
+hub.send(request, &mut None).ok();
 ```
 
 ### Register Read/Write
@@ -208,9 +208,9 @@ request.data[0] = 0x00; // Value to write
 ```rust
 // Read accelerometer data (registers 0x3B-0x40)
 let request = I2cMessage::read_register(1, 0x68, 0x3B, 6);
-hub.send(request, None)?;
+hub.send(request, &mut None).ok();
 
-if let Some(resp) = response_hub.recv(None) {
+if let Some(resp) = response_hub.recv(&mut None) {
     let ax = i16::from_be_bytes([resp.data[0], resp.data[1]]);
     let ay = i16::from_be_bytes([resp.data[2], resp.data[3]]);
     let az = i16::from_be_bytes([resp.data[4], resp.data[5]]);
@@ -223,9 +223,9 @@ if let Some(resp) = response_hub.recv(None) {
 ```rust
 // Read bus voltage (register 0x02)
 let request = I2cMessage::read_register(1, 0x40, 0x02, 2);
-hub.send(request, None)?;
+hub.send(request, &mut None).ok();
 
-if let Some(resp) = response_hub.recv(None) {
+if let Some(resp) = response_hub.recv(&mut None) {
     let raw = u16::from_be_bytes([resp.data[0], resp.data[1]]);
     let voltage = (raw >> 3) as f32 * 0.004; // LSB = 4mV
     println!("Bus voltage: {:.3} V", voltage);
@@ -239,7 +239,7 @@ if let Some(resp) = response_hub.recv(None) {
 let mut request = I2cMessage::write(1, 0x3C, 2);
 request.data[0] = 0x00; // Command mode
 request.data[1] = 0xAF; // Display ON command
-hub.send(request, None)?;
+hub.send(request, &mut None).ok();
 ```
 
 ## Error Handling

@@ -1000,11 +1000,11 @@ impl Default for JointForceEstimationConfig {
         Self {
             // Based on typical rigid body solver stiffness parameters
             // Higher values = more responsive joint break detection
-            velocity_to_force_stiffness: 500.0,  // N·s/m - moderate stiffness
-            angvel_to_torque_stiffness: 50.0,    // N·m·s/rad
+            velocity_to_force_stiffness: 500.0, // N·s/m - moderate stiffness
+            angvel_to_torque_stiffness: 50.0,   // N·m·s/rad
             use_mass_scaling: true,
-            default_mass: 1.0,     // 1 kg default
-            default_inertia: 0.1,  // 0.1 kg·m² default (roughly a 1kg sphere of 0.3m radius)
+            default_mass: 1.0,    // 1 kg default
+            default_inertia: 0.1, // 0.1 kg·m² default (roughly a 1kg sphere of 0.3m radius)
         }
     }
 }
@@ -1558,7 +1558,7 @@ pub fn update_breakable_joints_system(
                     let i1 = (inertia1.x + inertia1.y + inertia1.z) / 3.0;
                     let i2 = (inertia2.x + inertia2.y + inertia2.z) / 3.0;
                     if i1 > 0.0 && i2 > 0.0 {
-                        Some((i1 * i2) / (i1 + i2))  // Reduced inertia
+                        Some((i1 * i2) / (i1 + i2)) // Reduced inertia
                     } else {
                         None
                     }

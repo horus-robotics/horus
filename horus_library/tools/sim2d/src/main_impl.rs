@@ -24,6 +24,7 @@ use clap::Parser;
 use horus_core::core::LogSummary;
 use horus_core::{communication::Hub, core::NodeInfo};
 use horus_library::messages::{CmdVel, Imu, LaserScan, Odometry, Pose2D, Twist};
+use crate::joint::{JointCommand, JointState};
 use rapier2d::prelude::*;
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
@@ -122,23 +123,59 @@ fn default_robot_position() -> [f32; 2] {
 /// LIDAR sensor configuration
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
 pub struct LidarConfig {
+    #[serde(default = "default_lidar_enabled")]
     pub enabled: bool,
+    #[serde(default = "default_lidar_range_max")]
     pub range_max: f32,
+    #[serde(default = "default_lidar_range_min")]
     pub range_min: f32,
+    #[serde(default = "default_lidar_angle_min")]
     pub angle_min: f32, // radians
+    #[serde(default = "default_lidar_angle_max")]
     pub angle_max: f32, // radians
+    #[serde(default = "default_lidar_num_rays")]
     pub num_rays: usize,
+}
+
+/// Default: LIDAR enabled
+pub fn default_lidar_enabled() -> bool {
+    true
+}
+
+/// Default: 10 meters max range
+pub fn default_lidar_range_max() -> f32 {
+    10.0
+}
+
+/// Default: 10 cm min range
+pub fn default_lidar_range_min() -> f32 {
+    0.1
+}
+
+/// Default: -180 degrees (full 360 scan)
+pub fn default_lidar_angle_min() -> f32 {
+    -std::f32::consts::PI
+}
+
+/// Default: +180 degrees (full 360 scan)
+pub fn default_lidar_angle_max() -> f32 {
+    std::f32::consts::PI
+}
+
+/// Default: 1 degree resolution (360 rays)
+pub fn default_lidar_num_rays() -> usize {
+    360
 }
 
 impl Default for LidarConfig {
     fn default() -> Self {
         Self {
-            enabled: true,
-            range_max: 10.0,                  // 10 meters max range
-            range_min: 0.1,                   // 10 cm min range
-            angle_min: -std::f32::consts::PI, // -180 degrees
-            angle_max: std::f32::consts::PI,  // +180 degrees
-            num_rays: 360,                    // 1 degree resolution
+            enabled: default_lidar_enabled(),
+            range_max: default_lidar_range_max(),
+            range_min: default_lidar_range_min(),
+            angle_min: default_lidar_angle_min(),
+            angle_max: default_lidar_angle_max(),
+            num_rays: default_lidar_num_rays(),
         }
     }
 }
@@ -220,6 +257,22 @@ pub struct WorldConfig {
     pub width: f32,
     pub height: f32,
     pub obstacles: Vec<Obstacle>,
+    /// Color for boundary walls (RGB 0.0-1.0), defaults to gray
+    #[serde(default = "default_wall_color")]
+    pub wall_color: [f32; 3],
+    /// Default color for obstacles without explicit color (RGB 0.0-1.0), defaults to brown
+    #[serde(default = "default_obstacle_color")]
+    pub default_obstacle_color: [f32; 3],
+}
+
+/// Default wall color (gray)
+pub fn default_wall_color() -> [f32; 3] {
+    [0.3, 0.3, 0.3] // Gray
+}
+
+/// Default obstacle color (brown)
+pub fn default_obstacle_color() -> [f32; 3] {
+    [0.6, 0.4, 0.2] // Brown
 }
 
 /// Obstacle shape type
@@ -272,6 +325,8 @@ impl Default for WorldConfig {
                     color: None,
                 },
             ],
+            wall_color: default_wall_color(),
+            default_obstacle_color: default_obstacle_color(),
         }
     }
 }
@@ -453,12 +508,64 @@ pub struct RobotHubs {
     imu_pub: Hub<Imu>,
 }
 
+/// Per-articulated-robot HORUS communication hubs
+pub struct ArticulatedRobotHubs {
+    pub joint_cmd_sub: Hub<JointCommand>,
+    pub joint_state_pub: Hub<JointState>,
+}
+
 /// HORUS communication system
 #[derive(Resource)]
 pub struct HorusComm {
     robot_hubs: std::collections::HashMap<String, RobotHubs>, // Per-robot hubs indexed by robot name
+    pub articulated_robot_hubs: std::collections::HashMap<String, ArticulatedRobotHubs>, // Per-articulated robot hubs
     obstacle_cmd_sub: Hub<ObstacleCommand>,                   // Shared obstacle command topic
     node_info: NodeInfo,
+    /// Current topic prefixes per robot (for detecting changes)
+    current_topic_prefixes: std::collections::HashMap<String, String>,
+}
+
+impl HorusComm {
+    /// Recreate hubs for a robot with a new topic prefix
+    pub fn update_robot_topics(&mut self, robot_name: &str, new_prefix: &str) -> bool {
+        let cmd_vel_topic = format!("{}.cmd_vel", new_prefix);
+        let odom_topic = format!("{}.odom", new_prefix);
+        let scan_topic = format!("{}.scan", new_prefix);
+        let imu_topic = format!("{}.imu", new_prefix);
+
+        match (
+            Hub::new(&cmd_vel_topic),
+            Hub::new(&odom_topic),
+            Hub::new(&scan_topic),
+            Hub::new(&imu_topic),
+        ) {
+            (Ok(cmd_vel_sub), Ok(odom_pub), Ok(lidar_pub), Ok(imu_pub)) => {
+                // Replace the old hubs with new ones
+                self.robot_hubs.insert(
+                    robot_name.to_string(),
+                    RobotHubs {
+                        cmd_vel_sub,
+                        odom_pub,
+                        lidar_pub,
+                        imu_pub,
+                    },
+                );
+                // Track the new prefix
+                self.current_topic_prefixes.insert(robot_name.to_string(), new_prefix.to_string());
+                info!("Updated HORUS topics for robot '{}' to prefix '{}'", robot_name, new_prefix);
+                true
+            }
+            _ => {
+                warn!("Failed to update HORUS topics for robot '{}'", robot_name);
+                false
+            }
+        }
+    }
+
+    /// Get the current topic prefix for a robot
+    pub fn get_topic_prefix(&self, robot_name: &str) -> Option<&String> {
+        self.current_topic_prefixes.get(robot_name)
+    }
 }
 
 /// Physics world
@@ -509,7 +616,6 @@ pub struct AppConfig {
 }
 
 impl AppConfig {
-    #[allow(dead_code)] // May be used in future or for testing
     fn new(args: Args) -> Self {
         // Load robot config(s)
         let robots = if let Some(robot_file) = &args.robot {
@@ -754,6 +860,8 @@ impl AppConfig {
             width: world_width,
             height: world_height,
             obstacles,
+            wall_color: default_wall_color(),
+            default_obstacle_color: default_obstacle_color(),
         })
     }
 }
@@ -873,6 +981,7 @@ pub fn setup(
 
     // Create HORUS communication - per-robot hubs
     let mut robot_hubs = std::collections::HashMap::new();
+    let mut current_topic_prefixes = std::collections::HashMap::new();
     let mut horus_connected = true;
 
     for robot_config in &app_config.robots {
@@ -897,6 +1006,8 @@ pub fn setup(
                         imu_pub,
                     },
                 );
+                // Track the topic prefix for this robot
+                current_topic_prefixes.insert(robot_config.name.clone(), robot_config.topic_prefix.clone());
                 info!(" Connected HORUS for robot '{}':", robot_config.name);
                 info!("    cmd_vel: {}", cmd_vel_topic);
                 info!("    odom: {}", odom_topic);
@@ -913,14 +1024,44 @@ pub fn setup(
     // Check if we have any robot connections before moving robot_hubs
     let has_robot_hubs = !robot_hubs.is_empty();
 
+    // Create articulated robot hubs
+    let mut articulated_robot_hubs = std::collections::HashMap::new();
+    for artic_config in &app_config.articulated_robots {
+        let joint_cmd_topic = format!("{}.joint_cmd", artic_config.topic_prefix);
+        let joint_state_topic = format!("{}.joint_state", artic_config.topic_prefix);
+
+        match (
+            Hub::new(&joint_cmd_topic),
+            Hub::new(&joint_state_topic),
+        ) {
+            (Ok(joint_cmd_sub), Ok(joint_state_pub)) => {
+                articulated_robot_hubs.insert(
+                    artic_config.name.clone(),
+                    ArticulatedRobotHubs {
+                        joint_cmd_sub,
+                        joint_state_pub,
+                    },
+                );
+                info!(" Connected HORUS for articulated robot '{}':", artic_config.name);
+                info!("    joint_cmd: {}", joint_cmd_topic);
+                info!("    joint_state: {}", joint_state_topic);
+            }
+            _ => {
+                warn!(" Failed to connect HORUS for articulated robot '{}'", artic_config.name);
+            }
+        }
+    }
+
     // Create shared obstacle command hub
     match Hub::new("sim2d.obstacle_cmd") {
         Ok(obstacle_cmd_sub) => {
             let node_info = NodeInfo::new("sim2d".to_string(), true);
             commands.insert_resource(HorusComm {
                 robot_hubs,
+                articulated_robot_hubs,
                 obstacle_cmd_sub,
                 node_info,
+                current_topic_prefixes,
             });
             info!(" Connected to obstacle command topic: sim2d.obstacle_cmd");
         }
@@ -991,9 +1132,10 @@ pub fn setup(
         physics_world.collider_set.insert(collider);
 
         // Visual (scaled for visibility)
+        let wc = app_config.world_config.wall_color;
         commands.spawn((
             Sprite {
-                color: Color::srgb(0.3, 0.3, 0.3), // Gray walls
+                color: Color::srgb(wc[0], wc[1], wc[2]),
                 custom_size: Some(Vec2::new(size_scaled.x, size_scaled.y)),
                 ..default()
             },
@@ -1010,11 +1152,12 @@ pub fn setup(
         let pos_physics = vector![obstacle.pos[0], obstacle.pos[1]];
         let pos_visual = vector![obstacle.pos[0] * scale, obstacle.pos[1] * scale];
 
-        // Determine obstacle color (custom or default brown)
+        // Determine obstacle color (custom or configurable default)
+        let default_oc = app_config.world_config.default_obstacle_color;
         let obstacle_color = obstacle
             .color
             .map(|c| Color::srgb(c[0], c[1], c[2]))
-            .unwrap_or(Color::srgb(0.6, 0.4, 0.2)); // Default brown
+            .unwrap_or_else(|| Color::srgb(default_oc[0], default_oc[1], default_oc[2]));
 
         // Create physics body and visual representation based on shape
         let (rigid_body, collider, sprite) = match obstacle.shape {
@@ -1241,6 +1384,25 @@ pub fn tick_start_system(mut horus_comm: Option<ResMut<HorusComm>>) {
         comm.node_info.increment_tick();
         // Start the tick timer for duration tracking
         comm.node_info.start_tick();
+    }
+}
+
+/// Topic update system - processes pending topic prefix changes without restart
+pub fn topic_update_system(
+    mut ui_state: ResMut<ui::UiState>,
+    mut horus_comm: Option<ResMut<HorusComm>>,
+) {
+    // Check if there's a pending topic update
+    if let Some((robot_name, new_prefix)) = ui_state.pending_topic_update.take() {
+        if let Some(ref mut comm) = horus_comm {
+            if comm.update_robot_topics(&robot_name, &new_prefix) {
+                ui_state.status_message = format!("Topic updated to {} successfully", new_prefix);
+                info!("Dynamic topic update successful: {} -> {}", robot_name, new_prefix);
+            } else {
+                ui_state.status_message = format!("Failed to update topic to {}", new_prefix);
+                warn!("Dynamic topic update failed for robot '{}'", robot_name);
+            }
+        }
     }
 }
 
@@ -2931,6 +3093,8 @@ pub fn run_simulation(args: Args) -> Result<()> {
                 (
                     crate::joint::articulated_visual_sync_system,
                     crate::joint::joint_state_update_system,
+                    crate::joint::joint_command_system,
+                    crate::joint::joint_state_publish_system,
                 ),
             );
     } else {
@@ -3034,9 +3198,12 @@ pub fn run_simulation(args: Args) -> Result<()> {
                 crate::joint::articulated_visual_sync_system,
                 crate::joint::joint_marker_sync_system,
                 crate::joint::joint_state_update_system,
+                crate::joint::joint_command_system,
+                crate::joint::joint_state_publish_system,
             ),
         )
         .add_systems(bevy::prelude::Update, ui::ui_system)
+        .add_systems(bevy::prelude::Update, topic_update_system.after(ui::ui_system))
         .add_systems(bevy::prelude::Update, ui::file_dialog_system)
         .add_systems(
             bevy::prelude::Update,

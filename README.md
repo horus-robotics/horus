@@ -59,41 +59,74 @@ HORUS includes **32 production-ready nodes** with hardware drivers integrated. U
 | **Navigation** | Odometry, Localization, Path Planner, Collision Detector | Differential drive, mecanum, ackermann |
 | **Control** | PID Controller, Differential Drive | Real-time control loops |
 
-### Example: Production Robot in 10 Lines
+### Example: Autonomous Robot with Built-in Nodes
+
+Built-in nodes connect via **topics** - just like ROS, but simpler. Here's a complete obstacle-avoiding robot:
+
+```
+┌────────────────┐    "lidar/scan"    ┌───────────────────┐    "obstacles"    ┌───────────────┐
+│   LidarNode    │ ─────────────────► │ CollisionDetector │ ────────────────► │  PathPlanner  │
+│   (Priority 1) │                    │    (Priority 2)   │                   │  (Priority 3) │
+└────────────────┘                    └───────────────────┘                   └───────┬───────┘
+                                                                                      │
+                                                                              "cmd_vel"
+                                                                                      │
+┌────────────────┐    "motor/left"    ┌───────────────────┐                          │
+│  BldcMotorNode │ ◄───────────────── │ DifferentialDrive │ ◄────────────────────────┘
+│  (Priority 5)  │    "motor/right"   │    (Priority 4)   │
+└────────────────┘ ◄───────────────── └───────────────────┘
+```
 
 ```rust
 use horus::prelude::*;
-use horus_library::nodes::*;
+use horus_library::prelude::*;
 
 fn main() -> Result<()> {
     let mut scheduler = Scheduler::new();
 
-    // Hardware - production-ready nodes
-    let mut battery = BatteryMonitorNode::new()?;
-    battery.configure_4s_lipo(5000.0);  // I2C battery monitor
+    // SAFETY (Priority 0) - Always runs first
+    scheduler.add(Box::new(EmergencyStopNode::new("cmd_vel")?), 0, Some(true));
 
-    let mut motors = BlDcMotorNode::new()?;
-    motors.configure_gpio(12, EscProtocol::DShot600);  // ESCs
+    // SENSOR (Priority 1) - LiDAR publishes to "lidar/scan"
+    let mut lidar = LidarNode::new()?;
+    lidar.configure_serial("/dev/ttyUSB0", 115200);
+    scheduler.add(Box::new(lidar), 1, Some(true));
 
-    let mut camera = DepthCameraNode::new()?;
-    camera.set_resolution(640, 480);  // Intel RealSense
+    // PERCEPTION (Priority 2) - Subscribes "lidar/scan", publishes "obstacles"
+    let mut detector = CollisionDetectorNode::new()?;
+    detector.set_safety_distance(0.5);  // 50cm
+    scheduler.add(Box::new(detector), 2, Some(true));
 
-    let safety = SafetyMonitorNode::new()?;  // Safety monitoring
+    // PLANNING (Priority 3) - Subscribes "obstacles", publishes "cmd_vel"
+    scheduler.add(Box::new(PathPlannerNode::new()?), 3, Some(true));
 
-    scheduler.add(Box::new(battery), 50, Some(true));
-    scheduler.add(Box::new(motors), 10, Some(true));
-    scheduler.add(Box::new(camera), 20, Some(true));
-    scheduler.add(Box::new(safety), 5, Some(true));
+    // CONTROL (Priority 4) - Subscribes "cmd_vel", publishes "motor/*"
+    let drive = DifferentialDriveNode::new("cmd_vel", "motor/left", "motor/right", 0.3)?;
+    scheduler.add(Box::new(drive), 4, Some(true));
 
-    scheduler.run()  // Production robot ready!
+    // ACTUATORS (Priority 5) - Subscribe to motor commands
+    let mut left = BldcMotorNode::new()?;
+    left.configure_gpio(12, EscProtocol::DShot600);
+    left.set_input_topic("motor/left");
+    scheduler.add(Box::new(left), 5, Some(true));
+
+    let mut right = BldcMotorNode::new()?;
+    right.configure_gpio(13, EscProtocol::DShot600);
+    right.set_input_topic("motor/right");
+    scheduler.add(Box::new(right), 5, Some(true));
+
+    scheduler.run()
 }
 ```
 
-**This robot has:**
-- Battery monitoring (I2C INA219/INA226)
-- Motor control (Raspberry Pi GPIO PWM)
-- 3D vision (Intel RealSense D435/D455)
-- Safety monitoring (CPU, memory, battery alerts)
+**What this robot does:**
+1. LiDAR scans environment → publishes to `lidar/scan`
+2. Collision detector finds obstacles → publishes to `obstacles`
+3. Path planner avoids obstacles → publishes velocity commands to `cmd_vel`
+4. Differential drive converts to wheel speeds → publishes to `motor/left`, `motor/right`
+5. BLDC motors drive the wheels
+
+**Priority ensures correct execution order**: Sensors (1) → Perception (2) → Planning (3) → Control (4) → Actuators (5)
 
 ### vs ROS2: Batteries Included
 

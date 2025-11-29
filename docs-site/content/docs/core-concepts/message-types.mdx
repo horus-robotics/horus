@@ -47,7 +47,7 @@ HORUS supports two fundamentally different approaches to messaging, each with di
 use horus::prelude::*;
 use horus_library::messages::Pose2D;
 
-let hub: Hub<Pose2D> = Hub::new("robot/pose")?;
+let hub: Hub<Pose2D> = Hub::new("robot.pose")?;
 hub.send(Pose2D::new(1.0, 2.0, 0.5), &mut ctx)?;
 ```
 
@@ -57,14 +57,14 @@ from horus import Node, Pose2D
 
 node = Node(
     name="controller",
-    pubs={"robot/pose": {"type": Pose2D}}  # Specify type
+    pubs={"robot.pose": {"type": Pose2D}}  # Specify type
 )
-node.send("robot/pose", Pose2D(x=1.0, y=2.0, theta=0.5))
+node.send("robot.pose", Pose2D(x=1.0, y=2.0, theta=0.5))
 ```
 
 **Logging output:**
 ```
-[12:34:56.789] controller --PUB--> 'robot/pose' = Pose2D { x: 1.0, y: 2.0, theta: 0.5 }
+[12:34:56.789] controller --PUB--> 'robot.pose' = Pose2D { x: 1.0, y: 2.0, theta: 0.5 }
 ```
 
 **Benefits:**

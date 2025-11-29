@@ -44,9 +44,9 @@ fn main() -> Result<()> {
 ## Usage
 
 ```rust
-let hub = Hub::<Odometry>::new("odom/pose")?;
+let hub = Hub::<Odometry>::new("odom.pose")?;
 
-if let Some(pose) = hub.recv(None) {
+if let Some(pose) = hub.recv(&mut None) {
     println!("Position: ({:.2}, {:.2}), Heading: {:.1}°",
         pose.x, pose.y, pose.theta * 180.0 / PI);
     println!("Velocity: {:.2} m/s, {:.2} rad/s",

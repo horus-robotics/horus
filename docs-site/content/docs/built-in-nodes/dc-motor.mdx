@@ -211,8 +211,8 @@ let cmd = DcMotorCommand {
     speed: 75,  // 75% forward
 };
 
-let hub = Hub::<DcMotorCommand>::new("dc_motor/command")?;
-hub.send(cmd, None)?;
+let hub = Hub::<DcMotorCommand>::new("dc_motor.command")?;
+hub.send(cmd, &mut None).ok();
 
 // Negative speed = reverse
 let cmd = DcMotorCommand {
@@ -220,7 +220,7 @@ let cmd = DcMotorCommand {
     command_type: DcMotorCommand::CMD_SPEED,
     speed: -50,  // 50% reverse
 };
-hub.send(cmd, None)?;
+hub.send(cmd, &mut None).ok();
 ```
 
 ### Direction Control
@@ -250,7 +250,7 @@ let cmd = DcMotorCommand {
     command_type: DcMotorCommand::CMD_BRAKE,
     ..Default::default()
 };
-hub.send(cmd, None)?;
+hub.send(cmd, &mut None).ok();
 
 // Coast (free-spinning, both motor leads floating)
 let cmd = DcMotorCommand {
@@ -258,7 +258,7 @@ let cmd = DcMotorCommand {
     command_type: DcMotorCommand::CMD_COAST,
     ..Default::default()
 };
-hub.send(cmd, None)?;
+hub.send(cmd, &mut None).ok();
 ```
 
 ### Stop
@@ -270,7 +270,7 @@ let cmd = DcMotorCommand {
     command_type: DcMotorCommand::CMD_STOP,
     ..Default::default()
 };
-hub.send(cmd, None)?;
+hub.send(cmd, &mut None).ok();
 ```
 
 ## Usage Patterns
@@ -295,7 +295,7 @@ fn main() -> Result<()> {
     let control_node = node! {
         name: "motor_control",
         tick: |ctx| {
-            let hub = Hub::<DcMotorCommand>::new("dc_motor/command")?;
+            let hub = Hub::<DcMotorCommand>::new("dc_motor.command")?;
 
             // Run motor at 70% forward
             hub.send(DcMotorCommand {
@@ -372,7 +372,7 @@ fn main() -> Result<()> {
     let drive_node = node! {
         name: "tank_drive",
         tick: |ctx| {
-            let hub = Hub::<DcMotorCommand>::new("dc_motor/command")?;
+            let hub = Hub::<DcMotorCommand>::new("dc_motor.command")?;
 
             // Simple autonomous pattern
             // Forward

@@ -70,7 +70,8 @@ impl PushTask {
 
         // Find object entity: look for entities with RigidBodyComponent but no Robot component
         // These are typically pushable objects in the scene
-        let mut object_query = world.query_filtered::<(Entity, &Transform, &RigidBodyComponent), Without<Robot>>();
+        let mut object_query =
+            world.query_filtered::<(Entity, &Transform, &RigidBodyComponent), Without<Robot>>();
         let mut objects: Vec<(Entity, f32)> = object_query
             .iter(world)
             .filter(|(_, transform, _)| {

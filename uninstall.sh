@@ -263,17 +263,16 @@ if [ -d "$HORUS_DIR" ]; then
     # Show subdirectories
     if [ -d "$CACHE_DIR" ]; then
         cache_size=$(du -sh "$CACHE_DIR" 2>/dev/null | cut -f1)
-        echo -e "        - cache/ ($cache_size) - library cache"
-    fi
-    if [ -d "$TARGET_DIR" ]; then
-        target_size=$(du -sh "$TARGET_DIR" 2>/dev/null | cut -f1)
-        echo -e "        - target/ ($target_size) - pre-compiled deps"
+        echo -e "        - cache/ ($cache_size) - library cache & pre-compiled deps"
     fi
     if [ -f "$HORUS_DIR/config.toml" ]; then
         echo -e "        - config.toml - user settings"
     fi
     if [ -f "$HORUS_DIR/credentials" ] || [ -f "$HORUS_DIR/auth.json" ]; then
         echo -e "        - credentials - authentication data"
+    fi
+    if [ -f "$HORUS_DIR/install_profile" ]; then
+        echo -e "        - install_profile - installation type"
     fi
 else
     echo -e "    ${YELLOW}(~/.horus not found)${NC}"
@@ -428,11 +427,12 @@ if [ -d "$HORUS_DIR" ]; then
             REMOVED=$((REMOVED + 1))
         else
             # Remove everything except config files
-            [ -d "$CACHE_DIR" ] && rm -rf "$CACHE_DIR" && echo -e "  ${GREEN}[+]${NC} Removed cache/"
-            [ -d "$TARGET_DIR" ] && rm -rf "$TARGET_DIR" && echo -e "  ${GREEN}[+]${NC} Removed target/"
+            # Note: pre-compiled deps are inside cache/horus@version/target/, so removing cache removes them too
+            [ -d "$CACHE_DIR" ] && rm -rf "$CACHE_DIR" && echo -e "  ${GREEN}[+]${NC} Removed cache/ (includes pre-compiled deps)"
             [ -f "$HORUS_DIR/installed_version" ] && rm -f "$HORUS_DIR/installed_version"
+            [ -f "$HORUS_DIR/install_profile" ] && rm -f "$HORUS_DIR/install_profile"
             echo -e "  ${CYAN}[i]${NC} Kept user configuration files"
-            REMOVED=$((REMOVED + 2))
+            REMOVED=$((REMOVED + 1))
             SKIPPED=$((SKIPPED + 1))
         fi
     else

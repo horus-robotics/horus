@@ -909,6 +909,103 @@ echo ""
 echo -e "${GREEN}${NC} Clean complete - starting fresh build"
 echo ""
 
+# ============================================================================
+# GITHUB ISSUE CREATION - Automatic bug report on install failure
+# ============================================================================
+
+# Create a GitHub issue for install failure (requires gh CLI)
+create_github_issue() {
+    local log_file="$1"
+
+    # Check if gh CLI is available
+    if ! command -v gh &>/dev/null; then
+        echo -e "${YELLOW}${STATUS_WARN} GitHub CLI (gh) not installed. Cannot create issue automatically.${NC}"
+        echo "  Install with: brew install gh (macOS) or apt install gh (Linux)"
+        echo "  Then run: gh auth login"
+        return 1
+    fi
+
+    # Check if user is authenticated
+    if ! gh auth status &>/dev/null; then
+        echo -e "${YELLOW}${STATUS_WARN} Not logged into GitHub CLI. Cannot create issue.${NC}"
+        echo "  Run: gh auth login"
+        return 1
+    fi
+
+    # Gather system info
+    local os_info=$(uname -a 2>/dev/null || echo "Unknown")
+    local rust_version=$(rustc --version 2>/dev/null || echo "Unknown")
+    local cargo_version=$(cargo --version 2>/dev/null || echo "Unknown")
+    local script_ver="$SCRIPT_VERSION"
+    local profile="${INSTALL_PROFILE:-full}"
+
+    # Extract last 100 lines of errors from log (sanitize paths)
+    local error_log=""
+    if [ -f "$log_file" ]; then
+        error_log=$(tail -100 "$log_file" 2>/dev/null | sed "s|$HOME|~|g" | head -80)
+    fi
+
+    # Create issue body
+    local issue_body="## Installation Failure Report
+
+**Install Script Version:** $script_ver
+**Installation Profile:** $profile
+
+### System Information
+- **OS:** $os_info
+- **Rust:** $rust_version
+- **Cargo:** $cargo_version
+
+### Error Log (last 80 lines)
+\`\`\`
+$error_log
+\`\`\`
+
+### Steps to Reproduce
+1. Clone the repository
+2. Run \`./install.sh\`
+3. Build fails after $max_retries retry attempts
+
+---
+*This issue was automatically created by the HORUS install script.*"
+
+    local issue_title="[Install Failure] Build failed on $(uname -s) - $(date +%Y-%m-%d)"
+
+    echo -e "${CYAN}${STATUS_INFO} Creating GitHub issue...${NC}"
+
+    # Create the issue
+    if gh issue create \
+        --repo "softmata/horus" \
+        --title "$issue_title" \
+        --body "$issue_body" \
+        --label "bug,install" 2>/dev/null; then
+        echo -e "${GREEN}${STATUS_OK} GitHub issue created successfully!${NC}"
+        return 0
+    else
+        echo -e "${RED}${STATUS_ERR} Failed to create GitHub issue.${NC}"
+        echo "  You can manually report at: https://github.com/softmata/horus/issues"
+        return 1
+    fi
+}
+
+# Prompt user to create GitHub issue on failure
+offer_github_issue() {
+    local log_file="$1"
+
+    echo ""
+    echo -e "${CYAN}Would you like to automatically create a GitHub issue to report this failure?${NC}"
+    echo -e "${YELLOW}This will include system info and error logs (no personal data).${NC}"
+    echo ""
+    read -p "Create GitHub issue? [y/N]: " -n 1 -r
+    echo ""
+
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        create_github_issue "$log_file"
+    else
+        echo "  You can manually report at: https://github.com/softmata/horus/issues"
+    fi
+}
+
 # Build with automatic retry and error recovery
 # Shows BOTH overall progress bar AND per-submodule progress bars
 build_with_recovery() {
@@ -979,6 +1076,8 @@ build_with_recovery() {
     declare -A PKG_STATUS  # "pending", "building", "done", "failed"
     declare -A PKG_TIME    # Build time in seconds
     declare -A PKG_PERCENT # Current build percentage
+    declare -A PKG_RETRIES # Per-package retry count
+    local PKG_MAX_RETRIES=2  # Max retries per individual package
 
     # Note: horus_py is installed from PyPI, not built from source
     # Note: horus_router is part of horus_library (not a separate binary)
@@ -1012,6 +1111,10 @@ build_with_recovery() {
             PKG_PERCENT[$pkg]=0
             PKG_CRATE[$pkg]=""
             PKG_ETA[$pkg]=""
+            # Only initialize retry count on first global attempt
+            if [ $retry -eq 0 ]; then
+                PKG_RETRIES[$pkg]=0
+            fi
         done
 
         # Hide cursor for clean progress display
@@ -1119,7 +1222,7 @@ build_with_recovery() {
                     echo "$line" >> "$TEMP_OUTPUT"
                     build_status=1
                 fi
-            done < <(cargo build --release -p "$pkg" 2>&1; echo "BUILD_EXIT_CODE:$?")
+            done < <(cargo build --release -p "$pkg" $([ "$pkg" = "horus_manager" ] && echo "--bin horus") 2>&1; echo "BUILD_EXIT_CODE:$?")
 
             # Extract exit code from the marker line
             if [[ "$last_line" =~ BUILD_EXIT_CODE:([0-9]+) ]]; then
@@ -1139,11 +1242,25 @@ build_with_recovery() {
                 echo -e "    ${GREEN}[███████████████████]${NC} 100% ${GREEN}${pkg}${NC} done ($(format_duration ${PKG_TIME[$pkg]}))"
                 LINES_BELOW_OVERALL=$((LINES_BELOW_OVERALL + 1))
             else
-                PKG_STATUS[$pkg]="failed"
-                all_succeeded=false
-                echo -e "    ${RED}[███████████████████]${NC} ${RED}FAILED${NC} ${pkg}"
-                LINES_BELOW_OVERALL=$((LINES_BELOW_OVERALL + 1))
-                break  # Stop on first failure
+                # Increment per-package retry counter
+                PKG_RETRIES[$pkg]=$((${PKG_RETRIES[$pkg]:-0} + 1))
+                local pkg_retry_count=${PKG_RETRIES[$pkg]}
+
+                if [ "$pkg_retry_count" -ge "$PKG_MAX_RETRIES" ]; then
+                    # Package has exceeded its retry limit
+                    PKG_STATUS[$pkg]="failed"
+                    all_succeeded=false
+                    echo -e "    ${RED}[███████████████████]${NC} ${RED}FAILED${NC} ${pkg} (max retries: ${pkg_retry_count}/${PKG_MAX_RETRIES})"
+                    LINES_BELOW_OVERALL=$((LINES_BELOW_OVERALL + 1))
+                    break  # Stop - this package cannot be recovered
+                else
+                    # Package can still retry
+                    PKG_STATUS[$pkg]="retry"
+                    all_succeeded=false
+                    echo -e "    ${YELLOW}[███████████████████]${NC} ${YELLOW}RETRY${NC} ${pkg} (attempt ${pkg_retry_count}/${PKG_MAX_RETRIES})"
+                    LINES_BELOW_OVERALL=$((LINES_BELOW_OVERALL + 1))
+                    break  # Stop and retry from this package
+                fi
             fi
         done
 
@@ -1165,12 +1282,30 @@ build_with_recovery() {
             rm -f "$TEMP_OUTPUT" 2>/dev/null
             return 0
         else
+            # Check if any package has exceeded its per-package retry limit
+            local pkg_max_exceeded=false
+            local failed_pkg=""
+            for check_pkg in "${BUILD_PACKAGES[@]}"; do
+                if [ "${PKG_STATUS[$check_pkg]}" = "failed" ]; then
+                    pkg_max_exceeded=true
+                    failed_pkg="$check_pkg"
+                    break
+                fi
+            done
+
+            if [ "$pkg_max_exceeded" = true ]; then
+                # A package has exceeded its max retries - give up immediately
+                echo ""
+                echo -e "  ${STATUS_ERR} Package ${RED}${failed_pkg}${NC} failed after ${PKG_MAX_RETRIES} attempts"
+                break
+            fi
+
             ((retry++))
             echo ""
-            echo -e "  ${STATUS_ERR} Build failed"
+            echo -e "  ${STATUS_WARN} Build paused for recovery"
 
             if [ $retry -lt $max_retries ]; then
-                echo -e "${YELLOW} Build failed, attempting recovery...${NC}"
+                echo -e "${YELLOW} Attempting recovery for failed package...${NC}"
 
                 # Common fixes for build failures
                 echo -e "${CYAN} Updating cargo index...${NC}"
@@ -1204,6 +1339,10 @@ build_with_recovery() {
     echo "  2. Check if you have enough disk space: df -h"
     echo "  3. Try updating Rust: rustup update stable"
     echo "  4. Report issue: https://github.com/softmata/horus/issues"
+
+    # Offer to create GitHub issue automatically
+    offer_github_issue "$LOG_FILE"
+
     return 1
 }
 

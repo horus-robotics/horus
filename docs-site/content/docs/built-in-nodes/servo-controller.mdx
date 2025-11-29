@@ -194,8 +194,8 @@ let cmd = ServoCommand {
     angle: 90.0,
 };
 
-let hub = Hub::<ServoCommand>::new("servo/command")?;
-hub.send(cmd, None)?;
+let hub = Hub::<ServoCommand>::new("servo.command")?;
+hub.send(cmd, &mut None).ok();
 ```
 
 ### Position Control (Pulse Width)
@@ -207,7 +207,7 @@ let cmd = ServoCommand {
     command_type: ServoCommand::CMD_PULSE,
     pulse_width: 1500,  // 1500 μs (center)
 };
-hub.send(cmd, None)?;
+hub.send(cmd, &mut None).ok();
 ```
 
 ### Smooth Movement
@@ -220,7 +220,7 @@ let cmd = ServoCommand {
     angle: 180.0,
     speed: 60.0,  // Move at 60°/sec
 };
-hub.send(cmd, None)?;
+hub.send(cmd, &mut None).ok();
 
 // Will take 3 seconds to move from 0° to 180°
 ```
@@ -234,7 +234,7 @@ let cmd = ServoCommand {
     command_type: ServoCommand::CMD_DISABLE,
     ..Default::default()
 };
-hub.send(cmd, None)?;
+hub.send(cmd, &mut None).ok();
 
 // Re-enable
 let cmd = ServoCommand {
@@ -242,7 +242,7 @@ let cmd = ServoCommand {
     command_type: ServoCommand::CMD_ENABLE,
     ..Default::default()
 };
-hub.send(cmd, None)?;
+hub.send(cmd, &mut None).ok();
 ```
 
 ### Calibration
@@ -254,7 +254,7 @@ let cmd = ServoCommand {
     command_type: ServoCommand::CMD_CENTER,
     ..Default::default()
 };
-hub.send(cmd, None)?;
+hub.send(cmd, &mut None).ok();
 ```
 
 ## Complete Example: Pan-Tilt Camera
@@ -291,7 +291,7 @@ fn main() -> Result<()> {
         name: "pan_tilt_control",
         init: |ctx| {
             // Center both servos
-            let hub = Hub::<ServoCommand>::new("servo/command")?;
+            let hub = Hub::<ServoCommand>::new("servo.command")?;
 
             hub.send(ServoCommand {
                 servo_id: 0,
@@ -309,7 +309,7 @@ fn main() -> Result<()> {
             Ok(())
         },
         tick: |ctx| {
-            let hub = Hub::<ServoCommand>::new("servo/command")?;
+            let hub = Hub::<ServoCommand>::new("servo.command")?;
 
             // Scan pattern
             // Pan left

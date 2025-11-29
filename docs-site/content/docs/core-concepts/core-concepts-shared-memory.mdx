@@ -912,14 +912,17 @@ dependencies:
 
 **Usage**:
 ```rust
-// Backend (Terminal 1)
-let publisher: Hub<SensorData> = Hub::new("sensors")?;
-publisher.send(data, Some(&mut ctx))?;
+// Backend (Terminal 1) - inside Node::tick()
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    let data = self.read_sensor();
+    self.publisher.send(data, &mut ctx).ok();
+}
 
-// GUI (Terminal 2)
-let subscriber: Hub<SensorData> = Hub::new("sensors")?;
-if let Some(data) = subscriber.recv(Some(&mut ctx)) {
-    // Receives data from backend!
+// GUI (Terminal 2) - inside Node::tick()
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    if let Some(data) = self.subscriber.recv(&mut ctx) {
+        // Receives data from backend!
+    }
 }
 ```
 
@@ -930,14 +933,17 @@ Both processes will use `/dev/shm/horus/sessions/my-app-session/topics/sensors`.
 Use `Hub::new_global()` for topics that should be accessible across all sessions:
 
 ```rust
-// System monitor (available to all sessions)
-let monitor: Hub<SystemStats> = Hub::new_global("system_monitor")?;
-monitor.send(stats, Some(&mut ctx))?;
+// System monitor (available to all sessions) - inside Node::tick()
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    let stats = self.collect_stats();
+    self.monitor.send(stats, &mut ctx).ok();
+}
 
-// Any other process (different session)
-let stats_subscriber: Hub<SystemStats> = Hub::new_global("system_monitor")?;
-if let Some(stats) = stats_subscriber.recv(Some(&mut ctx)) {
-    // Receives data regardless of session!
+// Any other process (different session) - inside Node::tick()
+fn tick(&mut self, mut ctx: Option<&mut NodeInfo>) {
+    if let Some(stats) = self.stats_subscriber.recv(&mut ctx) {
+        // Receives data regardless of session!
+    }
 }
 ```
 
@@ -975,5 +981,5 @@ Both share `session_id: "snakesim-session"` in their `horus.yaml` files, enablin
 
 - Learn about [Message Types](/core-concepts/message-types) for standard robotics data
 - Read the [Performance Guide](/performance/performance) for optimization tips
-- Explore [Examples](/examples) showing shared memory usage
+- Explore [Examples](/basic-examples) showing shared memory usage
 - Check the [API Reference](/api) for detailed documentation

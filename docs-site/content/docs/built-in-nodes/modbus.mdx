@@ -195,12 +195,12 @@ let request = ModbusRequest {
 };
 
 // Send request
-let hub = Hub::<ModbusRequest>::new("modbus/request")?;
-hub.send(request, None)?;
+let hub = Hub::<ModbusRequest>::new("modbus.request")?;
+hub.send(request, &mut None).ok();
 
 // Receive response
-let resp_hub = Hub::<ModbusResponse>::new("modbus/response")?;
-if let Some(response) = resp_hub.recv(None) {
+let resp_hub = Hub::<ModbusResponse>::new("modbus.response")?;
+if let Some(response) = resp_hub.recv(&mut None) {
     if response.success {
         // Convert registers to temperature (example)
         let raw = (response.data[0] as u32) << 16 | response.data[1] as u32;
@@ -223,7 +223,7 @@ let request = ModbusRequest {
     count: 1,
     data: vec![5000],  // Setpoint value
 };
-hub.send(request, None)?;
+hub.send(request, &mut None).ok();
 ```
 
 ### Polling Multiple Slaves
@@ -238,7 +238,7 @@ for slave_id in 1..=3 {
         count: 10,
         data: vec![],
     };
-    hub.send(request, None)?;
+    hub.send(request, &mut None).ok();
 
     if let Some(resp) = resp_hub.recv(Some(Duration::from_millis(500))) {
         println!("Slave {}: {:?}", slave_id, resp.data);
@@ -259,7 +259,7 @@ let request = ModbusRequest {
     count: 2,  // Float32 = 2 registers
     data: vec![],
 };
-hub.send(request, None)?;
+hub.send(request, &mut None).ok();
 
 // Read current (register 0x0006)
 let request = ModbusRequest {
@@ -269,7 +269,7 @@ let request = ModbusRequest {
     count: 2,
     data: vec![],
 };
-hub.send(request, None)?;
+hub.send(request, &mut None).ok();
 ```
 
 ### Temperature Controller
@@ -408,8 +408,8 @@ fn main() -> Result<()> {
     let scada_node = node! {
         name: "scada_poller",
         tick: |ctx| {
-            let req_hub = Hub::<ModbusRequest>::new("modbus/request")?;
-            let resp_hub = Hub::<ModbusResponse>::new("modbus/response")?;
+            let req_hub = Hub::<ModbusRequest>::new("modbus.request")?;
+            let resp_hub = Hub::<ModbusResponse>::new("modbus.response")?;
 
             // Poll slave 1: Temperature sensor
             let request = ModbusRequest {
@@ -419,7 +419,7 @@ fn main() -> Result<()> {
                 count: 2,
                 data: vec![],
             };
-            req_hub.send(request, None)?;
+            req_hub.send(request, &mut None).ok();
 
             if let Some(resp) = resp_hub.recv(Some(Duration::from_millis(500))) {
                 if resp.success {
@@ -446,7 +446,7 @@ fn main() -> Result<()> {
                 count: 4,
                 data: vec![],
             };
-            req_hub.send(request, None)?;
+            req_hub.send(request, &mut None).ok();
 
             if let Some(resp) = resp_hub.recv(Some(Duration::from_millis(500))) {
                 if resp.success {

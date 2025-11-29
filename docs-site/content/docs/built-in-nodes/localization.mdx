@@ -45,9 +45,9 @@ fn main() -> Result<()> {
 ## Usage
 
 ```rust
-let hub = Hub::<Pose>::new("localization/pose")?;
+let hub = Hub::<Pose>::new("localization.pose")?;
 
-if let Some(pose) = hub.recv(None) {
+if let Some(pose) = hub.recv(&mut None) {
     println!("Fused position: ({:.2}, {:.2}), heading: {:.1}°",
         pose.x, pose.y, pose.theta * 180.0 / PI);
     println!("Covariance: {:.4}", pose.covariance);

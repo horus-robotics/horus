@@ -63,11 +63,11 @@ camera.set_compression(true, 90);  // enabled, quality (0-100)
 ## Usage
 
 The CameraNode publishes to the following topics (configurable via `new_with_topic`):
-- Publishes to `"camera/image"` - captured frames (Image)
-- Publishes to `"camera/camera_info"` - camera calibration info (CameraInfo)
+- Publishes to `"camera.image"` - captured frames (Image)
+- Publishes to `"camera.camera_info"` - camera calibration info (CameraInfo)
 
 ```rust
-let hub = Hub::<Image>::new("camera/image")?;
+let hub = Hub::<Image>::new("camera.image")?;
 
 if let Some(frame) = hub.recv(&mut None) {
     println!("Frame: {}x{}, {} bytes",

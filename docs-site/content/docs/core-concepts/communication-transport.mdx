@@ -141,10 +141,10 @@ let camera: Hub<Image> = Hub::new("camera")?;
 ```rust
 // Robot fleet coordination
 // Robot 1 (192.168.1.10)
-let position_pub: Hub<Position> = Hub::new("fleet/positions@router")?;
+let position_pub: Hub<Position> = Hub::new("fleet.positions@router")?;
 
 // Robot 2 (192.168.1.20) subscribes
-let positions: Hub<Position> = Hub::new("fleet/positions@router")?;
+let positions: Hub<Position> = Hub::new("fleet.positions@router")?;
 ```
 
 ✅ **Edge computing clusters**

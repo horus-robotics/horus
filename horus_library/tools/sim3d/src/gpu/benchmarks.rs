@@ -122,7 +122,9 @@ async fn benchmark_collision_detection(
             // Run actual GPU collision detection
             let gpu_start = Instant::now();
             for _ in 0..iterations {
-                let _gpu_pairs = ctx.collision_pipeline.detect_collisions(&ctx.context, &aabbs);
+                let _gpu_pairs = ctx
+                    .collision_pipeline
+                    .detect_collisions(&ctx.context, &aabbs);
             }
             let gpu_elapsed = gpu_start.elapsed().as_micros() as f64 / iterations as f64;
             (gpu_elapsed, true)
@@ -232,12 +234,9 @@ async fn benchmark_raycasting(
                 .collect();
             let gpu_start = Instant::now();
             for _ in 0..iterations {
-                let _gpu_results = ctx.raycast_pipeline.cast_rays(
-                    &ctx.context,
-                    &rays,
-                    &triangles,
-                    100.0,
-                );
+                let _gpu_results =
+                    ctx.raycast_pipeline
+                        .cast_rays(&ctx.context, &rays, &triangles, 100.0);
             }
             let gpu_elapsed = gpu_start.elapsed().as_micros() as f64 / iterations as f64;
             (gpu_elapsed, true)

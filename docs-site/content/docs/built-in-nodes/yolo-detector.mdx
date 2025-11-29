@@ -102,7 +102,7 @@ use horus_library::messages::{Detection, DetectionArray};
 
 let detections_hub = Hub::<DetectionArray>::new("vision.detections")?;
 
-if let Some(detections) = detections_hub.recv(None) {
+if let Some(detections) = detections_hub.recv(&mut None) {
     for det in &detections.detections {
         println!("Detected {} at ({}, {}) with confidence {:.2}",
             det.class_name, det.bbox.x, det.bbox.y, det.confidence);
@@ -121,8 +121,8 @@ let config = YOLOConfig {
 
 let detector = YOLOv8DetectorNode::new(
     "models/yolov8s.onnx",  // Larger model for accuracy
-    "camera/front",
-    "safety/persons",
+    "camera.front",
+    "safety.persons",
     config,
 )?;
 ```

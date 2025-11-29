@@ -44,9 +44,9 @@ fn main() -> Result<()> {
 ## Usage
 
 ```rust
-let hub = Hub::<CollisionWarning>::new("collision/warning")?;
+let hub = Hub::<CollisionWarning>::new("collision.warning")?;
 
-if let Some(warning) = hub.recv(None) {
+if let Some(warning) = hub.recv(&mut None) {
     println!("Collision risk: {:?} at {:.2}m, angle {}°",
         warning.level, warning.distance, warning.angle);
 

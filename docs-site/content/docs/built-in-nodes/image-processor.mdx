@@ -63,14 +63,14 @@ processor.set_hsv_range((0, 120, 70), (10, 255, 255));  // Red
 ### Object Detection
 
 ```rust
-let frame_hub = Hub::<CameraFrame>::new("camera/frame")?;
-let objects_hub = Hub::<DetectedObjects>::new("vision/objects")?;
+let frame_hub = Hub::<CameraFrame>::new("camera.frame")?;
+let objects_hub = Hub::<DetectedObjects>::new("vision.objects")?;
 
-if let Some(frame) = frame_hub.recv(None) {
+if let Some(frame) = frame_hub.recv(&mut None) {
     // Process frame...
 }
 
-if let Some(objects) = objects_hub.recv(None) {
+if let Some(objects) = objects_hub.recv(&mut None) {
     for obj in &objects.objects {
         println!("Object at ({}, {}), size: {}x{}",
             obj.x, obj.y, obj.width, obj.height);
@@ -84,8 +84,8 @@ if let Some(objects) = objects_hub.recv(None) {
 // Track red objects
 processor.set_hsv_range((0, 120, 70), (10, 255, 255));
 
-let blobs_hub = Hub::<BlobList>::new("vision/blobs")?;
-if let Some(blobs) = blobs_hub.recv(None) {
+let blobs_hub = Hub::<BlobList>::new("vision.blobs")?;
+if let Some(blobs) = blobs_hub.recv(&mut None) {
     if let Some(largest) = blobs.largest() {
         println!("Largest blob at ({}, {})", largest.x, largest.y);
     }
@@ -98,8 +98,8 @@ if let Some(blobs) = blobs_hub.recv(None) {
 processor.enable_aruco_detection(true);
 processor.set_aruco_dictionary(ArucoDictionary::Dict4x4_50);
 
-let markers_hub = Hub::<ArucoMarkers>::new("vision/markers")?;
-if let Some(markers) = markers_hub.recv(None) {
+let markers_hub = Hub::<ArucoMarkers>::new("vision.markers")?;
+if let Some(markers) = markers_hub.recv(&mut None) {
     for marker in &markers.markers {
         println!("Marker ID: {}, pose: {:?}", marker.id, marker.pose);
     }

@@ -53,8 +53,8 @@ fn main() -> Result<()> {
     let mut scheduler = Scheduler::new();
 
     let llm_node = CloudLLMNode::new(
-        "user/prompts",
-        "robot/responses",
+        "user.prompts",
+        "robot.responses",
         LLMConfig::openai_gpt4(),
     )?;
 
@@ -161,8 +161,8 @@ let config = LLMConfig {
 };
 
 let conversation_node = CloudLLMNode::new(
-    "user/speech",
-    "robot/reply",
+    "user.speech",
+    "robot.reply",
     config,
 )?;
 ```
@@ -199,10 +199,10 @@ let config = LLMConfig {
 };
 
 // Subscribe to streaming chunks
-let stream_sub = Hub::<String>::new("robot/responses/stream")?;
+let stream_sub = Hub::<String>::new("robot.responses.stream")?;
 
 // Process chunks as they arrive
-if let Some(chunk) = stream_sub.recv(None) {
+if let Some(chunk) = stream_sub.recv(&mut None) {
     print!("{}", chunk);  // Real-time output
 }
 ```

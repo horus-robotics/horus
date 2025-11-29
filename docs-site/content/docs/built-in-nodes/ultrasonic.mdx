@@ -163,9 +163,9 @@ ultrasonic.set_temperature(20.0); // 20°C
 use horus_library::prelude::*;
 
 // Subscribe to distance measurements
-let hub = Hub::<Range>::new("ultrasonic/range")?;
+let hub = Hub::<Range>::new("ultrasonic.range")?;
 
-if let Some(range) = hub.recv(None) {
+if let Some(range) = hub.recv(&mut None) {
     println!("Range: {:.3} m", range.range);
 }
 ```
@@ -173,9 +173,9 @@ if let Some(range) = hub.recv(None) {
 ### Obstacle Detection
 
 ```rust
-let hub = Hub::<Range>::new("ultrasonic/range")?;
+let hub = Hub::<Range>::new("ultrasonic.range")?;
 
-while let Some(range) = hub.recv(None) {
+while let Some(range) = hub.recv(&mut None) {
     if range.range >= range.min_range && range.range <= range.max_range {
         if range.range < 0.3 {
             println!("WARNING: Obstacle at {:.2}m!", range.range);
@@ -191,12 +191,12 @@ while let Some(range) = hub.recv(None) {
 ```rust
 use std::collections::HashMap;
 
-let hub = Hub::<Range>::new("ultrasonic/range")?;
+let hub = Hub::<Range>::new("ultrasonic.range")?;
 let mut distances: HashMap<u8, f32> = HashMap::new();
 let mut sensor_id = 0; // Track which sensor in multi-sensor setup
 
 // Collect from all sensors
-while let Some(range) = hub.recv(None) {
+while let Some(range) = hub.recv(&mut None) {
     if range.range >= range.min_range && range.range <= range.max_range {
         distances.insert(sensor_id, range.range);
     }
@@ -234,10 +234,10 @@ fn main() -> Result<()> {
     let avoidance_node = node! {
         name: "obstacle_avoidance",
         tick: |ctx| {
-            let hub = Hub::<Range>::new("ultrasonic/range")?;
+            let hub = Hub::<Range>::new("ultrasonic.range")?;
             let mut front_clear = true;
 
-            while let Some(range) = hub.recv(None) {
+            while let Some(range) = hub.recv(&mut None) {
                 // Assuming first reading is front sensor
                 if range.range < 0.5 && range.range >= range.min_range {
                     front_clear = false;
@@ -277,7 +277,7 @@ pub struct Range {
 }
 ```
 
-**Published on topic**: `ultrasonic/range`
+**Published on topic**: `ultrasonic.range`
 
 **Constants**:
 - `Range::ULTRASONIC = 0`

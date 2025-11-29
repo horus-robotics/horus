@@ -365,7 +365,7 @@ let cmd = RobotCommand {
 };
 
 let hub: Hub<RobotCommand> = Hub::new("commands")?;
-hub.send(cmd, &mut None)?;
+hub.send(cmd, &mut None).ok();
 ```
 
 ### With Arrays

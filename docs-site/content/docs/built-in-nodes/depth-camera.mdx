@@ -43,9 +43,9 @@ fn main() -> Result<()> {
 ## Usage
 
 ```rust
-let hub = Hub::<DepthFrame>::new("depth_camera/frame")?;
+let hub = Hub::<DepthFrame>::new("depth_camera.frame")?;
 
-if let Some(frame) = hub.recv(None) {
+if let Some(frame) = hub.recv(&mut None) {
     for point in &frame.points {
         if point.z < 1.0 {  // Obstacle within 1m
             println!("Obstacle at ({:.2}, {:.2}, {:.2})",

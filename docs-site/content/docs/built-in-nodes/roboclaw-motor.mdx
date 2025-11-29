@@ -195,8 +195,8 @@ let cmd = RoboclawCommand {
     value: 16384,  // -32768 to +32767 (-100% to +100%)
 };
 
-let hub = Hub::<RoboclawCommand>::new("roboclaw/command")?;
-hub.send(cmd, None)?;
+let hub = Hub::<RoboclawCommand>::new("roboclaw.command")?;
+hub.send(cmd, &mut None).ok();
 
 // Stop motor
 let cmd = RoboclawCommand {
@@ -204,7 +204,7 @@ let cmd = RoboclawCommand {
     command_type: RoboclawCommand::CMD_DUTY,
     value: 0,
 };
-hub.send(cmd, None)?;
+hub.send(cmd, &mut None).ok();
 ```
 
 ### Velocity Control (Closed Loop)
@@ -217,7 +217,7 @@ let cmd = RoboclawCommand {
     value: 5000,  // 5000 QPPS
     accel: 10000,  // Acceleration (QPPS²)
 };
-hub.send(cmd, None)?;
+hub.send(cmd, &mut None).ok();
 ```
 
 ### Position Control (Closed Loop)
@@ -233,7 +233,7 @@ let cmd = RoboclawCommand {
     deccel: 10000,    // Deceleration
     buffer: true,     // Buffer command
 };
-hub.send(cmd, None)?;
+hub.send(cmd, &mut None).ok();
 ```
 
 ### Mixed Mode (Differential Drive)
@@ -245,8 +245,8 @@ let cmd = RoboclawMixedCommand {
     turn_rate: -1000,      // Turn rate (negative = left)
 };
 
-let hub = Hub::<RoboclawMixedCommand>::new("roboclaw/mixed")?;
-hub.send(cmd, None)?;
+let hub = Hub::<RoboclawMixedCommand>::new("roboclaw.mixed")?;
+hub.send(cmd, &mut None).ok();
 ```
 
 ## Usage Patterns
@@ -281,7 +281,7 @@ fn main() -> Result<()> {
     let drive_node = node! {
         name: "drive_control",
         tick: |ctx| {
-            let hub = Hub::<RoboclawMixedCommand>::new("roboclaw/mixed")?;
+            let hub = Hub::<RoboclawMixedCommand>::new("roboclaw.mixed")?;
 
             // Example: Drive forward
             hub.send(RoboclawMixedCommand {
@@ -290,8 +290,8 @@ fn main() -> Result<()> {
             }, None)?;
 
             // Monitor status
-            let status_hub = Hub::<RoboclawStatus>::new("roboclaw/status")?;
-            if let Some(status) = status_hub.recv(None) {
+            let status_hub = Hub::<RoboclawStatus>::new("roboclaw.status")?;
+            if let Some(status) = status_hub.recv(&mut None) {
                 ctx.log_info(&format!(
                     "M1: {} counts, {} QPPS | M2: {} counts, {} QPPS",
                     status.encoder1, status.speed1,
@@ -323,9 +323,9 @@ fn main() -> Result<()> {
 
 ```rust
 // Read encoder positions
-let status_hub = Hub::<RoboclawStatus>::new("roboclaw/status")?;
+let status_hub = Hub::<RoboclawStatus>::new("roboclaw.status")?;
 
-if let Some(status) = status_hub.recv(None) {
+if let Some(status) = status_hub.recv(&mut None) {
     let motor1_revolutions = status.encoder1 as f32 / 1440.0;
     let motor2_revolutions = status.encoder2 as f32 / 1440.0;
 
@@ -343,7 +343,7 @@ let cmd = RoboclawCommand {
     command_type: RoboclawCommand::CMD_RESET_ENCODER,
     ..Default::default()
 };
-hub.send(cmd, None)?;
+hub.send(cmd, &mut None).ok();
 ```
 
 ## Message Format

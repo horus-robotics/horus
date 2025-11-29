@@ -81,11 +81,11 @@ let pid = PidControllerNode::new_with_topics(
 
 // Publish setpoint from another node
 let setpoint_hub = Hub::<f32>::new("setpoint")?;
-setpoint_hub.send(150.0, &mut None)?;
+setpoint_hub.send(150.0, &mut None).ok();
 
 // Publish feedback from another node
 let feedback_hub = Hub::<f32>::new("feedback")?;
-feedback_hub.send(current_position, &mut None)?;
+feedback_hub.send(current_position, &mut None).ok();
 
 // Read output from another node
 let output_hub = Hub::<MotorCommand>::new("pid_output")?;
